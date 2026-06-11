@@ -1,6 +1,6 @@
 <template>
   <div style="height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2)">
-    <div style="width:400px;padding:40px;background:#fff;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.15)">
+    <div class="login-box" style="width:400px;padding:40px;background:#fff;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.15)">
       <h2 style="text-align:center;margin-bottom:30px;color:#333;font-size:24px">微课管理平台</h2>
       <el-form ref="formRef" :model="form" :rules="rules">
         <el-form-item prop="username"><el-input v-model="form.username" placeholder="用户名" size="large" /></el-form-item>
@@ -43,3 +43,9 @@ const handleLogin = async () => {
   })
 }
 </script>
+
+<style scoped>
+@media (max-width: 767px) {
+  .login-box { width: 90% !important; padding: 20px !important; }
+}
+</style>

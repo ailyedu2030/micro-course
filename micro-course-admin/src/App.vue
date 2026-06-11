@@ -24,4 +24,12 @@ html, body, #app {
   height: 100%;
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
 }
+
+@media (max-width: 767px) {
+  .el-table { font-size: 12px; overflow-x: auto; display: block; }
+  .el-form--inline .el-form-item { display: block; margin-right: 0; }
+  .el-dialog { width: 90% !important; }
+  .el-card { padding: 10px; }
+  .el-pagination { justify-content: center; }
+}
 </style>
