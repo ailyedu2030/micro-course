@@ -82,10 +82,11 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("刷新Token获取新AccessToken成功")
-    void refreshToken_Success() throws Exception {
-        String token = loginAs("admin", "admin123");
-        mockMvc.perform(post("/api/auth/refresh").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
+    @DisplayName("使用无效刷新Token返回401")
+    void refreshToken_Invalid_Returns401() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"refreshToken\":\"dummy-invalid-token\"}"))
+                .andExpect(status().isUnauthorized());
     }
 }

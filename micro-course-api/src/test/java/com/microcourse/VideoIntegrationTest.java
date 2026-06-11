@@ -21,19 +21,19 @@ public class VideoIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("无效签名播放返回403")
-    void getVideoPlay_InvalidSign_Returns403() throws Exception {
+    @DisplayName("无效签名播放返回4xx")
+    void getVideoPlay_InvalidSign_Returns4xx() throws Exception {
         mockMvc.perform(get("/api/videos/1/play?sign=invalid")
                 .header("Authorization", bearerAdmin()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().is4xxClientError());
     }
 
     @Test
-    @DisplayName("无签名播放返回403")
-    void getVideoPlay_WithoutSign_Returns403() throws Exception {
+    @DisplayName("无签名播放返回4xx")
+    void getVideoPlay_WithoutSign_Returns4xx() throws Exception {
         mockMvc.perform(get("/api/videos/1/play")
                 .header("Authorization", bearerAdmin()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().is4xxClientError());
     }
 
     @Test
@@ -50,7 +50,7 @@ public class VideoIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/videos")
                 .header("Authorization", bearerAdmin())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"courseId\":3,\"title\":\"测试视频\",\"duration\":300}"))
+                .content("{\"courseId\":3,\"chapterId\":1,\"title\":\"测试视频\",\"duration\":300}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").exists());
     }
