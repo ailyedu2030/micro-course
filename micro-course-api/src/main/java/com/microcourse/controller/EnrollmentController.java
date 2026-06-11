@@ -6,7 +6,6 @@ import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.R;
 import com.microcourse.service.EnrollmentService;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -25,39 +24,39 @@ public class EnrollmentController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
-    public ResponseEntity<R<EnrollmentVO>> enroll(@Valid @RequestBody EnrollmentCreateRequest request) {
+    public R<EnrollmentVO> enroll(@Valid @RequestBody EnrollmentCreateRequest request) {
         EnrollmentVO vo = enrollmentService.enroll(request);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<List<EnrollmentVO>>> getMyEnrollments() {
+    public R<List<EnrollmentVO>> getMyEnrollments() {
         Long userId = getCurrentUserId();
         List<EnrollmentVO> list = enrollmentService.getMyEnrollments(userId);
-        return ResponseEntity.ok(R.ok(list));
+        return R.ok(list);
     }
 
     @GetMapping("/course/{courseId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public ResponseEntity<R<List<EnrollmentVO>>> getCourseEnrollments(@PathVariable Long courseId) {
+    public R<List<EnrollmentVO>> getCourseEnrollments(@PathVariable Long courseId) {
         List<EnrollmentVO> list = enrollmentService.getCourseEnrollments(courseId);
-        return ResponseEntity.ok(R.ok(list));
+        return R.ok(list);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public ResponseEntity<R<EnrollmentVO>> updateEnrollment(@PathVariable Long id,
-                                                            @Valid @RequestBody EnrollmentUpdateRequest request) {
+    public R<EnrollmentVO> updateEnrollment(@PathVariable Long id,
+                                            @Valid @RequestBody EnrollmentUpdateRequest request) {
         EnrollmentVO vo = enrollmentService.updateEnrollment(id, request);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
-    public ResponseEntity<R<Void>> cancelEnrollment(@PathVariable Long id) {
+    public R<Void> cancelEnrollment(@PathVariable Long id) {
         enrollmentService.cancelEnrollment(id);
-        return ResponseEntity.ok(R.ok());
+        return R.ok();
     }
 
     private Long getCurrentUserId() {

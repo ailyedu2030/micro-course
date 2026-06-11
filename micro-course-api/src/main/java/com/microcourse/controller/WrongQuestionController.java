@@ -3,7 +3,6 @@ package com.microcourse.controller;
 import com.microcourse.dto.R;
 import com.microcourse.dto.WrongQuestionVO;
 import com.microcourse.service.WrongQuestionService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +21,7 @@ public class WrongQuestionController {
 
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<List<WrongQuestionVO>>> getMyWrongQuestions(
+    public R<List<WrongQuestionVO>> getMyWrongQuestions(
             @RequestParam(required = false) Long courseId,
             Authentication authentication) {
         Long userId = extractUserId(authentication);
@@ -33,7 +32,7 @@ public class WrongQuestionController {
         } else {
             records = wrongQuestionService.getMyWrongQuestions(userId);
         }
-        return ResponseEntity.ok(R.ok(records));
+        return R.ok(records);
     }
 
     private Long extractUserId(Authentication authentication) {

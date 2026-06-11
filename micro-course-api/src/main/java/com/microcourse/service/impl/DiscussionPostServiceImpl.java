@@ -202,6 +202,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             if (author != null) {
                 if (Boolean.TRUE.equals(post.getIsAnonymous())) {
                     vo.setAuthorName("匿名用户");
+                    vo.setUserId(null);
                 } else {
                     vo.setAuthorName(author.getRealName() != null ? author.getRealName() : author.getUsername());
                 }

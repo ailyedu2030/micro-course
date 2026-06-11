@@ -119,7 +119,7 @@ const fetchDepartments = async () => {
     const { data } = await getDepartments({ size: 1000 })
     departments.value = data.items || []
   } catch (error) {
-    console.error('获取院系列表失败', error)
+    // ignore
   }
 }
 

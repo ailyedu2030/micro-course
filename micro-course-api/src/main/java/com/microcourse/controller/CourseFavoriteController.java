@@ -3,7 +3,6 @@ package com.microcourse.controller;
 import com.microcourse.dto.CourseFavoriteVO;
 import com.microcourse.dto.R;
 import com.microcourse.service.CourseFavoriteService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -22,26 +21,26 @@ public class CourseFavoriteController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<Void>> favorite(@RequestParam Long courseId) {
+    public R<Void> favorite(@RequestParam Long courseId) {
         Long userId = getCurrentUserId();
         favoriteService.favorite(userId, courseId);
-        return ResponseEntity.ok(R.ok());
+        return R.ok();
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<Void>> unfavorite(@PathVariable Long id) {
+    public R<Void> unfavorite(@PathVariable Long id) {
         Long userId = getCurrentUserId();
         favoriteService.unfavorite(userId, id);
-        return ResponseEntity.ok(R.ok());
+        return R.ok();
     }
 
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<List<CourseFavoriteVO>>> getMyFavorites() {
+    public R<List<CourseFavoriteVO>> getMyFavorites() {
         Long userId = getCurrentUserId();
         List<CourseFavoriteVO> favorites = favoriteService.getMyFavorites(userId);
-        return ResponseEntity.ok(R.ok(favorites));
+        return R.ok(favorites);
     }
 
     private Long getCurrentUserId() {

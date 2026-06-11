@@ -5,7 +5,6 @@ import com.microcourse.dto.R;
 import com.microcourse.dto.SubmitAnswerRequest;
 import com.microcourse.service.ExerciseRecordService;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -24,33 +23,34 @@ public class ExerciseRecordController {
 
     @PostMapping("/submit")
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
-    public ResponseEntity<R<ExerciseRecordVO>> submitAnswer(@Valid @RequestBody SubmitAnswerRequest request) {
+    public R<ExerciseRecordVO> submitAnswer(@Valid @RequestBody SubmitAnswerRequest request) {
         ExerciseRecordVO vo = exerciseRecordService.submitAnswer(request);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @GetMapping("/exercise/{exerciseId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public ResponseEntity<R<List<ExerciseRecordVO>>> getRecordsByExercise(@PathVariable Long exerciseId) {
+    public R<List<ExerciseRecordVO>> getRecordsByExercise(@PathVariable Long exerciseId) {
         List<ExerciseRecordVO> records = exerciseRecordService.getRecordsByExercise(exerciseId);
-        return ResponseEntity.ok(R.ok(records));
+        return R.ok(records);
     }
 
     @GetMapping("/my/{exerciseId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<List<ExerciseRecordVO>>> getMyRecords(
+    public R<List<ExerciseRecordVO>> getMyRecords(
             @PathVariable Long exerciseId,
             Authentication authentication) {
         Long userId = extractUserId(authentication);
         List<ExerciseRecordVO> records = exerciseRecordService.getMyRecords(userId, exerciseId);
-        return ResponseEntity.ok(R.ok(records));
+        return R.ok(records);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<ExerciseRecordVO>> getRecordById(@PathVariable Long id) {
-        ExerciseRecordVO vo = exerciseRecordService.getRecordById(id);
-        return ResponseEntity.ok(R.ok(vo));
+    public R<ExerciseRecordVO> getRecordById(@PathVariable Long id, Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        ExerciseRecordVO vo = exerciseRecordService.getRecordById(id, userId);
+        return R.ok(vo);
     }
 
     private Long extractUserId(Authentication authentication) {

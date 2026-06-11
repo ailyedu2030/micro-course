@@ -6,7 +6,6 @@ import com.microcourse.dto.ProgressUpdateRequest;
 import com.microcourse.dto.R;
 import com.microcourse.service.LearningProgressService;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -26,36 +25,36 @@ public class LearningProgressController {
 
     @GetMapping("/progress")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<List<LearningProgressVO>>> getByUserAndCourse(
+    public R<List<LearningProgressVO>> getByUserAndCourse(
             @RequestParam Long userId,
             @RequestParam Long courseId) {
         List<LearningProgressVO> list = learningProgressService.getByUserAndCourse(userId, courseId);
-        return ResponseEntity.ok(R.ok(list));
+        return R.ok(list);
     }
 
     @PostMapping("/progress")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<LearningProgressVO>> create(@Valid @RequestBody ProgressCreateRequest request) {
+    public R<LearningProgressVO> create(@Valid @RequestBody ProgressCreateRequest request) {
         LearningProgressVO vo = learningProgressService.create(request);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @PutMapping("/progress/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<Void>> updateProgress(@PathVariable Long id,
-                                                  @RequestBody ProgressUpdateRequest request) {
+    public R<Void> updateProgress(@PathVariable Long id,
+                                  @RequestBody ProgressUpdateRequest request) {
         Long userId = getCurrentUserId();
         learningProgressService.updateProgress(id, userId, request);
-        return ResponseEntity.ok(R.ok());
+        return R.ok();
     }
 
     @GetMapping("/progress/completion")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<Map<String, Object>>> getCourseCompletion(
+    public R<Map<String, Object>> getCourseCompletion(
             @RequestParam Long userId,
             @RequestParam Long courseId) {
         Map<String, Object> result = learningProgressService.getCourseCompletion(userId, courseId);
-        return ResponseEntity.ok(R.ok(result));
+        return R.ok(result);
     }
 
     private Long getCurrentUserId() {

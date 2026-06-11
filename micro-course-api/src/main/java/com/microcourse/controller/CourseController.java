@@ -3,7 +3,6 @@ package com.microcourse.controller;
 import com.microcourse.dto.*;
 import com.microcourse.service.CourseService;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +18,7 @@ public class CourseController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<PageResult<CourseVO>>> page(
+    public R<PageResult<CourseVO>> page(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String title,
@@ -34,43 +33,43 @@ public class CourseController {
         query.setTeacherId(teacherId);
         query.setStatus(status);
         PageResult<CourseVO> result = courseService.page(query);
-        return ResponseEntity.ok(R.ok(result));
+        return R.ok(result);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<CourseVO>> getById(@PathVariable Long id) {
+    public R<CourseVO> getById(@PathVariable Long id) {
         CourseVO vo = courseService.getById(id);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public ResponseEntity<R<CourseVO>> create(@Valid @RequestBody CourseCreateRequest request) {
+    public R<CourseVO> create(@Valid @RequestBody CourseCreateRequest request) {
         CourseVO vo = courseService.create(request);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public ResponseEntity<R<CourseVO>> update(@PathVariable Long id,
-                                              @Valid @RequestBody CourseUpdateRequest request) {
+    public R<CourseVO> update(@PathVariable Long id,
+                              @Valid @RequestBody CourseUpdateRequest request) {
         CourseVO vo = courseService.update(id, request);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<R<Void>> updateStatus(@PathVariable Long id,
-                                                 @RequestParam Integer status) {
+    public R<Void> updateStatus(@PathVariable Long id,
+                                @RequestParam Integer status) {
         courseService.updateStatus(id, status);
-        return ResponseEntity.ok(R.ok());
+        return R.ok();
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<R<Void>> delete(@PathVariable Long id) {
+    public R<Void> delete(@PathVariable Long id) {
         courseService.delete(id);
-        return ResponseEntity.ok(R.ok());
+        return R.ok();
     }
 }

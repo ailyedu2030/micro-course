@@ -25,5 +25,5 @@ public interface ExerciseRecordService {
     /**
      * 获取答题记录详情
      */
-    ExerciseRecordVO getRecordById(Long id);
+    ExerciseRecordVO getRecordById(Long id, Long userId);
 }

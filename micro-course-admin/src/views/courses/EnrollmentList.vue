@@ -144,16 +144,11 @@ const fetchCourses = async () => {
 }
 
 const fetchData = async () => {
+  if (!searchForm.courseId) return
   loading.value = true
   try {
-    let result
-    if (searchForm.courseId) {
-      const { data } = await getCourseEnrollments(searchForm.courseId)
-      result = data
-    } else {
-      const { data } = await getCourseEnrollments('')
-      result = data
-    }
+    const { data } = await getCourseEnrollments(searchForm.courseId)
+    const result = data
     tableData.value = Array.isArray(result) ? result : (result.items || [])
     totalElements.value = Array.isArray(result) ? result.length : (result.totalElements || tableData.value.length)
   } catch (error) {

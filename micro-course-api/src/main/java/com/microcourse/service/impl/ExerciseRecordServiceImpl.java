@@ -259,10 +259,13 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     }
 
     @Override
-    public ExerciseRecordVO getRecordById(Long id) {
+    public ExerciseRecordVO getRecordById(Long id, Long userId) {
         ExerciseRecord record = exerciseRecordRepository.selectById(id);
         if (record == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题记录不存在");
+        }
+        if (!record.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
         Exercise exercise = exerciseRepository.selectById(record.getExerciseId());

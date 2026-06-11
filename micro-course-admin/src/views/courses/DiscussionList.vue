@@ -144,7 +144,7 @@ const fetchChapters = async () => {
     const { data } = await getChapters({ size: 1000 })
     chapters.value = data.items || []
   } catch (error) {
-    console.error('获取章节列表失败', error)
+    // ignore
   }
 }
 

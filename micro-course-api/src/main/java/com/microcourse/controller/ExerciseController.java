@@ -7,7 +7,6 @@ import com.microcourse.dto.R;
 import com.microcourse.dto.PageResult;
 import com.microcourse.service.ExerciseService;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,41 +22,41 @@ public class ExerciseController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<PageResult<ExerciseVO>>> page(
+    public R<PageResult<ExerciseVO>> page(
             @RequestParam(required = false) Integer courseId,
             @RequestParam(required = false) Integer chapterId,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         PageResult<ExerciseVO> result = exerciseService.page(courseId, chapterId, page, size);
-        return ResponseEntity.ok(R.ok(result));
+        return R.ok(result);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<R<ExerciseVO>> getById(@PathVariable Long id) {
+    public R<ExerciseVO> getById(@PathVariable Long id) {
         ExerciseVO vo = exerciseService.getById(id);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public ResponseEntity<R<ExerciseVO>> create(@Valid @RequestBody ExerciseCreateRequest request) {
+    public R<ExerciseVO> create(@Valid @RequestBody ExerciseCreateRequest request) {
         ExerciseVO vo = exerciseService.create(request);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public ResponseEntity<R<ExerciseVO>> update(@PathVariable Long id,
-                                                 @Valid @RequestBody ExerciseUpdateRequest request) {
+    public R<ExerciseVO> update(@PathVariable Long id,
+                                @Valid @RequestBody ExerciseUpdateRequest request) {
         ExerciseVO vo = exerciseService.update(id, request);
-        return ResponseEntity.ok(R.ok(vo));
+        return R.ok(vo);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public ResponseEntity<R<Void>> delete(@PathVariable Long id) {
+    public R<Void> delete(@PathVariable Long id) {
         exerciseService.delete(id);
-        return ResponseEntity.ok(R.ok());
+        return R.ok();
     }
 }
