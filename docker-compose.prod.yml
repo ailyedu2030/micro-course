@@ -19,6 +19,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
     port:
       - "6379:6379"
     volumes:
@@ -28,7 +31,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    command: redis-server --appendonly yes
 
   api:
     build:
@@ -47,6 +49,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: ${REDIS_HOST}
       JWT_SECRET: ${JWT_SECRET}
+      SPRING_PROFILES_ACTIVE: prod
 
   nginx:
     image: nginx:alpine

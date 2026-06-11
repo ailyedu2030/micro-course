@@ -74,7 +74,7 @@ Commit message 格式: <type>(<scope>): <描述>
 
 | 层 | 载体 |
 |----|------|
-| 后端 | Spring Boot 3.2.5 + Java 17 + MyBatis-Plus 3.5.6 + PostgreSQL 17.5 + Redis 7 |
+| 后端 | Spring Boot 3.2.12 + Java 17 + MyBatis-Plus 3.5.6 + PostgreSQL 17.5 + Redis 7 |
 | 前端 | Vue 3.4 + Element Plus 2.5 + Pinia 2.1 + Vite 5 + Axios 1.6 |
 | 数据库 | PostgreSQL 17.5（本机 homebrew）+ Flyway 9.22.3 |
 | 缓存 | Redis 7（Docker, localhost:6379） |
