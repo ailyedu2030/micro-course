@@ -21,6 +21,8 @@ public class UserVO {
     private String className;
     private String grade;
     private String enrollmentYear;
+    private String graduationYear;
+    private Boolean casBound;
     private String studentNo;
     private String teacherNo;
     private Integer status;
@@ -60,6 +62,10 @@ public class UserVO {
     public void setGrade(String grade) { this.grade = grade; }
     public String getEnrollmentYear() { return enrollmentYear; }
     public void setEnrollmentYear(String enrollmentYear) { this.enrollmentYear = enrollmentYear; }
+    public String getGraduationYear() { return graduationYear; }
+    public void setGraduationYear(String graduationYear) { this.graduationYear = graduationYear; }
+    public Boolean getCasBound() { return casBound; }
+    public void setCasBound(Boolean casBound) { this.casBound = casBound; }
     public String getStudentNo() { return studentNo; }
     public void setStudentNo(String studentNo) { this.studentNo = studentNo; }
     public String getTeacherNo() { return teacherNo; }

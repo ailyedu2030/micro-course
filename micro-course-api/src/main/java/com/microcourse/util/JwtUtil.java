@@ -122,7 +122,9 @@ public class JwtUtil {
      */
     public Long getUserIdFromToken(String token) {
         Claims claims = getClaims(token);
-        return Long.parseLong(claims.getSubject());
+        String subject = claims.getSubject();
+        if (subject == null) throw new IllegalArgumentException("Token missing subject claim");
+        return Long.parseLong(subject);
     }
 
     /**
@@ -139,6 +141,7 @@ public class JwtUtil {
     public UserRole getRoleFromToken(String token) {
         Claims claims = getClaims(token);
         String roleStr = claims.get("role", String.class);
+        if (roleStr == null) throw new IllegalArgumentException("Token missing role claim");
         return UserRole.valueOf(roleStr);
     }
 

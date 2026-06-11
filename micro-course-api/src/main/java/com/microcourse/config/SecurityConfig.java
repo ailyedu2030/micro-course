@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // login/cas: 公开; refresh: refreshToken 在 body 中作为凭证, 不需要 Header Authorization
                         .requestMatchers("/api/auth/login", "/api/auth/cas", "/api/auth/refresh").permitAll()
                         .requestMatchers("GET", "/api/departments/**").authenticated()
                         .requestMatchers("GET", "/api/majors/**").authenticated()
