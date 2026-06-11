@@ -203,7 +203,7 @@ Content-Type: application/json
 }
 ```
 
-**脱敏字段**：realName / email / phone 在 list 端点必脱敏；本人 /me 端点可返回真实值（依据：API契约 v1.1 §2.5）。
+**脱敏字段**：realName / email / phone 在 list 端点必脱敏；本人 /me 端点可返回真实值（依据：API契约 v1.2 §2.5）。
 
 ---
 
