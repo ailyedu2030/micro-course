@@ -1,29 +1,18 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:postgresql://localhost:5433/micro_course_test
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
   flyway:
-    enabled: false
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-        format_sql: false
-    defer-datasource-initialization: true
-  sql:
-    init:
-      mode: always
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password:
-      database: 1
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  redis:
+    host: localhost
+    port: 6380
+    password:
+    database: 1
 
 jwt:
   secret: test-secret-key-for-integration-tests-must-be-at-least-32-chars
@@ -33,4 +22,3 @@ jwt:
 logging:
   level:
     com.microcourse: warn
-    org.hibernate: warn

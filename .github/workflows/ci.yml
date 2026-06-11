@@ -10,6 +10,29 @@ jobs:
   backend:
     name: Backend Build & Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: micro_course_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready -U postgres
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,14 +48,13 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            maven-
+          restore-keys: maven-
 
       - name: Compile backend
         run: mvn compile -pl micro-course-api -q
 
-      - name: Run tests
-        run: mvn test -pl micro-course-api -DskipTests=false || mvn test -pl micro-course-api -DskipTests=true
+      - name: Run integration tests
+        run: mvn test -pl micro-course-api -Dspring.profiles.active=test
 
       - name: Save test results
         if: always()
@@ -62,13 +84,8 @@ jobs:
       - name: Build frontend
         run: cd micro-course-admin && npm run build
 
-      - name: Run lint
-        run: |
-          cd micro-course-admin
-          npx eslint src/ || echo "ESLint not configured or no issues found"
-
   precheck:
-    name: Precheck
+    name: Contract Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -76,10 +93,3 @@ jobs:
 
       - name: Run precheck
         run: bash .claude/skills/microcourse/scripts/precheck.sh
-
-      - name: Check exit code
-        run: |
-          if [ $? -ne 0 ]; then
-            echo "Precheck failed with exit code $?"
-            exit 1
-          fi
