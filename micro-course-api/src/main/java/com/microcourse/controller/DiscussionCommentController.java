@@ -39,7 +39,8 @@ public class DiscussionCommentController {
     @DeleteMapping("/comments/{id}")
     @PreAuthorize("isAuthenticated()")
     public R<Void> delete(@PathVariable Long id) {
-        commentService.delete(id);
+        Long userId = getCurrentUserId();
+        commentService.delete(id, userId);
         return R.ok();
     }
 

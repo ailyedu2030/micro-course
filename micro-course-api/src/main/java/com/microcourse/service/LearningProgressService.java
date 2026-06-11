@@ -5,14 +5,15 @@ import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.dto.ProgressUpdateRequest;
 
 import java.util.List;
+import java.util.Map;
 
 public interface LearningProgressService {
 
     List<LearningProgressVO> getByUserAndCourse(Long userId, Long courseId);
 
-    void updateProgress(Long id, ProgressUpdateRequest request);
+    void updateProgress(Long id, Long userId, ProgressUpdateRequest request);
 
     LearningProgressVO create(ProgressCreateRequest request);
 
-    Double getCourseCompletion(Long userId, Long courseId);
+    Map<String, Object> getCourseCompletion(Long userId, Long courseId);
 }

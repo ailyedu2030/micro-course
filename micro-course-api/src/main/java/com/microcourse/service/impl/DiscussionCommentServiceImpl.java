@@ -72,13 +72,16 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     }
 
     @Override
-    public void delete(Long id) {
+    public void delete(Long id, Long userId) {
         DiscussionComment comment = commentRepository.selectById(id);
         if (comment == null || comment.getStatus() == 0) {
             throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
         }
+        // 所有权校验：仅作者本人可删除
+        if (!comment.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         comment.setStatus(0);
-        comment.setUpdatedAt(LocalDateTime.now());
         commentRepository.updateById(comment);
     }
 

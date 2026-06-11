@@ -12,7 +12,7 @@ public interface DiscussionCommentService {
 
     DiscussionCommentVO create(CommentCreateRequest req, Long userId);
 
-    void delete(Long id);
+    void delete(Long id, Long userId);
 
     void like(Long id);
 

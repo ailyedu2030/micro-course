@@ -17,7 +17,9 @@ import com.microcourse.service.LearningProgressService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,9 +47,9 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     }
 
     @Override
-    public void updateProgress(Long id, ProgressUpdateRequest request) {
+    public void updateProgress(Long id, Long userId, ProgressUpdateRequest request) {
         LearningProgress progress = learningProgressRepository.selectById(id);
-        if (progress == null) {
+        if (progress == null || !progress.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.LEARNING_PROGRESS_NOT_FOUND);
         }
 
@@ -112,7 +114,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     }
 
     @Override
-    public Double getCourseCompletion(Long userId, Long courseId) {
+    public Map<String, Object> getCourseCompletion(Long userId, Long courseId) {
         LambdaQueryWrapper<LearningProgress> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(LearningProgress::getUserId, userId)
                .eq(LearningProgress::getCourseId, courseId)
@@ -123,10 +125,12 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         chapterWrapper.eq(CourseChapter::getCourseId, courseId);
         long totalChapters = courseChapterRepository.selectCount(chapterWrapper);
 
-        if (totalChapters == 0) {
-            return 0.0;
-        }
-        return (double) completedCount / totalChapters;
+        double completion = totalChapters == 0 ? 0.0 : (double) completedCount / totalChapters;
+        Map<String, Object> result = new HashMap<>();
+        result.put("completedCount", completedCount);
+        result.put("totalChapters", totalChapters);
+        result.put("completion", completion);
+        return result;
     }
 
     private LearningProgressVO convertToVO(LearningProgress progress) {

@@ -8,6 +8,7 @@ import com.microcourse.service.LearningProgressService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,7 +44,8 @@ public class LearningProgressController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<R<Void>> updateProgress(@PathVariable Long id,
                                                   @RequestBody ProgressUpdateRequest request) {
-        learningProgressService.updateProgress(id, request);
+        Long userId = getCurrentUserId();
+        learningProgressService.updateProgress(id, userId, request);
         return ResponseEntity.ok(R.ok());
     }
 
@@ -52,8 +54,13 @@ public class LearningProgressController {
     public ResponseEntity<R<Map<String, Object>>> getCourseCompletion(
             @RequestParam Long userId,
             @RequestParam Long courseId) {
-        Double completion = learningProgressService.getCourseCompletion(userId, courseId);
-        Map<String, Object> result = Map.of("completion", completion);
+        Map<String, Object> result = learningProgressService.getCourseCompletion(userId, courseId);
         return ResponseEntity.ok(R.ok(result));
+    }
+
+    private Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof Long) return (Long) principal;
+        return null;
     }
 }
