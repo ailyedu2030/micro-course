@@ -119,7 +119,7 @@
         </el-select>
       </div>
 
-      <el-table v-loading="wrongLoading" :data="wrongQuestions" stripe border style="width: 100%" max-height="400">
+      <el-table v-loading="wrongLoading" :data="wrongQuestions" stripe border max-height="400">
         <el-table-column prop="questionContent" label="错题内容" min-width="200">
           <template #default="{ row }">
             <span>{{ row.questionContent || row.content }}</span>

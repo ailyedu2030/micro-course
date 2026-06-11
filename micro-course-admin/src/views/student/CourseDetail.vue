@@ -41,7 +41,7 @@
             :data="chapters"
             stripe
             border
-            style="width: 100%"
+           
           >
             <el-table-column type="index" label="#" width="60" align="center" />
             <el-table-column prop="sortOrder" label="排序" width="80" align="center" />

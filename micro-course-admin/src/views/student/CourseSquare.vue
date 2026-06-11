@@ -267,7 +267,7 @@ onMounted(() => {
   margin-bottom: 16px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .course-card:hover {
