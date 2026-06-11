@@ -51,10 +51,10 @@ jobs:
           restore-keys: maven-
 
       - name: Compile backend
-        run: mvn compile -pl micro-course-api -q
+        run: cd micro-course-api && mvn compile -q
 
       - name: Run integration tests
-        run: mvn test -pl micro-course-api -Dspring.profiles.active=test
+        run: cd micro-course-api && mvn test -Dspring.profiles.active=test
 
       - name: Save test results
         if: always()
