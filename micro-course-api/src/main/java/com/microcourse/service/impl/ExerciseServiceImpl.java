@@ -1,0 +1,254 @@
+package com.microcourse.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.microcourse.dto.ExerciseCreateRequest;
+import com.microcourse.dto.ExerciseUpdateRequest;
+import com.microcourse.dto.ExerciseVO;
+import com.microcourse.dto.PageResult;
+import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseChapter;
+import com.microcourse.entity.Exercise;
+import com.microcourse.entity.ExerciseQuestion;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.CourseChapterRepository;
+import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.ExerciseQuestionRepository;
+import com.microcourse.repository.ExerciseRepository;
+import com.microcourse.service.ExerciseService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class ExerciseServiceImpl implements ExerciseService {
+
+    private final ExerciseRepository exerciseRepository;
+    private final ExerciseQuestionRepository exerciseQuestionRepository;
+    private final CourseRepository courseRepository;
+    private final CourseChapterRepository courseChapterRepository;
+
+    public ExerciseServiceImpl(ExerciseRepository exerciseRepository,
+                               ExerciseQuestionRepository exerciseQuestionRepository,
+                               CourseRepository courseRepository,
+                               CourseChapterRepository courseChapterRepository) {
+        this.exerciseRepository = exerciseRepository;
+        this.exerciseQuestionRepository = exerciseQuestionRepository;
+        this.courseRepository = courseRepository;
+        this.courseChapterRepository = courseChapterRepository;
+    }
+
+    @Override
+    @Transactional
+    public ExerciseVO create(ExerciseCreateRequest request) {
+        if (request.getQuestions() == null || request.getQuestions().isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "练习题目不能为空");
+        }
+
+        Exercise exercise = new Exercise();
+        exercise.setCourseId(request.getCourseId());
+        exercise.setChapterId(request.getChapterId());
+        exercise.setTitle(request.getTitle());
+        exercise.setPassScore(request.getPassScore() != null ? request.getPassScore() : 60);
+        exercise.setTimeLimit(request.getTimeLimit());
+        exercise.setMaxAttempts(request.getMaxAttempts());
+        exercise.setShowAnswerWhen(request.getShowAnswerWhen());
+        exercise.setShuffleQuestions(request.getShuffleQuestions() != null ? request.getShuffleQuestions() : false);
+        exercise.setShuffleOptions(request.getShuffleOptions() != null ? request.getShuffleOptions() : false);
+        exercise.setVersion(1);
+        exercise.setCreatedAt(LocalDateTime.now());
+        exercise.setUpdatedAt(LocalDateTime.now());
+
+        int totalScore = request.getQuestions().stream()
+                .mapToInt(q -> q.getScore() != null ? q.getScore() : 0)
+                .sum();
+        exercise.setTotalScore(totalScore);
+        exercise.setQuestionCount(request.getQuestions().size());
+
+        exerciseRepository.insert(exercise);
+
+        List<ExerciseQuestion> exerciseQuestions = new ArrayList<>();
+        for (ExerciseCreateRequest.ExerciseQuestionItem item : request.getQuestions()) {
+            ExerciseQuestion eq = new ExerciseQuestion();
+            eq.setExerciseId(exercise.getId());
+            eq.setQuestionId(item.getQuestionId());
+            eq.setScore(item.getScore() != null ? item.getScore() : 0);
+            eq.setSortOrder(item.getSortOrder() != null ? item.getSortOrder() : 0);
+            exerciseQuestions.add(eq);
+        }
+
+        for (ExerciseQuestion eq : exerciseQuestions) {
+            exerciseQuestionRepository.insert(eq);
+        }
+
+        return getById(exercise.getId());
+    }
+
+    @Override
+    @Transactional
+    public ExerciseVO update(Long id, ExerciseUpdateRequest request) {
+        Exercise exercise = exerciseRepository.selectById(id);
+        if (exercise == null) {
+            throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
+        }
+
+        if (request.getCourseId() != null) {
+            exercise.setCourseId(request.getCourseId());
+        }
+        if (request.getChapterId() != null) {
+            exercise.setChapterId(request.getChapterId());
+        }
+        if (request.getTitle() != null) {
+            exercise.setTitle(request.getTitle());
+        }
+        if (request.getPassScore() != null) {
+            exercise.setPassScore(request.getPassScore());
+        }
+        if (request.getTimeLimit() != null) {
+            exercise.setTimeLimit(request.getTimeLimit());
+        }
+        if (request.getMaxAttempts() != null) {
+            exercise.setMaxAttempts(request.getMaxAttempts());
+        }
+        if (request.getShowAnswerWhen() != null) {
+            exercise.setShowAnswerWhen(request.getShowAnswerWhen());
+        }
+        if (request.getShuffleQuestions() != null) {
+            exercise.setShuffleQuestions(request.getShuffleQuestions());
+        }
+        if (request.getShuffleOptions() != null) {
+            exercise.setShuffleOptions(request.getShuffleOptions());
+        }
+
+        if (request.getQuestions() != null && !request.getQuestions().isEmpty()) {
+            int totalScore = request.getQuestions().stream()
+                    .mapToInt(q -> q.getScore() != null ? q.getScore() : 0)
+                    .sum();
+            exercise.setTotalScore(totalScore);
+            exercise.setQuestionCount(request.getQuestions().size());
+
+            LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ExerciseQuestion::getExerciseId, id);
+            exerciseQuestionRepository.delete(wrapper);
+
+            List<ExerciseQuestion> exerciseQuestions = new ArrayList<>();
+            for (ExerciseUpdateRequest.ExerciseQuestionItem item : request.getQuestions()) {
+                ExerciseQuestion eq = new ExerciseQuestion();
+                eq.setExerciseId(id);
+                eq.setQuestionId(item.getQuestionId());
+                eq.setScore(item.getScore() != null ? item.getScore() : 0);
+                eq.setSortOrder(item.getSortOrder() != null ? item.getSortOrder() : 0);
+                exerciseQuestions.add(eq);
+            }
+
+            for (ExerciseQuestion eq : exerciseQuestions) {
+                exerciseQuestionRepository.insert(eq);
+            }
+        }
+
+        exercise.setUpdatedAt(LocalDateTime.now());
+        exerciseRepository.updateById(exercise);
+        return getById(id);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        Exercise exercise = exerciseRepository.selectById(id);
+        if (exercise == null) {
+            throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
+        }
+
+        LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExerciseQuestion::getExerciseId, id);
+        exerciseQuestionRepository.delete(wrapper);
+
+        exerciseRepository.deleteById(id);
+    }
+
+    @Override
+    public PageResult<ExerciseVO> page(Integer courseId, Integer chapterId, Integer page, Integer size) {
+        LambdaQueryWrapper<Exercise> wrapper = new LambdaQueryWrapper<>();
+        if (courseId != null) {
+            wrapper.eq(Exercise::getCourseId, courseId);
+        }
+        if (chapterId != null) {
+            wrapper.eq(Exercise::getChapterId, chapterId);
+        }
+        wrapper.orderByDesc(Exercise::getCreatedAt);
+
+        IPage<Exercise> exercisePage = exerciseRepository.selectPage(
+                new Page<>(page + 1, size), wrapper);
+
+        IPage<ExerciseVO> voPage = exercisePage.convert(this::convertToVO);
+        return PageResult.of(voPage);
+    }
+
+    @Override
+    public ExerciseVO getById(Long id) {
+        Exercise exercise = exerciseRepository.selectById(id);
+        if (exercise == null) {
+            throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
+        }
+        return convertToVO(exercise);
+    }
+
+    private ExerciseVO convertToVO(Exercise exercise) {
+        ExerciseVO vo = new ExerciseVO();
+        vo.setId(exercise.getId());
+        vo.setChapterId(exercise.getChapterId());
+        vo.setCourseId(exercise.getCourseId());
+        vo.setTitle(exercise.getTitle());
+        vo.setPassScore(exercise.getPassScore());
+        vo.setTimeLimit(exercise.getTimeLimit());
+        vo.setMaxAttempts(exercise.getMaxAttempts());
+        vo.setShowAnswerWhen(exercise.getShowAnswerWhen());
+        vo.setShuffleQuestions(exercise.getShuffleQuestions());
+        vo.setShuffleOptions(exercise.getShuffleOptions());
+        vo.setTotalScore(exercise.getTotalScore());
+        vo.setQuestionCount(exercise.getQuestionCount());
+        vo.setVersion(exercise.getVersion());
+        vo.setCreatedAt(exercise.getCreatedAt());
+        vo.setUpdatedAt(exercise.getUpdatedAt());
+
+        if (exercise.getCourseId() != null) {
+            Course course = courseRepository.selectById(exercise.getCourseId());
+            if (course != null) {
+                vo.setCourseTitle(course.getTitle());
+            }
+        }
+
+        if (exercise.getChapterId() != null) {
+            CourseChapter chapter = courseChapterRepository.selectById(exercise.getChapterId());
+            if (chapter != null) {
+                vo.setChapterTitle(chapter.getTitle());
+            }
+        }
+
+        LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExerciseQuestion::getExerciseId, exercise.getId())
+                .orderByAsc(ExerciseQuestion::getSortOrder);
+        List<ExerciseQuestion> exerciseQuestions = exerciseQuestionRepository.selectList(wrapper);
+
+        List<ExerciseVO.ExerciseQuestionVO> questionVOList = exerciseQuestions.stream()
+                .map(eq -> {
+                    ExerciseVO.ExerciseQuestionVO qvo = new ExerciseVO.ExerciseQuestionVO();
+                    qvo.setId(eq.getId());
+                    qvo.setExerciseId(eq.getExerciseId());
+                    qvo.setQuestionId(eq.getQuestionId());
+                    qvo.setScore(eq.getScore());
+                    qvo.setSortOrder(eq.getSortOrder());
+                    return qvo;
+                })
+                .collect(Collectors.toList());
+        vo.setQuestions(questionVOList);
+
+        return vo;
+    }
+}
