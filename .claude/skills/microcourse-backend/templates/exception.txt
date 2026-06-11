@@ -20,6 +20,9 @@ public enum ErrorCode {
     TOKEN_INVALID(1005, "Token 格式错误", 401),
     LOGIN_LOCKED(1006, "登录失败次数过多，账号已锁定", 423),
 
+    // ---- 通用 ----
+    RATE_LIMITED(429, "请求过于频繁", 429),
+
     // ---- 院系 2xxx ----
     DEPARTMENT_NOT_FOUND(2001, "院系不存在", 404),
     DEPARTMENT_HAS_MAJORS(2002, "院系下存在专业，无法删除", 409),

@@ -15,7 +15,7 @@ description: |
   - API 契约以 docs/API契约-Phase1.md v1.2 为唯一真相
   - 目录结构遵守 docs/项目结构规范.md v1.1
   - 权限矩阵遵守 docs/权限矩阵.md v2.0
-  - 开发规范遵守 docs/开发规范.md v1.3
+  - 开发规范遵守 docs/开发规范.md v1.4
   - 字段冲突未在 docs/冲突评审决议.md 中登记 = 阻塞合并
 ---
 

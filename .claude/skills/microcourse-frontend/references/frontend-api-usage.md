@@ -26,6 +26,11 @@ export function refreshToken(data) {
   return request({ method: 'POST', url: '/auth/refresh', data })
 }
 
+// CAS 回调 — GET /api/auth/cas（公开）
+export function casLogin(ticket, state) {
+  return request({ method: 'GET', url: '/auth/cas', params: { ticket, state } })
+}
+
 // 更新当前用户 — PUT /api/auth/me
 export function updateCurrentUser(data) {
   return request({ method: 'PUT', url: '/auth/me', data })
@@ -115,7 +120,10 @@ request.interceptors.response.use(
 | 1001 | ElMessage.error('用户名或密码错误') |
 | 1002/1003 | 跳转登录页 + 提示 |
 | 1004 | 静默刷新 Token，失败再跳登录 |
+| 1005 | 跳转登录页 + 提示"登录已过期" |
 | 1006 | ElMessage.warning('账号已锁定，请30分钟后重试') |
+| 2001/3001/4001 | ElMessage.error('资源不存在') |
 | 2002/3002 | ElMessage.warning('该记录下存在关联数据，无法删除') |
 | 409 | ElMessage.warning(res.message) |
+| 5001 | ElMessage.error('用户不存在') |
 | 5002-5004 | 表单字段级错误提示 |

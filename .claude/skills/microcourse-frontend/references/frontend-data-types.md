@@ -21,7 +21,15 @@ interface User {
   classId: number | null
   className?: string
   grade: string | null
+  enrollmentYear: string | null
+  graduationYear: string | null
+  politicalStatus: string | null
+  studentNo: string | null
+  teacherNo: string | null
   status: number         // 0=INACTIVE, 1=ACTIVE, 2=DISABLED, 3=DELETED
+  casBound: boolean
+  lastLoginAt: string | null
+  deletedAt: string | null
   createdAt: string      // ISO datetime
 }
 ```
@@ -110,7 +118,7 @@ const GENDER_MAP: Record<string, string> = {
 
 // Element Plus tag type 映射
 const STATUS_TAG: Record<number, string> = {
-  0: 'info', 1: 'success', 2: 'danger', 3: 'info'
+  0: 'info', 1: 'success', 2: 'danger', 3: 'warning'
 }
 const ROLE_TAG: Record<string, string> = {
   STUDENT: '', TEACHER: 'warning', ADMIN: 'danger', ACADEMIC: 'success'
