@@ -111,6 +111,41 @@ DELETE /api/classes/{id}
 
 ---
 
+### 2.4 JWT Token 黑名单
+
+**用途**：用户登出后或账户被禁用时，使已签发的 JWT Token 立即失效。
+
+**Redis key 格式**：`jwt:blacklist:{jti}`
+
+| 属性 | 值 | 说明 |
+|------|----|------|
+| key | `jwt:blacklist:{jti}` | jti = JWT ID（JWT Claims 中唯一标识） |
+| value | `"1"` | 标记位 |
+| TTL | 与 accessToken 有效期间一致（7200s） | Token 过期后自动清除 |
+
+**触发场景**：
+- 用户主动登出（POST /api/auth/logout）
+- 管理员禁用/删除用户（PUT /api/users/{id}/status）
+
+**校验流程**：JWT 拦截器在验证 Token 签名后，查询 `jwt:blacklist:{jti}`，若存在 → 拒绝请求（code 1005）
+
+### 2.5 登录锁定
+
+**用途**：防止暴力破解，同一用户连续登录失败 ≥ 5 次 → 账号锁定 30 分钟。
+
+**Redis key 格式**：`login:lock:{username}`
+
+| 属性 | 值 |
+|------|-----|
+| key | `login:lock:{username}` |
+| 检查时机 | 登录请求中，在验证密码之前 |
+| 阈值 | 连续失败 ≥ 5 次 |
+| 锁定时间 | 30 分钟（TTL = 1800s） |
+| 错误码 | 1006（HTTP 423） |
+| 清除时机 | 登录成功后立刻清除 + 到期自动过期 |
+
+---
+
 ## 4. 软删除与恢复规则
 
 - `status=0` 时**设置** `deleted_at = NOW()`

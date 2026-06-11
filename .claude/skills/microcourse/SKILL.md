@@ -11,8 +11,8 @@ description: |
   6. 修订 docs/ 下任何开发文档
 
   强制约束：
-  - 数据契约以 docs/数据字典.md v0.4 为唯一真相
-  - API 契约以 docs/API契约-Phase1.md v1.1 为唯一真相
+  - 数据契约以 docs/数据字典.md v0.5 为唯一真相
+  - API 契约以 docs/API契约-Phase1.md v1.2 为唯一真相
   - 目录结构遵守 docs/项目结构规范.md v1.1
   - 权限矩阵遵守 docs/权限矩阵.md v2.0
   - 开发规范遵守 docs/开发规范.md v1.3

@@ -1,6 +1,6 @@
 # 数据契约引用视图
 
-> **源文档**：[`docs/数据字典.md`](../../数据字典.md) v0.4
+> **源文档**：[`docs/数据字典.md`](../../数据字典.md) v0.5
 > **视图性质**：引用视图（不复制全文，仅抓取 AI 编码时最常查的关键字段）
 > **同步规则**：真文档更新后，本视图必须 24 小时内同步
 > **冲突裁决**：以冲突评审决议为准
@@ -52,7 +52,7 @@
 | createdAt | created_at | LocalDateTime | string | - | NOT NULL |
 | updatedAt | updated_at | LocalDateTime | string | - | - |
 
-**索引**：idx_departments_code (UNIQUE)
+**索引**：uk_departments_code (UNIQUE), idx_departments_parent
 
 ### 1.3 majors（专业表）
 

@@ -90,7 +90,7 @@ check_users_me_path() {
 check_outdated_path() {
     local hits
     hits=$(grep -rn "Volumes/Coding" docs/ 2>/dev/null \
-        | grep -v "复盘/根因报告\|复盘/地基工程\|开发规范.md:700\|复盘/E5" \
+        | grep -v "复盘/根因报告\|复盘/地基工程\|开发规范.md.*更新历史\|复盘/E5" \
         | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[P5] 文档残留 Volumes/Coding 过时路径（$hits 处）")
