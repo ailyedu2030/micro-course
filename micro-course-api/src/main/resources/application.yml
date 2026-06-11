@@ -54,7 +54,7 @@ mybatis-plus:
     logic-not-delete-value: null
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 jwt:
   secret: ${JWT_SECRET:your-256-bit-secret-key-here-must-be-at-least-32-chars}
