@@ -1,0 +1,175 @@
+// ============================================================================
+// DTO 模板：Request / VO / PageResult
+// 替换：{Domain} = Department / Major / Class / User
+// 依据：microcourse/references/api-contract.md（响应格式）
+//       microcourse/references/data-contract.md（字段定义）
+//       microcourse/references/business-logic.md（脱敏规则）
+// ============================================================================
+
+// ==================== 1. CreateRequest ====================
+// 注：UserCreateRequest 有额外字段（username/password/role 等），需特殊处理
+package com.microcourse.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+@Data
+public class {Domain}CreateRequest {
+    @NotBlank(message = "名称不能为空")
+    private String name;
+
+    // @NotBlank(message = "编码不能为空")
+    // private String code;
+
+    // @NotNull(message = "所属父级不能为空")
+    // private Long {parent}Id;
+
+    private Integer sortOrder;
+}
+
+// ==================== 2. UpdateRequest ====================
+package com.microcourse.dto;
+
+import lombok.Data;
+
+@Data
+public class {Domain}UpdateRequest {
+    private String name;
+    // private String code;
+    // private Long {parent}Id;
+    private Integer sortOrder;
+}
+
+// ==================== 3. VO（响应） ====================
+package com.microcourse.dto;
+
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Data
+public class {Domain}VO {
+    private Long id;
+    private String name;
+    private String code;
+    /* ---- 替换点: 关联查询字段 ---- */
+    // private Long {parent}Id;
+    // private String {parent}Name;
+    private Integer sortOrder;
+    private LocalDateTime createdAt;
+}
+
+// ==================== 4. PageResult（统一分页，不可修改） ====================
+package com.microcourse.dto;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import lombok.Data;
+import java.util.List;
+
+@Data
+public class PageResult<T> {
+    private List<T> items;           // 当前页数据
+    private int page;                // 当前页码（0-based）
+    private int size;                // 每页条数
+    private long totalElements;      // 总记录数
+    private long totalPages;         // 总页数（自动计算）
+
+    public static <T> PageResult<T> of(IPage<T> page) {
+        PageResult<T> result = new PageResult<>();
+        result.setItems(page.getRecords());
+        result.setPage((int) page.getCurrent());
+        result.setSize((int) page.getSize());
+        result.setTotalElements(page.getTotal());
+        result.setTotalPages(page.getPages());
+        return result;
+    }
+}
+
+// ==================== 5. R（统一响应，不可修改） ====================
+package com.microcourse.dto;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.microcourse.exception.ErrorCode;
+import lombok.Data;
+
+@Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class R<T> {
+    private int code;               // 200 = 成功
+    private String message;         // "ok" = 成功
+    private T data;                 // 业务数据，失败时为 null
+    private long timestamp;         // 毫秒时间戳
+
+    public static <T> R<T> ok(T data) {
+        R<T> r = new R<>();
+        r.code = 200;
+        r.message = "ok";
+        r.data = data;
+        r.timestamp = System.currentTimeMillis();
+        return r;
+    }
+
+    public static <T> R<T> ok() {
+        return ok(null);
+    }
+
+    public static <T> R<T> fail(int code, String message) {
+        R<T> r = new R<>();
+        r.code = code;
+        r.message = message;
+        r.timestamp = System.currentTimeMillis();
+        return r;
+    }
+
+    public static <T> R<T> fail(ErrorCode errorCode) {
+        return fail(errorCode.getCode(), errorCode.getMessage());
+    }
+}
+
+// ==================== 6. UserPageQuery（仅 User 域使用） ====================
+package com.microcourse.dto;
+
+import com.microcourse.enums.UserRole;
+import lombok.Data;
+
+@Data
+public class UserPageQuery {
+    private String keyword;         // 模糊匹配（username/realName/email）
+    private UserRole role;          // 精确匹配
+    private Integer status;         // 精确匹配（0/1/2/3）
+    private Long departmentId;      // 精确匹配
+    private Long majorId;           // 精确匹配
+    private Long classId;           // 精确匹配
+}
+
+// ==================== 7. UserStatusRequest（仅 User /status 端点使用） ====================
+package com.microcourse.dto;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+@Data
+public class UserStatusRequest {
+    @NotNull(message = "状态不能为空")
+    private Integer status;  // 0=软删(设deleted_at) / 1=启用(清deleted_at)
+}
+
+// ==================== 8. UserVO 特殊处理（额外字段） ====================
+// 继承 {Domain}VO 的 id/name/createdAt 字段
+// 额外包含：
+//   private String username;
+//   private String realName;      // 列表脱敏 (如 "张**")
+//   private String email;         // 列表脱敏
+//   private String phone;         // 列表脱敏
+//   private UserRole role;
+//   private Long departmentId;    private String departmentName;
+//   private Long majorId;         private String majorName;
+//   private Long classId;         private String className;
+//   private String avatar;
+//   private Integer status;
+//
+// 脱敏规则（/api/users 列表端点）：
+// - realName → 姓保留，名掩码，如 "张**"
+// - email → @前保留首字，如 "j***@example.com"
+// - phone → 前3后4掩码，如 "138****1234"
+// - /api/auth/me 端点不脱敏（本人查自己）

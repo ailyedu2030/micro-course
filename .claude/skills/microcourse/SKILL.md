@@ -168,12 +168,23 @@ scope:   Phase 阶段编号 或 docs/ 或 skill/
 - **权限矩阵** → `references/permission-matrix.md`（11 类资源 / 4 角色 / REST 端点）
 - **验证清单** → `references/verification-checklist.md`（10 节 / Phase 1 工单交付门禁）
 
-## 5. 加载验证
+## 5. 子技能（实施层）
+
+本 skill 是**宪法层**，定义"不做什么"和"契约是什么"。
+
+**实施层技能**定义"应该怎么做"：
+
+- **后端开发** → `../microcourse-backend/SKILL.md` — Controller/Service/Repository/DTO/Security/Exception 代码模板 + 6 份 templates/
+- **前端开发** → `../microcourse-frontend/SKILL.md` — API 封装/Store 模式/权限前端/页面模板/Element Plus 规范 + ui-ux-pro-max 强制加载
+
+编写 Java 代码时加载 `microcourse-backend`；编写 Vue 代码时加载 `microcourse-frontend`。
+
+## 6. 加载验证
 
 重启 Claude Code 后，确认本 skill 出现在 `~/.claude/skills/微课平台/SKILL.md` 路径下。YAML frontmatter 解析正确。
 
 ---
 
-*skill 版本：v1.0*
+*skill 版本：v1.1*
 *最后更新：2026-06-11*
 *维护者：总工程师*

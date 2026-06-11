@@ -1,0 +1,46 @@
+// ============================================================================
+// Repository（MyBatis-Plus Mapper）模板
+// 替换：{Domain} = Department / Major / Class / User
+// 依据：microcourse/references/data-contract.md
+//       microcourse/references/structure-constitution.md（禁止手动拼 SQL）
+// ============================================================================
+
+package com.microcourse.repository;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.microcourse.entity.{Domain};
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface {Domain}Repository extends BaseMapper<{Domain}> {
+    // BaseMapper 已提供：
+    // - selectById(id)
+    // - selectList(wrapper)
+    // - selectPage(page, wrapper)
+    // - insert(entity)
+    // - updateById(entity)
+    // - deleteById(id)
+    // - selectCount(wrapper)
+
+    /* ---- 仅自定义查询才加方法，示例： ---- */
+    // @Select("SELECT * FROM {table_name} WHERE code = #{code} LIMIT 1")
+    // Optional<{Domain}> findByCode(@Param("code") String code);
+}
+
+// ============================================================================
+// LambdaQueryWrapper 常用组合（复制到 Service 实现类中使用）
+// ============================================================================
+
+// 分页 + 模糊搜索 + 排序
+// LambdaQueryWrapper<{Domain}> wrapper = new LambdaQueryWrapper<>();
+// wrapper.eq({Domain}::getStatus, 1)                         // 等值
+//       .like(StringUtils.hasText(keyword), {Domain}::getName, keyword)  // 模糊
+//       .in({Domain}::getDepartmentId, ids)                   // IN
+//       .orderByAsc({Domain}::getSortOrder);                  // 排序
+
+// IPage<{Domain}> page = repository.selectPage(new Page<>(0, 20), wrapper);
+
+// ============================================================================
+// 特别注意：严禁手动拼接 SQL 字符串
+// ❌ repository.selectList("SELECT * FROM ...")
+// ✅ repository.selectList(new LambdaQueryWrapper<>().eq(...))

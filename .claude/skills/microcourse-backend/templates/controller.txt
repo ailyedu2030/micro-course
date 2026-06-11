@@ -1,0 +1,78 @@
+// ============================================================================
+// Controller 模板
+// 替换：{Domain} = Department / Major / Class / User
+//       {domain} = department / major / class / user
+// 依据：microcourse/references/permission-matrix.md
+//       microcourse/references/api-contract.md
+// ============================================================================
+
+package com.microcourse.controller;
+
+import com.microcourse.dto.{Domain}CreateRequest;
+import com.microcourse.dto.{Domain}UpdateRequest;
+import com.microcourse.dto.{Domain}VO;
+import com.microcourse.dto.PageResult;
+import com.microcourse.dto.R;
+import com.microcourse.service.{Domain}Service;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/{domain}s")
+@RequiredArgsConstructor
+public class {Domain}Controller {
+
+    private final {Domain}Service {domain}Service;
+
+    // ---- 分页列表 ----
+    @GetMapping
+// @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")  // User 域用这行
+// @PreAuthorize("isAuthenticated()")               // Department/Major/Class 域用这行
+    public R<PageResult<{Domain}VO>> page(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return R.ok({domain}Service.page(page, size));
+    }
+
+    // ---- 详情 ----
+    @GetMapping("/{id}")
+    public R<{Domain}VO> getById(@PathVariable Long id) {
+        return R.ok({domain}Service.getById(id));
+    }
+
+    // ---- 创建 ----
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<{Domain}VO> create(@Valid @RequestBody {Domain}CreateRequest request) {
+        return R.ok({domain}Service.create(request));
+    }
+
+    // ---- 更新 ----
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<{Domain}VO> update(@PathVariable Long id,
+                                 @Valid @RequestBody {Domain}UpdateRequest request) {
+        return R.ok({domain}Service.update(id, request));
+    }
+
+    // ---- 删除 ----
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<Void> delete(@PathVariable Long id) {
+        {domain}Service.delete(id);
+        return R.ok();
+    }
+}
+
+// ============================================================================
+// 特别说明：UserController 额外需要一个 status 端点
+// ============================================================================
+//   @PutMapping("/{id}/status")
+//   @PreAuthorize("hasRole('ADMIN')")
+//   public R<Void> updateStatus(@PathVariable Long id,
+//                                 @Valid @RequestBody UserStatusRequest request) {
+//       userService.updateStatus(id, request.getStatus());
+//       return R.ok();
+//   }

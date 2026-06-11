@@ -1,0 +1,144 @@
+// ============================================================================
+// Service 模板（接口 + 实现类）
+// 替换：{Domain} = Department / Major / Class / User
+// 依据：microcourse/references/business-logic.md
+//       microcourse/references/data-contract.md
+// ============================================================================
+
+// ==================== 接口 ====================
+package com.microcourse.service;
+
+import com.microcourse.dto.{Domain}CreateRequest;
+import com.microcourse.dto.{Domain}UpdateRequest;
+import com.microcourse.dto.{Domain}VO;
+import com.microcourse.dto.PageResult;
+
+public interface {Domain}Service {
+    PageResult<{Domain}VO> page(int page, int size);
+    {Domain}VO getById(Long id);
+    {Domain}VO create({Domain}CreateRequest request);
+    {Domain}VO update(Long id, {Domain}UpdateRequest request);
+    void delete(Long id);
+}
+
+// ==================== 实现类 ====================
+package com.microcourse.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.microcourse.dto.*;
+import com.microcourse.entity.{Domain};
+/* ---- 替换点: 关联表的 Entity 引用 ---- */
+// import com.microcourse.entity.{RelatedEntity};
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.{Domain}Repository;
+/* ---- 替换点: 关联表的 Repository 引用 ---- */
+// import com.microcourse.repository.{RelatedEntity}Repository;
+import com.microcourse.service.{Domain}Service;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class {Domain}ServiceImpl implements {Domain}Service {
+
+    private final {Domain}Repository {domain}Repository;
+    /* ---- 替换点: 关联表的 Repository ---- */
+    // private final {RelatedEntity}Repository {related}Repository;
+
+    @Override
+    public PageResult<{Domain}VO> page(int page, int size) {
+        LambdaQueryWrapper<{Domain}> wrapper = new LambdaQueryWrapper<>();
+        wrapper.orderByAsc({Domain}::getSortOrder);
+
+        IPage<{Domain}> result = {domain}Repository.selectPage(
+                new Page<>(page, size), wrapper);
+
+        /* ---- 替换点: 关联查询组装（如 Department.majorCount） ---- */
+        // Map<Long, String> relatedMap = ...;
+
+        return PageResult.of(result.map(entity -> convertToVO(entity /*, relatedMap */)));
+    }
+
+    @Override
+    public {Domain}VO getById(Long id) {
+        {Domain} entity = {domain}Repository.selectById(id);
+        if (entity == null) {
+            throw new BusinessException(ErrorCode./* ---- 替换 ---- */);
+        }
+        return convertToVO(entity);
+    }
+
+    @Override
+    public {Domain}VO create({Domain}CreateRequest request) {
+        /* ---- 替换点: 唯一性检查 ---- */
+        // checkUniqueConstraint(request);
+
+        /* ---- 替换点: 关联存在性检查 ---- */
+        // validateForeignKeys(request);
+
+        {Domain} entity = new {Domain}();
+        /* ---- 替换点: 字段赋值 ---- */
+        // entity.setName(request.getName());
+        // entity.setCode(request.getCode());
+        entity.setCreatedAt(LocalDateTime.now());
+        entity.setUpdatedAt(LocalDateTime.now());
+
+        {domain}Repository.insert(entity);
+        return convertToVO(entity);
+    }
+
+    @Override
+    public {Domain}VO update(Long id, {Domain}UpdateRequest request) {
+        {Domain} entity = {domain}Repository.selectById(id);
+        if (entity == null) {
+            throw new BusinessException(ErrorCode./* ---- 替换 ---- */);
+        }
+
+        /* ---- 替换点: 部分更新字段 ---- */
+        // if (StringUtils.hasText(request.getName())) entity.setName(request.getName());
+        entity.setUpdatedAt(LocalDateTime.now());
+
+        {domain}Repository.updateById(entity);
+        return convertToVO(entity);
+    }
+
+    // ========== 删除前置检查（关键） ==========
+    @Override
+    public void delete(Long id) {
+        {Domain} entity = {domain}Repository.selectById(id);
+        if (entity == null) {
+            throw new BusinessException(ErrorCode./* ---- 替换 ---- */);
+        }
+
+        /* ---- 替换点: 删除前置关联检查 ---- */
+        // Department: 查询 majors WHERE department_id = id
+        // Major:      查询 classes WHERE major_id = id
+        // Class:      查询 users WHERE class_id = id AND status != 3
+        // User:       走 PUT /{id}/status 端点，不走 DELETE
+        //
+        // 示例（Department 域）：
+        // long relatedCount = majorRepository.selectCount(
+        //     new LambdaQueryWrapper<Major>().eq(Major::getDepartmentId, id));
+        // if (relatedCount > 0) {
+        //     throw new BusinessException(ErrorCode.DEPARTMENT_HAS_MAJORS);
+        // }
+
+        {domain}Repository.deleteById(id);
+    }
+
+    // ========== Entity → VO 转换 ==========
+    private {Domain}VO convertToVO({Domain} entity /*, Map<Long, String> relatedMap */) {
+        {Domain}VO vo = new {Domain}VO();
+        /* ---- 替换点: 字段映射 ---- */
+        // vo.setId(entity.getId());
+        // vo.setName(entity.getName());
+        vo.setCreatedAt(entity.getCreatedAt());
+        return vo;
+    }
+}
