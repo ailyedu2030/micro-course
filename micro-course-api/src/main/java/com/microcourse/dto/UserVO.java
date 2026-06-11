@@ -12,6 +12,7 @@ public class UserVO {
     private String phone;
     private String gender;
     private String avatar;
+    private String bio;
     private UserRole role;
     private Long departmentId;
     private String departmentName;
@@ -44,6 +45,8 @@ public class UserVO {
     public void setGender(String gender) { this.gender = gender; }
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
     public UserRole getRole() { return role; }
     public void setRole(UserRole role) { this.role = role; }
     public Long getDepartmentId() { return departmentId; }

@@ -12,6 +12,8 @@ import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.DiscussionCommentService;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,12 +67,25 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     @Override
     @Transactional
     public DiscussionCommentVO create(CommentCreateRequest req, Long userId) {
+        // 检测当前用户角色是否为教师或管理员
+        boolean isTeacherOrAdmin = false;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            for (var granted : auth.getAuthorities()) {
+                String role = granted.getAuthority();
+                if ("ROLE_TEACHER".equals(role) || "ROLE_ADMIN".equals(role)) {
+                    isTeacherOrAdmin = true;
+                    break;
+                }
+            }
+        }
+
         DiscussionComment comment = new DiscussionComment();
         comment.setPostId(req.getPostId());
         comment.setParentId(req.getParentId());
         comment.setUserId(userId);
         comment.setContent(req.getContent());
-        comment.setIsTeacherReply(false);
+        comment.setIsTeacherReply(isTeacherOrAdmin);
         comment.setLikeCount(0);
         comment.setStatus(1);
         comment.setCreatedAt(LocalDateTime.now());

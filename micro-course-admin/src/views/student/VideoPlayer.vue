@@ -21,6 +21,9 @@
           @timeupdate="onTimeUpdate"
           @ended="onEnded"
           @error="onError"
+          @dblclick="handleDoubleTap"
+          @touchstart="onTouchStart"
+          @touchend="onTouchEnd"
         ></video>
 
         <!-- 顶部控制栏 -->
@@ -127,6 +130,12 @@ const sliderTime = ref(0)
 const isMiniMode = ref(false)
 const showResumeTip = ref(false)
 const resumePosition = ref(0)
+
+// Touch gesture state
+const lastTouchX = ref(0)
+const touchStartTime = ref(0)
+const tapCount = ref(0)
+let tapTimer = null
 
 // Progress record ID from server, used for PUT reporting
 const progressId = ref(null)
@@ -369,6 +378,61 @@ const exitMiniMode = () => {
   isMiniMode.value = false
 }
 
+// Touch gesture handlers
+const onTouchStart = (e) => {
+  const touch = e.touches ? e.touches[0] : e
+  lastTouchX.value = touch.clientX
+  touchStartTime.value = Date.now()
+}
+
+const onTouchEnd = (e) => {
+  const touch = e.changedTouches ? e.changedTouches[0] : e
+  const deltaX = touch.clientX - lastTouchX.value
+  const duration_ms = Date.now() - touchStartTime.value
+
+  // Only treat as swipe if it's fast (< 500ms) and significant (> 50px)
+  if (Math.abs(deltaX) > 50 && duration_ms < 500) {
+    const video = videoRef.value
+    if (video) {
+      if (deltaX < 0) {
+        // Left swipe - forward 10s
+        video.currentTime = Math.min(video.currentTime + 10, video.duration)
+      } else {
+        // Right swipe - backward 10s
+        video.currentTime = Math.max(video.currentTime - 10, 0)
+      }
+    }
+  }
+}
+
+const handleDoubleTap = (e) => {
+  const video = videoRef.value
+  if (!video) return
+
+  // Use tap timer to distinguish double-tap from single tap
+  tapCount.value++
+  if (tapCount.value === 1) {
+    tapTimer = setTimeout(() => {
+      tapCount.value = 0
+    }, 300)
+  } else if (tapCount.value === 2) {
+    clearTimeout(tapTimer)
+    tapCount.value = 0
+
+    const rect = video.getBoundingClientRect()
+    const tapX = e.clientX - rect.left
+    const halfWidth = rect.width / 2
+
+    if (tapX < halfWidth) {
+      // Left half - rewind 10s
+      video.currentTime = Math.max(video.currentTime - 10, 0)
+    } else {
+      // Right half - forward 10s
+      video.currentTime = Math.min(video.currentTime + 10, video.duration)
+    }
+  }
+}
+
 const formatTime = (seconds) => {
   if (!seconds || isNaN(seconds)) return '00:00'
   const h = Math.floor(seconds / 3600)
@@ -569,6 +633,14 @@ onBeforeUnmount(() => {
 
   .video-container {
     border-radius: 0;
+  }
+
+  /* Portrait mode: 9:16 vertical video */
+  @media (orientation: portrait) and (max-width: 768px) {
+    .video-container:not(.mini-mode) {
+      aspect-ratio: 9 / 16;
+      max-height: 100vh;
+    }
   }
 
   .video-container.mini-mode {

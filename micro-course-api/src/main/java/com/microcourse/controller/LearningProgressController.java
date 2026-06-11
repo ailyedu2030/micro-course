@@ -30,13 +30,15 @@ public class LearningProgressController {
     @GetMapping("/progress")
     @PreAuthorize("isAuthenticated()")
     public R<List<LearningProgressVO>> getByUserAndCourse(
-            @RequestParam Long userId,
+            @RequestParam(required = false) Long userId,
             @RequestParam Long courseId) {
         Long currentUserId = getCurrentUserId();
-        if (!currentUserId.equals(userId) && !hasRole("ADMIN")) {
+        // 如果未传 userId，默认查自己的进度
+        Long targetUserId = (userId != null) ? userId : currentUserId;
+        if (!currentUserId.equals(targetUserId) && !hasRole("ADMIN")) {
             throw new com.microcourse.exception.BusinessException(com.microcourse.exception.ErrorCode.NO_PERMISSION);
         }
-        List<LearningProgressVO> list = learningProgressService.getByUserAndCourse(userId, courseId);
+        List<LearningProgressVO> list = learningProgressService.getByUserAndCourse(targetUserId, courseId);
         return R.ok(list);
     }
 

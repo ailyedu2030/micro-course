@@ -49,8 +49,25 @@ public class CourseServiceImpl implements CourseService {
     @Override
     public PageResult<CourseVO> page(CoursePageQuery query) {
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        // keyword: 模糊匹配 title 或教师名（通过 teacherId 关联查询 teacher.real_name）
+        if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
+            String kw = query.getKeyword();
+            // 先找出匹配教师名的 teacher IDs
+            LambdaQueryWrapper<User> teacherWrapper = new LambdaQueryWrapper<>();
+            teacherWrapper.like(User::getRealName, kw);
+            List<User> teachers = userRepository.selectList(teacherWrapper);
+            List<Long> teacherIds = teachers.stream().map(User::getId).collect(Collectors.toList());
+
+            if (teacherIds.isEmpty()) {
+                wrapper.like(Course::getTitle, kw);
+            } else {
+                wrapper.and(w -> w.like(Course::getTitle, kw)
+                        .or(w2 -> w2.in(Course::getTeacherId, teacherIds)));
+            }
+        }
         if (query.getTitle() != null && !query.getTitle().isEmpty()) {
-            wrapper.like(Course::getTitle, query.getTitle());
+            wrapper.eq(query.getKeyword() == null || query.getKeyword().isEmpty(),
+                    Course::getTitle, query.getTitle());
         }
         if (query.getCategoryId() != null) {
             wrapper.eq(Course::getCategoryId, query.getCategoryId());

@@ -24,6 +24,7 @@ public class CourseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String title,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) Integer status) {
@@ -31,6 +32,7 @@ public class CourseController {
         query.setPage(page);
         query.setSize(size);
         query.setTitle(title);
+        query.setKeyword(keyword);
         query.setCategoryId(categoryId);
         query.setTeacherId(teacherId);
         query.setStatus(status);

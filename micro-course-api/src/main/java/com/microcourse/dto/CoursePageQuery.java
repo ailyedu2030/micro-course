@@ -3,6 +3,7 @@ package com.microcourse.dto;
 public class CoursePageQuery {
 
     private String title;
+    private String keyword;
     private Long categoryId;
     private Long teacherId;
     private Integer status;
@@ -13,6 +14,8 @@ public class CoursePageQuery {
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+    public String getKeyword() { return keyword; }
+    public void setKeyword(String keyword) { this.keyword = keyword; }
     public Long getCategoryId() { return categoryId; }
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
     public Long getTeacherId() { return teacherId; }
