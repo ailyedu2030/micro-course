@@ -12,6 +12,7 @@
         <el-sub-menu index="gate2">
           <template #title><el-icon><Notebook /></el-icon><span>课程管理</span></template>
           <el-menu-item index="/courses">课程列表</el-menu-item>
+          <el-menu-item index="/courses/review">课程审核</el-menu-item>
           <el-menu-item index="/course-categories">分类管理</el-menu-item>
           <el-menu-item index="/chapters">章节管理</el-menu-item>
           <el-menu-item index="/tags">标签管理</el-menu-item>
@@ -30,6 +31,9 @@
           <Fold v-if="!collapsed" /><Expand v-else />
         </el-icon>
         <div style="display:flex;align-items:center">
+          <el-icon @click="$router.push('/notifications')" style="cursor:pointer;margin-right:16px">
+            <el-badge :value="notificationStore.unreadCount" :hidden="!notificationStore.unreadCount" :max="99"><Bell /></el-badge>
+          </el-icon>
           <span style="margin-right:10px;color:#666">{{ userStore.realName || userStore.username }}</span>
           <el-dropdown @command="handleCommand">
             <el-icon class="el-icon--right" style="cursor:pointer"><ArrowDown /></el-icon>
@@ -46,17 +50,27 @@
   </el-container>
 </template>
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
-import { OfficeBuilding, Reading, School, User, Fold, Expand, ArrowDown, Notebook } from '@element-plus/icons-vue'
+import { useNotificationStore } from '@/store/notification'
+import { OfficeBuilding, Reading, School, User, Fold, Expand, ArrowDown, Notebook, Bell } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const notificationStore = useNotificationStore()
 const collapsed = ref(false)
 
 const handleCommand = async (cmd) => {
   if (cmd === 'logout') { await userStore.logout(); router.push('/login') }
 }
+
+onMounted(() => {
+  notificationStore.startPolling(30000)
+})
+
+onUnmounted(() => {
+  notificationStore.stopPolling()
+})
 </script>
