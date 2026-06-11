@@ -451,9 +451,22 @@ async function doSubmit() {
   submitting.value = true
   submitted.value = true
 
+  if (!currentExercise.value?.id) {
+    ElMessage.error('练习信息缺失，请刷新重试')
+    submitting.value = false
+    submitted.value = false
+    return
+  }
+  const userId = userStore.userInfo?.id
+  if (!userId) {
+    ElMessage.error('用户未登录，请重新登录')
+    submitting.value = false
+    submitted.value = false
+    return
+  }
+
   const duration = timeLimit.value ? timeLimit.value * 60 - timeLeft.value : 0
 
-  //构造 answers数组
   const answerList = questionIds.value.map(qId => ({
     questionId: qId,
     answer: multipleAnswers[qId]
@@ -464,7 +477,7 @@ async function doSubmit() {
   try {
     const { data } = await submitExerciseRecord({
       exerciseId: currentExercise.value.id,
-      userId: userStore.userInfo.id,
+      userId,
       answers: answerList,
       duration
     })

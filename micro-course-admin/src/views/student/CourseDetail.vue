@@ -211,8 +211,10 @@ const fetchTeacher = async () => {
 // 检查当前用户是否已报名
 const checkEnrollment = async () => {
   if (!isLoggedIn.value || !courseId.value) return
+  const userId = userStore.userInfo?.id
+  if (!userId) return
   try {
-    const { data } = await getMyEnrollments(userStore.userInfo?.id)
+    const { data } = await getMyEnrollments(userId)
     const list = Array.isArray(data) ? data : (data?.items || [])
     isEnrolled.value = list.some(e => String(e.courseId) === String(courseId.value))
   } catch {
@@ -226,9 +228,14 @@ const handleEnroll = async () => {
     goLogin()
     return
   }
+  const userId = userStore.userInfo?.id
+  if (!userId) {
+    ElMessage.error('用户信息未加载，请刷新重试')
+    return
+  }
   enrollLoading.value = true
   try {
-    await enrollApi({ userId: userStore.userInfo.id, courseId: courseId.value })
+    await enrollApi({ userId, courseId: courseId.value })
     ElMessage.success('报名成功')
     isEnrolled.value = true
   } catch {
@@ -243,7 +250,7 @@ const goLogin = () => {
 }
 
 const goLearn = () => {
-  router.push(`/student/courses/${courseId.value}/learn`)
+  router.push(`/student/courses/${courseId.value}`)
 }
 
 onMounted(async () => {

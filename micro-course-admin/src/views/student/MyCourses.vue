@@ -125,7 +125,7 @@ const fetchEnrollments = async () => {
 }
 
 const handleContinue = (courseId) => {
-  router.push(`/student/courses/${courseId}/learn`)
+  router.push(`/student/courses/${courseId}`)
 }
 
 const handleViewDetail = (courseId) => {
