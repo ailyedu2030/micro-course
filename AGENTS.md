@@ -14,11 +14,30 @@
 | **微课平台（宪法）** | `.claude/skills/microcourse/SKILL.md` | 项目中任何操作 |
 | **微课平台-后端** | `.claude/skills/microcourse-backend/SKILL.md` | 编写 Java 代码 |
 | **微课平台-前端** | `.claude/skills/microcourse-frontend/SKILL.md` | 编写 Vue/JS 代码 |
+| **开发 Spec（必读）** | `docs/开发规划/phase5-10-spec.md` | 开发任何新功能前必须逐条对照 |
 
 **加载要求**：
 - 每次编码前，**必须**先读取对应的 SKILL.md
+- **每次开发新功能前，必须先读取 docs/开发规划/phase5-10-spec.md 定位当前 Phase 的任务清单**
 - SKILL.md 中的 contracts 和禁止项是**绝对基线**，不可偏差
 - 字段/路径/响应格式与 contracts 冲突 = **阻塞合并**
+- **每个 Agent 交付前必须对照 spec 中的验收标准逐项自检**
+
+---
+
+## Spec 强制对照机制
+
+```yaml
+Phase 开发工作流:
+  Step 0: read docs/开发规划/phase5-10-spec.md → 定位当前 Phase
+  Step 1: 提取该 Phase 的"功能/实现文件/API依赖/验收标准"四列表
+  Step 2: 编码（严格按实现文件路径写入）
+  Step 3: 自检 —— 对照 spec 逐项检查:
+    □ 每个功能是否都有对应文件?
+    □ 每个 API 依赖是否正确调用?
+    □ 每项验收标准是否通过?
+  Step 4: 交叉验证 —— 审查 Agent 必须对照 spec 审查
+```
 
 ---
 
