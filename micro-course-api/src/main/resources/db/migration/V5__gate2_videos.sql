@@ -4,7 +4,7 @@
 
 CREATE TABLE videos (
     id            BIGSERIAL   PRIMARY KEY,
-    chapter_id    BIGINT      NOT NULL REFERENCES course_chapters(id) ON DELETE CASCADE,
+    chapter_id    BIGINT      REFERENCES course_chapters(id) ON DELETE SET NULL,
     course_id     BIGINT      NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     title         VARCHAR(200) NOT NULL,
     file_name     VARCHAR(255),

@@ -6,7 +6,7 @@
 CREATE TABLE questions (
     id             BIGSERIAL   PRIMARY KEY,
     course_id      BIGINT      NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    teacher_id     BIGINT      NOT NULL REFERENCES users(id),
+    teacher_id     BIGINT      NOT NULL REFERENCES users(id) ON DELETE SET NULL,
     question_type  VARCHAR(20) NOT NULL,
     content        TEXT        NOT NULL,
     options        TEXT,
