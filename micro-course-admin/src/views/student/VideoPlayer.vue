@@ -1,3 +1,9 @@
+<!--
+  视频播放器
+  路由路径: /student/video/:id
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="video-player-page">
     <div class="player-wrapper" :class="{ 'mini-mode': isMiniMode }">

@@ -1,3 +1,9 @@
+<!--
+  登录页面
+  路由路径: /login
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="login-page">
     <div class="login-box">

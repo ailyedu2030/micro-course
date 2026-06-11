@@ -1,3 +1,9 @@
+<!--
+  练习列表
+  路由路径: /courses/:courseId/exercises
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="exercise-list">
     <!-- 搜索区 -->

@@ -1,3 +1,9 @@
+<!--
+  课程详情
+  路由路径: /student/course/:id
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="course-detail-page">
     <!-- Banner 区 -->

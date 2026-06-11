@@ -1,3 +1,9 @@
+<!--
+  学习中心
+  路由路径: /student/learning
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="learning-center">
     <div class="header">

@@ -1,3 +1,9 @@
+<!--
+  讨论帖列表
+  路由路径: /courses/discussions
+  Phase 3
+  Author: jackie
+-->
 <template>
   <div class="discussion-list">
     <!-- 搜索区 -->

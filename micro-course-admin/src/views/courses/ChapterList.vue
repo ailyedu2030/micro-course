@@ -1,3 +1,9 @@
+<!--
+  章节列表
+  路由路径: /courses/:courseId/chapters
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="chapter-list">
     <!-- 搜索区 -->

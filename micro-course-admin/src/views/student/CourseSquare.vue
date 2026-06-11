@@ -1,3 +1,9 @@
+<!--
+  课程广场
+  路由路径: /student/courses
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="course-square">
     <!-- 搜索区 -->

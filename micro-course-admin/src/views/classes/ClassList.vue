@@ -1,3 +1,9 @@
+<!--
+  班级列表
+  路由路径: /classes
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="class-list">
     <!-- 搜索区 -->

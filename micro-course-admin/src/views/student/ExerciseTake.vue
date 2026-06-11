@@ -1,3 +1,9 @@
+<!--
+  章节练习
+  路由路径: /student/exercise/:chapterId
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="exercise-take-page">
     <!-- ===== 练习入口：章节练习列表 ===== -->

@@ -1,3 +1,9 @@
+<!--
+  专业列表
+  路由路径: /majors
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="major-list">
     <!-- 搜索区 -->

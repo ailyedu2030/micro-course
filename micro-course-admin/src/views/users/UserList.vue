@@ -1,3 +1,9 @@
+<!--
+  用户列表
+  路由路径: /users
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="user-list">
     <!-- 搜索区 -->

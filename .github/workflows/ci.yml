@@ -53,8 +53,7 @@ jobs:
       - name: Compile backend
         run: cd micro-course-api && mvn compile -q
 
-      - name: Run integration tests (experimental)
-        continue-on-error: true
+      - name: Run integration tests
         env:
           REDIS_PORT: 6380
         run: cd micro-course-api && mvn test -Dspring.profiles.active=test

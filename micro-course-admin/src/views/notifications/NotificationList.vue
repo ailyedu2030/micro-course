@@ -1,3 +1,9 @@
+<!--
+  通知列表
+  路由路径: /notifications
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="notification-list">
     <!-- 顶栏 -->

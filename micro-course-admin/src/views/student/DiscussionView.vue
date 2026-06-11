@@ -1,3 +1,9 @@
+<!--
+  讨论区
+  路由路径: /student/discussion/:courseId
+  Phase 3
+  Author: jackie
+-->
 <template>
   <div class="discussion-view">
     <!-- 顶栏 -->

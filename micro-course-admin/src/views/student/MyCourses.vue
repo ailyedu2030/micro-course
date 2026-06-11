@@ -1,3 +1,9 @@
+<!--
+  我的课程
+  路由路径: /student/my-courses
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="my-courses-container">
     <div class="header">

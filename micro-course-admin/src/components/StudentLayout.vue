@@ -1,3 +1,9 @@
+<!--
+  学生端布局组件
+  路由路径: (layout)
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="student-container">
     <router-view />

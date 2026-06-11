@@ -1,3 +1,9 @@
+<!--
+  管理后台布局组件
+  路由路径: (layout)
+  Phase 1
+  Author: jackie
+-->
 <template>
   <el-container class="layout-container">
     <!-- 桌面端侧边栏 -->

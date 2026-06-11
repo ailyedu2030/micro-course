@@ -1,3 +1,9 @@
+<!--
+  评论节点组件
+  路由路径: (component)
+  Phase 3
+  Author: jackie
+-->
 <template>
   <div class="comment-node" :style="{ marginLeft: depth * 16 + 'px' }">
     <div class="comment-header">

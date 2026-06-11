@@ -1,3 +1,9 @@
+<!--
+  题目列表
+  路由路径: /courses/:courseId/questions
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="question-list">
     <!-- 搜索区 -->

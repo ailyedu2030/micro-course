@@ -1,3 +1,9 @@
+<!--
+  讨论帖详情
+  路由路径: /courses/discussions/:id
+  Phase 3
+  Author: jackie
+-->
 <template>
   <div class="discussion-detail">
     <!-- 返回 -->
@@ -68,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPostById, getComments, createComment, deleteComment, likeComment } from '@/api/discussion'

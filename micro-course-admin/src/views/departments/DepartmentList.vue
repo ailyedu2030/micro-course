@@ -1,3 +1,9 @@
+<!--
+  院系列表
+  路由路径: /departments
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="department-list">
     <!-- 搜索区 -->

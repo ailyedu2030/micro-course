@@ -1,3 +1,9 @@
+<!--
+  课程评价列表
+  路由路径: /courses/reviews
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="course-review-list">
     <!-- 表格区 -->

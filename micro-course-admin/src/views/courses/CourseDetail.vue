@@ -1,3 +1,9 @@
+<!--
+  课程详情管理
+  路由路径: /courses/:id
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="course-detail">
     <!-- 课程信息区 -->

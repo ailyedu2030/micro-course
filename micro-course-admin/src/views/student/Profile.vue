@@ -1,3 +1,9 @@
+<!--
+  个人中心
+  路由路径: /student/profile
+  Phase 2
+  Author: jackie
+-->
 <template>
   <div class="profile-view">
     <h2 class="page-title">个人中心</h2>

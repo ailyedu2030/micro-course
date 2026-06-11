@@ -1,3 +1,9 @@
+<!--
+  标签列表
+  路由路径: /courses/tags
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="tag-list">
     <!-- 搜索区 -->

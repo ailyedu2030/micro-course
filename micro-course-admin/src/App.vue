@@ -1,3 +1,9 @@
+<!--
+  根组件
+  路由路径: (root)
+  Phase 1
+  Author: jackie
+-->
 <template>
   <router-view v-if="isLoginPage" />
   <StudentLayout v-else-if="isStudent" />

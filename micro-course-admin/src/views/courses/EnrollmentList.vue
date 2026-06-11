@@ -1,3 +1,9 @@
+<!--
+  选课记录列表
+  路由路径: /courses/:courseId/enrollments
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="enrollment-list">
     <!-- 搜索区 -->

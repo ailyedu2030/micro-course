@@ -1,3 +1,9 @@
+<!--
+  视频列表
+  路由路径: /courses/:courseId/videos
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="video-list">
     <!-- 搜索区 -->

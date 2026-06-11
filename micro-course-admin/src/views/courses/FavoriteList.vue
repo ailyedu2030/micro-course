@@ -1,3 +1,9 @@
+<!--
+  收藏列表
+  路由路径: /courses/favorites
+  Phase 1
+  Author: jackie
+-->
 <template>
   <div class="favorite-list">
     <!-- 搜索区 -->
