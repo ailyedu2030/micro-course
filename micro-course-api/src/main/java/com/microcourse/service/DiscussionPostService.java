@@ -1,0 +1,25 @@
+package com.microcourse.service;
+
+import com.microcourse.dto.DiscussionPostVO;
+import com.microcourse.dto.PageResult;
+import com.microcourse.dto.PostCreateRequest;
+import com.microcourse.dto.PostUpdateRequest;
+
+public interface DiscussionPostService {
+
+    PageResult<DiscussionPostVO> page(Long chapterId, int page, int size);
+
+    DiscussionPostVO getById(Long id);
+
+    DiscussionPostVO create(PostCreateRequest req, Long userId);
+
+    DiscussionPostVO update(Long id, PostUpdateRequest request, Long userId);
+
+    void delete(Long id, Long userId);
+
+    void pin(Long id);
+
+    void updatePin(Long id, boolean pinned);
+
+    void updateEssence(Long id, boolean essence);
+}

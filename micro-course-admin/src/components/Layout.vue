@@ -20,6 +20,7 @@
           <el-menu-item index="/questions">题库管理</el-menu-item>
           <el-menu-item index="/exercises">练习管理</el-menu-item>
           <el-menu-item index="/favorites">收藏管理</el-menu-item>
+          <el-menu-item index="/discussions">讨论区</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>

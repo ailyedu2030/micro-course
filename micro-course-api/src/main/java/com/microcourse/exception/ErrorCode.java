@@ -32,7 +32,10 @@ public enum ErrorCode {
     EXERCISE_NOT_FOUND(9002, "练习不存在", 404),
     EXERCISE_QUESTION_NOT_FOUND(9003, "练习题目不存在", 404),
     VIDEO_NOT_FOUND(9004, "视频不存在", 404),
-    BAD_REQUEST_PARAM(9005, "参数错误", 400);
+    BAD_REQUEST_PARAM(9005, "参数错误", 400),
+    DISCUSSION_POST_NOT_FOUND(10001, "帖子不存在", 404),
+    DISCUSSION_COMMENT_NOT_FOUND(10002, "评论不存在", 404),
+    NO_PERMISSION(10003, "无权限操作", 403);
 
     private final int code;
     private final String message;
