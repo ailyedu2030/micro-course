@@ -23,6 +23,7 @@ public class DepartmentController {
     }
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public R<PageResult<DepartmentVO>> page(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -31,6 +32,7 @@ public class DepartmentController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public R<DepartmentVO> getById(@PathVariable Long id) {
         DepartmentVO vo = departmentService.getById(id);
         return R.ok(vo);

@@ -108,21 +108,21 @@ check_business_code() {
     # Phase 3+ 合法 Controller（在白名单中豁免）
     local whitelist="AuthController\|DepartmentController\|MajorController\|ClassController\|UserController"
     # Controller
-    hits=$(grep -rln "class.*Controller" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$whitelist" | wc -l | tr -d ' ')
+    hits=$(grep -rln "public class.*Controller" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Controller 出现（$hits 个文件，不在白名单）")
         FAIL=1
     fi
     # Service（有 Service 接口 + ServiceImpl 实现类是 Phase 3 预期状态）
-    local svc_whitelist="AuthService\|DepartmentService\|MajorService\|ClassService\|UserService"
-    hits=$(grep -rln "class.*Service" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$svc_whitelist" | wc -l | tr -d ' ')
+    local svc_whitelist="AuthService\|AuthServiceImpl\|DepartmentService\|DepartmentServiceImpl\|MajorService\|MajorServiceImpl\|ClassService\|ClassServiceImpl\|UserService\|UserServiceImpl"
+    hits=$(grep -rln "public class.*Service" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$svc_whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Service 出现（$hits 个文件，不在白名单）")
         FAIL=1
     fi
     # Entity（BaseMapper 实体类是预期）
-    local entity_whitelist="User\|Department\|Major\|Classes\|ClassEntity"
-    hits=$(grep -rln "class.*Entity" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$entity_whitelist" | wc -l | tr -d ' ')
+    local entity_whitelist="User\|Department\|Major\|Classes"
+    hits=$(grep -rln "public class.*Entity\|@TableName" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$entity_whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Entity 出现（$hits 个文件）")
         FAIL=1

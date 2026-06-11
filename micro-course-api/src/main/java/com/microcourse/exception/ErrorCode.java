@@ -12,6 +12,7 @@ public enum ErrorCode {
     MAJOR_NOT_FOUND(3001, "专业不存在", 404),
     MAJOR_HAS_CLASSES(3002, "专业下存在班级，无法删除", 409),
     CLASS_NOT_FOUND(4001, "班级不存在", 404),
+    CLASS_HAS_STUDENTS(4002, "班级下存在学生，无法删除", 409),
     USER_NOT_FOUND(5001, "用户不存在", 404),
     USERNAME_EXISTS(5002, "用户名已存在", 409),
     STUDENT_NO_EXISTS(5003, "学号/工号已存在", 409),

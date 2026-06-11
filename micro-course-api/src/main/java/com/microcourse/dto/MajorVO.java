@@ -1,43 +1,28 @@
-package com.microcourse.entity;
-
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+package com.microcourse.dto;
 
 import java.time.LocalDateTime;
 
-@TableName("majors")
-public class Major {
+public class MajorVO {
 
-    @TableId(type = IdType.AUTO)
     private Long id;
     private String name;
     private String code;
-
-    @TableField("department_id")
     private Long departmentId;
-
-    @TableField("sort_order")
+    private String departmentName;
     private Integer sortOrder;
-
-    @TableField("created_at")
     private LocalDateTime createdAt;
 
-    @TableField("updated_at")
-    private LocalDateTime updatedAt;
+    public MajorVO() {}
 
-    public Major() {}
-
-    public Major(Long id, String name, String code, Long departmentId, Integer sortOrder,
-                 LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public MajorVO(Long id, String name, String code, Long departmentId, String departmentName,
+                   Integer sortOrder, LocalDateTime createdAt) {
         this.id = id;
         this.name = name;
         this.code = code;
         this.departmentId = departmentId;
+        this.departmentName = departmentName;
         this.sortOrder = sortOrder;
         this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
     }
 
     public Long getId() { return id; }
@@ -48,10 +33,10 @@ public class Major {
     public void setCode(String code) { this.code = code; }
     public Long getDepartmentId() { return departmentId; }
     public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+    public String getDepartmentName() { return departmentName; }
+    public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
