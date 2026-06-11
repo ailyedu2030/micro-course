@@ -13,7 +13,7 @@ public class PageResult<T> {
     public static <T> PageResult<T> of(IPage<T> page) {
         PageResult<T> result = new PageResult<>();
         result.setItems(page.getRecords());
-        result.setPage((int) page.getCurrent());
+        result.setPage((int) page.getCurrent() - 1);  // MyBatis-Plus 1-based → 0-based
         result.setSize((int) page.getSize());
         result.setTotalElements(page.getTotal());
         result.setTotalPages(page.getPages());
