@@ -38,9 +38,9 @@ description: |
 
 | 引用视图 | 真文档来源 | 触发场景 |
 |---------|----------|---------|
-| `references/data-contract.md` | `docs/数据字典.md` v0.4 | 字段类型/长度/约束/索引 |
-| `references/api-contract.md` | `docs/API契约-Phase1.md` v1.1 | REST 路径/请求/响应/错误码 |
-| `references/business-logic.md` | `docs/状态机设计.md` v1.0 + `docs/开发规范.md` v1.3 §3.3.1 | 状态机/转换规则/业务约束 |
+| `references/data-contract.md` | `docs/数据字典.md` v0.5 | 字段类型/长度/约束/索引 |
+| `references/api-contract.md` | `docs/API契约-Phase1.md` v1.2 | REST 路径/请求/响应/错误码 |
+| `references/business-logic.md` | `docs/状态机设计.md` v1.0 + `docs/开发规范.md` v1.4 §3.3.1 | 状态机/转换规则/业务约束 |
 | `references/structure-constitution.md` | `docs/项目结构规范.md` v1.1 | 目录树/负面清单/预检命令 |
 | `references/permission-matrix.md` | `docs/权限矩阵.md` v2.0 | REST 端点/角色权限 |
 | `references/verification-checklist.md` | Phase 1 验证清单 | 工单交付前自检 |
@@ -79,8 +79,8 @@ scope:   Phase 阶段编号 或 docs/ 或 skill/
 
 ```
 □ 文件位置正确（结构宪法 §2.1）
-□ 字段名与数据契约一致（数据字典 v0.4）
-□ 响应格式与 API 契约一致（API契约-Phase1 v1.1）
+□ 字段名与数据契约一致（数据字典 v0.5）
+□ 响应格式与 API 契约一致（API契约-Phase1 v1.2）
 □ 权限注解与权限矩阵一致（权限矩阵 v2.0）
 □ 业务规则与状态机一致（状态机设计 v1.0）
 □ 命名规范符合项目结构规范（项目结构规范 v1.1）
@@ -150,8 +150,8 @@ scope:   Phase 阶段编号 或 docs/ 或 skill/
 
 ```
 ❌ 在冲突评审决议未登记的字段冲突
-❌ 字段名不与数据字典 v0.4 一致
-❌ 响应格式不与 API 契约 v1.1 一致
+❌ 字段名不与数据字典 v0.5 一致
+❌ 响应格式不与 API 契约 v1.2 一致
 ❌ REST 路径不与权限矩阵 v2.0 一致（路径前缀 = /api，无 /api/v1/）
 ❌ 表名带 sys_ 前缀（应为 users / departments / majors / classes）
 ❌ 项目迁移后开发规范 §14 不更新
@@ -180,7 +180,7 @@ scope:   Phase 阶段编号 或 docs/ 或 skill/
 - 修改 ErrorCode.java 或 SecurityConfig.java
 - 完成一个 Gate 子阶段
 
-#### 验证维度（必须覆盖全部 5 维）
+#### 验证维度（必须覆盖全部 4 维）
 
 | # | 维度 | 审查内容 | Agent 数量 |
 |---|------|---------|:--------:|
