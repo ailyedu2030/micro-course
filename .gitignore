@@ -1,0 +1,83 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Obsidian（本地工作区状态，不入仓）
+docs/.obsidian/
+docs/**/.obsidian/
+
+# IDE / 编辑器
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+*.swp
+*.swo
+*~
+
+# Java / Maven
+target/
+build/
+out/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+replay_pid*
+
+# Spring Boot
+application-local.yml
+application-local.properties
+
+# Node / 前端
+node_modules/
+dist/
+.nuxt/
+.next/
+.parcel-cache/
+.cache/
+.vite/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.stylelintcache
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 数据库 / 临时
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+*.tmp
+*.swp
+
+# 日志
+logs/
+*.log
+log/
+
+# IDE 工具
+*~
+.nova/
+.cursor/
+
+# 项目特定
+# 保留 micro-course-api/src/main/resources/application.yml 但忽略 local
+# 保留 docs/ 全部（不忽略）
