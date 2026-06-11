@@ -81,3 +81,4 @@ log/
 # 项目特定
 # 保留 micro-course-api/src/main/resources/application.yml 但忽略 local
 # 保留 docs/ 全部（不忽略）
+.mvn/

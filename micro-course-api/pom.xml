@@ -24,6 +24,7 @@
         <jjwt.version>0.12.3</jjwt.version>
         <springdoc.version>2.5.0</springdoc.version>
         <flyway.version>9.22.3</flyway.version>
+        <lombok.version>1.18.36</lombok.version>
     </properties>
 
     <dependencies>
