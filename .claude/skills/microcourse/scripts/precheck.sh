@@ -114,7 +114,7 @@ check_business_code() {
         FAIL=1
     fi
     # Service（有 Service 接口 + ServiceImpl 实现类是 Phase 3 预期状态）
-    local svc_whitelist="AuthService\|AuthServiceImpl\|DepartmentService\|DepartmentServiceImpl\|MajorService\|MajorServiceImpl\|ClassService\|ClassServiceImpl\|UserService\|UserServiceImpl"
+    local svc_whitelist="AuthService\|AuthServiceImpl\|DepartmentService\|DepartmentServiceImpl\|MajorService\|MajorServiceImpl\|ClassService\|ClassServiceImpl\|UserService\|UserServiceImpl\|OperationLogService\|OperationLogServiceImpl"
     hits=$(grep -rln "public class.*Service" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$svc_whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Service 出现（$hits 个文件，不在白名单）")

@@ -7,6 +7,7 @@ import com.microcourse.dto.RefreshRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.service.AuthService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,6 +43,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
     public R<Void> logout() {
         authService.logout();
         return R.ok();
@@ -56,6 +58,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     public R<UserVO> me() {
         UserVO user = authService.getCurrentUser();
         return R.ok(user);

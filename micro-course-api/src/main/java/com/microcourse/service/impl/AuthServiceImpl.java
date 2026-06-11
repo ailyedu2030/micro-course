@@ -6,8 +6,10 @@ import com.microcourse.dto.UserVO;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.entity.OperationLog;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AuthService;
+import com.microcourse.service.OperationLogService;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,14 +32,17 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder;
     private final RedisUtil redisUtil;
+    private final OperationLogService operationLogService;
 
     @Autowired
     public AuthServiceImpl(UserRepository userRepository, JwtUtil jwtUtil,
-                           BCryptPasswordEncoder passwordEncoder, RedisUtil redisUtil) {
+                           BCryptPasswordEncoder passwordEncoder, RedisUtil redisUtil,
+                           OperationLogService operationLogService) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
         this.redisUtil = redisUtil;
+        this.operationLogService = operationLogService;
     }
 
     @Override
@@ -84,7 +89,17 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.updateById(user);
 
-        // Step 8: 构建响应
+        // Step 8: 记录操作日志
+        OperationLog log = new OperationLog();
+        log.setUserId(user.getId());
+        log.setAction("LOGIN");
+        log.setTargetType("USER");
+        log.setTargetId(user.getId());
+        log.setIp("0.0.0.0");
+        log.setSuccess(true);
+        operationLogService.log(log);
+
+        // Step 9: 构建响应
         LoginResponse response = new LoginResponse();
         response.setAccessToken(accessToken);
         response.setRefreshToken(refreshToken);
@@ -150,6 +165,16 @@ public class AuthServiceImpl implements AuthService {
             // Step 3: 清除登录失败计数
             redisUtil.clearLoginFailure(user.getUsername());
             logger.info("Logout: cleared login failure count for user " + user.getUsername());
+
+            // Step 3.5: 记录操作日志
+            OperationLog logEntry = new OperationLog();
+            logEntry.setUserId(user.getId());
+            logEntry.setAction("LOGOUT");
+            logEntry.setTargetType("USER");
+            logEntry.setTargetId(user.getId());
+            logEntry.setIp("0.0.0.0");
+            logEntry.setSuccess(true);
+            operationLogService.log(logEntry);
         }
         // Step 4: 清除 SecurityContext
         SecurityContextHolder.clearContext();

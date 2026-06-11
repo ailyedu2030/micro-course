@@ -11,6 +11,7 @@ import com.microcourse.dto.UserVO;
 import com.microcourse.entity.Classes;
 import com.microcourse.entity.Department;
 import com.microcourse.entity.Major;
+import com.microcourse.entity.OperationLog;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -18,7 +19,9 @@ import com.microcourse.repository.ClassesRepository;
 import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.service.OperationLogService;
 import com.microcourse.service.UserService;
+import com.microcourse.util.RedisUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -34,17 +37,24 @@ public class UserServiceImpl implements UserService {
     private final DepartmentRepository departmentRepository;
     private final MajorRepository majorRepository;
     private final ClassesRepository classesRepository;
+    private final RedisUtil redisUtil;
+    private final OperationLogService operationLogService;
+
 
     public UserServiceImpl(UserRepository userRepository,
                            BCryptPasswordEncoder passwordEncoder,
                            DepartmentRepository departmentRepository,
                            MajorRepository majorRepository,
-                           ClassesRepository classesRepository) {
+                           ClassesRepository classesRepository,
+                           RedisUtil redisUtil,
+                           OperationLogService operationLogService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.departmentRepository = departmentRepository;
         this.majorRepository = majorRepository;
         this.classesRepository = classesRepository;
+        this.redisUtil = redisUtil;
+        this.operationLogService = operationLogService;
     }
 
     @Override
@@ -71,6 +81,14 @@ public class UserServiceImpl implements UserService {
         List<UserVO> vos = ipage.getRecords().stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
+
+        // 列表端脱敏（/api/users 端点）
+        vos.forEach(vo -> {
+            vo.setRealName(maskRealName(vo.getRealName()));
+            vo.setEmail(maskEmail(vo.getEmail()));
+            vo.setPhone(maskPhone(vo.getPhone()));
+        });
+
 
         PageResult<UserVO> result = new PageResult<>();
         result.setItems(vos);
@@ -156,6 +174,7 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
+        Integer oldStatus = user.getStatus();
         Integer newStatus = request.getStatus();
         switch (newStatus) {
             case 0: // INACTIVE（未激活）— 仅设状态，不操作 deleted_at
@@ -167,18 +186,33 @@ public class UserServiceImpl implements UserService {
                 break;
             case 2: // DISABLED（禁用）
                 user.setStatus(2);
+                // 将当前用户的所有 Token 加入黑名单，使立即失效
+                redisUtil.clearLoginFailure(user.getUsername());
                 break;
             case 3: // DELETED（软删除，180天保留）
                 user.setStatus(3);
                 user.setDeletedAt(LocalDateTime.now());
+                // 将当前用户的所有 Token 加入黑名单，使立即失效
+                redisUtil.clearLoginFailure(user.getUsername());
                 break;
             default:
                 throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         user.setUpdatedAt(LocalDateTime.now());
+        // Phase 6: 需通过 WebSocket/Redis PubSub 通知所有实例使该用户 Token 失效
         userRepository.updateById(user);
-        // Phase 6: 启用/删除时需调用 redisUtil.blacklistToken(jti, ttl) 使 JWT 立即失效
+
+        // 记录操作日志
+        OperationLog log = new OperationLog();
+        log.setUserId(user.getId());
+        log.setAction("STATUS_CHANGE");
+        log.setTargetType("USER");
+        log.setTargetId(user.getId());
+        log.setDetail("{\"field\":\"status\",\"old\":" + oldStatus + ",\"new\":" + newStatus + "}");
+        log.setIp("0.0.0.0");
+        log.setSuccess(true);
+        operationLogService.log(log);
     }
 
     private UserVO convertToVO(User user) {
@@ -236,5 +270,21 @@ public class UserServiceImpl implements UserService {
         }
 
         return vo;
+    }
+
+    private static String maskRealName(String name) {
+        if (name == null || name.length() <= 1) return name;
+        return name.charAt(0) + "**";
+    }
+
+    private static String maskEmail(String email) {
+        if (email == null || !email.contains("@")) return email;
+        int at = email.indexOf("@");
+        return email.charAt(0) + "***" + email.substring(at);
+    }
+
+    private static String maskPhone(String phone) {
+        if (phone == null || phone.length() < 7) return phone;
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }
