@@ -95,6 +95,29 @@ public class JwtUtil {
     }
 
     /**
+     * 验证 refreshToken（签名 + 过期）
+     * 异常分类模式与 validateToken 保持一致
+     */
+    public boolean validateRefreshToken(String token) {
+        try {
+            Jwts.parser()
+                    .verifyWith(getKey())
+                    .build()
+                    .parseSignedClaims(token);
+            return true;
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return false;
+        } catch (io.jsonwebtoken.security.SecurityException
+                | io.jsonwebtoken.MalformedJwtException
+                | io.jsonwebtoken.UnsupportedJwtException
+                | IllegalArgumentException e) {
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
      * 从 token 提取 userId
      */
     public Long getUserIdFromToken(String token) {
