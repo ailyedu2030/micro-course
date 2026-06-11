@@ -15,3 +15,11 @@ export function updateExercise(id, data) {
 export function deleteExercise(id) {
   return request({ method: 'DELETE', url: `/exercises/${id}` })
 }
+
+export function getExerciseById(id) {
+  return request({ method: 'GET', url: `/exercises/${id}` })
+}
+
+export function submitExerciseRecord(data) {
+  return request({ method: 'POST', url: '/exercise-records/submit', data })
+}

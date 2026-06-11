@@ -15,3 +15,7 @@ export function updateQuestion(id, data) {
 export function deleteQuestion(id) {
   return request({ method: 'DELETE', url: `/questions/${id}` })
 }
+
+export function getQuestionById(id) {
+  return request({ method: 'GET', url: `/questions/${id}` })
+}
