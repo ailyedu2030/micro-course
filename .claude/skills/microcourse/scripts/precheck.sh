@@ -106,7 +106,7 @@ check_outdated_path() {
 check_business_code() {
     local hits=0
     # Phase 3+ 合法 Controller（在白名单中豁免）
-    local whitelist="AuthController\|DepartmentController\|MajorController\|ClassController\|UserController"
+    local whitelist="AuthController\|DepartmentController\|MajorController\|ClassController\|UserController\|CourseCategoryController\|CourseController\|CourseChapterController\|TagController\|EnrollmentController\|CourseFavoriteController"
     # Controller
     hits=$(grep -rln "public class.*Controller" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
@@ -114,14 +114,14 @@ check_business_code() {
         FAIL=1
     fi
     # Service（有 Service 接口 + ServiceImpl 实现类是 Phase 3 预期状态）
-    local svc_whitelist="AuthService\|AuthServiceImpl\|DepartmentService\|DepartmentServiceImpl\|MajorService\|MajorServiceImpl\|ClassService\|ClassServiceImpl\|UserService\|UserServiceImpl\|OperationLogService\|OperationLogServiceImpl"
+    local svc_whitelist="AuthService\|AuthServiceImpl\|DepartmentService\|DepartmentServiceImpl\|MajorService\|MajorServiceImpl\|ClassService\|ClassServiceImpl\|UserService\|UserServiceImpl\|OperationLogService\|OperationLogServiceImpl\|CourseCategoryService\|CourseCategoryServiceImpl\|CourseService\|CourseServiceImpl\|CourseChapterService\|CourseChapterServiceImpl\|TagService\|TagServiceImpl\|EnrollmentService\|EnrollmentServiceImpl\|CourseFavoriteService\|CourseFavoriteServiceImpl"
     hits=$(grep -rln "public class.*Service" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$svc_whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Service 出现（$hits 个文件，不在白名单）")
         FAIL=1
     fi
     # Entity（BaseMapper 实体类是预期）
-    local entity_whitelist="User\|Department\|Major\|Classes"
+    local entity_whitelist="User\|Department\|Major\|Classes\|CourseCategory\|Course\|CourseTagRelation\|CourseChapter\|OperationLog\|Tag\|Enrollment\|CourseFavorite"
     hits=$(grep -rln "public class.*Entity\|@TableName" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$entity_whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Entity 出现（$hits 个文件）")

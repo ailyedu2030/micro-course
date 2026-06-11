@@ -1,0 +1,173 @@
+package com.microcourse.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.microcourse.dto.EnrollmentCreateRequest;
+import com.microcourse.dto.EnrollmentUpdateRequest;
+import com.microcourse.dto.EnrollmentVO;
+import com.microcourse.entity.Course;
+import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.User;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.UserRepository;
+import com.microcourse.service.EnrollmentService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class EnrollmentServiceImpl implements EnrollmentService {
+
+    private final EnrollmentRepository enrollmentRepository;
+    private final CourseRepository courseRepository;
+    private final UserRepository userRepository;
+
+    public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
+                                 CourseRepository courseRepository,
+                                 UserRepository userRepository) {
+        this.enrollmentRepository = enrollmentRepository;
+        this.courseRepository = courseRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    @Transactional
+    public EnrollmentVO enroll(EnrollmentCreateRequest request) {
+        // Check course exists
+        Course course = courseRepository.selectById(request.getCourseId());
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // Check user exists
+        User user = userRepository.selectById(request.getUserId());
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        // Check unique constraint: user already enrolled in this course
+        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Enrollment::getUserId, request.getUserId())
+                .eq(Enrollment::getCourseId, request.getCourseId());
+        Enrollment existing = enrollmentRepository.selectOne(wrapper);
+        if (existing != null) {
+            throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS);
+        }
+
+        Enrollment enrollment = new Enrollment();
+        enrollment.setCourseId(request.getCourseId());
+        enrollment.setUserId(request.getUserId());
+        enrollment.setSourceChannel(request.getSourceChannel());
+        enrollment.setEnrollmentStatus("PENDING");
+        enrollment.setProgress(0.0);
+        enrollment.setCompleted(false);
+        enrollment.setEnrolledAt(LocalDateTime.now());
+        enrollment.setUpdatedAt(LocalDateTime.now());
+
+        enrollmentRepository.insert(enrollment);
+        return convertToVO(enrollment);
+    }
+
+    @Override
+    public List<EnrollmentVO> getMyEnrollments(Long userId) {
+        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Enrollment::getUserId, userId)
+                .orderByDesc(Enrollment::getEnrolledAt);
+        List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
+        return enrollments.stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<EnrollmentVO> getCourseEnrollments(Long courseId) {
+        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Enrollment::getCourseId, courseId)
+                .orderByDesc(Enrollment::getEnrolledAt);
+        List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
+        return enrollments.stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public EnrollmentVO updateEnrollment(Long id, EnrollmentUpdateRequest request) {
+        Enrollment enrollment = enrollmentRepository.selectById(id);
+        if (enrollment == null) {
+            throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
+        }
+
+        if (request.getProgress() != null) {
+            enrollment.setProgress(request.getProgress());
+        }
+        if (request.getCompleted() != null) {
+            enrollment.setCompleted(request.getCompleted());
+            if (request.getCompleted()) {
+                enrollment.setCompletedAt(LocalDateTime.now());
+            }
+        }
+        if (request.getFinalScore() != null) {
+            enrollment.setFinalScore(request.getFinalScore());
+        }
+        if (request.getFinalGrade() != null) {
+            enrollment.setFinalGrade(request.getFinalGrade());
+        }
+        if (request.getEnrollmentStatus() != null) {
+            enrollment.setEnrollmentStatus(request.getEnrollmentStatus());
+        }
+
+        enrollment.setUpdatedAt(LocalDateTime.now());
+        enrollmentRepository.updateById(enrollment);
+        return convertToVO(enrollment);
+    }
+
+    @Override
+    @Transactional
+    public void cancelEnrollment(Long id) {
+        Enrollment enrollment = enrollmentRepository.selectById(id);
+        if (enrollment == null) {
+            throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
+        }
+        enrollment.setEnrollmentStatus("CANCELLED");
+        enrollment.setUpdatedAt(LocalDateTime.now());
+        enrollmentRepository.updateById(enrollment);
+    }
+
+    private EnrollmentVO convertToVO(Enrollment enrollment) {
+        EnrollmentVO vo = new EnrollmentVO();
+        vo.setId(enrollment.getId());
+        vo.setCourseId(enrollment.getCourseId());
+        vo.setUserId(enrollment.getUserId());
+        vo.setProgress(enrollment.getProgress());
+        vo.setCompleted(enrollment.getCompleted());
+        vo.setFinalScore(enrollment.getFinalScore());
+        vo.setFinalGrade(enrollment.getFinalGrade());
+        vo.setEnrollmentStatus(enrollment.getEnrollmentStatus());
+        vo.setSourceChannel(enrollment.getSourceChannel());
+        vo.setEnrolledAt(enrollment.getEnrolledAt());
+        vo.setCompletedAt(enrollment.getCompletedAt());
+        vo.setUpdatedAt(enrollment.getUpdatedAt());
+
+        // Load course name
+        if (enrollment.getCourseId() != null) {
+            Course course = courseRepository.selectById(enrollment.getCourseId());
+            if (course != null) {
+                vo.setCourseName(course.getTitle());
+            }
+        }
+
+        // Load user name
+        if (enrollment.getUserId() != null) {
+            User user = userRepository.selectById(enrollment.getUserId());
+            if (user != null) {
+                vo.setUserName(user.getRealName());
+            }
+        }
+
+        return vo;
+    }
+}

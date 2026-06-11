@@ -25,7 +25,9 @@ public enum ErrorCode {
     COURSE_STATUS_TRANSITION_NOT_ALLOWED(6005, "不允许的状态转换", 400),
     COURSE_PUBLISHED_CANNOT_EDIT(6006, "已发布的课程不允许直接编辑", 400),
     CHAPTER_NOT_FOUND(7001, "章节不存在", 404),
-    CHAPTER_COURSE_NOT_FOUND(7002, "课程不存在", 404);
+    CHAPTER_COURSE_NOT_FOUND(7002, "课程不存在", 404),
+    ENROLLMENT_NOT_FOUND(8001, "选课记录不存在", 404),
+    ENROLLMENT_ALREADY_EXISTS(8002, "已存在选课记录", 409);
 
     private final int code;
     private final String message;
