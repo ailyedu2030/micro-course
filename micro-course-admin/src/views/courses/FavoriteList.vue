@@ -79,7 +79,7 @@ const fetchCourses = async () => {
   try {
     const { data } = await getCourses({ size: 1000 })
     courseOptions.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程列表失败')
   }
 }
@@ -95,7 +95,7 @@ const fetchData = async () => {
     const { data } = await getFavorites(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取收藏列表失败')
   } finally {
     loading.value = false

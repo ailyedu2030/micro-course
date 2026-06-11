@@ -77,7 +77,7 @@ const fetchData = async () => {
     const res = await getCourses(params)
     tableData.value = res.data?.items || []
     totalElements.value = res.data?.totalElements || 0
-  } catch (e) {
+  } catch {
     ElMessage.error('获取待审核课程列表失败')
   } finally {
     loading.value = false
@@ -90,7 +90,7 @@ const handleApprove = async (row) => {
     await updateCourseStatus(row.id, 2)
     ElMessage.success('审核通过成功')
     fetchData()
-  } catch (e) {
+  } catch {
     if (e !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -114,7 +114,7 @@ const confirmReject = async () => {
     ElMessage.success('驳回成功')
     rejectDialogVisible.value = false
     fetchData()
-  } catch (e) {
+  } catch {
     ElMessage.error('操作失败')
   } finally {
     submitLoading.value = false

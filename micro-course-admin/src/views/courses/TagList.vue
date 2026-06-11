@@ -103,7 +103,7 @@ const fetchData = async () => {
     const { data } = await getTags(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取标签列表失败')
   } finally {
     loading.value = false
@@ -141,7 +141,7 @@ const handleDelete = async (row) => {
     await ElMessageBox.confirm('确定删除该标签?', '提示', { type: 'warning' })
     // tag API 没有 delete 方法，提示不支持
     ElMessage.error('该标签不支持删除')
-  } catch (error) {
+  } catch {
     // cancel
   }
 }
@@ -156,7 +156,7 @@ const handleSubmit = async () => {
       ElMessage.success('创建成功')
       dialogVisible.value = false
       fetchData()
-    } catch (error) {
+    } catch {
       ElMessage.error('创建失败')
     } finally {
       submitLoading.value = false

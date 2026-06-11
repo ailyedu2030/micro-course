@@ -149,7 +149,7 @@ const fetchChapters = async () => {
   try {
     const { data } = await getChapters({ size: 1000 })
     chapters.value = data.items || []
-  } catch (error) {
+  } catch {
     // ignore
   }
 }
@@ -171,7 +171,7 @@ const fetchData = async () => {
     })
     tableData.value = items
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取帖子列表失败')
   } finally {
     loading.value = false
@@ -216,7 +216,7 @@ const handleTogglePin = async (row) => {
     await updatePostPin(row.id, !row.isPinned)
     ElMessage.success('操作成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') ElMessage.error('操作失败')
   }
 }
@@ -227,7 +227,7 @@ const handleToggleEssence = async (row) => {
     await updatePostEssence(row.id, !row.isEssence)
     ElMessage.success('操作成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') ElMessage.error('操作失败')
   }
 }
@@ -238,7 +238,7 @@ const handleDelete = async (row) => {
     await deletePost(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') ElMessage.error('删除失败')
   }
 }
@@ -258,7 +258,7 @@ const handleSubmit = async () => {
       ElMessage.success('发布成功')
       dialogVisible.value = false
       fetchData()
-    } catch (error) {
+    } catch {
       ElMessage.error('发布失败')
     } finally {
       submitLoading.value = false

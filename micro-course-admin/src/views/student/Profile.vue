@@ -216,7 +216,7 @@ const handleUpdateProfile = async () => {
     await updateProfile(profileForm.value)
     ElMessage.success('资料更新成功')
     await userStore.getInfo()
-  } catch (e) {
+  } catch {
     ElMessage.error('资料更新失败')
   } finally {
     profileLoading.value = false
@@ -238,7 +238,7 @@ const handleChangePassword = async () => {
     ElMessage.success('密码修改成功')
     passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
     passwordFormRef.value?.resetFields()
-  } catch (e) {
+  } catch {
     ElMessage.error('密码修改失败')
   } finally {
     passwordLoading.value = false
@@ -251,7 +251,7 @@ const fetchMyEnrollments = async () => {
     if (!userId) return
     const res = await getMyEnrollments(userId)
     myCourses.value = res.data || []
-  } catch (e) {
+  } catch {
     // silent
   }
 }
@@ -263,7 +263,7 @@ const fetchWrongQuestions = async () => {
     if (selectedCourseId.value) params.courseId = selectedCourseId.value
     const res = await getMyWrongQuestions(params)
     wrongQuestions.value = res.data?.items || res.data || []
-  } catch (e) {
+  } catch {
     ElMessage.error('获取错题记录失败')
   } finally {
     wrongLoading.value = false

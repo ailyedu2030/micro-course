@@ -140,7 +140,7 @@ async function fetchData() {
     const { data } = await getLogs(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (err) {
+  } catch {
     ElMessage.error('获取操作日志失败')
   } finally {
     loading.value = false

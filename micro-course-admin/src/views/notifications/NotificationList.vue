@@ -83,7 +83,7 @@ const fetchUnreadCount = async () => {
   try {
     const res = await getUnreadCount()
     unreadCount.value = res.data || 0
-  } catch (e) {
+  } catch {
     ElMessage.error('获取未读数量失败')
   }
 }
@@ -95,7 +95,7 @@ const fetchData = async () => {
     const res = await getNotifications(params)
     tableData.value = res.data?.items || []
     totalElements.value = res.data?.totalElements || 0
-  } catch (e) {
+  } catch {
     ElMessage.error('获取通知列表失败')
   } finally {
     loading.value = false
@@ -108,7 +108,7 @@ const handleMarkRead = async (row) => {
     row.isRead = true
     unreadCount.value = Math.max(0, unreadCount.value - 1)
     ElMessage.success('已标记为已读')
-  } catch (e) {
+  } catch {
     ElMessage.error('操作失败')
   }
 }
@@ -119,7 +119,7 @@ const handleMarkAllRead = async () => {
     unreadCount.value = 0
     tableData.value.forEach(n => { n.isRead = true })
     ElMessage.success('全部已标记为已读')
-  } catch (e) {
+  } catch {
     ElMessage.error('操作失败')
   }
 }

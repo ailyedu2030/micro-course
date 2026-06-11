@@ -25,7 +25,7 @@ export const useUserStore = defineStore('user', {
       return res.data
     },
     async logout() {
-      try { await logoutApi() } catch (e) { /* ignore */ }
+      try { await logoutApi() } catch { /* ignore */ }
       removeToken()
       this.token = ''
       this.userInfo = null

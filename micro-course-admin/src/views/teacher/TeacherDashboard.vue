@@ -153,7 +153,7 @@ const fetchOverview = async () => {
   try {
     const res = await getOverview()
     overview.value = res.data || {}
-  } catch (error) {
+  } catch {
     //静默失败，使用默认值
   }
 }
@@ -163,7 +163,7 @@ const fetchTrend = async () => {
     const res = await getUserTrend(7)
     const trendData = res.data || []
     renderChart(trendData)
-  } catch (error) {
+  } catch {
     // 静默失败，渲染空图表
     renderChart([])
   }
@@ -207,7 +207,7 @@ const fetchData = async () => {
     const { data } = await getCourses(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程列表失败')
   } finally {
     loading.value = false

@@ -191,7 +191,7 @@ const fetchDepartments = async () => {
   try {
     const { data } = await getDepartments({ size: 1000 })
     departments.value = data.items || []
-  } catch (error) {
+  } catch {
     // 静默失败
   }
 }
@@ -210,7 +210,7 @@ const fetchData = async () => {
     const { data } = await getUsers(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取用户列表失败')
   } finally {
     loading.value = false
@@ -261,7 +261,7 @@ const handleToggleStatus = async (row) => {
     await updateUserStatus(row.id, { status: newStatus })
     ElMessage.success(`${actionText}成功`)
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error(`${actionText}失败`)
     }
@@ -274,7 +274,7 @@ const handleDelete = async (row) => {
     await updateUserStatus(row.id, { status: 3 })
     ElMessage.success('删除成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -319,7 +319,7 @@ async function handleImportSubmit() {
       ElMessage.success('导入完成')
       fetchData()
     }
-  } catch (err) {
+  } catch {
     ElMessage.error('导入失败，请检查文件格式')
   } finally {
     importLoading.value = false

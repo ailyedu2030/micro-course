@@ -144,7 +144,7 @@ const fetchCourses = async () => {
   try {
     const { data } = await getCourses({ size: 1000 })
     courseOptions.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程列表失败')
   }
 }
@@ -157,7 +157,7 @@ const fetchData = async () => {
     const result = data
     tableData.value = Array.isArray(result) ? result : (result.items || [])
     totalElements.value = Array.isArray(result) ? result.length : (result.totalElements || tableData.value.length)
-  } catch (error) {
+  } catch {
     ElMessage.error('获取选课列表失败')
   } finally {
     loading.value = false
@@ -200,7 +200,7 @@ const handleCancel = async (row) => {
     await cancelEnrollment(row.id)
     ElMessage.success('取消成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('取消失败')
     }
@@ -222,7 +222,7 @@ const handleSubmit = async () => {
       ElMessage.success('编辑成功')
       dialogVisible.value = false
       fetchData()
-    } catch (error) {
+    } catch {
       ElMessage.error('编辑失败')
     } finally {
       submitLoading.value = false

@@ -171,7 +171,7 @@ const fetchData = async () => {
     const res = await getPosts(params)
     tableData.value = res.data?.items || []
     totalElements.value = res.data?.totalElements || 0
-  } catch (e) {
+  } catch {
     ElMessage.error('获取帖子列表失败')
   } finally {
     loading.value = false
@@ -201,7 +201,7 @@ const handleSubmitPost = async () => {
     resetPostForm()
     page.value = 1
     fetchData()
-  } catch (e) {
+  } catch {
     ElMessage.error('发布失败')
   } finally {
     submitting.value = false
@@ -216,7 +216,7 @@ const viewDetail = async (row) => {
     const commentRes = await getComments(row.id)
     comments.value = commentRes.data || []
     detailDialogVisible.value = true
-  } catch (e) {
+  } catch {
     ElMessage.error('加载帖子详情失败')
   }
 }
@@ -234,7 +234,7 @@ const handleReply = async ({ parentId, content }) => {
     // 刷新评论
     const commentRes = await getComments(currentPost.value.id)
     comments.value = commentRes.data || []
-  } catch (e) {
+  } catch {
     ElMessage.error('回复失败')
   }
 }
@@ -249,7 +249,7 @@ const handleSubmitReply = async () => {
     // 刷新评论
     const commentRes = await getComments(currentPost.value.id)
     comments.value = commentRes.data || []
-  } catch (e) {
+  } catch {
     ElMessage.error('回复失败')
   } finally {
     replySubmitting.value = false
@@ -263,7 +263,7 @@ const handleLikeComment = async (commentId) => {
     // 刷新评论
     const commentRes = await getComments(currentPost.value.id)
     comments.value = commentRes.data || []
-  } catch (e) {
+  } catch {
     ElMessage.error('点赞失败')
   }
 }
@@ -276,7 +276,7 @@ const handleDeletePost = async () => {
     detailDialogVisible.value = false
     page.value = 1
     fetchData()
-  } catch (e) {
+  } catch {
     if (e !== 'cancel') ElMessage.error('删除失败')
   }
 }

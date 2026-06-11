@@ -151,7 +151,7 @@
  * 练习列表页面 - Phase 6 增强：题目乱序 + 题目预览
  * @author Claude Code Agent
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getExercises, createExercise, updateExercise, deleteExercise } from '@/api/exercise'
 import { getCourses } from '@/api/course'
@@ -204,7 +204,7 @@ const fetchCourses = async () => {
   try {
     const { data } = await getCourses({ size: 1000 })
     courses.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程列表失败')
   }
 }
@@ -220,7 +220,7 @@ const fetchData = async () => {
     const { data } = await getExercises(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取练习列表失败')
   } finally {
     loading.value = false
@@ -283,7 +283,7 @@ const handleDelete = async (row) => {
     await deleteExercise(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -305,7 +305,7 @@ const handleSubmit = async () => {
       }
       dialogVisible.value = false
       fetchData()
-    } catch (error) {
+    } catch {
       ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
     } finally {
       submitLoading.value = false
@@ -326,7 +326,7 @@ const handlePreview = async (row) => {
   try {
     const { data } = await getQuestions({ exerciseId: row.id, size: 100 })
     previewQuestions.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取题目失败')
   } finally {
     previewLoading.value = false

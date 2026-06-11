@@ -214,7 +214,7 @@ async function loadData() {
     initCourseTrendChart(courseTrendRes.data || [])
     initCourseDistChart(courseDistRes.data || { draft: 0, underReview: 0, published: 0, offline: 0 })
     initLearningChart(learningRes.data || { videoPlayCount: 0, exerciseSubmitCount: 0 })
-  } catch (err) {
+  } catch {
     // 静默失败，图表保持空白
   }
 }

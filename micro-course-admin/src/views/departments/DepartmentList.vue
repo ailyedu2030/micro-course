@@ -118,7 +118,7 @@ const fetchData = async () => {
     const { data } = await getDepartments(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取院系列表失败')
   } finally {
     loading.value = false
@@ -171,7 +171,7 @@ const handleDelete = async (row) => {
     await deleteDepartment(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -193,7 +193,7 @@ const handleSubmit = async () => {
       }
       dialogVisible.value = false
       fetchData()
-    } catch (error) {
+    } catch {
       ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
     } finally {
       submitLoading.value = false

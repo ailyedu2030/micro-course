@@ -123,7 +123,7 @@ const fetchEnrollments = async () => {
     const res = await getMyEnrollments(userId)
     // 后端返回已按 enrolledAt DESC 排序
     enrollments.value = res.data || []
-  } catch (e) {
+  } catch {
     ElMessage.error('加载课程失败')
   } finally {
     loading.value = false

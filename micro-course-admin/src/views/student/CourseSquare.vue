@@ -162,7 +162,7 @@ const fetchCategories = async () => {
     const { data } = await getCategories({ size: 1000 })
     // 后端返回 { items: [...] } 或直接是数组
     categoryTree.value = data.items || data || []
-  } catch (error) {
+  } catch {
   }
 }
 
@@ -180,7 +180,7 @@ const fetchCourses = async () => {
     const { data } = await getCourses(params)
     courseList.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程列表失败')
   } finally {
     loading.value = false

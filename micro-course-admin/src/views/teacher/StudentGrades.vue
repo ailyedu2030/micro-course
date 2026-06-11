@@ -100,7 +100,7 @@ const fetchCourses = async () => {
     if (route.query.courseId) {
       searchForm.courseId = Number(route.query.courseId)
     }
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程列表失败')
   }
 }
@@ -127,7 +127,7 @@ const fetchData = async () => {
       tableData.value = result.items || []
       totalElements.value = result.totalElements || tableData.value.length
     }
-  } catch (error) {
+  } catch {
     ElMessage.error('获取学员成绩失败')
   } finally {
     loading.value = false

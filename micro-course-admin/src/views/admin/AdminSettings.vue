@@ -83,7 +83,7 @@ async function fetchSettings() {
       ...item,
       dirty: false
     }))
-  } catch (error) {
+  } catch {
     ElMessage.error('获取设置列表失败')
   } finally {
     loading.value = false
@@ -122,7 +122,7 @@ async function handleSave() {
     // 刷新列表
     await fetchSettings()
     dirtyKeys.clear()
-  } catch (error) {
+  } catch {
     ElMessage.error('保存失败')
   } finally {
     saving.value = false

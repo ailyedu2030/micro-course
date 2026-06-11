@@ -47,8 +47,7 @@
             :data="chapters"
             stripe
             border
-           
-          >
+>
             <el-table-column type="index" label="#" width="60" align="center" />
             <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
             <el-table-column prop="title" label="章节标题" min-width="160" show-overflow-tooltip />
@@ -59,19 +58,25 @@
                   type="primary"
                   size="small"
                   effect="plain"
-                >视频</el-tag>
+                >
+视频
+</el-tag>
                 <el-tag
                   v-else-if="row.chapterType === 'EXERCISE'"
                   type="success"
                   size="small"
                   effect="plain"
-                >练习</el-tag>
+                >
+练习
+</el-tag>
                 <el-tag
                   v-else
                   type="info"
                   size="small"
                   effect="plain"
-                >{{ row.chapterType }}</el-tag>
+                >
+{{ row.chapterType }}
+</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="duration" label="时长" width="100" align="center">

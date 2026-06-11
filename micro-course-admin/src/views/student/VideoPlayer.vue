@@ -150,7 +150,7 @@ const loadVideo = async () => {
     await nextTick()
     initPlayer()
     await loadProgress()
-  } catch (error) {
+  } catch {
     ElMessage.error('视频加载失败')
   } finally {
     loading.value = false
@@ -232,7 +232,7 @@ const loadProgress = async () => {
         video.addEventListener('loadedmetadata', setPosition)
       }
     }
-  } catch (error) {
+  } catch {
     // Silently ignore progress loading failure
   }
 }
@@ -255,7 +255,7 @@ const ensureProgressRecord = async () => {
     })
     progressId.value = (res.data || res).id
     return !!progressId.value
-  } catch (error) {
+  } catch {
     return false
   }
 }
@@ -286,7 +286,7 @@ const startProgressReporting = () => {
           videoProgress: Math.round(progressPercent)
         }
       })
-    } catch (error) {
+    } catch {
       // Silently ignore progress reporting failure
     }
   }, 10000)
@@ -321,7 +321,7 @@ const onEnded = async () => {
         }
       })
     }
-  } catch (error) {
+  } catch {
     // Silently ignore
   }
   ElMessage.success('视频播放完成')
@@ -356,7 +356,7 @@ const toggleFullscreen = async () => {
       } else if (video.webkitRequestFullscreen) {
         await video.webkitRequestFullscreen()
       }
-    } catch (error) {
+    } catch {
       // Fallback to mini mode
       isMiniMode.value = true
     }

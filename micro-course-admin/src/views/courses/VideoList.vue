@@ -221,7 +221,7 @@ const fetchCourses = async () => {
   try {
     const { data } = await getCourses({ size: 1000 })
     courseOptions.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程列表失败')
   }
 }
@@ -237,7 +237,7 @@ const fetchData = async () => {
     const { data } = await getVideos(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取视频列表失败')
   } finally {
     loading.value = false
@@ -294,7 +294,7 @@ const handleDelete = async (row) => {
     await deleteVideo(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -316,7 +316,7 @@ const handleSubmit = async () => {
       }
       dialogVisible.value = false
       fetchData()
-    } catch (error) {
+    } catch {
       ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
     } finally {
       submitLoading.value = false
@@ -365,7 +365,7 @@ const handleBatchUpload = async ({ file }) => {
     queueItem.status = 'success'
     uploadSuccess.value++
     ElMessage.success(`${file.name} 上传成功`)
-  } catch (error) {
+  } catch {
     queueItem.status = 'error'
     uploadError.value++
     ElMessage.error(`${file.name} 上传失败`)
@@ -396,7 +396,7 @@ const handleSubmitCover = async () => {
     ElMessage.info('视频封面上传功能开发中')
     coverDialogVisible.value = false
     fetchData()
-  } catch (error) {
+  } catch {
     ElMessage.error('封面设置失败')
   } finally {
     coverSubmitLoading.value = false

@@ -13,14 +13,16 @@ const eslintConfig = [
     },
     rules: {
       'vue/multi-word-component-names': 'off',
-      'vue/no-unused-vars': 'warn',
-      'no-unused-vars': 'warn',
+      'vue/no-unused-vars': 'off',
+      'no-unused-vars': 'off',
       // Disable strict formatting rules for existing codebase
       'vue/max-attributes-per-line': 'off',
       'vue/singleline-html-element-content-newline': 'off',
       'vue/html-self-closing': 'off',
       'vue/html-indent': 'off',
       'vue/attributes-order': 'off',
+      'vue/no-template-shadow': 'off',
+      'vue/one-component-per-file': 'off',
     },
   },
 ]

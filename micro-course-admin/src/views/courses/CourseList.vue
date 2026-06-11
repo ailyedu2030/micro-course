@@ -187,7 +187,7 @@ const fetchCategories = async () => {
   try {
     const { data } = await getCategories({ size: 1000 })
     categories.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取分类列表失败')
   }
 }
@@ -206,7 +206,7 @@ const fetchData = async () => {
     const { data } = await getCourses(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程列表失败')
   } finally {
     loading.value = false
@@ -263,7 +263,7 @@ const handleApprove = async (row) => {
     await updateCourseStatus(row.id, 2)
     ElMessage.success('审核通过成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -276,7 +276,7 @@ const handleReject = async (row) => {
     await updateCourseStatus(row.id, 3)
     ElMessage.success('驳回成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -289,7 +289,7 @@ const handlePublish = async (row) => {
     await updateCourseStatus(row.id, 4)
     ElMessage.success('发布成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -302,7 +302,7 @@ const handleUnpublish = async (row) => {
     await updateCourseStatus(row.id, 5)
     ElMessage.success('下架成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -315,7 +315,7 @@ const handleDelete = async (row) => {
     await deleteCourse(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -337,7 +337,7 @@ const handleCopy = async (row) => {
     await createCourse(copyData)
     ElMessage.success('复制成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('复制失败')
     }
@@ -354,7 +354,7 @@ const handleSubmit = async () => {
       ElMessage.success('创建成功')
       dialogVisible.value = false
       fetchData()
-    } catch (error) {
+    } catch {
       ElMessage.error('创建失败')
     } finally {
       submitLoading.value = false

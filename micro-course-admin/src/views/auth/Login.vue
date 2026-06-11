@@ -41,7 +41,7 @@ const handleLogin = async () => {
       await userStore.login(form)
       ElMessage.success('登录成功')
       router.push('/')
-    } catch (e) {
+    } catch {
       // 错误已由 request.js 拦截器统一提示
     } finally {
       loading.value = false

@@ -169,7 +169,7 @@ const fetchDepartments = async () => {
   try {
     const { data } = await getDepartments({ size: 1000 })
     departments.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取院系列表失败')
   }
 }
@@ -185,7 +185,7 @@ const fetchMajors = async (departmentId) => {
   try {
     const { data } = await getMajors({ departmentId, size: 1000 })
     majors.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取专业列表失败')
   }
 }
@@ -199,7 +199,7 @@ const fetchClasses = async (majorId) => {
   try {
     const { data } = await getClasses({ majorId, size: 1000 })
     classes.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取班级列表失败')
   }
 }
@@ -234,7 +234,7 @@ const handleSubmit = async () => {
         ElMessage.success('创建成功')
       }
       router.push('/users')
-    } catch (error) {
+    } catch {
       ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
     } finally {
       submitLoading.value = false
@@ -262,7 +262,7 @@ const loadUserData = async (id) => {
     if (data.majorId) {
       await fetchClasses(data.majorId)
     }
-  } catch (error) {
+  } catch {
     ElMessage.error('获取用户信息失败')
   }
 }

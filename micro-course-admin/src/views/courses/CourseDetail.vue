@@ -222,7 +222,7 @@ const fetchCategories = async () => {
   try {
     const { data } = await getCategories({ size: 1000 })
     categories.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取分类列表失败')
   }
 }
@@ -242,7 +242,7 @@ const fetchCourse = async () => {
       formData.semester = data.semester || ''
       formData.difficulty = data.difficulty || ''
     }
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程信息失败')
   } finally {
     loading.value = false
@@ -257,7 +257,7 @@ const fetchChapters = async () => {
     chapters.value = data.items || []
     await nextTick()
     initSortable()
-  } catch (error) {
+  } catch {
     ElMessage.error('获取章节列表失败')
   } finally {
     chapterLoading.value = false
@@ -286,7 +286,7 @@ const handleSaveSort = async () => {
   try {
     // 尝试调用后端排序API，如未实现则提示
     ElMessage.info('后端排序API未提供，已本地保存排序结果')
-  } catch (error) {
+  } catch {
     ElMessage.error('保存排序失败')
   }
 }
@@ -312,7 +312,7 @@ const handleSubmit = async () => {
       await updateCourse(courseId.value, formData)
       ElMessage.success('保存成功')
       router.push(`/courses/${courseId.value}`)
-    } catch (error) {
+    } catch {
       ElMessage.error('保存失败')
     } finally {
       submitLoading.value = false
@@ -326,7 +326,7 @@ const handleApprove = async () => {
     await updateCourseStatus(courseId.value, 2)
     ElMessage.success('审核通过成功')
     fetchCourse()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -339,7 +339,7 @@ const handleReject = async () => {
     await updateCourseStatus(courseId.value, 3)
     ElMessage.success('驳回成功')
     fetchCourse()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -352,7 +352,7 @@ const handlePublish = async () => {
     await updateCourseStatus(courseId.value, 4)
     ElMessage.success('发布成功')
     fetchCourse()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -365,7 +365,7 @@ const handleUnpublish = async () => {
     await updateCourseStatus(courseId.value, 5)
     ElMessage.success('下架成功')
     fetchCourse()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -378,7 +378,7 @@ const handleSubmitForReview = async () => {
     await submitCourseForReview(courseId.value)
     ElMessage.success('提交成功，课程已进入审核流程')
     fetchCourse()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('提交失败')
     }
@@ -414,7 +414,7 @@ const handleDeleteChapter = async (row) => {
     await deleteChapter(row.id)
     ElMessage.success('删除成功')
     fetchChapters()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -443,7 +443,7 @@ const handleChapterSubmit = async () => {
       }
       chapterDialogVisible.value = false
       fetchChapters()
-    } catch (error) {
+    } catch {
       ElMessage.error(isChapterEdit.value ? '编辑失败' : '创建失败')
     } finally {
       chapterSubmitLoading.value = false

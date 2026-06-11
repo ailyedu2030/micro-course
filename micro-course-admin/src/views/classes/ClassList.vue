@@ -136,7 +136,7 @@ const fetchMajors = async () => {
   try {
     const { data } = await getMajors({ page: 0, size: 1000 })
     majorOptions.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取专业列表失败')
   }
 }
@@ -154,7 +154,7 @@ const fetchData = async () => {
     const { data } = await getClasses(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取班级列表失败')
   } finally {
     loading.value = false
@@ -213,7 +213,7 @@ const handleDelete = async (row) => {
     await deleteClass(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -235,7 +235,7 @@ const handleSubmit = async () => {
       }
       dialogVisible.value = false
       fetchData()
-    } catch (error) {
+    } catch {
       ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
     } finally {
       submitLoading.value = false

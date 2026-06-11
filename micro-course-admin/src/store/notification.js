@@ -12,7 +12,7 @@ export const useNotificationStore = defineStore('notification', {
       try {
         const res = await getUnreadCount()
         this.unreadCount = res.data || 0
-      } catch (e) {
+      } catch {
         /* silent */
       }
     },
@@ -21,7 +21,7 @@ export const useNotificationStore = defineStore('notification', {
         const res = await getNotifications(params)
         this.list = res.data?.items || []
         return res.data
-      } catch (e) {
+      } catch {
         return { items: [], totalElements: 0 }
       }
     },
@@ -31,7 +31,7 @@ export const useNotificationStore = defineStore('notification', {
         this.unreadCount = Math.max(0, this.unreadCount - 1)
         const item = this.list.find(n => n.id === id)
         if (item) item.isRead = true
-      } catch (e) {
+      } catch {
         /* silent */
       }
     },
@@ -40,7 +40,7 @@ export const useNotificationStore = defineStore('notification', {
         await markAllAsRead()
         this.unreadCount = 0
         this.list.forEach(n => { n.isRead = true })
-      } catch (e) {
+      } catch {
         // silent
       }
     },

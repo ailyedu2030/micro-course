@@ -204,7 +204,7 @@ const fetchEnrollments = async (userId) => {
   try {
     const res = await getMyEnrollments(userId)
     enrollments.value = res.data || []
-  } catch (e) {
+  } catch {
     // ignore
   }
 }
@@ -214,7 +214,7 @@ const fetchCheckIns = async () => {
   try {
     const res = await getMyCheckIns({ days: 30 })
     checkinRecords.value = res.data || []
-  } catch (e) {
+  } catch {
     // ignore
   }
 }
@@ -224,7 +224,7 @@ const fetchStreak = async () => {
   try {
     const res = await getCheckInStreak()
     streakDays.value = res.data?.streak || 0
-  } catch (e) {
+  } catch {
     streakDays.value = 0
   }
 }
@@ -242,7 +242,7 @@ const handleCheckIn = async () => {
     await createCheckIn({})
     ElMessage.success('打卡成功！')
     await Promise.all([fetchCheckIns(), fetchStreak()])
-  } catch (e) {
+  } catch {
     ElMessage.error('打卡失败，请稍后重试')
   } finally {
     checkinLoading.value = false

@@ -118,7 +118,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="选项" prop="options">
-          <el-input v-model="formData.options" type="textarea" :rows="3" placeholder='请输入JSON格式选项，如：[{"label":"A","content":"选项内容"}]' />
+          <el-input v-model="formData.options" type="textarea" :rows="3" placeholder="请输入JSON格式选项，如：[{&quot;label&quot;:&quot;A&quot;,&quot;content&quot;:&quot;选项内容&quot;}]" />
         </el-form-item>
         <el-form-item label="答案" prop="answer">
           <el-input v-model="formData.answer" type="textarea" :rows="2" placeholder="请输入答案" />
@@ -228,7 +228,7 @@ const fetchCourses = async () => {
   try {
     const { data } = await getCourses({ size: 1000 })
     courses.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取课程列表失败')
   }
 }
@@ -245,7 +245,7 @@ const fetchData = async () => {
     const { data } = await getQuestions(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
     ElMessage.error('获取题目列表失败')
   } finally {
     loading.value = false
@@ -307,7 +307,7 @@ const handleDelete = async (row) => {
     await deleteQuestion(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch (error) {
+  } catch {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -324,7 +324,7 @@ const handleSubmit = async () => {
       if (submitData.options) {
         try {
           submitData.options = JSON.parse(submitData.options)
-        } catch (e) {
+        } catch {
           ElMessage.warning('选项格式应为JSON')
           submitLoading.value = false
           return
@@ -339,7 +339,7 @@ const handleSubmit = async () => {
       }
       dialogVisible.value = false
       fetchData()
-    } catch (error) {
+    } catch {
       ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
     } finally {
       submitLoading.value = false
@@ -371,7 +371,7 @@ const parseImportFile = (file) => {
       const ws = wb.Sheets[wb.SheetNames[0]]
       const jsonData = XLSX.utils.sheet_to_json(ws)
       importPreview.value = jsonData
-    } catch (error) {
+    } catch {
       ElMessage.error('文件解析失败')
     }
   }
@@ -388,7 +388,7 @@ const handleConfirmImport = async () => {
     // 实际应调用后端批量导入API
     ElMessage.info('批量导入API未提供，已本地解析文件内容')
     importDialogVisible.value = false
-  } catch (error) {
+  } catch {
     ElMessage.error('导入失败')
   } finally {
     importLoading.value = false

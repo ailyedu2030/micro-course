@@ -103,7 +103,7 @@ const fetchPost = async () => {
   try {
     const { data } = await getPostById(route.params.id)
     post.value = data
-  } catch (error) {
+  } catch {
     ElMessage.error('获取帖子详情失败')
   } finally {
     postLoading.value = false
@@ -114,7 +114,7 @@ const fetchComments = async () => {
   try {
     const { data } = await getComments(route.params.id)
     comments.value = data.items || []
-  } catch (error) {
+  } catch {
     ElMessage.error('获取评论失败')
   }
 }
@@ -124,7 +124,7 @@ const handleLikePost = async () => {
     await likeComment(post.value.id)
     post.value.likeCount = (post.value.likeCount || 0) + 1
     ElMessage.success('点赞成功')
-  } catch (error) {
+  } catch {
     ElMessage.error('点赞失败')
   }
 }
@@ -134,7 +134,7 @@ const handleReply = async ({ parentId, content }) => {
     await createComment({ postId: route.params.id, parentId, content })
     ElMessage.success('回复成功')
     fetchComments()
-  } catch (error) {
+  } catch {
     ElMessage.error('回复失败')
   }
 }
@@ -145,7 +145,7 @@ const handleLikeComment = async (id) => {
     const comment = findComment(comments.value, id)
     if (comment) comment.likeCount = (comment.likeCount || 0) + 1
     ElMessage.success('点赞成功')
-  } catch (error) {
+  } catch {
     ElMessage.error('点赞失败')
   }
 }
@@ -164,7 +164,7 @@ const handleDeleteComment = async (id) => {
     await deleteComment(id)
     ElMessage.success('删除成功')
     fetchComments()
-  } catch (error) {
+  } catch {
     ElMessage.error('删除失败')
   }
 }
@@ -180,7 +180,7 @@ const handleSubmitComment = async () => {
     ElMessage.success('发表评论成功')
     commentContent.value = ''
     fetchComments()
-  } catch (error) {
+  } catch {
     ElMessage.error('发表评论失败')
   } finally {
     submitLoading.value = false
