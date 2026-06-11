@@ -17,7 +17,15 @@ public enum ErrorCode {
     USERNAME_EXISTS(5002, "用户名已存在", 409),
     STUDENT_NO_EXISTS(5003, "学号/工号已存在", 409),
     EMAIL_EXISTS(5004, "邮箱已存在", 409),
-    RATE_LIMITED(429, "请求过于频繁", 429);
+    RATE_LIMITED(429, "请求过于频繁", 429),
+    COURSE_NOT_FOUND(6001, "课程不存在", 404),
+    COURSE_CATEGORY_NOT_FOUND(6002, "课程分类不存在", 404),
+    COURSE_TEACHER_NOT_FOUND(6003, "教师不存在", 404),
+    COURSE_INVALID_STATUS(6004, "无效的课程状态", 400),
+    COURSE_STATUS_TRANSITION_NOT_ALLOWED(6005, "不允许的状态转换", 400),
+    COURSE_PUBLISHED_CANNOT_EDIT(6006, "已发布的课程不允许直接编辑", 400),
+    CHAPTER_NOT_FOUND(7001, "章节不存在", 404),
+    CHAPTER_COURSE_NOT_FOUND(7002, "课程不存在", 404);
 
     private final int code;
     private final String message;
