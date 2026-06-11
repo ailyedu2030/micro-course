@@ -8,7 +8,7 @@
         </div>
       </template>
 
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px" style="max-width: 600px">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px" class="form-container-narrow">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="用户名" prop="username">
@@ -30,7 +30,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="性别" prop="gender">
-              <el-select v-model="formData.gender" placeholder="请选择" style="width: 100%">
+              <el-select v-model="formData.gender" placeholder="请选择" class="full-width">
                 <el-option label="男" value="MALE" />
                 <el-option label="女" value="FEMALE" />
               </el-select>
@@ -54,7 +54,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="角色" prop="role">
-              <el-select v-model="formData.role" placeholder="请选择角色" :disabled="isEdit" style="width: 100%">
+              <el-select v-model="formData.role" placeholder="请选择角色" :disabled="isEdit" class="full-width">
                 <el-option label="学生" value="STUDENT" />
                 <el-option label="教师" value="TEACHER" />
                 <el-option label="管理员" value="ADMIN" />
@@ -72,14 +72,14 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="院系" prop="departmentId">
-              <el-select v-model="formData.departmentId" placeholder="请选择院系" clearable style="width: 100%" @change="handleDepartmentChange">
+              <el-select v-model="formData.departmentId" placeholder="请选择院系" clearable class="full-width" @change="handleDepartmentChange">
                 <el-option v-for="dept in departments" :key="dept.id" :label="dept.name" :value="dept.id" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="专业" prop="majorId">
-              <el-select v-model="formData.majorId" placeholder="请先选择院系" clearable style="width: 100%" :disabled="!formData.departmentId" @change="handleMajorChange">
+              <el-select v-model="formData.majorId" placeholder="请先选择院系" clearable class="full-width" :disabled="!formData.departmentId" @change="handleMajorChange">
                 <el-option v-for="major in majors" :key="major.id" :label="major.name" :value="major.id" />
               </el-select>
             </el-form-item>
@@ -89,7 +89,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="班级" prop="classId">
-              <el-select v-model="formData.classId" placeholder="请先选择专业" clearable style="width: 100%" :disabled="!formData.majorId">
+              <el-select v-model="formData.classId" placeholder="请先选择专业" clearable class="full-width" :disabled="!formData.majorId">
                 <el-option v-for="cls in classes" :key="cls.id" :label="cls.name" :value="cls.id" />
               </el-select>
             </el-form-item>
@@ -279,4 +279,6 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
 }
+
+.form-container-narrow { max-width: 600px; }
 </style>

@@ -234,7 +234,7 @@ const CommentNode = defineComponent({
         <el-button v-if="comment.authorName === $attrs.currentUserName" type="danger" link size="small" @click="handleDelete">删除</el-button>
       </div>
       <div v-if="showReply" class="reply-box">
-        <el-input v-model="replyContent" placeholder="写下回复..." style="margin-bottom: 8px" />
+        <el-input v-model="replyContent" placeholder="写下回复..." class="reply-input" />
         <el-button size="small" type="primary" @click="handleReply">发送</el-button>
         <el-button size="small" @click="showReply = false">取消</el-button>
       </div>
@@ -377,4 +377,6 @@ export default {
   background: #f5f7fa;
   border-radius: 4px;
 }
+
+.reply-input { margin-bottom: 8px; }
 </style>

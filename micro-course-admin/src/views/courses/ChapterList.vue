@@ -4,8 +4,8 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable style="width: 240px" @change="handleSearch">
-            <el-option v-for="item in courseOptions" :key="item.id" :label="item.name" :value="item.id" />
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="search-input-w240" @change="handleSearch">
+            <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -23,7 +23,7 @@
           <el-button type="primary" @click="handleCreate">新增章节</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column prop="sortOrder" label="排序" width="100" />
         <el-table-column prop="title" label="标题" min-width="150" />
         <el-table-column prop="chapterType" label="类型" width="120">
@@ -63,25 +63,25 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
         <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" style="width: 100%">
-            <el-option v-for="item in courseOptions" :key="item.id" :label="item.name" :value="item.id" />
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width">
+            <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入章节标题" />
         </el-form-item>
         <el-form-item label="类型" prop="chapterType">
-          <el-select v-model="formData.chapterType" placeholder="请选择类型" style="width: 100%">
+          <el-select v-model="formData.chapterType" placeholder="请选择类型" class="full-width">
             <el-option label="视频" value="VIDEO" />
             <el-option label="练习" value="EXERCISE" />
             <el-option label="混合" value="MIXED" />
           </el-select>
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="formData.sortOrder" :min="0" style="width: 100%" />
+          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
         <el-form-item label="时长(分钟)" prop="duration">
-          <el-input-number v-model="formData.duration" :min="0" style="width: 100%" />
+          <el-input-number v-model="formData.duration" :min="0" class="full-width" />
         </el-form-item>
         <el-form-item label="描述" prop="description">
           <el-input v-model="formData.description" type="textarea" placeholder="请输入描述" :rows="3" />
@@ -177,6 +177,7 @@ const handleReset = () => {
   page.value = 1
   tableData.value = []
   totalElements.value = 0
+  fetchData()
 }
 
 const handleSizeChange = () => {
@@ -283,4 +284,8 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
+.search-input-w240 { width: 240px; }
 </style>

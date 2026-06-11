@@ -4,7 +4,7 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="名称">
-          <el-input v-model="searchForm.name" placeholder="请输入分类名称" clearable style="width: 200px" />
+          <el-input v-model="searchForm.name" placeholder="请输入分类名称" clearable class="search-input-w200" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -21,7 +21,7 @@
           <el-button type="primary" @click="handleCreate">新增分类</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column prop="name" label="名称" min-width="150" />
         <el-table-column prop="level" label="层级" width="100" />
         <el-table-column prop="sortOrder" label="排序" width="100" />
@@ -53,13 +53,13 @@
           <el-input v-model="formData.name" placeholder="请输入分类名称" />
         </el-form-item>
         <el-form-item label="层级" prop="level">
-          <el-input-number v-model="formData.level" :min="0" style="width: 100%" />
+          <el-input-number v-model="formData.level" :min="0" class="full-width" />
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="formData.sortOrder" :min="0" style="width: 100%" />
+          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
         <el-form-item label="父分类" prop="parentId">
-          <el-select v-model="formData.parentId" placeholder="请选择父分类" clearable style="width: 100%">
+          <el-select v-model="formData.parentId" placeholder="请选择父分类" clearable class="full-width">
             <el-option label="无" :value="null" />
             <el-option v-for="item in parentOptions" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
@@ -248,4 +248,8 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
+.search-input-w200 { width: 200px; }
 </style>

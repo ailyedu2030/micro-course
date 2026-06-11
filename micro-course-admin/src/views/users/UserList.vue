@@ -4,10 +4,10 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="用户名/姓名" clearable style="width: 160px" />
+          <el-input v-model="searchForm.keyword" placeholder="用户名/姓名" clearable class="search-input" />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="searchForm.role" placeholder="请选择" clearable style="width: 140px">
+          <el-select v-model="searchForm.role" placeholder="请选择" clearable class="search-select role-select">
             <el-option label="学生" value="STUDENT" />
             <el-option label="教师" value="TEACHER" />
             <el-option label="管理员" value="ADMIN" />
@@ -15,7 +15,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择" clearable style="width: 120px">
+          <el-select v-model="searchForm.status" placeholder="请选择" clearable class="search-select status-select">
             <el-option label="未激活" :value="0" />
             <el-option label="正常" :value="1" />
             <el-option label="禁用" :value="2" />
@@ -23,7 +23,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="院系">
-          <el-select v-model="searchForm.departmentId" placeholder="请选择院系" clearable style="width: 180px" @change="handleDepartmentChange">
+          <el-select v-model="searchForm.departmentId" placeholder="请选择院系" clearable class="search-select dept-select" @change="handleDepartmentChange">
             <el-option v-for="dept in departments" :key="dept.id" :label="dept.name" :value="dept.id" />
           </el-select>
         </el-form-item>
@@ -45,7 +45,7 @@
           </div>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="realName" label="姓名" min-width="100" />
@@ -124,7 +124,7 @@
           :type="importResult.failCount > 0 ? 'warning' : 'success'"
           :closable="false"
           show-icon
-          style="margin-bottom: 12px"
+          class="import-alert"
         />
         <div v-if="importResult.errors && importResult.errors.length > 0" class="error-table-wrap">
           <p class="error-title">失败记录：</p>
@@ -350,6 +350,34 @@ onMounted(() => {
   gap: 8px;
 }
 
+.search-input {
+  width: 160px;
+}
+
+.search-select {
+  width: 160px;
+}
+
+.role-select {
+  width: 140px;
+}
+
+.status-select {
+  width: 120px;
+}
+
+.dept-select {
+  width: 180px;
+}
+
+.data-table {
+  width: 100%;
+}
+
+.import-alert {
+  margin-bottom: 12px;
+}
+
 .pagination-wrap {
   margin-top: 16px;
   display: flex;
@@ -395,4 +423,11 @@ onMounted(() => {
     gap: 4px;
   }
 }
+
+.full-width { width: 100%; }
+.search-input-w140 { width: 140px; }
+.search-input-w200 { width: 200px; }
+.search-input-w240 { width: 240px; }
+.search-select-w200 { width: 200px; }
+.search-select-w240 { width: 240px; }
 </style>

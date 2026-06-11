@@ -4,7 +4,7 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="章节">
-          <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable style="width: 180px">
+          <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable class="search-input-w180">
             <el-option v-for="ch in chapters" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
@@ -23,7 +23,7 @@
           <el-button type="primary" @click="handleCreate">发帖</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
         <el-table-column prop="authorName" label="作者" width="120" />
@@ -77,7 +77,7 @@
           <el-input v-model="formData.title" placeholder="请输入标题" />
         </el-form-item>
         <el-form-item label="章节" prop="chapterId">
-          <el-select v-model="formData.chapterId" placeholder="请选择章节" style="width: 100%">
+          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width">
             <el-option v-for="ch in chapters" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
@@ -294,4 +294,8 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
+.search-input-w180 { width: 180px; }
 </style>

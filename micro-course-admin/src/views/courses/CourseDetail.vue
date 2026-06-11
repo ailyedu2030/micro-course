@@ -6,6 +6,7 @@
         <div class="card-header">
           <span>{{ isEditMode ? '编辑课程' : '课程详情' }}</span>
           <div>
+            <el-button v-if="!isEditMode && courseData.status === 0" type="primary" @click="handleSubmitForReview">提交审核</el-button>
             <el-button v-if="!isEditMode && courseData.status === 1" type="success" @click="handleApprove">审核通过</el-button>
             <el-button v-if="!isEditMode && courseData.status === 1" type="danger" @click="handleReject">驳回</el-button>
             <el-button v-if="!isEditMode && courseData.status === 2" type="primary" @click="handlePublish">发布</el-button>
@@ -45,12 +46,12 @@
       </div>
 
       <!-- 编辑模式 -->
-      <el-form v-else ref="formRef" :model="formData" :rules="formRules" label-width="100px" style="max-width: 800px">
+      <el-form v-else ref="formRef" :model="formData" :rules="formRules" label-width="100px" class="form-container">
         <el-form-item label="课程标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入课程标题" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
-          <el-select v-model="formData.categoryId" placeholder="请选择分类" style="width: 100%">
+          <el-select v-model="formData.categoryId" placeholder="请选择分类" class="full-width">
             <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
@@ -61,13 +62,13 @@
           <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入课程描述" />
         </el-form-item>
         <el-form-item label="学分" prop="creditHours">
-          <el-input-number v-model="formData.creditHours" :min="0" :max="20" style="width: 100%" />
+          <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
         </el-form-item>
         <el-form-item label="学期" prop="semester">
           <el-input v-model="formData.semester" placeholder="如：2024春季" />
         </el-form-item>
         <el-form-item label="难度" prop="difficulty">
-          <el-select v-model="formData.difficulty" placeholder="请选择难度" style="width: 100%">
+          <el-select v-model="formData.difficulty" placeholder="请选择难度" class="full-width">
             <el-option label="初级" value="BEGINNER" />
             <el-option label="中级" value="INTERMEDIATE" />
             <el-option label="高级" value="ADVANCED" />
@@ -88,7 +89,7 @@
           <el-button type="primary" size="small" @click="handleCreateChapter">新增章节</el-button>
         </div>
       </template>
-      <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe border style="width: 100%">
+      <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe border class="full-width">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
@@ -124,17 +125,17 @@
           <el-input v-model="chapterFormData.title" placeholder="请输入章节标题" />
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="chapterFormData.sortOrder" :min="0" style="width: 100%" />
+          <el-input-number v-model="chapterFormData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
         <el-form-item label="类型" prop="chapterType">
-          <el-select v-model="chapterFormData.chapterType" placeholder="请选择类型" style="width: 100%">
+          <el-select v-model="chapterFormData.chapterType" placeholder="请选择类型" class="full-width">
             <el-option label="视频" value="VIDEO" />
             <el-option label="文档" value="DOCUMENT" />
             <el-option label="测验" value="QUIZ" />
           </el-select>
         </el-form-item>
         <el-form-item label="时长(分钟)" prop="duration">
-          <el-input-number v-model="chapterFormData.duration" :min="0" style="width: 100%" />
+          <el-input-number v-model="chapterFormData.duration" :min="0" class="full-width" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -154,7 +155,7 @@ import { ref, reactive, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
-import { getCourseById, updateCourse, updateCourseStatus } from '@/api/course'
+import { getCourseById, updateCourse, updateCourseStatus, submitCourseForReview } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 
@@ -365,6 +366,19 @@ const handleUnpublish = async () => {
   }
 }
 
+const handleSubmitForReview = async () => {
+  try {
+    await ElMessageBox.confirm('确定提交该课程进行审核?', '提示', { type: 'warning' })
+    await submitCourseForReview(courseId.value)
+    ElMessage.success('提交成功，课程已进入审核流程')
+    fetchCourse()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('提交失败')
+    }
+  }
+}
+
 // 章节操作
 const handleCreateChapter = () => {
   chapterDialogTitle.value = '新增章节'
@@ -496,4 +510,7 @@ onUnmounted(() => {
     margin-bottom: 12px;
   }
 }
+
+.full-width { width: 100%; }
+.form-container { max-width: 800px; }
 </style>

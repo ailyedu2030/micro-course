@@ -296,7 +296,7 @@ public class UserServiceImpl implements UserService {
                 usersToInsert.add(user);
                 successCount++;
             } catch (Exception e) {
-                errors.add("第 " + (i + 1) + " 行：处理失败，" + e.getMessage());
+                errors.add("第 " + (i + 1) + " 行：处理失败，请检查数据格式");
                 failCount++;
             }
         }

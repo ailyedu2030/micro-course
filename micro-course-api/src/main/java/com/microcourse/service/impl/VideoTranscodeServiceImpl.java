@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.microcourse.entity.Video;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.VideoTranscodeService;
 import org.slf4j.Logger;
@@ -157,7 +158,7 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
         } catch (Exception e) {
             log.error("[VideoTranscode] 转码异常 videoId={}", videoId, e);
-            failTranscode(videoId, "转码异常: " + e.getMessage());
+            failTranscode(videoId, ErrorCode.VIDEO_TRANSCODE_FAILED.getMessage());
         }
     }
 

@@ -235,10 +235,10 @@ const handleResize = () => {
   chartInstance?.resize()
 }
 
-onMounted(() => {
-  fetchOverview()
-  fetchTrend()
-  fetchData()
+onMounted(async () => {
+  await fetchOverview()
+  await fetchTrend()
+  await fetchData()
   window.addEventListener('resize', handleResize)
 })
 

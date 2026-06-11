@@ -4,15 +4,15 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="名称">
-          <el-input v-model="searchForm.name" placeholder="请输入班级名称" clearable style="width: 200px" />
+          <el-input v-model="searchForm.name" placeholder="请输入班级名称" clearable class="search-input" />
         </el-form-item>
         <el-form-item label="专业">
-          <el-select v-model="searchForm.majorId" placeholder="请选择专业" clearable style="width: 200px">
+          <el-select v-model="searchForm.majorId" placeholder="请选择专业" clearable class="search-select major-select">
             <el-option v-for="item in majorOptions" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="年级">
-          <el-input v-model="searchForm.grade" placeholder="请输入年级" clearable style="width: 120px" />
+          <el-input v-model="searchForm.grade" placeholder="请输入年级" clearable class="search-input grade-input" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -29,7 +29,7 @@
           <el-button type="primary" @click="handleCreate">新增班级</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column prop="name" label="名称" min-width="150" />
         <el-table-column prop="majorName" label="所属专业" width="150" />
         <el-table-column prop="grade" label="年级" width="100" />
@@ -62,7 +62,7 @@
           <el-input v-model="formData.name" placeholder="请输入班级名称" />
         </el-form-item>
         <el-form-item label="所属专业" prop="majorId">
-          <el-select v-model="formData.majorId" placeholder="请选择专业" style="width: 100%">
+          <el-select v-model="formData.majorId" placeholder="请选择专业" class="full-width">
             <el-option v-for="item in majorOptions" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -73,7 +73,7 @@
           <el-input v-model="formData.counselorId" placeholder="请输入辅导员" />
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="formData.sortOrder" :min="0" style="width: 100%" />
+          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -266,9 +266,24 @@ onMounted(() => {
   align-items: center;
 }
 
+.search-input {
+  width: 200px;
+}
+
+.major-select {
+  width: 200px;
+}
+
+.grade-input {
+  width: 120px;
+}
+
 .pagination-wrap {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
 </style>

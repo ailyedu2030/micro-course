@@ -119,7 +119,7 @@ public class CourseController {
      * 权限：TEACHER, ADMIN
      */
     @PostMapping("/{id}/publish")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> publish(@PathVariable Long id) {
         courseService.publish(id);
         return R.ok();

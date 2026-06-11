@@ -4,12 +4,12 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable style="width: 160px">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="search-input-w160">
             <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="题型">
-          <el-select v-model="searchForm.questionType" placeholder="请选择题型" clearable style="width: 160px">
+          <el-select v-model="searchForm.questionType" placeholder="请选择题型" clearable class="search-input-w160">
             <el-option label="单选题" value="SINGLE" />
             <el-option label="多选题" value="MULTIPLE" />
             <el-option label="判断题" value="JUDGE" />
@@ -37,7 +37,7 @@
           </div>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="content" label="内容" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
@@ -97,7 +97,7 @@
           <el-input v-model="formData.content" type="textarea" :rows="3" placeholder="请输入题目内容" />
         </el-form-item>
         <el-form-item label="题型" prop="questionType">
-          <el-select v-model="formData.questionType" placeholder="请选择题型" style="width: 100%">
+          <el-select v-model="formData.questionType" placeholder="请选择题型" class="full-width">
             <el-option label="单选题" value="SINGLE" />
             <el-option label="多选题" value="MULTIPLE" />
             <el-option label="判断题" value="JUDGE" />
@@ -107,7 +107,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" style="width: 100%">
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width">
             <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
@@ -121,7 +121,7 @@
           <el-input v-model="formData.explanation" type="textarea" :rows="2" placeholder="请输入题目解析" />
         </el-form-item>
         <el-form-item label="难度" prop="difficulty">
-          <el-select v-model="formData.difficulty" placeholder="请选择难度" style="width: 100%">
+          <el-select v-model="formData.difficulty" placeholder="请选择难度" class="full-width">
             <el-option label="简单" :value="1" />
             <el-option label="中等" :value="2" />
             <el-option label="困难" :value="3" />
@@ -487,4 +487,8 @@ onMounted(() => {
     flex-direction: column;
   }
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
+.search-input-w160 { width: 160px; }
 </style>

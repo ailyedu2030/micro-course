@@ -4,7 +4,7 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable style="width: 200px">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="search-input-w200">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -22,7 +22,7 @@
           <span>收藏列表</span>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column prop="courseId" label="课程ID" width="100" />
         <el-table-column prop="courseName" label="课程名" min-width="150">
           <template #default="{ row }">
@@ -146,4 +146,7 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
+.search-input-w200 { width: 200px; }
 </style>

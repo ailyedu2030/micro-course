@@ -7,7 +7,7 @@
           <span>课程审核列表</span>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="teacherName" label="教师" width="120" />
@@ -149,4 +149,6 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
 </style>

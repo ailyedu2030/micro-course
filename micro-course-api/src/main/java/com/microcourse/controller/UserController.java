@@ -8,6 +8,8 @@ import com.microcourse.dto.UserStatusRequest;
 import com.microcourse.dto.UserUpdateRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.dto.R;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -90,6 +92,18 @@ public class UserController {
     @PostMapping("/batch")
     @PreAuthorize("hasRole('ADMIN')")
     public R<BatchImportResultVO> batchImport(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件大小不能超过 5MB");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || (
+                !contentType.startsWith("application/vnd.ms-excel") &&
+                !contentType.startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 Excel 文件 (.xls/.xlsx)");
+        }
         BatchImportResultVO result = userService.batchImportUsers(file);
         return R.ok(result);
     }

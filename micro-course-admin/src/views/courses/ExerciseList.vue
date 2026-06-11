@@ -4,7 +4,7 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable style="width: 160px">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="search-input-w160">
             <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
@@ -23,7 +23,7 @@
           <el-button type="primary" @click="handleCreate">新增练习</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="courseName" label="课程" width="150" />
@@ -71,7 +71,7 @@
           <el-input v-model="formData.title" placeholder="请输入练习标题" />
         </el-form-item>
         <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" style="width: 100%">
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width">
             <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
@@ -79,16 +79,16 @@
           <el-input v-model.number="formData.chapterId" placeholder="请输入章节ID" type="number" />
         </el-form-item>
         <el-form-item label="及格分数" prop="passScore">
-          <el-input-number v-model="formData.passScore" :min="0" :max="100" style="width: 100%" />
+          <el-input-number v-model="formData.passScore" :min="0" :max="100" class="full-width" />
         </el-form-item>
         <el-form-item label="时间限制" prop="timeLimit">
-          <el-input-number v-model="formData.timeLimit" :min="0" :max="300" placeholder="分钟" style="width: 100%" />
+          <el-input-number v-model="formData.timeLimit" :min="0" :max="300" placeholder="分钟" class="full-width" />
         </el-form-item>
         <el-form-item label="最大尝试次数" prop="maxAttempts">
-          <el-input-number v-model="formData.maxAttempts" :min="0" :max="10" style="width: 100%" />
+          <el-input-number v-model="formData.maxAttempts" :min="0" :max="10" class="full-width" />
         </el-form-item>
         <el-form-item label="显示答案时机" prop="showAnswerWhen">
-          <el-select v-model="formData.showAnswerWhen" placeholder="请选择" style="width: 100%">
+          <el-select v-model="formData.showAnswerWhen" placeholder="请选择" class="full-width">
             <el-option label="提交后" value="AFTER_SUBMIT" />
             <el-option label="结束后" value="AFTER_FINISH" />
             <el-option label="永不" value="NEVER" />
@@ -107,7 +107,7 @@
 
     <!-- 题目预览弹窗 -->
     <el-dialog v-model="previewDialogVisible" :title="`预览: ${previewExercise.title}`" width="700px">
-      <div v-if="previewLoading" v-loading="previewLoading" style="min-height: 200px;" />
+      <div v-if="previewLoading" v-loading="previewLoading" class="preview-loading" />
       <div v-else-if="previewQuestions.length === 0" class="preview-empty">暂无题目</div>
       <div v-else class="preview-content">
         <div class="preview-nav">
@@ -442,4 +442,9 @@ onMounted(() => {
     margin-bottom: 12px;
   }
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
+.search-input-w160 { width: 160px; }
+.preview-loading { min-height: 200px; }
 </style>

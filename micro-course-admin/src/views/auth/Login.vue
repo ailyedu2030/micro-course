@@ -1,11 +1,11 @@
 <template>
-  <div style="height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2)">
-    <div class="login-box" style="width:400px;padding:40px;background:#fff;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.15)">
-      <h2 style="text-align:center;margin-bottom:30px;color:#333;font-size:24px">微课管理平台</h2>
+  <div class="login-page">
+    <div class="login-box">
+      <h2 class="login-title">微课管理平台</h2>
       <el-form ref="formRef" :model="form" :rules="rules">
         <el-form-item prop="username"><el-input v-model="form.username" placeholder="用户名" size="large" /></el-form-item>
         <el-form-item prop="password"><el-input v-model="form.password" type="password" placeholder="密码" size="large" @keyup.enter="handleLogin" /></el-form-item>
-        <el-form-item><el-button type="primary" size="large" :loading="loading" style="width:100%" @click="handleLogin">登录</el-button></el-form-item>
+        <el-form-item><el-button type="primary" size="large" :loading="loading" class="login-btn" @click="handleLogin">登录</el-button></el-form-item>
       </el-form>
     </div>
   </div>
@@ -45,6 +45,33 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
+.login-page {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.login-title {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #333;
+  font-size: 24px;
+}
+
+.login-box {
+  width: 400px;
+  padding: 40px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.login-btn {
+  width: 100%;
+}
+
 @media (max-width: 767px) {
   .login-box { width: 90% !important; padding: 20px !important; }
 }

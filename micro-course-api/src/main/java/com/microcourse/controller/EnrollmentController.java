@@ -23,7 +23,7 @@ public class EnrollmentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<EnrollmentVO> enroll(@Valid @RequestBody EnrollmentCreateRequest request) {
         EnrollmentVO vo = enrollmentService.enroll(request);
         return R.ok(vo);
@@ -53,7 +53,7 @@ public class EnrollmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<Void> cancelEnrollment(@PathVariable Long id) {
         enrollmentService.cancelEnrollment(id);
         return R.ok();

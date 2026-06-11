@@ -4,7 +4,7 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="所属课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable style="width: 200px">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="search-input-w200">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -22,7 +22,7 @@
           <span>选课列表</span>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column prop="courseName" label="课程" min-width="150" />
         <el-table-column prop="userName" label="学生" min-width="100" />
         <el-table-column prop="progress" label="进度" width="100">
@@ -70,7 +70,7 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
         <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" style="width: 100%">
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -78,10 +78,10 @@
           <el-input v-model="formData.userId" placeholder="请输入学生ID" type="number" />
         </el-form-item>
         <el-form-item label="进度" prop="progress">
-          <el-slider v-model="formData.progress" :min="0" :max="100" style="width: 100%" />
+          <el-slider v-model="formData.progress" :min="0" :max="100" class="full-width" />
         </el-form-item>
         <el-form-item label="状态" prop="enrollmentStatus">
-          <el-select v-model="formData.enrollmentStatus" placeholder="请选择状态" style="width: 100%">
+          <el-select v-model="formData.enrollmentStatus" placeholder="请选择状态" class="full-width">
             <el-option label="待审核" value="PENDING" />
             <el-option label="已通过" value="APPROVED" />
             <el-option label="候补" value="WAITLIST" />
@@ -258,4 +258,8 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
+.search-input-w200 { width: 200px; }
 </style>

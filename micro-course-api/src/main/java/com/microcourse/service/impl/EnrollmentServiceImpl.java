@@ -13,6 +13,9 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.EnrollmentService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -132,6 +135,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (enrollment == null) {
             throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
         }
+        // IDOR 校验：仅本人或 ADMIN 可取消
+        Long currentUserId = getCurrentUserId();
+        boolean isAdmin = hasAdminRole();
+        if (!isAdmin && !enrollment.getUserId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         enrollment.setEnrollmentStatus("CANCELLED");
         enrollment.setUpdatedAt(LocalDateTime.now());
         enrollmentRepository.updateById(enrollment);
@@ -169,5 +178,20 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
 
         return vo;
+    }
+
+    private Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof Long) return (Long) principal;
+        return null;
+    }
+
+    private boolean hasAdminRole() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
+        for (GrantedAuthority granted : auth.getAuthorities()) {
+            if (granted.getAuthority().equals("ROLE_ADMIN")) return true;
+        }
+        return false;
     }
 }

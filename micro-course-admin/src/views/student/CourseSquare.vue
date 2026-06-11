@@ -168,7 +168,8 @@ const fetchCourses = async () => {
       size: size.value,
       keyword: searchForm.keyword || undefined,
       categoryId: selectedCategoryId.value || undefined,
-      difficulty: searchForm.difficulty || undefined
+      difficulty: searchForm.difficulty || undefined,
+      status: 4 // PUBLISHED
     }
     const { data } = await getCourses(params)
     courseList.value = data.items || []

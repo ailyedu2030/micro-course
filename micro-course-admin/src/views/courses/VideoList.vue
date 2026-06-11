@@ -4,7 +4,7 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="所属课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable style="width: 200px">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="search-input-w200">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -40,7 +40,7 @@
         <div class="queue-title">上传队列</div>
         <div v-for="(item, idx) in uploadQueue" :key="idx" class="queue-item">
           <span class="queue-name">{{ item.name }}</span>
-          <el-progress :percentage="item.percentage" :stroke-width="6" style="width: 200px;" />
+          <el-progress :percentage="item.percentage" :stroke-width="6" class="queue-progress" />
           <span class="queue-status">
             <el-tag v-if="item.status === 'success'" type="success" size="small">成功</el-tag>
             <el-tag v-else-if="item.status === 'error'" type="danger" size="small">失败</el-tag>
@@ -52,7 +52,7 @@
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column prop="title" label="标题" min-width="150" />
         <el-table-column prop="courseName" label="所属课程" min-width="120" />
         <el-table-column prop="chapterId" label="章节ID" width="100" />
@@ -105,7 +105,7 @@
           <el-input v-model="formData.title" placeholder="请输入视频标题" />
         </el-form-item>
         <el-form-item label="所属课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" style="width: 100%">
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -113,7 +113,7 @@
           <el-input v-model="formData.chapterId" placeholder="请输入章节ID" type="number" />
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="formData.sortOrder" :min="0" style="width: 100%" />
+          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
         <el-form-item label="视频URL" prop="url">
           <el-input v-model="formData.url" placeholder="请输入视频URL" />
@@ -148,7 +148,7 @@
 
     <!-- 封面预览弹窗 -->
     <el-dialog v-model="previewDialogVisible" title="封面预览" width="600px">
-      <img v-if="previewCoverUrl" :src="previewCoverUrl" style="width: 100%;" />
+      <img v-if="previewCoverUrl" :src="previewCoverUrl" class="full-width" />
       <span v-else>无封面</span>
     </el-dialog>
   </div>
@@ -481,6 +481,10 @@ onMounted(() => {
   width: 60px;
 }
 
+.queue-progress {
+  width: 200px;
+}
+
 .queue-summary {
   margin-top: 8px;
   font-size: 13px;
@@ -511,4 +515,8 @@ onMounted(() => {
     flex-direction: column;
   }
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
+.search-input-w200 { width: 200px; }
 </style>

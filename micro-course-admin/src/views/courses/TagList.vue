@@ -4,7 +4,7 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="名称">
-          <el-input v-model="searchForm.name" placeholder="请输入标签名称" clearable style="width: 200px" />
+          <el-input v-model="searchForm.name" placeholder="请输入标签名称" clearable class="search-input-w200" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -21,7 +21,7 @@
           <el-button type="primary" @click="handleCreate">新增标签</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column prop="name" label="名称" min-width="150" />
         <el-table-column prop="createdAt" label="创建时间" width="180" />
         <el-table-column label="操作" width="120" fixed="right">
@@ -191,4 +191,7 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
+.search-input-w200 { width: 200px; }
 </style>

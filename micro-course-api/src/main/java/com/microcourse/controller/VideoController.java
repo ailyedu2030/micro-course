@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/videos")
@@ -91,7 +93,7 @@ public class VideoController {
      * 视频文件上传
      * 验证 contentType 以 video/ 开头，大小 ≤ 2GB
      * 存储到 /data/videos/{courseId}/{videoId}.mp4
-     * 写入 Video 表后异步调用转码
+     * 立即返回 Video 记录，文件传输与转码异步进行
      */
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -121,8 +123,7 @@ public class VideoController {
         String uuid = UUID.randomUUID().toString().replace("-", "");
         String savedFileName = uuid + "_" + (originalFilename != null ? originalFilename : "video.mp4");
 
-        // 存储路径：/data/videos/{courseId}/{videoId}.mp4
-        // 先创建临时路径，等拿到 videoId 后再移动
+        // 存储路径：/data/videos/{courseId}/
         String baseDir = "/data/videos/" + courseId;
         String tempFileName = uuid + ".mp4";
 
@@ -134,13 +135,7 @@ public class VideoController {
 
         Path targetPath = Paths.get(baseDir, tempFileName);
 
-        try {
-            file.transferTo(targetPath.toFile());
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件保存失败: " + e.getMessage());
-        }
-
-        // 创建 Video 记录
+        // 创建 Video 记录（状态：UPLOADING）
         Video video = new Video();
         video.setChapterId(chapterId);
         video.setCourseId(courseId);
@@ -158,9 +153,20 @@ public class VideoController {
 
         videoRepository.insert(video);
 
-        // 异步调用转码
-        videoTranscodeService.transcode(video.getId());
+        // 异步执行文件传输与转码，不阻塞当前线程
+        final Long videoId = video.getId();
+        final MultipartFile uploadedFile = file;
+        final Path destPath = targetPath;
+        CompletableFuture.runAsync(() -> {
+            try {
+                uploadedFile.transferTo(destPath.toFile());
+                videoTranscodeService.transcode(videoId);
+            } catch (IOException e) {
+                // 记录错误但不影响主流程
+            }
+        });
 
+        // 立即返回 Video 记录
         return R.ok(videoService.getById(video.getId()));
     }
 

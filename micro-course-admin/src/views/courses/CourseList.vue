@@ -4,18 +4,18 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable style="width: 160px" />
+          <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable class="search-input-w160" />
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable style="width: 160px">
+          <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="search-input-w160">
             <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="教师">
-          <el-input v-model="searchForm.teacherName" placeholder="教师姓名" clearable style="width: 120px" />
+          <el-input v-model="searchForm.teacherName" placeholder="教师姓名" clearable class="search-input-w120" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择" clearable style="width: 120px">
+          <el-select v-model="searchForm.status" placeholder="请选择" clearable class="search-input-w120">
             <el-option label="草稿" :value="0" />
             <el-option label="待审核" :value="1" />
             <el-option label="通过" :value="2" />
@@ -40,7 +40,7 @@
           <el-button type="primary" @click="handleCreate">新增课程</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="categoryName" label="分类" width="120" />
@@ -96,7 +96,7 @@
           <el-input v-model="formData.title" placeholder="请输入课程标题" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
-          <el-select v-model="formData.categoryId" placeholder="请选择分类" style="width: 100%">
+          <el-select v-model="formData.categoryId" placeholder="请选择分类" class="full-width">
             <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
@@ -107,13 +107,13 @@
           <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入课程描述" />
         </el-form-item>
         <el-form-item label="学分" prop="creditHours">
-          <el-input-number v-model="formData.creditHours" :min="0" :max="20" style="width: 100%" />
+          <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
         </el-form-item>
         <el-form-item label="学期" prop="semester">
           <el-input v-model="formData.semester" placeholder="如：2024春季" />
         </el-form-item>
         <el-form-item label="难度" prop="difficulty">
-          <el-select v-model="formData.difficulty" placeholder="请选择难度" style="width: 100%">
+          <el-select v-model="formData.difficulty" placeholder="请选择难度" class="full-width">
             <el-option label="初级" value="BEGINNER" />
             <el-option label="中级" value="INTERMEDIATE" />
             <el-option label="高级" value="ADVANCED" />
@@ -406,4 +406,9 @@ onMounted(() => {
     margin-bottom: 12px;
   }
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
+.search-input-w160 { width: 160px; }
+.search-input-w120 { width: 120px; }
 </style>

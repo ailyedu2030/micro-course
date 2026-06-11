@@ -12,7 +12,7 @@
 
     <!-- 表格区 -->
     <el-card class="table-card" shadow="never">
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column prop="type" label="类型" width="140" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.type === 'COURSE_APPROVED'" type="success" size="small">课程通过</el-tag>
@@ -37,7 +37,7 @@
         <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{ row }">
             <el-button v-if="!row.isRead" type="primary" link size="small" @click="handleMarkRead(row)">标记已读</el-button>
-            <span v-else style="color:#999">—</span>
+            <span v-else class="dash-placeholder">—</span>
           </template>
         </el-table-column>
       </el-table>
@@ -165,9 +165,15 @@ onMounted(() => {
   padding: 12px 20px;
 }
 
+.dash-placeholder {
+  color: #999;
+}
+
 .pagination-wrap {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
 </style>

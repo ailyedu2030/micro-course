@@ -4,7 +4,7 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="名称">
-          <el-input v-model="searchForm.name" placeholder="请输入院系名称" clearable style="width: 200px" />
+          <el-input v-model="searchForm.name" placeholder="请输入院系名称" clearable class="search-input" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -21,7 +21,7 @@
           <el-button type="primary" @click="handleCreate">新增院系</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column prop="name" label="名称" min-width="150" />
         <el-table-column prop="code" label="编码" width="120" />
         <el-table-column prop="sortOrder" label="排序" width="100" />
@@ -56,7 +56,7 @@
           <el-input v-model="formData.code" placeholder="请输入院系编码" />
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="formData.sortOrder" :min="0" style="width: 100%" />
+          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -223,9 +223,16 @@ onMounted(() => {
   align-items: center;
 }
 
+.search-input {
+  width: 200px;
+}
+
 .pagination-wrap {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
 }
+
+.data-table { width: 100%; }
+.full-width { width: 100%; }
 </style>
