@@ -30,7 +30,7 @@ public class CheckIn {
     @TableField("created_at")
     private LocalDateTime createdAt;
 
-    @TableLogic
+    @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
     public CheckIn() {}

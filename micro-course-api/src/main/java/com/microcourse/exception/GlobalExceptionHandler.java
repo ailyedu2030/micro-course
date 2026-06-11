@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.nio.file.NoSuchFileException;
@@ -49,6 +51,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(404).body(R.fail(404, "接口不存在: " + e.getRequestURL()));
     }
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<R<Void>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException e) {
+        return ResponseEntity.status(405).body(R.fail(405, "请求方法不允许: " + e.getMethod()));
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<R<Void>> handleMultipart(MultipartException e) {
+        return ResponseEntity.status(400).body(R.fail(400, "请求必须为 multipart/form-data 格式: " + e.getMessage()));
+    }
+
     @ExceptionHandler(NoSuchFileException.class)
     public ResponseEntity<R<Void>> handleNoSuchFile(NoSuchFileException e) {
         return ResponseEntity.status(404).body(R.fail(404, "文件不存在"));
@@ -57,12 +69,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<R<Void>> handleBusiness(BusinessException e) {
         log.warn("BusinessException: {} - {}", e.getCode(), e.getMessage());
-        int httpStatus = mapToHttpStatus(e.getCode());
+        int httpStatus = e.getHttpStatus() > 0 ? e.getHttpStatus() : mapToHttpStatus(e.getCode());
         return ResponseEntity.status(httpStatus).body(R.fail(e.getCode(), e.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<R<Void>> handleGeneric(Exception e, HttpServletRequest request) {
+        // 检测唯一键冲突，转换为 409
+        Throwable cause = e;
+        while (cause != null) {
+            if (cause instanceof org.springframework.dao.DuplicateKeyException
+                || (cause.getMessage() != null && cause.getMessage().contains("duplicate key value"))) {
+                log.warn("Duplicate key constraint violation: {}", cause.getMessage());
+                return ResponseEntity.status(409).body(R.fail(409, "数据已存在,操作冲突"));
+            }
+            cause = cause.getCause();
+        }
         log.error("Unhandled exception", e);
         return ResponseEntity.status(500).body(R.fail(500, "服务器内部错误"));
     }

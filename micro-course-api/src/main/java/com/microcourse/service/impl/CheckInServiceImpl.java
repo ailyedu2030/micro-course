@@ -30,6 +30,16 @@ public class CheckInServiceImpl implements CheckInService {
     public CheckInVO checkIn(Long userId) {
         LocalDate today = LocalDate.now();
 
+        // 幂等性优先检查：今日已打卡则直接返回
+        CheckIn existing = checkInRepository.selectOne(
+                new LambdaQueryWrapper<CheckIn>()
+                        .eq(CheckIn::getUserId, userId)
+                        .eq(CheckIn::getCheckinDate, today)
+        );
+        if (existing != null) {
+            return convertToVO(existing);
+        }
+
         // 计算 streak_days：从昨日往前逐日检查连续天数
         LocalDate yesterday = today.minusDays(1);
         int streak = 0;
@@ -48,27 +58,14 @@ public class CheckInServiceImpl implements CheckInService {
             checkDate = checkDate.minusDays(1);
         }
 
-        // 新增打卡记录（数据库唯一索引保证幂等）
+        // 新增打卡记录
         CheckIn checkIn = new CheckIn();
         checkIn.setUserId(userId);
         checkIn.setCheckinDate(today);
         checkIn.setDuration(0);
         checkIn.setStreakDays(streak + 1);
         checkIn.setCreatedAt(LocalDateTime.now());
-        try {
-            checkInRepository.insert(checkIn);
-        } catch (DuplicateKeyException e) {
-            // 唯一索引冲突，说明今日已打卡，幂等返回
-            CheckIn existing = checkInRepository.selectOne(
-                    new LambdaQueryWrapper<CheckIn>()
-                            .eq(CheckIn::getUserId, userId)
-                            .eq(CheckIn::getCheckinDate, today)
-            );
-            if (existing != null) {
-                return convertToVO(existing);
-            }
-            throw new BusinessException(ErrorCode.ALREADY_CHECKED_IN);
-        }
+        checkInRepository.insert(checkIn);
 
         return convertToVO(checkIn);
     }

@@ -46,7 +46,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 检查 token 是否在黑名单
                 String jti = jwtUtil.getJtiFromToken(token);
                 if (jti != null && redisUtil.isTokenBlacklisted(jti)) {
-                    filterChain.doFilter(request, response);
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"code\":11001,\"message\":\"token已失效,请重新登录\"}");
                     return;
                 }
 

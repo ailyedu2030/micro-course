@@ -46,7 +46,7 @@ public class Enrollment {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
-    @TableLogic
+    @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
     public Enrollment() {}

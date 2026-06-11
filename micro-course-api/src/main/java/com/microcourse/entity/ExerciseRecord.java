@@ -38,7 +38,7 @@ public class ExerciseRecord {
     @TableField("submitted_at")
     private LocalDateTime submittedAt;
 
-    @TableLogic
+    @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
     public ExerciseRecord() {}

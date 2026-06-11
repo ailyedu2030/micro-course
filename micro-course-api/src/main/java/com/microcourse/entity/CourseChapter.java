@@ -23,7 +23,7 @@ public class CourseChapter {
     private LocalDateTime updatedAt;
     private Integer version;
 
-    @TableLogic
+    @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
     public CourseChapter() {}

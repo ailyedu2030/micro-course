@@ -23,7 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 认证服务实现
@@ -31,7 +32,7 @@ import java.util.logging.Logger;
 @Service
 public class AuthServiceImpl implements AuthService {
 
-    private static final Logger logger = Logger.getLogger(AuthServiceImpl.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
 
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
@@ -100,14 +101,14 @@ public class AuthServiceImpl implements AuthService {
             userRepository.updateById(user);
 
             // Step 8: 记录操作日志
-            OperationLog log = new OperationLog();
-            log.setUserId(user.getId());
-            log.setAction("LOGIN");
-            log.setTargetType("USER");
-            log.setTargetId(user.getId());
-            log.setIp("0.0.0.0");
-            log.setSuccess(true);
-            operationLogService.log(log);
+            OperationLog logEntry = new OperationLog();
+            logEntry.setUserId(user.getId());
+            logEntry.setAction("LOGIN");
+            logEntry.setTargetType("USER");
+            logEntry.setTargetId(user.getId());
+            logEntry.setIp("0.0.0.0");
+            logEntry.setSuccess(true);
+            operationLogService.log(logEntry);
 
             // Step 9: 构建响应
             LoginResponse response = new LoginResponse();
@@ -119,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            logger.severe("Login error for user: " + request.getUsername());
+            log.error("Login error for user: " + request.getUsername());
             e.printStackTrace();
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
@@ -173,7 +174,7 @@ public class AuthServiceImpl implements AuthService {
         // Step 1: 从 SecurityContextHolder 获取当前 userId
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal == null) {
-            logger.info("Logout: no principal found in security context");
+            log.info("Logout: no principal found in security context");
             //仍尝试从 Authorization header 黑名单 token
             blacklistCurrentToken();
             SecurityContextHolder.clearContext();
@@ -185,7 +186,7 @@ public class AuthServiceImpl implements AuthService {
         if (user != null) {
             // Step 3: 清除登录失败计数
             redisUtil.clearLoginFailure(user.getUsername());
-            logger.info("Logout: cleared login failure count for user " + user.getUsername());
+            log.info("Logout: cleared login failure count for user " + user.getUsername());
 
             // Step 3.5: 记录操作日志
             OperationLog logEntry = new OperationLog();
@@ -215,10 +216,10 @@ public class AuthServiceImpl implements AuthService {
                 long remainingTtl = jwtUtil.getExpirationRemainingSeconds(token);
                 if (jti != null && remainingTtl > 0) {
                     redisUtil.blacklistToken(jti, remainingTtl);
-                    logger.info("Logout: blacklisted token jti=" + jti + " ttl=" + remainingTtl);
+                    log.info("Logout: blacklisted token jti=" + jti + " ttl=" + remainingTtl);
                 }
             } catch (Exception e) {
-                logger.warning("Logout: failed to blacklist token: " + e.getMessage());
+                log.warn("Logout: failed to blacklist token: " + e.getMessage());
             }
         }
     }

@@ -52,7 +52,7 @@ public class Video {
 
     private Integer version;
 
-    @TableLogic
+    @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
     public Video() {}

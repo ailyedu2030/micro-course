@@ -57,7 +57,7 @@ public class User {
     @TableField("last_login_at")
     private LocalDateTime lastLoginAt;
 
-    @TableLogic
+    @TableLogic(value = "null", delval = "now()")
     @TableField("deleted_at")
     private LocalDateTime deletedAt;
 

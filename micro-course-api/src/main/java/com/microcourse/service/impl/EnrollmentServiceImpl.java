@@ -44,6 +44,15 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional
     public EnrollmentVO enroll(EnrollmentCreateRequest request) {
+        // 幂等性优先检查：已选过则直接返回
+        LambdaQueryWrapper<Enrollment> existingWrapper = new LambdaQueryWrapper<>();
+        existingWrapper.eq(Enrollment::getUserId, request.getUserId())
+                .eq(Enrollment::getCourseId, request.getCourseId());
+        Enrollment existingEnrollment = enrollmentRepository.selectOne(existingWrapper);
+        if (existingEnrollment != null) {
+            return convertToVO(existingEnrollment);
+        }
+
         // Check course exists
         Course course = courseRepository.selectById(request.getCourseId());
         if (course == null) {
@@ -65,19 +74,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.setEnrolledAt(LocalDateTime.now());
         enrollment.setUpdatedAt(LocalDateTime.now());
 
-        try {
-            enrollmentRepository.insert(enrollment);
-        } catch (DuplicateKeyException e) {
-            // 唯一索引冲突，说明已选课，幂等返回
-            LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Enrollment::getUserId, request.getUserId())
-                    .eq(Enrollment::getCourseId, request.getCourseId());
-            Enrollment existing = enrollmentRepository.selectOne(wrapper);
-            if (existing != null) {
-                return convertToVO(existing);
-            }
-            throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS);
-        }
+        enrollmentRepository.insert(enrollment);
         return convertToVO(enrollment);
     }
 
