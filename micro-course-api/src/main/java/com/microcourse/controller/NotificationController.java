@@ -31,7 +31,8 @@ public class NotificationController {
     @PutMapping("/{id}/read")
     @PreAuthorize("isAuthenticated()")
     public R<Void> markAsRead(@PathVariable Long id) {
-        notificationService.markAsRead(id);
+        Long userId = getCurrentUserId();
+        notificationService.markAsRead(id, userId);
         return R.ok();
     }
 

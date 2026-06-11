@@ -10,7 +10,7 @@ public interface NotificationService {
 
     PageResult<NotificationVO> getMyNotifications(Long userId, int page, int size);
 
-    void markAsRead(Long id);
+    void markAsRead(Long id, Long userId);
 
     long getUnreadCount(Long userId);
 

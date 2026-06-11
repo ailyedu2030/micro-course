@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.NotificationCreateRequest;
 import com.microcourse.dto.NotificationVO;
@@ -59,14 +60,13 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public void markAsRead(Long id) {
-        Notification notification = notificationRepository.selectById(id);
-        if (notification != null) {
-            notification.setIsRead(true);
-            notification.setReadAt(LocalDateTime.now());
-            notification.setUpdatedAt(LocalDateTime.now());
-            notificationRepository.updateById(notification);
-        }
+    public void markAsRead(Long id, Long userId) {
+        LambdaUpdateWrapper<Notification> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(Notification::getId, id)
+               .eq(Notification::getUserId, userId)
+               .set(Notification::getIsRead, true)
+               .set(Notification::getReadAt, LocalDateTime.now());
+        notificationRepository.update(null, wrapper);
     }
 
     @Override
