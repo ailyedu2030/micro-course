@@ -9,7 +9,18 @@
         <el-menu-item index="/majors"><el-icon><Reading /></el-icon><template #title>专业管理</template></el-menu-item>
         <el-menu-item index="/classes"><el-icon><School /></el-icon><template #title>班级管理</template></el-menu-item>
         <el-menu-item index="/users"><el-icon><User /></el-icon><template #title>用户管理</template></el-menu-item>
-        <el-menu-item index="/courses"><el-icon><Notebook /></el-icon><template #title>课程管理</template></el-menu-item>
+        <el-sub-menu index="gate2">
+          <template #title><el-icon><Notebook /></el-icon><span>课程管理</span></template>
+          <el-menu-item index="/courses">课程列表</el-menu-item>
+          <el-menu-item index="/course-categories">分类管理</el-menu-item>
+          <el-menu-item index="/chapters">章节管理</el-menu-item>
+          <el-menu-item index="/tags">标签管理</el-menu-item>
+          <el-menu-item index="/videos">视频管理</el-menu-item>
+          <el-menu-item index="/enrollments">选课管理</el-menu-item>
+          <el-menu-item index="/questions">题库管理</el-menu-item>
+          <el-menu-item index="/exercises">练习管理</el-menu-item>
+          <el-menu-item index="/favorites">收藏管理</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
     <el-container>
