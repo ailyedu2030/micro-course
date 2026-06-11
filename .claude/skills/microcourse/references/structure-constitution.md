@@ -71,6 +71,7 @@
 ❌ Controller 直接返回 Entity
 ❌ Service 直接暴露 Entity
 ❌ Repository 写业务逻辑
+❌ 使用 Lombok 注解（@Data/@Getter/@Setter/@RequiredArgsConstructor 等，JDK 17.0.18 不兼容）
 ❌ 前端硬编码 baseURL（必须 import.meta.env.VITE_API_BASE_URL）
 ❌ 手动拼接 SQL（必须 MyBatis-Plus 条件构造器）
 ❌ 后端直接返回 Entity 给前端

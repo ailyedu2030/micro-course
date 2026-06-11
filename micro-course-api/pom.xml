@@ -92,7 +92,11 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Lombok -->
+        <!-- Lombok（⚠️ 仅运行时依赖，禁止添加 annotationProcessorPaths） -->
+        <!-- 原因：JDK 17.0.18 (Homebrew) 与 Lombok 注解处理器冲突，导致 com.sun.tools.javac.code.TypeTag UNKNOWN -->
+        <!-- 结论：本项目禁用 @Data/@Getter/@Setter/@RequiredArgsConstructor/@Slf4j 等 Lombok 注解 -->
+        <!-- 所有 DTO/Entity 必须手写 getter/setter；注入使用 @Autowired 替换 @RequiredArgsConstructor -->
+        <!-- 参见复查/根因报告-Lombok冲突.md -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

@@ -1,5 +1,5 @@
 // ============================================================================
-// Controller 模板
+// Controller 模板（不使用 Lombok）
 // 替换：{Domain} = Department / Major / Class / User
 //       {domain} = department / major / class / user
 // 依据：microcourse/references/permission-matrix.md
@@ -15,16 +15,18 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.{Domain}Service;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/{domain}s")
-@RequiredArgsConstructor
 public class {Domain}Controller {
 
     private final {Domain}Service {domain}Service;
+
+    public {Domain}Controller({Domain}Service {domain}Service) {
+        this.{domain}Service = {domain}Service;
+    }
 
     // ---- 分页列表 ----
     @GetMapping

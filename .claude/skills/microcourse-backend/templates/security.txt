@@ -1,5 +1,5 @@
 // ============================================================================
-// Security 模板（JWT + SecurityConfig + Filter）
+// Security 模板（JWT + SecurityConfig + Filter · 不使用 Lombok）
 // 依据：microcourse/references/business-logic.md（JWT 签发/验证/黑名单）
 //       microcourse/references/permission-matrix.md（路径权限）
 // ============================================================================
@@ -7,7 +7,6 @@
 // ==================== 1. SecurityConfig ====================
 package com.microcourse.config;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,10 +22,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity       // ← 启用 @PreAuthorize 注解
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -82,7 +84,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -94,11 +95,15 @@ import java.io.IOException;
 import java.util.Collections;
 
 @Component
-@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final RedisUtil redisUtil;
+
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, RedisUtil redisUtil) {
+        this.jwtUtil = jwtUtil;
+        this.redisUtil = redisUtil;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,

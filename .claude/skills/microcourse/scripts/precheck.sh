@@ -251,6 +251,20 @@ check_jwt_claims() {
 }
 
 # ----------------------------------------------------------------------------
+# 13. Lombok 注解残留（依据：复盘根因报告 · Lombok-JDK17 冲突）
+# ----------------------------------------------------------------------------
+check_lombok_import() {
+    local hits
+    hits=$(grep -rn "import lombok" "$ROOT/micro-course-api/src/" 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$hits" -gt 0 ]; then
+        FAILS+=("[LOMBOK] Java 源码残留 lombok import（$hits 处，本项目禁用 Lombok 注解处理器，见 pom.xml 注释）")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+# ----------------------------------------------------------------------------
 # 主流程
 # ----------------------------------------------------------------------------
 echo "============================================================"
@@ -272,6 +286,7 @@ check_pagination_fields
 check_error_code_enum
 check_preauthorize
 check_jwt_claims
+check_lombok_import
 
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC}"

@@ -1,5 +1,5 @@
 // ============================================================================
-// Service 模板（接口 + 实现类）
+// Service 模板（接口 + 实现类 · 不使用 Lombok）
 // 替换：{Domain} = Department / Major / Class / User
 // 依据：microcourse/references/business-logic.md
 //       microcourse/references/data-contract.md
@@ -37,19 +37,26 @@ import com.microcourse.repository.{Domain}Repository;
 /* ---- 替换点: 关联表的 Repository 引用 ---- */
 // import com.microcourse.repository.{RelatedEntity}Repository;
 import com.microcourse.service.{Domain}Service;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
 @Service
-@RequiredArgsConstructor
 public class {Domain}ServiceImpl implements {Domain}Service {
 
     private final {Domain}Repository {domain}Repository;
     /* ---- 替换点: 关联表的 Repository ---- */
     // private final {RelatedEntity}Repository {related}Repository;
+
+    public {Domain}ServiceImpl({Domain}Repository {domain}Repository) {
+        this.{domain}Repository = {domain}Repository;
+    }
+    // 如果有多个 Repository，构造函数改为：
+    // public {Domain}ServiceImpl({Domain}Repository r1, {RelatedEntity}Repository r2) {
+    //     this.{domain}Repository = r1;
+    //     this.{related}Repository = r2;
+    // }
 
     @Override
     public PageResult<{Domain}VO> page(int page, int size) {

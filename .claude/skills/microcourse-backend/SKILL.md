@@ -23,6 +23,26 @@ description: |
 
 ## 2. 标准实现流程
 
+### ⚠️ Lombok 已禁用（铁律 · 不可逆）
+
+> **根因**：JDK 17.0.18 (Homebrew) 与 Lombok 注解处理器冲突，`annotationProcessorPaths`
+> 编译期报 `com.sun.tools.javac.code.TypeTag UNKNOWN`。
+>
+> **结论**：本项目**禁止使用一切 Lombok 注解**，包括但不限于：
+> `@Data` `@Getter` `@Setter` `@ToString` `@EqualsAndHashCode`
+> `@NoArgsConstructor` `@AllArgsConstructor` `@Builder` `@RequiredArgsConstructor` `@Slf4j`
+>
+> **替代方案**：
+> | Lombok 注解 | 替代方式 |
+> |---|---|
+> | `@Data` / `@Getter` / `@Setter` | 手写 getter/setter（IDE 生成即可） |
+> | `@RequiredArgsConstructor` | `@Autowired` 构造器注入 或 显式 `public XxxService(XxxRepository r) { ... }` |
+> | `@Slf4j` | 直接声明 `private static final Logger log = LoggerFactory.getLogger(Xxx.class);` |
+> | `@Builder` | 手写 Builder 模式 或 使用 MyBatis-Plus `LambdaUpdateWrapper` |
+> | `@NoArgsConstructor` / `@AllArgsConstructor` | 显式声明构造函数 |
+>
+> **违规检测**：`precheck.sh` 第 13 条规则检测 `import lombok` 并报 FAIL。
+
 ### Step 1：读 references/（契约层，来自 microcourse skill）
 
 ```
@@ -36,6 +56,7 @@ microcourse/references/structure-constitution.md → 目录/禁止项
 ### Step 2：选代码模板
 
 按模块从 `templates/` 读取对应模板，用域参数替换占位符：
+**注意：模板中已移除所有 Lombok 注解，直接复制即可。**
 
 | 模板 | 用途 | 渲染后的文件路径 |
 |------|------|----------------|
@@ -79,10 +100,13 @@ bash .claude/skills/microcourse/scripts/precheck.sh  # 预检
 ```java
 @RestController
 @RequestMapping("/api/departments")
-@RequiredArgsConstructor
 public class DepartmentController {
 
     private final DepartmentService departmentService;
+
+    public DepartmentController(DepartmentService departmentService) {
+        this.departmentService = departmentService;
+    }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
@@ -127,11 +151,15 @@ public interface DepartmentService {
 }
 
 @Service
-@RequiredArgsConstructor
 public class DepartmentServiceImpl implements DepartmentService {
 
     private final DepartmentRepository departmentRepository;
     private final MajorRepository majorRepository;
+
+    public DepartmentServiceImpl(DepartmentRepository departmentRepository, MajorRepository majorRepository) {
+        this.departmentRepository = departmentRepository;
+        this.majorRepository = majorRepository;
+    }
 
     @Override
     public void delete(Long id) {
@@ -172,7 +200,6 @@ public interface DepartmentRepository extends BaseMapper<Department> {
 
 ```java
 // Request（@Valid 校验注解）
-@Data
 public class DepartmentCreateRequest {
     @NotBlank(message = "院系名称不能为空")
     private String name;
@@ -180,10 +207,18 @@ public class DepartmentCreateRequest {
     private String code;
     private Long parentId;
     private Integer sortOrder;
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public Long getParentId() { return parentId; }
+    public void setParentId(Long parentId) { this.parentId = parentId; }
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
 }
 
 // VO（响应用，不带密码等敏感字段）
-@Data
 public class DepartmentVO {
     private Long id;
     private String name;
@@ -192,10 +227,11 @@ public class DepartmentVO {
     private Integer sortOrder;
     private String parentName;      // 关联查询字段
     private LocalDateTime createdAt;
+
+    // ... getter/setter（同上模式）
 }
 
 // PageResult（统一分页）
-@Data
 public class PageResult<T> {
     private List<T> items;
     private int page;
@@ -218,7 +254,6 @@ public class PageResult<T> {
 ### 3.5 R 统一响应
 
 ```java
-@Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class R<T> {
     private int code;

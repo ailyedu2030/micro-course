@@ -1,9 +1,10 @@
 // ============================================================================
-// DTO 模板：Request / VO / PageResult
+// DTO 模板：Request / VO / PageResult / R（不使用 Lombok）
 // 替换：{Domain} = Department / Major / Class / User
 // 依据：microcourse/references/api-contract.md（响应格式）
 //       microcourse/references/data-contract.md（字段定义）
 //       microcourse/references/business-logic.md（脱敏规则）
+// 注意：所有 getter/setter 必须显式声明，禁止使用 @Data / @Getter / @Setter
 // ============================================================================
 
 // ==================== 1. CreateRequest ====================
@@ -12,9 +13,7 @@ package com.microcourse.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
 
-@Data
 public class {Domain}CreateRequest {
     @NotBlank(message = "名称不能为空")
     private String name;
@@ -26,28 +25,34 @@ public class {Domain}CreateRequest {
     // private Long {parent}Id;
 
     private Integer sortOrder;
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    // 其他字段 getter/setter 按需添加
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
 }
 
 // ==================== 2. UpdateRequest ====================
 package com.microcourse.dto;
 
-import lombok.Data;
-
-@Data
 public class {Domain}UpdateRequest {
     private String name;
     // private String code;
     // private Long {parent}Id;
     private Integer sortOrder;
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
 }
 
 // ==================== 3. VO（响应） ====================
 package com.microcourse.dto;
 
-import lombok.Data;
 import java.time.LocalDateTime;
 
-@Data
 public class {Domain}VO {
     private Long id;
     private String name;
@@ -57,22 +62,42 @@ public class {Domain}VO {
     // private String {parent}Name;
     private Integer sortOrder;
     private LocalDateTime createdAt;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
 
 // ==================== 4. PageResult（统一分页，不可修改） ====================
 package com.microcourse.dto;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import lombok.Data;
 import java.util.List;
 
-@Data
 public class PageResult<T> {
     private List<T> items;           // 当前页数据
     private int page;                // 当前页码（0-based）
     private int size;                // 每页条数
     private long totalElements;      // 总记录数
     private long totalPages;         // 总页数（自动计算）
+
+    public List<T> getItems() { return items; }
+    public void setItems(List<T> items) { this.items = items; }
+    public int getPage() { return page; }
+    public void setPage(int page) { this.page = page; }
+    public int getSize() { return size; }
+    public void setSize(int size) { this.size = size; }
+    public long getTotalElements() { return totalElements; }
+    public void setTotalElements(long totalElements) { this.totalElements = totalElements; }
+    public long getTotalPages() { return totalPages; }
+    public void setTotalPages(long totalPages) { this.totalPages = totalPages; }
 
     public static <T> PageResult<T> of(IPage<T> page) {
         PageResult<T> result = new PageResult<>();
@@ -90,15 +115,22 @@ package com.microcourse.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.microcourse.exception.ErrorCode;
-import lombok.Data;
 
-@Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class R<T> {
     private int code;               // 200 = 成功
     private String message;         // "ok" = 成功
     private T data;                 // 业务数据，失败时为 null
     private long timestamp;         // 毫秒时间戳
+
+    public int getCode() { return code; }
+    public void setCode(int code) { this.code = code; }
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
+    public T getData() { return data; }
+    public void setData(T data) { this.data = data; }
+    public long getTimestamp() { return timestamp; }
+    public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
 
     public static <T> R<T> ok(T data) {
         R<T> r = new R<>();
@@ -130,9 +162,7 @@ public class R<T> {
 package com.microcourse.dto;
 
 import com.microcourse.enums.UserRole;
-import lombok.Data;
 
-@Data
 public class UserPageQuery {
     private String keyword;         // 模糊匹配（username/realName/email）
     private UserRole role;          // 精确匹配
@@ -140,18 +170,32 @@ public class UserPageQuery {
     private Long departmentId;      // 精确匹配
     private Long majorId;           // 精确匹配
     private Long classId;           // 精确匹配
+
+    public String getKeyword() { return keyword; }
+    public void setKeyword(String keyword) { this.keyword = keyword; }
+    public UserRole getRole() { return role; }
+    public void setRole(UserRole role) { this.role = role; }
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+    public Long getMajorId() { return majorId; }
+    public void setMajorId(Long majorId) { this.majorId = majorId; }
+    public Long getClassId() { return classId; }
+    public void setClassId(Long classId) { this.classId = classId; }
 }
 
 // ==================== 7. UserStatusRequest（仅 User /status 端点使用） ====================
 package com.microcourse.dto;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
 
-@Data
 public class UserStatusRequest {
     @NotNull(message = "状态不能为空")
     private Integer status;  // 0=软删(设deleted_at) / 1=启用(清deleted_at)
+
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
 }
 
 // ==================== 8. UserVO 特殊处理（额外字段） ====================
