@@ -1,22 +1,25 @@
-# Stage 1: Builder
-FROM maven:3.9-eclipse-temurin-17-alpine AS builder
+# =============================================================================
+# Dockerfile · 微课管理平台后端 API
+# 多阶段构建: 编译 → 运行
+# =============================================================================
 
+# ---- Stage 1: 编译 ----
+FROM maven:3.9-eclipse-temurin-17 AS builder
 WORKDIR /build
-
-# Copy pom.xml first for dependency caching
 COPY pom.xml .
-COPY src ./src
+RUN mvn dependency:go-offline -q
 
-RUN mvn package -DskipTests
+COPY src/ src/
+RUN mvn package -DskipTests -q
 
-# Stage 2: Runner
-FROM eclipse-temurin:17-jre-alpine AS runner
-
+# ---- Stage 2: 运行 ----
+FROM eclipse-temurin:17-jre
 WORKDIR /app
-
-# Copy jar from builder
 COPY --from=builder /build/target/*.jar app.jar
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -sf http://localhost:8080/api/auth/me > /dev/null || curl -sf -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"admin123"}' > /dev/null || exit 1
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

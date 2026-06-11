@@ -1,58 +1,72 @@
-# =============================================================================
-# docker-compose.yml · 微课平台 Phase 1 基础设施（精简版）
-# -----------------------------------------------------------------------------
-# 容器：仅 Redis 7
-# 用途：登录失败计数（key: login:lock:{username}）+ JWT Token 黑名单
-#
-# 决策历史（D8 / D10 / D11 / D12）：
-#   - 原计划 3 容器：PostgreSQL 16 + Redis 7 + Adminer
-#   - D8：  本机已运行 PostgreSQL 17.5（PID 996，5432 端口）→ 复用本机 PG
-#   - D10：Adminer 端口冲突 + 不阻塞 Phase 2 验证 → 暂不起
-#   - D11：清理残留：micro-course-postgres/adminer 卡在 Created 状态（5432 冲突）→ 删除
-#   - D12：docker-compose.yml 精简为只保留 Redis，DB 用本机 PG
-#
-# 数据源优先级（Phase 1 锁定）：
-#   1. PostgreSQL 17.5 → 本机 homebrew 安装（system service）
-#   2. Redis 7 → 本 docker-compose（dev/test 必需）
-#
-# 启动：docker compose -p micro-course up -d
-# 停止：docker compose -p micro-course down
-# 重置：docker compose -p micro-course down -v（删数据卷）
-#
-# 后续 Phase 切换到生产部署时，需新增 docker-compose.prod.yml，包含：
-#   - PostgreSQL 16 容器
-#   - Adminer 或 pgAdmin
-#   - 后端 micro-course-api 容器
-#   - 前端 micro-course-admin 容器
-#   - Nginx 反向代理
-# =============================================================================
+# 微课管理平台 · 生产部署
+# 用法: docker compose up -d
+# 访问: http://localhost:80
+# 注意: 首次启动自动执行 Flyway migration 建表+seed 数据
+version: '3.8'
 
 services:
-  # ---------------------------------------------------------------------------
-  # Redis 7（登录失败计数 + Token 黑名单）
-  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:17-alpine
+    container_name: microcourse-pg
+    environment:
+      POSTGRES_DB: micro_course
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
-    container_name: micro-course-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
+    container_name: microcourse-redis
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
+      interval: 10s
+      timeout: 5s
       retries: 5
-    networks:
-      - micro-course-net
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./micro-course-api
+    container_name: microcourse-api
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/micro_course
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-to-256-bit-secret}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./micro-course-admin
+    container_name: microcourse-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
 
 volumes:
-  redis_data:
-    name: micro-course-redis-data
-
-networks:
-  micro-course-net:
-    name: micro-course-net
-    driver: bridge
+  pgdata:
+  redisdata:
