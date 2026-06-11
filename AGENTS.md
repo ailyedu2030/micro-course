@@ -25,7 +25,7 @@
 ## 开发流程（强制）
 
 ### Step 1 · 读契约
-按需读取 contracts（`references/` 下 6 份 + 前端 5 份）确认所有约束。
+按需读取 contracts（`references/` 下 6 份 + 前端 6 份）确认所有约束。
 
 ### Step 2 · 预检
 ```bash

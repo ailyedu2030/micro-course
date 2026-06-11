@@ -220,6 +220,7 @@ if (isEdit.value) {
 - **TS 类型定义** → `references/frontend-data-types.md`
 - **权限前端实现** → `references/frontend-permission.md`
 - **UI/UX 规则** → `references/ui-ux-rules.md`（摘自 ui-ux-pro-max）
+- **Gate 3 模式** → `references/gate3-patterns.md`（讨论区嵌套评论/通知轮询/进度可视化）
 - **交付门禁** → `references/frontend-checklist.md`
 
 ## 5. 与 microcourse skill 共享的资源
