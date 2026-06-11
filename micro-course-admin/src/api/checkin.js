@@ -11,11 +11,3 @@ export function getCheckInStreak() {
 export function createCheckIn(data) {
   return request({ method: 'POST', url: '/check-ins', data })
 }
-
-export function getMyExerciseRecords(params) {
-  return request({ method: 'GET', url: '/exercise-records/my', params })
-}
-
-export function getExerciseRecordById(exerciseId) {
-  return request({ method: 'GET', url: `/exercise-records/my/${exerciseId}` })
-}

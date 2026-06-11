@@ -119,8 +119,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
-import { getLearningProgress } from '../../api/learning-progress'
-import { getMyCheckIns, getCheckInStreak, createCheckIn, getMyExerciseRecords } from '../../api/checkin'
+import { getMyCheckIns, getCheckInStreak, createCheckIn } from '../../api/checkin'
 
 const userStore = useUserStore()
 
@@ -146,9 +145,6 @@ const totalMinutes = computed(() => {
   let total = 0
   for (const e of enrollments.value) {
     total += e.totalWatchTime || 0
-  }
-  for (const r of exerciseRecords.value) {
-    total += r.duration || 0
   }
   return total
 })
@@ -227,17 +223,10 @@ const fetchStreak = async () => {
   }
 }
 
-// 加载练习记录
+// 练习记录 - 后端暂不支持批量查询，使用空值占位
+// TODO: 待后端提供 /exercise-records/my 列表接口后启用
 const fetchExerciseRecords = async () => {
-  trendLoading.value = true
-  try {
-    const res = await getMyExerciseRecords({ size: 5 })
-    exerciseRecords.value = res.data || []
-  } catch (e) {
-    exerciseRecords.value = []
-  } finally {
-    trendLoading.value = false
-  }
+  exerciseRecords.value = []
 }
 
 // 打卡

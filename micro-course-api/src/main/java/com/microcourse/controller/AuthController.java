@@ -1,15 +1,18 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.ChangePasswordRequest;
 import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
 import com.microcourse.dto.R;
 import com.microcourse.dto.RefreshRequest;
+import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -60,5 +63,19 @@ public class AuthController {
     public R<UserVO> me() {
         UserVO user = authService.getCurrentUser();
         return R.ok(user);
+    }
+
+    @PutMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public R<Void> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        authService.updateProfile(request);
+        return R.ok();
+    }
+
+    @PutMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    public R<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
+        return R.ok();
     }
 }

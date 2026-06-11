@@ -352,7 +352,7 @@ async function startExercise(exercise) {
     currentExercise.value = data
 
     // 加载每个题目的完整内容
-    const ids = data.questionIds || data.questionIds || []
+    const ids = data.questionIds || []
     questionIds.value = ids
     questions.value = []
 

@@ -8,12 +8,12 @@
             v-model="searchForm.keyword"
             placeholder="课程名称/教师"
             clearable
-            style="width: 200px"
+            class="keyword-input"
             @keyup.enter="handleSearch"
           />
         </el-form-item>
         <el-form-item label="难度">
-          <el-select v-model="searchForm.difficulty" placeholder="全部难度" clearable style="width: 120px">
+          <el-select v-model="searchForm.difficulty" placeholder="全部难度" clearable class="difficulty-select">
             <el-option label="初级" value="BEGINNER" />
             <el-option label="中级" value="INTERMEDIATE" />
             <el-option label="高级" value="ADVANCED" />
@@ -35,12 +35,12 @@
           </template>
           <el-scrollbar height="400px">
             <el-radio-group v-model="selectedCategoryId" class="category-group" @change="handleCategoryChange">
-              <el-radio label="" style="width: 100%; margin-bottom: 8px">全部课程</el-radio>
+              <el-radio label="" class="category-radio">全部课程</el-radio>
               <el-radio
                 v-for="cat in categoryTree"
                 :key="cat.id"
                 :label="String(cat.id)"
-                style="width: 100%; margin-bottom: 8px"
+                class="category-radio"
               >
                 {{ cat.name }}
               </el-radio>
@@ -357,6 +357,19 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: center;
+}
+
+.keyword-input {
+  width: 200px;
+}
+
+.difficulty-select {
+  width: 120px;
+}
+
+.category-radio {
+  width: 100%;
+  margin-bottom: 8px;
 }
 
 /* 移动端瀑布流 */

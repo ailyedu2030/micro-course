@@ -52,7 +52,7 @@
           </div>
           <div class="control-buttons">
             <el-button
-              :icon="isMiniMode ? 'FullScreen' : 'FullScreen'"
+              :icon="isMiniMode ? 'Close' : 'FullScreen'"
               size="small"
               circle
               @click="toggleFullscreen"
@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import Hls from 'hls.js'
 import { getVideoById } from '@/api/video'
@@ -122,6 +122,9 @@ const isMiniMode = ref(false)
 const showResumeTip = ref(false)
 const resumePosition = ref(0)
 
+// Progress record ID from server, used for PUT reporting
+const progressId = ref(null)
+
 // Progress reporting interval
 let progressInterval = null
 let lastReportedProgress = 0
@@ -142,7 +145,6 @@ const loadVideo = async () => {
     initPlayer()
     await loadProgress()
   } catch (error) {
-    console.error('加载视频失败:', error)
     ElMessage.error('视频加载失败')
   } finally {
     loading.value = false
@@ -168,7 +170,6 @@ const initPlayer = () => {
         video.play().catch(() => {})
       })
       hlsInstance.value.on(Hls.Events.ERROR, (event, data) => {
-        console.error('HLS error:', data)
         if (data.fatal) {
           ElMessage.error('视频播放出错')
         }
@@ -184,7 +185,7 @@ const initPlayer = () => {
   }
 }
 
-// Load progress from server
+// Load progress from server (returns List, find by chapterId)
 const loadProgress = async () => {
   if (!props.userId || !props.courseId) return
 
@@ -194,20 +195,26 @@ const loadProgress = async () => {
       url: '/learning-progress/progress',
       params: {
         userId: props.userId,
-        courseId: props.courseId,
-        chapterId: props.chapterId
+        courseId: props.courseId
       }
     })
 
-    const progressData = res.data
-    if (progressData && progressData.videoPosition > 0) {
+    const list = res.data || []
+    const progressData = Array.isArray(list)
+      ? list.find(p => Number(p.chapterId) === Number(props.chapterId)) || {}
+      : {}
+
+    if (progressData.id) {
+      progressId.value = progressData.id
+    }
+
+    if (progressData.videoPosition > 0) {
       resumePosition.value = progressData.videoPosition
       showResumeTip.value = true
       setTimeout(() => {
         showResumeTip.value = false
       }, 3000)
 
-      // Set video position after metadata loads
       const video = videoRef.value
       if (video) {
         const setPosition = () => {
@@ -220,7 +227,30 @@ const loadProgress = async () => {
       }
     }
   } catch (error) {
-    console.warn('加载进度失败:', error)
+    // Silently ignore progress loading failure
+  }
+}
+
+const ensureProgressRecord = async () => {
+  if (progressId.value) return true
+  if (!props.userId || !props.courseId) return false
+
+  try {
+    const res = await request({
+      method: 'POST',
+      url: '/learning-progress/progress',
+      data: {
+        userId: props.userId,
+        courseId: props.courseId,
+        chapterId: props.chapterId,
+        videoPosition: 0,
+        videoProgress: 0
+      }
+    })
+    progressId.value = (res.data || res).id
+    return !!progressId.value
+  } catch (error) {
+    return false
   }
 }
 
@@ -234,22 +264,24 @@ const startProgressReporting = () => {
     const total = video.duration
     const progressPercent = (current / total) * 100
 
-    // Only report if changed significantly (> 1%)
     if (Math.abs(progressPercent - lastReportedProgress) < 1) return
 
     lastReportedProgress = progressPercent
 
     try {
+      const hasRecord = await ensureProgressRecord()
+      if (!hasRecord) return
+
       await request({
         method: 'PUT',
-        url: `/learning-progress/progress/${props.videoId}`,
+        url: `/learning-progress/progress/${progressId.value}`,
         data: {
           videoPosition: Math.floor(current),
-          videoProgress: parseFloat(progressPercent.toFixed(2))
+          videoProgress: Math.round(progressPercent)
         }
       })
     } catch (error) {
-      console.warn('进度上报失败:', error)
+      // Silently ignore progress reporting failure
     }
   }, 10000)
 }
@@ -271,18 +303,20 @@ const onTimeUpdate = () => {
 }
 
 const onEnded = async () => {
-  // Report 100% progress
   try {
-    await request({
-      method: 'PUT',
-      url: `/learning-progress/progress/${props.videoId}`,
-      data: {
-        videoPosition: Math.floor(duration.value),
-        videoProgress: 100
-      }
-    })
+    const hasRecord = await ensureProgressRecord()
+    if (hasRecord) {
+      await request({
+        method: 'PUT',
+        url: `/learning-progress/progress/${progressId.value}`,
+        data: {
+          videoPosition: Math.floor(duration.value),
+          videoProgress: 100
+        }
+      })
+    }
   } catch (error) {
-    console.warn('进度上报失败:', error)
+    // Silently ignore
   }
   ElMessage.success('视频播放完成')
 }
@@ -361,8 +395,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   cleanup()
 })
-
-// Need nextTick
 </script>
 
 <style scoped>

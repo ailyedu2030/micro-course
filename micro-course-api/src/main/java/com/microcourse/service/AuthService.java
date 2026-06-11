@@ -1,7 +1,9 @@
 package com.microcourse.service;
 
+import com.microcourse.dto.ChangePasswordRequest;
 import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
+import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserVO;
 
 /**
@@ -38,4 +40,16 @@ public interface AuthService {
      * @return 登录响应
      */
     LoginResponse casLogin(String ticket, String state);
+
+    /**
+     * 更新当前用户资料
+     * @param request 更新资料请求
+     */
+    void updateProfile(UpdateProfileRequest request);
+
+    /**
+     * 修改当前用户密码
+     * @param request 修改密码请求
+     */
+    void changePassword(ChangePasswordRequest request);
 }

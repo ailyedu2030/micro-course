@@ -120,14 +120,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPosts, createPost, getPostById, getComments, createComment, likeComment, deletePost } from '@/api/discussion'
 import CommentNode from '@/components/CommentNode.vue'
 
 const route = useRoute()
-const router = useRouter()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -288,11 +287,6 @@ const handlePageChange = () => {
 onMounted(() => {
   fetchData()
 })
-</script>
-
-<script>
-import { computed } from 'vue'
-export default { name: 'DiscussionView' }
 </script>
 
 <style scoped>

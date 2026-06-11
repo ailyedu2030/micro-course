@@ -1,7 +1,9 @@
 package com.microcourse.service.impl;
 
+import com.microcourse.dto.ChangePasswordRequest;
 import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
+import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
@@ -189,6 +191,50 @@ public class AuthServiceImpl implements AuthService {
         response.setExpiresIn(0);
         response.setTokenType("CAS");
         return response;
+    }
+
+    @Override
+    public void updateProfile(UpdateProfileRequest request) {
+        Long userId = getCurrentUserId();
+        User user = userRepository.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        if (request.getRealName() != null) {
+            user.setRealName(request.getRealName());
+        }
+        if (request.getEmail() != null) {
+            user.setEmail(request.getEmail());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getGender() != null) {
+            user.setGender(request.getGender());
+        }
+        userRepository.updateById(user);
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        Long userId = getCurrentUserId();
+        User user = userRepository.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.updateById(user);
+    }
+
+    private Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+        return (Long) principal;
     }
 
     private UserVO convertToUserVO(User user) {

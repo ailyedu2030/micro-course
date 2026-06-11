@@ -131,14 +131,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Star, User } from '@element-plus/icons-vue'
 import { getCourseById } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getUserById } from '@/api/user'
-import { getCourseEnrollments, enroll as enrollApi, getMyEnrollments } from '@/api/enrollment'
+import { enroll as enrollApi, getMyEnrollments } from '@/api/enrollment'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -150,7 +150,7 @@ const courseId = computed(() => route.params.id)
 const course = ref({})
 const chapters = ref([])
 const teacher = ref({})
-const studentCount = ref(0)
+const studentCount = computed(() => course.value.studentCount || 0)
 
 const chapterLoading = ref(false)
 const teacherLoading = ref(false)
@@ -208,18 +208,6 @@ const fetchTeacher = async () => {
   }
 }
 
-// 获取选课学生数
-const fetchStudentCount = async () => {
-  if (!courseId.value) return
-  try {
-    const { data } = await getCourseEnrollments(courseId.value)
-    const list = Array.isArray(data) ? data : (data?.items || [])
-    studentCount.value = list.length
-  } catch {
-    studentCount.value = 0
-  }
-}
-
 // 检查当前用户是否已报名
 const checkEnrollment = async () => {
   if (!isLoggedIn.value || !courseId.value) return
@@ -243,7 +231,6 @@ const handleEnroll = async () => {
     await enrollApi({ userId: userStore.userInfo.id, courseId: courseId.value })
     ElMessage.success('报名成功')
     isEnrolled.value = true
-    await fetchStudentCount()
   } catch {
     ElMessage.error('报名失败，请重试')
   } finally {
@@ -264,7 +251,6 @@ onMounted(async () => {
   await Promise.all([
     fetchChapters(),
     fetchTeacher(),
-    fetchStudentCount(),
     checkEnrollment()
   ])
 })
