@@ -168,6 +168,61 @@ scope:   Phase 阶段编号 或 docs/ 或 skill/
 - **权限矩阵** → `references/permission-matrix.md`（11 类资源 / 4 角色 / REST 端点）
 - **验证清单** → `references/verification-checklist.md`（10 节 / Phase 1 工单交付门禁）
 
+### 4.1 交叉验证（强制流程）
+
+**每次开发阶段完成后，必须立即执行全栈穷举交叉验证。禁止跳过。**
+
+#### 触发条件
+以下任一事件发生，必须启动交叉验证：
+- 新增 ≥ 3 个 Java 文件
+- 新增 ≥ 1 个 Controller 或 Service
+- 新增 ≥ 1 个 Flyway migration
+- 修改 ErrorCode.java 或 SecurityConfig.java
+- 完成一个 Gate 子阶段
+
+#### 验证维度（必须覆盖全部 5 维）
+
+| # | 维度 | 审查内容 | Agent 数量 |
+|---|------|---------|:--------:|
+| R1 | **代码质量+契约对齐** | Lombok残留/@Autowired字段注入/分页/响应格式/Controller @PreAuthorize/ErrorCode使用 | 1 reviewer |
+| R2 | **DB迁移vs数据字典** | 逐表逐字段vs docs/数据字典.md、索引/FK/约束完整性 | 1 reviewer |
+| R3 | **安全+配置审计** | pom.xml依赖CVE/application.yml安全/Redis key格式/JWT claims完整性 | 1 reviewer |
+| R4 | **跨域一致性** | FK关系链/Entity命名vsSQL/Controller路径规范/Service接口vsController调用 | 1 reviewer |
+
+#### 验证流程（4 步）
+
+```
+Step 1: 并行启动 4 个 Reviewer Agent（R1-R4）
+Step 2: 汇总所有报告，标记 PASS/FAIL
+Step 3: 任一 FAIL → 立即修复 → 重新审查
+Step 4: 全部 PASS → git commit → 进入下一阶段
+```
+
+#### 铁律
+- ❌ 禁止：开发阶段完成后直接 commit 而不做交叉验证
+- ❌ 禁止：交叉验证发现 P0 问题后不修复就进入下一阶段
+- ❌ 禁止：只做 1-2 个维度的审查（必须 4 维全覆盖）
+- ❌ 禁止：用自己的眼睛逐文件检查（必须用 Agent Team 并行审查）
+- ✅ 每阶段 commit message 必须标注"交叉验证通过 (R1-R4)"
+
+#### 交叉验证 Prompt 模板
+```
+审查 /Users/jackie/微课平台/ 中 [阶段名] 所有新增/修改文件。
+
+审查依据:
+- .claude/skills/microcourse/references/data-contract.md
+- .claude/skills/microcourse/references/api-contract.md
+- .claude/skills/microcourse/references/business-logic.md
+- .claude/skills/microcourse/references/permission-matrix.md
+- .claude/skills/microcourse/references/structure-constitution.md
+- docs/数据字典.md
+- docs/API契约-Phase1.md
+
+[[具体审查维度见上述 R1-R4 表格]]
+
+输出: 逐项 PASS/FAIL + 文件:行号 + P0/P1/P2 分类
+```
+
 ## 5. 子技能（实施层）
 
 本 skill 是**宪法层**，定义"不做什么"和"契约是什么"。
