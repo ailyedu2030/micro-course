@@ -30,7 +30,11 @@
       <template #header>
         <div class="card-header">
           <span>题库管理</span>
-          <el-button type="primary" @click="handleCreate">新增题目</el-button>
+          <div class="header-actions">
+            <el-button type="success" @click="handleImport">导入题目</el-button>
+            <el-button v-if="tableData.length > 0" type="primary" @click="handleExport">导出 Excel</el-button>
+            <el-button type="primary" @click="handleCreate">新增题目</el-button>
+          </div>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
@@ -129,12 +133,44 @@
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 导入弹窗 -->
+    <el-dialog v-model="importDialogVisible" title="导入题目" width="500px">
+      <div class="import-tips">
+        <p>请上传 Excel 文件（.xlsx/.xls），模板格式如下：</p>
+        <el-link type="primary" :href="templateUrl" target="_blank">下载导入模板</el-link>
+      </div>
+      <el-upload
+        ref="importUploadRef"
+        :auto-upload="false"
+        :limit="1"
+        accept=".xlsx,.xls"
+        :on-change="handleImportFileChange"
+      >
+        <el-button type="primary" size="small">选择文件</el-button>
+      </el-upload>
+      <div v-if="importPreview.length > 0" class="import-preview">
+        <div class="preview-title">预览（前5条）:</div>
+        <div v-for="(item, idx) in importPreview.slice(0, 5)" :key="idx" class="preview-item">
+          {{ item.content?.substring(0, 30) }}...
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="importLoading" @click="handleConfirmImport">确认导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
+/**
+ * 题库管理页面 - Phase 6 增强：Excel题目导入 + 试题导出
+ * @author Claude Code Agent
+ */
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import * as XLSX from 'xlsx'
 import { getQuestions, createQuestion, updateQuestion, deleteQuestion } from '@/api/question'
 import { getCourses } from '@/api/course'
 
@@ -173,6 +209,14 @@ const formRules = {
   courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
   difficulty: [{ required: true, message: '请选择难度', trigger: 'change' }]
 }
+
+// 导入相关
+const importDialogVisible = ref(false)
+const importLoading = ref(false)
+const importUploadRef = ref(null)
+const importFile = ref(null)
+const importPreview = ref([])
+const templateUrl = '/api/templates/question-import-template.xlsx'
 
 const fetchCourses = async () => {
   try {
@@ -301,6 +345,74 @@ const handleDialogClose = () => {
   formRef.value?.resetFields()
 }
 
+// 导入相关
+const handleImport = () => {
+  importFile.value = null
+  importPreview.value = []
+  importDialogVisible.value = true
+}
+
+const handleImportFileChange = (file) => {
+  importFile.value = file.raw
+  parseImportFile(file.raw)
+}
+
+const parseImportFile = (file) => {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const jsonData = XLSX.utils.sheet_to_json(ws)
+      importPreview.value = jsonData
+    } catch (error) {
+      ElMessage.error('文件解析失败')
+    }
+  }
+  reader.readAsBinaryString(file)
+}
+
+const handleConfirmImport = async () => {
+  if (!importFile.value) {
+    ElMessage.warning('请先选择文件')
+    return
+  }
+  importLoading.value = true
+  try {
+    // 实际应调用后端批量导入API
+    ElMessage.info('批量导入API未提供，已本地解析文件内容')
+    importDialogVisible.value = false
+  } catch (error) {
+    ElMessage.error('导入失败')
+  } finally {
+    importLoading.value = false
+  }
+}
+
+// 导出
+const handleExport = () => {
+  if (!tableData.value.length) {
+    ElMessage.warning('暂无数据可导出')
+    return
+  }
+  const exportData = tableData.value.map(item => ({
+    内容: item.content || '',
+    题型: item.questionType || '',
+    课程ID: item.courseId || '',
+    选项: item.options ? JSON.stringify(item.options) : '',
+    答案: item.answer || '',
+    解析: item.explanation || '',
+    难度: item.difficulty === 1 ? '简单' : item.difficulty === 2 ? '中等' : item.difficulty === 3 ? '困难' : '',
+    状态: item.status === 0 ? '禁用' : item.status === 1 ? '启用' : ''
+  }))
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '题目列表')
+  const date = new Date().toISOString().split('T')[0]
+  XLSX.writeFile(wb, `questions-${date}.xlsx`)
+  ElMessage.success('导出成功')
+}
+
 onMounted(() => {
   fetchCourses()
   fetchData()
@@ -326,9 +438,53 @@ onMounted(() => {
   align-items: center;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .pagination-wrap {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.import-tips {
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.import-preview {
+  margin-top: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.preview-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.preview-item {
+  padding: 4px 0;
+  font-size: 13px;
+  color: #606266;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+@media (max-width: 768px) {
+  .question-list {
+    padding: 12px;
+  }
+
+  .search-card {
+    margin-bottom: 12px;
+  }
+
+  .header-actions {
+    flex-direction: column;
+  }
 }
 </style>

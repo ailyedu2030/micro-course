@@ -194,7 +194,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void updateProfile(UpdateProfileRequest request) {
+    public UserVO updateProfile(UpdateProfileRequest request) {
         Long userId = getCurrentUserId();
         User user = userRepository.selectById(userId);
         if (user == null) {
@@ -213,6 +213,7 @@ public class AuthServiceImpl implements AuthService {
             user.setGender(request.getGender());
         }
         userRepository.updateById(user);
+        return convertToUserVO(user);
     }
 
     @Override

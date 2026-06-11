@@ -6,6 +6,8 @@ import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/courses")
 public class CourseController {
@@ -70,6 +72,56 @@ public class CourseController {
     @PreAuthorize("hasRole('ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         courseService.delete(id);
+        return R.ok();
+    }
+
+    /**
+     * POST /api/courses/{id}/submit
+     * 提交课程审核（草稿 → 待审核）
+     * 权限：TEACHER, ADMIN
+     */
+    @PostMapping("/{id}/submit")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> submitForReview(@PathVariable Long id) {
+        courseService.submitForReview(id);
+        return R.ok();
+    }
+
+    /**
+     * POST /api/courses/{id}/approve
+     * 审核通过（待审核 → 已通过）
+     * 权限：ADMIN
+     */
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<Void> approve(@PathVariable Long id) {
+        courseService.approve(id);
+        return R.ok();
+    }
+
+    /**
+     * POST /api/courses/{id}/reject
+     * 审核拒绝（待审核 → 已驳回）
+     * 权限：ADMIN
+     * @param body {"reason": "拒绝原因"}
+     */
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String reason = body.getOrDefault("reason", "");
+        courseService.reject(id, reason);
+        return R.ok();
+    }
+
+    /**
+     * POST /api/courses/{id}/publish
+     * 发布课程（已通过 → 已发布）
+     * 权限：TEACHER, ADMIN
+     */
+    @PostMapping("/{id}/publish")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> publish(@PathVariable Long id) {
+        courseService.publish(id);
         return R.ok();
     }
 }

@@ -43,9 +43,10 @@
             {{ row.passScore ?? '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right" align="center">
+        <el-table-column label="操作" width="260" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button type="success" link size="small" @click="handlePreview(row)">预览</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -93,20 +94,62 @@
             <el-option label="永不" value="NEVER" />
           </el-select>
         </el-form-item>
+        <el-form-item label="题目乱序" prop="shuffleQuestions">
+          <el-switch v-model="formData.shuffleQuestions" />
+          <span class="form-tip">开启后学员作答时题目顺序随机</span>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 题目预览弹窗 -->
+    <el-dialog v-model="previewDialogVisible" :title="`预览: ${previewExercise.title}`" width="700px">
+      <div v-if="previewLoading" v-loading="previewLoading" style="min-height: 200px;" />
+      <div v-else-if="previewQuestions.length === 0" class="preview-empty">暂无题目</div>
+      <div v-else class="preview-content">
+        <div class="preview-nav">
+          <el-button size="small" :disabled="previewCurrentIndex === 0" @click="handlePrevQuestion">上一题</el-button>
+          <span class="preview-indicator">{{ previewCurrentIndex + 1 }} / {{ previewQuestions.length }}</span>
+          <el-button size="small" :disabled="previewCurrentIndex === previewQuestions.length - 1" @click="handleNextQuestion">下一题</el-button>
+        </div>
+        <div v-if="previewQuestions[previewCurrentIndex]" class="preview-question">
+          <div class="question-content">
+            <span class="question-label">题干:</span>
+            <span>{{ previewQuestions[previewCurrentIndex].content }}</span>
+          </div>
+          <div v-if="previewQuestions[previewCurrentIndex].options" class="question-options">
+            <div v-for="(opt, idx) in previewQuestions[previewCurrentIndex].options" :key="idx" class="option-item">
+              <span class="option-label">{{ opt.label }}.</span>
+              <span>{{ opt.content }}</span>
+            </div>
+          </div>
+          <div class="question-answer">
+            <span class="question-label">正确答案:</span>
+            <span>{{ previewQuestions[previewCurrentIndex].answer }}</span>
+          </div>
+          <div v-if="previewQuestions[previewCurrentIndex].explanation" class="question-explanation">
+            <span class="question-label">解析:</span>
+            <span>{{ previewQuestions[previewCurrentIndex].explanation }}</span>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
+/**
+ * 练习列表页面 - Phase 6 增强：题目乱序 + 题目预览
+ * @author Claude Code Agent
+ */
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getExercises, createExercise, updateExercise, deleteExercise } from '@/api/exercise'
 import { getCourses } from '@/api/course'
+import { getQuestions } from '@/api/question'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -133,7 +176,8 @@ const formData = reactive({
   passScore: 60,
   timeLimit: 60,
   maxAttempts: 3,
-  showAnswerWhen: 'AFTER_SUBMIT'
+  showAnswerWhen: 'AFTER_SUBMIT',
+  shuffleQuestions: false
 })
 
 const formRules = {
@@ -142,6 +186,13 @@ const formRules = {
   chapterId: [{ required: true, message: '请输入章节ID', trigger: 'blur' }],
   passScore: [{ required: true, message: '请输入及格分数', trigger: 'blur' }]
 }
+
+// 预览相关
+const previewDialogVisible = ref(false)
+const previewLoading = ref(false)
+const previewExercise = ref({})
+const previewQuestions = ref([])
+const previewCurrentIndex = ref(0)
 
 const fetchCourses = async () => {
   try {
@@ -201,6 +252,7 @@ const handleCreate = () => {
   formData.timeLimit = 60
   formData.maxAttempts = 3
   formData.showAnswerWhen = 'AFTER_SUBMIT'
+  formData.shuffleQuestions = false
   dialogVisible.value = true
 }
 
@@ -215,6 +267,7 @@ const handleEdit = (row) => {
   formData.timeLimit = row.timeLimit ?? 60
   formData.maxAttempts = row.maxAttempts ?? 3
   formData.showAnswerWhen = row.showAnswerWhen || 'AFTER_SUBMIT'
+  formData.shuffleQuestions = row.shuffleQuestions || false
   dialogVisible.value = true
 }
 
@@ -258,6 +311,34 @@ const handleDialogClose = () => {
   formRef.value?.resetFields()
 }
 
+// 预览相关
+const handlePreview = async (row) => {
+  previewExercise.value = row
+  previewCurrentIndex.value = 0
+  previewDialogVisible.value = true
+  previewLoading.value = true
+  try {
+    const { data } = await getQuestions({ exerciseId: row.id, size: 100 })
+    previewQuestions.value = data.items || []
+  } catch (error) {
+    ElMessage.error('获取题目失败')
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+const handlePrevQuestion = () => {
+  if (previewCurrentIndex.value > 0) {
+    previewCurrentIndex.value--
+  }
+}
+
+const handleNextQuestion = () => {
+  if (previewCurrentIndex.value < previewQuestions.value.length - 1) {
+    previewCurrentIndex.value++
+  }
+}
+
 onMounted(() => {
   fetchCourses()
   fetchData()
@@ -287,5 +368,78 @@ onMounted(() => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.form-tip {
+  margin-left: 12px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.preview-empty {
+  text-align: center;
+  padding: 40px;
+  color: #909399;
+}
+
+.preview-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.preview-indicator {
+  font-size: 14px;
+  color: #606266;
+}
+
+.preview-question {
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.question-label {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.question-content {
+  margin-bottom: 12px;
+}
+
+.question-options {
+  margin-bottom: 12px;
+}
+
+.option-item {
+  padding: 4px 0;
+}
+
+.option-label {
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.question-answer {
+  margin-bottom: 12px;
+  color: #67c23a;
+}
+
+.question-explanation {
+  color: #909399;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .exercise-list {
+    padding: 12px;
+  }
+
+  .search-card {
+    margin-bottom: 12px;
+  }
 }
 </style>

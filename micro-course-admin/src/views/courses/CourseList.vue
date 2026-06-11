@@ -45,7 +45,7 @@
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="categoryName" label="分类" width="120" />
         <el-table-column prop="teacherName" label="教师" width="100" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column prop="status" label="状态" width="120" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.status === 0" type="info" size="small">草稿</el-tag>
             <el-tag v-else-if="row.status === 1" type="warning" size="small">待审核</el-tag>
@@ -54,6 +54,7 @@
             <el-tag v-else-if="row.status === 4" type="primary" size="small">已发布</el-tag>
             <el-tag v-else-if="row.status === 5" size="small">下架</el-tag>
             <el-tag v-else type="info" size="small">归档</el-tag>
+            <div v-if="row.status === 1" class="review-tip">预计48小时内审核</div>
           </template>
         </el-table-column>
         <el-table-column prop="rating" label="评分" width="80" align="center">
@@ -62,7 +63,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="studentCount" label="学生数" width="90" align="center" />
-        <el-table-column label="操作" width="280" fixed="right" align="center">
+        <el-table-column label="操作" width="320" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.status === 1" type="success" link size="small" @click="handleApprove(row)">审核通过</el-button>
@@ -70,6 +71,7 @@
             <el-button v-if="row.status === 2" type="primary" link size="small" @click="handlePublish(row)">发布</el-button>
             <el-button v-if="row.status === 4" type="warning" link size="small" @click="handleUnpublish(row)">下架</el-button>
             <el-button type="info" link size="small" @click="handleView(row)">查看</el-button>
+            <el-button type="primary" link size="small" @click="handleCopy(row)">复制</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -127,6 +129,10 @@
 </template>
 
 <script setup>
+/**
+ * 课程列表页面 - Phase 6 增强：课程复制 + 审核时效提示
+ * @author Claude Code Agent
+ */
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -310,6 +316,28 @@ const handleDelete = async (row) => {
   }
 }
 
+const handleCopy = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定复制课程"${row.title}"?`, '复制课程', { type: 'info' })
+    const copyData = {
+      title: '复制-' + row.title,
+      categoryId: row.categoryId,
+      teacherId: row.teacherId,
+      description: row.description,
+      creditHours: row.creditHours,
+      semester: row.semester,
+      difficulty: row.difficulty
+    }
+    await createCourse(copyData)
+    ElMessage.success('复制成功')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('复制失败')
+    }
+  }
+}
+
 const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
@@ -361,5 +389,21 @@ onMounted(() => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.review-tip {
+  font-size: 11px;
+  color: #e6a23c;
+  margin-top: 2px;
+}
+
+@media (max-width: 768px) {
+  .course-list {
+    padding: 12px;
+  }
+
+  .search-card {
+    margin-bottom: 12px;
+  }
 }
 </style>

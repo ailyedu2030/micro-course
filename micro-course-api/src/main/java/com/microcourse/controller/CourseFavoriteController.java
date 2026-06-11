@@ -43,6 +43,18 @@ public class CourseFavoriteController {
         return R.ok(favorites);
     }
 
+    /**
+     * GET /api/favorites
+     * 获取所有收藏记录（管理员用）
+     * 权限：ADMIN
+     */
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    public R<List<CourseFavoriteVO>> listAll() {
+        List<CourseFavoriteVO> favorites = favoriteService.listAll();
+        return R.ok(favorites);
+    }
+
     private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof Long) {

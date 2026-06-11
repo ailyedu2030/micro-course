@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/users")
@@ -79,5 +81,16 @@ public class UserController {
                                  @Valid @RequestBody UserStatusRequest request) {
         userService.updateStatus(id, request);
         return R.ok();
+    }
+
+    /**
+     * POST /api/users/batch
+     * 批量导入用户（Excel）
+     */
+    @PostMapping("/batch")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<BatchImportResultVO> batchImport(@RequestParam("file") MultipartFile file) {
+        BatchImportResultVO result = userService.batchImportUsers(file);
+        return R.ok(result);
     }
 }

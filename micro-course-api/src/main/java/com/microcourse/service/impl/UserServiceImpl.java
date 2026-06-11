@@ -1,8 +1,11 @@
 package com.microcourse.service.impl;
 
+import com.alibaba.excel.EasyExcel;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.UserBatchImportDTO;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
 import com.microcourse.dto.UserStatusRequest;
@@ -13,8 +16,10 @@ import com.microcourse.entity.Department;
 import com.microcourse.entity.Major;
 import com.microcourse.entity.OperationLog;
 import com.microcourse.entity.User;
+import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.listener.UserBatchImportListener;
 import com.microcourse.repository.ClassesRepository;
 import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.repository.MajorRepository;
@@ -24,10 +29,15 @@ import com.microcourse.service.UserService;
 import com.microcourse.util.RedisUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -213,6 +223,102 @@ public class UserServiceImpl implements UserService {
         log.setIp("0.0.0.0");
         log.setSuccess(true);
         operationLogService.log(log);
+    }
+
+    @Override
+    public BatchImportResultVO batchImportUsers(MultipartFile file) {
+        List<String> errors = new ArrayList<>();
+        int successCount = 0;
+        int failCount = 0;
+
+        UserBatchImportListener listener = new UserBatchImportListener(passwordEncoder);
+        try {
+            EasyExcel.read(file.getInputStream(), UserBatchImportDTO.class, listener).sheet().doRead();
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+        }
+
+        errors.addAll(listener.getErrors());
+        List<UserBatchImportDTO> rows = listener.getRows();
+
+        if (rows.isEmpty() && errors.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+        }
+
+        // 检查 usernames 唯一性（在同一批次内）
+        Set<String> seenUsernames = new HashSet<>();
+        for (int i = 0; i < rows.size(); i++) {
+            UserBatchImportDTO row = rows.get(i);
+            if (seenUsernames.contains(row.getUsername())) {
+                errors.add("第 " + (listener.getRows().indexOf(row) + 1) + " 行：用户名 '" + row.getUsername() + "' 在批次中重复");
+            }
+            seenUsernames.add(row.getUsername());
+        }
+
+        // 逐条插入，收集错误
+        List<User> usersToInsert = new ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            UserBatchImportDTO row = rows.get(i);
+            try {
+                // 检查数据库中用户名是否已存在
+                if (userRepository.findByUsername(row.getUsername()).isPresent()) {
+                    errors.add("第 " + (i + 1) + " 行：用户名 '" + row.getUsername() + "' 已存在");
+                    failCount++;
+                    continue;
+                }
+
+                User user = new User();
+                user.setUsername(row.getUsername());
+                user.setPassword(passwordEncoder.encode(listener.getDefaultPassword()));
+                user.setRealName(row.getRealName());
+                user.setEmail(row.getEmail());
+                user.setStatus(1);
+
+                // 解析 role，默认 STUDENT
+                if (row.getRole() != null && !row.getRole().trim().isEmpty()) {
+                    try {
+                        user.setRole(UserRole.valueOf(row.getRole().toUpperCase()));
+                    } catch (IllegalArgumentException e) {
+                        errors.add("第 " + (i + 1) + " 行：角色 '" + row.getRole() + "' 不合法，应为 STUDENT/TEACHER/ADMIN/ACADEMIC");
+                        failCount++;
+                        continue;
+                    }
+                } else {
+                    user.setRole(UserRole.STUDENT);
+                }
+
+                user.setDepartmentId(row.getDepartmentId());
+                user.setMajorId(row.getMajorId());
+                user.setClassId(row.getClassId());
+                user.setCreatedAt(LocalDateTime.now());
+                user.setUpdatedAt(LocalDateTime.now());
+
+                usersToInsert.add(user);
+                successCount++;
+            } catch (Exception e) {
+                errors.add("第 " + (i + 1) + " 行：处理失败，" + e.getMessage());
+                failCount++;
+            }
+        }
+
+        // 批量插入
+        if (!usersToInsert.isEmpty()) {
+            for (User user : usersToInsert) {
+                userRepository.insert(user);
+            }
+        }
+
+        // failCount = 总行数 - 成功数
+        failCount = (listener.getErrors().size() + rows.size()) - successCount;
+        if (failCount < 0) {
+            failCount = 0;
+        }
+
+        BatchImportResultVO result = new BatchImportResultVO();
+        result.setSuccessCount(successCount);
+        result.setFailCount(failCount);
+        result.setErrors(errors);
+        return result;
     }
 
     private UserVO convertToVO(User user) {

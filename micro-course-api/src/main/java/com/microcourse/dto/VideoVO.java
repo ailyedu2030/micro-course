@@ -20,6 +20,7 @@ public class VideoVO {
     private Integer status;
     private Integer progress;
     private String errorMessage;
+    private String originalPath;
     private Integer sortOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -59,6 +60,8 @@ public class VideoVO {
     public void setProgress(Integer progress) { this.progress = progress; }
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    public String getOriginalPath() { return originalPath; }
+    public void setOriginalPath(String originalPath) { this.originalPath = originalPath; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
     public LocalDateTime getCreatedAt() { return createdAt; }

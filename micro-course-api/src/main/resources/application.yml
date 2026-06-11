@@ -67,6 +67,12 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+  # 视频上传：最大 2GB
+  servlet:
+    multipart:
+      max-file-size: 2GB
+      max-request-size: 2GB
+
 logging:
   level:
     com.microcourse: debug

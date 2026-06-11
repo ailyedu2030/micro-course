@@ -37,7 +37,15 @@ public enum ErrorCode {
     DISCUSSION_COMMENT_NOT_FOUND(10002, "评论不存在", 404),
     NO_PERMISSION(10003, "无权限操作", 403),
     LEARNING_PROGRESS_NOT_FOUND(11001, "学习进度不存在", 404),
-    CHECKIN_NOT_FOUND(11002, "打卡记录不存在", 404);
+    CHECKIN_NOT_FOUND(11002, "打卡记录不存在", 404),
+    VIDEO_UPLOAD_INVALID_FORMAT(12001, "无效的视频文件格式", 400),
+    VIDEO_UPLOAD_TOO_LARGE(12002, "视频文件大小超过限制（最大 2GB）", 413),
+    VIDEO_SIGN_INVALID(12003, "视频播放签名无效或已过期", 403),
+    VIDEO_TRANSCODE_FAILED(12004, "视频转码失败", 500),
+    COURSE_REVIEW_NOT_FOUND(12005, "课程评价不存在", 404),
+    COURSE_REVIEW_ALREADY_EXISTS(12006, "已存在课程评价", 409),
+    COURSE_REVIEW_INVALID_RATING(12007, "评分必须在1-5之间", 400),
+    ADMIN_SETTING_NOT_FOUND(12008, "系统配置不存在", 404);
 
     private final int code;
     private final String message;

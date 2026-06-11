@@ -20,6 +20,16 @@ public class PageResult<T> {
         return result;
     }
 
+    public static <T> PageResult<T> of(List<T> items, long totalElements, int page, int size) {
+        PageResult<T> result = new PageResult<>();
+        result.setItems(items);
+        result.setPage(page);
+        result.setSize(size);
+        result.setTotalElements(totalElements);
+        result.setTotalPages(size > 0 ? (int) Math.ceil((double) totalElements / size) : 0);
+        return result;
+    }
+
     public List<T> getItems() { return items; }
     public int getPage() { return page; }
     public int getSize() { return size; }

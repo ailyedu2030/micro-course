@@ -81,6 +81,24 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     }
 
     @Override
+    public List<CourseFavoriteVO> listAll() {
+        List<CourseFavorite> favorites = favoriteRepository.selectList(null);
+        return favorites.stream().map(fav -> {
+            CourseFavoriteVO vo = new CourseFavoriteVO();
+            vo.setId(fav.getId());
+            vo.setUserId(fav.getUserId());
+            vo.setCourseId(fav.getCourseId());
+            vo.setCreatedAt(fav.getCreatedAt());
+
+            Course course = courseRepository.selectById(fav.getCourseId());
+            if (course != null) {
+                vo.setCourseTitle(course.getTitle());
+            }
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
     public boolean isFavorited(Long userId, Long courseId) {
         LambdaQueryWrapper<CourseFavorite> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseFavorite::getUserId, userId)

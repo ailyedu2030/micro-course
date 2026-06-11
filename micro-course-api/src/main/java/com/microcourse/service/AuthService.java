@@ -44,8 +44,9 @@ public interface AuthService {
     /**
      * 更新当前用户资料
      * @param request 更新资料请求
+     * @return 更新后的用户信息
      */
-    void updateProfile(UpdateProfileRequest request);
+    UserVO updateProfile(UpdateProfileRequest request);
 
     /**
      * 修改当前用户密码

@@ -39,7 +39,10 @@
       <template #header>
         <div class="card-header">
           <span>用户列表</span>
-          <el-button type="primary" @click="handleCreate">新增用户</el-button>
+          <div class="header-actions">
+            <el-button type="success" @click="importDialogVisible = true">批量导入</el-button>
+            <el-button type="primary" @click="handleCreate">新增用户</el-button>
+          </div>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border style="width: 100%">
@@ -88,14 +91,70 @@
         />
       </div>
     </el-card>
+
+    <!-- 批量导入弹窗 -->
+    <el-dialog v-model="importDialogVisible" title="批量导入用户" width="560px" @close="handleImportDialogClose">
+      <div class="import-guide">
+        <p>请下载模板文件，按格式填写后上传。支持 <strong>.xlsx / .xls</strong> 文件。</p>
+        <a :href="templateUrl" download class="template-link" target="_blank">下载导入模板</a>
+      </div>
+
+      <el-divider />
+
+      <el-upload
+        ref="uploadRef"
+        :auto-upload="false"
+        :limit="1"
+        accept=".xlsx,.xls"
+        :on-change="handleFileChange"
+        :on-remove="handleFileRemove"
+        drag
+      >
+        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+        <div class="el-upload__text">将文件拖到此处，或 <em>点击上传</em></div>
+        <template #tip>
+          <div class="el-upload__tip">只能上传 xlsx/xls 文件</div>
+        </template>
+      </el-upload>
+
+      <!-- 导入结果 -->
+      <div v-if="importResult" class="import-result">
+        <el-alert
+          :title="`导入完成：成功 ${importResult.successCount} 条，失败 ${importResult.failCount} 条`"
+          :type="importResult.failCount > 0 ? 'warning' : 'success'"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 12px"
+        />
+        <div v-if="importResult.errors && importResult.errors.length > 0" class="error-table-wrap">
+          <p class="error-title">失败记录：</p>
+          <el-table :data="importResult.errors" stripe border size="small" max-height="200">
+            <el-table-column type="index" label="行号" width="60" align="center" />
+            <el-table-column prop="row" label="Excel行" width="70" align="center" />
+            <el-table-column prop="message" label="错误原因" min-width="160" />
+          </el-table>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="importDialogVisible = false">关闭</el-button>
+        <el-button type="primary" :loading="importLoading" :disabled="!selectedFile" @click="handleImportSubmit">开始导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
+/**
+ * 用户列表页（含批量导入）
+ * Vue 3.4 Composition API + script setup
+ */
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUsers, updateUserStatus } from '@/api/user'
+import { UploadFilled } from '@element-plus/icons-vue'
+import * as XLSX from 'xlsx'
+import { getUsers, updateUserStatus, batchImportUsers } from '@/api/user'
 import { getDepartments } from '@/api/department'
 
 const router = useRouter()
@@ -106,6 +165,14 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 const departments = ref([])
+
+// 批量导入
+const importDialogVisible = ref(false)
+const importLoading = ref(false)
+const uploadRef = ref(null)
+const selectedFile = ref(null)
+const importResult = ref(null)
+const templateUrl = ref('/templates/user-import-template.xlsx')
 
 const searchForm = reactive({
   keyword: '',
@@ -119,7 +186,7 @@ const fetchDepartments = async () => {
     const { data } = await getDepartments({ size: 1000 })
     departments.value = data.items || []
   } catch (error) {
-    // ignore
+    // 静默失败
   }
 }
 
@@ -208,6 +275,51 @@ const handleDelete = async (row) => {
   }
 }
 
+// 文件选择
+function handleFileChange(file) {
+  selectedFile.value = file.raw
+  importResult.value = null
+}
+
+function handleFileRemove() {
+  selectedFile.value = null
+  importResult.value = null
+}
+
+// 关闭弹窗重置状态
+function handleImportDialogClose() {
+  importDialogVisible.value = false
+  selectedFile.value = null
+  importResult.value = null
+  uploadRef.value?.clearFiles()
+}
+
+// 提交导入
+async function handleImportSubmit() {
+  if (!selectedFile.value) return
+  importLoading.value = true
+  importResult.value = null
+  try {
+    const formData = new FormData()
+    formData.append('file', selectedFile.value)
+    const { data } = await batchImportUsers(formData)
+    // data: { successCount, failCount, errors: [{row, message}] }
+    importResult.value = {
+      successCount: data.successCount ?? 0,
+      failCount: data.failCount ?? 0,
+      errors: data.errors ?? []
+    }
+    if (importResult.value.failCount === 0) {
+      ElMessage.success('导入完成')
+      fetchData()
+    }
+  } catch (err) {
+    ElMessage.error('导入失败，请检查文件格式')
+  } finally {
+    importLoading.value = false
+  }
+}
+
 onMounted(() => {
   fetchDepartments()
   fetchData()
@@ -233,9 +345,54 @@ onMounted(() => {
   align-items: center;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .pagination-wrap {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.import-guide {
+  background: #f5f7fa;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+}
+
+.import-guide p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.template-link {
+  color: #409eff;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.template-link:hover {
+  text-decoration: underline;
+}
+
+.error-table-wrap {
+  margin-top: 8px;
+}
+
+.error-title {
+  font-size: 13px;
+  color: #f56c6c;
+  margin: 0 0 6px;
+}
+
+@media (max-width: 768px) {
+  .header-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 </style>

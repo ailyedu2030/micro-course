@@ -67,9 +67,9 @@ public class AuthController {
 
     @PutMapping("/me")
     @PreAuthorize("isAuthenticated()")
-    public R<Void> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
-        authService.updateProfile(request);
-        return R.ok();
+    public R<UserVO> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        UserVO user = authService.updateProfile(request);
+        return R.ok(user);
     }
 
     @PutMapping("/me/password")

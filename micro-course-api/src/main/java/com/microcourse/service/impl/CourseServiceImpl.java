@@ -219,6 +219,76 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional
+    public void submitForReview(Long id) {
+        Course course = courseRepository.selectById(id);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // DRAFT(0) → PENDING_REVIEW(1)
+        if (course.getStatus() != CourseStatus.DRAFT.getCode()) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+        }
+        course.setStatus(CourseStatus.PENDING_REVIEW.getCode());
+        course.setUpdatedAt(LocalDateTime.now());
+        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
+        courseRepository.updateById(course);
+    }
+
+    @Override
+    @Transactional
+    public void approve(Long id) {
+        Course course = courseRepository.selectById(id);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // PENDING_REVIEW(1) → APPROVED(2)
+        if (course.getStatus() != CourseStatus.PENDING_REVIEW.getCode()) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+        }
+        course.setStatus(CourseStatus.APPROVED.getCode());
+        course.setUpdatedAt(LocalDateTime.now());
+        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
+        courseRepository.updateById(course);
+    }
+
+    @Override
+    @Transactional
+    public void reject(Long id, String reason) {
+        Course course = courseRepository.selectById(id);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // PENDING_REVIEW(1) → REJECTED(3)
+        if (course.getStatus() != CourseStatus.PENDING_REVIEW.getCode()) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+        }
+        course.setStatus(CourseStatus.REJECTED.getCode());
+        course.setRejectReason(reason);
+        course.setUpdatedAt(LocalDateTime.now());
+        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
+        courseRepository.updateById(course);
+    }
+
+    @Override
+    @Transactional
+    public void publish(Long id) {
+        Course course = courseRepository.selectById(id);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // APPROVED(2) → PUBLISHED(4)
+        if (course.getStatus() != CourseStatus.APPROVED.getCode()) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+        }
+        course.setStatus(CourseStatus.PUBLISHED.getCode());
+        course.setPublishedAt(LocalDateTime.now());
+        course.setUpdatedAt(LocalDateTime.now());
+        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
+        courseRepository.updateById(course);
+    }
+
+    @Override
+    @Transactional
     public void delete(Long id) {
         Course course = courseRepository.selectById(id);
         if (course == null) {

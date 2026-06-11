@@ -27,6 +27,15 @@ const routes = [
   { path: '/notifications', name: 'NotificationList', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true } },
   { path: '/courses/review', name: 'CourseReview', component: () => import('../views/courses/CourseReviewList.vue'), meta: { requiresAuth: true } },
 
+  // 管理后台路由
+  { path: '/admin/dashboard', name: 'AdminDashboard', component: () => import('../views/admin/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/admin/logs', name: 'OperationLogs', component: () => import('../views/admin/OperationLogs.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+
+  // 教师端路由
+  { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('../views/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
+  { path: '/teacher/students', name: 'StudentList', component: () => import('../views/teacher/StudentList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
+  { path: '/teacher/grades', name: 'StudentGrades', component: () => import('../views/teacher/StudentGrades.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
+
   // 学生端路由
   { path: '/student/courses', name: 'StudentCourseSquare', component: () => import('../views/student/CourseSquare.vue'), meta: { requiresAuth: true } },
   { path: '/student/courses/:id', name: 'StudentCourseDetail', component: () => import('../views/student/CourseDetail.vue'), meta: { requiresAuth: true } },
@@ -42,9 +51,13 @@ const routes = [
 const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth !== false && !isAuthenticated()) next('/login')
-  else if (to.path === '/login' && isAuthenticated()) next('/')
-  else next()
+  if (to.meta.requiresAuth !== false && !isAuthenticated()) return next('/login')
+  if (to.path === '/login' && isAuthenticated()) return next('/')
+  if (to.meta.roles && to.meta.roles.length > 0) {
+    const userRole = localStorage.getItem('userRole') || ''
+    if (!to.meta.roles.includes(userRole)) return next('/')
+  }
+  next()
 })
 
 export default router

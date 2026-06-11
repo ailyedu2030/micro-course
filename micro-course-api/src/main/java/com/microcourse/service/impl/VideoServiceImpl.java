@@ -149,6 +149,7 @@ public class VideoServiceImpl implements VideoService {
         vo.setStatus(video.getStatus());
         vo.setProgress(video.getProgress());
         vo.setErrorMessage(video.getErrorMessage());
+        vo.setOriginalPath(video.getOriginalPath());
         vo.setSortOrder(video.getSortOrder());
         vo.setCreatedAt(video.getCreatedAt());
         vo.setUpdatedAt(video.getUpdatedAt());
