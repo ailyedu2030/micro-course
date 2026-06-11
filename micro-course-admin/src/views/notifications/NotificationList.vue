@@ -78,7 +78,7 @@ const fetchUnreadCount = async () => {
     const res = await getUnreadCount()
     unreadCount.value = res.data || 0
   } catch (e) {
-    console.error('获取未读数量失败', e)
+    ElMessage.error('获取未读数量失败')
   }
 }
 

@@ -7,7 +7,6 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.CourseCategoryService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,7 +16,6 @@ public class CourseCategoryController {
 
     private final CourseCategoryService courseCategoryService;
 
-    @Autowired
     public CourseCategoryController(CourseCategoryService courseCategoryService) {
         this.courseCategoryService = courseCategoryService;
     }

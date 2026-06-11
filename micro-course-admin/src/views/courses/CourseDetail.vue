@@ -205,7 +205,7 @@ const fetchCategories = async () => {
     const { data } = await getCategories({ size: 1000 })
     categories.value = data.items || []
   } catch (error) {
-    console.error('获取分类列表失败', error)
+    ElMessage.error('获取分类列表失败')
   }
 }
 

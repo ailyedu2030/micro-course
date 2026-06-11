@@ -7,7 +7,6 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.ClassService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,7 +16,6 @@ public class ClassController {
 
     private final ClassService classService;
 
-    @Autowired
     public ClassController(ClassService classService) {
         this.classService = classService;
     }

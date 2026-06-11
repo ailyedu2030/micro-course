@@ -132,7 +132,7 @@ const fetchParentOptions = async () => {
     const { data } = await getCategories({ page: 0, size: 1000 })
     parentOptions.value = data.items || []
   } catch (error) {
-    console.error('获取父分类列表失败', error)
+    ElMessage.error('获取父分类列表失败')
   }
 }
 

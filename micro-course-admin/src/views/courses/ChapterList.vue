@@ -163,7 +163,7 @@ const fetchCourseOptions = async () => {
     const { data } = await getCourses({ page: 0, size: 1000 })
     courseOptions.value = data.items || []
   } catch (error) {
-    console.error('获取课程列表失败', error)
+    ElMessage.error('获取课程列表失败')
   }
 }
 

@@ -6,7 +6,6 @@ import com.microcourse.dto.TagCreateRequest;
 import com.microcourse.dto.TagVO;
 import com.microcourse.service.TagService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +15,6 @@ public class TagController {
 
     private final TagService tagService;
 
-    @Autowired
     public TagController(TagService tagService) {
         this.tagService = tagService;
     }

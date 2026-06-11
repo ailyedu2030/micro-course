@@ -164,7 +164,7 @@ const fetchDepartments = async () => {
     const { data } = await getDepartments({ size: 1000 })
     departments.value = data.items || []
   } catch (error) {
-    console.error('获取院系列表失败', error)
+    ElMessage.error('获取院系列表失败')
   }
 }
 
@@ -180,7 +180,7 @@ const fetchMajors = async (departmentId) => {
     const { data } = await getMajors({ departmentId, size: 1000 })
     majors.value = data.items || []
   } catch (error) {
-    console.error('获取专业列表失败', error)
+    ElMessage.error('获取专业列表失败')
   }
 }
 
@@ -194,7 +194,7 @@ const fetchClasses = async (majorId) => {
     const { data } = await getClasses({ majorId, size: 1000 })
     classes.value = data.items || []
   } catch (error) {
-    console.error('获取班级列表失败', error)
+    ElMessage.error('获取班级列表失败')
   }
 }
 

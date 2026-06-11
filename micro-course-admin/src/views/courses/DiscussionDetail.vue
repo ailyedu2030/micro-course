@@ -109,7 +109,7 @@ const fetchComments = async () => {
     const { data } = await getComments(route.params.id)
     comments.value = data.items || []
   } catch (error) {
-    console.error('获取评论失败', error)
+    ElMessage.error('获取评论失败')
   }
 }
 

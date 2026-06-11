@@ -12,8 +12,8 @@ public class LearningProgressVO {
     private String chapterTitle;
     private Integer videoProgress;
     private Integer videoPosition;
-    private Integer exerciseCompleted;
-    private Integer exercisePassed;
+    private Boolean exerciseCompleted;
+    private Boolean exercisePassed;
     private Integer totalWatchTime;
     private String deviceId;
     private String platform;
@@ -42,10 +42,10 @@ public class LearningProgressVO {
     public void setVideoProgress(Integer videoProgress) { this.videoProgress = videoProgress; }
     public Integer getVideoPosition() { return videoPosition; }
     public void setVideoPosition(Integer videoPosition) { this.videoPosition = videoPosition; }
-    public Integer getExerciseCompleted() { return exerciseCompleted; }
-    public void setExerciseCompleted(Integer exerciseCompleted) { this.exerciseCompleted = exerciseCompleted; }
-    public Integer getExercisePassed() { return exercisePassed; }
-    public void setExercisePassed(Integer exercisePassed) { this.exercisePassed = exercisePassed; }
+    public Boolean getExerciseCompleted() { return exerciseCompleted; }
+    public void setExerciseCompleted(Boolean exerciseCompleted) { this.exerciseCompleted = exerciseCompleted; }
+    public Boolean getExercisePassed() { return exercisePassed; }
+    public void setExercisePassed(Boolean exercisePassed) { this.exercisePassed = exercisePassed; }
     public Integer getTotalWatchTime() { return totalWatchTime; }
     public void setTotalWatchTime(Integer totalWatchTime) { this.totalWatchTime = totalWatchTime; }
     public String getDeviceId() { return deviceId; }

@@ -13,7 +13,7 @@ export const useNotificationStore = defineStore('notification', {
         const res = await getUnreadCount()
         this.unreadCount = res.data || 0
       } catch (e) {
-        console.error('获取未读数量失败', e)
+        /* silent */
       }
     },
     async fetchList(params = {}) {
@@ -22,7 +22,6 @@ export const useNotificationStore = defineStore('notification', {
         this.list = res.data?.items || []
         return res.data
       } catch (e) {
-        console.error('获取通知列表失败', e)
         return { items: [], totalElements: 0 }
       }
     },
@@ -33,7 +32,7 @@ export const useNotificationStore = defineStore('notification', {
         const item = this.list.find(n => n.id === id)
         if (item) item.isRead = true
       } catch (e) {
-        console.error('标记已读失败', e)
+        /* silent */
       }
     },
     async markAllRead() {
@@ -42,7 +41,7 @@ export const useNotificationStore = defineStore('notification', {
         this.unreadCount = 0
         this.list.forEach(n => { n.isRead = true })
       } catch (e) {
-        console.error('标记全部已读失败', e)
+        // silent
       }
     },
     startPolling(intervalMs = 30000) {
