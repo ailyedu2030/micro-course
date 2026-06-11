@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# commit message format: <type>(<scope>): <description>
+echo "$1" | grep -Eq '^(feat|fix|docs|refactor|test|chore)\([^)]+\): .+' || {
+  echo "ERROR: Commit message must match format: <type>(<scope>): <description>"
+  exit 1
+}
