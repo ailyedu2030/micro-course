@@ -59,7 +59,12 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse login(LoginRequest request) {
         try {
             // Step 1: 检查登录失败次数
-            int failureCount = redisUtil.getLoginFailureCount(request.getUsername());
+            int failureCount = 0;
+            try {
+                failureCount = redisUtil.getLoginFailureCount(request.getUsername());
+            } catch (Exception ignored) {
+                // Redis 不可用时不做限流
+            }
             if (failureCount >= 5) {
                 throw new BusinessException(ErrorCode.LOGIN_LOCKED);
             }
@@ -67,13 +72,13 @@ public class AuthServiceImpl implements AuthService {
             // Step 2: 查询用户
             User user = userRepository.findByUsername(request.getUsername())
                     .orElseThrow(() -> {
-                        redisUtil.incrLoginFailure(request.getUsername());
+                        try { redisUtil.incrLoginFailure(request.getUsername()); } catch (Exception ignored) {}
                         return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
                     });
 
             // Step 3: 验证密码
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                redisUtil.incrLoginFailure(request.getUsername());
+                try { redisUtil.incrLoginFailure(request.getUsername()); } catch (Exception ignored) {}
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
 
@@ -89,7 +94,7 @@ public class AuthServiceImpl implements AuthService {
             }
 
             // Step 5: 登录成功，清除失败计数
-            redisUtil.clearLoginFailure(request.getUsername());
+            try { redisUtil.clearLoginFailure(request.getUsername()); } catch (Exception ignored) {}
 
             // Step 6: 生成 JWT
             String accessToken = jwtUtil.generateToken(
@@ -185,7 +190,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.selectById(userId);
         if (user != null) {
             // Step 3: 清除登录失败计数
-            redisUtil.clearLoginFailure(user.getUsername());
+            try { redisUtil.clearLoginFailure(user.getUsername()); } catch (Exception ignored) {}
             log.info("Logout: cleared login failure count for user " + user.getUsername());
 
             // Step 3.5: 记录操作日志
