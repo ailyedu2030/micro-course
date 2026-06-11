@@ -14,6 +14,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.CourseChapterService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -74,6 +75,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (course == null) {
             throw new BusinessException(ErrorCode.CHAPTER_COURSE_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can create chapter
+        assertCourseOwner(course);
 
         CourseChapter chapter = new CourseChapter();
         chapter.setCourseId(request.getCourseId());
@@ -97,6 +100,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (chapter == null) {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can update chapter
+        assertCourseOwnerByCourseId(chapter.getCourseId());
 
         // Partial update
         if (request.getTitle() != null) chapter.setTitle(request.getTitle());
@@ -119,6 +124,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (chapter == null) {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can delete chapter
+        assertCourseOwnerByCourseId(chapter.getCourseId());
         chapterRepository.deleteById(id);
     }
 
@@ -135,5 +142,31 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         vo.setUpdatedAt(chapter.getUpdatedAt());
         vo.setVersion(chapter.getVersion());
         return vo;
+    }
+
+    /**
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     *
+     * @param courseId 课程 ID
+     * @throws BusinessException NOT_FOUND 课程不存在，NO_PERMISSION 无权限
+     */
+    private void assertCourseOwnerByCourseId(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        assertCourseOwner(course);
+    }
+
+    /**
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     *
+     * @param course 课程实体（非 null）
+     * @throws BusinessException NO_PERMISSION 无权限
+     */
+    private void assertCourseOwner(Course course) {
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
     }
 }

@@ -83,3 +83,5 @@ log/
 # 保留 docs/ 全部（不忽略）
 .mvn/
 .playwright-mcp/
+*.png
+.playwright-mcp/

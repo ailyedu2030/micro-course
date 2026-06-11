@@ -90,8 +90,37 @@ public class UserServiceImpl implements UserService {
                 wrapper
         );
 
+        // N+1 修复：批量预加载关联数据
+        java.util.Map<Long, Department> deptMap = new java.util.HashMap<>();
+        java.util.Map<Long, Major> majorMap = new java.util.HashMap<>();
+        java.util.Map<Long, Classes> classMap = new java.util.HashMap<>();
+
+        java.util.Set<Long> deptIds = ipage.getRecords().stream()
+                .map(User::getDepartmentId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> majorIds = ipage.getRecords().stream()
+                .map(User::getMajorId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> classIds = ipage.getRecords().stream()
+                .map(User::getClassId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (!deptIds.isEmpty()) {
+            departmentRepository.selectBatchIds(deptIds).forEach(d -> deptMap.put(d.getId(), d));
+        }
+        if (!majorIds.isEmpty()) {
+            majorRepository.selectBatchIds(majorIds).forEach(m -> majorMap.put(m.getId(), m));
+        }
+        if (!classIds.isEmpty()) {
+            classesRepository.selectBatchIds(classIds).forEach(c -> classMap.put(c.getId(), c));
+        }
+
+        final java.util.Map<Long, Department> finalDeptMap = deptMap;
+        final java.util.Map<Long, Major> finalMajorMap = majorMap;
+        final java.util.Map<Long, Classes> finalClassMap = classMap;
+
         List<UserVO> vos = ipage.getRecords().stream()
-                .map(this::convertToVO)
+                .map(user -> convertToVO(user, finalDeptMap, finalMajorMap, finalClassMap))
                 .collect(Collectors.toList());
 
         // 列表端脱敏（/api/users 端点）
@@ -366,6 +395,65 @@ public class UserServiceImpl implements UserService {
         }
         if (user.getClassId() != null) {
             Classes cls = classesRepository.selectById(user.getClassId());
+            if (cls != null) {
+                vo.setClassName(cls.getName());
+            }
+        }
+
+        // statusText
+        if (user.getStatus() != null) {
+            switch (user.getStatus()) {
+                case 0: vo.setStatusText("未激活"); break;
+                case 1: vo.setStatusText("正常"); break;
+                case 2: vo.setStatusText("禁用"); break;
+                case 3: vo.setStatusText("已删除"); break;
+                default: vo.setStatusText("未知");
+            }
+        }
+
+        return vo;
+    }
+
+    private UserVO convertToVO(User user, java.util.Map<Long, Department> deptMap,
+                                java.util.Map<Long, Major> majorMap,
+                                java.util.Map<Long, Classes> classMap) {
+        UserVO vo = new UserVO();
+        vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setRealName(user.getRealName());
+        vo.setEmail(user.getEmail());
+        vo.setPhone(user.getPhone());
+        vo.setGender(user.getGender());
+        vo.setAvatar(user.getAvatar());
+        vo.setRole(user.getRole());
+        vo.setDepartmentId(user.getDepartmentId());
+        vo.setMajorId(user.getMajorId());
+        vo.setClassId(user.getClassId());
+        vo.setGrade(user.getGrade());
+        vo.setEnrollmentYear(user.getEnrollmentYear());
+        vo.setGraduationYear(user.getGraduationYear());
+        vo.setCasBound(user.getCasBound());
+        vo.setStudentNo(user.getStudentNo());
+        vo.setTeacherNo(user.getTeacherNo());
+        vo.setStatus(user.getStatus());
+        vo.setLastLoginAt(user.getLastLoginAt());
+        vo.setCreatedAt(user.getCreatedAt());
+
+        // 关联名称（使用预加载的 Map）
+        if (user.getDepartmentId() != null) {
+            Department dept = deptMap.get(user.getDepartmentId());
+            if (dept != null) {
+                vo.setDepartmentName(dept.getName());
+            }
+        }
+        if (user.getMajorId() != null) {
+            Major major = majorMap.get(user.getMajorId());
+            if (major != null) {
+                vo.setMajorName(major.getName());
+            }
+        }
+        if (user.getClassId() != null) {
+            Classes cls = classMap.get(user.getClassId());
             if (cls != null) {
                 vo.setClassName(cls.getName());
             }

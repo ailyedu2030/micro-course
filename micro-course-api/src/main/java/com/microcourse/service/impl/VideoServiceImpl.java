@@ -16,10 +16,15 @@ import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.VideoService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class VideoServiceImpl implements VideoService {
@@ -46,8 +51,19 @@ public class VideoServiceImpl implements VideoService {
         IPage<Video> ipage = videoRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
 
+        // N+1 修复：批量预加载 course
+        Map<Long, Course> courseMap = new HashMap<>();
+        Set<Long> courseIds = ipage.getRecords().stream()
+                .map(Video::getCourseId).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
+        }
+        final Map<Long, Course> finalCourseMap = courseMap;
+
         PageResult<VideoVO> result = new PageResult<>();
-        result.setItems(ipage.getRecords().stream().map(this::convertToVO).toList());
+        result.setItems(ipage.getRecords().stream()
+                .map(v -> convertToVO(v, finalCourseMap)).toList());
         result.setPage(page);
         result.setSize(size);
         result.setTotalElements(ipage.getTotal());
@@ -77,6 +93,8 @@ public class VideoServiceImpl implements VideoService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can create video
+        assertCourseOwner(course);
 
         Video video = new Video();
         video.setChapterId(request.getChapterId());
@@ -103,6 +121,8 @@ public class VideoServiceImpl implements VideoService {
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can update video
+        assertCourseOwnerByCourseId(video.getCourseId());
 
         // Partial update
         if (request.getTitle() != null) {
@@ -129,6 +149,8 @@ public class VideoServiceImpl implements VideoService {
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can delete video
+        assertCourseOwnerByCourseId(video.getCourseId());
         videoRepository.deleteById(id);
     }
 
@@ -164,5 +186,65 @@ public class VideoServiceImpl implements VideoService {
         }
 
         return vo;
+    }
+
+    private VideoVO convertToVO(Video video, Map<Long, Course> courseMap) {
+        VideoVO vo = new VideoVO();
+        vo.setId(video.getId());
+        vo.setChapterId(video.getChapterId());
+        vo.setCourseId(video.getCourseId());
+        vo.setTitle(video.getTitle());
+        vo.setFileName(video.getFileName());
+        vo.setFileSize(video.getFileSize());
+        vo.setFileMd5(video.getFileMd5());
+        vo.setMimeType(video.getMimeType());
+        vo.setDuration(video.getDuration());
+        vo.setUrl(video.getUrl());
+        vo.setHlsUrl(video.getHlsUrl());
+        vo.setThumbnailUrl(video.getThumbnailUrl());
+        vo.setStatus(video.getStatus());
+        vo.setProgress(video.getProgress());
+        vo.setErrorMessage(video.getErrorMessage());
+        vo.setOriginalPath(video.getOriginalPath());
+        vo.setSortOrder(video.getSortOrder());
+        vo.setCreatedAt(video.getCreatedAt());
+        vo.setUpdatedAt(video.getUpdatedAt());
+        vo.setVersion(video.getVersion());
+
+        // Load course name（使用预加载的 Map）
+        if (video.getCourseId() != null) {
+            Course course = courseMap.get(video.getCourseId());
+            if (course != null) {
+                vo.setCourseName(course.getTitle());
+            }
+        }
+
+        return vo;
+    }
+
+    /**
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     *
+     * @param courseId 课程 ID
+     * @throws BusinessException NOT_FOUND 课程不存在，NO_PERMISSION 无权限
+     */
+    private void assertCourseOwnerByCourseId(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        assertCourseOwner(course);
+    }
+
+    /**
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     *
+     * @param course 课程实体（非 null）
+     * @throws BusinessException NO_PERMISSION 无权限
+     */
+    private void assertCourseOwner(Course course) {
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
     }
 }

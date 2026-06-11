@@ -3,8 +3,11 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.CheckInVO;
 import com.microcourse.entity.CheckIn;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CheckInRepository;
 import com.microcourse.service.CheckInService;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,18 +30,6 @@ public class CheckInServiceImpl implements CheckInService {
     public CheckInVO checkIn(Long userId) {
         LocalDate today = LocalDate.now();
 
-        // 查询今日是否已打卡
-        CheckIn existing = checkInRepository.selectOne(
-                new LambdaQueryWrapper<CheckIn>()
-                        .eq(CheckIn::getUserId, userId)
-                        .eq(CheckIn::getCheckinDate, today)
-        );
-
-        if (existing != null) {
-            // 已打卡，幂等返回
-            return convertToVO(existing);
-        }
-
         // 计算 streak_days：从昨日往前逐日检查连续天数
         LocalDate yesterday = today.minusDays(1);
         int streak = 0;
@@ -57,14 +48,27 @@ public class CheckInServiceImpl implements CheckInService {
             checkDate = checkDate.minusDays(1);
         }
 
-        // 新增打卡记录
+        // 新增打卡记录（数据库唯一索引保证幂等）
         CheckIn checkIn = new CheckIn();
         checkIn.setUserId(userId);
         checkIn.setCheckinDate(today);
         checkIn.setDuration(0);
         checkIn.setStreakDays(streak + 1);
         checkIn.setCreatedAt(LocalDateTime.now());
-        checkInRepository.insert(checkIn);
+        try {
+            checkInRepository.insert(checkIn);
+        } catch (DuplicateKeyException e) {
+            // 唯一索引冲突，说明今日已打卡，幂等返回
+            CheckIn existing = checkInRepository.selectOne(
+                    new LambdaQueryWrapper<CheckIn>()
+                            .eq(CheckIn::getUserId, userId)
+                            .eq(CheckIn::getCheckinDate, today)
+            );
+            if (existing != null) {
+                return convertToVO(existing);
+            }
+            throw new BusinessException(ErrorCode.ALREADY_CHECKED_IN);
+        }
 
         return convertToVO(checkIn);
     }

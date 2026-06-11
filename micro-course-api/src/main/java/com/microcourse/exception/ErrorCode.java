@@ -38,6 +38,7 @@ public enum ErrorCode {
     NO_PERMISSION(10003, "无权限操作", 403),
     LEARNING_PROGRESS_NOT_FOUND(11001, "学习进度不存在", 404),
     CHECKIN_NOT_FOUND(11002, "打卡记录不存在", 404),
+    ALREADY_CHECKED_IN(11003, "今日已打卡", 409),
     VIDEO_UPLOAD_INVALID_FORMAT(12001, "无效的视频文件格式", 400),
     VIDEO_UPLOAD_TOO_LARGE(12002, "视频文件大小超过限制（最大 2GB）", 413),
     VIDEO_SIGN_INVALID(12003, "视频播放签名无效或已过期", 403),

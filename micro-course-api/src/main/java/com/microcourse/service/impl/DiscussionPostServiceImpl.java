@@ -43,7 +43,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         this.userRepository = userRepository;
     }
 
-    @Override
+       @Override
     @Transactional(readOnly = true)
     public PageResult<DiscussionPostVO> page(Long chapterId, int page, int size) {
         LambdaQueryWrapper<DiscussionPost> wrapper = new LambdaQueryWrapper<>();
@@ -53,8 +53,19 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
                .orderByDesc(DiscussionPost::getCreatedAt);
         IPage<DiscussionPost> ipage = postRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
+
+        // N+1 修复：批量预加载 user
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+        java.util.Set<Long> userIds = ipage.getRecords().stream()
+                .map(DiscussionPost::getUserId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!userIds.isEmpty()) {
+            userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
+        }
+        final java.util.Map<Long, User> finalUserMap = userMap;
+
         List<DiscussionPostVO> vos = ipage.getRecords().stream()
-                .map(this::convertToVO).collect(Collectors.toList());
+                .map(p -> convertToVO(p, finalUserMap)).collect(Collectors.toList());
         PageResult<DiscussionPostVO> result = new PageResult<>();
         result.setItems(vos);
         result.setPage((int) ipage.getCurrent() - 1);
@@ -71,7 +82,13 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         if (post == null || post.getStatus() == 0) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
         }
-        DiscussionPostVO vo = convertToVO(post);
+
+        // N+1 修复：批量预加载 post author 和 comment authors
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+        java.util.Set<Long> userIds = new java.util.HashSet<>();
+        if (post.getUserId() != null) {
+            userIds.add(post.getUserId());
+        }
 
         // 查评论列表并构建树结构
         LambdaQueryWrapper<DiscussionComment> wrapper = new LambdaQueryWrapper<>();
@@ -79,7 +96,18 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
                .eq(DiscussionComment::getStatus, 1)
                .orderByAsc(DiscussionComment::getCreatedAt);
         List<DiscussionComment> comments = commentRepository.selectList(wrapper);
-        vo.setChildren(buildCommentTree(comments));
+
+        comments.forEach(c -> {
+            if (c.getUserId() != null) userIds.add(c.getUserId());
+        });
+
+        if (!userIds.isEmpty()) {
+            userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
+        }
+        final java.util.Map<Long, User> finalUserMap = userMap;
+
+        DiscussionPostVO vo = convertToVO(post, finalUserMap);
+        vo.setChildren(buildCommentTree(comments, finalUserMap));
 
         return vo;
     }
@@ -221,7 +249,39 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         return vo;
     }
 
-    private List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> comments) {
+    private DiscussionPostVO convertToVO(DiscussionPost post, java.util.Map<Long, User> userMap) {
+        DiscussionPostVO vo = new DiscussionPostVO();
+        vo.setId(post.getId());
+        vo.setCourseId(post.getCourseId());
+        vo.setChapterId(post.getChapterId());
+        vo.setUserId(post.getUserId());
+        vo.setTitle(post.getTitle());
+        vo.setContent(post.getContent());
+        vo.setIsAnonymous(post.getIsAnonymous());
+        vo.setIsPinned(post.getIsPinned());
+        vo.setIsEssence(post.getIsEssence());
+        vo.setCommentCount(post.getCommentCount());
+        vo.setLikeCount(post.getLikeCount());
+        vo.setCreatedAt(post.getCreatedAt());
+
+        // 联查 authorName（使用预加载的 Map）
+        if (post.getUserId() != null) {
+            User author = userMap.get(post.getUserId());
+            if (author != null) {
+                if (Boolean.TRUE.equals(post.getIsAnonymous())) {
+                    vo.setAuthorName("匿名用户");
+                    vo.setUserId(null);
+                } else {
+                    vo.setAuthorName(author.getRealName() != null ? author.getRealName() : author.getUsername());
+                }
+            }
+        }
+
+        return vo;
+    }
+
+    private List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> comments,
+                                                        java.util.Map<Long, User> userMap) {
         if (comments == null || comments.isEmpty()) {
             return new ArrayList<>();
         }
@@ -240,9 +300,9 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             vo.setCreatedAt(c.getCreatedAt());
             vo.setChildren(new ArrayList<>());
 
-            // 查作者名
+            // 查作者名（使用预加载的 Map）
             if (c.getUserId() != null) {
-                User author = userRepository.selectById(c.getUserId());
+                User author = userMap.get(c.getUserId());
                 if (author != null) {
                     vo.setAuthorName(author.getRealName() != null ? author.getRealName() : author.getUsername());
                 }

@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -53,66 +54,75 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public LoginResponse login(LoginRequest request) {
-        // Step 1: 检查登录失败次数
-        int failureCount = redisUtil.getLoginFailureCount(request.getUsername());
-        if (failureCount >= 5) {
-            throw new BusinessException(ErrorCode.LOGIN_LOCKED);
-        }
+        try {
+            // Step 1: 检查登录失败次数
+            int failureCount = redisUtil.getLoginFailureCount(request.getUsername());
+            if (failureCount >= 5) {
+                throw new BusinessException(ErrorCode.LOGIN_LOCKED);
+            }
 
-        // Step 2: 查询用户
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> {
-                    redisUtil.incrLoginFailure(request.getUsername());
-                    return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
-                });
+            // Step 2: 查询用户
+            User user = userRepository.findByUsername(request.getUsername())
+                    .orElseThrow(() -> {
+                        redisUtil.incrLoginFailure(request.getUsername());
+                        return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+                    });
 
-        // Step 3: 验证密码
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            redisUtil.incrLoginFailure(request.getUsername());
+            // Step 3: 验证密码
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                redisUtil.incrLoginFailure(request.getUsername());
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            }
+
+            // Step 4: 验证用户状态
+            if (user.getStatus() == 0) {
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            }
+            if (user.getStatus() == 2) {
+                throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
+            }
+            if (user.getStatus() == 3) {
+                throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
+            }
+
+            // Step 5: 登录成功，清除失败计数
+            redisUtil.clearLoginFailure(request.getUsername());
+
+            // Step 6: 生成 JWT
+            String accessToken = jwtUtil.generateToken(
+                    user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
+            String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+
+            // Step 7: 更新 lastLoginAt
+            user.setLastLoginAt(LocalDateTime.now());
+            userRepository.updateById(user);
+
+            // Step 8: 记录操作日志
+            OperationLog log = new OperationLog();
+            log.setUserId(user.getId());
+            log.setAction("LOGIN");
+            log.setTargetType("USER");
+            log.setTargetId(user.getId());
+            log.setIp("0.0.0.0");
+            log.setSuccess(true);
+            operationLogService.log(log);
+
+            // Step 9: 构建响应
+            LoginResponse response = new LoginResponse();
+            response.setAccessToken(accessToken);
+            response.setRefreshToken(refreshToken);
+            response.setExpiresIn(7200);
+            response.setTokenType("Bearer");
+            return response;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.severe("Login error for user: " + request.getUsername());
+            e.printStackTrace();
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
-
-        // Step 4: 验证用户状态
-        if (user.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
-        }
-        if (user.getStatus() == 2) {
-            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
-        }
-        if (user.getStatus() == 3) {
-            throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
-        }
-
-        // Step 5: 登录成功，清除失败计数
-        redisUtil.clearLoginFailure(request.getUsername());
-
-        // Step 6: 生成 JWT
-        String accessToken = jwtUtil.generateToken(
-                user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
-
-        // Step 7: 更新 lastLoginAt
-        user.setLastLoginAt(LocalDateTime.now());
-        userRepository.updateById(user);
-
-        // Step 8: 记录操作日志
-        OperationLog log = new OperationLog();
-        log.setUserId(user.getId());
-        log.setAction("LOGIN");
-        log.setTargetType("USER");
-        log.setTargetId(user.getId());
-        log.setIp("0.0.0.0");
-        log.setSuccess(true);
-        operationLogService.log(log);
-
-        // Step 9: 构建响应
-        LoginResponse response = new LoginResponse();
-        response.setAccessToken(accessToken);
-        response.setRefreshToken(refreshToken);
-        response.setExpiresIn(7200);
-        response.setTokenType("Bearer");
-        return response;
     }
 
     @Override
@@ -158,6 +168,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public void logout() {
         // Step 1: 从 SecurityContextHolder 获取当前 userId
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -224,6 +235,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public UserVO updateProfile(UpdateProfileRequest request) {
         Long userId = getCurrentUserId();
         User user = userRepository.selectById(userId);
@@ -247,6 +259,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public void changePassword(ChangePasswordRequest request) {
         Long userId = getCurrentUserId();
         User user = userRepository.selectById(userId);

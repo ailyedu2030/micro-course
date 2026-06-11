@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,7 +46,37 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         wrapper.eq(LearningProgress::getUserId, userId)
                .eq(LearningProgress::getCourseId, courseId);
         List<LearningProgress> list = learningProgressRepository.selectList(wrapper);
-        return list.stream().map(this::convertToVO).collect(Collectors.toList());
+        return convertToVOList(list);
+    }
+
+    private List<LearningProgressVO> convertToVOList(List<LearningProgress> list) {
+        if (list.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        // N+1 修复：批量预加载 course 和 chapter
+        Set<Long> courseIds = list.stream()
+                .map(LearningProgress::getCourseId).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> chapterIds = list.stream()
+                .map(LearningProgress::getChapterId).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, Course> courseMap = new HashMap<>();
+        Map<Long, CourseChapter> chapterMap = new HashMap<>();
+
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
+        }
+        if (!chapterIds.isEmpty()) {
+            courseChapterRepository.selectBatchIds(chapterIds).forEach(ch -> chapterMap.put(ch.getId(), ch));
+        }
+
+        final Map<Long, Course> finalCourseMap = courseMap;
+        final Map<Long, CourseChapter> finalChapterMap = chapterMap;
+
+        return list.stream()
+                .map(p -> convertToVO(p, finalCourseMap, finalChapterMap))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -166,6 +197,42 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         }
         if (progress.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(progress.getChapterId());
+            if (chapter != null) {
+                vo.setChapterTitle(chapter.getTitle());
+            }
+        }
+        return vo;
+    }
+
+    private LearningProgressVO convertToVO(LearningProgress progress, Map<Long, Course> courseMap,
+                                             Map<Long, CourseChapter> chapterMap) {
+        LearningProgressVO vo = new LearningProgressVO();
+        vo.setId(progress.getId());
+        vo.setUserId(progress.getUserId());
+        vo.setCourseId(progress.getCourseId());
+        vo.setChapterId(progress.getChapterId());
+        vo.setVideoProgress(progress.getVideoProgress());
+        vo.setVideoPosition(progress.getVideoPosition());
+        vo.setExerciseCompleted(progress.getExerciseCompleted());
+        vo.setExercisePassed(progress.getExercisePassed());
+        vo.setTotalWatchTime(progress.getTotalWatchTime());
+        vo.setDeviceId(progress.getDeviceId());
+        vo.setPlatform(progress.getPlatform());
+        vo.setPlaybackSpeed(progress.getPlaybackSpeed());
+        vo.setConfidence(progress.getConfidence());
+        vo.setCompleted(progress.getCompleted());
+        vo.setLastWatchAt(progress.getLastWatchAt());
+        vo.setCreatedAt(progress.getCreatedAt());
+        vo.setUpdatedAt(progress.getUpdatedAt());
+
+        if (progress.getCourseId() != null) {
+            Course course = courseMap.get(progress.getCourseId());
+            if (course != null) {
+                vo.setCourseTitle(course.getTitle());
+            }
+        }
+        if (progress.getChapterId() != null) {
+            CourseChapter chapter = chapterMap.get(progress.getChapterId());
             if (chapter != null) {
                 vo.setChapterTitle(chapter.getTitle());
             }

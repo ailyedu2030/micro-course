@@ -43,7 +43,23 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
                .eq(DiscussionComment::getStatus, 1)
                .orderByAsc(DiscussionComment::getCreatedAt);
         List<DiscussionComment> flatList = commentRepository.selectList(wrapper);
-        return buildCommentTree(flatList);
+        return buildCommentTreeWithUsers(flatList);
+    }
+
+    private List<DiscussionCommentVO> buildCommentTreeWithUsers(List<DiscussionComment> flatList) {
+        if (flatList.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        // N+1 修复：批量预加载 user
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+        java.util.Set<Long> userIds = flatList.stream()
+                .map(DiscussionComment::getUserId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!userIds.isEmpty()) {
+            userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
+        }
+        final java.util.Map<Long, User> finalUserMap = userMap;
+        return buildCommentTreeWithBatchLoad(flatList, finalUserMap);
     }
 
     @Override
@@ -101,23 +117,30 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
 
     @Override
     public List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> flatList) {
+        // 调用内部批量加载版本
+        return buildCommentTreeWithUsers(flatList);
+    }
+
+    private List<DiscussionCommentVO> buildCommentTreeWithBatchLoad(List<DiscussionComment> flatList,
+                                                       java.util.Map<Long, User> userMap) {
         List<DiscussionCommentVO> result = new ArrayList<>();
         for (DiscussionComment comment : flatList) {
             if (comment.getParentId() == null) {
-                DiscussionCommentVO vo = convertToVO(comment);
-                vo.setChildren(buildChildren(comment.getId(), flatList));
+                DiscussionCommentVO vo = convertToVO(comment, userMap);
+                vo.setChildren(buildChildren(comment.getId(), flatList, userMap));
                 result.add(vo);
             }
         }
         return result;
     }
 
-    private List<DiscussionCommentVO> buildChildren(Long parentId, List<DiscussionComment> flatList) {
+    private List<DiscussionCommentVO> buildChildren(Long parentId, List<DiscussionComment> flatList,
+                                                      java.util.Map<Long, User> userMap) {
         List<DiscussionCommentVO> children = new ArrayList<>();
         for (DiscussionComment comment : flatList) {
             if (parentId.equals(comment.getParentId())) {
-                DiscussionCommentVO vo = convertToVO(comment);
-                vo.setChildren(buildChildren(comment.getId(), flatList));
+                DiscussionCommentVO vo = convertToVO(comment, userMap);
+                vo.setChildren(buildChildren(comment.getId(), flatList, userMap));
                 children.add(vo);
             }
         }
@@ -136,6 +159,25 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         vo.setCreatedAt(comment.getCreatedAt());
         if (comment.getUserId() != null) {
             User user = userRepository.selectById(comment.getUserId());
+            if (user != null) {
+                vo.setAuthorName(user.getUsername());
+            }
+        }
+        return vo;
+    }
+
+    private DiscussionCommentVO convertToVO(DiscussionComment comment, java.util.Map<Long, User> userMap) {
+        DiscussionCommentVO vo = new DiscussionCommentVO();
+        vo.setId(comment.getId());
+        vo.setPostId(comment.getPostId());
+        vo.setParentId(comment.getParentId());
+        vo.setUserId(comment.getUserId());
+        vo.setContent(comment.getContent());
+        vo.setIsTeacherReply(comment.getIsTeacherReply());
+        vo.setLikeCount(comment.getLikeCount());
+        vo.setCreatedAt(comment.getCreatedAt());
+        if (comment.getUserId() != null) {
+            User user = userMap.get(comment.getUserId());
             if (user != null) {
                 vo.setAuthorName(user.getUsername());
             }

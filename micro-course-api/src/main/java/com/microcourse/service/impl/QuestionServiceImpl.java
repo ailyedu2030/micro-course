@@ -16,6 +16,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.QuestionRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.QuestionService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,15 @@ public class QuestionServiceImpl implements QuestionService {
     @Override
     @Transactional
     public QuestionVO create(QuestionCreateRequest request) {
+        // Owner check: only course teacher or ADMIN can create question
+        Course course = courseRepository.selectById(request.getCourseId());
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
         Question question = new Question();
         question.setCourseId(request.getCourseId());
         question.setTeacherId(request.getTeacherId());
@@ -65,6 +75,8 @@ public class QuestionServiceImpl implements QuestionService {
         if (question == null) {
             throw new BusinessException(ErrorCode.QUESTION_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can update question
+        assertCourseOwner(question.getCourseId());
 
         if (request.getCourseId() != null) {
             question.setCourseId(request.getCourseId());
@@ -109,6 +121,8 @@ public class QuestionServiceImpl implements QuestionService {
         if (question == null) {
             throw new BusinessException(ErrorCode.QUESTION_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can delete question
+        assertCourseOwner(question.getCourseId());
         questionRepository.deleteById(id);
     }
 
@@ -174,5 +188,21 @@ public class QuestionServiceImpl implements QuestionService {
         }
 
         return vo;
+    }
+
+    /**
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     *
+     * @param courseId 课程 ID
+     * @throws BusinessException NOT_FOUND 课程不存在，NO_PERMISSION 无权限
+     */
+    private void assertCourseOwner(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
     }
 }

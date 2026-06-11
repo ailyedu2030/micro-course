@@ -13,6 +13,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.EnrollmentService;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,14 +54,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        // Check unique constraint: user already enrolled in this course
-        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Enrollment::getUserId, request.getUserId())
-                .eq(Enrollment::getCourseId, request.getCourseId());
-        Enrollment existing = enrollmentRepository.selectOne(wrapper);
-        if (existing != null) {
-            throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS);
-        }
 
         Enrollment enrollment = new Enrollment();
         enrollment.setCourseId(request.getCourseId());
@@ -70,7 +65,19 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.setEnrolledAt(LocalDateTime.now());
         enrollment.setUpdatedAt(LocalDateTime.now());
 
-        enrollmentRepository.insert(enrollment);
+        try {
+            enrollmentRepository.insert(enrollment);
+        } catch (DuplicateKeyException e) {
+            // 唯一索引冲突，说明已选课，幂等返回
+            LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Enrollment::getUserId, request.getUserId())
+                    .eq(Enrollment::getCourseId, request.getCourseId());
+            Enrollment existing = enrollmentRepository.selectOne(wrapper);
+            if (existing != null) {
+                return convertToVO(existing);
+            }
+            throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS);
+        }
         return convertToVO(enrollment);
     }
 
@@ -80,9 +87,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         wrapper.eq(Enrollment::getUserId, userId)
                 .orderByDesc(Enrollment::getEnrolledAt);
         List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
-        return enrollments.stream()
-                .map(this::convertToVO)
-                .collect(Collectors.toList());
+        return convertToVOList(enrollments);
     }
 
     @Override
@@ -91,8 +96,36 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         wrapper.eq(Enrollment::getCourseId, courseId)
                 .orderByDesc(Enrollment::getEnrolledAt);
         List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
+        return convertToVOList(enrollments);
+    }
+
+    private List<EnrollmentVO> convertToVOList(List<Enrollment> enrollments) {
+        if (enrollments.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        // N+1 修复：批量预加载 course 和 user
+        java.util.Set<Long> courseIds = enrollments.stream()
+                .map(Enrollment::getCourseId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> userIds = enrollments.stream()
+                .map(Enrollment::getUserId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
+        java.util.Map<Long, Course> courseMap = new java.util.HashMap<>();
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
+        }
+        if (!userIds.isEmpty()) {
+            userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
+        }
+
+        final java.util.Map<Long, Course> finalCourseMap = courseMap;
+        final java.util.Map<Long, User> finalUserMap = userMap;
+
         return enrollments.stream()
-                .map(this::convertToVO)
+                .map(e -> convertToVO(e, finalCourseMap, finalUserMap))
                 .collect(Collectors.toList());
     }
 
@@ -172,6 +205,41 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         // Load user name
         if (enrollment.getUserId() != null) {
             User user = userRepository.selectById(enrollment.getUserId());
+            if (user != null) {
+                vo.setUserName(user.getRealName());
+            }
+        }
+
+        return vo;
+    }
+
+    private EnrollmentVO convertToVO(Enrollment enrollment, java.util.Map<Long, Course> courseMap,
+                                     java.util.Map<Long, User> userMap) {
+        EnrollmentVO vo = new EnrollmentVO();
+        vo.setId(enrollment.getId());
+        vo.setCourseId(enrollment.getCourseId());
+        vo.setUserId(enrollment.getUserId());
+        vo.setProgress(enrollment.getProgress());
+        vo.setCompleted(enrollment.getCompleted());
+        vo.setFinalScore(enrollment.getFinalScore());
+        vo.setFinalGrade(enrollment.getFinalGrade());
+        vo.setEnrollmentStatus(enrollment.getEnrollmentStatus());
+        vo.setSourceChannel(enrollment.getSourceChannel());
+        vo.setEnrolledAt(enrollment.getEnrolledAt());
+        vo.setCompletedAt(enrollment.getCompletedAt());
+        vo.setUpdatedAt(enrollment.getUpdatedAt());
+
+        // Load course name（使用预加载的 Map）
+        if (enrollment.getCourseId() != null) {
+            Course course = courseMap.get(enrollment.getCourseId());
+            if (course != null) {
+                vo.setCourseName(course.getTitle());
+            }
+        }
+
+        // Load user name（使用预加载的 Map）
+        if (enrollment.getUserId() != null) {
+            User user = userMap.get(enrollment.getUserId());
             if (user != null) {
                 vo.setUserName(user.getRealName());
             }

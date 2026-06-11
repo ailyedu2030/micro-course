@@ -18,12 +18,16 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.ExerciseQuestionRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.service.ExerciseService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,6 +53,14 @@ public class ExerciseServiceImpl implements ExerciseService {
     public ExerciseVO create(ExerciseCreateRequest request) {
         if (request.getQuestions() == null || request.getQuestions().isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "练习题目不能为空");
+        }
+        // Owner check: only course teacher or ADMIN can create exercise
+        Course course = courseRepository.selectById(request.getCourseId());
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
         Exercise exercise = new Exercise();
@@ -97,6 +109,8 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (exercise == null) {
             throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can update exercise
+        assertCourseOwner(exercise.getCourseId());
 
         if (request.getCourseId() != null) {
             exercise.setCourseId(request.getCourseId());
@@ -164,6 +178,8 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (exercise == null) {
             throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can delete exercise
+        assertCourseOwner(exercise.getCourseId());
 
         LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ExerciseQuestion::getExerciseId, id);
@@ -186,7 +202,40 @@ public class ExerciseServiceImpl implements ExerciseService {
         IPage<Exercise> exercisePage = exerciseRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
 
-        IPage<ExerciseVO> voPage = exercisePage.convert(this::convertToVO);
+        // N+1 修复：批量预加载 course、chapter、questions
+        Map<Long, Course> courseMap = new HashMap<>();
+        Map<Long, CourseChapter> chapterMap = new HashMap<>();
+        Map<Long, List<ExerciseQuestion>> questionsMap = new HashMap<>();
+
+        Set<Long> courseIds = exercisePage.getRecords().stream()
+                .map(Exercise::getCourseId).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> chapterIds = exercisePage.getRecords().stream()
+                .map(Exercise::getChapterId).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> exerciseIds = exercisePage.getRecords().stream()
+                .map(Exercise::getId).collect(Collectors.toSet());
+
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
+        }
+        if (!chapterIds.isEmpty()) {
+            courseChapterRepository.selectBatchIds(chapterIds).forEach(ch -> chapterMap.put(ch.getId(), ch));
+        }
+        if (!exerciseIds.isEmpty()) {
+            LambdaQueryWrapper<ExerciseQuestion> qWrapper = new LambdaQueryWrapper<>();
+            qWrapper.in(ExerciseQuestion::getExerciseId, exerciseIds)
+                    .orderByAsc(ExerciseQuestion::getSortOrder);
+            exerciseQuestionRepository.selectList(qWrapper)
+                    .forEach(q -> questionsMap.computeIfAbsent(q.getExerciseId(), k -> new ArrayList<>()).add(q));
+        }
+
+        final Map<Long, Course> finalCourseMap = courseMap;
+        final Map<Long, CourseChapter> finalChapterMap = chapterMap;
+        final Map<Long, List<ExerciseQuestion>> finalQuestionsMap = questionsMap;
+
+        IPage<ExerciseVO> voPage = exercisePage.convert(e ->
+                convertToVO(e, finalCourseMap, finalChapterMap, finalQuestionsMap));
         return PageResult.of(voPage);
     }
 
@@ -250,5 +299,73 @@ public class ExerciseServiceImpl implements ExerciseService {
         vo.setQuestions(questionVOList);
 
         return vo;
+    }
+
+    private ExerciseVO convertToVO(Exercise exercise, Map<Long, Course> courseMap,
+                                     Map<Long, CourseChapter> chapterMap,
+                                     Map<Long, List<ExerciseQuestion>> questionsMap) {
+        ExerciseVO vo = new ExerciseVO();
+        vo.setId(exercise.getId());
+        vo.setChapterId(exercise.getChapterId());
+        vo.setCourseId(exercise.getCourseId());
+        vo.setTitle(exercise.getTitle());
+        vo.setPassScore(exercise.getPassScore());
+        vo.setTimeLimit(exercise.getTimeLimit());
+        vo.setMaxAttempts(exercise.getMaxAttempts());
+        vo.setShowAnswerWhen(exercise.getShowAnswerWhen());
+        vo.setShuffleQuestions(exercise.getShuffleQuestions());
+        vo.setShuffleOptions(exercise.getShuffleOptions());
+        vo.setTotalScore(exercise.getTotalScore());
+        vo.setQuestionCount(exercise.getQuestionCount());
+        vo.setVersion(exercise.getVersion());
+        vo.setCreatedAt(exercise.getCreatedAt());
+        vo.setUpdatedAt(exercise.getUpdatedAt());
+
+        if (exercise.getCourseId() != null) {
+            Course course = courseMap.get(exercise.getCourseId());
+            if (course != null) {
+                vo.setCourseTitle(course.getTitle());
+            }
+        }
+
+        if (exercise.getChapterId() != null) {
+            CourseChapter chapter = chapterMap.get(exercise.getChapterId());
+            if (chapter != null) {
+                vo.setChapterTitle(chapter.getTitle());
+            }
+        }
+
+        List<ExerciseQuestion> exerciseQuestions = questionsMap.getOrDefault(exercise.getId(), new ArrayList<>());
+
+        List<ExerciseVO.ExerciseQuestionVO> questionVOList = exerciseQuestions.stream()
+                .map(eq -> {
+                    ExerciseVO.ExerciseQuestionVO qvo = new ExerciseVO.ExerciseQuestionVO();
+                    qvo.setId(eq.getId());
+                    qvo.setExerciseId(eq.getExerciseId());
+                    qvo.setQuestionId(eq.getQuestionId());
+                    qvo.setScore(eq.getScore());
+                    qvo.setSortOrder(eq.getSortOrder());
+                    return qvo;
+                })
+                .collect(Collectors.toList());
+        vo.setQuestions(questionVOList);
+
+        return vo;
+    }
+
+    /**
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     *
+     * @param courseId 课程 ID
+     * @throws BusinessException NOT_FOUND 课程不存在，NO_PERMISSION 无权限
+     */
+    private void assertCourseOwner(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
     }
 }

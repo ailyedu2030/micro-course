@@ -17,12 +17,15 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -63,8 +66,30 @@ public class CourseServiceImpl implements CourseService {
         IPage<Course> ipage = courseRepository.selectPage(
                 new Page<>(query.getPage() + 1, query.getSize()), wrapper);
 
+        // N+1 修复：批量预加载 category 和 teacher
+        java.util.Map<Long, CourseCategory> categoryMap = new java.util.HashMap<>();
+        java.util.Map<Long, User> teacherMap = new java.util.HashMap<>();
+
+        java.util.Set<Long> categoryIds = ipage.getRecords().stream()
+                .map(Course::getCategoryId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> teacherIds = ipage.getRecords().stream()
+                .map(Course::getTeacherId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (!categoryIds.isEmpty()) {
+            categoryRepository.selectBatchIds(categoryIds).forEach(c -> categoryMap.put(c.getId(), c));
+        }
+        if (!teacherIds.isEmpty()) {
+            userRepository.selectBatchIds(teacherIds).forEach(u -> teacherMap.put(u.getId(), u));
+        }
+
+        final java.util.Map<Long, CourseCategory> finalCategoryMap = categoryMap;
+        final java.util.Map<Long, User> finalTeacherMap = teacherMap;
+
         List<CourseVO> vos = ipage.getRecords().stream()
-                .map(this::convertToVO).collect(Collectors.toList());
+                .map(course -> convertToVO(course, finalCategoryMap, finalTeacherMap))
+                .collect(Collectors.toList());
 
         PageResult<CourseVO> result = new PageResult<>();
         result.setItems(vos);
@@ -138,6 +163,10 @@ public class CourseServiceImpl implements CourseService {
         Course course = courseRepository.selectById(id);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // Owner check: only course teacher or ADMIN can update
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // Published course cannot be edited directly
         if (course.getStatus() != null && course.getStatus() == CourseStatus.PUBLISHED.getCode()) {
@@ -224,6 +253,10 @@ public class CourseServiceImpl implements CourseService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can submit for review
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         // DRAFT(0) → PENDING_REVIEW(1)
         if (course.getStatus() != CourseStatus.DRAFT.getCode()) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
@@ -240,6 +273,10 @@ public class CourseServiceImpl implements CourseService {
         Course course = courseRepository.selectById(id);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // Owner check: only course teacher or ADMIN can approve
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // PENDING_REVIEW(1) → APPROVED(2)
         if (course.getStatus() != CourseStatus.PENDING_REVIEW.getCode()) {
@@ -258,6 +295,10 @@ public class CourseServiceImpl implements CourseService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
+        // Owner check: only course teacher or ADMIN can reject
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         // PENDING_REVIEW(1) → REJECTED(3)
         if (course.getStatus() != CourseStatus.PENDING_REVIEW.getCode()) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
@@ -275,6 +316,10 @@ public class CourseServiceImpl implements CourseService {
         Course course = courseRepository.selectById(id);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // Owner check: only course teacher or ADMIN can publish
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // APPROVED(2) → PUBLISHED(4)
         if (course.getStatus() != CourseStatus.APPROVED.getCode()) {
@@ -338,6 +383,55 @@ public class CourseServiceImpl implements CourseService {
         // Load teacher name
         if (course.getTeacherId() != null) {
             User teacher = userRepository.selectById(course.getTeacherId());
+            if (teacher != null) {
+                vo.setTeacherName(teacher.getRealName());
+            }
+        }
+
+        return vo;
+    }
+
+    private CourseVO convertToVO(Course course, java.util.Map<Long, CourseCategory> categoryMap,
+                                 java.util.Map<Long, User> teacherMap) {
+        CourseVO vo = new CourseVO();
+        vo.setId(course.getId());
+        vo.setTitle(course.getTitle());
+        vo.setSubtitle(course.getSubtitle());
+        vo.setSummary(course.getSummary());
+        vo.setCoverUrl(course.getCoverUrl());
+        vo.setCategoryId(course.getCategoryId());
+        vo.setTeacherId(course.getTeacherId());
+        vo.setOfferDepartmentId(course.getOfferDepartmentId());
+        vo.setSemester(course.getSemester());
+        vo.setCreditHours(course.getCreditHours());
+        vo.setCourseNature(course.getCourseNature());
+        vo.setMaxStudents(course.getMaxStudents());
+        vo.setDifficulty(course.getDifficulty());
+        vo.setStatus(course.getStatus());
+        vo.setRejectReason(course.getRejectReason());
+        vo.setDescription(course.getDescription());
+        vo.setStudentCount(course.getStudentCount());
+        vo.setAvgRating(course.getAvgRating());
+        vo.setPublishedAt(course.getPublishedAt());
+        vo.setCreatedAt(course.getCreatedAt());
+        vo.setUpdatedAt(course.getUpdatedAt());
+        vo.setVersion(course.getVersion());
+
+        if (course.getStatus() != null) {
+            vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
+        }
+
+        // Load category name（使用预加载的 Map）
+        if (course.getCategoryId() != null) {
+            CourseCategory category = categoryMap.get(course.getCategoryId());
+            if (category != null) {
+                vo.setCategoryName(category.getName());
+            }
+        }
+
+        // Load teacher name（使用预加载的 Map）
+        if (course.getTeacherId() != null) {
+            User teacher = teacherMap.get(course.getTeacherId());
             if (teacher != null) {
                 vo.setTeacherName(teacher.getRealName());
             }
