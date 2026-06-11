@@ -97,7 +97,7 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
             // 执行 FFmpeg 转码
             ProcessBuilder pb = new ProcessBuilder(
                     "ffmpeg", "-i", originalPath,
-                    "-codec:", "copy",
+                    "-c:v", "copy", "-c:a", "copy",
                     "-start_number", "0",
                     "-hls_time", "10",
                     "-hls_list_size", "0",

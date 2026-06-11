@@ -13,6 +13,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.service.CourseCategoryService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,6 +29,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<CourseCategoryVO> page(int page, int size) {
         IPage<CourseCategory> ipage = courseCategoryRepository.selectPage(
                 new Page<>(page + 1, size),
@@ -47,6 +49,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public CourseCategoryVO getById(Long id) {
         CourseCategory category = courseCategoryRepository.selectById(id);
         if (category == null) {
@@ -56,6 +59,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
+    @Transactional
     public CourseCategoryVO create(CourseCategoryCreateRequest request) {
         CourseCategory category = new CourseCategory();
         category.setName(request.getName());
@@ -69,6 +73,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
+    @Transactional
     public CourseCategoryVO update(Long id, CourseCategoryUpdateRequest request) {
         CourseCategory category = courseCategoryRepository.selectById(id);
         if (category == null) {
@@ -92,6 +97,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
         CourseCategory category = courseCategoryRepository.selectById(id);
         if (category == null) {

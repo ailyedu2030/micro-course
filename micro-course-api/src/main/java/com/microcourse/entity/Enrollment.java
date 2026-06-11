@@ -3,6 +3,7 @@ package com.microcourse.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.math.BigDecimal;
@@ -45,6 +46,9 @@ public class Enrollment {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
+    @TableLogic
+    private LocalDateTime deletedAt;
+
     public Enrollment() {}
 
     public Long getId() { return id; }
@@ -71,4 +75,6 @@ public class Enrollment {
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

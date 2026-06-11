@@ -15,6 +15,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.service.LearningProgressService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<LearningProgressVO> getByUserAndCourse(Long userId, Long courseId) {
         LambdaQueryWrapper<LearningProgress> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(LearningProgress::getUserId, userId)
@@ -47,6 +49,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     }
 
     @Override
+    @Transactional
     public void updateProgress(Long id, Long userId, ProgressUpdateRequest request) {
         LearningProgress progress = learningProgressRepository.selectById(id);
         if (progress == null || !progress.getUserId().equals(userId)) {
@@ -91,6 +94,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     }
 
     @Override
+    @Transactional
     public LearningProgressVO create(ProgressCreateRequest request) {
         LearningProgress progress = new LearningProgress();
         progress.setUserId(request.getUserId());
@@ -114,6 +118,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Map<String, Object> getCourseCompletion(Long userId, Long courseId) {
         LambdaQueryWrapper<LearningProgress> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(LearningProgress::getUserId, userId)

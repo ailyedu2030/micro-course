@@ -161,7 +161,7 @@
  */
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getVideos, createVideo, updateVideo, deleteVideo } from '@/api/video'
+import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideo } from '@/api/video'
 import { getCourses } from '@/api/course'
 
 const loading = ref(false)
@@ -353,7 +353,7 @@ const handleBatchUpload = async ({ file }) => {
       }
     }, 200)
     // 实际调用上传API
-    // await uploadVideo(form)
+    await uploadVideo(form)
     clearInterval(interval)
     queueItem.percentage = 100
     queueItem.status = 'success'
@@ -387,8 +387,7 @@ const handleSubmitCover = async () => {
   try {
     const form = new FormData()
     form.append('file', coverFile.value)
-    // await setVideoCover(currentVideoId.value, form)
-    ElMessage.success('封面设置成功')
+    ElMessage.info('视频封面上传功能开发中')
     coverDialogVisible.value = false
     fetchData()
   } catch (error) {

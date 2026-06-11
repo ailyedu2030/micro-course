@@ -22,6 +22,7 @@ import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.AdminStatsService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -63,6 +64,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public DashboardOverviewVO getOverview() {
         DashboardOverviewVO vo = new DashboardOverviewVO();
 
@@ -97,18 +99,15 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         // 总讨论帖数
         vo.setTotalDiscussions(discussionPostRepository.selectCount(null));
 
-        // 总观看时长（分钟）从 learning_progress.total_watch_time 求和
-        Long totalWatchTimeSeconds = learningProgressRepository.selectCount(null) > 0
-                ? learningProgressRepository.selectList(null).stream()
-                        .mapToLong(lp -> lp.getTotalWatchTime() != null ? lp.getTotalWatchTime() : 0)
-                        .sum()
-                : 0L;
+        // 总观看时长（分钟）从 learning_progress.total_watch_time 求和（SQL聚合，避免OOM）
+        Long totalWatchTimeSeconds = learningProgressRepository.sumTotalWatchTime();
         vo.setTotalWatchTimeMinutes(totalWatchTimeSeconds / 60);
 
         return vo;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserTrendVO> getUserTrend(int days) {
         List<UserTrendVO> result = new ArrayList<>();
         LocalDate today = LocalDate.now();
@@ -142,6 +141,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CourseTrendVO> getCourseTrend(int days) {
         List<CourseTrendVO> result = new ArrayList<>();
         LocalDate today = LocalDate.now();
@@ -173,6 +173,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getCourseDistribution() {
         List<Map<String, Object>> result = new ArrayList<>();
         for (CourseStatus status : CourseStatus.values()) {
@@ -188,6 +189,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getLearningBehavior() {
         List<Map<String, Object>> result = new ArrayList<>();
 

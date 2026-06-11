@@ -83,6 +83,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<CourseReviewVO> listByCourse(Long courseId, int page, int size) {
         Page<CourseReview> pg = new Page<>(page + 1, size); // MyBatis-Plus 1-based
         LambdaQueryWrapper<CourseReview> wrapper = new LambdaQueryWrapper<>();

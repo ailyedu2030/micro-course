@@ -3,6 +3,7 @@ package com.microcourse.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.time.LocalDateTime;
@@ -37,6 +38,9 @@ public class ExerciseRecord {
     @TableField("submitted_at")
     private LocalDateTime submittedAt;
 
+    @TableLogic
+    private LocalDateTime deletedAt;
+
     public ExerciseRecord() {}
 
     public Long getId() { return id; }
@@ -59,4 +63,6 @@ public class ExerciseRecord {
     public void setAnswers(String answers) { this.answers = answers; }
     public LocalDateTime getSubmittedAt() { return submittedAt; }
     public void setSubmittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

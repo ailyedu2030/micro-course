@@ -290,12 +290,9 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional
     public void delete(Long id) {
-        Course course = courseRepository.selectById(id);
-        if (course == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        }
-        courseRepository.deleteById(id);
-        // Cascade delete chapters
+        // 软删除：使用 status=5 (CLOSED/下架) 代替物理删除
+        updateStatus(id, CourseStatus.CLOSED.getCode());
+        // 级联软删除章节（使用 @TableLogic，delete 变为 UPDATE SET deleted_at = NOW()）
         LambdaQueryWrapper<CourseChapter> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseChapter::getCourseId, id);
         chapterRepository.delete(wrapper);

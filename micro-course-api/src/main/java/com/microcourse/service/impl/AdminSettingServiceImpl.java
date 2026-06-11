@@ -31,6 +31,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AdminSettingVO> getAll() {
         List<AdminSetting> settings = adminSettingRepository.selectList(null);
         return settings.stream()
@@ -39,6 +40,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public String getByKey(String key) {
         LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AdminSetting::getSettingKey, key);

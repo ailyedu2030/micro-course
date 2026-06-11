@@ -14,11 +14,13 @@ import com.microcourse.service.AuthService;
 import com.microcourse.service.OperationLogService;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.logging.Logger;
 
@@ -35,16 +37,19 @@ public class AuthServiceImpl implements AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final RedisUtil redisUtil;
     private final OperationLogService operationLogService;
+    private final HttpServletRequest httpServletRequest;
 
     @Autowired
     public AuthServiceImpl(UserRepository userRepository, JwtUtil jwtUtil,
                            BCryptPasswordEncoder passwordEncoder, RedisUtil redisUtil,
-                           OperationLogService operationLogService) {
+                           OperationLogService operationLogService,
+                           HttpServletRequest httpServletRequest) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
         this.redisUtil = redisUtil;
         this.operationLogService = operationLogService;
+        this.httpServletRequest = httpServletRequest;
     }
 
     @Override
@@ -158,6 +163,9 @@ public class AuthServiceImpl implements AuthService {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal == null) {
             logger.info("Logout: no principal found in security context");
+            //仍尝试从 Authorization header 黑名单 token
+            blacklistCurrentToken();
+            SecurityContextHolder.clearContext();
             return;
         }
         Long userId = (Long) principal;
@@ -178,8 +186,30 @@ public class AuthServiceImpl implements AuthService {
             logEntry.setSuccess(true);
             operationLogService.log(logEntry);
         }
-        // Step 4: 清除 SecurityContext
+        // Step 4: 黑名单当前 token
+        blacklistCurrentToken();
+        // Step 5: 清除 SecurityContext
         SecurityContextHolder.clearContext();
+    }
+
+    /**
+     * 从当前请求的 Authorization header 提取 token 并加入黑名单
+     */
+    private void blacklistCurrentToken() {
+        String authHeader = httpServletRequest.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            try {
+                String jti = jwtUtil.getJtiFromToken(token);
+                long remainingTtl = jwtUtil.getExpirationRemainingSeconds(token);
+                if (jti != null && remainingTtl > 0) {
+                    redisUtil.blacklistToken(jti, remainingTtl);
+                    logger.info("Logout: blacklisted token jti=" + jti + " ttl=" + remainingTtl);
+                }
+            } catch (Exception e) {
+                logger.warning("Logout: failed to blacklist token: " + e.getMessage());
+            }
+        }
     }
 
     @Override

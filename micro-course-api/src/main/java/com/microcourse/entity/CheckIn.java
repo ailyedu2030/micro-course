@@ -3,6 +3,7 @@ package com.microcourse.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.time.LocalDate;
@@ -29,6 +30,9 @@ public class CheckIn {
     @TableField("created_at")
     private LocalDateTime createdAt;
 
+    @TableLogic
+    private LocalDateTime deletedAt;
+
     public CheckIn() {}
 
     public CheckIn(Long id, Long userId, LocalDate checkinDate, Integer duration,
@@ -53,4 +57,6 @@ public class CheckIn {
     public void setStreakDays(Integer streakDays) { this.streakDays = streakDays; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

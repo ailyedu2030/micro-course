@@ -19,6 +19,7 @@ import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.DiscussionPostService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<DiscussionPostVO> page(Long chapterId, int page, int size) {
         LambdaQueryWrapper<DiscussionPost> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(chapterId != null, DiscussionPost::getChapterId, chapterId)
@@ -63,6 +65,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public DiscussionPostVO getById(Long id) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -82,6 +85,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
+    @Transactional
     public DiscussionPostVO create(PostCreateRequest req, Long userId) {
         DiscussionPost post = new DiscussionPost();
         post.setCourseId(req.getCourseId());
@@ -102,6 +106,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
+    @Transactional
     public DiscussionPostVO update(Long id, PostUpdateRequest request, Long userId) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -129,6 +134,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id, Long userId) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -148,6 +154,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
+    @Transactional
     public void pin(Long id) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -160,6 +167,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
+    @Transactional
     public void updatePin(Long id, boolean pinned) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -171,6 +179,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
+    @Transactional
     public void updateEssence(Long id, boolean essence) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {

@@ -29,6 +29,7 @@ import com.microcourse.service.UserService;
 import com.microcourse.util.RedisUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -68,6 +69,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<UserVO> pageUsers(UserPageQuery query) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(query.getKeyword() != null, User::getUsername, query.getKeyword())
@@ -110,6 +112,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UserVO getUserById(Long id) {
         User user = userRepository.selectById(id);
         if (user == null || user.getDeletedAt() != null) {
@@ -119,6 +122,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserVO createUser(UserCreateRequest request) {
         // 检查用户名唯一
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
@@ -144,6 +148,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserVO updateUser(Long id, UserUpdateRequest request) {
         User user = userRepository.selectById(id);
         if (user == null || user.getDeletedAt() != null) {
@@ -178,6 +183,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void updateStatus(Long id, UserStatusRequest request) {
         User user = userRepository.selectById(id);
         if (user == null) {
@@ -226,6 +232,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public BatchImportResultVO batchImportUsers(MultipartFile file) {
         List<String> errors = new ArrayList<>();
         int successCount = 0;

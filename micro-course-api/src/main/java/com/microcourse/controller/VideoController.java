@@ -13,6 +13,7 @@ import com.microcourse.service.VideoService;
 import com.microcourse.service.VideoTranscodeService;
 import com.microcourse.util.VideoSignUtil;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -174,6 +175,13 @@ public class VideoController {
      * 视频播放代理
      * 验证 sign 有效后 302 重定向到 HLS 地址
      */
+    @GetMapping("/{id}/sign")
+    @PreAuthorize("isAuthenticated()")
+    public R<String> generateSign(@PathVariable @PositiveOrZero Long id) {
+        String sign = videoSignUtil.generateSign(id, 2);
+        return R.ok(sign);
+    }
+
     @GetMapping("/{id}/play")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> play(@PathVariable Long id,

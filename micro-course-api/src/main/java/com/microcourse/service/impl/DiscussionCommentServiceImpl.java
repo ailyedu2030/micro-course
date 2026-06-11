@@ -36,6 +36,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<DiscussionCommentVO> page(Long postId) {
         LambdaQueryWrapper<DiscussionComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DiscussionComment::getPostId, postId)
@@ -72,6 +73,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id, Long userId) {
         DiscussionComment comment = commentRepository.selectById(id);
         if (comment == null || comment.getStatus() == 0) {
@@ -86,6 +88,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     }
 
     @Override
+    @Transactional
     public void like(Long id) {
         DiscussionComment comment = commentRepository.selectById(id);
         if (comment == null || comment.getStatus() == 0) {

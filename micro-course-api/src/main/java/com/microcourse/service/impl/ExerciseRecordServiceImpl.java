@@ -224,6 +224,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExerciseRecordVO> getRecordsByExercise(Long exerciseId) {
         Exercise exercise = exerciseRepository.selectById(exerciseId);
         if (exercise == null) {
@@ -241,6 +242,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExerciseRecordVO> getMyRecords(Long userId, Long exerciseId) {
         Exercise exercise = exerciseRepository.selectById(exerciseId);
         if (exercise == null) {
@@ -259,6 +261,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ExerciseRecordVO getRecordById(Long id, Long userId) {
         ExerciseRecord record = exerciseRecordRepository.selectById(id);
         if (record == null) {

@@ -10,6 +10,7 @@ import com.microcourse.entity.Notification;
 import com.microcourse.repository.NotificationRepository;
 import com.microcourse.service.NotificationService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -23,6 +24,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional
     public NotificationVO send(NotificationCreateRequest request) {
         Notification notification = new Notification();
         notification.setUserId(request.getUserId());
@@ -40,6 +42,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<NotificationVO> getMyNotifications(Long userId, int page, int size) {
         LambdaQueryWrapper<Notification> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Notification::getUserId, userId);
@@ -60,6 +63,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional
     public void markAsRead(Long id, Long userId) {
         LambdaUpdateWrapper<Notification> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(Notification::getId, id)
@@ -70,6 +74,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
         LambdaQueryWrapper<Notification> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Notification::getUserId, userId);
@@ -78,6 +83,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional
     public void markAllAsRead(Long userId) {
         Notification notification = new Notification();
         notification.setIsRead(true);

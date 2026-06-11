@@ -59,6 +59,7 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CourseFavoriteVO> getMyFavorites(Long userId) {
         LambdaQueryWrapper<CourseFavorite> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseFavorite::getUserId, userId)
@@ -81,6 +82,7 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CourseFavoriteVO> listAll() {
         List<CourseFavorite> favorites = favoriteRepository.selectList(null);
         return favorites.stream().map(fav -> {
@@ -99,6 +101,7 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isFavorited(Long userId, Long courseId) {
         LambdaQueryWrapper<CourseFavorite> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseFavorite::getUserId, userId)

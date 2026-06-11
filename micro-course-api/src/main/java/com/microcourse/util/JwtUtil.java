@@ -168,6 +168,17 @@ public class JwtUtil {
         return claims.get("jti", String.class);
     }
 
+    /**
+     * 获取 token 剩余有效期（秒）
+     */
+    public long getExpirationRemainingSeconds(String token) {
+        Claims claims = getClaims(token);
+        Date exp = claims.getExpiration();
+        if (exp == null) return 0;
+        long remaining = (exp.getTime() - System.currentTimeMillis()) / 1000;
+        return Math.max(0, remaining);
+    }
+
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }

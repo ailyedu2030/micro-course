@@ -3,6 +3,7 @@ package com.microcourse.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.time.LocalDateTime;
@@ -51,6 +52,9 @@ public class Video {
 
     private Integer version;
 
+    @TableLogic
+    private LocalDateTime deletedAt;
+
     public Video() {}
 
     public Long getId() { return id; }
@@ -93,4 +97,6 @@ public class Video {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

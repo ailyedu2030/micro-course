@@ -8,6 +8,7 @@ import com.microcourse.entity.OperationLog;
 import com.microcourse.repository.OperationLogRepository;
 import com.microcourse.service.OperationLogService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -27,12 +28,14 @@ public class OperationLogServiceImpl implements OperationLogService {
     }
 
     @Override
+    @Transactional
     public void log(OperationLog operationLog) {
         // Phase 6: 改为异步记录
         operationLogRepository.insert(operationLog);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<OperationLog> pageQuery(Long userId, String action,
                                              LocalDateTime startTime, LocalDateTime endTime,
                                              int page, int size) {

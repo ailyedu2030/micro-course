@@ -3,6 +3,7 @@ package com.microcourse.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.microcourse.enums.UserRole;
 
@@ -56,6 +57,7 @@ public class User {
     @TableField("last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @TableLogic
     @TableField("deleted_at")
     private LocalDateTime deletedAt;
 

@@ -5,4 +5,4 @@ export function logout() { return request({ method: 'POST', url: '/auth/logout' 
 export function getCurrentUser() { return request({ method: 'GET', url: '/auth/me' }) }
 export function updateProfile(data) { return request({ method: 'PUT', url: '/auth/me', data }) }
 export function changePassword(data) { return request({ method: 'PUT', url: '/auth/me/password', data }) }
-export function casLogin(ticket, state) { return request({ method: 'GET', url: `/auth/cas?ticket=${ticket}&state=${state}` }) }
+export function casLogin(ticket, state) { return request({ method: 'GET', url: `/auth/cas?ticket=${encodeURIComponent(ticket)}&state=${encodeURIComponent(state || '')}` }) }

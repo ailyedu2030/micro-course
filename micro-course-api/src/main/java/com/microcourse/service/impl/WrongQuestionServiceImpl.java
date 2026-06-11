@@ -8,6 +8,7 @@ import com.microcourse.repository.QuestionRepository;
 import com.microcourse.repository.WrongQuestionRepository;
 import com.microcourse.service.WrongQuestionService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -24,6 +25,7 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<WrongQuestionVO> getMyWrongQuestions(Long userId) {
         LambdaQueryWrapper<WrongQuestion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WrongQuestion::getUserId, userId)
@@ -36,6 +38,7 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<WrongQuestionVO> getMyWrongQuestionsByCourse(Long userId, Long courseId) {
         LambdaQueryWrapper<WrongQuestion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WrongQuestion::getUserId, userId)

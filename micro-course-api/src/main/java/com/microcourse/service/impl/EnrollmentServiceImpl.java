@@ -183,7 +183,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof Long) return (Long) principal;
-        return null;
+        throw new BusinessException(ErrorCode.TOKEN_INVALID);
     }
 
     private boolean hasAdminRole() {

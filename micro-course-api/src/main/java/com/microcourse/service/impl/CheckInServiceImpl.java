@@ -6,6 +6,7 @@ import com.microcourse.entity.CheckIn;
 import com.microcourse.repository.CheckInRepository;
 import com.microcourse.service.CheckInService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     @Override
+    @Transactional
     public CheckInVO checkIn(Long userId) {
         LocalDate today = LocalDate.now();
 
@@ -68,6 +70,7 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CheckInVO> getMyCheckIns(Long userId, int days) {
         LocalDate startDate = LocalDate.now().minusDays(days - 1);
 
@@ -84,6 +87,7 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public int getStreak(Long userId) {
         LocalDate today = LocalDate.now();
 
@@ -105,6 +109,7 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     @Override
+    @Transactional
     public void updateDuration(Long userId, int duration) {
         LocalDate today = LocalDate.now();
 

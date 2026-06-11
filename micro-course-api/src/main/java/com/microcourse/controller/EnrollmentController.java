@@ -53,7 +53,7 @@ public class EnrollmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
     public R<Void> cancelEnrollment(@PathVariable Long id) {
         enrollmentService.cancelEnrollment(id);
         return R.ok();
