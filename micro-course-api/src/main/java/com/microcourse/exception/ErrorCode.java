@@ -35,7 +35,9 @@ public enum ErrorCode {
     BAD_REQUEST_PARAM(9005, "参数错误", 400),
     DISCUSSION_POST_NOT_FOUND(10001, "帖子不存在", 404),
     DISCUSSION_COMMENT_NOT_FOUND(10002, "评论不存在", 404),
-    NO_PERMISSION(10003, "无权限操作", 403);
+    NO_PERMISSION(10003, "无权限操作", 403),
+    LEARNING_PROGRESS_NOT_FOUND(11001, "学习进度不存在", 404),
+    CHECKIN_NOT_FOUND(11002, "打卡记录不存在", 404);
 
     private final int code;
     private final String message;
