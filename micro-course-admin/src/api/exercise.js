@@ -1,0 +1,6 @@
+import request from '../utils/request'
+export function getExercises(params) { return request({ method:'GET', url:'/exercises', params }) }
+export function getExerciseById(id) { return request({ method:'GET', url:`/exercises/${id}` }) }
+export function createExercise(data) { return request({ method:'POST', url:'/exercises', data }) }
+export function updateExercise(id, data) { return request({ method:'PUT', url:`/exercises/${id}`, data }) }
+export function deleteExercise(id) { return request({ method:'DELETE', url:`/exercises/${id}` }) }

@@ -9,6 +9,7 @@
         <el-menu-item index="/majors"><el-icon><Reading /></el-icon><template #title>专业管理</template></el-menu-item>
         <el-menu-item index="/classes"><el-icon><School /></el-icon><template #title>班级管理</template></el-menu-item>
         <el-menu-item index="/users"><el-icon><User /></el-icon><template #title>用户管理</template></el-menu-item>
+        <el-menu-item index="/courses"><el-icon><Notebook /></el-icon><template #title>课程管理</template></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -36,7 +37,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
-import { OfficeBuilding, Reading, School, User, Fold, Expand, ArrowDown } from '@element-plus/icons-vue'
+import { OfficeBuilding, Reading, School, User, Fold, Expand, ArrowDown, Notebook } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
