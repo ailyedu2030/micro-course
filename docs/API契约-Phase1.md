@@ -1,9 +1,19 @@
 # 微课管理平台 · API 契约文档 · Phase 1
 
-> 版本：v1.1  
+> 版本：v1.2  
 > 日期：2026-06-11  
 > 状态：正式发布  
-> 范围：用户认证、院系管理、专业管理、班级管理、用户管理（共 24 个 API）
+> 范围：用户认证、院系管理、专业管理、班级管理、用户管理（共 27 个 API）
+
+---
+
+## 修订记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| v1.0 | 2026-06-11 | 初稿 |
+| v1.1 | 2026-06-11 | 修复分页格式（统一为 items）、完善 JWT Payload 结构、预留讨论区 API |
+| v1.2 | 2026-06-11 | 补 3 个 /me 端点（PUT /me, PUT /me/password, POST /me/avatar），与权限矩阵 v2.0 §1.1 对齐。依据：穷举审查 E4 P1-3 |
 
 ---
 
@@ -325,6 +335,123 @@
 - `realName`：姓保留，名掩码，如"张**"
 - `email`：@前保留首字，如"j***@example.com"
 - `phone`：前3后4掩码，如"138****1234"
+
+---
+
+### 1.6 PUT /api/auth/me — 更新当前用户基本信息
+
+**权限要求**：已认证用户（仅本人）
+
+**请求参数**：
+```json
+{
+  "realName": "String (可选)",
+  "email": "String (可选)",
+  "phone": "String (可选)",
+  "gender": "MALE|FEMALE (可选)",
+  "avatar": "String (可选)"
+}
+```
+
+**成功响应**：
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "userId": 1,
+    "realName": "张*",
+    "email": "j***@example.com",
+    "phone": "138****1234"
+  },
+  "timestamp": 1749620400000
+}
+```
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 400 | 400 | 参数错误 |
+| 401 | 1004 | Token 已过期 |
+| 409 | 5004 | 邮箱已被其他用户使用 |
+
+**特别注意**：
+- 用户**只能修改自己的**基本信息（realName/email/phone/gender/avatar）
+- **不能**修改：role / status / departmentId / majorId / classId（仅 ADMIN 可改）
+- 邮箱若被其他用户占用 → code 5004
+
+---
+
+### 1.7 PUT /api/auth/me/password — 修改密码
+
+**权限要求**：已认证用户（仅本人）
+
+**请求参数**：
+```json
+{
+  "oldPassword": "String (必填, 当前密码)",
+  "newPassword": "String (必填, 最小8字符, 需包含字母和数字)"
+}
+```
+
+**成功响应**：
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": null,
+  "timestamp": 1749620400000
+}
+```
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 400 | 400 | 参数错误（newPassword 强度不足） |
+| 401 | 1001 | 原密码错误 |
+| 401 | 1004 | Token 已过期 |
+
+**业务规则**：
+- 改密成功后，旧 Token 立即失效（强制重新登录）
+- 清除登录失败计数（login:lock:{username}）
+
+---
+
+### 1.8 POST /api/auth/me/avatar — 上传头像
+
+**权限要求**：已认证用户（仅本人）
+
+**请求类型**：`multipart/form-data`
+
+**请求参数**：
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| file | binary | 是 | 图片文件，限制：jpg/png/webp，≤ 2MB |
+
+**成功响应**：
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "avatar": "https://cdn.microcourse.local/avatars/1_1749620400000.png"
+  },
+  "timestamp": 1749620400000
+}
+```
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 400 | 400 | 文件类型/大小不符合 |
+| 401 | 1004 | Token 已过期 |
+
+**业务规则**：
+- 文件存 OSS / 本地 storage（Phase 1.5 决定）
+- 文件名格式：`{userId}_{timestamp}.{ext}`
 
 ---
 

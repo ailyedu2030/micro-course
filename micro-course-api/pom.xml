@@ -60,6 +60,18 @@
             <version>${flyway.version}</version>
         </dependency>
 
+        <!-- Spring Data Redis：登录失败计数 + Token 黑名单（Lettuce 客户端，Spring Boot 3.x 默认） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Lettuce 连接池依赖（commons-pool2）：启用 lettuce.pool.* 必须显式引入 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

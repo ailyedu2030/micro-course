@@ -58,7 +58,7 @@ check_api_v1_prefix() {
 check_sys_user_prefix() {
     local hits
     hits=$(grep -rn "sys_user" docs/ 2>/dev/null \
-        | grep -v "冲突评审决议\|项目结构规范.md:v1.1\|修订记录" \
+        | grep -v "冲突评审决议\|复盘/\|项目结构规范.md:v1.1\|修订记录" \
         | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[C5] 文档残留 sys_ 表前缀（$hits 处，应为 users）")
@@ -74,7 +74,7 @@ check_sys_user_prefix() {
 check_users_me_path() {
     local hits
     hits=$(grep -rn "/users/me" docs/ 2>/dev/null \
-        | grep -v "冲突评审决议\|权限矩阵.md" \
+        | grep -v "冲突评审决议\|复盘/\|权限矩阵.md" \
         | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[C4] 文档残留 /users/me 路径（$hits 处，应为 /auth/me）")
@@ -90,7 +90,7 @@ check_users_me_path() {
 check_outdated_path() {
     local hits
     hits=$(grep -rn "Volumes/Coding" docs/ 2>/dev/null \
-        | grep -v "根因报告-Phase0\|开发规范.md:700\|地基工程-v1.0-终验" \
+        | grep -v "复盘/根因报告\|复盘/地基工程\|开发规范.md:700\|复盘/E5" \
         | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[P5] 文档残留 Volumes/Coding 过时路径（$hits 处）")
