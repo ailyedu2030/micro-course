@@ -44,9 +44,12 @@ const routes = [
   { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningCenter.vue'), meta: { requiresAuth: true } },
   { path: '/student/notifications', name: 'StudentNotifications', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true } },
   { path: '/student/profile', name: 'StudentProfile', component: () => import('../views/student/Profile.vue'), meta: { requiresAuth: true } },
+  { path: '/student/report', name: 'StudentWeeklyReport', component: () => import('../views/student/WeeklyReport.vue'), meta: { requiresAuth: true } },
   { path: '/student/redirect', redirect: '/student/courses' },
   { path: '/student/chapters/:chapterId/exercises', name: 'StudentExerciseTake', component: () => import('../views/student/ExerciseTake.vue'), meta: { requiresAuth: true } },
   { path: '/student/discussions', name: 'StudentDiscussion', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true } },
+  { path: '/student/reviews', name: 'StudentMyReviews', component: () => import('../views/student/MyReviews.vue'), meta: { requiresAuth: true } },
+  { path: '/student/settings', name: 'StudentSettings', component: () => import('../views/student/Settings.vue'), meta: { requiresAuth: true } },
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })

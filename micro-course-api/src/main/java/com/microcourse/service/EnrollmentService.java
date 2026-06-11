@@ -4,6 +4,8 @@ import com.microcourse.dto.EnrollmentCreateRequest;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 
+import com.microcourse.dto.EnrollmentRankingVO;
+
 import java.util.List;
 
 public interface EnrollmentService {
@@ -13,6 +15,8 @@ public interface EnrollmentService {
     List<EnrollmentVO> getMyEnrollments(Long userId);
 
     List<EnrollmentVO> getCourseEnrollments(Long courseId);
+
+    List<EnrollmentRankingVO> getCourseRanking(Long courseId, int limit, Long currentUserId);
 
     EnrollmentVO updateEnrollment(Long id, EnrollmentUpdateRequest request);
 

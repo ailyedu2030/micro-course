@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.EnrollmentCreateRequest;
+import com.microcourse.dto.EnrollmentRankingVO;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.R;
@@ -42,6 +43,16 @@ public class EnrollmentController {
     public R<List<EnrollmentVO>> getCourseEnrollments(@PathVariable Long courseId) {
         List<EnrollmentVO> list = enrollmentService.getCourseEnrollments(courseId);
         return R.ok(list);
+    }
+
+    @GetMapping("/course/{courseId}/ranking")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<EnrollmentRankingVO>> getCourseRanking(
+            @PathVariable Long courseId,
+            @RequestParam(defaultValue = "10") int limit) {
+        Long userId = getCurrentUserId();
+        List<EnrollmentRankingVO> ranking = enrollmentService.getCourseRanking(courseId, limit, userId);
+        return R.ok(ranking);
     }
 
     @PutMapping("/{id}")

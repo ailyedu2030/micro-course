@@ -106,6 +106,32 @@
       </el-col>
     </el-row>
 
+    <!-- 成就 -->
+    <el-card class="profile-card achievement-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>我的成就</span>
+        </div>
+      </template>
+      <div v-loading="badgeLoading" class="badge-grid">
+        <div
+          v-for="badge in allBadges"
+          :key="badge.badgeType"
+          class="badge-item"
+          :class="{ 'badge-locked': !badge.earnedAt }"
+        >
+          <div class="badge-icon">
+            <el-icon v-if="badge.earnedAt" color="#67c23a" :size="32"><Star /></el-icon>
+            <el-icon v-else color="#c0c4cc" :size="32"><Lock /></el-icon>
+          </div>
+          <div class="badge-name">{{ badge.badgeName }}</div>
+          <div v-if="badge.earnedAt" class="badge-date">{{ badge.earnedAt }}</div>
+          <div v-else class="badge-tip">未解锁</div>
+        </div>
+      </div>
+      <el-empty v-if="!badgeLoading && allBadges.length === 0" description="暂无成就数据" :image-size="60" />
+    </el-card>
+
     <!-- 错题集 -->
     <el-card class="profile-card wrong-questions-card" shadow="never">
       <template #header>
@@ -140,19 +166,71 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="入库时间" width="170" />
+        <el-table-column label="操作" width="100" align="center">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.chapterId"
+              type="primary"
+              size="small"
+              text
+              @click="handleReviewVideo(row)"
+            >
+              重温视频
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <el-empty v-if="!wrongLoading && wrongQuestions.length === 0" description="暂无错题记录，继续保持！" />
+    </el-card>
+
+    <!-- 我的证书 -->
+    <el-card class="profile-card certificate-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>我的证书</span>
+        </div>
+      </template>
+
+      <div v-loading="certLoading" class="cert-grid">
+        <div
+          v-for="cert in certificates"
+          :key="cert.id"
+          class="cert-item"
+        >
+          <div class="cert-icon">
+            <el-icon color="#c9a227" :size="40"><Medal /></el-icon>
+          </div>
+          <div class="cert-info">
+            <div class="cert-title">{{ cert.courseTitle }}</div>
+            <div class="cert-meta">
+              <span class="cert-date">颁发于 {{ formatDate(cert.issuedAt) }}</span>
+              <span class="cert-code">{{ cert.certCode }}</span>
+            </div>
+          </div>
+          <div class="cert-actions">
+            <el-button type="primary" size="small" @click="handleViewCertificate(cert)">
+              查看证书
+            </el-button>
+          </div>
+        </div>
+      </div>
+      <el-empty v-if="!certLoading && certificates.length === 0" description="暂无证书记录，完成课程学习后可获得" :image-size="60" />
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
 import { updateProfile, changePassword } from '../../api/auth'
 import { getMyEnrollments } from '../../api/enrollment'
+import { getMyBadges } from '../../api/badge'
 import { getMyWrongQuestions } from '../../api/wrong-question'
+import { getMyCertificates, downloadCertificate } from '../../api/certificate'
+
+const router = useRouter()
 
 const userStore = useUserStore()
 
@@ -209,6 +287,38 @@ const wrongQuestions = ref([])
 const wrongLoading = ref(false)
 const myCourses = ref([])
 const selectedCourseId = ref('')
+
+// 证书
+const certificates = ref([])
+const certLoading = ref(false)
+
+// 成就徽章
+const badgeLoading = ref(false)
+const earnedBadges = ref([])
+
+const allBadges = computed(() => {
+  const badgeTypes = [
+    { badgeType: 'FIRST_COURSE', badgeName: '初识课程' },
+    { badgeType: 'ALL_COURSES', badgeName: '学满全部' },
+    { badgeType: 'SEVEN_DAY_STREAK', badgeName: '连续打卡' }
+  ]
+  return badgeTypes.map(b => {
+    const earned = earnedBadges.value.find(e => e.badgeType === b.badgeType)
+    return earned ? { ...b, ...earned } : { ...b, earnedAt: null }
+  })
+})
+
+const fetchBadges = async () => {
+  badgeLoading.value = true
+  try {
+    const res = await getMyBadges()
+    earnedBadges.value = res.data || []
+  } catch {
+    earnedBadges.value = []
+  } finally {
+    badgeLoading.value = false
+  }
+}
 
 const handleUpdateProfile = async () => {
   profileLoading.value = true
@@ -270,6 +380,52 @@ const fetchWrongQuestions = async () => {
   }
 }
 
+const handleReviewVideo = (row) => {
+  if (!row.chapterId) return
+  const query = { chapterId: row.chapterId }
+  if (row.watchPosition) {
+    query.timestamp = row.watchPosition
+  }
+  router.push({ path: `/student/courses/${row.courseId}`, query })
+}
+
+const fetchCertificates = async () => {
+  certLoading.value = true
+  try {
+    const res = await getMyCertificates()
+    certificates.value = res.data || []
+  } catch {
+    ElMessage.error('获取证书记录失败')
+  } finally {
+    certLoading.value = false
+  }
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}年${month}月${day}日`
+}
+
+const handleViewCertificate = async (cert) => {
+  try {
+    const res = await downloadCertificate(cert.id)
+    const html = res.data
+    const newWindow = window.open('', '_blank')
+    if (newWindow) {
+      newWindow.document.write(html)
+      newWindow.document.close()
+    } else {
+      ElMessage.error('弹出窗口被拦截，请允许弹出窗口')
+    }
+  } catch {
+    ElMessage.error('查看证书失败')
+  }
+}
+
 onMounted(async () => {
   if (!userStore.userInfo) {
     await userStore.getInfo()
@@ -287,6 +443,10 @@ onMounted(async () => {
   // 加载错题集
   fetchWrongQuestions()
   fetchMyEnrollments()
+  // 加载证书
+  fetchCertificates()
+  // 加载成就徽章
+  fetchBadges()
 })
 </script>
 
@@ -354,5 +514,122 @@ onMounted(async () => {
 
 .wrong-questions-card :deep(.el-card__header) {
   padding: 12px 20px;
+}
+
+.cert-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cert-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+}
+
+.cert-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fef0e6 0%, #fff7e6 100%);
+  border-radius: 50%;
+}
+
+.cert-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cert-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.cert-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cert-date {
+  font-size: 13px;
+  color: #909399;
+}
+
+.cert-code {
+  font-size: 12px;
+  color: #c0c4cc;
+  font-family: "Courier New", monospace;
+}
+
+.cert-actions {
+  flex-shrink: 0;
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 12px;
+  border-radius: 8px;
+  background: #f5f7fa;
+  transition: all 0.3s ease;
+}
+
+.badge-item.badge-locked {
+  background: #f0f0f0;
+  opacity: 0.6;
+}
+
+.badge-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+  text-align: center;
+}
+
+.badge-date {
+  font-size: 12px;
+  color: #67c23a;
+  text-align: center;
+}
+
+.badge-tip {
+  font-size: 12px;
+  color: #c0c4cc;
+  text-align: center;
+}
+
+.achievement-card :deep(.el-card__header) {
+  padding: 12px 20px;
+}
+
+@media (max-width: 768px) {
+  .badge-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

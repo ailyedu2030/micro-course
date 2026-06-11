@@ -2,6 +2,7 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.EnrollmentCreateRequest;
+import com.microcourse.dto.EnrollmentRankingVO;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.entity.Course;
@@ -94,6 +95,49 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 .orderByDesc(Enrollment::getEnrolledAt);
         List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
         return convertToVOList(enrollments);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EnrollmentRankingVO> getCourseRanking(Long courseId, int limit, Long currentUserId) {
+        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Enrollment::getCourseId, courseId)
+                .eq(Enrollment::getEnrollmentStatus, "ENROLLED")
+                .orderByDesc(Enrollment::getProgress)
+                .last("LIMIT " + limit);
+        List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
+
+        java.util.Set<Long> userIds = enrollments.stream()
+                .map(Enrollment::getUserId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+        if (!userIds.isEmpty()) {
+            userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
+        }
+
+        java.util.List<EnrollmentRankingVO> result = new java.util.ArrayList<>();
+        int rank = 1;
+        for (Enrollment e : enrollments) {
+            EnrollmentRankingVO vo = new EnrollmentRankingVO();
+            vo.setRank(rank);
+            vo.setUserId(e.getUserId());
+            vo.setProgress(e.getProgress());
+            vo.setCompleted(e.getCompleted());
+
+            boolean isCurrentUser = currentUserId != null && e.getUserId().equals(currentUserId);
+            if (isCurrentUser) {
+                User user = userMap.get(e.getUserId());
+                vo.setUserName(user != null ? user.getRealName() : "匿名");
+            } else {
+                vo.setUserName("匿名");
+            }
+            vo.setIsCurrentUser(isCurrentUser);
+            result.add(vo);
+            rank++;
+        }
+        return result;
     }
 
     private List<EnrollmentVO> convertToVOList(List<Enrollment> enrollments) {

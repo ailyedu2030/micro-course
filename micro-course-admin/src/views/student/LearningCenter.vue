@@ -26,106 +26,187 @@
       </el-card>
     </div>
 
-    <!-- 主体两栏布局 -->
-    <div class="main-content">
-      <!-- 左侧：打卡日历 + 打卡按钮 -->
-      <div class="left-panel">
-        <el-card class="calendar-card">
-          <template #header>
-            <div class="card-header-title">活跃日历（近30天）</div>
-          </template>
-          <div class="calendar-grid">
-            <div
-              v-for="day in calendarDays"
-              :key="day.date"
-              class="calendar-cell"
-              :class="day.hasCheckIn ? 'cell-active' : 'cell-inactive'"
-              :title="day.date"
-            >
-              <span class="day-number">{{ day.day }}</span>
-            </div>
-          </div>
-          <div class="calendar-legend">
-            <span class="legend-item"><span class="legend-dot dot-active"></span>已打卡</span>
-            <span class="legend-item"><span class="legend-dot dot-inactive"></span>未打卡</span>
-          </div>
-        </el-card>
-
-        <el-card class="checkin-card">
-          <div class="checkin-action">
-            <el-button
-              v-if="!todayCheckedIn"
-              type="primary"
-              size="large"
-              circle
-              class="checkin-btn"
-              @click="handleCheckIn"
-              :loading="checkinLoading"
-            >
-             <span class="checkin-icon">+</span>
-            </el-button>
-            <el-button
-              v-else
-              type="success"
-              size="large"
-              circle
-              disabled
-              class="checkin-btn"
-            >
-              <span class="checkin-icon">✓</span>
-            </el-button>
-            <div class="checkin-text">
-              {{ todayCheckedIn ? '今日已打卡 ✓' : '点击打卡' }}
-            </div>
-          </div>
-        </el-card>
-      </div>
-
-      <!-- 右侧：正确率趋势 + 知识图谱占位 -->
-      <div class="right-panel">
-        <el-card class="trend-card">
-          <template #header>
-            <div class="card-header-title">正确率趋势（近5次练习）</div>
-          </template>
-          <div v-loading="trendLoading" class="trend-list">
-            <template v-if="exerciseTrends.length > 0">
-              <div
-                v-for="(item, index) in exerciseTrends"
-                :key="index"
-                class="trend-item"
-              >
-                <span class="trend-index">{{ index + 1 }}</span>
-                <span class="trend-exercise">练习 #{{ item.exerciseId }}</span>
-                <div class="trend-bar-wrap">
-                  <div class="trend-bar" :style="{ width: item.score + '%' }"></div>
+    <!-- 标签页切换 -->
+    <div class="tab-container">
+      <el-tabs v-model="activeTab" class="learning-tabs">
+        <el-tab-pane label="学习统计" name="stats">
+          <!-- 主体两栏布局 -->
+          <div class="main-content">
+            <!-- 左侧：打卡日历 + 打卡按钮 -->
+            <div class="left-panel">
+              <el-card class="calendar-card">
+                <template #header>
+                  <div class="card-header-title">活跃日历（近30天）</div>
+                </template>
+                <div class="calendar-grid">
+                  <div
+                    v-for="day in calendarDays"
+                    :key="day.date"
+                    class="calendar-cell"
+                    :class="day.hasCheckIn ? 'cell-active' : 'cell-inactive'"
+                    :title="day.date"
+                  >
+                    <span class="day-number">{{ day.day }}</span>
+                  </div>
                 </div>
-                <span class="trend-score">{{ item.score }}%</span>
-              </div>
-            </template>
-            <el-empty v-else description="暂无练习记录" :image-size="60" />
-          </div>
-        </el-card>
+                <div class="calendar-legend">
+                  <span class="legend-item"><span class="legend-dot dot-active"></span>已打卡</span>
+                  <span class="legend-item"><span class="legend-dot dot-inactive"></span>未打卡</span>
+                </div>
+              </el-card>
 
-        <el-card class="graph-card">
-          <template #header>
-            <div class="card-header-title">知识图谱</div>
-          </template>
-          <div class="coming-soon">
-            <span class="soon-icon">🔗</span>
-            <span class="soon-text">即将上线</span>
+              <el-card class="checkin-card">
+                <div class="checkin-action">
+                  <el-button
+                    v-if="!todayCheckedIn"
+                    type="primary"
+                    size="large"
+                    circle
+                    class="checkin-btn"
+                    @click="handleCheckIn"
+                    :loading="checkinLoading"
+                  >
+                   <span class="checkin-icon">+</span>
+                  </el-button>
+                  <el-button
+                    v-else
+                    type="success"
+                    size="large"
+                    circle
+                    disabled
+                    class="checkin-btn"
+                  >
+                    <span class="checkin-icon">✓</span>
+                  </el-button>
+                  <div class="checkin-text">
+                    {{ todayCheckedIn ? '今日已打卡 ✓' : '点击打卡' }}
+                  </div>
+                </div>
+              </el-card>
+            </div>
+
+            <!-- 右侧：正确率趋势 + 知识图谱占位 -->
+            <div class="right-panel">
+              <el-card class="trend-card">
+                <template #header>
+                  <div class="card-header-title">正确率趋势（近5次练习）</div>
+                </template>
+                <div v-loading="trendLoading" class="trend-list">
+                  <template v-if="exerciseTrends.length > 0">
+                    <div
+                      v-for="(item, index) in exerciseTrends"
+                      :key="index"
+                      class="trend-item"
+                    >
+                      <span class="trend-index">{{ index + 1 }}</span>
+                      <span class="trend-exercise">练习 #{{ item.exerciseId }}</span>
+                      <div class="trend-bar-wrap">
+                        <div class="trend-bar" :style="{ width: item.score + '%' }"></div>
+                      </div>
+                      <span class="trend-score">{{ item.score }}%</span>
+                    </div>
+                  </template>
+                  <el-empty v-else description="暂无练习记录" :image-size="60" />
+                </div>
+              </el-card>
+
+              <el-card class="graph-card">
+                <template #header>
+                  <div class="card-header-title">知识图谱</div>
+                </template>
+                <div class="coming-soon">
+                  <span class="soon-icon">🔗</span>
+                  <span class="soon-text">即将上线</span>
+                </div>
+              </el-card>
+            </div>
           </div>
-        </el-card>
-      </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="练习历史" name="history">
+          <div class="history-content">
+            <div v-loading="historyLoading" class="history-list">
+              <template v-if="exerciseHistory.length > 0">
+                <div
+                  v-for="record in exerciseHistory"
+                  :key="record.id"
+                  class="history-item"
+                  @click="toggleExpand(record.id)"
+                >
+                  <div class="history-header">
+                    <div class="history-title">
+                      <span class="exercise-title">{{ record.exerciseTitle }}</span>
+                      <el-tag :type="record.passed ? 'success' : 'danger'" size="small">
+                        {{ record.passed ? '通过' : '未通过' }}
+                      </el-tag>
+                    </div>
+                    <div class="history-meta">
+                      <span class="history-score">得分 {{ record.score }}/{{ record.totalScore }}</span>
+                      <span class="history-date">{{ formatDateTime(record.submittedAt) }}</span>
+                      <span v-if="record.duration" class="history-duration">用时 {{ record.duration }}分钟</span>
+                    </div>
+                  </div>
+
+                  <div v-if="expandedRecordId === record.id && record.answers" class="history-detail">
+                    <div class="detail-title">答题详情</div>
+                    <div class="detail-answers">
+                      <template v-for="(answer, idx) in parseAnswers(record.answers)" :key="idx">
+                        <div class="answer-item" :class="{ 'answer-correct': answer.isCorrect, 'answer-wrong': answer.isCorrect === false }">
+                          <div class="answer-header">
+                            <span class="answer-index">第{{ idx + 1 }}题</span>
+                            <el-tag :type="answer.isCorrect ? 'success' : 'danger'" size="small">
+                              {{ answer.isCorrect ? '正确' : '错误' }}
+                            </el-tag>
+                          </div>
+                          <div class="answer-content">
+                            <div class="answer-user">你的答案：{{ answer.userAnswer || '未答' }}</div>
+                            <div v-if="answer.isCorrect === false" class="answer-correct-answer">
+                              正确答案：{{ answer.correctAnswer }}
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <el-empty v-else description="暂无练习记录" :image-size="60" />
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
+
+    <!-- 打卡分享弹窗 -->
+    <el-dialog v-model="shareVisible" title="分享打卡" width="360px" :close-on-click-modal="true">
+      <div ref="shareCardRef" class="share-card">
+        <div class="share-logo">微课平台</div>
+        <div class="share-streak">
+          <span class="streak-number">{{ streakDays }}</span>
+          <span class="streak-unit">天</span>
+        </div>
+        <div class="share-label">连续学习</div>
+        <div class="share-badge">今日已打卡 ✓</div>
+      </div>
+      <template #footer>
+        <el-button @click="handleCloseShare">关闭</el-button>
+        <el-button type="primary" :loading="shareLoading" @click="handleShare">分享</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
+import html2canvas from 'html2canvas'
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
 import { getMyCheckIns, getCheckInStreak, createCheckIn } from '../../api/checkin'
+import { getMyRecords as getMyExerciseRecords } from '../../api/exercise-record'
+
+const router = useRouter()
 
 const userStore = useUserStore()
 
@@ -137,6 +218,17 @@ const streakDays = ref(0)
 const loading = ref(false)
 const trendLoading = ref(false)
 const checkinLoading = ref(false)
+const shareVisible = ref(false)
+const shareLoading = ref(false)
+const shareCardRef = ref(null)
+
+// 标签页
+const activeTab = ref('stats')
+
+// 练习历史
+const exerciseHistory = ref([])
+const historyLoading = ref(false)
+const expandedRecordId = ref(null)
 
 // 确保 userId 可用
 const ensureUserId = async () => {
@@ -229,10 +321,50 @@ const fetchStreak = async () => {
   }
 }
 
-// 练习记录 - 后端暂不支持批量查询，使用空值占位
-// TODO: 待后端提供 /exercise-records/my 列表接口后启用
+// 练习记录
 const fetchExerciseRecords = async () => {
   exerciseRecords.value = []
+}
+
+// 获取所有练习ID并查询历史
+const fetchExerciseHistory = async () => {
+  if (exerciseHistory.value.length > 0) return
+  historyLoading.value = true
+  try {
+    const userId = userStore.userInfo?.id
+    if (!userId) return
+
+    const res = await getMyExerciseRecords(userId)
+    exerciseHistory.value = res.data || []
+  } catch {
+    ElMessage.error('获取练习历史失败')
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+const toggleExpand = (recordId) => {
+  expandedRecordId.value = expandedRecordId.value === recordId ? null : recordId
+}
+
+const parseAnswers = (answersJson) => {
+  if (!answersJson) return []
+  try {
+    return JSON.parse(answersJson)
+  } catch {
+    return []
+  }
+}
+
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hour}:${minute}`
 }
 
 // 打卡
@@ -242,12 +374,61 @@ const handleCheckIn = async () => {
     await createCheckIn({})
     ElMessage.success('打卡成功！')
     await Promise.all([fetchCheckIns(), fetchStreak()])
+    shareVisible.value = true
   } catch {
     ElMessage.error('打卡失败，请稍后重试')
   } finally {
     checkinLoading.value = false
   }
 }
+
+// 分享
+const handleShare = async () => {
+  if (!shareCardRef.value) return
+  shareLoading.value = true
+  try {
+    const canvas = await html2canvas(shareCardRef.value, { scale: 2, useCORS: true })
+    canvas.toBlob(async (blob) => {
+      if (blob) {
+        const file = new File([blob], 'checkin-share.png', { type: 'image/png' })
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            text: `我在微课平台学习第${streakDays.value}天！`
+          })
+        } else {
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = 'checkin-share.png'
+          a.click()
+          URL.revokeObjectURL(url)
+        }
+      }
+      shareLoading.value = false
+    })
+  } catch {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(`我在微课平台学习第${streakDays.value}天！`)
+      ElMessage.success('分享文字已复制到剪贴板')
+    } else {
+      ElMessage.warning('分享失败，请稍后重试')
+    }
+    shareLoading.value = false
+  }
+}
+
+const handleCloseShare = () => {
+  shareVisible.value = false
+}
+
+// 监听标签页切换
+import { watch } from 'vue'
+watch(activeTab, (newTab) => {
+  if (newTab === 'history') {
+    fetchExerciseHistory()
+  }
+})
 
 //初始化
 onMounted(async () => {
@@ -311,6 +492,15 @@ onMounted(async () => {
   font-size: 14px;
   color: #909399;
   margin-top: 8px;
+}
+
+/* 标签页容器 */
+.tab-container {
+  margin-top: 20px;
+}
+
+.learning-tabs :deep(.el-tabs__header) {
+  margin-bottom: 16px;
 }
 
 /* 主体两栏 */
@@ -557,5 +747,167 @@ onMounted(async () => {
   .stat-label {
     margin-top: 0;
   }
+}
+
+.share-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 32px 24px;
+  text-align: center;
+  color: #fff;
+}
+
+.share-logo {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-bottom: 16px;
+}
+
+.share-streak {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.streak-number {
+  font-size: 64px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.streak-unit {
+  font-size: 24px;
+}
+
+.share-label {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 16px;
+}
+
+.share-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px;
+}
+
+/* 练习历史 */
+.history-content {
+  padding: 0 4px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  background: #f9fafb;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-item:hover {
+  border-color: #409eff;
+  background: #f5f7fa;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.history-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exercise-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+  color: #909399;
+  margin-top: 8px;
+}
+
+.history-score {
+  color: #409eff;
+  font-weight: 500;
+}
+
+.history-detail {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e4e8ec;
+}
+
+.detail-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #606266;
+  margin-bottom: 12px;
+}
+
+.detail-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.answer-item {
+  padding: 12px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #ebeef5;
+}
+
+.answer-correct {
+  border-left: 3px solid #67c23a;
+}
+
+.answer-wrong {
+  border-left: 3px solid #f56c6c;
+}
+
+.answer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.answer-index {
+  font-size: 13px;
+  color: #606266;
+}
+
+.answer-content {
+  font-size: 13px;
+  color: #909399;
+}
+
+.answer-user {
+  margin-bottom: 4px;
+}
+
+.answer-correct-answer {
+  color: #67c23a;
 }
 </style>

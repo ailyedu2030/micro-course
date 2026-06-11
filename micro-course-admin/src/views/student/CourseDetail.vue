@@ -88,8 +88,34 @@
         </el-card>
       </div>
 
-      <!-- 右侧：教师信息 -->
-      <div class="side-column">
+        <!-- 评价区 -->
+        <el-card class="review-card" shadow="never">
+          <template #header>
+            <div class="review-header">
+              <span class="section-title">课程评价</span>
+              <el-button type="primary" size="small" text @click="openReviewDialog">
+                写评价
+              </el-button>
+            </div>
+          </template>
+          <div v-loading="reviewLoading" class="review-list">
+            <template v-if="reviews.length > 0">
+              <div v-for="r in reviews" :key="r.id" class="review-item">
+                <div class="review-user">
+                  <el-avatar :size="32" :src="r.userAvatar">{{ r.userRealName?.charAt(0) }}</el-avatar>
+                  <span class="review-username">{{ r.userRealName || '匿名用户' }}</span>
+                </div>
+                <el-rate v-model="r.rating" disabled size="small" class="review-rating" />
+                <p class="review-content">{{ r.content }}</p>
+                <span class="review-time">{{ formatTime(r.createdAt) }}</span>
+              </div>
+            </template>
+            <el-empty v-else description="暂无评价，来说第一条吧！" />
+          </div>
+        </el-card>
+
+        <!-- 右侧：教师信息 -->
+        <div class="side-column">
         <el-card class="teacher-card" shadow="never">
           <template #header>
             <span class="section-title">授课教师</span>
@@ -115,8 +141,57 @@
             <span>当前 <strong>{{ studentCount }}</strong> 名同学在学习</span>
           </div>
         </el-card>
+
+        <!-- 活跃排行 -->
+        <el-card class="ranking-card" shadow="never">
+          <template #header>
+            <span class="section-title">学习排行</span>
+          </template>
+          <div v-loading="rankingLoading" class="ranking-list">
+            <template v-if="rankingList.length > 0">
+              <div
+                v-for="item in rankingList"
+                :key="item.rank"
+                class="ranking-item"
+                :class="{ 'ranking-current': item.isCurrentUser }"
+              >
+                <span class="rank-num" :class="{ 'rank-top': item.rank <= 3 }">
+                  {{ item.rank }}
+                </span>
+                <span class="rank-name">{{ item.userName }}</span>
+                <span class="rank-progress">{{ (item.progress * 100).toFixed(0) }}%</span>
+              </div>
+            </template>
+            <el-empty v-else description="暂无排行数据" :image-size="60" />
+          </div>
+        </el-card>
       </div>
     </div>
+
+    <!-- 写评价弹窗 -->
+    <el-dialog v-model="reviewDialogVisible" title="写课程评价" width="480px">
+      <el-form :model="reviewForm" :rules="reviewRules" label-width="80px">
+        <el-form-item label="评分" prop="rating">
+          <el-rate v-model="reviewForm.rating" />
+        </el-form-item>
+        <el-form-item label="评价内容" prop="content">
+          <el-input
+            v-model="reviewForm.content"
+            type="textarea"
+            :rows="4"
+            maxlength="500"
+            show-word-limit
+            placeholder="分享你的学习心得..."
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reviewDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="reviewSubmitting" @click="handleSubmitReview">
+          提交评价
+        </el-button>
+      </template>
+    </el-dialog>
 
     <!-- 底部固定操作栏 -->
     <div class="fixed-bottom-bar">
@@ -149,7 +224,8 @@ import { Star, User } from '@element-plus/icons-vue'
 import { getCourseById } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getUserById } from '@/api/user'
-import { enroll as enrollApi, getMyEnrollments } from '@/api/enrollment'
+import { enroll as enrollApi, getMyEnrollments, getCourseRanking } from '@/api/enrollment'
+import { createReview, getReviews } from '@/api/course-review'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -167,6 +243,22 @@ const chapterLoading = ref(false)
 const teacherLoading = ref(false)
 const enrollLoading = ref(false)
 const isEnrolled = ref(false)
+const reviewLoading = ref(false)
+const reviews = ref([])
+const reviewDialogVisible = ref(false)
+const reviewSubmitting = ref(false)
+const rankingLoading = ref(false)
+const rankingList = ref([])
+
+const reviewForm = ref({
+  rating: 5,
+  content: ''
+})
+
+const reviewRules = {
+  rating: [{ required: true, message: '请选择评分', trigger: 'change' }],
+  content: [{ max: 500, message: '评价内容不超过500字', trigger: 'blur' }]
+}
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
@@ -264,12 +356,74 @@ const goLearn = () => {
   router.push(`/student/courses/${courseId.value}`)
 }
 
+// 获取课程评价
+const fetchReviews = async () => {
+  if (!courseId.value) return
+  reviewLoading.value = true
+  try {
+    const { data } = await getReviews(courseId.value, { page: 0, size: 5 })
+    reviews.value = data?.items || data || []
+  } catch {
+    reviews.value = []
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
+// 获取课程排行
+const fetchRanking = async () => {
+  if (!courseId.value) return
+  rankingLoading.value = true
+  try {
+    const { data } = await getCourseRanking(courseId.value, { limit: 10 })
+    rankingList.value = data || []
+  } catch {
+    rankingList.value = []
+  } finally {
+    rankingLoading.value = false
+  }
+}
+
+// 打开写评价弹窗
+const openReviewDialog = () => {
+  if (!isLoggedIn.value) {
+    goLogin()
+    return
+  }
+  reviewForm.value = { rating: 5, content: '' }
+  reviewDialogVisible.value = true
+}
+
+// 提交评价
+const handleSubmitReview = async () => {
+  if (!reviewForm.value.rating) {
+    ElMessage.warning('请选择评分')
+    return
+  }
+  reviewSubmitting.value = true
+  try {
+    await createReview(courseId.value, {
+      rating: reviewForm.value.rating,
+      content: reviewForm.value.content
+    })
+    ElMessage.success('评价提交成功')
+    reviewDialogVisible.value = false
+    fetchReviews()
+  } catch {
+    ElMessage.error('提交失败，请重试')
+  } finally {
+    reviewSubmitting.value = false
+  }
+}
+
 onMounted(async () => {
   await fetchCourse()
   await Promise.all([
     fetchChapters(),
     fetchTeacher(),
-    checkEnrollment()
+    checkEnrollment(),
+    fetchReviews(),
+    fetchRanking()
   ])
 })
 </script>
@@ -359,6 +513,58 @@ onMounted(async () => {
   gap: 16px;
 }
 
+/* 评价卡片 */
+.review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-item {
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 12px;
+}
+
+.review-item:last-child {
+  border-bottom: none;
+}
+
+.review-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.review-username {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.review-rating {
+  margin-bottom: 4px;
+}
+
+.review-content {
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.6;
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+.review-time {
+  font-size: 12px;
+  color: #c0c4cc;
+}
+
 /* 卡片通用 */
 :deep(.el-card) {
   border-radius: 8px;
@@ -425,6 +631,67 @@ onMounted(async () => {
 .companions-tip strong {
   color: #667eea;
   font-size: 16px;
+}
+
+/* 排行卡片 */
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f5f7fa;
+  transition: all 0.2s ease;
+}
+
+.ranking-item.ranking-current {
+  background: #ecf5ff;
+  border: 1px solid #409eff;
+}
+
+.rank-num {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e4e7ed;
+  font-size: 12px;
+  font-weight: 600;
+  color: #606266;
+  flex-shrink: 0;
+}
+
+.rank-num.rank-top {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.ranking-item.ranking-current .rank-num {
+  background: #409eff;
+  color: #fff;
+}
+
+.rank-name {
+  flex: 1;
+  font-size: 14px;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-progress {
+  font-size: 13px;
+  color: #909399;
+  flex-shrink: 0;
 }
 
 /* 底部固定栏 */
