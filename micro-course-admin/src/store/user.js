@@ -22,11 +22,15 @@ export const useUserStore = defineStore('user', {
     async getInfo() {
       const res = await getCurrentUser()
       this.userInfo = res.data
+      if (res.data?.role) {
+        localStorage.setItem('userRole', res.data.role)
+      }
       return res.data
     },
     async logout() {
       try { await logoutApi() } catch { /* ignore */ }
       removeToken()
+      localStorage.removeItem('userRole')
       this.token = ''
       this.userInfo = null
     }
