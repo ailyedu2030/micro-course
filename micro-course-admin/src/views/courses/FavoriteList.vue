@@ -42,6 +42,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="收藏时间" width="180" />
+        <template #empty>
+          <div class="empty-text">暂无收藏记录</div>
+        </template>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -135,8 +138,18 @@ onMounted(() => {
 
 .search-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s ease;
+}
+.search-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+.table-card {
+  transition: box-shadow 0.3s ease;
+}
+.table-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
 .table-card :deep(.el-card__header) {
   padding: 12px 20px;
 }
@@ -155,4 +168,33 @@ onMounted(() => {
 
 .data-table { width: 100%; }
 .search-input-w200 { width: 200px; }
+
+.empty-text {
+  padding: 40px 0;
+  color: #909399;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .favorite-list {
+    padding: 12px;
+  }
+
+  .search-card,
+  .table-card {
+    margin-bottom: 12px;
+  }
+
+  .search-input-w200 {
+    width: 100%;
+  }
+
+  :deep(.el-table) {
+    font-size: 12px;
+  }
+
+  :deep(.el-pagination) {
+    flex-wrap: wrap;
+  }
+}
 </style>

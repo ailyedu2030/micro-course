@@ -30,7 +30,7 @@
       <!-- 左侧：课程信息 + 大纲 -->
       <div class="main-column">
         <!-- 课程描述 -->
-        <el-card class="desc-card" shadow="never">
+        <el-card class="desc-card card-hover">
           <template #header>
             <span class="section-title">课程介绍</span>
           </template>
@@ -38,7 +38,7 @@
         </el-card>
 
         <!-- 大纲列表 -->
-        <el-card class="chapter-card" shadow="never">
+        <el-card class="chapter-card card-hover">
           <template #header>
             <span class="section-title">课程大纲</span>
           </template>
@@ -89,7 +89,7 @@
       </div>
 
         <!-- 评价区 -->
-        <el-card class="review-card" shadow="never">
+        <el-card class="review-card card-hover">
           <template #header>
             <div class="review-header">
               <span class="section-title">课程评价</span>
@@ -116,7 +116,7 @@
 
         <!-- 右侧：教师信息 -->
         <div class="side-column">
-        <el-card class="teacher-card" shadow="never">
+        <el-card class="teacher-card card-hover">
           <template #header>
             <span class="section-title">授课教师</span>
           </template>
@@ -135,7 +135,7 @@
         </el-card>
 
         <!-- 学习同伴 -->
-        <el-card class="companions-card" shadow="never">
+        <el-card class="companions-card card-hover">
           <div class="companions-tip">
             <el-icon><User /></el-icon>
             <span>当前 <strong>{{ studentCount }}</strong> 名同学在学习</span>
@@ -143,7 +143,7 @@
         </el-card>
 
         <!-- 活跃排行 -->
-        <el-card class="ranking-card" shadow="never">
+        <el-card class="ranking-card card-hover">
           <template #header>
             <span class="section-title">学习排行</span>
           </template>
@@ -169,7 +169,7 @@
     </div>
 
     <!-- 写评价弹窗 -->
-    <el-dialog v-model="reviewDialogVisible" title="写课程评价" width="480px">
+    <el-dialog v-model="reviewDialogVisible" title="写课程评价" class="review-dialog">
       <el-form :model="reviewForm" :rules="reviewRules" label-width="80px">
         <el-form-item label="评分" prop="rating">
           <el-rate v-model="reviewForm.rating" />
@@ -441,7 +441,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 0 48px;
-  color: #fff;
+  color: #f5f5f5;
   position: relative;
   overflow: hidden;
 }
@@ -568,11 +568,33 @@ onMounted(async () => {
 /* 卡片通用 */
 :deep(.el-card) {
   border-radius: 8px;
+  transition: box-shadow 0.2s ease;
 }
 
 :deep(.el-card__header) {
   padding: 14px 20px;
   border-bottom: 1px solid #f0f0f0;
+}
+
+/* 卡片 hover 效果 */
+:deep(.el-card.card-hover:hover) {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 表格样式 */
+:deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* 对话框样式 */
+:deep(.review-dialog) {
+  max-width: 500px;
+}
+
+/* 按钮样式 */
+:deep(.el-button) {
+  cursor: pointer;
 }
 
 .section-title {
@@ -671,12 +693,12 @@ onMounted(async () => {
 
 .rank-num.rank-top {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
+  color: #f5f5f5;
 }
 
 .ranking-item.ranking-current .rank-num {
   background: #409eff;
-  color: #fff;
+  color: #f5f5f5;
 }
 
 .rank-name {
@@ -700,7 +722,7 @@ onMounted(async () => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: #fff;
+  background: #f5f5f5;
   border-top: 1px solid #e4e7ed;
   box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
   z-index: 100;
@@ -747,6 +769,21 @@ onMounted(async () => {
   .side-column {
     flex: unset;
     width: 100%;
+  }
+
+  .fixed-bottom-bar {
+    padding: 10px 12px;
+  }
+
+  .bar-inner {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .action-btns {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 </style>

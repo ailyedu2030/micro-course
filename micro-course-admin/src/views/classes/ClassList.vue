@@ -36,6 +36,10 @@
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+        <el-table-column type="index" label="序号" width="70" align="center" />
+        <template #empty>
+          <el-empty description="暂无班级数据" />
+        </template>
         <el-table-column prop="name" label="名称" min-width="150" />
         <el-table-column prop="majorName" label="所属专业" width="150" />
         <el-table-column prop="grade" label="年级" width="100" />
@@ -255,15 +259,35 @@ onMounted(() => {
 
 <style scoped>
 .class-list {
-  padding: 20px;
+  padding: var(--space-xl);
 }
 
 .search-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-lg);
+  border-radius: 8px;
+  transition: box-shadow 200ms ease;
+}
+
+.search-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.table-card {
+  border-radius: 8px;
+  transition: box-shadow 200ms ease;
+}
+
+.table-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .table-card :deep(.el-card__header) {
   padding: 12px 20px;
+}
+
+.table-card :deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .card-header {
@@ -285,7 +309,7 @@ onMounted(() => {
 }
 
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-lg);
   display: flex;
   justify-content: flex-end;
 }

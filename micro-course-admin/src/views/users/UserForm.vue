@@ -277,7 +277,16 @@ onMounted(async () => {
 
 <style scoped>
 .user-form {
-  padding: 20px;
+  padding: var(--space-xl);
+}
+
+.user-form :deep(.el-card) {
+  border-radius: 8px;
+  transition: box-shadow 200ms ease;
+}
+
+.user-form :deep(.el-card:hover) {
+  box-shadow: var(--shadow-md);
 }
 
 .card-header {

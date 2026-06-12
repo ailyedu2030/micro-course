@@ -380,7 +380,7 @@ onMounted(() => {
 }
 
 /* 移动端瀑布流 */
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .course-square {
     padding: 12px;
   }

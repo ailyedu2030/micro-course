@@ -12,7 +12,7 @@
     </el-card>
 
     <!-- 表格区 -->
-    <el-card class="table-card" shadow="never">
+    <el-card class="table-card shadow-hover" shadow="never">
       <template #header>
         <div class="card-header">
           <span>学员列表</span>
@@ -36,6 +36,7 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-empty v-if="!loading && tableData.length === 0" description="暂无学员数据" />
       <div class="pagination-wrap">
         <el-pagination
           v-model:current-page="page"
@@ -182,6 +183,10 @@ onMounted(() => {
 
 .table-card :deep(.el-card__header) {
   padding: 12px 20px;
+}
+
+.table-card {
+  transition: box-shadow var(--el-transition-duration) ease;
 }
 
 .card-header {

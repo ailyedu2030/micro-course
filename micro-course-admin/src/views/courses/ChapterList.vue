@@ -51,6 +51,9 @@
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
+        <el-table-column #empty>
+          <el-empty description="暂无章节数据" />
+        </el-table-column>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -294,4 +297,11 @@ onMounted(() => {
 .data-table { width: 100%; }
 .full-width { width: 100%; }
 .search-input-w240 { width: 240px; }
+
+@media (max-width: 768px) {
+  .chapter-list { padding: 12px; }
+  .search-input-w240 { width: 100%; }
+  .card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .pagination-wrap { justify-content: center; }
+}
 </style>

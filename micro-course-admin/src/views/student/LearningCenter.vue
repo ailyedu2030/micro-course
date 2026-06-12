@@ -178,7 +178,7 @@
     </div>
 
     <!-- 打卡分享弹窗 -->
-    <el-dialog v-model="shareVisible" title="分享打卡" width="360px" :close-on-click-modal="true">
+    <el-dialog v-model="shareVisible" title="分享打卡" width="360px" :close-on-click-modal="true" class="share-dialog">
       <div ref="shareCardRef" class="share-card">
         <div class="share-logo">微课平台</div>
         <div class="share-streak">
@@ -479,6 +479,7 @@ onMounted(async () => {
 .stat-card {
   text-align: center;
   padding: 20px 0;
+  transition: box-shadow 0.2s ease;
 }
 
 .stat-value {
@@ -590,6 +591,19 @@ onMounted(async () => {
 .checkin-card {
   text-align: center;
   padding: 24px;
+  transition: box-shadow 0.2s ease;
+}
+
+.calendar-card {
+  transition: box-shadow 0.2s ease;
+}
+
+.trend-card {
+  transition: box-shadow 0.2s ease;
+}
+
+.graph-card {
+  transition: box-shadow 0.2s ease;
 }
 
 .checkin-action {
@@ -603,6 +617,7 @@ onMounted(async () => {
   width: 64px;
   height: 64px;
   font-size: 28px;
+  cursor: pointer;
 }
 
 .checkin-icon {
@@ -909,5 +924,10 @@ onMounted(async () => {
 
 .answer-correct-answer {
   color: #67c23a;
+}
+
+/* el-dialog max-width */
+.share-dialog {
+  max-width: 500px;
 }
 </style>

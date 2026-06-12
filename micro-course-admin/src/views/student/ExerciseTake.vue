@@ -240,6 +240,7 @@
         v-model="resultVisible"
         title="答题结果"
         width="440px"
+        style="max-width: 500px;"
         :close-on-click-modal="false"
         :show-close="false"
       >
@@ -649,6 +650,12 @@ function formatCorrectAnswer(q) {
 
 .exercise-card {
   border-radius: 8px;
+  transition: box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.exercise-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 :deep(.el-card__body) {
@@ -688,12 +695,16 @@ function formatCorrectAnswer(q) {
   flex-shrink: 0;
 }
 
+.card-actions .el-button {
+  cursor: pointer;
+}
+
 /* ===== 答题界面 ===== */
 .progress-bar-wrap {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #fff;
+  background: #f5f5f5;
   border-bottom: 1px solid #f0f0f0;
   padding: 12px 0;
   margin-bottom: 20px;
@@ -731,6 +742,11 @@ function formatCorrectAnswer(q) {
 .question-card {
   border-radius: 8px;
   margin-bottom: 80px;
+  transition: box-shadow 0.2s ease;
+}
+
+.question-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 :deep(.el-card__body) {
@@ -856,7 +872,7 @@ function formatCorrectAnswer(q) {
   bottom: 0;
   left: 0;
   right: 0;
-  background: #fff;
+  background: #f5f5f5;
   border-top: 1px solid #e4e7ed;
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
   z-index: 100;
@@ -865,12 +881,17 @@ function formatCorrectAnswer(q) {
 
 .bottom-nav .el-button {
   min-width: 100px;
+  cursor: pointer;
 }
 
 .nav-center {
   display: flex;
   gap: 12px;
   justify-content: center;
+}
+
+.nav-center .el-button {
+  cursor: pointer;
 }
 
 /* 结果弹窗 */
@@ -936,6 +957,11 @@ function formatCorrectAnswer(q) {
 .result-detail {
   font-size: 14px;
   color: #606266;
+}
+
+/* All buttons cursor */
+.exercise-take-page :deep(.el-button) {
+  cursor: pointer;
 }
 
 /* 响应式 */

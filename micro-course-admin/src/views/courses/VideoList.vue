@@ -90,6 +90,12 @@
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <div class="empty-state">
+            <el-icon :size="40"><VideoCamera /></el-icon>
+            <p>暂无数据</p>
+          </div>
+        </template>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -167,6 +173,7 @@
  */
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { VideoCamera } from '@element-plus/icons-vue'
 import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideo } from '@/api/video'
 import { getCourses } from '@/api/course'
 

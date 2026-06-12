@@ -58,7 +58,7 @@ const handleDropdownCommand = (command) => {
 .student-container {
   min-height: 100vh;
   padding-bottom: 70px;
-  background: #f5f5f5;
+  background: var(--page-bg, #f0f2f5);
 }
 
 .tabbar {
@@ -74,6 +74,7 @@ const handleDropdownCommand = (command) => {
   border-top: 1px solid #eee;
   z-index: 100;
   box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 200ms ease;
 }
 
 .tab-item {
@@ -81,8 +82,10 @@ const handleDropdownCommand = (command) => {
   flex-direction: column;
   align-items: center;
   font-size: 11px;
-  color: #999;
+  color: #909399;
   text-decoration: none;
+  transition: color 200ms ease;
+  cursor: pointer;
 }
 
 .tab-item .el-icon {
@@ -91,7 +94,11 @@ const handleDropdownCommand = (command) => {
 }
 
 .tab-item.active {
-  color: #409eff;
+  color: var(--el-color-primary);
+}
+
+.tab-item:hover {
+  color: var(--el-color-primary);
 }
 
 :deep(.el-dropdown-menu__item) {

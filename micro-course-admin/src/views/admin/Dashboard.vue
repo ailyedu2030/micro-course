@@ -270,7 +270,7 @@ onBeforeUnmount(() => {
 
 .stat-label {
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   margin-bottom: 4px;
 }
 
@@ -282,6 +282,7 @@ onBeforeUnmount(() => {
 }
 
 .charts-grid {
+  cursor: pointer;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
@@ -295,6 +296,14 @@ onBeforeUnmount(() => {
   font-size: 15px;
   font-weight: 600;
   padding: 12px 20px;
+}
+
+.chart-card {
+  transition: box-shadow var(--el-transition-duration) ease;
+}
+
+.chart-card:hover {
+  box-shadow: var(--el-box-shadow-dark) !important;
 }
 
 .chart-container {

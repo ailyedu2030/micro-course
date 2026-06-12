@@ -41,7 +41,7 @@
     </el-card>
 
     <!-- 表格区 -->
-    <el-card class="table-card" shadow="never">
+    <el-card class="table-card shadow-hover" shadow="never">
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="createdAt" label="时间" min-width="170">
@@ -70,6 +70,7 @@
           <template #default="{ row }">{{ row.ipAddress || '-' }}</template>
         </el-table-column>
       </el-table>
+      <el-empty v-if="!loading && tableData.length === 0" description="暂无操作日志" />
       <div class="pagination-wrap">
         <el-pagination
           v-model:current-page="page"
@@ -203,6 +204,10 @@ onMounted(() => {
 
 .table-card :deep(.el-card__header) {
   padding: 12px 20px;
+}
+
+.table-card {
+  transition: box-shadow var(--el-transition-duration) ease;
 }
 
 .pagination-wrap {

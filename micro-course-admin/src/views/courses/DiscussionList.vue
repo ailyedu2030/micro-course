@@ -77,7 +77,7 @@
     </el-card>
 
     <!-- 发帖弹窗 -->
-    <el-dialog v-model="dialogVisible" title="发帖" width="600px" @close="handleDialogClose">
+    <el-dialog v-model="dialogVisible" title="发帖" width="580px" @close="handleDialogClose">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入标题" />
@@ -283,6 +283,19 @@ onMounted(() => {
 
 .search-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s ease;
+}
+
+.search-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.table-card {
+  transition: box-shadow 0.3s ease;
+}
+
+.table-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
 .table-card :deep(.el-card__header) {
@@ -304,4 +317,19 @@ onMounted(() => {
 .data-table { width: 100%; }
 .full-width { width: 100%; }
 .search-input-w180 { width: 180px; }
+
+@media (max-width: 768px) {
+  .discussion-list {
+    padding: 12px;
+  }
+
+  .search-card,
+  .table-card {
+    margin-bottom: 12px;
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+  }
+}
 </style>

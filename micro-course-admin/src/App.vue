@@ -33,7 +33,7 @@ onMounted(() => {
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body, #app { height: 100%; font-family: 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif; }
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .el-table { font-size: 12px; overflow-x: auto; display: block; }
   .el-form--inline .el-form-item { display: block; margin-right: 0; }
   .el-dialog { width: 90% !important; }

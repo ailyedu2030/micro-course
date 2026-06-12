@@ -25,6 +25,9 @@
             <el-button type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无待审核课程" />
+        </template>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -140,6 +143,14 @@ onMounted(() => {
   padding: 20px;
 }
 
+.table-card {
+  transition: box-shadow 0.3s ease;
+}
+
+.table-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
 .table-card :deep(.el-card__header) {
   padding: 12px 20px;
 }
@@ -157,4 +168,14 @@ onMounted(() => {
 }
 
 .data-table { width: 100%; }
+
+@media (max-width: 768px) {
+  .course-review-list {
+    padding: 12px;
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+  }
+}
 </style>

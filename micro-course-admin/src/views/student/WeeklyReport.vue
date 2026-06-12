@@ -209,6 +209,7 @@ onMounted(async () => {
 .stat-card {
   text-align: center;
   padding: 20px 0;
+  transition: box-shadow 0.2s ease;
 }
 
 .stat-icon {
@@ -227,6 +228,10 @@ onMounted(async () => {
   font-size: 14px;
   color: #909399;
   margin-top: 8px;
+}
+
+.detail-card {
+  transition: box-shadow 0.2s ease;
 }
 
 .card-header-title {

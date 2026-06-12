@@ -97,7 +97,7 @@
     </el-card>
 
     <!-- 弹窗区 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="580px" @close="handleDialogClose">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="题目内容" prop="content">
           <el-input v-model="formData.content" type="textarea" :rows="3" placeholder="请输入题目内容" />

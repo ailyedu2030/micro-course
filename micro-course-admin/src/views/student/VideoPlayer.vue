@@ -491,7 +491,7 @@ onBeforeUnmount(() => {
 
 .video-container {
   position: relative;
-  background: #000;
+  background: #303133;
   border-radius: 8px;
   overflow: hidden;
   aspect-ratio: 16 / 9;
@@ -592,6 +592,7 @@ onBeforeUnmount(() => {
   background-color: rgba(255, 255, 255, 0.2);
   border: none;
   color: #f5f5f5;
+  cursor: pointer;
 }
 
 .control-buttons :deep(.el-button:hover) {
@@ -635,14 +636,6 @@ onBeforeUnmount(() => {
     border-radius: 0;
   }
 
-  /* Portrait mode: 9:16 vertical video */
-  @media (orientation: portrait) and (max-width: 768px) {
-    .video-container:not(.mini-mode) {
-      aspect-ratio: 9 / 16;
-      max-height: 100vh;
-    }
-  }
-
   .video-container.mini-mode {
     width: 200px;
     height: 112px;
@@ -669,6 +662,14 @@ onBeforeUnmount(() => {
 
   .speed-control :deep(.el-select) {
     width: 70px;
+  }
+}
+
+/* Portrait mode: 9:16 vertical video */
+@media (orientation: portrait) and (max-width: 768px) {
+  .video-container:not(.mini-mode) {
+    aspect-ratio: 9 / 16;
+    max-height: 100vh;
   }
 }
 </style>

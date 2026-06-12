@@ -6,7 +6,7 @@
 <template>
   <div class="admin-settings-container">
     <!-- 顶部说明卡片 -->
-    <el-card class="info-card" shadow="never">
+    <el-card class="info-card shadow-hover" shadow="never">
       <div class="info-content">
         <el-icon :size="20" class="info-icon"><InfoFilled /></el-icon>
         <div>
@@ -45,6 +45,7 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-empty v-if="!loading && settingsList.length === 0" description="暂无配置项" />
     </el-card>
   </div>
 </template>
@@ -150,7 +151,7 @@ onMounted(() => {
 }
 
 .info-icon {
-  color: #409eff;
+  color: var(--el-color-primary);
   flex-shrink: 0;
   margin-top: 2px;
 }

@@ -11,7 +11,7 @@
     </div>
 
     <el-card class="table-card" shadow="never">
-      <el-table v-loading="loading" :data="reviews" stripe border>
+      <el-table v-loading="loading" :data="reviews" stripe border class="review-table">
         <el-table-column label="课程" min-width="180">
           <template #default="{ row }">
             <router-link :to="`/student/courses/${row.courseId}`" class="course-link">
@@ -36,7 +36,7 @@
         </el-table-column>
         <el-table-column label="操作" width="80" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="danger" size="small" text @click="handleDelete(row)">
+            <el-button type="danger" size="small" text class="btn-delete" @click="handleDelete(row)">
               删除
             </el-button>
           </template>
@@ -150,16 +150,31 @@ onMounted(() => {
 
 .table-card {
   border-radius: 8px;
+  transition: box-shadow 0.2s ease;
+}
+
+.table-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.review-table {
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .course-link {
   color: #409eff;
   text-decoration: none;
   font-weight: 500;
+  cursor: pointer;
 }
 
 .course-link:hover {
   text-decoration: underline;
+}
+
+.btn-delete {
+  cursor: pointer;
 }
 
 .empty-wrap {
@@ -179,6 +194,20 @@ onMounted(() => {
 
   .header h2 {
     font-size: 18px;
+  }
+
+  .table-card {
+    border-radius: 6px;
+  }
+
+  .review-table {
+    border-radius: 6px;
+  }
+
+  .pagination {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 </style>

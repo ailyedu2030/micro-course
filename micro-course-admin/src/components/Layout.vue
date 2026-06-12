@@ -11,7 +11,7 @@
       <div class="layout-logo">
         {{ collapsed ? '微课' : '微课管理平台' }}
       </div>
-      <el-menu :default-active="$route.path" :collapse="collapsed" router background-color="#304156" text-color="#bfcbd9" active-text-color="#409eff">
+      <el-menu :default-active="$route.path" :collapse="collapsed" router class="layout-menu">
         <el-menu-item index="/departments"><el-icon><OfficeBuilding /></el-icon><template #title>院系管理</template></el-menu-item>
         <el-menu-item index="/majors"><el-icon><Reading /></el-icon><template #title>专业管理</template></el-menu-item>
         <el-menu-item index="/classes"><el-icon><School /></el-icon><template #title>班级管理</template></el-menu-item>
@@ -48,7 +48,7 @@
       <div class="layout-logo">
         微课管理平台
       </div>
-      <el-menu :default-active="$route.path" :collapse="collapsed" router background-color="#304156" text-color="#bfcbd9" active-text-color="#409eff" @select="drawerVisible=false">
+      <el-menu :default-active="$route.path" :collapse="collapsed" router class="layout-menu" @select="drawerVisible=false">
         <el-menu-item index="/departments"><el-icon><OfficeBuilding /></el-icon><template #title>院系管理</template></el-menu-item>
         <el-menu-item index="/majors"><el-icon><Reading /></el-icon><template #title>专业管理</template></el-menu-item>
         <el-menu-item index="/classes"><el-icon><School /></el-icon><template #title>班级管理</template></el-menu-item>
@@ -142,19 +142,32 @@ onUnmounted(() => {
 }
 
 .layout-aside {
-  background: #304156;
-  transition: width 0.3s;
+  background: var(--sidebar-bg, #304156);
+  transition: width 300ms ease;
   overflow: hidden;
+}
+
+.layout-menu {
+  background-color: var(--sidebar-bg, #304156);
+  border-right: none;
+  --el-menu-text-color: var(--sidebar-text, #bfcbd9);
+  --el-menu-active-color: var(--sidebar-active, #409eff);
+  --el-menu-hover-bg-color: var(--sidebar-hover, #1f2d3d);
+  --el-menu-hover-text-color: var(--sidebar-active, #409eff);
+}
+
+.layout-menu:not(.el-menu--collapse) {
+  width: 200px;
 }
 
 .layout-logo {
   height: 60px;
   line-height: 60px;
   text-align: center;
-  color: #fff;
+  color: #f5f5f5;
   font-size: 18px;
   font-weight: 700;
-  background: #1f2d3d;
+  background: var(--sidebar-logo-bg, #1f2d3d);
 }
 
 .layout-header {
@@ -164,12 +177,22 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: 0 12px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 200ms ease;
+}
+
+.layout-header:hover {
+  box-shadow: var(--shadow-sm);
 }
 
 .header-icon {
   font-size: 20px;
   cursor: pointer;
   color: #666;
+  transition: color 200ms ease;
+}
+
+.header-icon:hover {
+  color: var(--el-color-primary);
 }
 
 .header-right {
@@ -179,12 +202,12 @@ onUnmounted(() => {
 
 .header-username {
   margin-right: 8px;
-  color: #666;
+  color: #606266;
   font-size: 14px;
 }
 
 .layout-main {
-  background: #f0f2f5;
+  background: var(--page-bg, #f0f2f5);
   padding: 12px;
 }
 </style>

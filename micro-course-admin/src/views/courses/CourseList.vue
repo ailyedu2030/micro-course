@@ -47,6 +47,12 @@
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+        <template #empty>
+          <div class="empty-state">
+            <el-icon :size="48"><Monitor /></el-icon>
+            <p>暂无数据</p>
+          </div>
+        </template>
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="categoryName" label="分类" width="120" />
@@ -142,6 +148,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Monitor } from '@element-plus/icons-vue'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 
@@ -379,6 +386,20 @@ onMounted(() => {
 
 .search-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s;
+}
+
+.search-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+
+.table-card {
+  transition: box-shadow 0.3s;
+}
+
+.table-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .table-card :deep(.el-card__header) {
@@ -399,7 +420,7 @@ onMounted(() => {
 
 .review-tip {
   font-size: 11px;
-  color: #e6a23c;
+  color: var(--el-text-color-secondary);
   margin-top: 2px;
 }
 
@@ -417,4 +438,16 @@ onMounted(() => {
 .full-width { width: 100%; }
 .search-input-w160 { width: 160px; }
 .search-input-w120 { width: 120px; }
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: var(--el-text-color-secondary);
+}
+.empty-state p {
+  margin-top: 12px;
+  font-size: 14px;
+}
 </style>

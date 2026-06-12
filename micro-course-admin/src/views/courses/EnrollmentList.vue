@@ -58,6 +58,12 @@
             <el-button type="danger" link size="small" @click="handleCancel(row)">取消</el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <div class="empty-wrap">
+            <el-icon class="empty-icon"><Warning /></el-icon>
+            <p>暂无数据</p>
+          </div>
+        </template>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -107,6 +113,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Warning } from '@element-plus/icons-vue'
 import { getCourseEnrollments, updateEnrollment, cancelEnrollment } from '@/api/enrollment'
 import { getCourses } from '@/api/course'
 
@@ -247,6 +254,19 @@ onMounted(() => {
 
 .search-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s ease;
+}
+
+.search-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.table-card {
+  transition: box-shadow 0.3s ease;
+}
+
+.table-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .table-card :deep(.el-card__header) {
@@ -268,4 +288,41 @@ onMounted(() => {
 .data-table { width: 100%; }
 .full-width { width: 100%; }
 .search-input-w200 { width: 200px; }
-</style>
+
+.empty-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: #909399;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+  .enrollment-list {
+    padding: 12px;
+  }
+
+  .search-card,
+  .table-card {
+    margin-bottom: 12px;
+  }
+
+  .el-form--inline .el-form-item {
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .search-input-w200 {
+    width: 100%;
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+  }
+}</style>

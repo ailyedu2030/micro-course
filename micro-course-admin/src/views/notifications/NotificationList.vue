@@ -19,6 +19,9 @@
     <!-- 表格区 -->
     <el-card class="table-card" shadow="never">
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+        <template #empty>
+          <el-empty description="暂无通知" />
+        </template>
         <el-table-column prop="type" label="类型" width="140" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.type === 'COURSE_APPROVED'" type="success" size="small">课程通过</el-tag>
@@ -146,6 +149,11 @@ onMounted(() => {
 
 .toolbar-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s ease;
+}
+
+.toolbar-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .toolbar {
@@ -171,6 +179,14 @@ onMounted(() => {
   padding: 12px 20px;
 }
 
+.table-card {
+  transition: box-shadow 0.3s ease;
+}
+
+.table-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .dash-placeholder {
   color: #999;
 }
@@ -182,4 +198,19 @@ onMounted(() => {
 }
 
 .data-table { width: 100%; }
-</style>
+
+@media (max-width: 768px) {
+  .notification-list {
+    padding: 12px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+  }
+}</style>

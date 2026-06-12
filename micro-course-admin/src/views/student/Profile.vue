@@ -151,7 +151,7 @@
         </el-select>
       </div>
 
-      <el-table v-loading="wrongLoading" :data="wrongQuestions" stripe border max-height="400">
+      <el-table v-loading="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="wrong-questions-table">
         <el-table-column prop="questionContent" label="错题内容" min-width="200">
           <template #default="{ row }">
             <span>{{ row.questionContent || row.content }}</span>
@@ -465,6 +465,11 @@ onMounted(async () => {
 
 .profile-card {
   margin-bottom: 20px;
+  transition: box-shadow 0.2s ease;
+}
+
+.profile-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
@@ -512,6 +517,15 @@ onMounted(async () => {
   gap: 12px;
 }
 
+.wrong-questions-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.wrong-questions-table .el-button {
+  cursor: pointer;
+}
+
 .wrong-questions-card :deep(.el-card__header) {
   padding: 12px 20px;
 }
@@ -527,7 +541,7 @@ onMounted(async () => {
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f9fafb;
+  background: #f5f5f5;
   border-radius: 8px;
   border: 1px solid #ebeef5;
 }
@@ -539,8 +553,9 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #fef0e6 0%, #fff7e6 100%);
+  background: linear-gradient(135deg, #f5f5f5 0%, #f5f5f5 100%);
   border-radius: 50%;
+  cursor: pointer;
 }
 
 .cert-info {
@@ -576,6 +591,10 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
+.cert-actions .el-button {
+  cursor: pointer;
+}
+
 .badge-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -594,7 +613,7 @@ onMounted(async () => {
 }
 
 .badge-item.badge-locked {
-  background: #f0f0f0;
+  background: #f5f5f5;
   opacity: 0.6;
 }
 
@@ -602,6 +621,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
 .badge-name {
@@ -630,6 +650,42 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .badge-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .profile-view {
+    padding: 12px;
+  }
+
+  .page-title {
+    font-size: 18px;
+    margin: 0 0 12px 0;
+  }
+
+  .profile-card {
+    margin-bottom: 12px;
+  }
+
+  .cert-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .cert-actions {
+    width: 100%;
+  }
+
+  .cert-actions .el-button {
+    width: 100%;
+  }
+
+  .wrong-toolbar {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .wrong-toolbar .el-select {
+    width: 100%;
   }
 }
 </style>

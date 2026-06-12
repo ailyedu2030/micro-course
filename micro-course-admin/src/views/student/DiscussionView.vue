@@ -73,7 +73,7 @@
     </el-dialog>
 
     <!-- 帖子详情弹窗 -->
-    <el-dialog v-model="detailDialogVisible" title="帖子详情" width="700px" @close="resetDetail">
+    <el-dialog v-model="detailDialogVisible" title="帖子详情" width="500px" @close="resetDetail">
       <div v-if="currentPost" class="post-detail">
         <div class="post-header">
           <h3 class="post-title">{{ currentPost.title }}</h3>
@@ -379,5 +379,77 @@ onMounted(() => {
 .post-actions {
   display: flex;
   justify-content: flex-start;
+}
+
+/* Global button cursor fix */
+:deep(.el-button) {
+  cursor: pointer;
+}
+
+/* el-card hover shadow transition */
+:deep(.el-card) {
+  transition: box-shadow 0.2s ease;
+}
+:deep(.el-card:hover) {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* el-table border-radius and overflow */
+:deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* el-dialog max-width (detail dialog - no table) */
+:deep(.el-dialog--center) {
+  max-width: 500px;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .discussion-view {
+    padding: 12px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .toolbar .el-button {
+    width: 100%;
+  }
+
+  .page-title {
+    font-size: 16px;
+  }
+
+  :deep(.el-table) {
+    font-size: 12px;
+  }
+
+  :deep(.el-table__header-wrapper) {
+    overflow-x: auto;
+  }
+
+  .post-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  :deep(.el-dialog) {
+    max-width: calc(100vw - 32px) !important;
+    width: 100% !important;
+  }
+
+  .reply-input-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .reply-input-footer .el-button {
+    width: 100%;
+  }
 }
 </style>

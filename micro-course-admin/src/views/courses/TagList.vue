@@ -35,6 +35,9 @@
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无数据" />
+        </template>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -180,6 +183,19 @@ onMounted(() => {
 
 .search-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s ease;
+}
+
+.search-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.table-card {
+  transition: box-shadow 0.3s ease;
+}
+
+.table-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .table-card :deep(.el-card__header) {
@@ -200,4 +216,25 @@ onMounted(() => {
 
 .data-table { width: 100%; }
 .search-input-w200 { width: 200px; }
+
+@media (max-width: 768px) {
+  .tag-list {
+    padding: 12px;
+  }
+
+  .search-card,
+  .table-card {
+    margin-bottom: 12px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+  }
+}
 </style>

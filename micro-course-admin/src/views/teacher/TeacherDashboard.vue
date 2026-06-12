@@ -88,8 +88,8 @@
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleView(row)">查看</el-button>
-           <el-button type="primary" link size="small" @click="handleStudents(row)">学员</el-button>
+            <el-button type="primary" link size="small" style="cursor:pointer" @click="handleView(row)">查看</el-button>
+           <el-button type="primary" link size="small" style="cursor:pointer" @click="handleStudents(row)">学员</el-button>
           </template>
         </el-table-column>
       </el-table>

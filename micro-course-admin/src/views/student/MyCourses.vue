@@ -161,7 +161,7 @@ onMounted(() => {
 }
 
 .course-tabs {
-  background: #fff;
+  background: #f5f5f5;
   padding: 0 20px;
   border-radius: 8px;
 }
@@ -175,6 +175,11 @@ onMounted(() => {
 
 .course-card {
   padding: 20px;
+  transition: box-shadow 0.2s ease;
+}
+
+.course-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .card-content {
@@ -217,6 +222,10 @@ onMounted(() => {
   gap: 8px;
 }
 
+.card-footer :deep(.el-button) {
+  cursor: pointer;
+}
+
 .last-time {
   font-size: 12px;
   color: #909399;
@@ -227,8 +236,36 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .my-courses-container {
+    padding: 12px;
+  }
+
+  .header h2 {
+    font-size: 18px;
+  }
+
+  .course-tabs {
+    padding: 0 12px;
+  }
+
   .card-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  .course-card {
+    padding: 16px;
+  }
+
+  .card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .card-footer :deep(.el-button) {
+    width: 100%;
   }
 }
 </style>

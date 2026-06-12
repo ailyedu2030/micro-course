@@ -98,6 +98,15 @@ onMounted(() => {
 
 .settings-card {
   border-radius: 8px;
+  transition: box-shadow 0.2s ease;
+}
+
+.settings-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+:deep(.el-button) {
+  cursor: pointer;
 }
 
 @media (max-width: 768px) {
@@ -109,12 +118,21 @@ onMounted(() => {
     font-size: 18px;
   }
 
+  .settings-card {
+    border-radius: 8px;
+  }
+
   :deep(.el-form-item__label) {
     width: 100px;
   }
 
   :deep(.el-form-item) {
     display: block;
+  }
+
+  :deep(.el-button) {
+    cursor: pointer;
+    width: 100%;
   }
 }
 </style>

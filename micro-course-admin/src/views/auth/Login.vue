@@ -62,7 +62,7 @@ const handleLogin = async () => {
 .login-title {
   text-align: center;
   margin-bottom: 30px;
-  color: #333;
+  color: #303133;
   font-size: 24px;
 }
 
@@ -72,13 +72,19 @@ const handleLogin = async () => {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 200ms ease;
+}
+
+.login-box:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
 }
 
 .login-btn {
   width: 100%;
+  cursor: pointer;
 }
 
-@media (max-width: 767px) {
-  .login-box { width: 90% !important; padding: 20px !important; }
+@media (max-width: 768px) {
+  .login-box { width: 90%; padding: 20px; }
 }
 </style>

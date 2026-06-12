@@ -53,6 +53,9 @@
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
+        <template #empty>
+          <el-empty description="暂无用户数据" />
+        </template>
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="realName" label="姓名" min-width="100" />
         <el-table-column prop="role" label="角色" width="100" align="center">
@@ -99,7 +102,7 @@
     </el-card>
 
     <!-- 批量导入弹窗 -->
-    <el-dialog v-model="importDialogVisible" title="批量导入用户" width="560px" @close="handleImportDialogClose">
+    <el-dialog v-model="importDialogVisible" title="批量导入用户" width="500px" @close="handleImportDialogClose">
       <div class="import-guide">
         <p>请下载模板文件，按格式填写后上传。支持 <strong>.xlsx / .xls</strong> 文件。</p>
         <a :href="templateUrl" download class="template-link" target="_blank">下载导入模板</a>
@@ -334,15 +337,35 @@ onMounted(() => {
 
 <style scoped>
 .user-list {
-  padding: 20px;
+  padding: var(--space-xl);
 }
 
 .search-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-lg);
+  border-radius: 8px;
+  transition: box-shadow 200ms ease;
+}
+
+.search-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.table-card {
+  border-radius: 8px;
+  transition: box-shadow 200ms ease;
+}
+
+.table-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .table-card :deep(.el-card__header) {
   padding: 12px 20px;
+}
+
+.table-card :deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .card-header {
@@ -385,13 +408,13 @@ onMounted(() => {
 }
 
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-lg);
   display: flex;
   justify-content: flex-end;
 }
 
 .import-guide {
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
   border-radius: 6px;
   padding: 12px 16px;
   margin-bottom: 8px;
@@ -400,16 +423,19 @@ onMounted(() => {
 .import-guide p {
   margin: 0 0 8px;
   font-size: 13px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 .template-link {
-  color: #409eff;
+  color: var(--el-color-primary);
   font-size: 13px;
   text-decoration: none;
+  cursor: pointer;
+  transition: color 200ms ease;
 }
 
 .template-link:hover {
+  color: var(--el-color-primary-dark-2);
   text-decoration: underline;
 }
 
@@ -419,7 +445,7 @@ onMounted(() => {
 
 .error-title {
   font-size: 13px;
-  color: #f56c6c;
+  color: var(--el-color-danger);
   margin: 0 0 6px;
 }
 

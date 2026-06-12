@@ -475,10 +475,20 @@ onUnmounted(() => {
 
 .info-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s ease;
+}
+
+.info-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .chapter-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s ease;
+}
+
+.chapter-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .card-header {

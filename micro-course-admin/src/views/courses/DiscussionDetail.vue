@@ -8,7 +8,7 @@
   <div class="discussion-detail">
     <!-- 返回 -->
     <div class="back-bar">
-      <el-button link @click="router.push('/discussions')">&lt; 返回列表</el-button>
+      <el-button link class="back-btn" @click="router.push('/discussions')">&lt; 返回列表</el-button>
     </div>
 
     <!-- 帖子主体 -->
@@ -272,8 +272,17 @@ export default {
   margin-bottom: 12px;
 }
 
+.back-btn {
+  cursor: pointer;
+}
+
 .post-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s ease;
+}
+
+.post-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
 .post-header {
@@ -310,7 +319,13 @@ export default {
 
 .comment-card {
   margin-bottom: 16px;
+  transition: box-shadow 0.3s ease;
 }
+
+.comment-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
 
 .empty-comments {
   color: #909399;
@@ -324,6 +339,11 @@ export default {
 
 .input-card {
   margin-bottom: 20px;
+  transition: box-shadow 0.3s ease;
+}
+
+.input-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
 .input-area {
@@ -385,4 +405,23 @@ export default {
 }
 
 .reply-input { margin-bottom: 8px; }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .discussion-detail {
+    padding: 12px;
+  }
+
+  .post-title {
+    font-size: 18px;
+  }
+
+  :deep(.comment-node) {
+    margin-left: 0 !important;
+  }
+
+  :deep(.reply-box) {
+    margin-left: 0;
+  }
+}
 </style>

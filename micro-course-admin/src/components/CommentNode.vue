@@ -75,7 +75,7 @@ const handleReply = () => {
 
 <style scoped>
 .comment-node {
-  border-left: 2px solid #e4e7ed;
+  border-left: 2px solid var(--el-border-color-light);
   padding-left: 12px;
   margin-bottom: 16px;
 }
@@ -109,6 +109,10 @@ const handleReply = () => {
   display: flex;
   gap: 12px;
   margin-bottom: 8px;
+}
+
+.comment-actions :deep(.el-button) {
+  cursor: pointer;
 }
 
 .reply-box {
