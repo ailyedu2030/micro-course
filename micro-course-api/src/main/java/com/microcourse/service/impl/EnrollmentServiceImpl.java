@@ -303,6 +303,70 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollmentRepository.updateById(enrollment);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public long countByTeacherId(Long teacherId) {
+        List<Long> courseIds = courseRepository.selectList(
+            new LambdaQueryWrapper<Course>()
+                .eq(Course::getTeacherId, teacherId)
+                .isNull(Course::getDeletedAt)
+                .select(Course::getId))
+            .stream().map(Course::getId).collect(Collectors.toList());
+        if (courseIds.isEmpty()) {
+            return 0;
+        }
+        return enrollmentRepository.selectCount(
+            new LambdaQueryWrapper<Enrollment>()
+                .in(Enrollment::getCourseId, courseIds)
+                .isNull(Enrollment::getDeletedAt));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countCompletedByTeacherId(Long teacherId) {
+        List<Long> courseIds = courseRepository.selectList(
+            new LambdaQueryWrapper<Course>()
+                .eq(Course::getTeacherId, teacherId)
+                .isNull(Course::getDeletedAt)
+                .select(Course::getId))
+            .stream().map(Course::getId).collect(Collectors.toList());
+        if (courseIds.isEmpty()) {
+            return 0;
+        }
+        return enrollmentRepository.selectCount(
+            new LambdaQueryWrapper<Enrollment>()
+                .in(Enrollment::getCourseId, courseIds)
+                .eq(Enrollment::getCompleted, true)
+                .isNull(Enrollment::getDeletedAt));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public double getAvgScoreByTeacherId(Long teacherId) {
+        List<Long> courseIds = courseRepository.selectList(
+            new LambdaQueryWrapper<Course>()
+                .eq(Course::getTeacherId, teacherId)
+                .isNull(Course::getDeletedAt)
+                .select(Course::getId))
+            .stream().map(Course::getId).collect(Collectors.toList());
+        if (courseIds.isEmpty()) {
+            return 0;
+        }
+        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(Enrollment::getCourseId, courseIds)
+               .isNotNull(Enrollment::getFinalScore)
+               .isNull(Enrollment::getDeletedAt);
+        List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
+        if (enrollments.isEmpty()) {
+            return 0;
+        }
+        return enrollments.stream()
+            .filter(e -> e.getFinalScore() != null)
+            .mapToDouble(e -> e.getFinalScore().doubleValue())
+            .average()
+            .orElse(0);
+    }
+
     private EnrollmentVO convertToVO(Enrollment enrollment) {
         EnrollmentVO vo = new EnrollmentVO();
         vo.setId(enrollment.getId());

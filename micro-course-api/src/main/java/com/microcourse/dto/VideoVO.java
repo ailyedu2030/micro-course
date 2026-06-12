@@ -17,6 +17,7 @@ public class VideoVO {
     private String url;
     private String hlsUrl;
     private String thumbnailUrl;
+    private String coverUrl;
     private Integer status;
     private Integer progress;
     private String errorMessage;
@@ -54,6 +55,8 @@ public class VideoVO {
     public void setHlsUrl(String hlsUrl) { this.hlsUrl = hlsUrl; }
     public String getThumbnailUrl() { return thumbnailUrl; }
     public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }
+    public String getCoverUrl() { return coverUrl; }
+    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
     public Integer getProgress() { return progress; }

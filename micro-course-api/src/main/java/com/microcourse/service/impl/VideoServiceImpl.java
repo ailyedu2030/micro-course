@@ -19,7 +19,12 @@ import com.microcourse.service.VideoService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -165,6 +170,39 @@ public class VideoServiceImpl implements VideoService {
         videoRepository.deleteById(id);
     }
 
+    @Override
+    public String uploadCover(Long videoId, MultipartFile file) {
+        Video video = videoRepository.selectById(videoId);
+        if (video == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+
+        // 保存到 uploads/covers/{videoId}/
+        String baseDir = "uploads/covers/" + videoId;
+        String originalFilename = file.getOriginalFilename();
+        String ext = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            ext = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String savedFileName = java.util.UUID.randomUUID().toString().replace("-", "") + ext;
+        Path targetPath = Paths.get(baseDir, savedFileName);
+
+        try {
+            Files.createDirectories(targetPath.getParent());
+            file.transferTo(targetPath.toFile());
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面保存失败");
+        }
+
+        String coverUrl = targetPath.toString();
+        video.setCoverUrl(coverUrl);
+        video.setUpdatedAt(LocalDateTime.now());
+        video.setVersion(video.getVersion() == null ? 1 : video.getVersion() + 1);
+        videoRepository.updateById(video);
+
+        return coverUrl;
+    }
+
     private VideoVO convertToVO(Video video) {
         VideoVO vo = new VideoVO();
         vo.setId(video.getId());
@@ -179,6 +217,7 @@ public class VideoServiceImpl implements VideoService {
         vo.setUrl(video.getUrl());
         vo.setHlsUrl(video.getHlsUrl());
         vo.setThumbnailUrl(video.getThumbnailUrl());
+        vo.setCoverUrl(video.getCoverUrl());
         vo.setStatus(video.getStatus());
         vo.setProgress(video.getProgress());
         vo.setErrorMessage(video.getErrorMessage());
@@ -213,6 +252,7 @@ public class VideoServiceImpl implements VideoService {
         vo.setUrl(video.getUrl());
         vo.setHlsUrl(video.getHlsUrl());
         vo.setThumbnailUrl(video.getThumbnailUrl());
+        vo.setCoverUrl(video.getCoverUrl());
         vo.setStatus(video.getStatus());
         vo.setProgress(video.getProgress());
         vo.setErrorMessage(video.getErrorMessage());

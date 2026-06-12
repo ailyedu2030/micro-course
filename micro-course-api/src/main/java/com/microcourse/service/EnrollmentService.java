@@ -25,4 +25,10 @@ public interface EnrollmentService {
     EnrollmentVO updateEnrollment(Long id, EnrollmentUpdateRequest request);
 
     void cancelEnrollment(Long id);
+
+    long countByTeacherId(Long teacherId);
+
+    long countCompletedByTeacherId(Long teacherId);
+
+    double getAvgScoreByTeacherId(Long teacherId);
 }

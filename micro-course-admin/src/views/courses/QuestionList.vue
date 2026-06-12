@@ -1,6 +1,6 @@
 <!--
   题目列表
-  路由路径: /courses/questions
+  路由路径: /questions
   Phase 1
   Author: jackie
 -->
@@ -9,6 +9,11 @@
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
+        <el-form-item label="课程">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200">
+            <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="题型">
           <el-select v-model="searchForm.questionType" placeholder="请选择题型" clearable class="filter-input-w140">
             <el-option label="单选题" value="SINGLE_CHOICE" />
@@ -44,7 +49,16 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">题目列表</span>
-          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增题目</el-button>
+          <div class="header-actions">
+            <el-upload
+              :show-file-list="false"
+              :before-upload="handleImportExcel"
+              accept=".xlsx,.xls"
+              style="display: inline-block; margin-right: 8px">
+              <el-button type="success" size="small">导入Excel</el-button>
+            </el-upload>
+            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增题目</el-button>
+          </div>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
@@ -76,8 +90,9 @@
             {{ row.score ?? '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right" align="center">
+        <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
+            <el-button type="info" link size="small" @click="handlePreview(row)">预览</el-button>
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -169,6 +184,9 @@
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 题目预览 -->
+    <QuestionPreview v-model="previewVisible" :question="previewQuestion" />
   </div>
 </template>
 
@@ -176,8 +194,10 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
-import { getQuestions, createQuestion, updateQuestion, deleteQuestion } from '@/api/question'
+import { getQuestions, createQuestion, updateQuestion, deleteQuestion, batchImportQuestion } from '@/api/question'
 import { getCategories } from '@/api/course-category'
+import { getCourses } from '@/api/course'
+import QuestionPreview from './QuestionPreview.vue'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
@@ -189,8 +209,10 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 const categoryOptions = ref([])
+const courseOptions = ref([])
 
 const searchForm = reactive({
+  courseId: '',
   questionType: '',
   difficulty: '',
   categoryId: '',
@@ -199,6 +221,8 @@ const searchForm = reactive({
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增题目')
+const previewVisible = ref(false)
+const previewQuestion = ref(null)
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
@@ -234,12 +258,49 @@ const fetchCategoryOptions = async () => {
   }
 }
 
+const fetchCourseOptions = async () => {
+  try {
+    const { data } = await getCourses({ size: 1000 })
+    courseOptions.value = data.items || []
+  } catch {
+    ElMessage.error('获取课程列表失败')
+  }
+}
+
+const handleImportExcel = async (file) => {
+  if (!searchForm.courseId) {
+    ElMessage.warning('请先选择课程再导入题目')
+    return false
+  }
+  try {
+    const { data } = await batchImportQuestion(file, searchForm.courseId)
+    if (data.successCount > 0) {
+      ElMessage.success(`导入成功 ${data.successCount} 条${data.failCount > 0 ? `，失败 ${data.failCount} 条` : ''}`)
+    } else {
+      ElMessage.warning('导入失败，请检查文件格式')
+    }
+    if (data.errors && data.errors.length > 0) {
+      data.errors.slice(0, 5).forEach(err => ElMessage.error(err))
+    }
+    fetchData()
+  } catch (e) {
+    ElMessage.error('导入失败')
+  }
+  return false
+}
+
+const handlePreview = (row) => {
+  previewQuestion.value = { ...row }
+  previewVisible.value = true
+}
+
 const fetchData = async () => {
   loading.value = true
   try {
     const params = {
       page: page.value - 1,
       size: size.value,
+      courseId: searchForm.courseId || undefined,
       questionType: searchForm.questionType || undefined,
       difficulty: searchForm.difficulty || undefined,
       categoryId: searchForm.categoryId || undefined,
@@ -261,6 +322,7 @@ const handleSearch = () => {
 }
 
 const handleReset = () => {
+  searchForm.courseId = ''
   searchForm.questionType = ''
   searchForm.difficulty = ''
   searchForm.categoryId = ''
@@ -309,7 +371,6 @@ const handleEdit = (row) => {
   formData.answer = row.answer || ''
   formData.partialScore = !!row.partialScore
   formData.partialScoreRule = row.partialScoreRule || ''
-  // 解析选项
   if (row.options) {
     try {
       optionList.value = JSON.parse(row.options)
@@ -355,15 +416,12 @@ const handleSubmit = async () => {
     if (!valid) return
     submitLoading.value = true
     try {
-      // 序列化选项
       if (formData.questionType === 'SINGLE_CHOICE' || formData.questionType === 'MULTIPLE_CHOICE') {
         formData.options = JSON.stringify(optionList.value)
-        // 提取正确答案
         const correctOptions = optionList.value.filter(o => o.correct).map(o => o.label)
         formData.answer = correctOptions.join(',')
       }
       const payload = { ...formData }
-      // 处理部分给分规则
       if (formData.questionType === 'MULTIPLE_CHOICE' && formData.partialScore) {
         payload.partialScore = formData.partialScoreRule
       } else {
@@ -392,6 +450,7 @@ const handleDialogClose = () => {
 
 onMounted(() => {
   fetchCategoryOptions()
+  fetchCourseOptions()
   fetchData()
 })
 </script>
@@ -426,6 +485,11 @@ onMounted(() => {
 .card-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
   align-items: center;
 }
 
@@ -481,6 +545,10 @@ onMounted(() => {
   width: 160px;
 }
 
+.filter-input-w200 {
+  width: 200px;
+}
+
 .options-editor {
   width: 100%;
   padding: 8px;
@@ -529,7 +597,8 @@ onMounted(() => {
 
   .filter-input-w140,
   .filter-input-w120,
-  .filter-input-w160 {
+  .filter-input-w160,
+  .filter-input-w200 {
     width: 100%;
   }
 

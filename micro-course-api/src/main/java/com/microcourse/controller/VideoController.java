@@ -207,4 +207,26 @@ public class VideoController {
                 .header("Location", hlsPath)
                 .build();
     }
+
+    /**
+     * 视频封面上传
+     * 验证图片格式、大小 ≤ 5MB
+     * 存储到 uploads/covers/{videoId}/
+     */
+    @PostMapping("/{id}/cover")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    public R<String> uploadCover(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件不能为空");
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面大小不能超过5MB");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "只支持图片格式");
+        }
+        String coverUrl = videoService.uploadCover(id, file);
+        return R.ok(coverUrl);
+    }
 }

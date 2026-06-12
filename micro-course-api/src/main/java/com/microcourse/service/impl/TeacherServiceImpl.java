@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.*;
 import com.microcourse.entity.*;
 import com.microcourse.repository.*;
+import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.TeacherService;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,7 @@ public class TeacherServiceImpl implements TeacherService {
     private final ExerciseRepository exerciseRepository;
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
+    private final EnrollmentService enrollmentService;
 
     public TeacherServiceImpl(
             CourseRepository courseRepository,
@@ -39,7 +41,8 @@ public class TeacherServiceImpl implements TeacherService {
             DiscussionCommentRepository discussionCommentRepository,
             ExerciseRepository exerciseRepository,
             QuestionRepository questionRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            EnrollmentService enrollmentService) {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.exerciseRecordRepository = exerciseRecordRepository;
@@ -50,6 +53,7 @@ public class TeacherServiceImpl implements TeacherService {
         this.exerciseRepository = exerciseRepository;
         this.questionRepository = questionRepository;
         this.userRepository = userRepository;
+        this.enrollmentService = enrollmentService;
     }
 
     @Override
@@ -121,6 +125,16 @@ public class TeacherServiceImpl implements TeacherService {
         } else {
             stats.setPendingQuestions(0);
         }
+
+        // 完成率
+        long totalEnrollments = enrollmentService.countByTeacherId(teacherId);
+        long completedEnrollments = enrollmentService.countCompletedByTeacherId(teacherId);
+        double completionRate = totalEnrollments > 0 ? completedEnrollments * 100.0 / totalEnrollments : 0;
+        stats.setCompletionRate(completionRate);
+
+        // 平均分
+        double avgScore = enrollmentService.getAvgScoreByTeacherId(teacherId);
+        stats.setAvgScore(avgScore);
 
         return stats;
     }

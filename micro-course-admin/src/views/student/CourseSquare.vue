@@ -93,6 +93,77 @@
       </el-card>
     </div>
 
+    <!-- ============ 精选推荐 ============ -->
+    <section v-if="recommendedCourses.length > 0" class="recommended-section">
+      <div class="main-content">
+        <main class="course-area" aria-busy="loading">
+          <h2 class="section-title">精选推荐</h2>
+          <div class="course-grid">
+            <el-row :gutter="24">
+              <el-col
+                v-for="course in recommendedCourses"
+                :key="'rec-'+course.id"
+                :xs="24"
+                :sm="12"
+                :md="8"
+                :lg="6"
+              >
+                <article
+                  class="course-card"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="`推荐课程 ${course.title}`"
+                  @click="handleCourseClick(course.id)"
+                  @keydown.enter="handleCourseClick(course.id)"
+                >
+                  <div class="course-cover">
+                    <img
+                      v-if="course.coverUrl"
+                      :src="course.coverUrl"
+                      :alt="course.title"
+                      loading="lazy"
+                      class="cover-img"
+                    />
+                    <div v-else class="cover-placeholder" aria-hidden="true">
+                      <el-icon :size="48"><VideoPlay /></el-icon>
+                    </div>
+                    <el-tag type="warning" size="small" class="recommend-badge">推荐</el-tag>
+                    <el-tag
+                      v-if="course.difficulty"
+                      class="difficulty-chip"
+                      :type="getDifficultyType(course.difficulty)"
+                      effect="dark"
+                      size="small"
+                    >
+                      {{ getDifficultyLabel(course.difficulty) }}
+                    </el-tag>
+                  </div>
+                  <div class="course-info">
+                    <h3 class="course-title" :title="course.title">{{ course.title }}</h3>
+                    <p class="course-meta">
+                      <el-icon class="meta-icon"><User /></el-icon>
+                      <span>{{ course.teacherName || '未知教师' }}</span>
+                      <span class="separator" aria-hidden="true">·</span>
+                      <span>{{ formatStudentCount(course.studentCount) }}</span>
+                    </p>
+                    <div class="course-footer">
+                      <div class="rating">
+                        <el-icon class="rating-star"><Star /></el-icon>
+                        <span class="rating-value">{{ formatRating(course.avgRating) }}</span>
+                      </div>
+                      <div class="price" :class="{ 'price--free': !course.price }">
+                        {{ course.price ? `¥${course.price}` : '免费' }}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </el-col>
+            </el-row>
+          </div>
+        </main>
+      </div>
+    </section>
+
     <!-- ============ Main Content (75% / 25%) ============ -->
     <div class="main-content">
       <!-- 课程区 -->
@@ -375,6 +446,7 @@ const courseList = ref([])
 const categoryList = ref([])
 const hotCourses = ref([])
 const newestCourses = ref([])
+const recommendedCourses = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(12)
@@ -477,6 +549,16 @@ const fetchSideCourses = async () => {
   }
 }
 
+// 拉精选推荐
+const loadRecommended = async () => {
+  try {
+    const { data } = await getCourses({ recommended: true, size: 8 })
+    recommendedCourses.value = data?.items || []
+  } catch {
+    // silent
+  }
+}
+
 // 搜索
 const handleSearch = () => {
   page.value = 1
@@ -520,6 +602,7 @@ onMounted(() => {
   fetchCategories()
   fetchCourses()
   fetchSideCourses()
+  loadRecommended()
 })
 </script>
 
@@ -750,6 +833,41 @@ onMounted(() => {
 .course-area {
   flex: 0 0 75%;
   min-width: 0;
+}
+
+/* ================================================
+   Recommended Section
+   ================================================ */
+.recommended-section {
+  margin: var(--space-5) 0 0;
+}
+
+.recommended-section .main-content {
+  margin: 0;
+  padding: 0 var(--space-6);
+}
+
+.recommended-section .course-area {
+  flex: 1;
+}
+
+.section-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  padding: 0 var(--space-6);
+}
+
+.recommend-badge {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  border: none;
+  border-radius: var(--radius-pill) !important;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  box-shadow: var(--shadow-chip);
 }
 
 /* ================================================

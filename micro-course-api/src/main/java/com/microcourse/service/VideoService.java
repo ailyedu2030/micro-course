@@ -1,6 +1,7 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.VideoCreateRequest;
+import org.springframework.web.multipart.MultipartFile;
 import com.microcourse.dto.VideoUpdateRequest;
 import com.microcourse.dto.VideoVO;
 import com.microcourse.dto.PageResult;
@@ -21,4 +22,6 @@ public interface VideoService {
     VideoVO update(Long id, VideoUpdateRequest request);
 
     void delete(Long id);
+
+    String uploadCover(Long videoId, MultipartFile file);
 }

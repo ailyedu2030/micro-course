@@ -176,7 +176,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideo } from '@/api/video'
+import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideo, uploadVideoCover } from '@/api/video'
 import { getCourses } from '@/api/course'
 
 const userStore = useUserStore()
@@ -396,13 +396,18 @@ const handleCoverChange = (file) => {
 }
 
 const handleSubmitCover = async () => {
-  if (!currentVideoId.value) return
+  if (!coverFile.value) {
+    ElMessage.warning('请选择封面图片')
+    return
+  }
   coverSubmitLoading.value = true
   try {
-    ElMessage.info('封面上传功能待实现')
+    await uploadVideoCover(currentVideoId.value, coverFile.value)
+    ElMessage.success('封面上传成功')
     coverDialogVisible.value = false
+    fetchData()
   } catch {
-    ElMessage.error('设置封面失败')
+    ElMessage.error('上传失败')
   } finally {
     coverSubmitLoading.value = false
   }

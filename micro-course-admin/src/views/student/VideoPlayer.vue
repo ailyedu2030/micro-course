@@ -799,7 +799,7 @@ const reportProgress = async () => {
 const startProgressReporting = () => {
   progressReportTimer = setInterval(() => {
     reportProgress()
-  }, 30000) // 30 seconds
+  }, 10000) // 10 seconds
 }
 
 // Local position

@@ -19,3 +19,10 @@ export function deleteQuestion(id) {
 export function getQuestionById(id) {
   return request({ method: 'GET', url: `/questions/${id}` })
 }
+
+export function batchImportQuestion(file, courseId) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('courseId', courseId)
+  return request({ method: 'POST', url: '/questions/batch/import', data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
+}

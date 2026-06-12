@@ -88,6 +88,42 @@
           </div>
         </div>
       </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-icon-completion">
+            <el-icon class="stat-icon"><Finished /></el-icon>
+          </div>
+          <div class="stat-body">
+            <el-skeleton :loading="statsLoading" animated :rows="1">
+              <template #template>
+                <el-skeleton-item class="skeleton-value" />
+              </template>
+              <template #default>
+                <div class="stat-value">{{ Number(stats.completionRate ?? 0).toFixed(1) }}%</div>
+              </template>
+            </el-skeleton>
+            <div class="stat-label">完成率</div>
+          </div>
+        </div>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-icon-score">
+            <el-icon class="stat-icon"><Star /></el-icon>
+          </div>
+          <div class="stat-body">
+            <el-skeleton :loading="statsLoading" animated :rows="1">
+              <template #template>
+                <el-skeleton-item class="skeleton-value" />
+              </template>
+              <template #default>
+                <div class="stat-value">{{ Number(stats.avgScore ?? 0).toFixed(1) }} 分</div>
+              </template>
+            </el-skeleton>
+            <div class="stat-label">平均分</div>
+          </div>
+        </div>
+      </el-col>
     </el-row>
 
     <!-- 中部主体区：左侧图表 + 右侧待办通知 -->
@@ -234,7 +270,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled } from '@element-plus/icons-vue'
+import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useUserStore } from '@/store/user'
 import { getStats, getStudentActivity, getPendingTasks, getNotifications, getMyCourses } from '@/api/teacher'
@@ -256,7 +292,7 @@ const greeting = computed(() => {
 
 // 统计数据
 const statsLoading = ref(true)
-const stats = ref({ courseCount: 0, studentCount: 0, pendingHomework: 0, pendingQuestions: 0 })
+const stats = ref({ courseCount: 0, studentCount: 0, pendingHomework: 0, pendingQuestions: 0, completionRate: 0, avgScore: 0 })
 
 // 学情图表
 const activityLoading = ref(true)
@@ -574,6 +610,12 @@ onBeforeUnmount(() => {
 
 .stat-icon-question { background: #FEF2F2; }
 .stat-icon-question .stat-icon { color: #EF4444; }
+
+.stat-icon-completion { background: #ECFDF5; }
+.stat-icon-completion .stat-icon { color: #10B981; }
+
+.stat-icon-score { background: #FEF3C7; }
+.stat-icon-score .stat-icon { color: #F59E0B; }
 
 .stat-icon {
   font-size: 22px;
