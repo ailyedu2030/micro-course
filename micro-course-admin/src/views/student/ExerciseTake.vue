@@ -149,7 +149,7 @@
                         'option-selected': answers[currentQuestion.id] === opt.value && !submitted,
                       }"
                     >
-                      <el-radio :value="opt.value" :label="opt.value">
+                      <el-radio :value="opt.value">
                         <span class="option-label">{{ opt.label }}.</span>
                         <span class="option-text">{{ opt.text }}</span>
                       </el-radio>
@@ -357,7 +357,7 @@
                       'option-selected': answers[currentQuestion.id] === opt.value && !submitted,
                     }"
                   >
-                    <el-radio :value="opt.value" :label="opt.value">
+                    <el-radio :value="opt.value">
                       <span class="option-label">{{ opt.label }}.</span>
                       <span class="option-text">{{ opt.text }}</span>
                     </el-radio>

@@ -65,7 +65,7 @@
               aria-label="课程分类"
               @change="handleCategoryChange"
             >
-              <el-radio-button :value="null">全部</el-radio-button>
+              <el-radio-button value="">全部</el-radio-button>
               <el-radio-button
                 v-for="cat in categoryList"
                 :key="cat.id"
@@ -368,7 +368,7 @@ const newestCourses = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(12)
-const selectedCategoryId = ref(null)
+const selectedCategoryId = ref('')
 
 const searchForm = reactive({
   keyword: '',
@@ -477,7 +477,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.keyword = ''
   searchForm.difficulty = ''
-  selectedCategoryId.value = null
+  selectedCategoryId.value = ''
   page.value = 1
   fetchCourses()
 }
