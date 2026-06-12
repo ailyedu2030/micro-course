@@ -14,6 +14,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.nio.file.NoSuchFileException;
 
@@ -71,6 +72,11 @@ public class GlobalExceptionHandler {
         log.warn("BusinessException: {} - {}", e.getCode(), e.getMessage());
         int httpStatus = e.getHttpStatus() > 0 ? e.getHttpStatus() : mapToHttpStatus(e.getCode());
         return ResponseEntity.status(httpStatus).body(R.fail(e.getCode(), e.getMessage()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<R<Void>> handleAccessDenied(AccessDeniedException e) {
+        return ResponseEntity.status(403).body(R.fail(403, "无权访问"));
     }
 
     @ExceptionHandler(Exception.class)
