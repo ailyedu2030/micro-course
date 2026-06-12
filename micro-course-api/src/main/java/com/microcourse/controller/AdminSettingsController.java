@@ -31,7 +31,7 @@ public class AdminSettingsController {
      * 权限: ADMIN
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<List<AdminSettingVO>> getAll() {
         return R.ok(adminSettingService.getAll());
     }
@@ -42,7 +42,7 @@ public class AdminSettingsController {
      * 权限: ADMIN
      */
     @PutMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> updateBatch(@RequestBody Map<String, String> settings) {
         adminSettingService.updateBatch(settings);
         return R.ok();
