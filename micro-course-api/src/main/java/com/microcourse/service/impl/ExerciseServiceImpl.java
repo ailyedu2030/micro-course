@@ -368,4 +368,34 @@ public class ExerciseServiceImpl implements ExerciseService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
     }
+
+    @Override
+    @Transactional
+    public void addQuestions(Long exerciseId, List<Long> questionIds) {
+        Exercise exercise = exerciseRepository.selectById(exerciseId);
+        if (exercise == null) {
+            throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
+        }
+        assertCourseOwner(exercise.getCourseId());
+        for (Long qid : questionIds) {
+            ExerciseQuestion eq = new ExerciseQuestion();
+            eq.setExerciseId(exerciseId);
+            eq.setQuestionId(qid);
+            exerciseQuestionRepository.insert(eq);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void removeQuestion(Long exerciseId, Long questionId) {
+        Exercise exercise = exerciseRepository.selectById(exerciseId);
+        if (exercise == null) {
+            throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
+        }
+        assertCourseOwner(exercise.getCourseId());
+        LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExerciseQuestion::getExerciseId, exerciseId)
+               .eq(ExerciseQuestion::getQuestionId, questionId);
+        exerciseQuestionRepository.delete(wrapper);
+    }
 }

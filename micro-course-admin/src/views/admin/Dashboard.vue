@@ -333,15 +333,8 @@ async function refreshAll() {
 }
 
 async function loadHealth() {
-  healthLoading.value = true
-  try {
-    setTimeout(() => {
-      health.value = { db: 'ok', redis: 'ok', disk: '72%', memory: '55%' }
-      healthLoading.value = false
-    }, 1000)
-  } catch {
-    healthLoading.value = false
-  }
+  // 后端无 /admin/health 端点，健康监控暂时为空实现
+  healthLoading.value = false
 }
 
 // Load stats

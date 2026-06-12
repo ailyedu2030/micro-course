@@ -1,9 +1,11 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.NotificationCreateRequest;
 import com.microcourse.dto.NotificationVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.NotificationService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -50,6 +52,14 @@ public class NotificationController {
         Long userId = getCurrentUserId();
         long count = notificationService.getUnreadCount(userId);
         return R.ok(count);
+    }
+
+    @PostMapping
+    @PreAuthorize("isAuthenticated()")
+    public R<NotificationVO> send(@Valid @RequestBody NotificationCreateRequest request) {
+        Long userId = getCurrentUserId();
+        NotificationVO vo = notificationService.send(request, userId);
+        return R.ok(vo);
     }
 
     private Long getCurrentUserId() {

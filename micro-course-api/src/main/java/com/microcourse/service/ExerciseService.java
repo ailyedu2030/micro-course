@@ -5,6 +5,8 @@ import com.microcourse.dto.ExerciseUpdateRequest;
 import com.microcourse.dto.ExerciseVO;
 import com.microcourse.dto.PageResult;
 
+import java.util.List;
+
 public interface ExerciseService {
 
     ExerciseVO create(ExerciseCreateRequest request);
@@ -16,4 +18,8 @@ public interface ExerciseService {
     PageResult<ExerciseVO> page(Integer courseId, Integer chapterId, Integer page, Integer size);
 
     ExerciseVO getById(Long id);
+
+    void addQuestions(Long exerciseId, List<Long> questionIds);
+
+    void removeQuestion(Long exerciseId, Long questionId);
 }

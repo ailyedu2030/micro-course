@@ -6,7 +6,7 @@ import com.microcourse.dto.PageResult;
 
 public interface NotificationService {
 
-    NotificationVO send(NotificationCreateRequest request);
+    NotificationVO send(NotificationCreateRequest request, Long senderId);
 
     PageResult<NotificationVO> getMyNotifications(Long userId, int page, int size);
 

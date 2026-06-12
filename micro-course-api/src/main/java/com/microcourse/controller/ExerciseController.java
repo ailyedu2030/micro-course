@@ -10,6 +10,8 @@ import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/exercises")
 public class ExerciseController {
@@ -57,6 +59,20 @@ public class ExerciseController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         exerciseService.delete(id);
+        return R.ok();
+    }
+
+    @PostMapping("/{id}/questions")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    public R<Void> addQuestions(@PathVariable Long id, @RequestBody List<Long> questionIds) {
+        exerciseService.addQuestions(id, questionIds);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{exerciseId}/questions/{questionId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    public R<Void> removeQuestion(@PathVariable Long exerciseId, @PathVariable Long questionId) {
+        exerciseService.removeQuestion(exerciseId, questionId);
         return R.ok();
     }
 }

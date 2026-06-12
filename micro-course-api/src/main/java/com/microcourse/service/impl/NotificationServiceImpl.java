@@ -25,9 +25,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public NotificationVO send(NotificationCreateRequest request) {
+    public NotificationVO send(NotificationCreateRequest request, Long senderId) {
         Notification notification = new Notification();
         notification.setUserId(request.getUserId());
+        notification.setSenderId(senderId);
         notification.setType(request.getType());
         notification.setTitle(request.getTitle());
         notification.setContent(request.getContent());
@@ -101,6 +102,7 @@ public class NotificationServiceImpl implements NotificationService {
         NotificationVO vo = new NotificationVO();
         vo.setId(notification.getId());
         vo.setUserId(notification.getUserId());
+        vo.setSenderId(notification.getSenderId());
         vo.setType(notification.getType());
         vo.setTitle(notification.getTitle());
         vo.setContent(notification.getContent());

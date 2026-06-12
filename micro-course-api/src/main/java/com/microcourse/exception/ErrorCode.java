@@ -48,7 +48,8 @@ public enum ErrorCode {
     COURSE_REVIEW_INVALID_RATING(12007, "评分必须在1-5之间", 400),
     ADMIN_SETTING_NOT_FOUND(12008, "系统配置不存在", 404),
     BADGE_NOT_FOUND(13001, "徽章不存在", 404),
-    CERTIFICATE_NOT_FOUND(13002, "证书不存在", 404);
+    CERTIFICATE_NOT_FOUND(13002, "证书不存在", 404),
+    TAG_NOT_FOUND(14001, "标签不存在", 404);
 
     private final int code;
     private final String message;

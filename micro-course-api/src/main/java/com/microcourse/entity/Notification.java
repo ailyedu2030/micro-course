@@ -16,6 +16,9 @@ public class Notification {
     @TableField("user_id")
     private Long userId;
 
+    @TableField("sender_id")
+    private Long senderId;
+
     private String type;
 
     private String title;
@@ -45,6 +48,8 @@ public class Notification {
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public Long getSenderId() { return senderId; }
+    public void setSenderId(Long senderId) { this.senderId = senderId; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
     public String getTitle() { return title; }
