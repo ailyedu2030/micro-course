@@ -259,6 +259,9 @@ public class AuthServiceImpl implements AuthService {
         if (request.getGender() != null) {
             user.setGender(request.getGender());
         }
+        if (request.getAvatar() != null) {
+            user.setAvatar(request.getAvatar());
+        }
         userRepository.updateById(user);
         return convertToUserVO(user);
     }

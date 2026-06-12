@@ -78,8 +78,34 @@
               </div>
             </template>
             <div class="avatar-section">
-              <el-avatar :size="80" :src="userStore.userInfo?.avatar" />
-              <div class="avatar-tip">支持 JPG、PNG格式，建议200x200 像素</div>
+              <el-upload
+                class="avatar-uploader"
+                :show-file-list="false"
+                :auto-upload="false"
+                accept="image/jpeg,image/png,image/jpg"
+                :on-change="handleAvatarChange"
+              >
+                <el-avatar :size="80" :src="avatarPreview || userStore.userInfo?.avatar" />
+              </el-upload>
+              <div class="avatar-tip">支持 JPG、PNG 格式，建议 200×200 像素</div>
+              <div class="avatar-actions">
+                <el-button
+                  v-if="avatarPreview"
+                  type="primary"
+                  size="small"
+                  :loading="avatarLoading"
+                  @click="handleSaveAvatar"
+                >
+                  保存头像
+                </el-button>
+                <el-button
+                  v-if="avatarPreview"
+                  size="small"
+                  @click="handleCancelAvatar"
+                >
+                  取消
+                </el-button>
+              </div>
             </div>
           </el-card>
 
@@ -229,11 +255,23 @@
       <!-- 用户信息卡片 -->
       <el-card class="profile-card user-info-card" shadow="never">
         <div class="user-info-content">
-          <el-avatar :size="60" :src="userStore.userInfo?.avatar" />
+          <el-upload
+            class="avatar-uploader-mobile"
+            :show-file-list="false"
+            :auto-upload="false"
+            accept="image/jpeg,image/png,image/jpg"
+            :on-change="handleAvatarChange"
+          >
+            <el-avatar :size="60" :src="avatarPreview || userStore.userInfo?.avatar" />
+          </el-upload>
           <div class="user-info-text">
             <div class="user-info-name">{{ userStore.userInfo?.realName || userStore.userInfo?.username }}</div>
             <div class="user-info-role">{{ userStore.userInfo?.role }}</div>
           </div>
+        </div>
+        <div v-if="avatarPreview" class="avatar-actions-mobile">
+          <el-button type="primary" size="small" :loading="avatarLoading" @click="handleSaveAvatar">保存头像</el-button>
+          <el-button size="small" @click="handleCancelAvatar">取消</el-button>
         </div>
       </el-card>
 
@@ -488,6 +526,51 @@ const passwordRules = {
 const profileLoading = ref(false)
 const passwordLoading = ref(false)
 
+// 头像上传
+const avatarPreview = ref('')
+const avatarLoading = ref(false)
+const avatarMaxSize = 500 * 1024 // 500KB
+
+const handleAvatarChange = (uploadFile) => {
+  const file = uploadFile?.raw
+  if (!file) return
+  if (file.size > avatarMaxSize) {
+    ElMessage.error('图片大小不能超过 500KB')
+    return
+  }
+  if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+    ElMessage.error('只支持 JPG、PNG 格式')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    avatarPreview.value = e.target.result
+  }
+  reader.readAsDataURL(file)
+}
+
+const handleSaveAvatar = async () => {
+  if (!avatarPreview.value) {
+    ElMessage.warning('请先选择头像')
+    return
+  }
+  avatarLoading.value = true
+  try {
+    await updateProfile({ avatar: avatarPreview.value })
+    await userStore.getInfo()
+    avatarPreview.value = ''
+    ElMessage.success('头像更新成功')
+  } catch (e) {
+    ElMessage.error('头像更新失败')
+  } finally {
+    avatarLoading.value = false
+  }
+}
+
+const handleCancelAvatar = () => {
+  avatarPreview.value = ''
+}
+
 // 错题集
 const wrongQuestions = ref([])
 const wrongLoading = ref(false)
@@ -737,6 +820,35 @@ onBeforeUnmount(() => {
   font-size: var(--text-xs);
   color: var(--el-text-color-secondary);
   text-align: center;
+}
+
+.avatar-uploader :deep(.el-upload) {
+  cursor: pointer;
+  border: 2px dashed var(--el-border-color);
+  border-radius: var(--radius-pill);
+  padding: 2px;
+  transition: border-color var(--duration-base) var(--ease-out);
+}
+
+.avatar-uploader :deep(.el-upload:hover) {
+  border-color: var(--role-primary);
+}
+
+.avatar-uploader-mobile :deep(.el-upload) {
+  cursor: pointer;
+}
+
+.avatar-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.avatar-actions-mobile {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-3);
 }
 
 /* === Info List === */
