@@ -44,7 +44,7 @@
             <template #header>
               <span class="section-title">课程大纲</span>
             </template>
-            <el-table
+            <el-table highlight-current-row @row-click="handleChapterClick"
               v-loading="chapterLoading"
               :data="chapters"
               stripe
@@ -234,7 +234,7 @@
         <!-- 目录 -->
         <div v-show="h5ActiveTab === 'chapters'" class="h5-tab-content">
           <el-card class="chapter-card card-hover">
-            <el-table
+            <el-table highlight-current-row @row-click="handleChapterClick"
               v-loading="chapterLoading"
               :data="chapters"
               stripe
@@ -504,6 +504,14 @@ const handleEnroll = async () => {
     ElMessage.error('报名失败，请重试')
   } finally {
     enrollLoading.value = false
+  }
+}
+
+const handleChapterClick = (row) => {
+  if (row.chapterType === 'EXERCISE') {
+    router.push(`/student/chapters/${row.id}/exercises`)
+  } else {
+    router.push(`/student/courses/${courseId.value}?chapterId=${row.id}`)
   }
 }
 
@@ -984,5 +992,14 @@ onMounted(async () => {
     width: 100%;
     justify-content: flex-end;
   }
+}
+
+/* 章节表格行可点击 */
+.chapter-card :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.chapter-card :deep(.el-table__row:hover) {
+  background-color: var(--el-fill-color-lighter);
 }
 </style>
