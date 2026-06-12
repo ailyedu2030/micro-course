@@ -574,7 +574,7 @@ const handlePageChange = () => {
 }
 
 const handleContinue = (courseId) => {
-  router.push(`/student/courses/${courseId}`)
+  router.push(`/student/learning?courseId=${courseId}`)
 }
 </script>
 

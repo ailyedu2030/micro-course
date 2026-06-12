@@ -156,8 +156,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
 // ---------------------------------------------------------------------------
 const menuItems = [
   { label: '广场', path: '/student/courses', icon: markRaw(Grid) },
-  { label: '课程', path: '/student/my-courses', icon: markRaw(VideoPlay) },
-  { label: '学习', path: '/student/learning', icon: markRaw(DataLine) },
+  { label: '学习', path: '/student/learning', icon: markRaw(VideoPlay) },
   { label: '消息', path: '/student/notifications', icon: markRaw(Bell) },
   { label: '我的', path: '/student/profile', icon: markRaw(User) },
 ]
@@ -208,8 +207,8 @@ const pageTitle = computed(() => {
   return found ? found[1] : '微课平台'
 })
 const showBackBtn = computed(() => {
-  // 只有在子页面（非 5 个主 Tab）才显示返回按钮
-  const mainPaths = ['/student/courses', '/student/my-courses', '/student/learning', '/student/notifications', '/student/profile']
+  // 只有在子页面（非 4 个主 Tab）才显示返回按钮
+  const mainPaths = ['/student/courses', '/student/learning', '/student/notifications', '/student/profile']
   return !mainPaths.some(p => route.path.startsWith(p))
 })
 
