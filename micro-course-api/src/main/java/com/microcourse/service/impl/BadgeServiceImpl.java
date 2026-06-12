@@ -1,11 +1,13 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.microcourse.dto.BadgeVO;
-import com.microcourse.entity.Badge;
+import com.microcourse.dto.AchievementVO;
+import com.microcourse.entity.Achievement;
+import com.microcourse.entity.BadgeDefinition;
 import com.microcourse.entity.CheckIn;
 import com.microcourse.entity.Enrollment;
-import com.microcourse.repository.BadgeRepository;
+import com.microcourse.repository.AchievementRepository;
+import com.microcourse.repository.BadgeDefinitionRepository;
 import com.microcourse.repository.CheckInRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.service.BadgeService;
@@ -19,27 +21,27 @@ import java.util.stream.Collectors;
 @Service
 public class BadgeServiceImpl implements BadgeService {
 
-    private final BadgeRepository badgeRepository;
+    private final AchievementRepository achievementRepository;
+    private final BadgeDefinitionRepository badgeDefinitionRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final CheckInRepository checkInRepository;
 
-    public BadgeServiceImpl(BadgeRepository badgeRepository,
+    public BadgeServiceImpl(AchievementRepository achievementRepository,
+                            BadgeDefinitionRepository badgeDefinitionRepository,
                             EnrollmentRepository enrollmentRepository,
                             CheckInRepository checkInRepository) {
-        this.badgeRepository = badgeRepository;
+        this.achievementRepository = achievementRepository;
+        this.badgeDefinitionRepository = badgeDefinitionRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.checkInRepository = checkInRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<BadgeVO> getMyBadges(Long userId) {
-        LambdaQueryWrapper<Badge> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Badge::getUserId, userId)
-                .orderByAsc(Badge::getEarnedAt);
-        List<Badge> badges = badgeRepository.selectList(wrapper);
-        return badges.stream()
-                .map(this::convertToVO)
+    public List<AchievementVO> getMyBadges(Long userId) {
+        List<Achievement> achievements = achievementRepository.selectByUserId(userId);
+        return achievements.stream()
+                .map(this::convertToAchievementVO)
                 .collect(Collectors.toList());
     }
 
@@ -53,21 +55,20 @@ public class BadgeServiceImpl implements BadgeService {
 
     @Override
     @Transactional
-    public void grantBadge(Long userId, String badgeType, String badgeName) {
-        LambdaQueryWrapper<Badge> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Badge::getUserId, userId)
-                .eq(Badge::getBadgeType, badgeType);
-        Badge existing = badgeRepository.selectOne(wrapper);
-        if (existing != null) {
+    public void grantBadge(Long userId, String badgeCode) {
+        BadgeDefinition definition = badgeDefinitionRepository.selectByCode(badgeCode);
+        if (definition == null) {
             return;
         }
-        Badge badge = new Badge();
-        badge.setUserId(userId);
-        badge.setBadgeType(badgeType);
-        badge.setBadgeName(badgeName);
-        badge.setEarnedAt(LocalDateTime.now());
-        badge.setCreatedAt(LocalDateTime.now());
-        badgeRepository.insert(badge);
+        if (achievementRepository.existsByUserIdAndBadgeCode(userId, badgeCode)) {
+            return;
+        }
+        Achievement achievement = new Achievement();
+        achievement.setUserId(userId);
+        achievement.setBadgeCode(badgeCode);
+        achievement.setBadgeName(definition.getName());
+        achievement.setEarnedAt(LocalDateTime.now());
+        achievementRepository.insert(achievement);
     }
 
     private void checkFirstCourseBadge(Long userId) {
@@ -76,7 +77,7 @@ public class BadgeServiceImpl implements BadgeService {
                 .eq(Enrollment::getCompleted, true);
         long completedCount = enrollmentRepository.selectCount(wrapper);
         if (completedCount >= 1) {
-            grantBadge(userId, "FIRST_COURSE", "初识课程");
+            grantBadge(userId, "FIRST_COURSE");
         }
     }
 
@@ -90,7 +91,7 @@ public class BadgeServiceImpl implements BadgeService {
         long completedCount = enrollmentRepository.selectCount(wrapper);
 
         if (totalEnrollments > 0 && completedCount >= totalEnrollments) {
-            grantBadge(userId, "ALL_COURSES", "学满全部");
+            grantBadge(userId, "ALL_COURSES");
         }
     }
 
@@ -100,17 +101,25 @@ public class BadgeServiceImpl implements BadgeService {
                 .ge(CheckIn::getStreakDays, 7);
         CheckIn record = checkInRepository.selectOne(wrapper);
         if (record != null) {
-            grantBadge(userId, "SEVEN_DAY_STREAK", "连续打卡");
+            grantBadge(userId, "SEVEN_DAY_STREAK");
         }
     }
 
-    private BadgeVO convertToVO(Badge badge) {
-        BadgeVO vo = new BadgeVO();
-        vo.setId(badge.getId());
-        vo.setUserId(badge.getUserId());
-        vo.setBadgeType(badge.getBadgeType());
-        vo.setBadgeName(badge.getBadgeName());
-        vo.setEarnedAt(badge.getEarnedAt());
+    private AchievementVO convertToAchievementVO(Achievement achievement) {
+        AchievementVO vo = new AchievementVO();
+        vo.setId(achievement.getId());
+        vo.setUserId(achievement.getUserId());
+        vo.setBadgeCode(achievement.getBadgeCode());
+        vo.setBadgeName(achievement.getBadgeName());
+        vo.setEarnedAt(achievement.getEarnedAt());
+
+        BadgeDefinition definition = badgeDefinitionRepository.selectByCode(achievement.getBadgeCode());
+        if (definition != null) {
+            vo.setIconUrl(definition.getIconUrl());
+            vo.setCategory(definition.getCategory());
+            vo.setDescription(definition.getDescription());
+            vo.setCriteria(definition.getCriteria());
+        }
         return vo;
     }
 }

@@ -104,6 +104,10 @@
             <el-icon><Finished /></el-icon>
             <template #title>成绩明细</template>
           </el-menu-item>
+          <el-menu-item index="/teacher/teaching-classes">
+            <el-icon><Reading /></el-icon>
+            <template #title>我的教学班</template>
+          </el-menu-item>
           <el-menu-item index="/discussions">
             <el-icon><ChatLineSquare /></el-icon>
             <template #title>讨论区</template>
@@ -120,6 +124,10 @@
             <el-icon><Setting /></el-icon>
             <span v-show="!collapsed">系统管理</span>
           </template>
+          <el-menu-item index="/academic/dashboard">
+            <el-icon><DataAnalysis /></el-icon>
+            <template #title>教务驾驶舱</template>
+          </el-menu-item>
           <el-menu-item index="/admin/dashboard">
             <el-icon><Odometer /></el-icon>
             <template #title>数据看板</template>
@@ -131,6 +139,10 @@
           <el-menu-item index="/admin/settings">
             <el-icon><Tools /></el-icon>
             <template #title>系统设置</template>
+          </el-menu-item>
+          <el-menu-item index="/admin/teaching-classes">
+            <el-icon><Reading /></el-icon>
+            <template #title>教学班管理</template>
           </el-menu-item>
         </el-sub-menu>
       </el-menu>

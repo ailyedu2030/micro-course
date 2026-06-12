@@ -139,6 +139,9 @@
         <template #header>
           <div class="card-header">
             <span>我的成就</span>
+            <el-button type="primary" link @click="$router.push('/student/achievements')">
+              查看全部 <el-icon><ArrowRight /></el-icon>
+            </el-button>
           </div>
         </template>
         <div v-loading="badgeLoading" class="badge-grid">
@@ -473,6 +476,7 @@ import { getMyEnrollments } from '../../api/enrollment'
 import { getMyBadges } from '../../api/badge'
 import { getMyWrongQuestions } from '../../api/wrong-question'
 import { getMyCertificates, downloadCertificate } from '../../api/certificate'
+import { ArrowRight } from '@element-plus/icons-vue'
 
 const router = useRouter()
 

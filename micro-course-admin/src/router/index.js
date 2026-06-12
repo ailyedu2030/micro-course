@@ -31,11 +31,16 @@ const routes = [
   { path: '/admin/dashboard', name: 'AdminDashboard', component: () => import('../views/admin/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/admin/logs', name: 'OperationLogs', component: () => import('../views/admin/OperationLogs.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/admin/settings', name: 'AdminSettings', component: () => import('../views/admin/AdminSettings.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/admin/teaching-classes', name: 'TeachingClassList', component: () => import('../views/admin/TeachingClassList.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+
+  // 教务处路由
+  { path: '/academic/dashboard', name: 'AcademicDashboard', component: () => import('../views/academic/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
 
   // 教师端路由
   { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('../views/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/students', name: 'StudentList', component: () => import('../views/teacher/StudentList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/grades', name: 'StudentGrades', component: () => import('../views/teacher/StudentGrades.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
+  { path: '/teacher/teaching-classes', name: 'TeacherTeachingClasses', component: () => import('../views/teacher/TeacherTeachingClasses.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
 
   // 学生端路由
   { path: '/student/courses', name: 'StudentCourseSquare', component: () => import('../views/student/CourseSquare.vue'), meta: { requiresAuth: true } },
@@ -51,6 +56,7 @@ const routes = [
   { path: '/student/discussions', name: 'StudentDiscussion', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true } },
   { path: '/student/reviews', name: 'StudentMyReviews', component: () => import('../views/student/MyReviews.vue'), meta: { requiresAuth: true } },
   { path: '/student/settings', name: 'StudentSettings', component: () => import('../views/student/Settings.vue'), meta: { requiresAuth: true } },
+  { path: '/student/achievements', name: 'StudentAchievements', component: () => import('../views/student/AchievementWall.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'ADMIN'] } },
 ]
 
 function getRoleHomePage(role) {
