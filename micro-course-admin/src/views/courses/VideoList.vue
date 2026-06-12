@@ -410,7 +410,6 @@ const handlePreviewCover = (row) => {
 
 onMounted(() => {
   fetchCourses()
-  fetchData()
 })
 </script>
 

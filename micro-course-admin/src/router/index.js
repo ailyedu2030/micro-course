@@ -7,7 +7,7 @@ const routes = [
   { path: '/departments', name: 'DepartmentList', component: () => import('../views/departments/DepartmentList.vue'), meta: { requiresAuth: true } },
   { path: '/majors', name: 'MajorList', component: () => import('../views/majors/MajorList.vue'), meta: { requiresAuth: true } },
   { path: '/classes', name: 'ClassList', component: () => import('../views/classes/ClassList.vue'), meta: { requiresAuth: true } },
-  { path: '/users', name: 'UserList', component: () => import('../views/users/UserList.vue'), meta: { requiresAuth: true } },
+  { path: '/users', name: 'UserList', component: () => import('../views/users/UserList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/users/create', name: 'UserCreate', component: () => import('../views/users/UserForm.vue'), meta: { requiresAuth: true } },
   { path: '/users/:id/edit', name: 'UserEdit', component: () => import('../views/users/UserForm.vue'), meta: { requiresAuth: true } },
   { path: '/courses', name: 'CourseList', component: () => import('../views/courses/CourseList.vue'), meta: { requiresAuth: true } },
@@ -25,7 +25,7 @@ const routes = [
   { path: '/discussions', name: 'DiscussionList', component: () => import('../views/courses/DiscussionList.vue'), meta: { requiresAuth: true } },
   { path: '/discussions/:id', name: 'DiscussionDetail', component: () => import('../views/courses/DiscussionDetail.vue'), meta: { requiresAuth: true } },
   { path: '/notifications', name: 'NotificationList', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true } },
-  { path: '/courses/review', name: 'CourseReview', component: () => import('../views/courses/CourseReviewList.vue'), meta: { requiresAuth: true } },
+  { path: '/courses/review', name: 'CourseReview', component: () => import('../views/courses/CourseReviewList.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
 
   // 管理后台路由
   { path: '/admin/dashboard', name: 'AdminDashboard', component: () => import('../views/admin/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
@@ -56,10 +56,17 @@ const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth !== false && !isAuthenticated()) return next('/login')
-  if (to.path === '/login' && isAuthenticated()) return next('/')
+  if (to.path === '/login' && isAuthenticated()) {
+    const userRole = localStorage.getItem('userRole') || ''
+    if (userRole === 'STUDENT') return next('/student/courses')
+    return next('/')
+  }
   if (to.meta.roles && to.meta.roles.length > 0) {
     const userRole = localStorage.getItem('userRole') || ''
-    if (!to.meta.roles.includes(userRole)) return next('/')
+    if (!to.meta.roles.includes(userRole)) {
+      if (userRole === 'STUDENT') return next('/student/courses')
+      return next('/')
+    }
   }
   next()
 })

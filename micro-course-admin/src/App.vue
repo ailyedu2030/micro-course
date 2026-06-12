@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from './store/user'
 import Layout from './components/Layout.vue'
@@ -22,6 +22,12 @@ const userStore = useUserStore()
 
 const isLoginPage = computed(() => route.path === '/login')
 const isStudent = computed(() => userStore.role === 'STUDENT')
+
+onMounted(() => {
+  if (!userStore.userInfo) {
+    userStore.getInfo()
+  }
+})
 </script>
 
 <style>

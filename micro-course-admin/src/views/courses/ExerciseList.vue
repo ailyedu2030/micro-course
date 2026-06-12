@@ -151,7 +151,7 @@
  * 练习列表页面 - Phase 6 增强：题目乱序 + 题目预览
  * @author Claude Code Agent
  */
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getExercises, createExercise, updateExercise, deleteExercise } from '@/api/exercise'
 import { getCourses } from '@/api/course'
