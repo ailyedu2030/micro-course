@@ -45,14 +45,14 @@ public class QuestionController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<QuestionVO> create(@Valid @RequestBody QuestionCreateRequest request) {
         QuestionVO vo = questionService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<QuestionVO> update(@PathVariable Long id,
                                 @Valid @RequestBody QuestionUpdateRequest request) {
         QuestionVO vo = questionService.update(id, request);
@@ -60,7 +60,7 @@ public class QuestionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
         questionService.delete(id);
         return R.ok();
@@ -73,7 +73,7 @@ public class QuestionController {
      * @param courseId 课程ID（路径参数）
      */
     @PostMapping("/batch/import")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<BatchImportResultVO> batchImport(
             @RequestParam("file") MultipartFile file,
             @RequestParam Long courseId) {

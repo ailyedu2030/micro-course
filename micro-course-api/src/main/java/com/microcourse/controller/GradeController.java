@@ -20,7 +20,7 @@ public class GradeController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<GradeVO>> page(
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) Long studentId,
@@ -30,25 +30,25 @@ public class GradeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<GradeVO> getById(@PathVariable Long id) {
         return R.ok(gradeService.getById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<GradeVO> create(@Valid @RequestBody GradeCreateRequest request) {
         return R.ok(gradeService.create(request, getCurrentUserId()));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<GradeVO> update(@PathVariable Long id, @Valid @RequestBody GradeUpdateRequest request) {
         return R.ok(gradeService.update(id, request, getCurrentUserId()));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
         gradeService.delete(id);
         return R.ok();

@@ -47,7 +47,7 @@ public class OperationLogController {
      * 权限: ADMIN
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<PageResult<OperationLogVO>> page(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String action,

@@ -19,7 +19,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/admin/stats")
-@PreAuthorize("hasAnyRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
 public class AdminStatsController {
 
     private final AdminStatsService adminStatsService;

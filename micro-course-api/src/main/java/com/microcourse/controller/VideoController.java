@@ -70,14 +70,14 @@ public class VideoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<VideoVO> create(@Valid @RequestBody VideoCreateRequest request) {
         VideoVO vo = videoService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<VideoVO> update(@PathVariable Long id,
                              @Valid @RequestBody VideoUpdateRequest request) {
         VideoVO vo = videoService.update(id, request);
@@ -85,7 +85,7 @@ public class VideoController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
         videoService.delete(id);
         return R.ok();
@@ -98,7 +98,7 @@ public class VideoController {
      * 立即返回 Video 记录，文件传输与转码异步进行
      */
     @PostMapping("/upload")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<VideoVO> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam("courseId") Long courseId,

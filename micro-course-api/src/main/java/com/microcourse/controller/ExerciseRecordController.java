@@ -30,7 +30,7 @@ public class ExerciseRecordController {
     }
 
     @GetMapping("/exercise/{exerciseId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<ExerciseRecordVO>> getRecordsByExercise(@PathVariable Long exerciseId) {
         List<ExerciseRecordVO> records = exerciseRecordService.getRecordsByExercise(exerciseId);
         return R.ok(records);

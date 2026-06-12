@@ -52,14 +52,14 @@ public class CourseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<CourseVO> create(@Valid @RequestBody CourseCreateRequest request) {
         CourseVO vo = courseService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<CourseVO> update(@PathVariable Long id,
                               @Valid @RequestBody CourseUpdateRequest request) {
         CourseVO vo = courseService.update(id, request);
@@ -67,7 +67,7 @@ public class CourseController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> updateStatus(@PathVariable Long id,
                                 @RequestParam Integer status) {
         courseService.updateStatus(id, status);
@@ -75,7 +75,7 @@ public class CourseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
         courseService.delete(id);
         return R.ok();
@@ -87,7 +87,7 @@ public class CourseController {
      * 权限：TEACHER, ADMIN
      */
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<Void> submitForReview(@PathVariable Long id) {
         courseService.submitForReview(id);
         return R.ok();
@@ -99,7 +99,7 @@ public class CourseController {
      * 权限：ADMIN
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> approve(@PathVariable Long id) {
         courseService.approve(id);
         return R.ok();
@@ -112,7 +112,7 @@ public class CourseController {
      * @param body {"reason": "拒绝原因"}
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String reason = body.getOrDefault("reason", "");
         courseService.reject(id, reason);
@@ -125,7 +125,7 @@ public class CourseController {
      * 权限：TEACHER, ADMIN
      */
     @PostMapping("/{id}/publish")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> publish(@PathVariable Long id) {
         courseService.publish(id);
         return R.ok();
@@ -138,7 +138,7 @@ public class CourseController {
      * @return 新课程VO
      */
     @PostMapping("/{id}/copy")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<CourseVO> copy(@PathVariable Long id) {
         CourseVO vo = courseService.copy(id);
         return R.ok(vo);

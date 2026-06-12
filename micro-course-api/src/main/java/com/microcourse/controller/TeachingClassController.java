@@ -39,14 +39,14 @@ public class TeachingClassController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
     public R<TeachingClassVO> create(@Valid @RequestBody TeachingClassCreateRequest request) {
         TeachingClassVO vo = teachingClassService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
     public R<TeachingClassVO> update(@PathVariable Long id,
                                      @Valid @RequestBody TeachingClassUpdateRequest request) {
         TeachingClassVO vo = teachingClassService.update(id, request);
@@ -54,7 +54,7 @@ public class TeachingClassController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
         teachingClassService.delete(id);
         return R.ok();
@@ -68,21 +68,21 @@ public class TeachingClassController {
     }
 
     @PostMapping("/{id}/students")
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
     public R<Void> addStudent(@PathVariable Long id, @RequestParam Long userId) {
         teachingClassService.addStudent(id, userId);
         return R.ok();
     }
 
     @DeleteMapping("/{id}/students/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
     public R<Void> removeStudent(@PathVariable Long id, @PathVariable Long userId) {
         teachingClassService.removeStudent(id, userId);
         return R.ok();
     }
 
     @PutMapping("/{id}/students/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
     public R<Void> updateStudentStatus(@PathVariable Long id,
                                       @PathVariable Long userId,
                                       @RequestParam String status) {

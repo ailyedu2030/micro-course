@@ -46,7 +46,7 @@ public class EnrollmentController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<EnrollmentVO>> getEnrollments(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
@@ -81,7 +81,7 @@ public class EnrollmentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<EnrollmentVO> updateEnrollment(@PathVariable Long id,
                                             @Valid @RequestBody EnrollmentUpdateRequest request) {
         EnrollmentVO vo = enrollmentService.updateEnrollment(id, request);
@@ -89,7 +89,7 @@ public class EnrollmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
+    @PreAuthorize("hasAnyRole('STUDENT','ADMIN','ACADEMIC')")
     public R<Void> cancelEnrollment(@PathVariable Long id) {
         enrollmentService.cancelEnrollment(id);
         return R.ok();
@@ -101,7 +101,7 @@ public class EnrollmentController {
      * @param courseId 课程ID
      */
     @GetMapping("/export")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public void exportEnrollments(
             @RequestParam Long courseId,
             HttpServletResponse response) throws IOException {
