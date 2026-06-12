@@ -25,6 +25,16 @@ public class LearningProgressController {
         this.learningProgressService = learningProgressService;
     }
 
+    /**
+     * GET /api/learning-progress
+     * 根路径返回错误提示（避免无handler时返回500）
+     */
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public R<Void> root() {
+        return R.fail(400, "缺少查询参数，请使用 /api/learning-progress/progress?courseId=X");
+    }
+
     @GetMapping("/progress")
     @PreAuthorize("isAuthenticated()")
     public R<List<LearningProgressVO>> getByUserAndCourse(
