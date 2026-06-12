@@ -7,7 +7,7 @@ public class EnrollmentCreateRequest {
     @NotNull(message = "课程ID不能为空")
     private Long courseId;
 
-    @NotNull(message = "用户ID不能为空")
+    // userId 由 Controller 从 JWT 自动填充，前端无需传
     private Long userId;
 
     private String sourceChannel;

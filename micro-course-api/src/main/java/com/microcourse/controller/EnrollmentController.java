@@ -7,6 +7,8 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.R;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.EnrollmentService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +34,11 @@ public class EnrollmentController {
     @PostMapping
     @PreAuthorize("hasRole('STUDENT')")
     public R<EnrollmentVO> enroll(@Valid @RequestBody EnrollmentCreateRequest request) {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+        request.setUserId(userId);
         EnrollmentVO vo = enrollmentService.enroll(request);
         return R.ok(vo);
     }
