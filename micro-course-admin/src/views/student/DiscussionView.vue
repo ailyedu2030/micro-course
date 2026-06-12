@@ -338,7 +338,7 @@ const handleDeletePost = async () => {
     detailDialogVisible.value = false
     page.value = 1
     fetchData()
-  } catch {
+  } catch (e) {
     if (e !== 'cancel') ElMessage.error('删除失败')
   }
 }

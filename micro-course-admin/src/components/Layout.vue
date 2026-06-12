@@ -476,7 +476,7 @@ onUnmounted(() => {
 .user-avatar {
   flex-shrink: 0;
   background-color: var(--role-primary);
-  color: #fff;
+  color: var(--el-color-white);
   font-weight: var(--weight-medium);
 }
 

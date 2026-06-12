@@ -6,7 +6,7 @@
 -->
 <template>
   <div id="app" :class="appClass">
-    <router-view v-if="isLoginPage" />
+    <router-view v-if="isLoginPage || isVideoPage" />
     <StudentLayout v-else-if="isStudent" />
     <Layout v-else />
   </div>
@@ -25,10 +25,12 @@ const userStore = useUserStore()
 
 const isLoginPage = computed(() => route.path === '/login')
 const isStudent = computed(() => userStore.role === 'STUDENT')
+const isVideoPage = computed(() => route.matched.some(r => r.meta?.layout === 'video'))
 
 const appClass = computed(() => ({
-  'role-student': isStudent.value,
-  'role-staff': !isStudent.value
+  'role-student': isStudent.value && !isVideoPage.value,
+  'role-staff': !isStudent.value && !isVideoPage.value,
+  'role-video': isVideoPage.value
 }))
 
 watch(() => userStore.role, () => {

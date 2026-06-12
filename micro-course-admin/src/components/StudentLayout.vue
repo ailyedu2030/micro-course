@@ -285,7 +285,7 @@ onUnmounted(() => notificationStore.stopPolling())
   align-items: center;
   height: 64px;
   padding: 0 var(--space-5);
-  background: #fff;
+  background: var(--el-bg-color-overlay);
   border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
   box-shadow: var(--shadow-sm);
   position: sticky;
@@ -409,7 +409,7 @@ onUnmounted(() => notificationStore.stopPolling())
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--el-color-white);
   font-weight: var(--weight-semibold);
   font-size: var(--text-base);
   border-radius: var(--radius-circle);
@@ -438,7 +438,7 @@ onUnmounted(() => notificationStore.stopPolling())
   display: none;
   height: 48px;
   padding: 0 var(--space-3);
-  background: #fff;
+  background: var(--el-bg-color-overlay);
   border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
   box-shadow: var(--shadow-xs);
   position: sticky;
@@ -511,7 +511,7 @@ onUnmounted(() => notificationStore.stopPolling())
   left: 0;
   right: 0;
   height: 56px;
-  background: #fff;
+  background: var(--el-bg-color-overlay);
   border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
   box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.06);
   z-index: var(--z-fixed);
