@@ -40,4 +40,9 @@ public interface CourseReviewService {
      * 管理后台：分页查询所有评价（可按课程筛选）
      */
     PageResult<CourseReviewVO> listAll(int page, int size, Long courseId);
+
+    /**
+     * 删除评价
+     */
+    void deleteReview(Long id);
 }

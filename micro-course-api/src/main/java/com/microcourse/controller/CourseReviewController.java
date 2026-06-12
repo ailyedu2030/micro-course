@@ -104,4 +104,36 @@ class MyReviewController {
         PageResult<CourseReviewVO> result = courseReviewService.getMyReviews(userId, page, size);
         return R.ok(result);
     }
+
+    /**
+     * 删除评价
+     * DELETE /api/reviews/{id}
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> deleteReview(@PathVariable Long id) {
+        courseReviewService.deleteReview(id);
+        return R.ok();
+    }
+
+    /**
+     * 审核通过（当前无status字段，直接返回成功）
+     * PUT /api/reviews/{id}/approve
+     */
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> approveReview(@PathVariable Long id) {
+        return R.ok();
+    }
+
+    /**
+     * 审核驳回 = 删除评价
+     * PUT /api/reviews/{id}/reject
+     */
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> rejectReview(@PathVariable Long id) {
+        courseReviewService.deleteReview(id);
+        return R.ok();
+    }
 }

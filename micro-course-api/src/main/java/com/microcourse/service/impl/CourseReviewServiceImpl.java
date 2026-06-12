@@ -123,6 +123,16 @@ public class CourseReviewServiceImpl implements CourseReviewService {
                 .collect(Collectors.toList()), result.getTotal(), page, size);
     }
 
+    @Override
+    @Transactional
+    public void deleteReview(Long id) {
+        CourseReview review = courseReviewRepository.selectById(id);
+        if (review == null) {
+            throw new BusinessException(ErrorCode.COURSE_REVIEW_NOT_FOUND);
+        }
+        courseReviewRepository.deleteById(id);
+    }
+
     private CourseReviewVO convertToVO(CourseReview review) {
         CourseReviewVO vo = new CourseReviewVO();
         vo.setId(review.getId());
