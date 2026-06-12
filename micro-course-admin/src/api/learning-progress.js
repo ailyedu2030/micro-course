@@ -19,3 +19,7 @@ export function getCompletion(params) {
 export function getStudyDays() {
   return request({ method: 'GET', url: '/learning-progress/study-days' })
 }
+
+export function getTotalTime() {
+  return request({ method: 'GET', url: '/learning-progress/total-time' })
+}

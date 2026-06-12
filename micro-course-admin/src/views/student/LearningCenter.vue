@@ -341,7 +341,7 @@ import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { Calendar, Sunny, Star, Medal, CircleCheck } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { getCompletion, getStudyDays } from '@/api/learning-progress'
+import { getStudyDays, getTotalTime } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
 import { getMyCheckIns, createCheckIn } from '@/api/checkin'
@@ -517,8 +517,8 @@ const badges = ref([
 async function getStats() {
   try {
     const userId = userStore.userInfo?.id
-    const [completionData, enrollmentData, studyDaysData] = await Promise.all([
-      getCompletion({ userId }),
+    const [totalTimeData, enrollmentData, studyDaysData] = await Promise.all([
+      getTotalTime().catch(() => ({ data: { totalSeconds: 0 } })),
       getMyEnrollments(userId),
       getStudyDays().catch(() => ({ data: { days: 0 } }))
     ])
@@ -526,15 +526,9 @@ async function getStats() {
     const enrollments = Array.isArray(enrollmentData?.data) ? enrollmentData.data : []
     const completedCourses = enrollments.filter(e => e.completed).length
 
-    // 从 completionData 中汇总总学习时长（分钟转小时）
-    const completionMap = completionData?.data || {}
-    let totalMinutes = 0
-    Object.values(completionMap).forEach(v => {
-      if (v && typeof v === 'object' && v.totalWatchTime) {
-        totalMinutes += v.totalWatchTime || 0
-      }
-    })
-    const totalHours = totalMinutes > 0 ? `${Math.round(totalMinutes / 60)}小时` : '0小时'
+    // 总学习时长（从 total-time API 聚合所有课程）
+    const totalSeconds = totalTimeData?.data?.totalSeconds || 0
+    const totalHours = totalSeconds > 0 ? `${Math.round(totalSeconds / 3600)}小时` : '0小时'
 
     // 学习天数
     const studyDays = studyDaysData?.data?.days ?? studyDaysData?.data?.studyDays ?? 0
