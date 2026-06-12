@@ -56,9 +56,9 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("无Token访问返回403")
-    void meWithoutToken_Returns403() throws Exception {
-        mockMvc.perform(get("/api/auth/me")).andExpect(status().isForbidden());
+    @DisplayName("无Token访问返回401")
+    void meWithoutToken_Returns401() throws Exception {
+        mockMvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
     }
 
     @Test
