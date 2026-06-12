@@ -527,8 +527,6 @@ onMounted(() => {
    Breadcrumb
    ================================================ */
 .page-breadcrumb {
-  max-width: var(--content-max-width);
-  margin: 0 auto;
   padding: var(--space-4) var(--space-6) 0;
   display: flex;
   align-items: center;
@@ -549,10 +547,6 @@ onMounted(() => {
 /* ================================================
    Hero (160px 3 段渐变 + 装饰圆)
    ================================================ */
-:root {
-  --content-max-width: 1200px;
-}
-
 .hero-section {
   position: relative;
   height: 160px;
@@ -629,7 +623,6 @@ onMounted(() => {
    Filter Bar (-28px 上提)
    ================================================ */
 .filter-bar {
-  max-width: var(--content-max-width);
   margin: calc(var(--space-7) * -1) auto 0;
   padding: 0 var(--space-6);
   position: relative;
@@ -737,8 +730,7 @@ onMounted(() => {
    Main Content (75% / 25%)
    ================================================ */
 .main-content {
-  max-width: var(--content-max-width);
-  margin: var(--space-5) auto 0;
+  margin: var(--space-5) 0 0;
   padding: 0 var(--space-6);
   display: flex;
   gap: var(--space-5);

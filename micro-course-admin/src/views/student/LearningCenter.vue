@@ -671,8 +671,6 @@ onUnmounted(() => {
    --------------------------------------------------------------------------- */
 .learning-center {
   padding: var(--space-5);
-  max-width: 1200px;
-  margin: 0 auto;
   animation: fadeIn var(--duration-slow) var(--ease-out);
 }
 

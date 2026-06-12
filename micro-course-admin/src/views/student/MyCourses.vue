@@ -566,8 +566,6 @@ const handleContinue = (courseId) => {
 
 /* 主内容区 */
 .main-content {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 0 var(--space-5) var(--space-5);
 }
 

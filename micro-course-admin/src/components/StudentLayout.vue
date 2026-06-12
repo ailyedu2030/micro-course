@@ -91,11 +91,13 @@
 
     <!-- ====== 主体内容区 ====== -->
     <main class="layout-main" :class="{ 'has-tabbar': isMobile }">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
+      <div class="layout-content">
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </div>
     </main>
 
     <!-- ====== H5 底部 Tab Bar (≤ 768px) ====== -->
@@ -490,15 +492,27 @@ onUnmounted(() => notificationStore.stopPolling())
 }
 
 /* ---------------------------------------------------------------------------
-   5. 主体内容区
+   5. 主体内容区 (PC 端统一 1200px 居中，H5 端不限制)
    --------------------------------------------------------------------------- */
 .layout-main {
   flex: 1;
   padding: 0;
 }
 
+.layout-content {
+  width: 100%;
+}
+
 .layout-main.has-tabbar {
   padding-bottom: calc(56px + var(--space-4));
+}
+
+/* PC 端：内容容器限宽 1200px 居中 (学生端统一布局约束) */
+@media (min-width: 769px) {
+  .layout-content {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
 }
 
 /* ---------------------------------------------------------------------------

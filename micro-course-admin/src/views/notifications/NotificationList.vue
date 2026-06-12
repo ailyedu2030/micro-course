@@ -144,8 +144,6 @@ onMounted(() => {
 
 <style scoped>
 .notification-list-page {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: var(--space-5);
 }
 
