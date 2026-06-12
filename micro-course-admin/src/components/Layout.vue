@@ -18,7 +18,7 @@
       <el-menu
         :default-active="activeMenu"
         :collapse="collapsed"
-        :collapse-transition="false"
+        :collapse-transition="true"
         router
         class="layout-menu"
       >
@@ -235,6 +235,18 @@ const notificationStore = useNotificationStore()
 // 侧边栏折叠状态
 const collapsed = ref(false)
 
+// 响应式监听——窗口宽度 < 1200px 自动折叠
+function checkResponsive() {
+  if (window.innerWidth < 1200 && !collapsed.value) {
+    collapsed.value = true
+  }
+}
+let resizeTimer = null
+function handleWindowResize() {
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(checkResponsive, 150)
+}
+
 // 当前激活菜单
 const activeMenu = computed(() => route.path)
 
@@ -281,12 +293,16 @@ onMounted(() => {
   if (saved !== null) {
     collapsed.value = saved === 'true'
   }
+  checkResponsive()
+  window.addEventListener('resize', handleWindowResize)
   // 启动通知轮询
   notificationStore.startPolling(30000)
 })
 
 onUnmounted(() => {
   notificationStore.stopPolling()
+  window.removeEventListener('resize', handleWindowResize)
+  if (resizeTimer) clearTimeout(resizeTimer)
 })
 </script>
 
@@ -301,8 +317,24 @@ onUnmounted(() => {
   width: 220px;
   background: var(--sidebar-bg, #304156);
   transition: width var(--duration-slow) var(--ease-in-out);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   flex-shrink: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+.layout-aside::-webkit-scrollbar {
+  width: 4px;
+}
+
+.layout-aside::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.layout-aside::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
 }
 
 .layout-aside.is-collapsed {
@@ -385,7 +417,13 @@ onUnmounted(() => {
   background-color: var(--role-primary-light-9);
   color: var(--role-primary);
   border-left: 3px solid var(--role-primary);
-  padding-left: calc(var(--el-menu-base-level-padding) + 3px);
+  padding-left: calc(var(--el-menu-base-level-padding, 20px) - 3px);
+}
+
+/* 折叠模式禁用指示条（避免挤偏图标） */
+.layout-aside.is-collapsed :deep(.el-menu-item.is-active) {
+  border-left: none;
+  padding-left: 0;
 }
 
 /* 折叠时隐藏文字 */
@@ -531,38 +569,31 @@ onUnmounted(() => {
 }
 
 /* ==================== 响应式 ==================== */
-@media (max-width: 1279px) {
-  .layout-aside {
-    width: 64px;
-  }
-
-  .layout-aside .logo-text {
-    display: none;
-  }
-
-  .layout-aside .logo-text-short {
-    display: inline;
-  }
-
-  .layout-aside :deep(.el-sub-menu__title span),
-  .layout-aside :deep(.el-menu-item span) {
-    display: none;
-  }
-
-  .layout-aside :deep(.el-sub-menu__title),
-  .layout-aside :deep(.el-menu-item) {
-    justify-content: center;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
-  .layout-aside :deep(.el-sub-menu__title .el-icon),
-  .layout-aside :deep(.el-menu-item .el-icon) {
-    margin-left: 0;
+@media (max-width: 1200px) {
+  .layout-header {
+    padding: 0 var(--space-3);
   }
 
   .user-name,
   .user-role-tag {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout-main {
+    padding: var(--space-2);
+  }
+
+  .header-left {
+    gap: var(--space-2);
+  }
+
+  .header-right {
+    gap: var(--space-2);
+  }
+
+  .user-arrow {
     display: none;
   }
 }
