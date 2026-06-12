@@ -92,18 +92,20 @@ public class TeacherServiceImpl implements TeacherService {
         // 学员提问（未回复的讨论帖：course内帖子中，无教师回复的帖子）
         if (!courseIds.isEmpty()) {
             // 找出所有有教师回复的帖子ID
-            List<DiscussionComment> teacherReplies = discussionCommentRepository.selectList(
-                new LambdaQueryWrapper<DiscussionComment>()
-                    .in(DiscussionComment::getPostId,
-                        discussionPostRepository.selectList(
-                            new LambdaQueryWrapper<DiscussionPost>()
-                                .in(DiscussionPost::getCourseId, courseIds)
-                                .isNull(DiscussionPost::getDeletedAt)
-                                .select(DiscussionPost::getId))
-                        .stream().map(DiscussionPost::getId).collect(Collectors.toList()))
-                    .eq(DiscussionComment::getIsTeacherReply, true)
-                    .isNull(DiscussionComment::getDeletedAt));
-            Set<Long> repliedPostIds = teacherReplies.stream()
+            List<Long> postIds = discussionPostRepository.selectList(
+                new LambdaQueryWrapper<DiscussionPost>()
+                    .in(DiscussionPost::getCourseId, courseIds)
+                    .isNull(DiscussionPost::getDeletedAt)
+                    .select(DiscussionPost::getId))
+                .stream().map(DiscussionPost::getId).collect(Collectors.toList());
+
+            Set<Long> repliedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                discussionCommentRepository.selectList(
+                    new LambdaQueryWrapper<DiscussionComment>()
+                        .in(DiscussionComment::getPostId, postIds)
+                        .eq(DiscussionComment::getIsTeacherReply, true)
+                        .isNull(DiscussionComment::getDeletedAt))
+                .stream()
                 .map(DiscussionComment::getPostId)
                 .collect(Collectors.toSet());
 

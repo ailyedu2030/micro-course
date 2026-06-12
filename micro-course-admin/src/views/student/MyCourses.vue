@@ -441,16 +441,16 @@ const videoProgressMap = ref({})
 const progressColor = 'var(--role-primary)'
 
 const inProgressCourses = computed(() =>
-  enrollments.value.filter(e => !e.completed)
+  (enrollments.value || []).filter(e => !e.completed)
 )
 
 const completedCourses = computed(() =>
-  enrollments.value.filter(e => e.completed)
+  (enrollments.value || []).filter(e => e.completed)
 )
 
 // 模拟收藏课程（实际项目中应从后端获取）
 const favoritedCourses = computed(() =>
-  enrollments.value.filter(e => e.favorited)
+  (enrollments.value || []).filter(e => e.favorited)
 )
 
 const displayCourses = computed(() => {
