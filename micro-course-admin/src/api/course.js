@@ -43,3 +43,7 @@ export function publishCourse(id) {
 export function deleteCourse(id) {
   return request({ method: 'DELETE', url: `/courses/${id}` })
 }
+
+export function copyCourse(id) {
+  return request({ method: 'POST', url: `/courses/${id}/copy` })
+}

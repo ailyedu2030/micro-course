@@ -3,11 +3,10 @@
  */
 import request from '../utils/request'
 
-export function createReview(courseId, data) { return request({ method:'POST', url:'/reviews', data: { courseId, ...data } }) }
+export function createReview(courseId, data) { return request({ method:'POST', url:`/courses/${courseId}/reviews`, data: { ...data, courseId } }) }
 export function getReviews(courseId, params = {}) {
   const queryParams = { ...params }
-  if (courseId != null) queryParams.courseId = courseId
-  return request({ method:'GET', url:'/reviews', params: queryParams })
+  return request({ method:'GET', url:`/courses/${courseId}/reviews`, params: queryParams })
 }
 export function getMyReviews(params) { return request({ method:'GET', url:'/reviews/my', params }) }
 export function approveReview(id) { return request({ method:'PUT', url:`/reviews/${id}/approve` }) }

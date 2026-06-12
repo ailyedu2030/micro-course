@@ -92,6 +92,7 @@
             <el-button v-if="row.status === 2" type="primary" link size="small" @click.stop="handlePublish(row)">发布</el-button>
             <el-button v-if="row.status === 4" type="warning" link size="small" @click.stop="handleUnpublish(row)">下架</el-button>
             <el-button type="info" link size="small" @click.stop="handleView(row)">查看</el-button>
+            <el-button type="primary" link size="small" @click.stop="handleCopy(row)">复制</el-button>
             <el-button type="danger" link size="small" @click.stop="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -153,7 +154,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
-import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse } from '@/api/course'
+import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 
 const router = useRouter()
@@ -341,6 +342,16 @@ const handleDelete = async (row) => {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
+  }
+}
+
+const handleCopy = async (row) => {
+  try {
+    await copyCourse(row.id)
+    ElMessage.success('复制成功')
+    fetchData()
+  } catch {
+    ElMessage.error('复制失败')
   }
 }
 

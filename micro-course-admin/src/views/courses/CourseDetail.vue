@@ -163,7 +163,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
 import { useUserStore } from '@/store/user'
 import { getCourseById, updateCourse, updateCourseStatus, submitCourseForReview } from '@/api/course'
-import { getChapters, createChapter, updateChapter, deleteChapter } from '@/api/chapter'
+import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 
 const router = useRouter()
@@ -284,7 +284,16 @@ const initSortable = () => {
 }
 
 const handleSaveSort = async () => {
-  ElMessage.info('后端排序API未提供，已本地保存排序结果')
+  try {
+    const sorted = chapters.value.map((c, i) => ({
+      id: c.id,
+      sortOrder: i + 1
+    }))
+    await sortChapters(sorted)
+    ElMessage.success('排序已保存')
+  } catch {
+    ElMessage.error('排序保存失败')
+  }
 }
 
 const switchToEdit = () => {
