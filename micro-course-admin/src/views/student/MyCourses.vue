@@ -410,6 +410,7 @@ import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
 import { getCompletion, getLearningProgress } from '../../api/learning-progress'
 import { getChapters } from '../../api/chapter'
+import { getMyFavorites } from '../../api/favorite'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -540,11 +541,17 @@ const fetchEnrollments = async () => {
     })
     videoProgressMap.value = newVideoProgressMap
 
-    // 用 completion 数据修正 enrollment 进度，并模拟 favorited 标记
+    // 用 completion 数据修正 enrollment 进度，并获取收藏列表
+    let favoriteSet = new Set()
+    try {
+      const favRes = await getMyFavorites()
+      const favList = favRes?.data || []
+      favoriteSet = new Set(favList.map(f => String(f.courseId)))
+    } catch { /* ignore */ }
     enrollments.value = list.map(e => {
       const cp = completionMap[e.courseId]
       const updatedProgress = cp?.progress ?? e.progress ?? 0
-      return { ...e, progress: updatedProgress, favorited: Math.random() > 0.5 }
+      return { ...e, progress: updatedProgress, favorited: favoriteSet.has(String(e.courseId)) }
     })
     totalElements.value = enrollments.value.length
   } catch {

@@ -57,7 +57,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC') or #id == authentication.principal.id")
+    @PreAuthorize("isAuthenticated()")
     public R<UserVO> getById(@PathVariable Long id) {
         UserVO vo = userService.getUserById(id);
         return R.ok(vo);

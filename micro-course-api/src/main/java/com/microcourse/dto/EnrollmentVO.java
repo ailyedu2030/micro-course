@@ -8,6 +8,9 @@ public class EnrollmentVO {
     private Long id;
     private Long courseId;
     private String courseName;
+    private String courseTitle;
+    private String teacherName;
+    private String coverUrl;
     private Long userId;
     private String userName;
     private Double progress;
@@ -29,6 +32,12 @@ public class EnrollmentVO {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public String getCourseName() { return courseName; }
     public void setCourseName(String courseName) { this.courseName = courseName; }
+    public String getCourseTitle() { return courseTitle; }
+    public void setCourseTitle(String courseTitle) { this.courseTitle = courseTitle; }
+    public String getTeacherName() { return teacherName; }
+    public void setTeacherName(String teacherName) { this.teacherName = teacherName; }
+    public String getCoverUrl() { return coverUrl; }
+    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     public String getUserName() { return userName; }

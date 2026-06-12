@@ -28,6 +28,7 @@ import com.microcourse.repository.UserRepository;
 import com.microcourse.service.OperationLogService;
 import com.microcourse.service.UserService;
 import com.microcourse.util.RedisUtil;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -148,7 +149,14 @@ public class UserServiceImpl implements UserService {
         if (user == null || user.getDeletedAt() != null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        return convertToVO(user);
+        UserVO vo = convertToVO(user);
+        // 权限脱敏：非本人且非管理员时，敏感字段掩码处理
+        if (!SecurityUtil.isOwnerOrAdmin(id)) {
+            vo.setRealName(maskRealName(vo.getRealName()));
+            vo.setEmail(maskEmail(vo.getEmail()));
+            vo.setPhone(maskPhone(vo.getPhone()));
+        }
+        return vo;
     }
 
     @Override

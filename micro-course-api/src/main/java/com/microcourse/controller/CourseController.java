@@ -28,7 +28,8 @@ public class CourseController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) Integer status,
-            @RequestParam(required = false) Boolean recommended) {
+            @RequestParam(required = false) Boolean recommended,
+            @RequestParam(required = false) Integer difficulty) {
         CoursePageQuery query = new CoursePageQuery();
         query.setPage(page);
         query.setSize(size);
@@ -38,6 +39,7 @@ public class CourseController {
         query.setTeacherId(teacherId);
         query.setStatus(status);
         query.setRecommended(recommended);
+        query.setDifficulty(difficulty);
         PageResult<CourseVO> result = courseService.page(query);
         return R.ok(result);
     }

@@ -272,7 +272,8 @@ import {
   User, UserFilled, Reading, Tickets, Clock, ChatLineSquare, Timer, Medal
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { getStats, getTrends, getCategoryStats, getActivity, getLogs, getHealth } from '@/api/admin'
+import { getOverview, getUserTrend, getCourseTrend, getCourseDistribution, getLearningBehavior } from '@/api/admin-stats'
+import { getLogs } from '@/api/operation-log'
 
 const now = new Date()
 const welcomeDate = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`
@@ -316,8 +317,18 @@ const health = ref({ db: 'ok', redis: 'ok', disk: '70%', memory: '58%' })
 async function loadStats() {
   statsLoading.value = true
   try {
-    const res = await getStats()
-    stats.value = res.data || {}
+    const res = await getOverview()
+    const d = res.data || {}
+    stats.value = {
+      totalUsers: d.totalUsers,
+      totalCourses: d.totalCourses,
+      totalStudents: d.totalEnrollments,
+      activeUsers: d.activeUsers7d,
+      pendingCourses: 0,
+      pendingReviews: 0,
+      totalStudyMinutes: Math.round((d.totalWatchTimeMinutes || 0)),
+      certificatesIssued: 0
+    }
   } catch {
     // silent
   } finally {
@@ -330,8 +341,15 @@ async function loadTrends() {
   trendsLoading.value = true
   trendsError.value = false
   try {
-    const res = await getTrends(30)
-    const data = res.data || {}
+    const [userRes, courseRes] = await Promise.all([
+      getUserTrend(7),
+      getCourseTrend(7)
+    ])
+    const data = {
+      users: userRes.data || [],
+      courses: courseRes.data || [],
+      students: []
+    }
     renderTrendsChart(data)
   } catch {
     trendsError.value = true
@@ -389,9 +407,10 @@ async function loadCategoryStats() {
   categoryLoading.value = true
   categoryError.value = false
   try {
-    const res = await getCategoryStats()
-    const data = res.data || []
-    renderCategoryChart(data)
+    const res = await getCourseDistribution()
+    const data = res.data || {}
+    const items = Object.entries(data).map(([name, value]) => ({ name, value }))
+    renderCategoryChart(items)
   } catch {
     categoryError.value = true
     renderCategoryChart([])
@@ -425,9 +444,10 @@ async function loadActivity() {
   activityLoading.value = true
   activityError.value = false
   try {
-    const res = await getActivity(30)
-    const data = res.data || []
-    renderActivityChart(data)
+    const res = await getLearningBehavior(30)
+    const data = res.data || {}
+    const items = Object.entries(data).map(([key, value]) => ({ date: key, activeUsers: value }))
+    renderActivityChart(items)
   } catch {
     activityError.value = true
     renderActivityChart([])
@@ -465,21 +485,11 @@ async function loadLogs() {
   logsError.value = false
   try {
     const res = await getLogs({ size: 5 })
-    logs.value = res.data?.items || res.data || []
+    logs.value = res.data?.items || []
   } catch {
     logsError.value = true
   } finally {
     logsLoading.value = false
-  }
-}
-
-// Load health
-async function loadHealth() {
-  try {
-    const res = await getHealth()
-    health.value = res.data || {}
-  } catch {
-    // use mock data
   }
 }
 
@@ -507,8 +517,7 @@ onMounted(async () => {
     loadTrends(),
     loadCategoryStats(),
     loadActivity(),
-    loadLogs(),
-    loadHealth()
+    loadLogs()
   ])
   window.addEventListener('resize', resizeCharts)
 })

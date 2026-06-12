@@ -60,10 +60,13 @@ public class LearningProgressController {
     @PreAuthorize("isAuthenticated()")
     public R<Map<String, Object>> getCourseCompletion(
             @RequestParam Long userId,
-            @RequestParam Long courseId) {
+            @RequestParam(required = false) Long courseId) {
         Long currentUserId = getCurrentUserId();
         if (!currentUserId.equals(userId) && !hasRole("ADMIN")) {
             throw new com.microcourse.exception.BusinessException(com.microcourse.exception.ErrorCode.NO_PERMISSION);
+        }
+        if (courseId == null) {
+            return R.ok(new java.util.HashMap<>());
         }
         Map<String, Object> result = learningProgressService.getCourseCompletion(userId, courseId);
         return R.ok(result);

@@ -20,6 +20,14 @@ export function getExerciseById(id) {
   return request({ method: 'GET', url: `/exercises/${id}` })
 }
 
+export function addQuestionsToExercise(id, data) {
+  return request({ method: 'POST', url: `/exercises/${id}/questions`, data })
+}
+
+export function removeQuestionFromExercise(exerciseId, questionId) {
+  return request({ method: 'DELETE', url: `/exercises/${exerciseId}/questions/${questionId}` })
+}
+
 export function submitExerciseRecord(data) {
   return request({ method: 'POST', url: '/exercise-records/submit', data })
 }

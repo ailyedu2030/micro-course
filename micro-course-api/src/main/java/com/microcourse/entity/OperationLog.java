@@ -30,6 +30,15 @@ public class OperationLog {
 
     private Boolean success;
 
+    @TableField("trace_id")
+    private String traceId;
+
+    @TableField("user_agent")
+    private String userAgent;
+
+    @TableField("duration_ms")
+    private Integer durationMs;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -51,6 +60,12 @@ public class OperationLog {
     public void setIp(String ip) { this.ip = ip; }
     public Boolean getSuccess() { return success; }
     public void setSuccess(Boolean success) { this.success = success; }
+    public String getTraceId() { return traceId; }
+    public void setTraceId(String traceId) { this.traceId = traceId; }
+    public String getUserAgent() { return userAgent; }
+    public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
+    public Integer getDurationMs() { return durationMs; }
+    public void setDurationMs(Integer durationMs) { this.durationMs = durationMs; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

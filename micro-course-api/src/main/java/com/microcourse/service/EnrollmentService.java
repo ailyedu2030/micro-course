@@ -12,7 +12,7 @@ public interface EnrollmentService {
 
     EnrollmentVO enroll(EnrollmentCreateRequest request);
 
-    List<EnrollmentVO> getMyEnrollments(Long userId);
+    List<EnrollmentVO> getMyEnrollments(Long userId, Boolean completed);
 
     List<EnrollmentVO> getCourseEnrollments(Long courseId);
 

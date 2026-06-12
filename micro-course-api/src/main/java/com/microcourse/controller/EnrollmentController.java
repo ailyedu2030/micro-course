@@ -36,9 +36,10 @@ public class EnrollmentController {
 
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public R<List<EnrollmentVO>> getMyEnrollments() {
+    public R<List<EnrollmentVO>> getMyEnrollments(
+            @RequestParam(required = false) Boolean completed) {
         Long userId = getCurrentUserId();
-        List<EnrollmentVO> list = enrollmentService.getMyEnrollments(userId);
+        List<EnrollmentVO> list = enrollmentService.getMyEnrollments(userId, completed);
         return R.ok(list);
     }
 

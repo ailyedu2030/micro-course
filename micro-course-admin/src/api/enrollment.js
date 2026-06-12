@@ -1,6 +1,6 @@
 import request from '../utils/request'
 export function enroll(data) { return request({ method:'POST', url:'/enrollments', data }) }
-export function getMyEnrollments(userId) { return request({ method:'GET', url:'/enrollments/my', params:{userId} }) }
+export function getMyEnrollments(params) { return request({ method:'GET', url:'/enrollments/my', params: typeof params === 'object' ? params : {} }) }
 export function getCourseEnrollments(courseId) { return request({ method:'GET', url:`/enrollments/course/${courseId}` }) }
 
 export function getEnrollments(params) { return request({ method:'GET', url:'/enrollments', params }) }

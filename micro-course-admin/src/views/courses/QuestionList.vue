@@ -132,6 +132,7 @@
         <el-form-item v-if="formData.questionType === 'SINGLE_CHOICE' || formData.questionType === 'MULTIPLE_CHOICE'" label="选项" prop="options">
           <div class="options-editor">
             <div v-for="(opt, idx) in optionList" :key="idx" class="option-item">
+              <span class="option-label">{{ ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][idx] }}.</span>
               <el-input v-model="opt.label" placeholder="选项内容" class="option-input" />
               <el-radio v-if="formData.questionType === 'SINGLE_CHOICE'" :model-value="opt.correct" @click="setSingleCorrect(idx)" title="设为正确答案">√</el-radio>
               <el-checkbox v-if="formData.questionType === 'MULTIPLE_CHOICE'" v-model="opt.correct" title="设为正确答案">√</el-checkbox>
@@ -139,6 +140,10 @@
             </div>
             <el-button type="primary" plain size="small" @click="addOption">添加选项</el-button>
           </div>
+        </el-form-item>
+        <!-- 单选/多选题答案 -->
+        <el-form-item v-if="formData.questionType === 'SINGLE_CHOICE' || formData.questionType === 'MULTIPLE_CHOICE'" label="正确答案" prop="answer">
+          <el-input v-model="formData.answer" placeholder="请在选项中勾选正确答案" disabled class="full-width" />
         </el-form-item>
         <!-- 判断题答案 -->
         <el-form-item v-if="formData.questionType === 'TRUE_FALSE'" label="正确答案" prop="answer">
@@ -151,9 +156,12 @@
         <el-form-item v-if="formData.questionType === 'SHORT_ANSWER'" label="正确答案" prop="answer">
           <el-input v-model="formData.answer" placeholder="请输入正确答案" />
         </el-form-item>
-        <!-- 多选题部分给分规则 -->
-        <el-form-item v-if="formData.questionType === 'MULTIPLE_CHOICE'" label="部分给分规则" prop="partialScore">
-          <el-input v-model="formData.partialScore" type="textarea" :rows="2" placeholder="如: A=30;B=30;C=40;D=40 (选对部分得部分分)" />
+        <!-- 多选题部分给分 -->
+        <el-form-item v-if="formData.questionType === 'MULTIPLE_CHOICE'" label="部分给分" prop="partialScore">
+          <el-switch v-model="formData.partialScore" active-text="启用" inactive-text="关闭" />
+          <div v-if="formData.partialScore" class="partial-score-rule">
+            <el-input v-model="formData.partialScoreRule" type="textarea" :rows="2" placeholder="如: A=30;B=30;C=40;D=40 (选对部分得部分分)" />
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -202,7 +210,8 @@ const formData = reactive({
   analysis: '',
   options: '',
   answer: '',
-  partialScore: ''
+  partialScore: false,
+  partialScoreRule: ''
 })
 
 const formRules = {
@@ -277,7 +286,8 @@ const handleCreate = () => {
   formData.analysis = ''
   formData.options = ''
   formData.answer = ''
-  formData.partialScore = ''
+  formData.partialScore = false
+  formData.partialScoreRule = ''
   optionList.value = []
   dialogVisible.value = true
 }
@@ -293,7 +303,8 @@ const handleEdit = (row) => {
   formData.score = row.score || 10
   formData.analysis = row.analysis || ''
   formData.answer = row.answer || ''
-  formData.partialScore = row.partialScore || ''
+  formData.partialScore = !!row.partialScore
+  formData.partialScoreRule = row.partialScoreRule || ''
   // 解析选项
   if (row.options) {
     try {
@@ -348,6 +359,12 @@ const handleSubmit = async () => {
         formData.answer = correctOptions.join(',')
       }
       const payload = { ...formData }
+      // 处理部分给分规则
+      if (formData.questionType === 'MULTIPLE_CHOICE' && formData.partialScore) {
+        payload.partialScore = formData.partialScoreRule
+      } else {
+        payload.partialScore = null
+      }
       if (isEdit.value) {
         await updateQuestion(currentId.value, payload)
         ElMessage.success('编辑成功')
@@ -455,9 +472,19 @@ onMounted(() => {
   margin-bottom: var(--space-2);
 }
 
+.option-label {
+  width: 24px;
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+}
+
 .option-input {
   flex: 1;
   max-width: 300px;
+}
+
+.partial-score-rule {
+  margin-top: var(--space-2);
 }
 
 @media (max-width: 768px) {

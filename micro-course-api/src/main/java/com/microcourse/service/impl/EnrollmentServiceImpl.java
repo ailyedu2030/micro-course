@@ -85,10 +85,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     @Override
-    public List<EnrollmentVO> getMyEnrollments(Long userId) {
+    public List<EnrollmentVO> getMyEnrollments(Long userId, Boolean completed) {
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Enrollment::getUserId, userId)
-                .orderByDesc(Enrollment::getEnrolledAt);
+        wrapper.eq(Enrollment::getUserId, userId);
+        if (completed != null) {
+            wrapper.eq(Enrollment::getCompleted, completed);
+        }
+        wrapper.orderByDesc(Enrollment::getEnrolledAt);
         List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
         return convertToVOList(enrollments);
     }
@@ -167,31 +170,39 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
         }
 
-        // 预加载 learning_progress：取每个(userId, courseId) 组合的最新 lastWatchAt
+        // 预加载 learning_progress：批量查询所有最新 lastWatchAt
         java.util.Map<String, LocalDateTime> lastWatchMap = new java.util.HashMap<>();
         if (!userIds.isEmpty() && !courseIds.isEmpty()) {
-            for (Long uid : userIds) {
-                for (Long cid : courseIds) {
-                    LambdaQueryWrapper<LearningProgress> lpWrapper = new LambdaQueryWrapper<>();
-                    lpWrapper.eq(LearningProgress::getUserId, uid)
-                             .eq(LearningProgress::getCourseId, cid)
-                             .isNotNull(LearningProgress::getLastWatchAt)
-                             .orderByDesc(LearningProgress::getLastWatchAt)
-                             .last("LIMIT 1");
-                    LearningProgress lp = learningProgressRepository.selectOne(lpWrapper);
-                    if (lp != null && lp.getLastWatchAt() != null) {
-                        lastWatchMap.put(uid + "_" + cid, lp.getLastWatchAt());
-                    }
+            LambdaQueryWrapper<LearningProgress> lpWrapper = new LambdaQueryWrapper<>();
+            lpWrapper.in(LearningProgress::getUserId, userIds)
+                     .in(LearningProgress::getCourseId, courseIds)
+                     .isNotNull(LearningProgress::getLastWatchAt)
+                     .orderByDesc(LearningProgress::getLastWatchAt);
+            List<LearningProgress> allLps = learningProgressRepository.selectList(lpWrapper);
+            for (LearningProgress lp : allLps) {
+                String key = lp.getUserId() + "_" + lp.getCourseId();
+                if (!lastWatchMap.containsKey(key)) {
+                    lastWatchMap.put(key, lp.getLastWatchAt());
                 }
             }
         }
 
+        // 预加载教师信息
+        java.util.Map<Long, User> teacherMap = new java.util.HashMap<>();
+        java.util.Set<Long> teacherIds = courseMap.values().stream()
+                .map(Course::getTeacherId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!teacherIds.isEmpty()) {
+            userRepository.selectBatchIds(teacherIds).forEach(t -> teacherMap.put(t.getId(), t));
+        }
+
         final java.util.Map<Long, Course> finalCourseMap = courseMap;
         final java.util.Map<Long, User> finalUserMap = userMap;
+        final java.util.Map<Long, User> finalTeacherMap = teacherMap;
         final java.util.Map<String, LocalDateTime> finalLastWatchMap = lastWatchMap;
 
         return enrollments.stream()
-                .map(e -> convertToVO(e, finalCourseMap, finalUserMap, finalLastWatchMap))
+                .map(e -> convertToVO(e, finalCourseMap, finalUserMap, finalTeacherMap, finalLastWatchMap))
                 .collect(Collectors.toList());
     }
 
@@ -260,11 +271,19 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         vo.setCompletedAt(enrollment.getCompletedAt());
         vo.setUpdatedAt(enrollment.getUpdatedAt());
 
-        // Load course name
+        // Load course info including teacher
         if (enrollment.getCourseId() != null) {
             Course course = courseRepository.selectById(enrollment.getCourseId());
             if (course != null) {
                 vo.setCourseName(course.getTitle());
+                vo.setCourseTitle(course.getTitle());
+                vo.setCoverUrl(course.getCoverUrl());
+                if (course.getTeacherId() != null) {
+                    User teacher = userRepository.selectById(course.getTeacherId());
+                    if (teacher != null) {
+                        vo.setTeacherName(teacher.getRealName());
+                    }
+                }
             }
         }
 
@@ -281,6 +300,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     private EnrollmentVO convertToVO(Enrollment enrollment, java.util.Map<Long, Course> courseMap,
                                      java.util.Map<Long, User> userMap,
+                                     java.util.Map<Long, User> teacherMap,
                                      java.util.Map<String, LocalDateTime> lastWatchMap) {
         EnrollmentVO vo = new EnrollmentVO();
         vo.setId(enrollment.getId());
@@ -301,6 +321,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             Course course = courseMap.get(enrollment.getCourseId());
             if (course != null) {
                 vo.setCourseName(course.getTitle());
+                vo.setCourseTitle(course.getTitle());
+                vo.setCoverUrl(course.getCoverUrl());
+                if (course.getTeacherId() != null && teacherMap != null) {
+                    User teacher = teacherMap.get(course.getTeacherId());
+                    if (teacher != null) {
+                        vo.setTeacherName(teacher.getRealName());
+                    }
+                }
             }
         }
 

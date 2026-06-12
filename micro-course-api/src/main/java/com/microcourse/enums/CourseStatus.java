@@ -29,4 +29,14 @@ public enum CourseStatus {
         }
         return null;
     }
+
+    public static CourseStatus fromCode(Integer code) {
+        if (code == null) return null;
+        for (CourseStatus status : values()) {
+            if (status.code == code) {
+                return status;
+            }
+        }
+        return null;
+    }
 }

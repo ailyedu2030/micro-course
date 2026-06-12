@@ -57,8 +57,9 @@
             {{ row.passScore ?? '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right" align="center">
+        <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="handleSelectQuestions(row)">选题</el-button>
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -120,15 +121,99 @@
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 选题组卷弹窗 -->
+    <el-dialog v-model="questionPickerVisible" title="选题组卷" width="900px" @close="handleQuestionPickerClose">
+      <div class="question-picker">
+        <!-- 筛选区 -->
+        <el-card class="picker-filter-card" shadow="never">
+          <el-form :inline="true" :model="questionSearchForm" @submit.prevent>
+            <el-form-item label="题型">
+              <el-select v-model="questionSearchForm.questionType" placeholder="请选择题型" clearable>
+                <el-option label="单选题" value="SINGLE_CHOICE" />
+                <el-option label="多选题" value="MULTIPLE_CHOICE" />
+                <el-option label="判断题" value="TRUE_FALSE" />
+                <el-option label="简答题" value="SHORT_ANSWER" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="难度">
+              <el-select v-model="questionSearchForm.difficulty" placeholder="请选择难度" clearable>
+                <el-option label="简单" value="EASY" />
+                <el-option label="中等" value="MEDIUM" />
+                <el-option label="困难" value="HARD" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="分类">
+              <el-select v-model="questionSearchForm.categoryId" placeholder="请选择分类" clearable>
+                <el-option v-for="cat in categoryOptions" :key="cat.id" :label="cat.name" :value="cat.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handleQuestionSearch">搜索</el-button>
+              <el-button @click="handleQuestionReset">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
+        <!-- 题目列表 -->
+        <el-table
+          ref="questionTableRef"
+          v-loading="questionLoading"
+          :data="questionTableData"
+          stripe
+          border
+          height="350px"
+          @selection-change="handleQuestionSelectionChange"
+        >
+          <el-table-column type="selection" width="55" />
+          <el-table-column type="index" label="序号" width="60" align="center" />
+          <el-table-column prop="questionType" label="题型" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.questionType === 'SINGLE_CHOICE'" type="primary" size="small">单选题</el-tag>
+              <el-tag v-else-if="row.questionType === 'MULTIPLE_CHOICE'" type="success" size="small">多选题</el-tag>
+              <el-tag v-else-if="row.questionType === 'TRUE_FALSE'" type="warning" size="small">判断题</el-tag>
+              <el-tag v-else-if="row.questionType === 'SHORT_ANSWER'" type="info" size="small">简答题</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="difficulty" label="难度" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.difficulty === 'EASY'" type="success" size="small">简单</el-tag>
+              <el-tag v-else-if="row.difficulty === 'MEDIUM'" type="warning" size="small">中等</el-tag>
+              <el-tag v-else-if="row.difficulty === 'HARD'" type="danger" size="small">困难</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="content" label="题目内容" min-width="300" show-overflow-tooltip />
+          <el-table-column prop="score" label="分值" width="70" align="center" />
+        </el-table>
+        <div class="picker-footer">
+          <span class="selected-count">已选 {{ selectedQuestions.length }} 题</span>
+          <el-pagination
+            v-model:current-page="questionPage"
+            v-model:page-size="questionSize"
+            :total="questionTotal"
+            :page-sizes="[10, 20, 50]"
+            layout="total,sizes,prev,pager,next"
+            small
+            @size-change="handleQuestionSizeChange"
+            @current-change="handleQuestionPageChange"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="questionPickerVisible = false">取消</el-button>
+        <el-button type="primary" :loading="questionSubmitLoading" @click="handleAddQuestions">添加到练习</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getExercises, createExercise, updateExercise, deleteExercise } from '@/api/exercise'
+import { getExercises, createExercise, updateExercise, deleteExercise, addQuestionsToExercise, removeQuestionFromExercise } from '@/api/exercise'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
+import { getQuestions } from '@/api/question'
+import { getCategories } from '@/api/course-category'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -150,6 +235,24 @@ const dialogTitle = ref('新增练习')
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
+
+// 选题组卷相关
+const questionPickerVisible = ref(false)
+const questionTableRef = ref(null)
+const questionLoading = ref(false)
+const questionSubmitLoading = ref(false)
+const questionTableData = ref([])
+const questionTotal = ref(0)
+const questionPage = ref(1)
+const questionSize = ref(10)
+const selectedQuestions = ref([])
+const categoryOptions = ref([])
+
+const questionSearchForm = reactive({
+  questionType: '',
+  difficulty: '',
+  categoryId: ''
+})
 
 const formData = reactive({
   courseId: null,
@@ -331,6 +434,99 @@ const handleDialogClose = () => {
   formRef.value?.resetFields()
 }
 
+// 选题组卷相关方法
+const handleSelectQuestions = async (row) => {
+  currentId.value = row.id
+  questionPickerVisible.value = true
+  selectedQuestions.value = []
+  questionPage.value = 1
+  questionSize.value = 10
+  questionSearchForm.questionType = ''
+  questionSearchForm.difficulty = ''
+  questionSearchForm.categoryId = ''
+  await fetchCategoryOptions()
+  await fetchQuestionData()
+}
+
+const fetchCategoryOptions = async () => {
+  try {
+    const { data } = await getCategories({ size: 1000 })
+    categoryOptions.value = data.items || []
+  } catch {
+    // 忽略错误
+  }
+}
+
+const fetchQuestionData = async () => {
+  questionLoading.value = true
+  try {
+    const params = {
+      page: questionPage.value - 1,
+      size: questionSize.value,
+      questionType: questionSearchForm.questionType || undefined,
+      difficulty: questionSearchForm.difficulty || undefined,
+      categoryId: questionSearchForm.categoryId || undefined
+    }
+    const { data } = await getQuestions(params)
+    questionTableData.value = data.items || []
+    questionTotal.value = data.totalElements || 0
+  } catch {
+    ElMessage.error('获取题目列表失败')
+  } finally {
+    questionLoading.value = false
+  }
+}
+
+const handleQuestionSearch = () => {
+  questionPage.value = 1
+  fetchQuestionData()
+}
+
+const handleQuestionReset = () => {
+  questionSearchForm.questionType = ''
+  questionSearchForm.difficulty = ''
+  questionSearchForm.categoryId = ''
+  questionPage.value = 1
+  fetchQuestionData()
+}
+
+const handleQuestionSizeChange = () => {
+  questionPage.value = 1
+  fetchQuestionData()
+}
+
+const handleQuestionPageChange = () => {
+  fetchQuestionData()
+}
+
+const handleQuestionSelectionChange = (selection) => {
+  selectedQuestions.value = selection
+}
+
+const handleAddQuestions = async () => {
+  if (selectedQuestions.value.length === 0) {
+    ElMessage.warning('请先选择题目')
+    return
+  }
+  questionSubmitLoading.value = true
+  try {
+    const questionIds = selectedQuestions.value.map(q => q.id)
+    await addQuestionsToExercise(currentId.value, { questionIds })
+    ElMessage.success('添加成功')
+    questionPickerVisible.value = false
+    fetchData()
+  } catch {
+    ElMessage.error('添加失败')
+  } finally {
+    questionSubmitLoading.value = false
+  }
+}
+
+const handleQuestionPickerClose = () => {
+  questionTableRef.value?.clearSelection()
+  selectedQuestions.value = []
+}
+
 onMounted(() => {
   fetchCourseOptions()
 })
@@ -392,6 +588,28 @@ onMounted(() => {
 
 .filter-input-w200 {
   width: 200px;
+}
+
+.question-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.picker-filter-card {
+  border-radius: var(--radius-md);
+}
+
+.picker-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-3);
+}
+
+.selected-count {
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
 }
 
 @media (max-width: 768px) {

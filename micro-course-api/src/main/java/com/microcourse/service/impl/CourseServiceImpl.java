@@ -81,6 +81,9 @@ public class CourseServiceImpl implements CourseService {
         if (query.getRecommended() != null) {
             wrapper.eq(Course::getIsRecommended, query.getRecommended());
         }
+        if (query.getDifficulty() != null) {
+            wrapper.eq(Course::getDifficulty, query.getDifficulty());
+        }
         wrapper.orderByDesc(Course::getCreatedAt);
 
         IPage<Course> ipage = courseRepository.selectPage(
@@ -234,9 +237,7 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        CourseStatus newStatus = CourseStatus.getDescription(status) != null
-                ? CourseStatus.values()[status]
-                : null;
+        CourseStatus newStatus = CourseStatus.fromCode(status);
         if (newStatus == null) {
             throw new BusinessException(ErrorCode.COURSE_INVALID_STATUS);
         }

@@ -104,9 +104,9 @@ department_id  ↔  departmentId
 
 ### 2.3 软删除
 
-- `users.deleted_at IS NULL` = 未删除
+- `deleted_at IS NULL` = 未删除
 - 启用/禁用：status=0（设 deleted_at）↔ status=1（清 deleted_at）
-- **仅 users 表有 deletedAt 字段**（其他 3 表无）
+- V16 migration 已为以下 12 张表添加 deleted_at：courses, videos, course_chapters, exercises, exercise_records, enrollments, learning_progress, course_favorites, discussion_posts, discussion_comments, check_ins, course_reviews
 
 ### 2.4 FK 方向
 
@@ -141,11 +141,32 @@ departments (1) → majors (N) → classes (N) → users (N)
 9. course_chapters
 10. videos
 ... (其余 28 张)
+39. admin_settings        ← Phase 9
+40. badges
+41. certificates
+42. grades
+43. operation_logs
+44. course_reviews
+45. badge_definitions     ← Phase 5-9
+46. achievements
+47. question_tag_relations
+48. user_follows
+49. attachments
+50. score_histories
+51. course_notes
+52. video_bookmarks
+53. teaching_classes
+54. teaching_class_students
+55. class_schedules
+56. course_prerequisites
+57. grade_components
+58. enrollment_histories
+59. course_review_logs
 ```
 
 **强制**：Phase 1 编码**只能**涉及前 4 张表；其余表 Phase 2+ 才允许创建。
 
 ---
 
-*视图版本：v1.0 · 与源文档 v0.5 对齐*
-*最后更新：2026-06-11*
+*视图版本：v1.1 · 与源文档 v0.5 对齐*
+*最后更新：2026-06-12*

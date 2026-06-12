@@ -81,6 +81,7 @@
             :icon="Search"
             :loading="loading"
             class="search-btn"
+            :aria-label="loading ? '搜索中，请稍候' : '搜索课程'"
             @click="handleSearch"
           >
             搜索
@@ -567,7 +568,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--role-primary) 15%, transparent);
 }
 
 .hero-decoration {
@@ -579,7 +580,7 @@ onMounted(() => {
 .deco-circle {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--el-color-white) 8%, transparent);
 }
 
 .deco-1 {
@@ -587,7 +588,7 @@ onMounted(() => {
   height: 200px;
   top: -60px;
   right: -40px;
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--el-color-white) 8%, transparent);
 }
 
 .deco-2 {
@@ -595,7 +596,7 @@ onMounted(() => {
   height: 120px;
   bottom: -40px;
   left: 20%;
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--el-color-white) 5%, transparent);
 }
 
 .deco-3 {
@@ -603,7 +604,7 @@ onMounted(() => {
   height: 80px;
   top: 30%;
   right: 25%;
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--el-color-white) 6%, transparent);
 }
 
 .hero-content {
@@ -673,7 +674,7 @@ onMounted(() => {
 }
 
 .category-scroll::-webkit-scrollbar {
-  height: 4px;
+  height: var(--space-1);
 }
 
 .category-chip-group {
@@ -684,7 +685,7 @@ onMounted(() => {
 
 .category-chip-group :deep(.el-radio-button__inner) {
   border-radius: var(--radius-pill) !important;
-  padding: 6px var(--space-4);
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--el-border-color) !important;
   box-shadow: none !important;
   transition: all var(--duration-base) var(--ease-out);
@@ -700,7 +701,7 @@ onMounted(() => {
   background-color: var(--role-primary) !important;
   border-color: var(--role-primary) !important;
   color: var(--el-color-white) !important;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3) !important;
+  box-shadow: var(--shadow-primary) !important;
 }
 
 .search-btn,
@@ -1062,14 +1063,14 @@ onMounted(() => {
 .item-rank--top {
   background: linear-gradient(135deg, var(--role-primary), var(--role-primary-dark));
   color: var(--el-color-white);
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+  box-shadow: var(--shadow-primary);
 }
 
 .recommended-badge {
   flex-shrink: 0;
   border-radius: var(--radius-sm) !important;
   font-size: var(--text-xs) !important;
-  padding: 1px 6px !important;
+  padding: var(--space-1) var(--space-2) !important;
   margin-right: var(--space-1);
 }
 

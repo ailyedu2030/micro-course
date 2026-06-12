@@ -27,6 +27,9 @@ public class AdminSetting {
 
     private String description;
 
+    @TableField("created_at")
+    private LocalDateTime createdAt;
+
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
@@ -40,6 +43,8 @@ public class AdminSetting {
     public void setSettingValue(String settingValue) { this.settingValue = settingValue; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

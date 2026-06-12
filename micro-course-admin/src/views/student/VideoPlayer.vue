@@ -133,6 +133,59 @@
               <div class="buffering-spinner"></div>
             </div>
 
+            <!-- Gesture Indicators -->
+            <transition name="gesture-fade">
+              <div v-if="volumeIndicatorVisible" class="gesture-indicator volume-indicator" :style="{ left: gestureIndicatorX + 'px', top: gestureIndicatorY + 'px' }">
+                <div class="gi-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path v-if="volumeIndicatorValue > 0" d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                  </svg>
+                </div>
+                <div class="gi-bar">
+                  <div class="gi-bar-fill" :style="{ height: volumeIndicatorValue + '%' }"></div>
+                </div>
+                <span class="gi-value">{{ volumeIndicatorValue }}</span>
+              </div>
+            </transition>
+
+            <transition name="gesture-fade">
+              <div v-if="brightnessIndicatorVisible" class="gesture-indicator brightness-indicator" :style="{ left: gestureIndicatorX + 'px', top: gestureIndicatorY + 'px' }">
+                <div class="gi-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                </div>
+                <div class="gi-bar">
+                  <div class="gi-bar-fill" :style="{ height: brightnessIndicatorValue + '%' }"></div>
+                </div>
+                <span class="gi-value">{{ brightnessIndicatorValue }}</span>
+              </div>
+            </transition>
+
+            <!-- Double Tap Seek Indicator -->
+            <transition name="seek-indicator-fade">
+              <div v-if="showSeekIndicator" class="seek-indicator">
+                <svg v-if="seekIndicatorDir === 'backward'" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="11 19 2 12 11 5 11 19"/>
+                  <polygon points="22 19 13 12 22 5 22 19"/>
+                </svg>
+                <svg v-else width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="13 19 22 12 13 5 13 19"/>
+                  <polygon points="2 19 11 12 2 5 2 19"/>
+                </svg>
+                <span>{{ seekIndicatorSeconds }}s</span>
+              </div>
+            </transition>
+
             <!-- Center Play Button (when paused) -->
             <div v-if="!isPlaying && !isBuffering && !loading" class="center-play-btn" @click="togglePlay">
               <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
@@ -549,8 +602,23 @@ let touchStartY = 0
 let touchStartTime = 0
 let touchStartVolume = 100
 let touchStartBrightness = 100
-const lastTapTimeout = ref(null)
-const lastTapTime = ref(0)
+let lastTapTime = 0
+let tapCount = 0
+let tapTimer = null
+let isSwiping = false
+let swipeType = null // 'volume' | 'brightness' | 'seek'
+
+// Gesture indicators
+const volumeIndicatorVisible = ref(false)
+const brightnessIndicatorVisible = ref(false)
+const volumeIndicatorValue = ref(100)
+const brightnessIndicatorValue = ref(100)
+const gestureIndicatorX = ref(0) // for positioning
+const gestureIndicatorY = ref(0)
+const showSeekIndicator = ref(false)
+const seekIndicatorDir = ref('')
+const seekIndicatorSeconds = ref(10)
+let seekIndicatorTimer = null
 
 // Learning objectives auto-show on mount
 const showObjectivesOverlay = () => {
@@ -849,6 +917,16 @@ const skipForward = () => {
   }
 }
 
+const showSeekIndicatorHelper = (dir, seconds) => {
+  seekIndicatorDir.value = dir
+  seekIndicatorSeconds.value = seconds
+  showSeekIndicator.value = true
+  if (seekIndicatorTimer) clearTimeout(seekIndicatorTimer)
+  seekIndicatorTimer = setTimeout(() => {
+    showSeekIndicator.value = false
+  }, 600)
+}
+
 const toggleMute = () => {
   const video = videoRef.value
   if (!video) return
@@ -1025,6 +1103,8 @@ const handleTouchStart = (e) => {
     touchStartVolume = video.volume * 100
     touchStartBrightness = 100
   }
+  isSwiping = false
+  swipeType = null
 }
 
 const handleTouchMove = (e) => {
@@ -1036,25 +1116,44 @@ const handleTouchMove = (e) => {
   if (!video) return
   const rect = e.target.closest('.video-container')?.getBoundingClientRect()
   if (!rect) return
-  const relativeX = touchStartX - rect.left
-  const isRightSide = relativeX > rect.width / 2
-  if (Math.abs(deltaX) > Math.abs(deltaY)) {
-    // Horizontal swipe - could be used for seeking
-  } else {
-    // Vertical swipe
-    const sensitivity = 0.5
-    const delta = -deltaY * sensitivity
-    if (isRightSide) {
-      // Right side: volume
-      const newVol = Math.min(100, Math.max(0, touchStartVolume + delta))
-      video.volume = newVol / 100
-      volumePercent.value = newVol
-      isMuted.value = newVol === 0
+
+  // Determine swipe type on first significant move
+  if (!isSwiping && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
+    const relativeX = touchStartX - rect.left
+    const isRightSide = relativeX > rect.width / 2
+
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      // Horizontal swipe - seeking
+      swipeType = 'seek'
     } else {
-      // Left side: brightness (CSS filter on container)
-      const newBri = Math.min(100, Math.max(20, 100 + delta))
-      videoRef.value?.parentElement?.style.setProperty('--brightness', newBri / 100)
+      // Vertical swipe - volume/brightness
+      swipeType = isRightSide ? 'volume' : 'brightness'
+      isSwiping = true
+      gestureIndicatorY.value = touch.clientY
+      gestureIndicatorX.value = touch.clientX
     }
+  }
+
+  if (swipeType === 'volume') {
+    // Left side vertical: volume
+    const sensitivity = 0.4
+    const delta = -deltaY * sensitivity
+    const newVol = Math.min(100, Math.max(0, touchStartVolume + delta))
+    video.volume = newVol / 100
+    volumePercent.value = newVol
+    volumeIndicatorValue.value = Math.round(newVol)
+    isMuted.value = newVol === 0
+    volumeIndicatorVisible.value = true
+  } else if (swipeType === 'brightness') {
+    // Right side vertical: brightness
+    const sensitivity = 0.4
+    const delta = -deltaY * sensitivity
+    const newBri = Math.min(100, Math.max(20, touchStartBrightness + delta))
+    brightnessIndicatorValue.value = Math.round(newBri)
+    brightnessIndicatorVisible.value = true
+    // Apply brightness via CSS filter on video element
+    const brightness = newBri / 100
+    video.style.filter = `brightness(${brightness})`
   }
 }
 
@@ -1065,25 +1164,43 @@ const handleTouchEnd = (e) => {
   const deltaX = Math.abs(touch.clientX - touchStartX)
   const deltaY = Math.abs(touch.clientY - touchStartY)
 
-  // Double tap detection
-  if (elapsed < 300 && deltaX < 30 && deltaY < 30) {
+  // Hide gesture indicators after a delay
+  if (volumeIndicatorVisible.value || brightnessIndicatorVisible.value) {
+    setTimeout(() => {
+      volumeIndicatorVisible.value = false
+      brightnessIndicatorVisible.value = false
+    }, 500)
+  }
+
+  // Reset brightness on touch end (keep it for video session)
+  swipeType = null
+  isSwiping = false
+
+  // Double tap detection for seek (quick tap without significant move)
+  if (elapsed < 300 && deltaX < 30 && deltaY < 30 && !isSwiping) {
     const rect = e.target.closest('.video-container')?.getBoundingClientRect()
     if (!rect) return
     const tapX = touch.clientX - rect.left
-    const isLeftHalf = tapX < rect.width / 2
+    const tapRegion = tapX / rect.width
 
-    if (lastTapTimeout.value && Date.now() - lastTapTime < 300) {
-      // Double tap
-      if (isLeftHalf) {
+    tapCount++
+    if (tapTimer) clearTimeout(tapTimer)
+
+    if (tapCount === 2) {
+      // Double tap detected
+      tapCount = 0
+      if (tapRegion < 1 / 3) {
+        // Left 1/3: seek backward
         skipBackward()
-      } else {
+        showSeekIndicatorHelper('backward', 10)
+      } else if (tapRegion > 2 / 3) {
+        // Right 1/3: seek forward
         skipForward()
+        showSeekIndicatorHelper('forward', 10)
       }
-      lastTapTimeout.value = null
     } else {
-      lastTapTime.value = Date.now()
-      lastTapTimeout.value = setTimeout(() => {
-        lastTapTimeout.value = null
+      tapTimer = setTimeout(() => {
+        tapCount = 0
       }, 300)
     }
   }
@@ -1352,6 +1469,102 @@ onBeforeUnmount(() => {
 
 .center-play-btn:hover {
   background: rgba(0, 0, 0, 0.5);
+}
+
+/* Gesture Indicators */
+.gesture-indicator {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 12px;
+  padding: 16px 12px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.volume-indicator {
+  color: var(--vp-accent);
+}
+
+.brightness-indicator {
+  color: #fbbf24;
+}
+
+.gi-icon {
+  flex-shrink: 0;
+}
+
+.gi-bar {
+  width: 4px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.gi-bar-fill {
+  width: 100%;
+  background: currentColor;
+  border-radius: 2px;
+  transition: height 0.1s;
+}
+
+.gi-value {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--vp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.gesture-fade-enter-active,
+.gesture-fade-leave-active {
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.gesture-fade-enter-from,
+.gesture-fade-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.8);
+}
+
+/* Seek Indicator */
+.seek-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--vp-text);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.seek-indicator span {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 12px;
+  border-radius: var(--radius-md);
+}
+
+.seek-indicator-fade-enter-active,
+.seek-indicator-fade-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.seek-indicator-fade-enter-from,
+.seek-indicator-fade-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.7);
 }
 
 /* Top Overlay */
