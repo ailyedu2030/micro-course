@@ -4,9 +4,9 @@
   Author: jackie
 -->
 <template>
-  <div class="operation-logs-container">
+  <div class="page-container">
     <!-- 搜索筛选区 -->
-    <el-card class="search-card" shadow="never">
+    <div class="filter-card">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="操作人">
           <el-input
@@ -84,16 +84,14 @@
           </el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </div>
 
     <!-- 表格区 -->
-    <el-card class="table-card shadow-hover" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">操作日志</span>
-          <span class="card-count">共 {{ totalElements }} 条记录</span>
-        </div>
-      </template>
+    <div class="table-card">
+      <div class="card-header">
+        <span class="card-title">操作日志</span>
+        <span class="card-count">共 {{ totalElements }} 条记录</span>
+      </div>
 
       <!-- 加载中 -->
       <el-skeleton v-if="loading" :rows="6" animated />
@@ -179,7 +177,7 @@
           @current-change="handlePageChange"
         />
       </div>
-    </el-card>
+    </div>
 
     <!-- 详情弹窗 -->
     <el-dialog
@@ -390,27 +388,27 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.operation-logs-container {
-  padding: 24px;
-  background: #F5F6FA;
+.page-container {
+  padding: 24px 28px;
+  background: #F8F9FB;
   min-height: 100vh;
 }
 
-.search-card {
-  margin-bottom: 24px;
-  border-radius: 12px;
+.filter-card {
   background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: none;
+  border: 1px solid #EDEFF2;
 }
 
 .filter-input {
   width: 140px;
-  border-radius: 8px;
 }
 
 .filter-select {
   width: 140px;
-  border-radius: 8px;
 }
 
 .date-range-picker {
@@ -418,10 +416,10 @@ onMounted(() => {
 }
 
 .table-card {
-  margin-bottom: 24px;
-  border-radius: 12px;
   background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-radius: 14px;
+  box-shadow: none;
+  border: 1px solid #EDEFF2;
 }
 
 .card-header {
@@ -429,7 +427,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid #F0F1F3;
 }
 
 .card-title {
@@ -445,31 +443,31 @@ onMounted(() => {
 
 .data-table {
   width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
 }
 
-.data-table :deep(.el-table__header th) {
-  background: #F8FAFC !important;
-  color: #1E293B;
+:deep(.el-table) {
+  border: none !important;
+}
+:deep(.el-table th.el-table__cell) {
+  background: #F8F9FB;
+  color: #8A94A6;
+  font-size: 12px;
   font-weight: 600;
-  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #EDEFF2;
 }
-
-.data-table :deep(.el-table__row:hover > td) {
-  background: #F1F5F9 !important;
+:deep(.el-table td.el-table__cell) {
+  padding: 14px 16px;
+  color: #2C3E50;
+  border-bottom: 1px solid #F0F1F3;
 }
-
-.data-table :deep(.el-table__row) {
-  transition: background 150ms ease;
+:deep(.el-table__row:hover > td) {
+  background: #F6F8FA !important;
 }
-
-.data-table :deep(.el-table__body tr) {
-  background: white;
-}
-
-.data-table :deep(.el-table__body tr:hover > td) {
-  background: #F1F5F9 !important;
+:deep(.el-table .el-table__row--striped td) {
+  background: transparent !important;
 }
 
 .error-result {
@@ -477,7 +475,8 @@ onMounted(() => {
 }
 
 .pagination-wrap {
-  margin-top: 24px;
+  padding: 16px 20px;
+  border-top: 1px solid #F0F1F3;
   display: flex;
   justify-content: flex-end;
 }
@@ -493,20 +492,20 @@ onMounted(() => {
 }
 :deep(.el-dialog__header) {
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid #F0F1F3;
 }
 :deep(.el-dialog__body) {
   padding: 20px;
 }
 :deep(.el-dialog__footer) {
   padding: 16px 20px;
-  border-top: 1px solid #F1F5F9;
+  border-top: 1px solid #F0F1F3;
 }
 
 /* el-descriptions 精致化 */
 :deep(.el-descriptions__label) {
-  background: #F8FAFC !important;
-  color: #1E293B;
+  background: #F8F9FB !important;
+  color: #8A94A6;
   font-weight: 500;
 }
 :deep(.el-descriptions__cell) {

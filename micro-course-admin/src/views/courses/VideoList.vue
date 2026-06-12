@@ -5,9 +5,9 @@
   Author: jackie
 -->
 <template>
-  <div class="video-list-page">
+  <div class="page-container">
     <!-- 顶栏筛选卡 -->
-    <el-card class="search-card filter-card" shadow="never">
+    <div class="filter-card">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="所属课程">
           <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200">
@@ -19,27 +19,25 @@
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </div>
 
     <!-- 表格卡 -->
-    <el-card class="table-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">视频列表</span>
-          <div class="header-actions">
-            <el-upload
-              :before-upload="handleBeforeUpload"
-              :http-request="handleBatchUpload"
-              multiple
-              accept="video/*"
-              :show-file-list="false"
-            >
-              <el-button type="success" size="small" v-if="userRole !== 'ACADEMIC'">批量上传视频</el-button>
-            </el-upload>
-            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增视频</el-button>
-          </div>
+    <div class="table-card">
+      <div class="card-header">
+        <span class="card-title">视频列表</span>
+        <div class="header-actions">
+          <el-upload
+            :before-upload="handleBeforeUpload"
+            :http-request="handleBatchUpload"
+            multiple
+            accept="video/*"
+            :show-file-list="false"
+          >
+            <el-button type="success" size="small" v-if="userRole !== 'ACADEMIC'">批量上传视频</el-button>
+          </el-upload>
+          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增视频</el-button>
         </div>
-      </template>
+      </div>
 
       <!-- 上传队列 -->
       <div v-if="uploadQueue.length > 0" class="upload-queue">
@@ -58,7 +56,7 @@
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+      <el-table v-loading="loading" :data="tableData" stripe class="data-table">
         <template #empty>
           <el-empty description="暂无视频数据" />
         </template>
@@ -113,7 +111,7 @@
           @current-change="handlePageChange"
         />
       </div>
-    </el-card>
+    </div>
 
     <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
@@ -425,30 +423,31 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.video-list-page {
-  padding: 24px;
-  background: #F5F6FA;
+.page-container {
+  padding: 24px 28px;
+  background: #F8F9FB;
   min-height: 100%;
 }
 
 .filter-card {
-  margin-bottom: 24px;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: none;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: none;
+  border: 1px solid #EDEFF2;
 }
 
 .table-card {
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: none;
+  border-radius: 14px;
+  box-shadow: none;
+  border: 1px solid #EDEFF2;
 }
 
 .table-card :deep(.el-card__header) {
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid #F0F1F3;
 }
 
 .card-header {
@@ -469,33 +468,39 @@ onMounted(() => {
 }
 
 .pagination-wrap {
-  margin-top: 24px;
+  padding: 16px 20px;
+  border-top: 1px solid #F0F1F3;
   display: flex;
   justify-content: flex-end;
 }
 
 .data-table {
   width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
 }
 
-.data-table :deep(.el-table__header) th {
-  background: #F8FAFC;
+:deep(.el-table) {
+  border: none !important;
+}
+:deep(.el-table th.el-table__cell) {
+  background: #F8F9FB;
+  color: #8A94A6;
+  font-size: 12px;
   font-weight: 600;
-  color: #1E293B;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #EDEFF2;
 }
-
-.data-table :deep(.el-table__row) {
-  transition: background-color 0.2s ease;
+:deep(.el-table td.el-table__cell) {
+  padding: 14px 16px;
+  color: #2C3E50;
+  border-bottom: 1px solid #F0F1F3;
 }
-
-.data-table :deep(.el-table__row:hover > td) {
-  background-color: #F1F5F9;
+:deep(.el-table__row:hover > td) {
+  background: #F6F8FA !important;
 }
-
-.data-table :deep(.el-table__row--striped > td) {
-  background: transparent;
+:deep(.el-table .el-table__row--striped td) {
+  background: transparent !important;
 }
 
 .table-thumb {
@@ -513,7 +518,7 @@ onMounted(() => {
 .upload-queue {
   margin-bottom: 24px;
   padding: 12px;
-  background: #F5F6FA;
+  background: #F8F9FB;
   border-radius: 8px;
 }
 
@@ -592,7 +597,7 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .video-list-page {
+  .page-container {
     padding: 16px;
   }
 

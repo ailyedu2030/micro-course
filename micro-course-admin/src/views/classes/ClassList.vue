@@ -5,9 +5,9 @@
   Author: jackie
 -->
 <template>
-  <div class="class-list">
+  <div class="page-container">
     <!-- 搜索区 -->
-    <el-card class="search-card filter-card" shadow="never">
+    <div class="filter-card">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="名称">
           <el-input v-model="searchForm.name" placeholder="请输入班级名称" clearable class="search-input" />
@@ -25,17 +25,15 @@
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </div>
 
     <!-- 表格区 -->
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">班级列表</span>
-          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增班级</el-button>
-        </div>
-      </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+    <div class="table-card">
+      <div class="card-header">
+        <span class="card-title">班级列表</span>
+        <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增班级</el-button>
+      </div>
+      <el-table v-loading="loading" :data="tableData" stripe class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <template #empty>
           <el-empty description="暂无班级数据" />
@@ -68,7 +66,7 @@
           @current-change="handlePageChange"
         />
       </div>
-    </el-card>
+    </div>
 
     <!-- 弹窗区 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="580px" @close="handleDialogClose">
@@ -264,32 +262,35 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.class-list {
-  padding: 24px;
-  background: #F5F6FA;
+.page-container {
+  padding: 24px 28px;
+  background: #F8F9FB;
   min-height: 100vh;
 }
 
 .filter-card {
-  margin-bottom: 24px;
-  border-radius: 12px;
   background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: none;
+  border: 1px solid #EDEFF2;
 }
 
 .table-card {
-  border-radius: 12px;
   background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-radius: 14px;
+  box-shadow: none;
+  border: 1px solid #EDEFF2;
 }
 
 .table-card :deep(.el-card__header) {
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid #F0F1F3;
 }
 
 .table-card :deep(.el-table) {
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
 }
 
@@ -307,47 +308,46 @@ onMounted(() => {
 
 .search-input {
   width: 200px;
-  border-radius: 8px;
 }
 
 .search-select {
   width: 200px;
-  border-radius: 8px;
 }
 
 .pagination-wrap {
-  margin-top: 24px;
+  padding: 16px 20px;
+  border-top: 1px solid #F0F1F3;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .data-table {
   width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
 }
 
-.data-table :deep(.el-table__header th) {
-  background: #F8FAFC !important;
-  color: #1E293B;
+:deep(.el-table) {
+  border: none !important;
+}
+:deep(.el-table th.el-table__cell) {
+  background: #F8F9FB;
+  color: #8A94A6;
+  font-size: 12px;
   font-weight: 600;
-  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #EDEFF2;
 }
-
-.data-table :deep(.el-table__row:hover > td) {
-  background: #F1F5F9 !important;
+:deep(.el-table td.el-table__cell) {
+  padding: 14px 16px;
+  color: #2C3E50;
+  border-bottom: 1px solid #F0F1F3;
 }
-
-.data-table :deep(.el-table__row) {
-  transition: background 150ms ease;
+:deep(.el-table__row:hover > td) {
+  background: #F6F8FA !important;
 }
-
-.data-table :deep(.el-table__body tr) {
-  background: white;
-}
-
-.data-table :deep(.el-table__body tr:hover > td) {
-  background: #F1F5F9 !important;
+:deep(.el-table .el-table__row--striped td) {
+  background: transparent !important;
 }
 
 .full-width {
@@ -360,13 +360,13 @@ onMounted(() => {
 }
 :deep(.el-dialog__header) {
   padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid #F0F1F3;
 }
 :deep(.el-dialog__body) {
   padding: 20px;
 }
 :deep(.el-dialog__footer) {
   padding: 16px 20px;
-  border-top: 1px solid #F1F5F9;
+  border-top: 1px solid #F0F1F3;
 }
 </style>
