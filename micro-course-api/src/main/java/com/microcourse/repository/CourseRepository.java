@@ -58,7 +58,6 @@ public interface CourseRepository extends BaseMapper<Course> {
             "  WHERE c.status = 2 AND c.deleted_at IS NULL " +
             "  GROUP BY c.id" +
             ") AS course_stats ON course_stats.course_id = c.id " +
-            "WHERE d.deleted_at IS NULL " +
             "GROUP BY d.id, d.name " +
             "ORDER BY avg_completion_rate DESC")
     List<Map<String, Object>> selectDepartmentStats();
@@ -106,23 +105,28 @@ public interface CourseRepository extends BaseMapper<Course> {
      * 参与率趋势：按月统计选课人数占全校学生的比例
      * @param semester 可选，如 "2025-1"
      */
-    @Select("SELECT " +
+    @Select("<script>" +
+            "SELECT " +
             "  TO_CHAR(e.enrolled_at, 'YYYY-MM') AS month, " +
             "  CASE WHEN total_students = 0 THEN 0 " +
             "       ELSE COUNT(DISTINCT e.user_id) * 1.0 / total_students END AS participation_rate " +
             "FROM enrollments e " +
             "CROSS JOIN (SELECT COUNT(*) AS total_students FROM users WHERE role = 'STUDENT' AND deleted_at IS NULL) AS s " +
             "WHERE e.deleted_at IS NULL " +
-            "AND (#{semester} IS NULL OR e.enrolled_at::text LIKE #{semester} || '%') " +
+            "<if test='semester != null'>" +
+            "AND e.enrolled_at::text LIKE #{semester} || '%' " +
+            "</if>" +
             "GROUP BY TO_CHAR(e.enrolled_at, 'YYYY-MM'), total_students " +
-            "ORDER BY month ASC")
+            "ORDER BY month ASC" +
+            "</script>")
     List<Map<String, Object>> selectParticipationTrend(@Param("semester") String semester);
 
     /**
      * 完成率趋势：按月统计已完成课程的比例
      * @param semester 可选，如 "2025-1"
      */
-    @Select("SELECT " +
+    @Select("<script>" +
+            "SELECT " +
             "  month, " +
             "  CASE WHEN total_enrollments = 0 THEN 0 " +
             "       ELSE completed_count * 100.0 / total_enrollments END AS completion_rate " +
@@ -133,9 +137,12 @@ public interface CourseRepository extends BaseMapper<Course> {
             "    COUNT(CASE WHEN e.completed = true THEN 1 END) AS completed_count " +
             "  FROM enrollments e " +
             "  WHERE e.deleted_at IS NULL " +
-            "  AND (#{semester} IS NULL OR e.enrolled_at::text LIKE #{semester} || '%') " +
+            "  <if test='semester != null'>" +
+            "  AND e.enrolled_at::text LIKE #{semester} || '%' " +
+            "  </if>" +
             "  GROUP BY TO_CHAR(e.enrolled_at, 'YYYY-MM')" +
             ") AS sub " +
-            "ORDER BY month ASC")
+            "ORDER BY month ASC" +
+            "</script>")
     List<Map<String, Object>> selectCompletionTrend(@Param("semester") String semester);
 }
