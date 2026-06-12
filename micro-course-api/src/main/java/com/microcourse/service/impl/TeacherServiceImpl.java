@@ -9,13 +9,10 @@ import com.microcourse.repository.*;
 import com.microcourse.service.TeacherService;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +24,8 @@ public class TeacherServiceImpl implements TeacherService {
     private final LearningProgressRepository learningProgressRepository;
     private final NotificationRepository notificationRepository;
     private final DiscussionPostRepository discussionPostRepository;
+    private final DiscussionCommentRepository discussionCommentRepository;
+    private final ExerciseRepository exerciseRepository;
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
 
@@ -37,6 +36,8 @@ public class TeacherServiceImpl implements TeacherService {
             LearningProgressRepository learningProgressRepository,
             NotificationRepository notificationRepository,
             DiscussionPostRepository discussionPostRepository,
+            DiscussionCommentRepository discussionCommentRepository,
+            ExerciseRepository exerciseRepository,
             QuestionRepository questionRepository,
             UserRepository userRepository) {
         this.courseRepository = courseRepository;
@@ -45,6 +46,8 @@ public class TeacherServiceImpl implements TeacherService {
         this.learningProgressRepository = learningProgressRepository;
         this.notificationRepository = notificationRepository;
         this.discussionPostRepository = discussionPostRepository;
+        this.discussionCommentRepository = discussionCommentRepository;
+        this.exerciseRepository = exerciseRepository;
         this.questionRepository = questionRepository;
         this.userRepository = userRepository;
     }
@@ -86,13 +89,36 @@ public class TeacherServiceImpl implements TeacherService {
             stats.setPendingHomework(0);
         }
 
-        // 学员提问（未回复的讨论帖）
-        List<DiscussionPost> unansweredPosts = discussionPostRepository.selectList(
-            new LambdaQueryWrapper<DiscussionPost>()
-                .eq(DiscussionPost::getCourseId, courseIds.isEmpty() ? -1 : courseIds.get(0))
-                .eq(DiscussionPost::getIsAnonymous, false)
-                .isNull(DiscussionPost::getDeletedAt));
-        stats.setPendingQuestions(unansweredPosts.size());
+        // 学员提问（未回复的讨论帖：course内帖子中，无教师回复的帖子）
+        if (!courseIds.isEmpty()) {
+            // 找出所有有教师回复的帖子ID
+            List<DiscussionComment> teacherReplies = discussionCommentRepository.selectList(
+                new LambdaQueryWrapper<DiscussionComment>()
+                    .in(DiscussionComment::getPostId,
+                        discussionPostRepository.selectList(
+                            new LambdaQueryWrapper<DiscussionPost>()
+                                .in(DiscussionPost::getCourseId, courseIds)
+                                .isNull(DiscussionPost::getDeletedAt)
+                                .select(DiscussionPost::getId))
+                        .stream().map(DiscussionPost::getId).collect(Collectors.toList()))
+                    .eq(DiscussionComment::getIsTeacherReply, true)
+                    .isNull(DiscussionComment::getDeletedAt));
+            Set<Long> repliedPostIds = teacherReplies.stream()
+                .map(DiscussionComment::getPostId)
+                .collect(Collectors.toSet());
+
+            // 统计未被回复的帖子数
+            long unansweredCount = discussionPostRepository.selectList(
+                new LambdaQueryWrapper<DiscussionPost>()
+                    .in(DiscussionPost::getCourseId, courseIds)
+                    .isNull(DiscussionPost::getDeletedAt))
+                .stream()
+                .filter(p -> !repliedPostIds.contains(p.getId()))
+                .count();
+            stats.setPendingQuestions((int) unansweredCount);
+        } else {
+            stats.setPendingQuestions(0);
+        }
 
         return stats;
     }
@@ -172,13 +198,25 @@ public class TeacherServiceImpl implements TeacherService {
 
         // 待批改练习（取最新几条）
         if (!courseIds.isEmpty()) {
-            List<ExerciseRecord> records = exerciseRecordRepository.selectList(
-                new LambdaQueryWrapper<ExerciseRecord>()
-                    .in(ExerciseRecord::getExerciseId,
-                        courseIds.stream().map(id -> id * 1000).collect(Collectors.toList()))
-                    .isNull(ExerciseRecord::getDeletedAt)
-                    .orderByDesc(ExerciseRecord::getSubmittedAt)
-                    .last("LIMIT " + size));
+            // 查找该教师课程下的所有练习ID
+            List<Exercise> teacherExercises = exerciseRepository.selectList(
+                new LambdaQueryWrapper<Exercise>()
+                    .in(Exercise::getCourseId, courseIds)
+                    .isNull(Exercise::getDeletedAt)
+                    .select(Exercise::getId));
+            List<Long> exerciseIds = teacherExercises.stream()
+                .map(Exercise::getId)
+                .collect(Collectors.toList());
+
+            List<ExerciseRecord> records = new ArrayList<>();
+            if (!exerciseIds.isEmpty()) {
+                records = exerciseRecordRepository.selectList(
+                    new LambdaQueryWrapper<ExerciseRecord>()
+                        .in(ExerciseRecord::getExerciseId, exerciseIds)
+                        .isNull(ExerciseRecord::getDeletedAt)
+                        .orderByDesc(ExerciseRecord::getSubmittedAt)
+                        .last("LIMIT " + size));
+            }
 
             for (ExerciseRecord record : records) {
                 PendingTaskVO task = new PendingTaskVO();

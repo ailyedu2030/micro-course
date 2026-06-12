@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/exercise-records")
@@ -45,6 +46,16 @@ public class ExerciseRecordController {
         return R.ok(records);
     }
 
+    @GetMapping("/my/accuracy-trend")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<Map<String, Object>>> getAccuracyTrend(
+            @RequestParam(defaultValue = "30") int days,
+            Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        List<Map<String, Object>> trend = exerciseRecordService.getAccuracyTrend(userId, days);
+        return R.ok(trend);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public R<ExerciseRecordVO> getRecordById(@PathVariable Long id, Authentication authentication) {
@@ -54,12 +65,10 @@ public class ExerciseRecordController {
     }
 
     private Long extractUserId(Authentication authentication) {
-        // 从认证信息中提取用户ID，实际实现依赖于安全配置
         Object principal = authentication.getPrincipal();
         if (principal instanceof Long) {
             return (Long) principal;
         }
-        // 如果是字符串或其他的用户标识，需要转换
         return Long.parseLong(principal.toString());
     }
 }

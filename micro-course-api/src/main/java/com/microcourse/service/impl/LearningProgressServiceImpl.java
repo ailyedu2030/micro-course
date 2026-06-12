@@ -169,6 +169,42 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         return result;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getStudyDays(Long userId) {
+        LambdaQueryWrapper<LearningProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LearningProgress::getUserId, userId)
+               .isNotNull(LearningProgress::getLastWatchAt);
+        List<LearningProgress> records = learningProgressRepository.selectList(wrapper);
+
+        long totalDays = records.stream()
+                .filter(p -> p.getLastWatchAt() != null)
+                .map(p -> p.getLastWatchAt().toLocalDate())
+                .distinct()
+                .count();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("totalDays", totalDays);
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getTotalTime(Long userId) {
+        LambdaQueryWrapper<LearningProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LearningProgress::getUserId, userId);
+        List<LearningProgress> records = learningProgressRepository.selectList(wrapper);
+
+        int totalSeconds = records.stream()
+                .filter(p -> p.getTotalWatchTime() != null)
+                .mapToInt(LearningProgress::getTotalWatchTime)
+                .sum();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("totalSeconds", totalSeconds);
+        return result;
+    }
+
     private LearningProgressVO convertToVO(LearningProgress progress) {
         LearningProgressVO vo = new LearningProgressVO();
         vo.setId(progress.getId());

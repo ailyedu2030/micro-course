@@ -7,15 +7,13 @@ import com.microcourse.dto.R;
 import com.microcourse.service.LearningProgressService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestController
 @RequestMapping("/api/learning-progress")
@@ -71,6 +69,22 @@ public class LearningProgressController {
         return R.ok(result);
     }
 
+    @GetMapping("/study-days")
+    @PreAuthorize("isAuthenticated()")
+    public R<Map<String, Object>> getStudyDays(Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        Map<String, Object> result = learningProgressService.getStudyDays(userId);
+        return R.ok(result);
+    }
+
+    @GetMapping("/total-time")
+    @PreAuthorize("isAuthenticated()")
+    public R<Map<String, Object>> getTotalTime(Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        Map<String, Object> result = learningProgressService.getTotalTime(userId);
+        return R.ok(result);
+    }
+
     private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof Long) return (Long) principal;
@@ -84,5 +98,11 @@ public class LearningProgressController {
             if (granted.getAuthority().equals("ROLE_" + role)) return true;
         }
         return false;
+    }
+
+    private Long extractUserId(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof Long) return (Long) principal;
+        return Long.parseLong(principal.toString());
     }
 }

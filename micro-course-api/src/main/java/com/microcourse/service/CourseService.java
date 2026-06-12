@@ -44,4 +44,11 @@ public interface CourseService {
     void publish(Long id);
 
     void delete(Long id);
+
+    /**
+     * 复制课程（模板复制：复制课程基本信息 + 章节结构，不含视频文件）
+     * @param id 被复制的课程ID
+     * @return 新课程VO
+     */
+    CourseVO copy(Long id);
 }

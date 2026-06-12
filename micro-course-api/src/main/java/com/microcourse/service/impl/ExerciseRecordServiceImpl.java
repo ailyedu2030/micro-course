@@ -21,7 +21,9 @@ import com.microcourse.service.ExerciseRecordService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -280,6 +282,45 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
 
         Exercise exercise = exerciseRepository.selectById(record.getExerciseId());
         return convertToVO(record, exercise);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAccuracyTrend(Long userId, int days) {
+        LocalDateTime since = LocalDateTime.now().minusDays(days);
+        LambdaQueryWrapper<ExerciseRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExerciseRecord::getUserId, userId)
+               .ge(ExerciseRecord::getSubmittedAt, since)
+               .orderByAsc(ExerciseRecord::getSubmittedAt);
+        List<ExerciseRecord> records = exerciseRecordRepository.selectList(wrapper);
+
+        // Group by date
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        Map<LocalDate, List<ExerciseRecord>> byDate = new TreeMap<>();
+        for (ExerciseRecord r : records) {
+            if (r.getSubmittedAt() != null) {
+                LocalDate date = r.getSubmittedAt().toLocalDate();
+                byDate.computeIfAbsent(date, k -> new ArrayList<>()).add(r);
+            }
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<LocalDate, List<ExerciseRecord>> entry : byDate.entrySet()) {
+            Map<String, Object> dayData = new HashMap<>();
+            dayData.put("date", entry.getKey().format(formatter));
+
+            int totalCount = entry.getValue().size();
+            int correctCount = (int) entry.getValue().stream()
+                    .filter(r -> Boolean.TRUE.equals(r.getPassed()))
+                    .count();
+            double accuracy = totalCount == 0 ? 0.0 : (double) correctCount / totalCount;
+
+            dayData.put("totalCount", totalCount);
+            dayData.put("correctCount", correctCount);
+            dayData.put("accuracy", Math.round(accuracy * 10000.0) / 10000.0); // 保留4位小数
+            result.add(dayData);
+        }
+        return result;
     }
 
     private ExerciseRecordVO convertToVO(ExerciseRecord record, Exercise exercise) {

@@ -27,7 +27,8 @@ public class CourseController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long teacherId,
-            @RequestParam(required = false) Integer status) {
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Boolean recommended) {
         CoursePageQuery query = new CoursePageQuery();
         query.setPage(page);
         query.setSize(size);
@@ -36,6 +37,7 @@ public class CourseController {
         query.setCategoryId(categoryId);
         query.setTeacherId(teacherId);
         query.setStatus(status);
+        query.setRecommended(recommended);
         PageResult<CourseVO> result = courseService.page(query);
         return R.ok(result);
     }
@@ -125,5 +127,18 @@ public class CourseController {
     public R<Void> publish(@PathVariable Long id) {
         courseService.publish(id);
         return R.ok();
+    }
+
+    /**
+     * POST /api/courses/{id}/copy
+     * 复制课程（模板复制：复制课程基本信息 + 章节结构，不含视频文件）
+     * 权限：TEACHER（课程创建者）, ADMIN
+     * @return 新课程VO
+     */
+    @PostMapping("/{id}/copy")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<CourseVO> copy(@PathVariable Long id) {
+        CourseVO vo = courseService.copy(id);
+        return R.ok(vo);
     }
 }

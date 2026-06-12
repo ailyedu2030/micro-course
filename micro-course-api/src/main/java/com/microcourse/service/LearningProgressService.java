@@ -16,4 +16,18 @@ public interface LearningProgressService {
     LearningProgressVO create(ProgressCreateRequest request);
 
     Map<String, Object> getCourseCompletion(Long userId, Long courseId);
+
+    /**
+     * 聚合用户所有课程的学习天数（distinct date）
+     * @param userId 用户ID
+     * @return { totalDays: N }
+     */
+    Map<String, Object> getStudyDays(Long userId);
+
+    /**
+     * 聚合用户所有课程的总观看时长（秒）
+     * @param userId 用户ID
+     * @return { totalSeconds: N }
+     */
+    Map<String, Object> getTotalTime(Long userId);
 }

@@ -19,6 +19,7 @@ public class EnrollmentVO {
     private LocalDateTime enrolledAt;
     private LocalDateTime completedAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime lastWatchAt;
 
     public EnrollmentVO() {}
 
@@ -50,4 +51,6 @@ public class EnrollmentVO {
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getLastWatchAt() { return lastWatchAt; }
+    public void setLastWatchAt(LocalDateTime lastWatchAt) { this.lastWatchAt = lastWatchAt; }
 }

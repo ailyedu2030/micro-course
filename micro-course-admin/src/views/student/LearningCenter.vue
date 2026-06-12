@@ -331,6 +331,7 @@ import { getCompletion } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
 import { getMyCheckIns } from '@/api/checkin'
+import { getAccuracyTrend } from '@/api/exercise-record'
 
 // ---------------------------------------------------------------------------
 // Store & Router
@@ -390,42 +391,61 @@ const recentCourse = ref({
 const chartData = ref([])
 const chartRef = ref(null)
 const chartRefH5 = ref(null)
+const accuracyMode = ref(false)  // 正确率趋势模式标志
 let chartInstance = null
 
 // ---------------------------------------------------------------------------
-// 热力图数据 (30天)
+// 热力图数据 (30天) — 从真实打卡 API 获取
 // ---------------------------------------------------------------------------
-const heatmapData = computed(() => {
-  const weeks = []
-  const today = new Date()
-  // 计算本月1日的星期几
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
-  const startDayOfWeek = firstDay.getDay() || 7 // 转换为 1=周一 ... 7=周日
+const heatmapData = ref([])
 
-  // 生成30天数据（从当月1日往前推一些天数补齐日历）
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
-  let dayIndex = 1
+async function loadHeatmap() {
+  try {
+    const { data } = await getMyCheckIns({ days: 30 })
+    const checkIns = Array.isArray(data) ? data : []
 
-  for (let w = 0; w < 6; w++) {
-    const week = []
-    for (let d = 0; d < 7; d++) {
-      if (w === 0 && d < startDayOfWeek - 1) {
-        week.push({ day: '', date: '', minutes: 0, level: 0 })
-      } else if (dayIndex > daysInMonth) {
-        week.push({ day: '', date: '', minutes: 0, level: 0 })
-      } else {
-        const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(dayIndex).padStart(2, '0')}`
-        const minutes = Math.floor(Math.random() * 120)
-        const level = minutes === 0 ? 0 : minutes < 30 ? 1 : minutes < 60 ? 2 : 3
-        week.push({ day: dayIndex, date, minutes, level })
-        dayIndex++
+    // 建立 date → minutes 映射
+    const minutesMap = {}
+    checkIns.forEach(record => {
+      if (record.checkInAt) {
+        const d = new Date(record.checkInAt)
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        minutesMap[dateKey] = (minutesMap[dateKey] || 0) + (record.duration || record.minutes || 0)
       }
+    })
+
+    const today = new Date()
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+    const startDayOfWeek = firstDay.getDay() || 7
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+
+    const weeks = []
+    let dayIndex = 1
+
+    for (let w = 0; w < 6; w++) {
+      const week = []
+      for (let d = 0; d < 7; d++) {
+        if (w === 0 && d < startDayOfWeek - 1) {
+          week.push({ day: '', date: '', minutes: 0, level: 0 })
+        } else if (dayIndex > daysInMonth) {
+          week.push({ day: '', date: '', minutes: 0, level: 0 })
+        } else {
+          const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(dayIndex).padStart(2, '0')}`
+          const minutes = minutesMap[date] || 0
+          const level = minutes === 0 ? 0 : minutes < 30 ? 1 : minutes < 60 ? 2 : 3
+          week.push({ day: dayIndex, date, minutes, level })
+          dayIndex++
+        }
+      }
+      weeks.push(week)
+      if (dayIndex > daysInMonth) break
     }
-    weeks.push(week)
-    if (dayIndex > daysInMonth) break
+
+    heatmapData.value = weeks
+  } catch {
+    heatmapData.value = []
   }
-  return weeks
-})
+}
 
 function getHeatmapCellClass(level) {
   return `level-${level}`
@@ -538,29 +558,53 @@ async function getRecent() {
 
 async function getChart() {
   try {
-    const { data } = await getMyCheckIns({ days: 7 })
-    const checkIns = Array.isArray(data) ? data : []
-
-    // 转换打卡记录为每日学习小时
-    const dayMap = {}
-    const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-    dayLabels.forEach((label, idx) => {
-      dayMap[idx] = { day: label, hours: 0 }
-    })
-
-    checkIns.forEach(record => {
-      if (record.checkInAt) {
-        const d = new Date(record.checkInAt)
-        // getDay(): 0=周日, 1=周一...6=周六
-        const dayOfWeek = d.getDay()
-        const idx = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // 转为 0=周一...6=周日
-        if (dayMap[idx]) {
-          dayMap[idx].hours += (record.duration || record.minutes || 0) / 60
-        }
+    // 优先尝试正确率趋势 API（后端 Agent 1 在实现中）
+    // 如果 API 不存在则 fallback 到本周打卡数据
+    accuracyMode.value = false
+    try {
+      const trendRes = await getAccuracyTrend({ days: 7 })
+      const trendData = trendRes?.data
+      if (Array.isArray(trendData) && trendData.length > 0) {
+        const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+        chartData.value = dayLabels.map((day, idx) => {
+          const found = trendData.find(t => {
+            const tDay = t.day ?? t.date
+            return typeof tDay === 'number' ? tDay === idx + 1 : tDay === day
+          })
+          return {
+            day,
+            hours: found ? (found.accuracy ?? found.correctRate ?? 0) : 0
+          }
+        })
+        accuracyMode.value = true
       }
-    })
+    } catch {
+      // API 不存在，继续用打卡数据
+    }
 
-    chartData.value = Object.values(dayMap)
+    if (!accuracyMode.value) {
+      const { data } = await getMyCheckIns({ days: 7 })
+      const checkIns = Array.isArray(data) ? data : []
+
+      const dayMap = {}
+      const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+      dayLabels.forEach((label, idx) => {
+        dayMap[idx] = { day: label, hours: 0 }
+      })
+
+      checkIns.forEach(record => {
+        if (record.checkInAt) {
+          const d = new Date(record.checkInAt)
+          const dayOfWeek = d.getDay()
+          const idx = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+          if (dayMap[idx]) {
+            dayMap[idx].hours += (record.duration || record.minutes || 0) / 60
+          }
+        }
+      })
+
+      chartData.value = Object.values(dayMap)
+    }
   } catch {
     chartData.value = []
   }
@@ -623,7 +667,7 @@ function initChart(containerRef) {
 
   const option = {
     title: {
-      text: '本周学习时长',
+      text: accuracyMode.value ? '正确率趋势' : '本周学习时长',
       textStyle: {
         fontSize: 14,
         fontWeight: 600,
@@ -634,7 +678,7 @@ function initChart(containerRef) {
     },
     tooltip: {
       trigger: 'axis',
-      formatter: '{b}: {c} 小时'
+      formatter: accuracyMode.value ? '{b}: {c}%' : '{b}: {c} 小时'
     },
     grid: {
       left: '3%',
@@ -693,7 +737,7 @@ async function loadData() {
   loading.value = true
   chartLoading.value = true
   try {
-    await Promise.all([getStats(), getRecent(), getChart(), getRecommendations(), getBadges()])
+    await Promise.all([getStats(), getRecent(), getChart(), getRecommendations(), getBadges(), loadHeatmap()])
   } finally {
     loading.value = false
     chartLoading.value = false

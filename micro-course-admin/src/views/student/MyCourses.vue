@@ -152,6 +152,16 @@
                     <span class="progress-text">{{ course.progress || 0 }}%</span>
                   </div>
 
+                  <!-- 练习进度 (进行中) -->
+                  <div
+                    v-if="activeTab === 'in-progress' && courseProgressMap[course.courseId]"
+                    class="exercise-progress"
+                  >
+                    <span class="exercise-text">
+                      练习 {{ courseProgressMap[course.courseId].completedExercises }}/{{ courseProgressMap[course.courseId].totalExercises }} 完成
+                    </span>
+                  </div>
+
                   <!-- 时间信息 -->
                   <div class="time-info">
                     <span class="time-text">
@@ -327,6 +337,16 @@
               <span class="h5-progress-text">{{ course.progress || 0 }}%</span>
             </div>
 
+            <!-- 练习进度 (进行中) -->
+            <div
+              v-if="activeTab === 'in-progress' && courseProgressMap[course.courseId]"
+              class="h5-exercise-progress"
+            >
+              <span class="h5-exercise-text">
+                练习 {{ courseProgressMap[course.courseId].completedExercises }}/{{ courseProgressMap[course.courseId].totalExercises }} 完成
+              </span>
+            </div>
+
             <!-- 时间 -->
             <p class="h5-time-info">
               <el-icon><Clock /></el-icon>
@@ -368,6 +388,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
+import { getCompletion, getLearningProgress } from '../../api/learning-progress'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -391,6 +412,8 @@ const enrollments = ref([])
 const page = ref(1)
 const size = ref(9)
 const totalElements = ref(0)
+// 课程练习进度映射: { [courseId]: { completedExercises, totalExercises } }
+const courseProgressMap = ref({})
 
 const progressColor = 'var(--role-primary)'
 
@@ -448,9 +471,38 @@ const fetchEnrollments = async () => {
   loading.value = true
   try {
     const res = await getMyEnrollments(userId)
-    // 后端返回已按 enrolledAt DESC 排序
-    // 模拟 favorited 标记（实际项目中由后端返回）
-    enrollments.value = (res.data || []).map(e => ({ ...e, favorited: Math.random() > 0.5 }))
+    const list = res.data || []
+
+    // 并行获取整体完成度（用于修正进度条）
+    const completionData = await getCompletion({ userId }).catch(() => ({}))
+    const completionMap = completionData?.data || {}
+
+    // 对每门进行中课程获取练习完成进度
+    const inProgress = list.filter(e => !e.completed)
+    const progressPromises = inProgress.map(e =>
+      getLearningProgress({ courseId: e.courseId }).catch(() => null)
+    )
+    const progressResults = await Promise.all(progressPromises)
+    const newProgressMap = {}
+    progressResults.forEach((presult, idx) => {
+      const courseId = inProgress[idx].courseId
+      if (presult?.data) {
+        const pdata = presult.data
+        newProgressMap[courseId] = {
+          completedExercises: pdata.completedExercises ?? pdata.completed ?? 0,
+          totalExercises: pdata.totalExercises ?? pdata.total ?? 0,
+          progress: completionMap[courseId]?.progress ?? inProgress[idx].progress ?? 0
+        }
+      }
+    })
+    courseProgressMap.value = newProgressMap
+
+    // 用 completion 数据修正 enrollment 进度，并模拟 favorited 标记
+    enrollments.value = list.map(e => {
+      const cp = completionMap[e.courseId]
+      const updatedProgress = cp?.progress ?? e.progress ?? 0
+      return { ...e, progress: updatedProgress, favorited: Math.random() > 0.5 }
+    })
     totalElements.value = enrollments.value.length
   } catch {
     ElMessage.error('加载课程失败')
@@ -665,6 +717,18 @@ const handleContinue = (courseId) => {
   text-align: right;
 }
 
+.exercise-progress {
+  margin-bottom: var(--space-3);
+}
+
+.exercise-text {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .time-info {
   margin-bottom: var(--space-3);
 }
@@ -861,6 +925,15 @@ const handleContinue = (courseId) => {
   color: var(--role-primary);
   min-width: 30px;
   text-align: right;
+}
+
+.h5-exercise-progress {
+  margin-bottom: var(--space-2);
+}
+
+.h5-exercise-text {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
 }
 
 .h5-time-info {

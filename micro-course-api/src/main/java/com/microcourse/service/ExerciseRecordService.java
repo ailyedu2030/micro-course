@@ -4,6 +4,7 @@ import com.microcourse.dto.ExerciseRecordVO;
 import com.microcourse.dto.SubmitAnswerRequest;
 
 import java.util.List;
+import java.util.Map;
 
 public interface ExerciseRecordService {
 
@@ -26,4 +27,12 @@ public interface ExerciseRecordService {
      * 获取答题记录详情
      */
     ExerciseRecordVO getRecordById(Long id, Long userId);
+
+    /**
+     * 获取最近N天每日正确率趋势
+     * @param userId 用户ID
+     * @param days 天数
+     * @return [{date, accuracy, totalCount, correctCount}]
+     */
+    List<Map<String, Object>> getAccuracyTrend(Long userId, int days);
 }

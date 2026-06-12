@@ -7,11 +7,13 @@ import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.EnrollmentService;
 import org.springframework.dao.DuplicateKeyException;
@@ -33,13 +35,16 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final EnrollmentRepository enrollmentRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
+    private final LearningProgressRepository learningProgressRepository;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
                                  CourseRepository courseRepository,
-                                 UserRepository userRepository) {
+                                 UserRepository userRepository,
+                                 LearningProgressRepository learningProgressRepository) {
         this.enrollmentRepository = enrollmentRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
+        this.learningProgressRepository = learningProgressRepository;
     }
 
     @Override
@@ -162,11 +167,31 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
         }
 
+        // 预加载 learning_progress：取每个(userId, courseId) 组合的最新 lastWatchAt
+        java.util.Map<String, LocalDateTime> lastWatchMap = new java.util.HashMap<>();
+        if (!userIds.isEmpty() && !courseIds.isEmpty()) {
+            for (Long uid : userIds) {
+                for (Long cid : courseIds) {
+                    LambdaQueryWrapper<LearningProgress> lpWrapper = new LambdaQueryWrapper<>();
+                    lpWrapper.eq(LearningProgress::getUserId, uid)
+                             .eq(LearningProgress::getCourseId, cid)
+                             .isNotNull(LearningProgress::getLastWatchAt)
+                             .orderByDesc(LearningProgress::getLastWatchAt)
+                             .last("LIMIT 1");
+                    LearningProgress lp = learningProgressRepository.selectOne(lpWrapper);
+                    if (lp != null && lp.getLastWatchAt() != null) {
+                        lastWatchMap.put(uid + "_" + cid, lp.getLastWatchAt());
+                    }
+                }
+            }
+        }
+
         final java.util.Map<Long, Course> finalCourseMap = courseMap;
         final java.util.Map<Long, User> finalUserMap = userMap;
+        final java.util.Map<String, LocalDateTime> finalLastWatchMap = lastWatchMap;
 
         return enrollments.stream()
-                .map(e -> convertToVO(e, finalCourseMap, finalUserMap))
+                .map(e -> convertToVO(e, finalCourseMap, finalUserMap, finalLastWatchMap))
                 .collect(Collectors.toList());
     }
 
@@ -255,7 +280,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     private EnrollmentVO convertToVO(Enrollment enrollment, java.util.Map<Long, Course> courseMap,
-                                     java.util.Map<Long, User> userMap) {
+                                     java.util.Map<Long, User> userMap,
+                                     java.util.Map<String, LocalDateTime> lastWatchMap) {
         EnrollmentVO vo = new EnrollmentVO();
         vo.setId(enrollment.getId());
         vo.setCourseId(enrollment.getCourseId());
@@ -284,6 +310,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             if (user != null) {
                 vo.setUserName(user.getRealName());
             }
+        }
+
+        // Load lastWatchAt from learning_progress
+        if (enrollment.getUserId() != null && enrollment.getCourseId() != null) {
+            LocalDateTime lastWatchAt = lastWatchMap.get(
+                    enrollment.getUserId() + "_" + enrollment.getCourseId());
+            vo.setLastWatchAt(lastWatchAt);
         }
 
         return vo;

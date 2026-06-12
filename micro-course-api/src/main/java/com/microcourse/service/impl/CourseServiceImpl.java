@@ -78,6 +78,9 @@ public class CourseServiceImpl implements CourseService {
         if (query.getStatus() != null) {
             wrapper.eq(Course::getStatus, query.getStatus());
         }
+        if (query.getRecommended() != null) {
+            wrapper.eq(Course::getIsRecommended, query.getRecommended());
+        }
         wrapper.orderByDesc(Course::getCreatedAt);
 
         IPage<Course> ipage = courseRepository.selectPage(
@@ -360,6 +363,63 @@ public class CourseServiceImpl implements CourseService {
         chapterRepository.delete(wrapper);
     }
 
+    @Override
+    @Transactional
+    public CourseVO copy(Long id) {
+        Course source = courseRepository.selectById(id);
+        if (source == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // 权限检查：只有课程教师本人或 ADMIN 可以复制
+        if (!SecurityUtil.isOwnerOrAdmin(source.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        // 创建新课程副本（基本信息）
+        Course newCourse = new Course();
+        newCourse.setTitle("复制: " + source.getTitle());
+        newCourse.setCategoryId(source.getCategoryId());
+        newCourse.setTeacherId(source.getTeacherId());
+        newCourse.setSubtitle(source.getSubtitle());
+        newCourse.setSummary(source.getSummary());
+        newCourse.setCoverUrl(source.getCoverUrl());
+        newCourse.setOfferDepartmentId(source.getOfferDepartmentId());
+        newCourse.setSemester(source.getSemester());
+        newCourse.setCreditHours(source.getCreditHours());
+        newCourse.setCourseNature(source.getCourseNature());
+        newCourse.setMaxStudents(source.getMaxStudents());
+        newCourse.setDifficulty(source.getDifficulty());
+        newCourse.setDescription(source.getDescription());
+        newCourse.setStatus(CourseStatus.DRAFT.getCode());
+        newCourse.setCreatedAt(LocalDateTime.now());
+        newCourse.setUpdatedAt(LocalDateTime.now());
+        newCourse.setVersion(0);
+
+        courseRepository.insert(newCourse);
+
+        // 复制章节结构（不含视频文件，只复制章节元数据）
+        LambdaQueryWrapper<CourseChapter> chapterWrapper = new LambdaQueryWrapper<>();
+        chapterWrapper.eq(CourseChapter::getCourseId, id)
+                .orderByAsc(CourseChapter::getSortOrder);
+        List<CourseChapter> sourceChapters = chapterRepository.selectList(chapterWrapper);
+
+        for (CourseChapter srcChapter : sourceChapters) {
+            CourseChapter newChapter = new CourseChapter();
+            newChapter.setCourseId(newCourse.getId());
+            newChapter.setTitle(srcChapter.getTitle());
+            newChapter.setDescription(srcChapter.getDescription());
+            newChapter.setSortOrder(srcChapter.getSortOrder());
+            newChapter.setChapterType(srcChapter.getChapterType());
+            newChapter.setDuration(0); // 不复制视频时长，重置为0
+            newChapter.setCreatedAt(LocalDateTime.now());
+            newChapter.setUpdatedAt(LocalDateTime.now());
+            newChapter.setVersion(0);
+            chapterRepository.insert(newChapter);
+        }
+
+        return convertToVO(newCourse);
+    }
+
     private CourseVO convertToVO(Course course) {
         CourseVO vo = new CourseVO();
         vo.setId(course.getId());
@@ -384,6 +444,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setCreatedAt(course.getCreatedAt());
         vo.setUpdatedAt(course.getUpdatedAt());
         vo.setVersion(course.getVersion());
+        vo.setIsRecommended(course.getIsRecommended());
 
         if (course.getStatus() != null) {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
@@ -433,6 +494,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setCreatedAt(course.getCreatedAt());
         vo.setUpdatedAt(course.getUpdatedAt());
         vo.setVersion(course.getVersion());
+        vo.setIsRecommended(course.getIsRecommended());
 
         if (course.getStatus() != null) {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));

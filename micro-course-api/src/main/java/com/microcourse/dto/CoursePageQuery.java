@@ -7,6 +7,7 @@ public class CoursePageQuery {
     private Long categoryId;
     private Long teacherId;
     private Integer status;
+    private Boolean recommended;
     private int page;
     private int size;
 
@@ -22,6 +23,8 @@ public class CoursePageQuery {
     public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public Boolean getRecommended() { return recommended; }
+    public void setRecommended(Boolean recommended) { this.recommended = recommended; }
     public int getPage() { return page; }
     public void setPage(int page) { this.page = page; }
     public int getSize() { return size; }

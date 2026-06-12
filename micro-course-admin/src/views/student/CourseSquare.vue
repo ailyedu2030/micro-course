@@ -279,6 +279,15 @@
                 :class="{ 'item-rank--top': index < 3 }"
                 :aria-hidden="true"
               >{{ index + 1 }}</span>
+              <el-tag
+                v-if="index < 3"
+                class="recommended-badge"
+                type="danger"
+                effect="dark"
+                size="small"
+              >
+                精选
+              </el-tag>
               <div class="item-info">
                 <p class="item-title">{{ course.title }}</p>
                 <p class="item-meta">
@@ -1054,6 +1063,14 @@ onMounted(() => {
   background: linear-gradient(135deg, var(--role-primary), var(--role-primary-dark));
   color: var(--el-color-white);
   box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+}
+
+.recommended-badge {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm) !important;
+  font-size: var(--text-xs) !important;
+  padding: 1px 6px !important;
+  margin-right: var(--space-1);
 }
 
 .item-info {

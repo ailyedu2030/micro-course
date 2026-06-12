@@ -36,6 +36,9 @@ public class Course {
     private LocalDateTime updatedAt;
     private Integer version;
 
+    @TableField("is_recommended")
+    private Boolean isRecommended;
+
     @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
@@ -87,4 +90,6 @@ public class Course {
     public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public Boolean getIsRecommended() { return isRecommended; }
+    public void setIsRecommended(Boolean isRecommended) { this.isRecommended = isRecommended; }
 }
