@@ -30,6 +30,8 @@ public class CourseUpdateRequest {
 
     private String description;
 
+    private String tags;
+
     public CourseUpdateRequest() {}
 
     public String getTitle() { return title; }
@@ -58,4 +60,6 @@ public class CourseUpdateRequest {
     public void setDifficulty(Integer difficulty) { this.difficulty = difficulty; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getTags() { return tags; }
+    public void setTags(String tags) { this.tags = tags; }
 }

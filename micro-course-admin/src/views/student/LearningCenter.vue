@@ -26,6 +26,20 @@
             <el-icon><Star /></el-icon>
             学无止境
           </span>
+          <el-button
+            v-if="!checkedInToday"
+            type="primary"
+            size="small"
+            class="check-in-btn"
+            @click="doCheckIn"
+            :loading="checkInLoading"
+          >
+            今日打卡
+          </el-button>
+          <span v-else class="checked-in-badge">
+            <el-icon><CircleCheck /></el-icon>
+            已打卡
+          </span>
         </div>
       </div>
 
@@ -58,8 +72,8 @@
         </div>
         <div class="stat-card">
           <el-card shadow="hover">
-            <div class="stat-card-value">{{ stats.points }}</div>
-            <div class="stat-card-label">积分</div>
+            <div class="stat-card-value">{{ stats.studyDays }}</div>
+            <div class="stat-card-label">累计天数</div>
           </el-card>
         </div>
       </div>
@@ -228,8 +242,8 @@
         </div>
         <div class="stat-card">
           <el-card shadow="hover">
-            <div class="stat-card-value">{{ stats.points }}</div>
-            <div class="stat-card-label">积分</div>
+            <div class="stat-card-value">{{ stats.studyDays }}</div>
+            <div class="stat-card-label">累计天数</div>
           </el-card>
         </div>
       </div>
@@ -325,12 +339,12 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { Calendar, Sunny, Star, Medal } from '@element-plus/icons-vue'
+import { Calendar, Sunny, Star, Medal, CircleCheck } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { getCompletion } from '@/api/learning-progress'
+import { getCompletion, getStudyDays } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
-import { getMyCheckIns } from '@/api/checkin'
+import { getMyCheckIns, createCheckIn } from '@/api/checkin'
 import { getAccuracyTrend } from '@/api/exercise-record'
 
 // ---------------------------------------------------------------------------
@@ -364,6 +378,8 @@ const currentDate = computed(() => {
 // ---------------------------------------------------------------------------
 const loading = ref(true)
 const chartLoading = ref(true)
+const checkInLoading = ref(false)
+const checkedInToday = ref(false)
 
 // ---------------------------------------------------------------------------
 // 统计数据
@@ -372,7 +388,7 @@ const stats = ref({
   totalHours: '0小时',
   completedCourses: 0,
   certificates: 0,
-  points: 0
+  studyDays: 0
 })
 
 // ---------------------------------------------------------------------------
@@ -501,9 +517,10 @@ const badges = ref([
 async function getStats() {
   try {
     const userId = userStore.userInfo?.id
-    const [completionData, enrollmentData] = await Promise.all([
+    const [completionData, enrollmentData, studyDaysData] = await Promise.all([
       getCompletion({ userId }),
-      getMyEnrollments(userId)
+      getMyEnrollments(userId),
+      getStudyDays().catch(() => ({ data: { days: 0 } }))
     ])
 
     const enrollments = Array.isArray(enrollmentData?.data) ? enrollmentData.data : []
@@ -519,18 +536,21 @@ async function getStats() {
     })
     const totalHours = totalMinutes > 0 ? `${Math.round(totalMinutes / 60)}小时` : '0小时'
 
+    // 学习天数
+    const studyDays = studyDaysData?.data?.days ?? studyDaysData?.data?.studyDays ?? 0
+
     stats.value = {
       totalHours,
       completedCourses,
       certificates: 0,   // 后端暂无证书 API
-      points: 0          // 后端暂无积分 API
+      studyDays
     }
   } catch {
     stats.value = {
       totalHours: '0小时',
       completedCourses: 0,
       certificates: 0,
-      points: 0
+      studyDays: 0
     }
   }
 }
@@ -738,9 +758,39 @@ async function loadData() {
   chartLoading.value = true
   try {
     await Promise.all([getStats(), getRecent(), getChart(), getRecommendations(), getBadges(), loadHeatmap()])
+    // 检查今日是否已打卡
+    await checkTodayStatus()
   } finally {
     loading.value = false
     chartLoading.value = false
+  }
+}
+
+async function checkTodayStatus() {
+  try {
+    const { data } = await getMyCheckIns({ days: 1 })
+    const checkIns = Array.isArray(data) ? data : []
+    const today = new Date()
+    const todayStr = today.toISOString().slice(0, 10)
+    checkedInToday.value = checkIns.some(c => {
+      if (!c.checkInAt) return false
+      return c.checkInAt.slice(0, 10) === todayStr
+    })
+  } catch {
+    checkedInToday.value = false
+  }
+}
+
+async function doCheckIn() {
+  checkInLoading.value = true
+  try {
+    await createCheckIn({})
+    checkedInToday.value = true
+    ElMessage.success('打卡成功！')
+  } catch {
+    ElMessage.error('打卡失败，请稍后重试')
+  } finally {
+    checkInLoading.value = false
   }
 }
 
@@ -846,6 +896,22 @@ onUnmounted(() => {
   gap: var(--space-1);
   font-size: var(--text-sm);
   color: var(--el-text-color-secondary);
+}
+
+.check-in-btn {
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-medium);
+  background: var(--role-primary);
+  border-color: var(--role-primary);
+}
+
+.checked-in-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--el-color-success);
+  font-weight: var(--weight-medium);
 }
 
 /* ---------------------------------------------------------------------------

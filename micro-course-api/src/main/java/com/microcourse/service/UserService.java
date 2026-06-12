@@ -2,6 +2,7 @@ package com.microcourse.service;
 
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.TeacherStatusRequest;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
 import com.microcourse.dto.UserStatusRequest;
@@ -20,6 +21,13 @@ public interface UserService {
     UserVO updateUser(Long id, UserUpdateRequest request);
 
     void updateStatus(Long id, UserStatusRequest request);
+
+    /**
+     * 更新教师入驻审核状态
+     * @param id 用户ID
+     * @param request 审核状态请求
+     */
+    void updateTeacherStatus(Long id, TeacherStatusRequest request);
 
     /**
      * 批量导入用户（Excel 解析）

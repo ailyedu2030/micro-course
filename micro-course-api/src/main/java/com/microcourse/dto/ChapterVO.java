@@ -14,6 +14,7 @@ public class ChapterVO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer version;
+    private String learningObjectives;
 
     public ChapterVO() {}
 
@@ -37,4 +38,6 @@ public class ChapterVO {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
+    public String getLearningObjectives() { return learningObjectives; }
+    public void setLearningObjectives(String learningObjectives) { this.learningObjectives = learningObjectives; }
 }

@@ -110,6 +110,9 @@
             :class="{ 'controls-visible': controlsVisible || !isPlaying }"
             @mousemove="showControls"
             @mouseleave="hideControlsDelayed"
+            @touchend="handleTouchEnd"
+            @touchmove="handleTouchMove"
+            @touchstart="handleTouchStart"
           >
             <video
               ref="videoRef"
@@ -141,6 +144,23 @@
             <div class="video-top-overlay">
               <div class="video-title-overlay">{{ videoData.title }}</div>
             </div>
+
+            <!-- Learning Objectives Overlay (auto-hide after 3s) -->
+            <transition name="obj-fade">
+              <div v-if="showObjectives" class="learning-objectives-overlay">
+                <div class="obj-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                </div>
+                <div class="obj-content">
+                  <div class="obj-label">本节目标</div>
+                  <div class="obj-text">{{ currentChapter?.description || '掌握核心概念' }}</div>
+                </div>
+              </div>
+            </transition>
 
             <!-- Custom Controls -->
             <div class="video-controls" :class="{ visible: controlsVisible || !isPlaying }">
@@ -519,6 +539,28 @@ const controlsVisible = ref(true)
 // HLS
 let hlsInstance = ref(null)
 
+// Learning objectives overlay
+const showObjectives = ref(false)
+let objectivesTimer = null
+
+// Mobile touch gestures
+let touchStartX = 0
+let touchStartY = 0
+let touchStartTime = 0
+let touchStartVolume = 100
+let touchStartBrightness = 100
+const lastTapTimeout = ref(null)
+const lastTapTime = ref(0)
+
+// Learning objectives auto-show on mount
+const showObjectivesOverlay = () => {
+  showObjectives.value = true
+  if (objectivesTimer) clearTimeout(objectivesTimer)
+  objectivesTimer = setTimeout(() => {
+    showObjectives.value = false
+  }, 3000)
+}
+
 // Local storage key
 const STORAGE_KEY = computed(() => `video_progress_${videoId.value}`)
 
@@ -558,6 +600,7 @@ const loadVideo = async () => {
     initPlayer()
     await Promise.all([loadChapters(), loadProgress(), loadDiscussions()])
     loadLocalPosition()
+    showObjectivesOverlay()
   } catch {
     errorMsg.value = '无法加载视频，请检查网络连接'
   } finally {
@@ -970,6 +1013,82 @@ const handleResize = () => {
   }, 200)
 }
 
+// Mobile touch handlers
+const handleTouchStart = (e) => {
+  if (!isMobile.value) return
+  const touch = e.touches[0]
+  touchStartX = touch.clientX
+  touchStartY = touch.clientY
+  touchStartTime = Date.now()
+  const video = videoRef.value
+  if (video) {
+    touchStartVolume = video.volume * 100
+    touchStartBrightness = 100
+  }
+}
+
+const handleTouchMove = (e) => {
+  if (!isMobile.value) return
+  const touch = e.touches[0]
+  const deltaX = touch.clientX - touchStartX
+  const deltaY = touch.clientY - touchStartY
+  const video = videoRef.value
+  if (!video) return
+  const rect = e.target.closest('.video-container')?.getBoundingClientRect()
+  if (!rect) return
+  const relativeX = touchStartX - rect.left
+  const isRightSide = relativeX > rect.width / 2
+  if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    // Horizontal swipe - could be used for seeking
+  } else {
+    // Vertical swipe
+    const sensitivity = 0.5
+    const delta = -deltaY * sensitivity
+    if (isRightSide) {
+      // Right side: volume
+      const newVol = Math.min(100, Math.max(0, touchStartVolume + delta))
+      video.volume = newVol / 100
+      volumePercent.value = newVol
+      isMuted.value = newVol === 0
+    } else {
+      // Left side: brightness (CSS filter on container)
+      const newBri = Math.min(100, Math.max(20, 100 + delta))
+      videoRef.value?.parentElement?.style.setProperty('--brightness', newBri / 100)
+    }
+  }
+}
+
+const handleTouchEnd = (e) => {
+  if (!isMobile.value) return
+  const touch = e.changedTouches[0]
+  const elapsed = Date.now() - touchStartTime
+  const deltaX = Math.abs(touch.clientX - touchStartX)
+  const deltaY = Math.abs(touch.clientY - touchStartY)
+
+  // Double tap detection
+  if (elapsed < 300 && deltaX < 30 && deltaY < 30) {
+    const rect = e.target.closest('.video-container')?.getBoundingClientRect()
+    if (!rect) return
+    const tapX = touch.clientX - rect.left
+    const isLeftHalf = tapX < rect.width / 2
+
+    if (lastTapTimeout.value && Date.now() - lastTapTime < 300) {
+      // Double tap
+      if (isLeftHalf) {
+        skipBackward()
+      } else {
+        skipForward()
+      }
+      lastTapTimeout.value = null
+    } else {
+      lastTapTime.value = Date.now()
+      lastTapTimeout.value = setTimeout(() => {
+        lastTapTimeout.value = null
+      }, 300)
+    }
+  }
+}
+
 onMounted(async () => {
   isMobile.value = window.innerWidth <= 768
   await nextTick()
@@ -1249,6 +1368,61 @@ onBeforeUnmount(() => {
 .video-title-overlay {
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
+}
+
+/* Learning Objectives Overlay */
+.learning-objectives-overlay {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  max-width: 280px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.obj-icon {
+  color: var(--vp-accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.obj-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.obj-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--vp-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.obj-text {
+  font-size: var(--text-sm);
+  color: var(--vp-text);
+  line-height: 1.4;
+}
+
+.obj-fade-enter-active,
+.obj-fade-leave-active {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.obj-fade-enter-from,
+.obj-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 /* Custom Controls */

@@ -34,6 +34,7 @@ public class CourseVO {
     private LocalDateTime updatedAt;
     private Integer version;
     private Boolean isRecommended;
+    private String tags;
     private List<ChapterVO> chapters;
 
     public CourseVO() {}
@@ -90,6 +91,8 @@ public class CourseVO {
     public void setVersion(Integer version) { this.version = version; }
     public Boolean getIsRecommended() { return isRecommended; }
     public void setIsRecommended(Boolean isRecommended) { this.isRecommended = isRecommended; }
+    public String getTags() { return tags; }
+    public void setTags(String tags) { this.tags = tags; }
     public List<ChapterVO> getChapters() { return chapters; }
     public void setChapters(List<ChapterVO> chapters) { this.chapters = chapters; }
 }

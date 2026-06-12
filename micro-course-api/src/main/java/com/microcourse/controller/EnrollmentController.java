@@ -12,6 +12,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.io.IOException;
+import jakarta.servlet.http.HttpServletResponse;
+import cn.hutool.poi.excel.ExcelUtil;
+import cn.hutool.poi.excel.ExcelWriter;
 
 @RestController
 @RequestMapping("/api/enrollments")
@@ -68,6 +72,43 @@ public class EnrollmentController {
     public R<Void> cancelEnrollment(@PathVariable Long id) {
         enrollmentService.cancelEnrollment(id);
         return R.ok();
+    }
+
+    /**
+     * GET /api/enrollments/export
+     * 导出课程学员数据为 Excel
+     * @param courseId 课程ID
+     */
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public void exportEnrollments(
+            @RequestParam Long courseId,
+            HttpServletResponse response) throws IOException {
+        List<EnrollmentVO> enrollments = enrollmentService.getCourseEnrollments(courseId);
+
+        // 设置响应头
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=enrollments_" + courseId + ".xlsx");
+
+        // 使用 Hutool ExcelWriter 导出
+        ExcelWriter writer = ExcelUtil.getWriter(true);
+        writer.addHeaderAlias("id", "选课ID");
+        writer.addHeaderAlias("courseId", "课程ID");
+        writer.addHeaderAlias("courseName", "课程名称");
+        writer.addHeaderAlias("userId", "用户ID");
+        writer.addHeaderAlias("userName", "学生姓名");
+        writer.addHeaderAlias("progress", "学习进度(%)");
+        writer.addHeaderAlias("completed", "是否完成");
+        writer.addHeaderAlias("finalScore", "总评成绩");
+        writer.addHeaderAlias("finalGrade", "成绩等级");
+        writer.addHeaderAlias("enrollmentStatus", "选课状态");
+        writer.addHeaderAlias("sourceChannel", "选课来源");
+        writer.addHeaderAlias("enrolledAt", "选课时间");
+        writer.addHeaderAlias("completedAt", "完成时间");
+
+        writer.write(enrollments, true);
+        writer.flush(response.getOutputStream());
+        writer.close();
     }
 
     private Long getCurrentUserId() {

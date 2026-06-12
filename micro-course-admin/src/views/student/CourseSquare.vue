@@ -1165,4 +1165,36 @@ onMounted(() => {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ================================================
+   H5 Waterfall Layout (<= 768px)
+   ================================================ */
+@media (max-width: 768px) {
+  .course-grid {
+    column-count: 2;
+    column-gap: var(--space-3);
+  }
+
+  .course-grid :deep(.el-row) {
+    display: block;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .course-grid :deep(.el-col) {
+    display: block;
+    width: 100% !important;
+    margin-bottom: var(--space-3);
+    break-inside: avoid;
+  }
+
+  .course-card {
+    margin-bottom: 0;
+    break-inside: avoid;
+  }
+
+  .course-grid .pagination-wrap {
+    column-span: all;
+  }
+}
 </style>

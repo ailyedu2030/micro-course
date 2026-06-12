@@ -39,6 +39,8 @@ public class Course {
     @TableField("is_recommended")
     private Boolean isRecommended;
 
+    private String tags;
+
     @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
@@ -92,4 +94,6 @@ public class Course {
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
     public Boolean getIsRecommended() { return isRecommended; }
     public void setIsRecommended(Boolean isRecommended) { this.isRecommended = isRecommended; }
+    public String getTags() { return tags; }
+    public void setTags(String tags) { this.tags = tags; }
 }

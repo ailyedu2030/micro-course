@@ -8,6 +8,7 @@ import com.microcourse.dto.UserStatusRequest;
 import com.microcourse.dto.UserUpdateRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.dto.R;
+import com.microcourse.dto.TeacherStatusRequest;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.UserService;
@@ -82,6 +83,19 @@ public class UserController {
     public R<Void> updateStatus(@PathVariable Long id,
                                  @Valid @RequestBody UserStatusRequest request) {
         userService.updateStatus(id, request);
+        return R.ok();
+    }
+
+    /**
+     * PUT /api/users/{id}/teacher-status
+     * 更新教师入驻审核状态（ADMIN only）
+     * 0=待审核, 1=通过, 2=驳回
+     */
+    @PutMapping("/{id}/teacher-status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<Void> updateTeacherStatus(@PathVariable Long id,
+                                        @Valid @RequestBody TeacherStatusRequest request) {
+        userService.updateTeacherStatus(id, request);
         return R.ok();
     }
 

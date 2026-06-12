@@ -8,6 +8,7 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.UserBatchImportDTO;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
+import com.microcourse.dto.TeacherStatusRequest;
 import com.microcourse.dto.UserStatusRequest;
 import com.microcourse.dto.UserUpdateRequest;
 import com.microcourse.dto.UserVO;
@@ -262,6 +263,43 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public void updateTeacherStatus(Long id, TeacherStatusRequest request) {
+        User user = userRepository.selectById(id);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 仅 TEACHER 角色可申请入驻审核
+        if (user.getRole() != UserRole.TEACHER) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "只有教师角色才能更新入驻审核状态");
+        }
+
+        Integer oldStatus = user.getTeacherStatus();
+        Integer newStatus = request.getTeacherStatus();
+
+        // 验证状态值
+        if (newStatus < 0 || newStatus > 2) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "教师审核状态值无效，应为 0/1/2");
+        }
+
+        user.setTeacherStatus(newStatus);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.updateById(user);
+
+        // 记录操作日志
+        OperationLog log = new OperationLog();
+        log.setUserId(user.getId());
+        log.setAction("TEACHER_STATUS_CHANGE");
+        log.setTargetType("USER");
+        log.setTargetId(user.getId());
+        log.setDetail("{\"field\":\"teacherStatus\",\"old\":" + oldStatus + ",\"new\":" + newStatus + ",\"reason\":\"" + (request.getReason() != null ? request.getReason() : "") + "\"}");
+        log.setIp("0.0.0.0");
+        log.setSuccess(true);
+        operationLogService.log(log);
+    }
+
+    @Override
+    @Transactional
     public BatchImportResultVO batchImportUsers(MultipartFile file) {
         List<String> errors = new ArrayList<>();
         int successCount = 0;
@@ -377,6 +415,7 @@ public class UserServiceImpl implements UserService {
         vo.setStudentNo(user.getStudentNo());
         vo.setTeacherNo(user.getTeacherNo());
         vo.setStatus(user.getStatus());
+        vo.setTeacherStatus(user.getTeacherStatus());
         vo.setLastLoginAt(user.getLastLoginAt());
         vo.setCreatedAt(user.getCreatedAt());
 
@@ -436,6 +475,7 @@ public class UserServiceImpl implements UserService {
         vo.setStudentNo(user.getStudentNo());
         vo.setTeacherNo(user.getTeacherNo());
         vo.setStatus(user.getStatus());
+        vo.setTeacherStatus(user.getTeacherStatus());
         vo.setLastLoginAt(user.getLastLoginAt());
         vo.setCreatedAt(user.getCreatedAt());
 

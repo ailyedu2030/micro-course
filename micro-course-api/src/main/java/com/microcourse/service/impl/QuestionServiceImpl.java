@@ -1,8 +1,10 @@
 package com.microcourse.service.impl;
 
+import com.alibaba.excel.EasyExcel;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.QuestionCreateRequest;
 import com.microcourse.dto.QuestionUpdateRequest;
@@ -19,8 +21,11 @@ import com.microcourse.service.QuestionService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class QuestionServiceImpl implements QuestionService {
@@ -154,6 +159,105 @@ public class QuestionServiceImpl implements QuestionService {
             throw new BusinessException(ErrorCode.QUESTION_NOT_FOUND);
         }
         return convertToVO(question);
+    }
+
+    @Override
+    @Transactional
+    public BatchImportResultVO batchImport(MultipartFile file, Long courseId) {
+        // 验证课程存在
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+
+        // 获取当前教师 ID
+        Long teacherId = SecurityUtil.getCurrentUserId();
+        if (teacherId == null) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        List<String> errors = new ArrayList<>();
+        int successCount = 0;
+        int failCount = 0;
+
+        // 使用 Hutool ExcelReader 解析
+        cn.hutool.poi.excel.ExcelReader reader = null;
+        try {
+            reader = cn.hutool.poi.excel.ExcelUtil.getReader(file.getInputStream(), 0);
+            List<List<Object>> rows = reader.read();
+
+            // 第一行是表头，跳过
+            for (int i = 1; i < rows.size(); i++) {
+                List<Object> row = rows.get(i);
+                try {
+                    // 期望列：questionType, content, options, answer, partialScore, explanation, difficulty
+                    // 列索引：0=questionType, 1=content, 2=options, 3=answer, 4=partialScore, 5=explanation, 6=difficulty
+                    if (row.size() < 4) {
+                        errors.add("第 " + (i + 1) + " 行：数据列数不足，至少需要 4 列");
+                        failCount++;
+                        continue;
+                    }
+
+                    String questionType = row.get(0) != null ? row.get(0).toString() : null;
+                    String content = row.get(1) != null ? row.get(1).toString() : null;
+                    String options = row.size() > 2 && row.get(2) != null ? row.get(2).toString() : null;
+                    String answer = row.size() > 3 && row.get(3) != null ? row.get(3).toString() : null;
+                    String partialScore = row.size() > 4 && row.get(4) != null ? row.get(4).toString() : null;
+                    String explanation = row.size() > 5 && row.get(5) != null ? row.get(5).toString() : null;
+                    Integer difficulty = row.size() > 6 && row.get(6) != null ? Integer.parseInt(row.get(6).toString()) : 1;
+
+                    // 校验必填
+                    if (questionType == null || questionType.trim().isEmpty()) {
+                        errors.add("第 " + (i + 1) + " 行：题目类型不能为空");
+                        failCount++;
+                        continue;
+                    }
+                    if (content == null || content.trim().isEmpty()) {
+                        errors.add("第 " + (i + 1) + " 行：题目内容不能为空");
+                        failCount++;
+                        continue;
+                    }
+                    if (answer == null || answer.trim().isEmpty()) {
+                        errors.add("第 " + (i + 1) + " 行：答案不能为空");
+                        failCount++;
+                        continue;
+                    }
+
+                    Question question = new Question();
+                    question.setCourseId(courseId);
+                    question.setTeacherId(teacherId);
+                    question.setQuestionType(questionType.trim().toUpperCase());
+                    question.setContent(content.trim());
+                    question.setOptions(options != null ? options.trim() : null);
+                    question.setAnswer(answer.trim());
+                    question.setPartialScore(partialScore);
+                    question.setExplanation(explanation != null ? explanation.trim() : null);
+                    question.setDifficulty(difficulty);
+                    question.setStatus(1);
+                    question.setVersion(0);
+                    question.setCreatedAt(LocalDateTime.now());
+                    question.setUpdatedAt(LocalDateTime.now());
+
+                    questionRepository.insert(question);
+                    successCount++;
+                } catch (Exception e) {
+                    errors.add("第 " + (i + 1) + " 行：处理失败，请检查数据格式");
+                    failCount++;
+                }
+            }
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Excel 解析失败");
+        } finally {
+            if (reader != null) {
+                reader.close();
+            }
+        }
+
+        BatchImportResultVO result = new BatchImportResultVO();
+        result.setSuccessCount(successCount);
+        result.setFailCount(failCount);
+        result.setErrors(errors);
+        return result;
     }
 
     private QuestionVO convertToVO(Question question) {

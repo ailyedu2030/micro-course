@@ -26,6 +26,8 @@ public class CourseChapter {
     @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
+    private String learningObjectives;
+
     public CourseChapter() {}
 
     public Long getId() { return id; }
@@ -50,4 +52,6 @@ public class CourseChapter {
     public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public String getLearningObjectives() { return learningObjectives; }
+    public void setLearningObjectives(String learningObjectives) { this.learningObjectives = learningObjectives; }
 }

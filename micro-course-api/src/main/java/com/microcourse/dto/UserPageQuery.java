@@ -7,6 +7,7 @@ public class UserPageQuery {
     private String keyword;
     private UserRole role;
     private Integer status;
+    private Integer teacherStatus;
     private Long departmentId;
     private Long majorId;
     private Long classId;
@@ -21,6 +22,8 @@ public class UserPageQuery {
     public void setRole(UserRole role) { this.role = role; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public Integer getTeacherStatus() { return teacherStatus; }
+    public void setTeacherStatus(Integer teacherStatus) { this.teacherStatus = teacherStatus; }
     public Long getDepartmentId() { return departmentId; }
     public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
     public Long getMajorId() { return majorId; }

@@ -162,6 +162,16 @@
                     </span>
                   </div>
 
+                  <!-- 视频进度 (进行中) -->
+                  <div
+                    v-if="activeTab === 'in-progress' && videoProgressMap[course.courseId]"
+                    class="video-progress"
+                  >
+                    <span class="video-progress-text">
+                      视频 {{ videoProgressMap[course.courseId].completed }}/{{ videoProgressMap[course.courseId].total }} ({{ videoProgressMap[course.courseId].percent }}%)
+                    </span>
+                  </div>
+
                   <!-- 时间信息 -->
                   <div class="time-info">
                     <span class="time-text">
@@ -347,6 +357,16 @@
               </span>
             </div>
 
+            <!-- 视频进度 (进行中) -->
+            <div
+              v-if="activeTab === 'in-progress' && videoProgressMap[course.courseId]"
+              class="h5-video-progress"
+            >
+              <span class="h5-video-progress-text">
+                视频 {{ videoProgressMap[course.courseId].completed }}/{{ videoProgressMap[course.courseId].total }} ({{ videoProgressMap[course.courseId].percent }}%)
+              </span>
+            </div>
+
             <!-- 时间 -->
             <p class="h5-time-info">
               <el-icon><Clock /></el-icon>
@@ -389,6 +409,7 @@ import {
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
 import { getCompletion, getLearningProgress } from '../../api/learning-progress'
+import { getChapters } from '../../api/chapter'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -414,6 +435,8 @@ const size = ref(9)
 const totalElements = ref(0)
 // 课程练习进度映射: { [courseId]: { completedExercises, totalExercises } }
 const courseProgressMap = ref({})
+// 课程视频进度映射: { [courseId]: { total, completed, percent } }
+const videoProgressMap = ref({})
 
 const progressColor = 'var(--role-primary)'
 
@@ -496,6 +519,26 @@ const fetchEnrollments = async () => {
       }
     })
     courseProgressMap.value = newProgressMap
+
+    // 对每门进行中课程获取章节总数，计算视频进度
+    const chapterPromises = inProgress.map(e =>
+      getChapters({ courseId: e.courseId, size: 1000 }).catch(() => null)
+    )
+    const chapterResults = await Promise.all(chapterPromises)
+    const newVideoProgressMap = {}
+    chapterResults.forEach((cresult, idx) => {
+      const courseId = inProgress[idx].courseId
+      const chapters = cresult?.data?.items || cresult?.data || []
+      const totalChapters = chapters.length || 1
+      const progressPercent = completionMap[courseId]?.progress ?? inProgress[idx].progress ?? 0
+      const completedVideos = Math.round(totalChapters * progressPercent / 100)
+      newVideoProgressMap[courseId] = {
+        total: totalChapters,
+        completed: completedVideos,
+        percent: progressPercent
+      }
+    })
+    videoProgressMap.value = newVideoProgressMap
 
     // 用 completion 数据修正 enrollment 进度，并模拟 favorited 标记
     enrollments.value = list.map(e => {
@@ -729,6 +772,19 @@ const handleContinue = (courseId) => {
   gap: var(--space-1);
 }
 
+.video-progress {
+  margin-bottom: var(--space-2);
+}
+
+.video-progress-text {
+  font-size: var(--text-xs);
+  color: var(--role-primary);
+  font-weight: var(--weight-medium);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .time-info {
   margin-bottom: var(--space-3);
 }
@@ -934,6 +990,16 @@ const handleContinue = (courseId) => {
 .h5-exercise-text {
   font-size: var(--text-xs);
   color: var(--el-text-color-secondary);
+}
+
+.h5-video-progress {
+  margin-bottom: var(--space-2);
+}
+
+.h5-video-progress-text {
+  font-size: var(--text-xs);
+  color: var(--role-primary);
+  font-weight: var(--weight-medium);
 }
 
 .h5-time-info {

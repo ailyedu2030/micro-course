@@ -57,6 +57,9 @@ public class User {
     @TableField("last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @TableField("teacher_status")
+    private Integer teacherStatus;
+
     @TableLogic(value = "null", delval = "now()")
     @TableField("deleted_at")
     private LocalDateTime deletedAt;
@@ -125,6 +128,8 @@ public class User {
     public void setCasBound(Boolean casBound) { this.casBound = casBound; }
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public Integer getTeacherStatus() { return teacherStatus; }
+    public void setTeacherStatus(Integer teacherStatus) { this.teacherStatus = teacherStatus; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }

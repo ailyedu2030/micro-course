@@ -5,10 +5,15 @@ import com.microcourse.dto.QuestionUpdateRequest;
 import com.microcourse.dto.QuestionVO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.service.QuestionService;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/questions")
@@ -59,5 +64,32 @@ public class QuestionController {
     public R<Void> delete(@PathVariable Long id) {
         questionService.delete(id);
         return R.ok();
+    }
+
+    /**
+     * POST /api/questions/batch/import
+     * 批量导入题目（Excel）
+     * @param file Excel 文件
+     * @param courseId 课程ID（路径参数）
+     */
+    @PostMapping("/batch/import")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<BatchImportResultVO> batchImport(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam Long courseId) {
+        if (file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
+        }
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件大小不能超过 10MB");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || (
+                !contentType.startsWith("application/vnd.ms-excel") &&
+                !contentType.startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 Excel 文件 (.xls/.xlsx)");
+        }
+        BatchImportResultVO result = questionService.batchImport(file, courseId);
+        return R.ok(result);
     }
 }

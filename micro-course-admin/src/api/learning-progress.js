@@ -15,3 +15,7 @@ export function createLearningProgress(data) {
 export function getCompletion(params) {
   return request({ method: 'GET', url: '/learning-progress/progress/completion', params })
 }
+
+export function getStudyDays() {
+  return request({ method: 'GET', url: '/learning-progress/study-days' })
+}

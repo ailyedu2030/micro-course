@@ -27,6 +27,7 @@ public class UserVO {
     private String studentNo;
     private String teacherNo;
     private Integer status;
+    private Integer teacherStatus;
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private String statusText;
@@ -75,6 +76,8 @@ public class UserVO {
     public void setTeacherNo(String teacherNo) { this.teacherNo = teacherNo; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public Integer getTeacherStatus() { return teacherStatus; }
+    public void setTeacherStatus(Integer teacherStatus) { this.teacherStatus = teacherStatus; }
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
