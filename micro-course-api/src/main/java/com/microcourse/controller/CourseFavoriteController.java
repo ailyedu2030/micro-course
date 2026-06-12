@@ -45,11 +45,11 @@ public class CourseFavoriteController {
 
     /**
      * GET /api/favorites
-     * 获取所有收藏记录（管理员用）
-     * 权限：ADMIN
+     * 获取所有收藏记录
+     * 权限：ADMIN / TEACHER / STUDENT（已认证用户）
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public R<List<CourseFavoriteVO>> listAll() {
         List<CourseFavoriteVO> favorites = favoriteService.listAll();
         return R.ok(favorites);

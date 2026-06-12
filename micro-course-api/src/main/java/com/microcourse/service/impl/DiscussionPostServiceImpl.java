@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.DiscussionPostVO;
 import com.microcourse.dto.DiscussionCommentVO;
+import com.microcourse.dto.DiscussionPageQuery;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.PostCreateRequest;
 import com.microcourse.dto.PostUpdateRequest;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.DiscussionComment;
 import com.microcourse.entity.User;
@@ -17,6 +19,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.DiscussionPostService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,13 +37,16 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     private final DiscussionPostRepository postRepository;
     private final DiscussionCommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final CourseRepository courseRepository;
 
     public DiscussionPostServiceImpl(DiscussionPostRepository postRepository,
                                      DiscussionCommentRepository commentRepository,
-                                     UserRepository userRepository) {
+                                     UserRepository userRepository,
+                                     CourseRepository courseRepository) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
+        this.courseRepository = courseRepository;
     }
 
        @Override
@@ -73,6 +79,119 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         result.setTotalElements(ipage.getTotal());
         result.setTotalPages(ipage.getPages());
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DiscussionPostVO> pageAdmin(DiscussionPageQuery query) {
+        LambdaQueryWrapper<DiscussionPost> wrapper = new LambdaQueryWrapper<>();
+
+        // keyword搜索：title或content模糊匹配
+        if (query.getKeyword() != null && !query.getKeyword().isBlank()) {
+            wrapper.and(w -> w.like(DiscussionPost::getTitle, query.getKeyword())
+                    .or().like(DiscussionPost::getContent, query.getKeyword()));
+        }
+
+        // 按courseId筛选
+        wrapper.eq(query.getCourseId() != null, DiscussionPost::getCourseId, query.getCourseId());
+
+        // 按status筛选（前端传字符串：PENDING/PUBLISHED/DELETED，数据库存整数）
+        if (query.getStatus() != null && !query.getStatus().isBlank()) {
+            Integer statusVal = switch (query.getStatus()) {
+                case "PENDING" -> 0;
+                case "PUBLISHED" -> 1;
+                case "DELETED" -> 2;
+                default -> null;
+            };
+            wrapper.eq(statusVal != null, DiscussionPost::getStatus, statusVal);
+        }
+
+        wrapper.orderByDesc(DiscussionPost::getIsPinned)
+               .orderByDesc(DiscussionPost::getCreatedAt);
+
+        IPage<DiscussionPost> ipage = postRepository.selectPage(
+                new Page<>(query.getPage() + 1, query.getSize()), wrapper);
+
+        // 批量预加载 user + course
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+        java.util.Map<Long, Course> courseMap = new java.util.HashMap<>();
+        java.util.Set<Long> userIds = ipage.getRecords().stream()
+                .map(DiscussionPost::getUserId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> courseIds = ipage.getRecords().stream()
+                .map(DiscussionPost::getCourseId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (!userIds.isEmpty()) {
+            userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
+        }
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
+        }
+        final java.util.Map<Long, User> finalUserMap = userMap;
+        final java.util.Map<Long, Course> finalCourseMap = courseMap;
+
+        List<DiscussionPostVO> vos = ipage.getRecords().stream()
+                .map(p -> convertToVOForAdmin(p, finalUserMap, finalCourseMap))
+                .collect(Collectors.toList());
+
+        PageResult<DiscussionPostVO> result = new PageResult<>();
+        result.setItems(vos);
+        result.setPage((int) ipage.getCurrent() - 1);
+        result.setSize((int) ipage.getSize());
+        result.setTotalElements(ipage.getTotal());
+        result.setTotalPages(ipage.getPages());
+        return result;
+    }
+
+    private DiscussionPostVO convertToVOForAdmin(DiscussionPost post,
+                                                  java.util.Map<Long, User> userMap,
+                                                  java.util.Map<Long, Course> courseMap) {
+        DiscussionPostVO vo = new DiscussionPostVO();
+        vo.setId(post.getId());
+        vo.setCourseId(post.getCourseId());
+        vo.setChapterId(post.getChapterId());
+        vo.setUserId(post.getUserId());
+        vo.setTitle(post.getTitle());
+        vo.setContent(post.getContent());
+        vo.setIsAnonymous(post.getIsAnonymous());
+        vo.setIsPinned(post.getIsPinned());
+        vo.setIsEssence(post.getIsEssence());
+        vo.setCommentCount(post.getCommentCount());
+        vo.setLikeCount(post.getLikeCount());
+        vo.setCreatedAt(post.getCreatedAt());
+
+        // status: Integer → String
+        String statusStr = switch (post.getStatus()) {
+            case 0 -> "PENDING";
+            case 1 -> "PUBLISHED";
+            case 2 -> "DELETED";
+            default -> "PENDING";
+        };
+        vo.setStatus(statusStr);
+
+        // courseName
+        if (post.getCourseId() != null) {
+            Course course = courseMap.get(post.getCourseId());
+            if (course != null) {
+                vo.setCourseName(course.getTitle());
+            }
+        }
+
+        // authorName
+        if (post.getUserId() != null) {
+            User author = userMap.get(post.getUserId());
+            if (author != null) {
+                if (Boolean.TRUE.equals(post.getIsAnonymous())) {
+                    vo.setAuthorName("匿名用户");
+                    vo.setUserId(null);
+                } else {
+                    vo.setAuthorName(author.getRealName() != null ? author.getRealName() : author.getUsername());
+                }
+            }
+        }
+
+        return vo;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.DiscussionPostVO;
+import com.microcourse.dto.DiscussionPageQuery;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.PostCreateRequest;
 import com.microcourse.dto.PostUpdateRequest;
@@ -8,6 +9,8 @@ import com.microcourse.dto.PostUpdateRequest;
 public interface DiscussionPostService {
 
     PageResult<DiscussionPostVO> page(Long chapterId, int page, int size);
+
+    PageResult<DiscussionPostVO> pageAdmin(DiscussionPageQuery query);
 
     DiscussionPostVO getById(Long id);
 

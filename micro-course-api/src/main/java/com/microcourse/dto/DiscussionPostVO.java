@@ -19,6 +19,8 @@ public class DiscussionPostVO {
     private Integer likeCount;
     private LocalDateTime createdAt;
     private List<DiscussionCommentVO> children;
+    private String courseName;
+    private String status;
 
     public DiscussionPostVO() {}
 
@@ -50,4 +52,8 @@ public class DiscussionPostVO {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public List<DiscussionCommentVO> getChildren() { return children; }
     public void setChildren(List<DiscussionCommentVO> children) { this.children = children; }
+    public String getCourseName() { return courseName; }
+    public void setCourseName(String courseName) { this.courseName = courseName; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }
