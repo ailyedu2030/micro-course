@@ -5,13 +5,15 @@
   Author: jackie
 -->
 <template>
-  <router-view v-if="isLoginPage" />
-  <StudentLayout v-else-if="isStudent" />
-  <Layout v-else />
+  <div id="app" :class="appClass">
+    <router-view v-if="isLoginPage" />
+    <StudentLayout v-else-if="isStudent" />
+    <Layout v-else />
+  </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from './store/user'
 import Layout from './components/Layout.vue'
@@ -22,6 +24,16 @@ const userStore = useUserStore()
 
 const isLoginPage = computed(() => route.path === '/login')
 const isStudent = computed(() => userStore.role === 'STUDENT')
+
+const appClass = computed(() => ({
+  'role-student': isStudent.value,
+  'role-staff': !isStudent.value
+}))
+
+// 响应式主题切换：role 变化时 Element Plus 变量自动跟随 .role-* 变化
+watch(() => userStore.role, (role) => {
+  // design-tokens.css 已通过 .role-* 类切换变量，此处仅作安全兜案
+}, { immediate: true })
 
 onMounted(() => {
   if (!userStore.userInfo) {

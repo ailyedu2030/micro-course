@@ -1,33 +1,78 @@
 <!--
   课程评价列表
   路由路径: /courses/reviews
-  Phase 2
+  Phase 1
   Author: jackie
 -->
 <template>
-  <div class="course-review-list">
-    <!-- 表格区 -->
+  <div class="review-list-page">
+    <!-- 顶栏筛选卡 -->
+    <el-card class="search-card filter-card" shadow="never">
+      <el-form :inline="true" :model="searchForm" @submit.prevent>
+        <el-form-item label="课程">
+          <el-input v-model="searchForm.courseName" placeholder="课程名称" clearable class="filter-input-w160" />
+        </el-form-item>
+        <el-form-item label="评分">
+          <el-select v-model="searchForm.rating" placeholder="请选择评分" clearable class="filter-input-w120">
+            <el-option label="5星" :value="5" />
+            <el-option label="4星" :value="4" />
+            <el-option label="3星" :value="3" />
+            <el-option label="2星" :value="2" />
+            <el-option label="1星" :value="1" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120">
+            <el-option label="已发布" value="PUBLISHED" />
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已删除" value="DELETED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>课程审核列表</span>
+          <span class="card-title">评价列表</span>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+        <template #empty>
+          <el-empty description="暂无评价数据" />
+        </template>
         <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="teacherName" label="教师" width="120" />
-        <el-table-column prop="categoryName" label="分类" width="120" />
-        <el-table-column prop="createdAt" label="提交时间" width="170" />
-        <el-table-column label="操作" width="180" fixed="right" align="center">
+        <el-table-column prop="courseName" label="课程" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="authorName" label="作者" width="120" />
+        <el-table-column prop="rating" label="评分" width="100" align="center">
           <template #default="{ row }">
-            <el-button type="success" link size="small" @click="handleApprove(row)">通过</el-button>
-            <el-button type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
+            <div class="rating-stars">
+              <el-rate v-model="row.rating" disabled text-color="#ff9900" />
+            </div>
           </template>
         </el-table-column>
-        <template #empty>
-          <el-empty description="暂无待审核课程" />
-        </template>
+        <el-table-column prop="content" label="评价内容" min-width="250" show-overflow-tooltip />
+        <el-table-column prop="createdAt" label="发布时间" width="170" />
+        <el-table-column prop="status" label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.status === 'PUBLISHED'" type="success" size="small">已发布</el-tag>
+            <el-tag v-else-if="row.status === 'PENDING'" type="warning" size="small">待审核</el-tag>
+            <el-tag v-else-if="row.status === 'DELETED'" type="info" size="small">已删除</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.status || '-' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="180" fixed="right" align="center">
+          <template #default="{ row }">
+            <el-button v-if="row.status === 'PENDING'" type="success" link size="small" @click="handleApprove(row)">通过</el-button>
+            <el-button v-if="row.status === 'PENDING'" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -41,87 +86,57 @@
         />
       </div>
     </el-card>
-
-    <!-- 驳回原因弹窗 -->
-    <el-dialog v-model="rejectDialogVisible" title="驳回原因" width="500px">
-      <el-form :model="rejectForm" label-width="80px">
-        <el-form-item label="驳回原因" prop="reason">
-          <el-input v-model="rejectForm.reason" type="textarea" :rows="3" placeholder="请输入驳回原因" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="rejectDialogVisible = false">取消</el-button>
-        <el-button type="danger" :loading="submitLoading" @click="confirmReject">确认驳回</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourses, updateCourseStatus } from '@/api/course'
+import { getReviews, approveReview, rejectReview, deleteReview } from '@/api/review'
 
 const loading = ref(false)
-const submitLoading = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 
-const rejectDialogVisible = ref(false)
-const currentRejectId = ref(null)
-const rejectForm = reactive({ reason: '' })
+const searchForm = reactive({
+  courseName: '',
+  rating: '',
+  status: ''
+})
 
 const fetchData = async () => {
   loading.value = true
   try {
-    const params = { page: page.value - 1, size: size.value, status: 1 }
-    const res = await getCourses(params)
-    tableData.value = res.data?.items || []
-    totalElements.value = res.data?.totalElements || 0
+    const params = {
+      page: page.value - 1,
+      size: size.value,
+      courseName: searchForm.courseName || undefined,
+      rating: searchForm.rating || undefined,
+      status: searchForm.status || undefined
+    }
+    const { data } = await getReviews(params)
+    tableData.value = data.items || []
+    totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取待审核课程列表失败')
+    ElMessage.error('获取评价列表失败')
   } finally {
     loading.value = false
   }
 }
 
-const handleApprove = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定审核通过该课程?', '提示', { type: 'warning' })
-    await updateCourseStatus(row.id, 2)
-    ElMessage.success('审核通过成功')
-    fetchData()
-  } catch {
-    if (e !== 'cancel') {
-      ElMessage.error('操作失败')
-    }
-  }
+const handleSearch = () => {
+  page.value = 1
+  fetchData()
 }
 
-const handleReject = (row) => {
-  currentRejectId.value = row.id
-  rejectForm.reason = ''
-  rejectDialogVisible.value = true
-}
-
-const confirmReject = async () => {
-  if (!rejectForm.reason.trim()) {
-    ElMessage.warning('请输入驳回原因')
-    return
-  }
-  submitLoading.value = true
-  try {
-    await updateCourseStatus(currentRejectId.value, 3)
-    ElMessage.success('驳回成功')
-    rejectDialogVisible.value = false
-    fetchData()
-  } catch {
-    ElMessage.error('操作失败')
-  } finally {
-    submitLoading.value = false
-  }
+const handleReset = () => {
+  searchForm.courseName = ''
+  searchForm.rating = ''
+  searchForm.status = ''
+  page.value = 1
+  fetchData()
 }
 
 const handleSizeChange = () => {
@@ -133,26 +148,66 @@ const handlePageChange = () => {
   fetchData()
 }
 
+const handleApprove = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定通过该评价?', '提示', { type: 'warning' })
+    await approveReview(row.id)
+    ElMessage.success('审核通过')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+const handleReject = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定驳回该评价?', '提示', { type: 'warning' })
+    await rejectReview(row.id)
+    ElMessage.success('驳回成功')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定删除该评价?', '提示', { type: 'warning' })
+    await deleteReview(row.id)
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
 onMounted(() => {
   fetchData()
 })
 </script>
 
 <style scoped>
-.course-review-list {
-  padding: 20px;
+.review-list-page {
+  padding: var(--space-5);
+}
+
+.filter-card {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
 }
 
 .table-card {
-  transition: box-shadow 0.3s ease;
-}
-
-.table-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-md);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
 }
 
 .card-header {
@@ -161,17 +216,57 @@ onMounted(() => {
   align-items: center;
 }
 
+.card-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
-.data-table { width: 100%; }
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: var(--color-bg-page);
+}
+
+.rating-stars {
+  display: flex;
+  align-items: center;
+}
+
+.filter-input-w160 {
+  width: 160px;
+}
+
+.filter-input-w120 {
+  width: 120px;
+}
 
 @media (max-width: 768px) {
-  .course-review-list {
-    padding: 12px;
+  .review-list-page {
+    padding: var(--space-3);
+  }
+
+  .filter-card {
+    margin-bottom: var(--space-3);
+  }
+
+  .filter-input-w160,
+  .filter-input-w120 {
+    width: 100%;
   }
 
   .pagination-wrap {

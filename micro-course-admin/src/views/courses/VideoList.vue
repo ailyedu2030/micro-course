@@ -5,12 +5,12 @@
   Author: jackie
 -->
 <template>
-  <div class="video-list">
-    <!-- 搜索区 -->
-    <el-card class="search-card" shadow="never">
+  <div class="video-list-page">
+    <!-- 顶栏筛选卡 -->
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="所属课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="search-input-w200">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -21,11 +21,11 @@
       </el-form>
     </el-card>
 
-    <!-- 表格区 -->
+    <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>视频列表</span>
+          <span class="card-title">视频列表</span>
           <div class="header-actions">
             <el-upload
               :before-upload="handleBeforeUpload"
@@ -41,7 +41,7 @@
         </div>
       </template>
 
-      <!-- 上传进度 -->
+      <!-- 上传队列 -->
       <div v-if="uploadQueue.length > 0" class="upload-queue">
         <div class="queue-title">上传队列</div>
         <div v-for="(item, idx) in uploadQueue" :key="idx" class="queue-item">
@@ -59,43 +59,48 @@
       </div>
 
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
-        <el-table-column prop="title" label="标题" min-width="150" />
+        <template #empty>
+          <el-empty description="暂无视频数据" />
+        </template>
+        <el-table-column type="index" label="序号" width="70" align="center" />
+        <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
         <el-table-column prop="courseName" label="所属课程" min-width="120" />
-        <el-table-column prop="chapterId" label="章节ID" width="100" />
-        <el-table-column label="封面" width="100" align="center">
+        <el-table-column label="封面" width="90" align="center">
           <template #default="{ row }">
-            <img v-if="row.coverUrl" :src="row.coverUrl" class="video-cover-thumb" @click="handlePreviewCover(row)" />
-            <span v-else>-</span>
+            <el-image
+              v-if="row.coverUrl"
+              :src="row.coverUrl"
+              fit="cover"
+              class="table-thumb"
+              :preview-src-list="[row.coverUrl]"
+              lazy
+              @click="handlePreviewCover(row)"
+            />
+            <span v-else class="no-thumb">—</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 0" type="warning">上传中</el-tag>
-            <el-tag v-else-if="row.status === 1" type="info">转码中</el-tag>
-            <el-tag v-else-if="row.status === 2" type="success">完成</el-tag>
-            <el-tag v-else-if="row.status === 3" type="danger">失败</el-tag>
-            <el-tag v-else type="info">{{ row.status }}</el-tag>
+            <el-tag v-if="row.status === 0" type="warning" size="small">上传中</el-tag>
+            <el-tag v-else-if="row.status === 1" type="info" size="small">转码中</el-tag>
+            <el-tag v-else-if="row.status === 2" type="success" size="small">完成</el-tag>
+            <el-tag v-else-if="row.status === 3" type="danger" size="small">失败</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.status ?? '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="fileSize" label="大小" width="100">
+        <el-table-column prop="fileSize" label="大小" width="100" align="center">
           <template #default="{ row }">
             {{ formatFileSize(row.fileSize) }}
           </template>
         </el-table-column>
-        <el-table-column prop="sortOrder" label="排序" width="80" />
-        <el-table-column label="操作" width="210" fixed="right">
+        <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
+        <el-table-column label="操作" width="210" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="success" link size="small" @click="handleSetCover(row)">设置封面</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
-        <template #empty>
-          <div class="empty-state">
-            <el-icon :size="40"><VideoCamera /></el-icon>
-            <p>暂无数据</p>
-          </div>
-        </template>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -110,7 +115,7 @@
       </div>
     </el-card>
 
-    <!-- 弹窗区 -->
+    <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
         <el-form-item label="标题" prop="title">
@@ -140,8 +145,8 @@
     <!-- 封面设置弹窗 -->
     <el-dialog v-model="coverDialogVisible" title="设置视频封面" width="400px">
       <div class="cover-preview">
-        <img v-if="currentCoverUrl" :src="currentCoverUrl" class="cover-img" />
-        <span v-else>暂无封面</span>
+        <el-image v-if="currentCoverUrl" :src="currentCoverUrl" fit="contain" class="cover-img" />
+        <span v-else class="no-cover">暂无封面</span>
       </div>
       <el-upload
         ref="coverUploadRef"
@@ -160,17 +165,13 @@
 
     <!-- 封面预览弹窗 -->
     <el-dialog v-model="previewDialogVisible" title="封面预览" width="600px">
-      <img v-if="previewCoverUrl" :src="previewCoverUrl" class="full-width" />
-      <span v-else>无封面</span>
+      <el-image v-if="previewCoverUrl" :src="previewCoverUrl" fit="contain" class="preview-img" />
+      <span v-else class="no-cover">无封面</span>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-/**
- * 视频列表页面 - Phase 6 增强：批量上传视频 + 视频封面自定义
- * @author Claude Code Agent
- */
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
@@ -209,12 +210,10 @@ const formRules = {
   url: [{ required: true, message: '请输入视频URL', trigger: 'blur' }]
 }
 
-// 批量上传队列
 const uploadQueue = ref([])
 const uploadSuccess = ref(0)
 const uploadError = ref(0)
 
-// 封面相关
 const coverDialogVisible = ref(false)
 const previewDialogVisible = ref(false)
 const coverSubmitLoading = ref(false)
@@ -226,7 +225,7 @@ const coverUploadRef = ref(null)
 
 const fetchCourses = async () => {
   try {
-    const { data } = await getCourses({ size: 1000 })
+    const { data } = await getCourses({ page: 0, size: 1000 })
     courseOptions.value = data.items || []
   } catch {
     ElMessage.error('获取课程列表失败')
@@ -234,12 +233,17 @@ const fetchCourses = async () => {
 }
 
 const fetchData = async () => {
+  if (!searchForm.courseId) {
+    tableData.value = []
+    totalElements.value = 0
+    return
+  }
   loading.value = true
   try {
     const params = {
+      courseId: searchForm.courseId,
       page: page.value - 1,
-      size: size.value,
-      courseId: searchForm.courseId || undefined
+      size: size.value
     }
     const { data } = await getVideos(params)
     tableData.value = data.items || []
@@ -259,7 +263,8 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.courseId = ''
   page.value = 1
-  fetchData()
+  tableData.value = []
+  totalElements.value = 0
 }
 
 const handleSizeChange = () => {
@@ -271,12 +276,51 @@ const handlePageChange = () => {
   fetchData()
 }
 
+const formatFileSize = (size) => {
+  if (!size) return '-'
+  if (size < 1024) return `${size}B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)}KB`
+  if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)}MB`
+  return `${(size / (1024 * 1024 * 1024)).toFixed(1)}GB`
+}
+
+const handleBeforeUpload = (file) => {
+  const item = {
+    name: file.name,
+    percentage: 0,
+    status: 'uploading'
+  }
+  uploadQueue.value.push(item)
+  return true
+}
+
+const handleBatchUpload = async ({ file }) => {
+  const queueItem = uploadQueue.value.find(i => i.name === file.name)
+  if (!queueItem) return
+
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    await uploadVideo(formData, (p) => {
+      queueItem.percentage = Math.round(p)
+    })
+    queueItem.status = 'success'
+    uploadSuccess.value++
+    ElMessage.success(`${file.name} 上传成功`)
+    fetchData()
+  } catch {
+    queueItem.status = 'error'
+    uploadError.value++
+    ElMessage.error(`${file.name} 上传失败`)
+  }
+}
+
 const handleCreate = () => {
   dialogTitle.value = '新增视频'
   isEdit.value = false
   currentId.value = null
   formData.title = ''
-  formData.courseId = null
+  formData.courseId = searchForm.courseId ? Number(searchForm.courseId) : null
   formData.chapterId = null
   formData.sortOrder = 0
   formData.url = ''
@@ -290,8 +334,8 @@ const handleEdit = (row) => {
   formData.title = row.title
   formData.courseId = row.courseId
   formData.chapterId = row.chapterId
-  formData.sortOrder = row.sortOrder
-  formData.url = row.url
+  formData.sortOrder = row.sortOrder || 0
+  formData.url = row.url || ''
   dialogVisible.value = true
 }
 
@@ -301,7 +345,7 @@ const handleDelete = async (row) => {
     await deleteVideo(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -335,51 +379,6 @@ const handleDialogClose = () => {
   formRef.value?.resetFields()
 }
 
-const formatFileSize = (bytes) => {
-  if (!bytes) return '-'
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-  return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB'
-}
-
-// 批量上传
-const handleBeforeUpload = (file) => {
-  uploadQueue.value.push({
-    name: file.name,
-    percentage: 0,
-    status: 'uploading'
-  })
-  return false
-}
-
-const handleBatchUpload = async ({ file }) => {
-  const queueItem = uploadQueue.value.find(q => q.name === file.name)
-  if (!queueItem) return
-  try {
-    const form = new FormData()
-    form.append('file', file)
-    // 模拟上传进度
-    const interval = setInterval(() => {
-      if (queueItem.percentage < 90) {
-        queueItem.percentage += 10
-      }
-    }, 200)
-    // 实际调用上传API
-    await uploadVideo(form)
-    clearInterval(interval)
-    queueItem.percentage = 100
-    queueItem.status = 'success'
-    uploadSuccess.value++
-    ElMessage.success(`${file.name} 上传成功`)
-  } catch {
-    queueItem.status = 'error'
-    uploadError.value++
-    ElMessage.error(`${file.name} 上传失败`)
-  }
-}
-
-// 封面相关
 const handleSetCover = (row) => {
   currentVideoId.value = row.id
   currentCoverUrl.value = row.coverUrl || ''
@@ -389,29 +388,25 @@ const handleSetCover = (row) => {
 
 const handleCoverChange = (file) => {
   coverFile.value = file.raw
+  currentCoverUrl.value = URL.createObjectURL(file.raw)
 }
 
 const handleSubmitCover = async () => {
-  if (!coverFile.value) {
-    ElMessage.warning('请先选择图片')
-    return
-  }
+  if (!currentVideoId.value) return
   coverSubmitLoading.value = true
   try {
-    const form = new FormData()
-    form.append('file', coverFile.value)
-    ElMessage.info('视频封面上传功能开发中')
+    ElMessage.info('封面上传功能待实现')
     coverDialogVisible.value = false
-    fetchData()
   } catch {
-    ElMessage.error('封面设置失败')
+    ElMessage.error('设置封面失败')
   } finally {
     coverSubmitLoading.value = false
   }
 }
 
 const handlePreviewCover = (row) => {
-  previewCoverUrl.value = row.coverUrl || ''
+  if (!row.coverUrl) return
+  previewCoverUrl.value = row.coverUrl
   previewDialogVisible.value = true
 }
 
@@ -421,16 +416,21 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.video-list {
-  padding: 20px;
+.video-list-page {
+  padding: var(--space-5);
 }
 
-.search-card {
-  margin-bottom: 16px;
+.filter-card {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.table-card {
+  border-radius: var(--radius-md);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
 }
 
 .card-header {
@@ -439,95 +439,142 @@ onMounted(() => {
   align-items: center;
 }
 
+.card-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .header-actions {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  gap: var(--space-2);
 }
 
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
-.video-cover-thumb {
-  width: 50px;
-  height: 30px;
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: var(--color-bg-page);
+}
+
+.table-thumb {
+  width: 48px;
+  height: 32px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
-  border-radius: 4px;
   cursor: pointer;
 }
 
+.no-thumb {
+  color: var(--color-text-placeholder);
+}
+
 .upload-queue {
-  margin-bottom: 16px;
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  background: var(--color-bg-page);
+  border-radius: var(--radius-sm);
 }
 
 .queue-title {
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 600;
-  margin-bottom: 8px;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
 }
 
 .queue-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .queue-name {
-  flex: 1;
-  font-size: 13px;
+  width: 200px;
+  font-size: var(--text-sm);
+  color: var(--color-text-regular);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 200px;
+}
+
+.queue-progress {
+  flex: 1;
 }
 
 .queue-status {
   width: 60px;
 }
 
-.queue-progress {
-  width: 200px;
-}
-
 .queue-summary {
-  margin-top: 8px;
-  font-size: 13px;
-  color: #909399;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
 }
 
 .cover-preview {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-3);
   text-align: center;
 }
 
 .cover-img {
   max-width: 100%;
-  max-height: 200px;
-  border-radius: 4px;
+  max-height: 300px;
+  border-radius: var(--radius-sm);
+}
+
+.preview-img {
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.no-cover {
+  color: var(--color-text-placeholder);
+  font-size: var(--text-sm);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.filter-input-w200 {
+  width: 200px;
 }
 
 @media (max-width: 768px) {
-  .video-list {
-    padding: 12px;
+  .video-list-page {
+    padding: var(--space-3);
   }
 
-  .search-card {
-    margin-bottom: 12px;
+  .filter-card {
+    margin-bottom: var(--space-3);
   }
 
   .header-actions {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+  }
+
+  .queue-name {
+    width: 120px;
   }
 }
-
-.data-table { width: 100%; }
-.full-width { width: 100%; }
-.search-input-w200 { width: 200px; }
 </style>

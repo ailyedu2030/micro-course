@@ -6,221 +6,427 @@
 -->
 <template>
   <div class="profile-view">
-    <h2 class="page-title">个人中心</h2>
+    <!-- PC 端布局 -->
+    <template v-if="!isMobile">
+      <h2 class="page-title">个人中心</h2>
 
-    <el-row :gutter="20">
-      <el-col :span="16">
-        <!-- 资料编辑 -->
-        <el-card class="profile-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>基本资料</span>
-            </div>
-          </template>
-          <el-form :model="profileForm" :rules="profileRules" ref="profileFormRef" label-width="80px">
-            <el-form-item label="用户名">
-              <el-input :model-value="userStore.userInfo?.username" disabled />
-            </el-form-item>
-            <el-form-item label="姓名" prop="realName">
-              <el-input v-model="profileForm.realName" placeholder="请输入姓名" />
-            </el-form-item>
-            <el-form-item label="邮箱" prop="email">
-              <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
-            </el-form-item>
-            <el-form-item label="手机号" prop="phone">
-              <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
-            </el-form-item>
-            <el-form-item label="性别" prop="gender">
-              <el-select v-model="profileForm.gender" placeholder="请选择性别">
-                <el-option label="保密" value="SECRET" />
-                <el-option label="男" value="MALE" />
-                <el-option label="女" value="FEMALE" />
-              </el-select>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="handleUpdateProfile" :loading="profileLoading">保存修改</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
+      <el-row :gutter="20">
+        <el-col :span="16">
+          <!-- 资料编辑 -->
+          <el-card class="profile-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span>基本资料</span>
+              </div>
+            </template>
+            <el-form :model="profileForm" :rules="profileRules" ref="profileFormRef" label-width="80px">
+              <el-form-item label="用户名">
+                <el-input :model-value="userStore.userInfo?.username" disabled />
+              </el-form-item>
+              <el-form-item label="姓名" prop="realName">
+                <el-input v-model="profileForm.realName" placeholder="请输入姓名" />
+              </el-form-item>
+              <el-form-item label="邮箱" prop="email">
+                <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
+              </el-form-item>
+              <el-form-item label="手机号" prop="phone">
+                <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
+              </el-form-item>
+              <el-form-item label="性别" prop="gender">
+                <el-select v-model="profileForm.gender" placeholder="请选择性别">
+                  <el-option label="保密" value="SECRET" />
+                  <el-option label="男" value="MALE" />
+                  <el-option label="女" value="FEMALE" />
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="handleUpdateProfile" :loading="profileLoading">保存修改</el-button>
+              </el-form-item>
+            </el-form>
+          </el-card>
 
-        <!-- 密码修改 -->
-        <el-card class="profile-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>修改密码</span>
-            </div>
-          </template>
-          <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px">
-            <el-form-item label="旧密码" prop="oldPassword">
-              <el-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入旧密码" show-password />
-            </el-form-item>
-            <el-form-item label="新密码" prop="newPassword">
-              <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码" show-password />
-            </el-form-item>
-            <el-form-item label="确认密码" prop="confirmPassword">
-              <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" show-password />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="handleChangePassword" :loading="passwordLoading">修改密码</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-col>
+          <!-- 密码修改 -->
+          <el-card class="profile-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span>修改密码</span>
+              </div>
+            </template>
+            <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px">
+              <el-form-item label="旧密码" prop="oldPassword">
+                <el-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入旧密码" show-password />
+              </el-form-item>
+              <el-form-item label="新密码" prop="newPassword">
+                <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码" show-password />
+              </el-form-item>
+              <el-form-item label="确认密码" prop="confirmPassword">
+                <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" show-password />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="handleChangePassword" :loading="passwordLoading">修改密码</el-button>
+              </el-form-item>
+            </el-form>
+          </el-card>
+        </el-col>
 
-      <el-col :span="8">
-        <!-- 头像 -->
-        <el-card class="profile-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>头像设置</span>
+        <el-col :span="8">
+          <!-- 头像 -->
+          <el-card class="profile-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span>头像设置</span>
+              </div>
+            </template>
+            <div class="avatar-section">
+              <el-avatar :size="80" :src="userStore.userInfo?.avatar" />
+              <div class="avatar-tip">支持 JPG、PNG格式，建议200x200 像素</div>
             </div>
-          </template>
-          <div class="avatar-section">
-            <el-avatar :size="80" :src="userStore.userInfo?.avatar" />
-            <div class="avatar-tip">支持 JPG、PNG格式，建议200x200 像素</div>
+          </el-card>
+
+          <!-- 账号信息 -->
+          <el-card class="profile-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span>账号信息</span>
+              </div>
+            </template>
+            <div class="info-list">
+              <div class="info-item">
+                <span class="info-label">用户ID</span>
+                <span class="info-value">{{ userStore.userInfo?.id }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">角色</span>
+                <span class="info-value">{{ userStore.userInfo?.role }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">注册时间</span>
+                <span class="info-value">{{ userStore.userInfo?.createdAt }}</span>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <!-- 成就 -->
+      <el-card class="profile-card achievement-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>我的成就</span>
           </div>
-        </el-card>
-
-        <!-- 账号信息 -->
-        <el-card class="profile-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>账号信息</span>
+        </template>
+        <div v-loading="badgeLoading" class="badge-grid">
+          <div
+            v-for="badge in allBadges"
+            :key="badge.badgeType"
+            class="badge-item"
+            :class="{ 'badge-locked': !badge.earnedAt }"
+          >
+            <div class="badge-icon">
+              <el-icon v-if="badge.earnedAt" color="var(--role-primary)" :size="32"><Star /></el-icon>
+              <el-icon v-else color="var(--el-text-color-placeholder)" :size="32"><Lock /></el-icon>
             </div>
-          </template>
-          <div class="info-list">
-            <div class="info-item">
-              <span class="info-label">用户ID</span>
-              <span class="info-value">{{ userStore.userInfo?.id }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">角色</span>
-              <span class="info-value">{{ userStore.userInfo?.role }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">注册时间</span>
-              <span class="info-value">{{ userStore.userInfo?.createdAt }}</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 成就 -->
-    <el-card class="profile-card achievement-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>我的成就</span>
-        </div>
-      </template>
-      <div v-loading="badgeLoading" class="badge-grid">
-        <div
-          v-for="badge in allBadges"
-          :key="badge.badgeType"
-          class="badge-item"
-          :class="{ 'badge-locked': !badge.earnedAt }"
-        >
-          <div class="badge-icon">
-            <el-icon v-if="badge.earnedAt" color="#67c23a" :size="32"><Star /></el-icon>
-            <el-icon v-else color="#c0c4cc" :size="32"><Lock /></el-icon>
-          </div>
-          <div class="badge-name">{{ badge.badgeName }}</div>
-          <div v-if="badge.earnedAt" class="badge-date">{{ badge.earnedAt }}</div>
-          <div v-else class="badge-tip">未解锁</div>
-        </div>
-      </div>
-      <el-empty v-if="!badgeLoading && allBadges.length === 0" description="暂无成就数据" :image-size="60" />
-    </el-card>
-
-    <!-- 错题集 -->
-    <el-card class="profile-card wrong-questions-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>我的错题</span>
-        </div>
-      </template>
-
-      <div class="wrong-toolbar">
-        <el-select v-model="selectedCourseId" placeholder="选择课程筛选" clearable @change="fetchWrongQuestions">
-          <el-option
-            v-for="course in myCourses"
-            :key="course.courseId"
-            :label="course.courseTitle"
-            :value="course.courseId"
-          />
-        </el-select>
-      </div>
-
-      <el-table v-loading="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="wrong-questions-table">
-        <el-table-column prop="questionContent" label="错题内容" min-width="200">
-          <template #default="{ row }">
-            <span>{{ row.questionContent || row.content }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="courseTitle" label="所属课程" width="150" />
-        <el-table-column prop="chapterTitle" label="所属章节" width="150" />
-        <el-table-column prop="wrongCount" label="错误次数" width="100" align="center" />
-        <el-table-column prop="correctAnswer" label="正确答案" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag type="success" size="small">{{ row.correctAnswer }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdAt" label="入库时间" width="170" />
-        <el-table-column label="操作" width="100" align="center">
-          <template #default="{ row }">
-            <el-button
-              v-if="row.chapterId"
-              type="primary"
-              size="small"
-              text
-              @click="handleReviewVideo(row)"
-            >
-              重温视频
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-empty v-if="!wrongLoading && wrongQuestions.length === 0" description="暂无错题记录，继续保持！" />
-    </el-card>
-
-    <!-- 我的证书 -->
-    <el-card class="profile-card certificate-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>我的证书</span>
-        </div>
-      </template>
-
-      <div v-loading="certLoading" class="cert-grid">
-        <div
-          v-for="cert in certificates"
-          :key="cert.id"
-          class="cert-item"
-        >
-          <div class="cert-icon">
-            <el-icon color="#c9a227" :size="40"><Medal /></el-icon>
-          </div>
-          <div class="cert-info">
-            <div class="cert-title">{{ cert.courseTitle }}</div>
-            <div class="cert-meta">
-              <span class="cert-date">颁发于 {{ formatDate(cert.issuedAt) }}</span>
-              <span class="cert-code">{{ cert.certCode }}</span>
-            </div>
-          </div>
-          <div class="cert-actions">
-            <el-button type="primary" size="small" @click="handleViewCertificate(cert)">
-              查看证书
-            </el-button>
+            <div class="badge-name">{{ badge.badgeName }}</div>
+            <div v-if="badge.earnedAt" class="badge-date">{{ badge.earnedAt }}</div>
+            <div v-else class="badge-tip">未解锁</div>
           </div>
         </div>
-      </div>
-      <el-empty v-if="!certLoading && certificates.length === 0" description="暂无证书记录，完成课程学习后可获得" :image-size="60" />
-    </el-card>
+        <el-empty v-if="!badgeLoading && allBadges.length === 0" description="暂无成就数据" :image-size="60" />
+      </el-card>
+
+      <!-- 错题集 -->
+      <el-card class="profile-card wrong-questions-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>我的错题</span>
+          </div>
+        </template>
+
+        <div class="wrong-toolbar">
+          <el-select v-model="selectedCourseId" placeholder="选择课程筛选" clearable @change="fetchWrongQuestions">
+            <el-option
+              v-for="course in myCourses"
+              :key="course.courseId"
+              :label="course.courseTitle"
+              :value="course.courseId"
+            />
+          </el-select>
+        </div>
+
+        <div class="wrong-table-wrapper">
+          <el-table v-loading="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="wrong-questions-table">
+            <el-table-column prop="questionContent" label="错题内容" min-width="200">
+              <template #default="{ row }">
+                <span>{{ row.questionContent || row.content }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="courseTitle" label="所属课程" width="150" />
+            <el-table-column prop="chapterTitle" label="所属章节" width="150" />
+            <el-table-column prop="wrongCount" label="错误次数" width="100" align="center" />
+            <el-table-column prop="correctAnswer" label="正确答案" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag type="success" size="small">{{ row.correctAnswer }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdAt" label="入库时间" width="170" />
+            <el-table-column label="操作" width="100" align="center">
+              <template #default="{ row }">
+                <el-button
+                  v-if="row.chapterId"
+                  type="primary"
+                  size="small"
+                  text
+                  @click="handleReviewVideo(row)"
+                >
+                  重温视频
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <el-empty v-if="!wrongLoading && wrongQuestions.length === 0" description="暂无错题记录，继续保持！" />
+      </el-card>
+
+      <!-- 我的证书 -->
+      <el-card class="profile-card certificate-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>我的证书</span>
+          </div>
+        </template>
+
+        <div v-loading="certLoading" class="cert-grid">
+          <div
+            v-for="cert in certificates"
+            :key="cert.id"
+            class="cert-item"
+          >
+            <div class="cert-icon">
+              <el-icon color="var(--role-primary)" :size="40"><Medal /></el-icon>
+            </div>
+            <div class="cert-info">
+              <div class="cert-title">{{ cert.courseTitle }}</div>
+              <div class="cert-meta">
+                <span class="cert-date">颁发于 {{ formatDate(cert.issuedAt) }}</span>
+                <span class="cert-code">{{ cert.certCode }}</span>
+              </div>
+            </div>
+            <div class="cert-actions">
+              <el-button type="primary" size="small" @click="handleViewCertificate(cert)">
+                查看证书
+              </el-button>
+            </div>
+          </div>
+        </div>
+        <el-empty v-if="!certLoading && certificates.length === 0" description="暂无证书记录，完成课程学习后可获得" :image-size="60" />
+      </el-card>
+    </template>
+
+    <!-- 移动端布局 -->
+    <template v-else>
+      <h2 class="page-title page-title--mobile">个人中心</h2>
+
+      <!-- 用户信息卡片 -->
+      <el-card class="profile-card user-info-card" shadow="never">
+        <div class="user-info-content">
+          <el-avatar :size="60" :src="userStore.userInfo?.avatar" />
+          <div class="user-info-text">
+            <div class="user-info-name">{{ userStore.userInfo?.realName || userStore.userInfo?.username }}</div>
+            <div class="user-info-role">{{ userStore.userInfo?.role }}</div>
+          </div>
+        </div>
+      </el-card>
+
+      <!-- 基本资料 -->
+      <el-card class="profile-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>基本资料</span>
+          </div>
+        </template>
+        <el-form :model="profileForm" :rules="profileRules" ref="profileFormRef" label-width="70px" size="small">
+          <el-form-item label="用户名">
+            <el-input :model-value="userStore.userInfo?.username" disabled />
+          </el-form-item>
+          <el-form-item label="姓名" prop="realName">
+            <el-input v-model="profileForm.realName" placeholder="请输入姓名" />
+          </el-form-item>
+          <el-form-item label="邮箱" prop="email">
+            <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
+          </el-form-item>
+          <el-form-item label="手机号" prop="phone">
+            <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
+          </el-form-item>
+          <el-form-item label="性别" prop="gender">
+            <el-select v-model="profileForm.gender" placeholder="请选择性别">
+              <el-option label="保密" value="SECRET" />
+              <el-option label="男" value="MALE" />
+              <el-option label="女" value="FEMALE" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleUpdateProfile" :loading="profileLoading" size="default">保存修改</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <!-- 账号信息 -->
+      <el-card class="profile-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>账号信息</span>
+          </div>
+        </template>
+        <div class="info-list">
+          <div class="info-item">
+            <span class="info-label">用户ID</span>
+            <span class="info-value">{{ userStore.userInfo?.id }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">注册时间</span>
+            <span class="info-value">{{ userStore.userInfo?.createdAt }}</span>
+          </div>
+        </div>
+      </el-card>
+
+      <!-- 修改密码 -->
+      <el-card class="profile-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>修改密码</span>
+          </div>
+        </template>
+        <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="80px" size="small">
+          <el-form-item label="旧密码" prop="oldPassword">
+            <el-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入旧密码" show-password />
+          </el-form-item>
+          <el-form-item label="新密码" prop="newPassword">
+            <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码" show-password />
+          </el-form-item>
+          <el-form-item label="确认密码" prop="confirmPassword">
+            <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" show-password />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleChangePassword" :loading="passwordLoading" size="default">修改密码</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <!-- 成就 -->
+      <el-card class="profile-card achievement-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>我的成就</span>
+          </div>
+        </template>
+        <div v-loading="badgeLoading" class="badge-grid badge-grid--mobile">
+          <div
+            v-for="badge in allBadges"
+            :key="badge.badgeType"
+            class="badge-item"
+            :class="{ 'badge-locked': !badge.earnedAt }"
+          >
+            <div class="badge-icon">
+              <el-icon v-if="badge.earnedAt" color="var(--role-primary)" :size="28"><Star /></el-icon>
+              <el-icon v-else color="var(--el-text-color-placeholder)" :size="28"><Lock /></el-icon>
+            </div>
+            <div class="badge-name">{{ badge.badgeName }}</div>
+            <div v-if="badge.earnedAt" class="badge-date">{{ badge.earnedAt }}</div>
+            <div v-else class="badge-tip">未解锁</div>
+          </div>
+        </div>
+        <el-empty v-if="!badgeLoading && allBadges.length === 0" description="暂无成就数据" :image-size="60" />
+      </el-card>
+
+      <!-- 错题集 -->
+      <el-card class="profile-card wrong-questions-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>我的错题</span>
+          </div>
+        </template>
+
+        <div class="wrong-toolbar">
+          <el-select v-model="selectedCourseId" placeholder="选择课程筛选" clearable @change="fetchWrongQuestions" class="course-select">
+            <el-option
+              v-for="course in myCourses"
+              :key="course.courseId"
+              :label="course.courseTitle"
+              :value="course.courseId"
+            />
+          </el-select>
+        </div>
+
+        <div class="wrong-table-wrapper">
+          <el-table v-loading="wrongLoading" :data="wrongQuestions" stripe border max-height="300" class="wrong-questions-table">
+            <el-table-column prop="questionContent" label="错题内容" min-width="150">
+              <template #default="{ row }">
+                <span>{{ row.questionContent || row.content }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="courseTitle" label="课程" width="100" show-overflow-tooltip />
+            <el-table-column prop="correctAnswer" label="答案" width="70" align="center">
+              <template #default="{ row }">
+                <el-tag type="success" size="small">{{ row.correctAnswer }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="80" align="center">
+              <template #default="{ row }">
+                <el-button
+                  v-if="row.chapterId"
+                  type="primary"
+                  size="small"
+                  text
+                  @click="handleReviewVideo(row)"
+                >
+                  重温
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <el-empty v-if="!wrongLoading && wrongQuestions.length === 0" description="暂无错题记录，继续保持！" />
+      </el-card>
+
+      <!-- 我的证书 -->
+      <el-card class="profile-card certificate-card" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span>我的证书</span>
+          </div>
+        </template>
+
+        <div v-loading="certLoading" class="cert-list--mobile">
+          <div
+            v-for="cert in certificates"
+            :key="cert.id"
+            class="cert-item cert-item--mobile"
+          >
+            <div class="cert-icon">
+              <el-icon color="var(--role-primary)" :size="32"><Medal /></el-icon>
+            </div>
+            <div class="cert-info">
+              <div class="cert-title">{{ cert.courseTitle }}</div>
+              <div class="cert-meta">
+                <span class="cert-date">颁发于 {{ formatDate(cert.issuedAt) }}</span>
+                <span class="cert-code">{{ cert.certCode }}</span>
+              </div>
+            </div>
+            <div class="cert-actions">
+              <el-button type="primary" size="small" @click="handleViewCertificate(cert)">
+                查看
+              </el-button>
+            </div>
+          </div>
+        </div>
+        <el-empty v-if="!certLoading && certificates.length === 0" description="暂无证书记录，完成课程学习后可获得" :image-size="60" />
+      </el-card>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
@@ -295,6 +501,13 @@ const certLoading = ref(false)
 // 成就徽章
 const badgeLoading = ref(false)
 const earnedBadges = ref([])
+
+// 响应式布局
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
 
 const allBadges = computed(() => {
   const badgeTypes = [
@@ -427,6 +640,9 @@ const handleViewCertificate = async (cert) => {
 }
 
 onMounted(async () => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+
   if (!userStore.userInfo) {
     await userStore.getInfo()
   }
@@ -448,102 +664,188 @@ onMounted(async () => {
   // 加载成就徽章
   fetchBadges()
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 </script>
 
 <style scoped>
+/* === CSS Variables (Design Tokens) === */
 .profile-view {
-  padding: 20px;
+  --role-primary: #6366f1;
+  --role-primary-dark: #4f46e5;
+  --role-primary-light: #eef2ff;
+  --radius-lg: 12px;
+  --radius-md: 8px;
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --text-xl: 20px;
+  --text-lg: 18px;
+  --text-base: 14px;
+  --text-sm: 13px;
+  --text-xs: 12px;
+  --weight-semibold: 600;
+  --weight-medium: 500;
+  --space-4: 16px;
+  --space-5: 20px;
+  --duration-base: 200ms;
+
+  padding: var(--space-5);
   max-width: 1200px;
   margin: 0 auto;
 }
 
+/* === Page Title === */
 .page-title {
-  margin: 0 0 20px 0;
-  font-size: 20px;
-  color: #303133;
+  margin: 0 0 var(--space-5) 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
 }
 
+.page-title--mobile {
+  font-size: var(--text-lg);
+  margin: 0 0 var(--space-4) 0;
+}
+
+/* === Cards === */
 .profile-card {
-  margin-bottom: 20px;
-  transition: box-shadow 0.2s ease;
+  margin-bottom: var(--space-5);
+  border-radius: var(--radius-lg);
+  transition: transform var(--duration-base) ease, box-shadow var(--duration-base) ease;
 }
 
 .profile-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .card-header {
-  font-size: 16px;
-  font-weight: 500;
-  color: #303133;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
 }
 
+/* === Avatar Section === */
 .avatar-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .avatar-tip {
-  font-size: 12px;
-  color: #909399;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
   text-align: center;
 }
 
+/* === Info List === */
 .info-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
 .info-label {
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .info-value {
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
-.wrong-toolbar {
-  margin-bottom: 16px;
+/* === Badge Grid === */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.badge-grid--mobile {
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.badge-item {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--role-primary-light);
+  transition: transform var(--duration-base) ease, box-shadow var(--duration-base) ease;
 }
 
-.wrong-questions-table {
-  border-radius: 8px;
-  overflow: hidden;
+.badge-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
-.wrong-questions-table .el-button {
+.badge-item.badge-locked {
+  background: var(--el-fill-color-light);
+  opacity: 0.7;
+}
+
+.badge-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
-.wrong-questions-card :deep(.el-card__header) {
-  padding: 12px 20px;
+.badge-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
+  text-align: center;
 }
 
+.badge-date {
+  font-size: var(--text-xs);
+  color: var(--role-primary);
+  text-align: center;
+}
+
+.badge-tip {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-placeholder);
+  text-align: center;
+}
+
+/* === Certificate Grid === */
 .cert-grid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .cert-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: #f5f5f5;
-  border-radius: 8px;
-  border: 1px solid #ebeef5;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--el-fill-color-light);
+  border-radius: var(--radius-md);
+  transition: transform var(--duration-base) ease, box-shadow var(--duration-base) ease;
+}
+
+.cert-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.cert-item--mobile {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
 }
 
 .cert-icon {
@@ -553,9 +855,8 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f5f5f5 0%, #f5f5f5 100%);
-  border-radius: 50%;
-  cursor: pointer;
+  background: linear-gradient(135deg, var(--role-primary-light) 0%, var(--role-primary) 100%);
+  border-radius: var(--radius-circle);
 }
 
 .cert-info {
@@ -564,10 +865,10 @@ onMounted(async () => {
 }
 
 .cert-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #303133;
-  margin-bottom: 4px;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
+  margin-bottom: var(--space-1);
 }
 
 .cert-meta {
@@ -577,13 +878,13 @@ onMounted(async () => {
 }
 
 .cert-date {
-  font-size: 13px;
-  color: #909399;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
 }
 
 .cert-code {
-  font-size: 12px;
-  color: #c0c4cc;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-placeholder);
   font-family: "Courier New", monospace;
 }
 
@@ -595,80 +896,125 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-.badge-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.badge-item {
+/* === Wrong Questions Table === */
+.wrong-toolbar {
+  margin-bottom: var(--space-4);
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 20px 12px;
-  border-radius: 8px;
-  background: #f5f7fa;
-  transition: all 0.3s ease;
+  gap: var(--space-3);
 }
 
-.badge-item.badge-locked {
-  background: #f5f5f5;
-  opacity: 0.6;
+.course-select {
+  width: 200px;
 }
 
-.badge-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.wrong-table-wrapper {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.wrong-questions-table {
+  border-radius: var(--radius-md);
+}
+
+.wrong-questions-table .el-button {
   cursor: pointer;
 }
 
-.badge-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #303133;
-  text-align: center;
+.wrong-questions-card :deep(.el-card__header) {
+  padding: 12px var(--space-5);
 }
 
-.badge-date {
-  font-size: 12px;
-  color: #67c23a;
-  text-align: center;
+/* === User Info Card (Mobile) === */
+.user-info-card {
+  margin-bottom: var(--space-4);
 }
 
-.badge-tip {
-  font-size: 12px;
-  color: #c0c4cc;
-  text-align: center;
+.user-info-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 
+.user-info-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.user-info-name {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+}
+
+.user-info-role {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+/* === Mobile Cert List === */
+.cert-list--mobile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.cert-list--mobile .cert-item {
+  flex-direction: row;
+  align-items: center;
+}
+
+.cert-list--mobile .cert-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.cert-list--mobile .cert-actions {
+  width: auto;
+}
+
+.cert-list--mobile .cert-actions .el-button {
+  width: auto;
+}
+
+/* === All Buttons Cursor === */
+:deep(.el-button) {
+  cursor: pointer;
+}
+
+/* === Achievement Card === */
 .achievement-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: 12px var(--space-5);
 }
 
+/* === Mobile Responsive === */
 @media (max-width: 768px) {
-  .badge-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .profile-view {
-    padding: 12px;
-  }
-
-  .page-title {
-    font-size: 18px;
-    margin: 0 0 12px 0;
+    padding: var(--space-3);
   }
 
   .profile-card {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-4);
   }
 
-  .cert-item {
+  .wrong-toolbar {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .wrong-toolbar .el-select,
+  .course-select {
+    width: 100%;
+  }
+
+  .cert-item--mobile {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+  }
+
+  .cert-list--mobile .cert-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .cert-actions {
@@ -676,15 +1022,6 @@ onMounted(async () => {
   }
 
   .cert-actions .el-button {
-    width: 100%;
-  }
-
-  .wrong-toolbar {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .wrong-toolbar .el-select {
     width: 100%;
   }
 }

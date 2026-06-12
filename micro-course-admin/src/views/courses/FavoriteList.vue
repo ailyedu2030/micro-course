@@ -5,46 +5,57 @@
   Author: jackie
 -->
 <template>
-  <div class="favorite-list">
-    <!-- 搜索区 -->
-    <el-card class="search-card" shadow="never">
+  <div class="favorite-list-page">
+    <!-- 顶栏筛选卡 -->
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
+        <el-form-item label="学员">
+          <el-input v-model="searchForm.studentName" placeholder="学员姓名" clearable class="filter-input-w140" />
+        </el-form-item>
         <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="search-input-w200">
-            <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
-          </el-select>
+          <el-input v-model="searchForm.courseName" placeholder="课程名称" clearable class="filter-input-w180" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <!-- 表格区 -->
+    <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>收藏列表</span>
+          <span class="card-title">收藏列表</span>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
-        <el-table-column prop="courseId" label="课程ID" width="100" />
-        <el-table-column prop="courseName" label="课程名" min-width="150">
-          <template #default="{ row }">
-            {{ row.courseName || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="userId" label="用户ID" width="100" />
-        <el-table-column prop="userName" label="用户名" min-width="120">
-          <template #default="{ row }">
-            {{ row.userName || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdAt" label="收藏时间" width="180" />
         <template #empty>
-          <div class="empty-text">暂无收藏记录</div>
+          <el-empty description="暂无收藏数据" />
         </template>
+        <el-table-column type="index" label="序号" width="70" align="center" />
+        <el-table-column prop="studentName" label="学员" min-width="120" />
+        <el-table-column label="课程封面" width="90" align="center">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.courseCoverUrl"
+              :src="row.courseCoverUrl"
+              fit="cover"
+              class="table-thumb"
+              :preview-src-list="[row.courseCoverUrl]"
+              lazy
+            />
+            <span v-else class="no-thumb">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="courseName" label="课程名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="teacherName" label="授课教师" min-width="120" />
+        <el-table-column prop="createdAt" label="收藏时间" width="170" />
+        <el-table-column label="操作" width="100" fixed="right" align="center">
+          <template #default="{ row }">
+            <el-button type="danger" link size="small" @click="handleCancelFavorite(row)">取消收藏</el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -63,29 +74,19 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getFavorites } from '@/api/favorite'
-import { getCourses } from '@/api/course'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getFavorites, cancelFavorite } from '@/api/favorite'
 
 const loading = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
-const courseOptions = ref([])
 
 const searchForm = reactive({
-  courseId: ''
+  studentName: '',
+  courseName: ''
 })
-
-const fetchCourses = async () => {
-  try {
-    const { data } = await getCourses({ size: 1000 })
-    courseOptions.value = data.items || []
-  } catch {
-    ElMessage.error('获取课程列表失败')
-  }
-}
 
 const fetchData = async () => {
   loading.value = true
@@ -93,7 +94,8 @@ const fetchData = async () => {
     const params = {
       page: page.value - 1,
       size: size.value,
-      courseId: searchForm.courseId || undefined
+      studentName: searchForm.studentName || undefined,
+      courseName: searchForm.courseName || undefined
     }
     const { data } = await getFavorites(params)
     tableData.value = data.items || []
@@ -111,7 +113,8 @@ const handleSearch = () => {
 }
 
 const handleReset = () => {
-  searchForm.courseId = ''
+  searchForm.studentName = ''
+  searchForm.courseName = ''
   page.value = 1
   fetchData()
 }
@@ -125,33 +128,40 @@ const handlePageChange = () => {
   fetchData()
 }
 
+const handleCancelFavorite = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定取消收藏?', '提示', { type: 'warning' })
+    await cancelFavorite(row.id)
+    ElMessage.success('取消收藏成功')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
 onMounted(() => {
-  fetchCourses()
   fetchData()
 })
 </script>
 
 <style scoped>
-.favorite-list {
-  padding: 20px;
+.favorite-list-page {
+  padding: var(--space-5);
 }
 
-.search-card {
-  margin-bottom: 16px;
-  transition: box-shadow 0.3s ease;
-}
-.search-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.filter-card {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
 }
 
 .table-card {
-  transition: box-shadow 0.3s ease;
+  border-radius: var(--radius-md);
 }
-.table-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
+
 .table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
 }
 
 .card-header {
@@ -160,41 +170,67 @@ onMounted(() => {
   align-items: center;
 }
 
+.card-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
-.data-table { width: 100%; }
-.search-input-w200 { width: 200px; }
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
 
-.empty-text {
-  padding: 40px 0;
-  color: #909399;
-  font-size: 14px;
+.data-table :deep(.el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: var(--color-bg-page);
+}
+
+.table-thumb {
+  width: 48px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.no-thumb {
+  color: var(--color-text-placeholder);
+}
+
+.filter-input-w140 {
+  width: 140px;
+}
+
+.filter-input-w180 {
+  width: 180px;
 }
 
 @media (max-width: 768px) {
-  .favorite-list {
-    padding: 12px;
+  .favorite-list-page {
+    padding: var(--space-3);
   }
 
-  .search-card,
-  .table-card {
-    margin-bottom: 12px;
+  .filter-card {
+    margin-bottom: var(--space-3);
   }
 
-  .search-input-w200 {
+  .filter-input-w140,
+  .filter-input-w180 {
     width: 100%;
   }
 
-  :deep(.el-table) {
-    font-size: 12px;
-  }
-
-  :deep(.el-pagination) {
-    flex-wrap: wrap;
+  .pagination-wrap {
+    justify-content: center;
   }
 }
 </style>

@@ -5,23 +5,23 @@
   Author: jackie
 -->
 <template>
-  <div class="course-list">
-    <!-- 搜索区 -->
-    <el-card class="search-card" shadow="never">
+  <div class="course-list-page">
+    <!-- 顶栏筛选卡 -->
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable class="search-input-w160" />
+          <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable class="filter-input-w160" />
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="search-input-w160">
+          <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="filter-input-w160">
             <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="教师">
-          <el-input v-model="searchForm.teacherName" placeholder="教师姓名" clearable class="search-input-w120" />
+          <el-input v-model="searchForm.teacherName" placeholder="教师姓名" clearable class="filter-input-w120" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择" clearable class="search-input-w120">
+          <el-select v-model="searchForm.status" placeholder="请选择" clearable class="filter-input-w120">
             <el-option label="草稿" :value="0" />
             <el-option label="待审核" :value="1" />
             <el-option label="通过" :value="2" />
@@ -38,53 +38,61 @@
       </el-form>
     </el-card>
 
-    <!-- 表格区 -->
+    <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>课程列表</span>
+          <span class="card-title">课程列表</span>
           <el-button type="primary" @click="handleCreate">新增课程</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table" @row-click="handleRowClick">
         <template #empty>
-          <div class="empty-state">
-            <el-icon :size="48"><Monitor /></el-icon>
-            <p>暂无数据</p>
-          </div>
+          <el-empty description="暂无课程数据" />
         </template>
         <el-table-column type="index" label="序号" width="70" align="center" />
+        <el-table-column label="封面" width="80" align="center">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.coverUrl"
+              :src="row.coverUrl"
+              fit="cover"
+              class="table-thumb"
+              :preview-src-list="[row.coverUrl]"
+              lazy
+            />
+            <span v-else class="no-thumb">—</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="categoryName" label="分类" width="120" />
         <el-table-column prop="teacherName" label="教师" width="100" />
+        <el-table-column prop="price" label="价格" width="90" align="center">
+          <template #default="{ row }">
+            {{ row.price != null ? `¥${row.price}` : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="studentCount" label="学员数" width="90" align="center" />
         <el-table-column prop="status" label="状态" width="120" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.status === 0" type="info" size="small">草稿</el-tag>
             <el-tag v-else-if="row.status === 1" type="warning" size="small">待审核</el-tag>
             <el-tag v-else-if="row.status === 2" type="success" size="small">通过</el-tag>
             <el-tag v-else-if="row.status === 3" type="danger" size="small">驳回</el-tag>
-            <el-tag v-else-if="row.status === 4" type="primary" size="small">已发布</el-tag>
-            <el-tag v-else-if="row.status === 5" size="small">下架</el-tag>
+            <el-tag v-else-if="row.status === 4" type="success" size="small">已发布</el-tag>
+            <el-tag v-else-if="row.status === 5" type="warning" size="small">下架</el-tag>
             <el-tag v-else type="info" size="small">归档</el-tag>
-            <div v-if="row.status === 1" class="review-tip">预计48小时内审核</div>
           </template>
         </el-table-column>
-        <el-table-column prop="rating" label="评分" width="80" align="center">
+        <el-table-column label="操作" width="280" fixed="right" align="center">
           <template #default="{ row }">
-            {{ row.rating ? row.rating.toFixed(1) : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="studentCount" label="学生数" width="90" align="center" />
-        <el-table-column label="操作" width="320" fixed="right" align="center">
-          <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="row.status === 1" type="success" link size="small" @click="handleApprove(row)">审核通过</el-button>
-            <el-button v-if="row.status === 1" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
-            <el-button v-if="row.status === 2" type="primary" link size="small" @click="handlePublish(row)">发布</el-button>
-            <el-button v-if="row.status === 4" type="warning" link size="small" @click="handleUnpublish(row)">下架</el-button>
-            <el-button type="info" link size="small" @click="handleView(row)">查看</el-button>
-            <el-button type="primary" link size="small" @click="handleCopy(row)">复制</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link size="small" @click.stop="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 1" type="success" link size="small" @click.stop="handleApprove(row)">审核通过</el-button>
+            <el-button v-if="row.status === 1" type="danger" link size="small" @click.stop="handleReject(row)">驳回</el-button>
+            <el-button v-if="row.status === 2" type="primary" link size="small" @click.stop="handlePublish(row)">发布</el-button>
+            <el-button v-if="row.status === 4" type="warning" link size="small" @click.stop="handleUnpublish(row)">下架</el-button>
+            <el-button type="info" link size="small" @click.stop="handleView(row)">查看</el-button>
+            <el-button type="danger" link size="small" @click.stop="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -101,7 +109,7 @@
       </div>
     </el-card>
 
-    <!-- 弹窗区 -->
+    <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="课程标题" prop="title">
@@ -141,14 +149,9 @@
 </template>
 
 <script setup>
-/**
- * 课程列表页面 - Phase 6 增强：课程复制 + 审核时效提示
- * @author Claude Code Agent
- */
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Monitor } from '@element-plus/icons-vue'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 
@@ -243,6 +246,10 @@ const handlePageChange = () => {
   fetchData()
 }
 
+const handleRowClick = (row) => {
+  // 预留：可点击行查看详情
+}
+
 const handleCreate = () => {
   dialogTitle.value = '新增课程'
   isEdit.value = false
@@ -270,7 +277,7 @@ const handleApprove = async (row) => {
     await updateCourseStatus(row.id, 2)
     ElMessage.success('审核通过成功')
     fetchData()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -283,7 +290,7 @@ const handleReject = async (row) => {
     await updateCourseStatus(row.id, 3)
     ElMessage.success('驳回成功')
     fetchData()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -296,7 +303,7 @@ const handlePublish = async (row) => {
     await updateCourseStatus(row.id, 4)
     ElMessage.success('发布成功')
     fetchData()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -309,7 +316,7 @@ const handleUnpublish = async (row) => {
     await updateCourseStatus(row.id, 5)
     ElMessage.success('下架成功')
     fetchData()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -322,31 +329,9 @@ const handleDelete = async (row) => {
     await deleteCourse(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
-    }
-  }
-}
-
-const handleCopy = async (row) => {
-  try {
-    await ElMessageBox.confirm(`确定复制课程"${row.title}"?`, '复制课程', { type: 'info' })
-    const copyData = {
-      title: '复制-' + row.title,
-      categoryId: row.categoryId,
-      teacherId: row.teacherId,
-      description: row.description,
-      creditHours: row.creditHours,
-      semester: row.semester,
-      difficulty: row.difficulty
-    }
-    await createCourse(copyData)
-    ElMessage.success('复制成功')
-    fetchData()
-  } catch {
-    if (error !== 'cancel') {
-      ElMessage.error('复制失败')
     }
   }
 }
@@ -380,30 +365,21 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.course-list {
-  padding: 20px;
+.course-list-page {
+  padding: var(--space-5);
 }
 
-.search-card {
-  margin-bottom: 16px;
-  transition: box-shadow 0.3s;
+.filter-card {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
 }
-
-.search-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
 
 .table-card {
-  transition: box-shadow 0.3s;
-}
-
-.table-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
 }
 
 .card-header {
@@ -412,42 +388,63 @@ onMounted(() => {
   align-items: center;
 }
 
+.card-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
-.review-tip {
-  font-size: 11px;
-  color: var(--el-text-color-secondary);
-  margin-top: 2px;
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__row) {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: var(--color-bg-page);
+}
+
+.table-thumb {
+  width: 48px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.no-thumb {
+  color: var(--color-text-placeholder);
+}
+
+.filter-input-w160 {
+  width: 160px;
+}
+
+.filter-input-w120 {
+  width: 120px;
+}
+
+.full-width {
+  width: 100%;
 }
 
 @media (max-width: 768px) {
-  .course-list {
-    padding: 12px;
+  .course-list-page {
+    padding: var(--space-3);
   }
 
-  .search-card {
-    margin-bottom: 12px;
+  .filter-card {
+    margin-bottom: var(--space-3);
   }
-}
-
-.data-table { width: 100%; }
-.full-width { width: 100%; }
-.search-input-w160 { width: 160px; }
-.search-input-w120 { width: 120px; }
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 0;
-  color: var(--el-text-color-secondary);
-}
-.empty-state p {
-  margin-top: 12px;
-  font-size: 14px;
 }
 </style>

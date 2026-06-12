@@ -81,6 +81,17 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
+    public Video findEntityById(Long id) {
+        return videoRepository.selectById(id);
+    }
+
+    @Override
+    public Video createEntity(Video video) {
+        videoRepository.insert(video);
+        return video;
+    }
+
+    @Override
     @Transactional
     public VideoVO create(VideoCreateRequest request) {
         // Validate chapter exists

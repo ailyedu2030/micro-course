@@ -6,45 +6,93 @@
 -->
 <template>
   <div class="discussion-view">
-    <!-- 顶栏 -->
-    <el-card class="toolbar-card" shadow="never">
-      <div class="toolbar">
-        <div class="left-info">
-          <h3 class="page-title">章节讨论</h3>
+    <!-- PC 端布局 -->
+    <template v-if="!isMobile">
+      <!-- 顶栏 -->
+      <el-card class="toolbar-card" shadow="never">
+        <div class="toolbar">
+          <div class="left-info">
+            <h3 class="page-title">章节讨论</h3>
+          </div>
+          <el-button type="primary" @click="openPostDialog">发布帖子</el-button>
         </div>
-        <el-button type="primary" @click="openPostDialog">发布帖子</el-button>
-      </div>
-    </el-card>
+      </el-card>
 
-    <!-- 帖子列表 -->
-    <el-card class="table-card" shadow="never">
-      <el-table v-loading="loading" :data="tableData" stripe border>
-        <el-table-column prop="title" label="标题" min-width="180">
-          <template #default="{ row }">
-            <el-link type="primary" @click="viewDetail(row)">{{ row.title }}</el-link>
-          </template>
-        </el-table-column>
-        <el-table-column prop="authorName" label="作者" width="120" align="center">
-          <template #default="{ row }">
-            {{ row.isAnonymous ? '匿名用户' : row.authorName }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="replyCount" label="回复数" width="100" align="center" />
-        <el-table-column prop="likeCount" label="点赞" width="80" align="center" />
-        <el-table-column prop="createdAt" label="发布时间" width="170" />
-      </el-table>
-      <div class="pagination-wrap">
+      <!-- 帖子列表 -->
+      <el-card class="table-card" shadow="never">
+        <el-table v-loading="loading" :data="tableData" stripe border>
+          <el-table-column prop="title" label="标题" min-width="180">
+            <template #default="{ row }">
+              <el-link type="primary" @click="viewDetail(row)">{{ row.title }}</el-link>
+            </template>
+          </el-table-column>
+          <el-table-column prop="authorName" label="作者" width="120" align="center">
+            <template #default="{ row }">
+              {{ row.isAnonymous ? '匿名用户' : row.authorName }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="replyCount" label="回复数" width="100" align="center" />
+          <el-table-column prop="likeCount" label="点赞" width="80" align="center" />
+          <el-table-column prop="createdAt" label="发布时间" width="170" />
+        </el-table>
+        <div class="pagination-wrap">
+          <el-pagination
+            v-model:current-page="page"
+            v-model:page-size="size"
+            :total="totalElements"
+            :page-sizes="[10, 20, 50]"
+            layout="total,sizes,prev,pager,next"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+          />
+        </div>
+      </el-card>
+    </template>
+
+    <!-- H5 端布局 -->
+    <template v-else>
+      <!-- 紧凑顶栏 -->
+      <div class="h5-toolbar">
+        <h3 class="page-title">章节讨论</h3>
+        <el-button type="primary" size="small" @click="openPostDialog">发布帖子</el-button>
+      </div>
+
+      <!-- 卡片列表 -->
+      <div class="post-list">
+        <div v-if="loading" class="skeleton-wrap">
+          <el-skeleton animated :rows="3" />
+        </div>
+        <template v-else>
+          <el-card
+            v-for="row in tableData"
+            :key="row.id"
+            class="post-card"
+            shadow="never"
+            @click="viewDetail(row)"
+          >
+            <div class="post-card-title">{{ row.title }}</div>
+            <div class="post-card-meta">
+              <span class="author">{{ row.isAnonymous ? '匿名用户' : row.authorName }}</span>
+              <span class="reply-count">{{ row.replyCount }} 回复</span>
+            </div>
+          </el-card>
+          <el-empty v-if="tableData.length === 0" description="暂无帖子" />
+        </template>
+      </div>
+
+      <!-- 移动端分页 -->
+      <div class="pagination-wrap h5-pagination">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"
           :total="totalElements"
           :page-sizes="[10, 20, 50]"
-          layout="total,sizes,prev,pager,next"
+          layout="total,prev,pager,next"
           @size-change="handleSizeChange"
           @current-change="handlePageChange"
         />
       </div>
-    </el-card>
+    </template>
 
     <!-- 发帖弹窗 -->
     <el-dialog v-model="postDialogVisible" title="发布帖子" width="500px" @close="resetPostForm">
@@ -73,7 +121,12 @@
     </el-dialog>
 
     <!-- 帖子详情弹窗 -->
-    <el-dialog v-model="detailDialogVisible" title="帖子详情" width="500px" @close="resetDetail">
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="isMobile ? '' : '帖子详情'"
+      :width="isMobile ? '90vw' : '600px'"
+      @close="resetDetail"
+    >
       <div v-if="currentPost" class="post-detail">
         <div class="post-header">
           <h3 class="post-title">{{ currentPost.title }}</h3>
@@ -96,7 +149,7 @@
             @reply="handleReply"
             @like="handleLikeComment"
           />
-         <el-empty v-if="comments.length === 0" description="暂无评论，快来抢沙发吧" />
+          <el-empty v-if="comments.length === 0" description="暂无评论，快来抢沙发吧" />
         </div>
 
         <!-- 回复输入框 -->
@@ -116,7 +169,7 @@
           </div>
         </div>
       </div>
-      <template #footer v-if="currentPost">
+      <template #footer v-if="currentPost && !isMobile">
         <div class="post-actions">
           <el-button type="danger" link size="small" @click="handleDeletePost">删除帖子</el-button>
         </div>
@@ -126,7 +179,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPosts, createPost, getPostById, getComments, createComment, likeComment, deletePost } from '@/api/discussion'
@@ -139,6 +192,15 @@ const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
+const handleResize = () => {
+  checkMobile()
+}
 
 // 发帖
 const postDialogVisible = ref(false)
@@ -291,17 +353,29 @@ const handlePageChange = () => {
 }
 
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', handleResize)
   fetchData()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
 .discussion-view {
-  padding: 20px;
+  padding: var(--space-5);
 }
 
+/* ========== PC Layout ========== */
 .toolbar-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-lg);
+  transition: box-shadow var(--duration-base) ease;
+}
+.toolbar-card:hover {
+  box-shadow: var(--shadow-lg);
 }
 
 .toolbar {
@@ -312,68 +386,73 @@ onMounted(() => {
 
 .page-title {
   margin: 0;
-  font-size: 18px;
-  color: #303133;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
 }
 
-.table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+.table-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
+/* ========== Post Detail ========== */
 .post-detail {
   max-height: 60vh;
   overflow-y: auto;
 }
 
 .post-header {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .post-title {
-  margin: 0 0 8px 0;
-  font-size: 18px;
-  color: #303133;
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
 }
 
 .post-meta {
   display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: #909399;
+  gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
 }
 
 .post-content {
-  font-size: 14px;
-  color: #606266;
+  font-size: var(--text-base);
+  color: var(--el-text-color-regular);
   line-height: 1.8;
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  padding: var(--space-4);
+  background: var(--el-fill-color-light);
+  border-radius: var(--radius-md);
   white-space: pre-wrap;
+  margin-bottom: var(--space-4);
 }
 
 .comments-section {
   max-height: 300px;
   overflow-y: auto;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .reply-input-area {
-  border-top: 1px solid #e4e7ed;
-  padding-top: 16px;
+  border-top: 1px solid var(--el-border-color);
+  padding-top: var(--space-4);
 }
 
 .reply-input-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .post-actions {
@@ -381,75 +460,85 @@ onMounted(() => {
   justify-content: flex-start;
 }
 
-/* Global button cursor fix */
+/* ========== H5 Layout ========== */
+.h5-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--el-color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.h5-toolbar .page-title {
+  font-size: var(--text-md);
+}
+
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.skeleton-wrap {
+  padding: var(--space-4);
+  background: var(--el-color-white);
+  border-radius: var(--radius-lg);
+}
+
+.post-card {
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: box-shadow var(--duration-base) ease;
+}
+.post-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.post-card-title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+
+.h5-pagination {
+  justify-content: center;
+}
+
+/* ========== Global Elements ========== */
 :deep(.el-button) {
   cursor: pointer;
 }
 
-/* el-card hover shadow transition */
 :deep(.el-card) {
-  transition: box-shadow 0.2s ease;
+  border-radius: var(--radius-lg);
+  transition: box-shadow var(--duration-base) ease;
 }
 :deep(.el-card:hover) {
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
 }
 
-/* el-table border-radius and overflow */
 :deep(.el-table) {
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
-/* el-dialog max-width (detail dialog - no table) */
-:deep(.el-dialog--center) {
-  max-width: 500px;
-}
-
-/* Mobile responsive styles */
-@media (max-width: 768px) {
-  .discussion-view {
-    padding: 12px;
-  }
-
-  .toolbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .toolbar .el-button {
-    width: 100%;
-  }
-
-  .page-title {
-    font-size: 16px;
-  }
-
-  :deep(.el-table) {
-    font-size: 12px;
-  }
-
-  :deep(.el-table__header-wrapper) {
-    overflow-x: auto;
-  }
-
-  .post-meta {
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  :deep(.el-dialog) {
-    max-width: calc(100vw - 32px) !important;
-    width: 100% !important;
-  }
-
-  .reply-input-footer {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .reply-input-footer .el-button {
-    width: 100%;
-  }
+:deep(.el-dialog) {
+  border-radius: var(--radius-lg);
+  max-width: 600px;
 }
 </style>

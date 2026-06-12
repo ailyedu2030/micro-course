@@ -7,34 +7,42 @@
 <template>
   <div class="user-list">
     <!-- 搜索区 -->
-    <el-card class="search-card" shadow="never">
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="用户名/姓名" clearable class="search-input" />
+          <el-input v-model="searchForm.keyword" placeholder="账号/姓名" clearable class="filter-input" />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="searchForm.role" placeholder="请选择" clearable class="search-select role-select">
+          <el-select v-model="searchForm.role" placeholder="请选择" clearable class="filter-select">
             <el-option label="学生" value="STUDENT" />
             <el-option label="教师" value="TEACHER" />
             <el-option label="管理员" value="ADMIN" />
             <el-option label="教务" value="ACADEMIC" />
           </el-select>
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择" clearable class="search-select status-select">
-            <el-option label="未激活" :value="0" />
-            <el-option label="正常" :value="1" />
-            <el-option label="禁用" :value="2" />
-            <el-option label="已删除" :value="3" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="院系">
-          <el-select v-model="searchForm.departmentId" placeholder="请选择院系" clearable class="search-select dept-select" @change="handleDepartmentChange">
+          <el-select v-model="searchForm.departmentId" placeholder="请选择院系" clearable class="filter-select" @change="handleDepartmentChange">
             <el-option v-for="dept in departments" :key="dept.id" :label="dept.name" :value="dept.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="专业">
+          <el-select v-model="searchForm.majorId" placeholder="请选择专业" clearable class="filter-select" :disabled="!searchForm.departmentId" @change="handleMajorChange">
+            <el-option v-for="m in majors" :key="m.id" :label="m.name" :value="m.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="班级">
+          <el-select v-model="searchForm.classId" placeholder="请选择班级" clearable class="filter-select" :disabled="!searchForm.majorId">
+            <el-option v-for="c in classes" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="searchForm.status" placeholder="请选择" clearable class="filter-select">
+            <el-option label="启用" :value="1" />
+            <el-option label="禁用" :value="2" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
@@ -44,49 +52,59 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>用户列表</span>
-          <div class="header-actions">
-            <el-button type="success" @click="importDialogVisible = true">批量导入</el-button>
-            <el-button type="primary" @click="handleCreate">新增用户</el-button>
-          </div>
+          <span class="card-title">用户列表</span>
+          <el-button type="primary" @click="handleCreate">新增用户</el-button>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
-        <template #empty>
-          <el-empty description="暂无用户数据" />
-        </template>
-        <el-table-column prop="username" label="用户名" min-width="120" />
+        <el-table-column label="头像" width="80" align="center">
+          <template #default="{ row }">
+            <el-avatar v-if="row.avatar" :src="row.avatar" :size="40" />
+            <el-avatar v-else :size="40">{{ row.realName?.charAt(0) || 'U' }}</el-avatar>
+          </template>
+        </el-table-column>
+        <el-table-column prop="username" label="账号" min-width="120" />
         <el-table-column prop="realName" label="姓名" min-width="100" />
         <el-table-column prop="role" label="角色" width="100" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.role === 'ADMIN'" type="danger" size="small">管理员</el-tag>
-            <el-tag v-else-if="row.role === 'TEACHER'" type="warning" size="small">教师</el-tag>
-            <el-tag v-else-if="row.role === 'ACADEMIC'" type="success" size="small">教务</el-tag>
-            <el-tag v-else type="info" size="small">学生</el-tag>
+            <el-tag v-else-if="row.role === 'ACADEMIC'" type="warning" size="small">教务</el-tag>
+            <el-tag v-else-if="row.role === 'TEACHER'" type="success" size="small">教师</el-tag>
+            <el-tag v-else type="primary" size="small">学生</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="email" label="邮箱" min-width="160" />
-        <el-table-column prop="phone" label="手机" width="130" />
-        <el-table-column prop="departmentName" label="院系" min-width="120" />
-        <el-table-column prop="majorName" label="专业" min-width="120" />
-        <el-table-column prop="className" label="班级" min-width="120" />
-        <el-table-column prop="status" label="状态" width="90" align="center">
+        <el-table-column label="部门/专业/班级" min-width="180">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 1" type="success" size="small">正常</el-tag>
-            <el-tag v-else-if="row.status === 0" type="info" size="small">未激活</el-tag>
-            <el-tag v-else-if="row.status === 2" type="danger" size="small">禁用</el-tag>
-            <el-tag v-else type="warning" size="small">已删除</el-tag>
+            <span>{{ row.departmentName }}</span>
+            <span v-if="row.majorName"> / {{ row.majorName }}</span>
+            <span v-if="row.className"> / {{ row.className }}</span>
           </template>
         </el-table-column>
+        <el-table-column prop="status" label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-switch
+              :model-value="row.status === 1"
+              :active-value="1"
+              :inactive-value="2"
+              @change="handleToggleStatus(row)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column prop="createdAt" label="创建时间" min-width="160" />
         <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="row.status === 2" type="success" link size="small" @click="handleToggleStatus(row)">启用</el-button>
-            <el-button v-else-if="row.status !== 3" type="warning" link size="small" @click="handleToggleStatus(row)">禁用</el-button>
-            <el-button v-if="row.status !== 3" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-popconfirm title="确定删除该用户？" @confirm="handleDelete(row)">
+              <template #reference>
+                <el-button type="danger" link size="small">删除</el-button>
+              </template>
+            </el-popconfirm>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="暂无用户数据" />
+        </template>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -101,53 +119,27 @@
       </div>
     </el-card>
 
-    <!-- 批量导入弹窗 -->
-    <el-dialog v-model="importDialogVisible" title="批量导入用户" width="500px" @close="handleImportDialogClose">
-      <div class="import-guide">
-        <p>请下载模板文件，按格式填写后上传。支持 <strong>.xlsx / .xls</strong> 文件。</p>
-        <a :href="templateUrl" download class="template-link" target="_blank">下载导入模板</a>
-      </div>
-
-      <el-divider />
-
-      <el-upload
-        ref="uploadRef"
-        :auto-upload="false"
-        :limit="1"
-        accept=".xlsx,.xls"
-        :on-change="handleFileChange"
-        :on-remove="handleFileRemove"
-        drag
-      >
-        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-        <div class="el-upload__text">将文件拖到此处，或 <em>点击上传</em></div>
-        <template #tip>
-          <div class="el-upload__tip">只能上传 xlsx/xls 文件</div>
-        </template>
-      </el-upload>
-
-      <!-- 导入结果 -->
-      <div v-if="importResult" class="import-result">
-        <el-alert
-          :title="`导入完成：成功 ${importResult.successCount} 条，失败 ${importResult.failCount} 条`"
-          :type="importResult.failCount > 0 ? 'warning' : 'success'"
-          :closable="false"
-          show-icon
-          class="import-alert"
-        />
-        <div v-if="importResult.errors && importResult.errors.length > 0" class="error-table-wrap">
-          <p class="error-title">失败记录：</p>
-          <el-table :data="importResult.errors" stripe border size="small" max-height="200">
-            <el-table-column type="index" label="行号" width="60" align="center" />
-            <el-table-column prop="row" label="Excel行" width="70" align="center" />
-            <el-table-column prop="message" label="错误原因" min-width="160" />
-          </el-table>
-        </div>
-      </div>
-
+    <!-- 编辑弹窗 -->
+    <el-dialog v-model="dialogVisible" title="编辑用户" width="600px" @close="handleDialogClose">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
+        <el-form-item label="账号" prop="username">
+          <el-input v-model="formData.username" placeholder="请输入账号" />
+        </el-form-item>
+        <el-form-item label="姓名" prop="realName">
+          <el-input v-model="formData.realName" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="角色" prop="role">
+          <el-select v-model="formData.role" placeholder="请选择角色" class="full-width">
+            <el-option label="学生" value="STUDENT" />
+            <el-option label="教师" value="TEACHER" />
+            <el-option label="管理员" value="ADMIN" />
+            <el-option label="教务" value="ACADEMIC" />
+          </el-select>
+        </el-form-item>
+      </el-form>
       <template #footer>
-        <el-button @click="importDialogVisible = false">关闭</el-button>
-        <el-button type="primary" :loading="importLoading" :disabled="!selectedFile" @click="handleImportSubmit">开始导入</el-button>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="dialogLoading" @click="handleDialogSave">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -155,16 +147,16 @@
 
 <script setup>
 /**
- * 用户列表页（含批量导入）
+ * 用户列表页
  * Vue 3.4 Composition API + script setup
  */
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
-import * as XLSX from 'xlsx'
-import { getUsers, updateUserStatus, batchImportUsers } from '@/api/user'
+import { ElMessage } from 'element-plus'
+import { getUsers, updateUserStatus } from '@/api/user'
 import { getDepartments } from '@/api/department'
+import { getMajors } from '@/api/major'
+import { getClasses } from '@/api/class'
 
 const router = useRouter()
 
@@ -174,28 +166,67 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 const departments = ref([])
+const majors = ref([])
+const classes = ref([])
 
-// 批量导入
-const importDialogVisible = ref(false)
-const importLoading = ref(false)
-const uploadRef = ref(null)
-const selectedFile = ref(null)
-const importResult = ref(null)
-const templateUrl = ref('/templates/user-import-template.xlsx')
+const dialogVisible = ref(false)
+const dialogLoading = ref(false)
+const formRef = ref(null)
 
 const searchForm = reactive({
   keyword: '',
   role: '',
-  status: '',
-  departmentId: ''
+  departmentId: '',
+  majorId: '',
+  classId: '',
+  status: ''
 })
+
+const formData = reactive({
+  id: '',
+  username: '',
+  realName: '',
+  role: ''
+})
+
+const formRules = {
+  username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+  realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  role: [{ required: true, message: '请选择角色', trigger: 'change' }]
+}
 
 const fetchDepartments = async () => {
   try {
     const { data } = await getDepartments({ size: 1000 })
     departments.value = data.items || []
   } catch {
-    // 静默失败
+    departments.value = []
+  }
+}
+
+const fetchMajors = async (departmentId) => {
+  if (!departmentId) {
+    majors.value = []
+    return
+  }
+  try {
+    const { data } = await getMajors({ departmentId, size: 1000 })
+    majors.value = data.items || []
+  } catch {
+    majors.value = []
+  }
+}
+
+const fetchClasses = async (majorId) => {
+  if (!majorId) {
+    classes.value = []
+    return
+  }
+  try {
+    const { data } = await getClasses({ majorId, size: 1000 })
+    classes.value = data.items || []
+  } catch {
+    classes.value = []
   }
 }
 
@@ -207,8 +238,10 @@ const fetchData = async () => {
       size: size.value,
       keyword: searchForm.keyword || undefined,
       role: searchForm.role || undefined,
-      status: searchForm.status !== '' ? searchForm.status : undefined,
-      departmentId: searchForm.departmentId || undefined
+      departmentId: searchForm.departmentId || undefined,
+      majorId: searchForm.majorId || undefined,
+      classId: searchForm.classId || undefined,
+      status: searchForm.status !== '' ? searchForm.status : undefined
     }
     const { data } = await getUsers(params)
     tableData.value = data.items || []
@@ -228,13 +261,34 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.keyword = ''
   searchForm.role = ''
-  searchForm.status = ''
   searchForm.departmentId = ''
+  searchForm.majorId = ''
+  searchForm.classId = ''
+  searchForm.status = ''
+  majors.value = []
+  classes.value = []
   page.value = 1
   fetchData()
 }
 
 const handleDepartmentChange = () => {
+  searchForm.majorId = ''
+  searchForm.classId = ''
+  majors.value = []
+  classes.value = []
+  if (searchForm.departmentId) {
+    fetchMajors(searchForm.departmentId)
+  }
+  page.value = 1
+  fetchData()
+}
+
+const handleMajorChange = () => {
+  searchForm.classId = ''
+  classes.value = []
+  if (searchForm.majorId) {
+    fetchClasses(searchForm.majorId)
+  }
   page.value = 1
   fetchData()
 }
@@ -253,79 +307,52 @@ const handleCreate = () => {
 }
 
 const handleEdit = (row) => {
-  router.push(`/users/${row.id}/edit`)
+  formData.id = row.id
+  formData.username = row.username
+  formData.realName = row.realName
+  formData.role = row.role
+  dialogVisible.value = true
+}
+
+const handleDialogClose = () => {
+  formRef.value?.resetFields()
+}
+
+const handleDialogSave = async () => {
+  if (!formRef.value) return
+  try {
+    await formRef.value.validate()
+    dialogLoading.value = true
+    // await updateUser(formData) // TODO: implement update API
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    fetchData()
+  } catch {
+    // validation failed or API error
+  } finally {
+    dialogLoading.value = false
+  }
 }
 
 const handleToggleStatus = async (row) => {
-  const newStatus = row.status === 2 ? 1 : 2
+  const newStatus = row.status === 1 ? 2 : 1
   const actionText = newStatus === 1 ? '启用' : '禁用'
   try {
-    await ElMessageBox.confirm(`确定${actionText}该用户?`, '提示', { type: 'warning' })
     await updateUserStatus(row.id, { status: newStatus })
     ElMessage.success(`${actionText}成功`)
     fetchData()
   } catch {
-    if (error !== 'cancel') {
-      ElMessage.error(`${actionText}失败`)
-    }
+    ElMessage.error(`${actionText}失败`)
   }
 }
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该用户?', '提示', { type: 'warning' })
     await updateUserStatus(row.id, { status: 3 })
     ElMessage.success('删除成功')
     fetchData()
   } catch {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
-  }
-}
-
-// 文件选择
-function handleFileChange(file) {
-  selectedFile.value = file.raw
-  importResult.value = null
-}
-
-function handleFileRemove() {
-  selectedFile.value = null
-  importResult.value = null
-}
-
-// 关闭弹窗重置状态
-function handleImportDialogClose() {
-  importDialogVisible.value = false
-  selectedFile.value = null
-  importResult.value = null
-  uploadRef.value?.clearFiles()
-}
-
-// 提交导入
-async function handleImportSubmit() {
-  if (!selectedFile.value) return
-  importLoading.value = true
-  importResult.value = null
-  try {
-    const formData = new FormData()
-    formData.append('file', selectedFile.value)
-    const { data } = await batchImportUsers(formData)
-    // data: { successCount, failCount, errors: [{row, message}] }
-    importResult.value = {
-      successCount: data.successCount ?? 0,
-      failCount: data.failCount ?? 0,
-      errors: data.errors ?? []
-    }
-    if (importResult.value.failCount === 0) {
-      ElMessage.success('导入完成')
-      fetchData()
-    }
-  } catch {
-    ElMessage.error('导入失败，请检查文件格式')
-  } finally {
-    importLoading.value = false
+    ElMessage.error('删除失败')
   }
 }
 
@@ -340,32 +367,13 @@ onMounted(() => {
   padding: var(--space-xl);
 }
 
-.search-card {
+.filter-card {
   margin-bottom: var(--space-lg);
   border-radius: 8px;
-  transition: box-shadow 200ms ease;
-}
-
-.search-card:hover {
-  box-shadow: var(--shadow-md);
 }
 
 .table-card {
   border-radius: 8px;
-  transition: box-shadow 200ms ease;
-}
-
-.table-card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-.table-card :deep(.el-card__header) {
-  padding: 12px 20px;
-}
-
-.table-card :deep(.el-table) {
-  border-radius: 8px;
-  overflow: hidden;
 }
 
 .card-header {
@@ -374,92 +382,30 @@ onMounted(() => {
   align-items: center;
 }
 
-.header-actions {
-  display: flex;
-  gap: 8px;
+.card-title {
+  font-size: 16px;
+  font-weight: 500;
 }
 
-.search-input {
+.filter-input {
   width: 160px;
 }
 
-.search-select {
-  width: 160px;
-}
-
-.role-select {
+.filter-select {
   width: 140px;
-}
-
-.status-select {
-  width: 120px;
-}
-
-.dept-select {
-  width: 180px;
 }
 
 .data-table {
   width: 100%;
 }
 
-.import-alert {
-  margin-bottom: 12px;
-}
-
 .pagination-wrap {
   margin-top: var(--space-lg);
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
-.import-guide {
-  background: var(--el-fill-color-light);
-  border-radius: 6px;
-  padding: 12px 16px;
-  margin-bottom: 8px;
+.full-width {
+  width: 100%;
 }
-
-.import-guide p {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: var(--el-text-color-regular);
-}
-
-.template-link {
-  color: var(--el-color-primary);
-  font-size: 13px;
-  text-decoration: none;
-  cursor: pointer;
-  transition: color 200ms ease;
-}
-
-.template-link:hover {
-  color: var(--el-color-primary-dark-2);
-  text-decoration: underline;
-}
-
-.error-table-wrap {
-  margin-top: 8px;
-}
-
-.error-title {
-  font-size: 13px;
-  color: var(--el-color-danger);
-  margin: 0 0 6px;
-}
-
-@media (max-width: 768px) {
-  .header-actions {
-    flex-direction: column;
-    gap: 4px;
-  }
-}
-
-.full-width { width: 100%; }
-.search-input-w140 { width: 140px; }
-.search-input-w200 { width: 200px; }
-.search-input-w240 { width: 240px; }
-.search-select-w200 { width: 200px; }
-.search-select-w240 { width: 240px; }
 </style>

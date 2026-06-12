@@ -1,124 +1,608 @@
 <!--
-  学生端布局组件
-  路由路径: (layout)
+  学生端布局组件 - PC / H5 双端分离
+  PC (≥ 769px): 顶部 Header + 内容区
+  H5 (≤ 768px): 顶部 Header + 内容区 + 底部 Tab Bar
   Phase 2
-  Author: jackie
 -->
 <template>
-  <div class="student-container">
-    <router-view />
-    <div class="tabbar">
-      <router-link to="/student/courses" class="tab-item" active-class="active">
-        <el-icon><Grid /></el-icon><span>广场</span>
-      </router-link>
-      <router-link to="/student/my-courses" class="tab-item" active-class="active">
-        <el-icon><VideoPlay /></el-icon><span>课程</span>
-      </router-link>
-      <router-link to="/student/learning" class="tab-item" active-class="active">
-        <el-icon><DataLine /></el-icon><span>学习</span>
-      </router-link>
-      <router-link to="/student/notifications" class="tab-item" active-class="active">
-        <el-icon><Bell /></el-icon><span>消息</span>
-      </router-link>
-      <el-dropdown trigger="click" @command="handleDropdownCommand">
-        <router-link to="/student/profile" class="tab-item" active-class="active">
-          <el-icon><User /></el-icon><span>我的</span>
+  <div class="student-layout role-student">
+    <!-- ====== PC 端顶部导航 (≥ 769px) ====== -->
+    <header class="layout-header layout-header--pc">
+      <div class="header-left">
+        <div class="logo">
+          <el-icon class="logo-icon" :size="28"><Microphone /></el-icon>
+          <span class="logo-text">微课平台</span>
+        </div>
+      </div>
+
+      <nav class="header-nav" aria-label="主导航">
+        <router-link
+          v-for="item in menuItems"
+          :key="item.path"
+          :to="item.path"
+          class="nav-tab"
+          :class="{ 'is-active': isActive(item.path) }"
+        >
+          <el-icon :size="18"><component :is="item.icon" /></el-icon>
+          <span>{{ item.label }}</span>
         </router-link>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="reviews">
-              <el-icon><Star /></el-icon>我的评价
-            </el-dropdown-item>
-            <el-dropdown-item command="settings">
-              <el-icon><Setting /></el-icon>设置
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-    </div>
+      </nav>
+
+      <div class="header-right">
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索课程..."
+          class="header-search"
+          :prefix-icon="Search"
+          clearable
+          @keyup.enter="handleSearch"
+        />
+
+        <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" class="notification-badge">
+          <el-button :icon="Bell" circle class="icon-btn" @click="goNotifications" aria-label="通知中心" />
+        </el-badge>
+
+        <el-dropdown trigger="click" @command="handleUserCommand">
+          <div class="user-avatar-wrap">
+            <el-avatar v-if="avatarUrl" :src="avatarUrl" :size="36" class="user-avatar" />
+            <div v-else class="user-avatar user-avatar--fallback" :style="avatarStyle">
+              {{ userInitials }}
+            </div>
+            <el-tag size="small" type="info" effect="plain" class="role-badge">学生</el-tag>
+            <el-icon class="dropdown-arrow"><ArrowDown /></el-icon>
+          </div>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile" :icon="User">
+                个人中心
+              </el-dropdown-item>
+              <el-dropdown-item command="reviews" :icon="Star">
+                我的评价
+              </el-dropdown-item>
+              <el-dropdown-item command="report" :icon="DataLine">
+                我的周报
+              </el-dropdown-item>
+              <el-dropdown-item command="settings" :icon="Setting">
+                设置
+              </el-dropdown-item>
+              <el-dropdown-item command="logout" divided :icon="SwitchButton" class="logout-item">
+                退出登录
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+    </header>
+
+    <!-- ====== H5 端顶部导航 (≤ 768px) ====== -->
+    <header class="layout-header layout-header--h5">
+      <div class="h5-header-inner">
+        <button v-if="showBackBtn" class="back-btn" @click="handleBack" aria-label="返回">
+          <el-icon :size="20"><ArrowLeft /></el-icon>
+        </button>
+        <span class="h5-title">{{ pageTitle }}</span>
+        <div class="h5-actions">
+          <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" class="notification-badge">
+            <el-button :icon="Bell" circle size="small" class="icon-btn" @click="goNotifications" aria-label="通知中心" />
+          </el-badge>
+        </div>
+      </div>
+    </header>
+
+    <!-- ====== 主体内容区 ====== -->
+    <main class="layout-main" :class="{ 'has-tabbar': isMobile }">
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
+    </main>
+
+    <!-- ====== H5 底部 Tab Bar (≤ 768px) ====== -->
+    <nav v-if="isMobile" class="tabbar" aria-label="底部导航">
+      <router-link
+        v-for="item in menuItems"
+        :key="item.path"
+        :to="item.path"
+        class="tab-item"
+        :class="{ 'is-active': isActive(item.path) }"
+      >
+        <el-icon :size="22"><component :is="item.icon" /></el-icon>
+        <span class="tab-label">{{ item.label }}</span>
+      </router-link>
+    </nav>
   </div>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-import { Grid, VideoPlay, DataLine, Bell, User, Star, Setting } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  Grid, VideoPlay, DataLine, Bell, User, Star, Setting,
+  Microphone, Search, ArrowDown, ArrowLeft, SwitchButton
+} from '@element-plus/icons-vue'
+import { ElMessageBox } from 'element-plus'
+import { useUserStore } from '../store/user'
+import { useNotificationStore } from '../store/notification'
 
+// ---------------------------------------------------------------------------
+// Store
+// ---------------------------------------------------------------------------
+const userStore = useUserStore()
+const notificationStore = useNotificationStore()
+
+// ---------------------------------------------------------------------------
+// Router
+// ---------------------------------------------------------------------------
+const route = useRoute()
 const router = useRouter()
 
-const handleDropdownCommand = (command) => {
-  if (command === 'reviews') {
-    router.push('/student/reviews')
-  } else if (command === 'settings') {
-    router.push('/student/settings')
+// ---------------------------------------------------------------------------
+// 响应式
+// ---------------------------------------------------------------------------
+const isMobile = ref(window.innerWidth <= 768)
+
+function onResize() {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
+
+// ---------------------------------------------------------------------------
+// 菜单项
+// ---------------------------------------------------------------------------
+const menuItems = [
+  { label: '广场', path: '/student/courses', icon: markRaw(Grid) },
+  { label: '课程', path: '/student/my-courses', icon: markRaw(VideoPlay) },
+  { label: '学习', path: '/student/learning', icon: markRaw(DataLine) },
+  { label: '消息', path: '/student/notifications', icon: markRaw(Bell) },
+  { label: '我的', path: '/student/profile', icon: markRaw(User) },
+]
+
+// ---------------------------------------------------------------------------
+// 活跃路由判断
+// ---------------------------------------------------------------------------
+function isActive(path) {
+  if (path === '/student/courses') {
+    return route.path === '/student/courses' || route.path === '/student/redirect'
+  }
+  return route.path.startsWith(path)
+}
+
+// ---------------------------------------------------------------------------
+// 未读消息数
+// ---------------------------------------------------------------------------
+const unreadCount = computed(() => notificationStore.unreadCount)
+
+// ---------------------------------------------------------------------------
+// 用户信息
+// ---------------------------------------------------------------------------
+const userInfo = computed(() => userStore.userInfo || {})
+const avatarUrl = computed(() => userInfo.value.avatar || '')
+const userInitials = computed(() => {
+  const name = userStore.realName || userStore.username || '?'
+  return name.charAt(0).toUpperCase()
+})
+const avatarStyle = computed(() => ({
+  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+}))
+
+// ---------------------------------------------------------------------------
+// H5 头部
+// ---------------------------------------------------------------------------
+const h5TitleMap = {
+  '/student/courses': '课程广场',
+  '/student/my-courses': '我的课程',
+  '/student/learning': '学习中心',
+  '/student/notifications': '消息通知',
+  '/student/profile': '个人中心',
+  '/student/reviews': '我的评价',
+  '/student/report': '我的周报',
+  '/student/settings': '设置',
+}
+const pageTitle = computed(() => {
+  const found = Object.entries(h5TitleMap).find(([k]) => route.path.startsWith(k))
+  return found ? found[1] : '微课平台'
+})
+const showBackBtn = computed(() => {
+  // 只有在子页面（非 5 个主 Tab）才显示返回按钮
+  const mainPaths = ['/student/courses', '/student/my-courses', '/student/learning', '/student/notifications', '/student/profile']
+  return !mainPaths.some(p => route.path.startsWith(p))
+})
+
+function handleBack() {
+  router.back()
+}
+
+// ---------------------------------------------------------------------------
+// 搜索
+// ---------------------------------------------------------------------------
+const searchKeyword = ref('')
+function handleSearch() {
+  if (searchKeyword.value.trim()) {
+    router.push({ path: '/student/courses', query: { keyword: searchKeyword.value.trim() } })
+    searchKeyword.value = ''
   }
 }
+
+// ---------------------------------------------------------------------------
+// 通知跳转
+// ---------------------------------------------------------------------------
+function goNotifications() {
+  router.push('/student/notifications')
+}
+
+// ---------------------------------------------------------------------------
+// 用户下拉菜单
+// ---------------------------------------------------------------------------
+function handleUserCommand(command) {
+  const map = {
+    profile: '/student/profile',
+    reviews: '/student/reviews',
+    report: '/student/report',
+    settings: '/student/settings',
+    logout: null,
+  }
+  if (command === 'logout') {
+    handleLogout()
+  } else if (map[command]) {
+    router.push(map[command])
+  }
+}
+
+async function handleLogout() {
+  try {
+    await ElMessageBox.confirm('确定退出登录?', '提示', { type: 'warning' })
+    await userStore.logout()
+    router.push('/login')
+  } catch { /* user cancel */ }
+}
+
+// ---------------------------------------------------------------------------
+// 通知轮询
+// ---------------------------------------------------------------------------
+onMounted(() => notificationStore.startPolling(30000))
+onUnmounted(() => notificationStore.stopPolling())
 </script>
 
 <style scoped>
-.student-container {
+/* ---------------------------------------------------------------------------
+   2. 布局容器
+   --------------------------------------------------------------------------- */
+.student-layout {
   min-height: 100vh;
-  padding-bottom: 70px;
-  background: var(--page-bg, #f0f2f5);
+  background: var(--el-bg-color-page, #f0f2f5);
+  display: flex;
+  flex-direction: column;
 }
 
+/* ---------------------------------------------------------------------------
+   3. PC 顶部导航 (≥ 769px)
+   --------------------------------------------------------------------------- */
+.layout-header--pc {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 var(--space-5);
+  background: #fff;
+  border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  gap: var(--space-5);
+}
+
+.header-left {
+  flex-shrink: 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.logo-icon {
+  color: var(--role-primary, #6366f1);
+}
+
+.logo-text {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary, #303133);
+  white-space: nowrap;
+}
+
+.header-nav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg, 12px);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-secondary, #909399);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out),
+              background var(--duration-base) var(--ease-out);
+  white-space: nowrap;
+}
+
+.nav-tab:hover {
+  color: var(--role-primary, #6366f1);
+  background: var(--role-primary-light-9, #eef2ff);
+}
+
+.nav-tab.is-active {
+  color: var(--role-primary, #6366f1);
+  background: var(--role-primary-light-9, #eef2ff);
+  font-weight: var(--weight-semibold);
+}
+
+.header-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.header-search {
+  width: 200px;
+}
+
+.header-search :deep(.el-input__wrapper) {
+  border-radius: var(--radius-xl, 16px);
+  background: var(--el-fill-color-light, #f5f7fa);
+  box-shadow: none;
+}
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--el-text-color-regular, #606266);
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out),
+              background var(--duration-base) var(--ease-out);
+}
+
+.icon-btn:hover {
+  color: var(--role-primary, #6366f1);
+  background: var(--role-primary-light-9, #eef2ff);
+}
+
+.notification-badge {
+  display: flex;
+  align-items: center;
+}
+
+.user-avatar-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-2);
+  transition: background var(--duration-base) var(--ease-out);
+}
+
+.user-avatar-wrap:hover {
+  background: var(--el-fill-color-light, #f5f7fa);
+}
+
+.user-avatar {
+  border: 2px solid var(--role-primary-light-5, #c7d2fe);
+}
+
+.user-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  border-radius: var(--radius-circle);
+}
+
+.role-badge {
+  font-size: var(--text-xs);
+  border-color: var(--role-primary-light-5, #c7d2fe);
+  color: var(--role-primary, #6366f1);
+  background: var(--role-primary-light-9, #eef2ff);
+}
+
+.dropdown-arrow {
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 12px;
+}
+
+.logout-item {
+  color: var(--el-color-danger, #f56c6c);
+}
+
+/* ---------------------------------------------------------------------------
+   4. H5 顶部导航 (≤ 768px)
+   --------------------------------------------------------------------------- */
+.layout-header--h5 {
+  display: none;
+  height: 48px;
+  padding: 0 var(--space-3);
+  background: #fff;
+  border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
+  box-shadow: var(--shadow-xs);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+.h5-header-inner {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  gap: var(--space-3);
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  color: var(--el-text-color-regular, #606266);
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background: var(--el-fill-color-light, #f5f7fa);
+}
+
+.h5-title {
+  flex: 1;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary, #303133);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.h5-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   5. 主体内容区
+   --------------------------------------------------------------------------- */
+.layout-main {
+  flex: 1;
+  padding: 0;
+}
+
+.layout-main.has-tabbar {
+  padding-bottom: calc(56px + var(--space-4));
+}
+
+/* ---------------------------------------------------------------------------
+   6. H5 底部 Tab Bar (≤ 768px)
+   --------------------------------------------------------------------------- */
 .tabbar {
+  display: none;
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   height: 56px;
   background: #fff;
-  display: flex;
+  border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
+  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.06);
+  z-index: var(--z-fixed);
   justify-content: space-around;
   align-items: center;
-  border-top: 1px solid #eee;
-  z-index: 100;
-  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.06);
-  transition: box-shadow 200ms ease;
+  padding: 0 var(--space-1);
 }
 
 .tab-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 11px;
-  color: #909399;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  height: 100%;
+  color: var(--el-text-color-secondary, #909399);
   text-decoration: none;
-  transition: color 200ms ease;
   cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out);
 }
 
-.tab-item .el-icon {
-  font-size: 22px;
-  margin-bottom: 2px;
+.tab-item .tab-label {
+  font-size: 11px;
+  line-height: 1;
 }
 
-.tab-item.active {
-  color: var(--el-color-primary);
+.tab-item.is-active {
+  color: var(--role-primary, #6366f1);
 }
 
 .tab-item:hover {
-  color: var(--el-color-primary);
+  color: var(--role-primary, #6366f1);
 }
 
+/* ---------------------------------------------------------------------------
+   7. 路由过渡动画
+   --------------------------------------------------------------------------- */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   8. 响应式显示/隐藏
+   --------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .layout-header--pc {
+    display: none;
+  }
+
+  .layout-header--h5 {
+    display: flex;
+  }
+
+  .tabbar {
+    display: flex;
+  }
+}
+
+@media (min-width: 769px) {
+  .layout-header--pc {
+    display: flex;
+  }
+
+  .layout-header--h5 {
+    display: none;
+  }
+
+  .tabbar {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   9. 下拉菜单图标对齐
+   --------------------------------------------------------------------------- */
 :deep(.el-dropdown-menu__item) {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  padding: 8px 16px;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  padding: var(--space-2) var(--space-4);
 }
 
 :deep(.el-dropdown-menu__item .el-icon) {
   font-size: 16px;
-}
-
-@media (min-width: 768px) {
-  .tabbar {
-    max-width: 480px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-radius: 12px 12px 0 0;
-  }
 }
 </style>

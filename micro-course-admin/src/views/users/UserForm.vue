@@ -14,100 +14,182 @@
         </div>
       </template>
 
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px" class="form-container-narrow">
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="用户名" prop="username">
-              <el-input v-model="formData.username" :placeholder="isEdit ? '编辑时不可修改' : '请输入用户名'" :disabled="isEdit" />
-            </el-form-item>
-          </el-col>
-          <el-col v-if="!isEdit" :span="12">
-            <el-form-item label="密码" prop="password">
-              <el-input v-model="formData.password" type="password" placeholder="请输入密码" show-password />
-            </el-form-item>
-          </el-col>
-        </el-row>
+      <el-form
+        ref="formRef"
+        :model="formData"
+        :rules="formRules"
+        label-position="top"
+        class="user-form-body"
+      >
+        <!-- Section 1: 基础信息 -->
+        <div class="form-section">
+          <div class="form-section-title">基础信息</div>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="账号" prop="username">
+                <el-input
+                  v-model="formData.username"
+                  :placeholder="isEdit ? '编辑时不可修改' : '请输入账号'"
+                  :disabled="isEdit"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col v-if="!isEdit" :span="12">
+              <el-form-item label="密码" prop="password">
+                <el-input
+                  v-model="formData.password"
+                  type="password"
+                  placeholder="请输入密码"
+                  show-password
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row v-if="!isEdit" :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="确认密码" prop="confirmPassword">
+                <el-input
+                  v-model="formData.confirmPassword"
+                  type="password"
+                  placeholder="请再次输入密码"
+                  show-password
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
 
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="姓名" prop="realName">
-              <el-input v-model="formData.realName" placeholder="请输入姓名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="性别" prop="gender">
-              <el-select v-model="formData.gender" placeholder="请选择" class="full-width">
-                <el-option label="男" value="MALE" />
-                <el-option label="女" value="FEMALE" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <!-- Section 2: 所属信息 -->
+        <div class="form-section">
+          <div class="form-section-title">所属信息</div>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="角色" prop="role">
+                <el-select
+                  v-model="formData.role"
+                  :placeholder="isEdit ? '编辑时不可修改' : '请选择角色'"
+                  :disabled="isEdit"
+                  class="full-width"
+                >
+                  <el-option label="学生" value="STUDENT" />
+                  <el-option label="教师" value="TEACHER" />
+                  <el-option label="管理员" value="ADMIN" />
+                  <el-option label="教务" value="ACADEMIC" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="院系" prop="departmentId">
+                <el-select
+                  v-model="formData.departmentId"
+                  placeholder="请选择院系"
+                  clearable
+                  class="full-width"
+                  @change="handleDepartmentChange"
+                >
+                  <el-option
+                    v-for="dept in departments"
+                    :key="dept.id"
+                    :label="dept.name"
+                    :value="dept.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="专业" prop="majorId">
+                <el-select
+                  v-model="formData.majorId"
+                  placeholder="请先选择院系"
+                  clearable
+                  class="full-width"
+                  :disabled="!formData.departmentId"
+                  @change="handleMajorChange"
+                >
+                  <el-option
+                    v-for="major in majors"
+                    :key="major.id"
+                    :label="major.name"
+                    :value="major.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="班级" prop="classId">
+                <el-select
+                  v-model="formData.classId"
+                  placeholder="请先选择专业"
+                  clearable
+                  class="full-width"
+                  :disabled="!formData.majorId"
+                >
+                  <el-option
+                    v-for="cls in classes"
+                    :key="cls.id"
+                    :label="cls.name"
+                    :value="cls.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
 
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="邮箱" prop="email">
-              <el-input v-model="formData.email" placeholder="请输入邮箱" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="手机" prop="phone">
-              <el-input v-model="formData.phone" placeholder="请输入手机号" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <!-- Section 3: 个人信息 -->
+        <div class="form-section">
+          <div class="form-section-title">个人信息</div>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="姓名" prop="realName">
+                <el-input v-model="formData.realName" placeholder="请输入姓名" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="性别" prop="gender">
+                <el-select v-model="formData.gender" placeholder="请选择" class="full-width">
+                  <el-option label="男" value="MALE" />
+                  <el-option label="女" value="FEMALE" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="邮箱" prop="email">
+                <el-input v-model="formData.email" placeholder="请输入邮箱" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="手机" prop="phone">
+                <el-input v-model="formData.phone" placeholder="请输入手机号" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="头像" prop="avatarUrl">
+                <el-input v-model="formData.avatarUrl" placeholder="请输入头像URL" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="年级" prop="grade">
+                <el-input v-model="formData.grade" placeholder="请输入年级" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="入学年份" prop="enrollmentYear">
+                <el-input v-model="formData.enrollmentYear" placeholder="如: 2024" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
 
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="角色" prop="role">
-              <el-select v-model="formData.role" placeholder="请选择角色" :disabled="isEdit" class="full-width">
-                <el-option label="学生" value="STUDENT" />
-                <el-option label="教师" value="TEACHER" />
-                <el-option label="管理员" value="ADMIN" />
-                <el-option label="教务" value="ACADEMIC" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="年级" prop="grade">
-              <el-input v-model="formData.grade" placeholder="请输入年级" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="院系" prop="departmentId">
-              <el-select v-model="formData.departmentId" placeholder="请选择院系" clearable class="full-width" @change="handleDepartmentChange">
-                <el-option v-for="dept in departments" :key="dept.id" :label="dept.name" :value="dept.id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="专业" prop="majorId">
-              <el-select v-model="formData.majorId" placeholder="请先选择院系" clearable class="full-width" :disabled="!formData.departmentId" @change="handleMajorChange">
-                <el-option v-for="major in majors" :key="major.id" :label="major.name" :value="major.id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="班级" prop="classId">
-              <el-select v-model="formData.classId" placeholder="请先选择专业" clearable class="full-width" :disabled="!formData.majorId">
-                <el-option v-for="cls in classes" :key="cls.id" :label="cls.name" :value="cls.id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="入学年份" prop="enrollmentYear">
-              <el-input v-model="formData.enrollmentYear" placeholder="如: 2024" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-form-item>
+        <el-form-item class="form-actions">
           <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
           <el-button @click="router.back()">取消</el-button>
         </el-form-item>
@@ -140,6 +222,7 @@ const isEdit = computed(() => route.path.includes('/edit'))
 const formData = reactive({
   username: '',
   password: '',
+  confirmPassword: '',
   realName: '',
   email: '',
   phone: '',
@@ -149,17 +232,31 @@ const formData = reactive({
   majorId: '',
   classId: '',
   grade: '',
-  enrollmentYear: ''
+  enrollmentYear: '',
+  avatarUrl: ''
 })
+
+const validateConfirmPassword = (rule, value, callback) => {
+  if (!value) {
+    callback(new Error('请再次输入密码'))
+  } else if (value !== formData.password) {
+    callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
 
 const formRules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 50, message: '用户名长度为3-50个字符', trigger: 'blur' }
+    { required: true, message: '请输入账号', trigger: 'blur' },
+    { min: 3, max: 50, message: '账号长度为3-50个字符', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, max: 100, message: '密码长度为6-100个字符', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, validator: validateConfirmPassword, trigger: 'blur' }
   ],
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
@@ -226,10 +323,12 @@ const handleSubmit = async () => {
       if (isEdit.value) {
         delete submitData.username
         delete submitData.password
+        delete submitData.confirmPassword
         delete submitData.role
         await updateUser(route.params.id, submitData)
         ElMessage.success('编辑成功')
       } else {
+        delete submitData.confirmPassword
         await createUser(submitData)
         ElMessage.success('创建成功')
       }
@@ -255,6 +354,8 @@ const loadUserData = async (id) => {
     formData.classId = data.classId || ''
     formData.grade = data.grade || ''
     formData.enrollmentYear = data.enrollmentYear || ''
+    formData.avatarUrl = data.avatarUrl || ''
+    formData.role = data.role || ''
 
     if (data.departmentId) {
       await fetchMajors(data.departmentId)
@@ -281,7 +382,7 @@ onMounted(async () => {
 }
 
 .user-form :deep(.el-card) {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   transition: box-shadow 200ms ease;
 }
 
@@ -292,8 +393,42 @@ onMounted(async () => {
 .card-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
-.form-container-narrow { max-width: 600px; }
+.user-form-body {
+  max-width: 600px;
+}
+
+.form-section {
+  margin-bottom: var(--space-6);
+}
+
+.form-section-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.form-actions {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.user-form :deep(.el-form-item__label) {
+  font-weight: 500;
+}
+
+.user-form :deep(.el-input__wrapper),
+.user-form :deep(.el-select__wrapper) {
+  border-radius: var(--radius-sm);
+}
 </style>

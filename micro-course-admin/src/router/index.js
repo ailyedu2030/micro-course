@@ -3,8 +3,8 @@ import { isAuthenticated } from '../utils/auth'
 
 const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/auth/Login.vue'), meta: { requiresAuth: false } },
-  { path: '/', redirect: '/departments' },
-  { path: '/departments', name: 'DepartmentList', component: () => import('../views/departments/DepartmentList.vue'), meta: { requiresAuth: true } },
+  { path: '/', name: 'Home', redirect: '/admin/dashboard' },
+  { path: '/departments', name: 'DepartmentList', component: () => import('../views/departments/DepartmentList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/majors', name: 'MajorList', component: () => import('../views/majors/MajorList.vue'), meta: { requiresAuth: true } },
   { path: '/classes', name: 'ClassList', component: () => import('../views/classes/ClassList.vue'), meta: { requiresAuth: true } },
   { path: '/users', name: 'UserList', component: () => import('../views/users/UserList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
@@ -52,20 +52,41 @@ const routes = [
   { path: '/student/settings', name: 'StudentSettings', component: () => import('../views/student/Settings.vue'), meta: { requiresAuth: true } },
 ]
 
+function getRoleHomePage(role) {
+  if (role === 'STUDENT') return '/student/courses'
+  if (role === 'TEACHER') return '/teacher/dashboard'
+  if (role === 'ACADEMIC') return '/users'
+  return '/admin/dashboard'
+}
+
+const STAFF_ONLY_PATHS = [
+  '/departments', '/majors', '/classes',
+  '/courses', '/course-categories', '/tags', '/chapters', '/videos',
+  '/enrollments', '/favorites', '/questions', '/exercises',
+  '/discussions', '/notifications', '/courses/review'
+]
+
+function isStaffOnlyPath(path) {
+  return STAFF_ONLY_PATHS.some(p => path === p || path.startsWith(p + '/'))
+}
+
 const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth !== false && !isAuthenticated()) return next('/login')
+  const userRole = localStorage.getItem('userRole') || ''
   if (to.path === '/login' && isAuthenticated()) {
-    const userRole = localStorage.getItem('userRole') || ''
-    if (userRole === 'STUDENT') return next('/student/courses')
-    return next('/')
+    return next(getRoleHomePage(userRole))
+  }
+  if (to.path === '/' && isAuthenticated()) {
+    return next(getRoleHomePage(userRole))
+  }
+  if (userRole === 'STUDENT' && isStaffOnlyPath(to.path)) {
+    return next('/student/courses')
   }
   if (to.meta.roles && to.meta.roles.length > 0) {
-    const userRole = localStorage.getItem('userRole') || ''
     if (!to.meta.roles.includes(userRole)) {
-      if (userRole === 'STUDENT') return next('/student/courses')
-      return next('/')
+      return next(getRoleHomePage(userRole))
     }
   }
   next()

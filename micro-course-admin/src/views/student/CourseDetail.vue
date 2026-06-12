@@ -20,151 +20,293 @@
           </span>
         </div>
       </div>
-      <div v-if="course.coverUrl" class="banner-cover">
+      <div v-if="course.coverUrl && !isMobile" class="banner-cover">
         <img :src="course.coverUrl" :alt="course.title" />
       </div>
     </div>
 
-    <!-- 内容区 -->
-    <div class="course-content">
-      <!-- 左侧：课程信息 + 大纲 -->
-      <div class="main-column">
-        <!-- 课程描述 -->
-        <el-card class="desc-card card-hover">
-          <template #header>
-            <span class="section-title">课程介绍</span>
-          </template>
-          <p class="course-description">{{ course.description || '暂无课程介绍' }}</p>
-        </el-card>
+    <!-- PC 布局 -->
+    <div v-if="!isMobile" class="pc-layout">
+      <!-- 内容区 -->
+      <div class="course-content">
+        <!-- 左侧：课程信息 + 大纲 -->
+        <div class="main-column">
+          <!-- 课程描述 -->
+          <el-card class="desc-card card-hover">
+            <template #header>
+              <span class="section-title">课程介绍</span>
+            </template>
+            <p class="course-description">{{ course.description || '暂无课程介绍' }}</p>
+          </el-card>
 
-        <!-- 大纲列表 -->
-        <el-card class="chapter-card card-hover">
-          <template #header>
-            <span class="section-title">课程大纲</span>
-          </template>
-          <el-table
-            v-loading="chapterLoading"
-            :data="chapters"
-            stripe
-            border
->
-            <el-table-column type="index" label="#" width="60" align="center" />
-            <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
-            <el-table-column prop="title" label="章节标题" min-width="160" show-overflow-tooltip />
-            <el-table-column prop="chapterType" label="类型" width="120" align="center">
-              <template #default="{ row }">
-                <el-tag
-                  v-if="row.chapterType === 'VIDEO'"
-                  type="primary"
-                  size="small"
-                  effect="plain"
-                >
-视频
-</el-tag>
-                <el-tag
-                  v-else-if="row.chapterType === 'EXERCISE'"
-                  type="success"
-                  size="small"
-                  effect="plain"
-                >
-练习
-</el-tag>
-                <el-tag
-                  v-else
-                  type="info"
-                  size="small"
-                  effect="plain"
-                >
-{{ row.chapterType }}
-</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="duration" label="时长" width="100" align="center">
-              <template #default="{ row }">
-                {{ formatDuration(row.duration) }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </div>
+          <!-- 大纲列表 -->
+          <el-card class="chapter-card card-hover">
+            <template #header>
+              <span class="section-title">课程大纲</span>
+            </template>
+            <el-table
+              v-loading="chapterLoading"
+              :data="chapters"
+              stripe
+              border
+            >
+              <el-table-column type="index" label="#" width="60" align="center" />
+              <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
+              <el-table-column prop="title" label="章节标题" min-width="160" show-overflow-tooltip />
+              <el-table-column prop="chapterType" label="类型" width="120" align="center">
+                <template #default="{ row }">
+                  <el-tag
+                    v-if="row.chapterType === 'VIDEO'"
+                    type="primary"
+                    size="small"
+                    effect="plain"
+                  >
+                    视频
+                  </el-tag>
+                  <el-tag
+                    v-else-if="row.chapterType === 'EXERCISE'"
+                    type="success"
+                    size="small"
+                    effect="plain"
+                  >
+                    练习
+                  </el-tag>
+                  <el-tag
+                    v-else
+                    type="info"
+                    size="small"
+                    effect="plain"
+                  >
+                    {{ row.chapterType }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="duration" label="时长" width="100" align="center">
+                <template #default="{ row }">
+                  {{ formatDuration(row.duration) }}
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
 
-        <!-- 评价区 -->
-        <el-card class="review-card card-hover">
-          <template #header>
-            <div class="review-header">
-              <span class="section-title">课程评价</span>
-              <el-button type="primary" size="small" text @click="openReviewDialog">
-                写评价
-              </el-button>
-            </div>
-          </template>
-          <div v-loading="reviewLoading" class="review-list">
-            <template v-if="reviews.length > 0">
-              <div v-for="r in reviews" :key="r.id" class="review-item">
-                <div class="review-user">
-                  <el-avatar :size="32" :src="r.userAvatar">{{ r.userRealName?.charAt(0) }}</el-avatar>
-                  <span class="review-username">{{ r.userRealName || '匿名用户' }}</span>
-                </div>
-                <el-rate v-model="r.rating" disabled size="small" class="review-rating" />
-                <p class="review-content">{{ r.content }}</p>
-                <span class="review-time">{{ formatTime(r.createdAt) }}</span>
+          <!-- 评价区 -->
+          <el-card class="review-card card-hover">
+            <template #header>
+              <div class="review-header">
+                <span class="section-title">课程评价</span>
+                <el-button type="primary" size="small" text @click="openReviewDialog">
+                  写评价
+                </el-button>
               </div>
             </template>
-            <el-empty v-else description="暂无评价，来说第一条吧！" />
-          </div>
-        </el-card>
+            <div v-loading="reviewLoading" class="review-list">
+              <template v-if="reviews.length > 0">
+                <div v-for="r in reviews" :key="r.id" class="review-item">
+                  <div class="review-user">
+                    <el-avatar :size="32" :src="r.userAvatar">{{ r.userRealName?.charAt(0) }}</el-avatar>
+                    <span class="review-username">{{ r.userRealName || '匿名用户' }}</span>
+                  </div>
+                  <el-rate v-model="r.rating" disabled size="small" class="review-rating" />
+                  <p class="review-content">{{ r.content }}</p>
+                  <span class="review-time">{{ formatTime(r.createdAt) }}</span>
+                </div>
+              </template>
+              <el-empty v-else description="暂无评价，来说第一条吧！" />
+            </div>
+          </el-card>
+        </div>
 
         <!-- 右侧：教师信息 -->
         <div class="side-column">
-        <el-card class="teacher-card card-hover">
-          <template #header>
-            <span class="section-title">授课教师</span>
-          </template>
-          <div v-loading="teacherLoading" class="teacher-info">
-            <template v-if="teacher.id">
-              <div class="teacher-avatar">
-                <el-avatar :size="72" :src="teacher.avatar">
-                  {{ teacher.realName?.charAt(0) }}
-                </el-avatar>
-              </div>
-              <div class="teacher-name">{{ teacher.realName }}</div>
-              <div class="teacher-bio">{{ teacher.bio || teacher.introduction || '暂无教师简介' }}</div>
+          <!-- 教师卡片 -->
+          <el-card class="teacher-card card-hover">
+            <template #header>
+              <span class="section-title">授课教师</span>
             </template>
-            <el-empty v-else description="加载教师信息中..." :image-size="60" />
-          </div>
-        </el-card>
+            <div v-loading="teacherLoading" class="teacher-info">
+              <template v-if="teacher.id">
+                <div class="teacher-avatar">
+                  <el-avatar :size="72" :src="teacher.avatar">
+                    {{ teacher.realName?.charAt(0) }}
+                  </el-avatar>
+                </div>
+                <div class="teacher-name">{{ teacher.realName }}</div>
+                <div class="teacher-bio">{{ teacher.bio || teacher.introduction || '暂无教师简介' }}</div>
+              </template>
+              <el-empty v-else description="加载教师信息中..." :image-size="60" />
+            </div>
+          </el-card>
 
-        <!-- 学习同伴 -->
-        <el-card class="companions-card card-hover">
-          <div class="companions-tip">
-            <el-icon><User /></el-icon>
-            <span>当前 <strong>{{ studentCount }}</strong> 名同学在学习</span>
-          </div>
-        </el-card>
+          <!-- 学习同伴 -->
+          <el-card class="companions-card card-hover">
+            <div class="companions-tip">
+              <el-icon><User /></el-icon>
+              <span>当前 <strong>{{ studentCount }}</strong> 名同学在学习</span>
+            </div>
+          </el-card>
 
-        <!-- 活跃排行 -->
-        <el-card class="ranking-card card-hover">
-          <template #header>
-            <span class="section-title">学习排行</span>
-          </template>
-          <div v-loading="rankingLoading" class="ranking-list">
-            <template v-if="rankingList.length > 0">
-              <div
-                v-for="item in rankingList"
-                :key="item.rank"
-                class="ranking-item"
-                :class="{ 'ranking-current': item.isCurrentUser }"
-              >
-                <span class="rank-num" :class="{ 'rank-top': item.rank <= 3 }">
-                  {{ item.rank }}
-                </span>
-                <span class="rank-name">{{ item.userName }}</span>
-                <span class="rank-progress">{{ (item.progress * 100).toFixed(0) }}%</span>
+          <!-- 活跃排行 -->
+          <el-card class="ranking-card card-hover">
+            <template #header>
+              <span class="section-title">学习排行</span>
+            </template>
+            <div v-loading="rankingLoading" class="ranking-list">
+              <template v-if="rankingList.length > 0">
+                <div
+                  v-for="item in rankingList"
+                  :key="item.rank"
+                  class="ranking-item"
+                  :class="{ 'ranking-current': item.isCurrentUser }"
+                >
+                  <span class="rank-num" :class="{ 'rank-top': item.rank <= 3 }">
+                    {{ item.rank }}
+                  </span>
+                  <span class="rank-name">{{ item.userName }}</span>
+                  <span class="rank-progress">{{ (item.progress * 100).toFixed(0) }}%</span>
+                </div>
+              </template>
+              <el-empty v-else description="暂无排行数据" :image-size="60" />
+            </div>
+          </el-card>
+        </div>
+      </div>
+    </div>
+
+    <!-- H5 布局 -->
+    <div v-else class="h5-layout">
+      <!-- Tab 栏 -->
+      <div class="h5-tabs">
+        <div
+          class="h5-tab"
+          :class="{ active: h5ActiveTab === 'intro' }"
+          @click="h5ActiveTab = 'intro'"
+        >
+          介绍
+        </div>
+        <div
+          class="h5-tab"
+          :class="{ active: h5ActiveTab === 'chapters' }"
+          @click="h5ActiveTab = 'chapters'"
+        >
+          目录
+        </div>
+        <div
+          class="h5-tab"
+          :class="{ active: h5ActiveTab === 'reviews' }"
+          @click="h5ActiveTab = 'reviews'"
+        >
+          评价
+        </div>
+      </div>
+
+      <!-- Tab 内容 -->
+      <div class="h5-content">
+        <!-- 介绍 -->
+        <div v-show="h5ActiveTab === 'intro'" class="h5-tab-content">
+          <el-card class="desc-card card-hover">
+            <p class="course-description">{{ course.description || '暂无课程介绍' }}</p>
+          </el-card>
+          <el-card class="teacher-card card-hover">
+            <template #header>
+              <span class="section-title">授课教师</span>
+            </template>
+            <div v-loading="teacherLoading" class="teacher-info">
+              <template v-if="teacher.id">
+                <div class="teacher-avatar">
+                  <el-avatar :size="72" :src="teacher.avatar">
+                    {{ teacher.realName?.charAt(0) }}
+                  </el-avatar>
+                </div>
+                <div class="teacher-name">{{ teacher.realName }}</div>
+                <div class="teacher-bio">{{ teacher.bio || teacher.introduction || '暂无教师简介' }}</div>
+              </template>
+              <el-empty v-else description="加载教师信息中..." :image-size="60" />
+            </div>
+          </el-card>
+          <el-card class="companions-card card-hover">
+            <div class="companions-tip">
+              <el-icon><User /></el-icon>
+              <span>当前 <strong>{{ studentCount }}</strong> 名同学在学习</span>
+            </div>
+          </el-card>
+        </div>
+
+        <!-- 目录 -->
+        <div v-show="h5ActiveTab === 'chapters'" class="h5-tab-content">
+          <el-card class="chapter-card card-hover">
+            <el-table
+              v-loading="chapterLoading"
+              :data="chapters"
+              stripe
+              border
+            >
+              <el-table-column type="index" label="#" width="60" align="center" />
+              <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
+              <el-table-column prop="title" label="章节标题" min-width="160" show-overflow-tooltip />
+              <el-table-column prop="chapterType" label="类型" width="120" align="center">
+                <template #default="{ row }">
+                  <el-tag
+                    v-if="row.chapterType === 'VIDEO'"
+                    type="primary"
+                    size="small"
+                    effect="plain"
+                  >
+                    视频
+                  </el-tag>
+                  <el-tag
+                    v-else-if="row.chapterType === 'EXERCISE'"
+                    type="success"
+                    size="small"
+                    effect="plain"
+                  >
+                    练习
+                  </el-tag>
+                  <el-tag
+                    v-else
+                    type="info"
+                    size="small"
+                    effect="plain"
+                  >
+                    {{ row.chapterType }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="duration" label="时长" width="100" align="center">
+                <template #default="{ row }">
+                  {{ formatDuration(row.duration) }}
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </div>
+
+        <!-- 评价 -->
+        <div v-show="h5ActiveTab === 'reviews'" class="h5-tab-content">
+          <el-card class="review-card card-hover">
+            <template #header>
+              <div class="review-header">
+                <span class="section-title">课程评价</span>
+                <el-button type="primary" size="small" text @click="openReviewDialog">
+                  写评价
+                </el-button>
               </div>
             </template>
-            <el-empty v-else description="暂无排行数据" :image-size="60" />
-          </div>
-        </el-card>
+            <div v-loading="reviewLoading" class="review-list">
+              <template v-if="reviews.length > 0">
+                <div v-for="r in reviews" :key="r.id" class="review-item">
+                  <div class="review-user">
+                    <el-avatar :size="32" :src="r.userAvatar">{{ r.userRealName?.charAt(0) }}</el-avatar>
+                    <span class="review-username">{{ r.userRealName || '匿名用户' }}</span>
+                  </div>
+                  <el-rate v-model="r.rating" disabled size="small" class="review-rating" />
+                  <p class="review-content">{{ r.content }}</p>
+                  <span class="review-time">{{ formatTime(r.createdAt) }}</span>
+                </div>
+              </template>
+              <el-empty v-else description="暂无评价，来说第一条吧！" />
+            </div>
+          </el-card>
+        </div>
       </div>
     </div>
 
@@ -262,6 +404,16 @@ const reviewRules = {
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
+// H5 Tab 状态
+const h5ActiveTab = ref('intro')
+
+// 响应式：移动端判断
+const isMobile = ref(window.innerWidth <= 768)
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+window.addEventListener('resize', handleResize)
+
 // 格式化时长：分钟 → XhYm
 const formatDuration = (minutes) => {
   if (!minutes && minutes !== 0) return '-'
@@ -270,6 +422,13 @@ const formatDuration = (minutes) => {
   if (h === 0) return `${m}m`
   if (m === 0) return `${h}h`
   return `${h}h${m}m`
+}
+
+// 格式化时间
+const formatTime = (time) => {
+  if (!time) return ''
+  const d = new Date(time)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 // 获取课程信息
@@ -435,12 +594,12 @@ onMounted(async () => {
 
 /* Banner 区 */
 .course-banner {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 100%);
   height: 220px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 48px;
+  padding: 0 var(--space-8);
   color: #f5f5f5;
   position: relative;
   overflow: hidden;
@@ -452,36 +611,36 @@ onMounted(async () => {
 }
 
 .course-title {
-  font-size: 28px;
-  font-weight: 700;
-  margin: 0 0 12px;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  margin: 0 0 var(--space-3);
   line-height: 1.3;
 }
 
 .course-subtitle {
-  font-size: 16px;
-  margin: 0 0 16px;
+  font-size: var(--text-base);
+  margin: 0 0 var(--space-4);
   opacity: 0.9;
 }
 
 .course-meta {
   display: flex;
-  gap: 20px;
-  font-size: 14px;
+  gap: var(--space-5);
+  font-size: var(--text-sm);
 }
 
 .course-meta span {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .banner-cover {
   width: 280px;
   height: 180px;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 .banner-cover img {
@@ -490,27 +649,65 @@ onMounted(async () => {
   object-fit: cover;
 }
 
-/* 内容区 */
-.course-content {
+/* PC 布局 */
+.pc-layout .course-content {
   max-width: 960px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: var(--space-6) var(--space-4);
   display: flex;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .main-column {
   flex: 7;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .side-column {
   flex: 3;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
+}
+
+/* H5 布局 */
+.h5-layout {
+  padding-bottom: 80px;
+}
+
+.h5-tabs {
+  display: flex;
+  background: var(--el-bg-color);
+  border-bottom: 1px solid var(--el-border-color-light);
+}
+
+.h5-tab {
+  flex: 1;
+  padding: 12px 0;
+  text-align: center;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
+  transition: all var(--duration-base) var(--ease-out);
+  border-bottom: 2px solid transparent;
+}
+
+.h5-tab.active {
+  color: var(--role-primary);
+  border-bottom-color: var(--role-primary);
+}
+
+.h5-content {
+  padding: 16px 12px;
+}
+
+.h5-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 /* 评价卡片 */
@@ -523,11 +720,11 @@ onMounted(async () => {
 .review-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .review-item {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
   padding-bottom: 12px;
 }
 
@@ -538,52 +735,54 @@ onMounted(async () => {
 .review-user {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .review-username {
-  font-size: 13px;
-  font-weight: 500;
-  color: #303133;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
 }
 
 .review-rating {
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .review-content {
-  font-size: 13px;
-  color: #606266;
-  line-height: 1.6;
-  margin: 4px 0 0;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  line-height: var(--leading-relaxed);
+  margin: var(--space-1) 0 0;
   white-space: pre-wrap;
 }
 
 .review-time {
-  font-size: 12px;
-  color: #c0c4cc;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-placeholder);
 }
 
 /* 卡片通用 */
 :deep(.el-card) {
-  border-radius: 8px;
-  transition: box-shadow 0.2s ease;
+  border-radius: var(--radius-lg);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
 }
 
 :deep(.el-card__header) {
   padding: 14px 20px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 /* 卡片 hover 效果 */
 :deep(.el-card.card-hover:hover) {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 /* 表格样式 */
 :deep(.el-table) {
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
@@ -598,14 +797,14 @@ onMounted(async () => {
 }
 
 .section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
 }
 
 .course-description {
-  font-size: 14px;
-  color: #606266;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
   line-height: 1.8;
   margin: 0;
   white-space: pre-wrap;
@@ -616,65 +815,65 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 
 .teacher-avatar {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .teacher-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 8px;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  margin-bottom: var(--space-2);
 }
 
 .teacher-bio {
-  font-size: 13px;
-  color: #909399;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
   text-align: center;
-  line-height: 1.6;
+  line-height: var(--leading-relaxed);
 }
 
 /* 学习同伴 */
 .companions-card {
-  background: #f5f7fa;
+  background: var(--role-primary-light);
 }
 
 .companions-tip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #606266;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
 }
 
 .companions-tip strong {
-  color: #667eea;
-  font-size: 16px;
+  color: var(--role-primary);
+  font-size: var(--text-base);
 }
 
 /* 排行卡片 */
 .ranking-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .ranking-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  background: #f5f7fa;
-  transition: all 0.2s ease;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--el-fill-color-light);
+  transition: all var(--duration-base) var(--ease-out);
 }
 
 .ranking-item.ranking-current {
-  background: #ecf5ff;
-  border: 1px solid #409eff;
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--role-primary);
 }
 
 .rank-num {
@@ -683,36 +882,36 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: #e4e7ed;
-  font-size: 12px;
-  font-weight: 600;
-  color: #606266;
+  border-radius: var(--radius-circle);
+  background: var(--el-fill-color);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-secondary);
   flex-shrink: 0;
 }
 
 .rank-num.rank-top {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 100%);
   color: #f5f5f5;
 }
 
 .ranking-item.ranking-current .rank-num {
-  background: #409eff;
+  background: var(--role-primary);
   color: #f5f5f5;
 }
 
 .rank-name {
   flex: 1;
-  font-size: 14px;
-  color: #303133;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .rank-progress {
-  font-size: 13px;
-  color: #909399;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
   flex-shrink: 0;
 }
 
@@ -722,29 +921,29 @@ onMounted(async () => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: #f5f5f5;
-  border-top: 1px solid #e4e7ed;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  background: var(--el-bg-color-page);
+  border-top: 1px solid var(--el-border-color);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
   z-index: 100;
 }
 
 .bar-inner {
   max-width: 960px;
   margin: 0 auto;
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .user-greeting {
-  font-size: 14px;
-  color: #909399;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
 }
 
 .action-btns {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 /* 响应式 */
@@ -760,7 +959,7 @@ onMounted(async () => {
     display: none;
   }
 
-  .course-content {
+  .pc-layout .course-content {
     flex-direction: column;
     padding: 16px 12px;
   }
@@ -772,12 +971,12 @@ onMounted(async () => {
   }
 
   .fixed-bottom-bar {
-    padding: 10px 12px;
+    padding: var(--space-3) var(--space-3);
   }
 
   .bar-inner {
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-3);
     align-items: flex-start;
   }
 

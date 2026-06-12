@@ -7,18 +7,18 @@
 <template>
   <div class="class-list">
     <!-- 搜索区 -->
-    <el-card class="search-card" shadow="never">
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="名称">
           <el-input v-model="searchForm.name" placeholder="请输入班级名称" clearable class="search-input" />
         </el-form-item>
         <el-form-item label="专业">
-          <el-select v-model="searchForm.majorId" placeholder="请选择专业" clearable class="search-select major-select">
+          <el-select v-model="searchForm.majorId" placeholder="请选择专业" clearable class="search-select">
             <el-option v-for="item in majorOptions" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="年级">
-          <el-input v-model="searchForm.grade" placeholder="请输入年级" clearable class="search-input grade-input" />
+          <el-input v-model="searchForm.grade" placeholder="请输入年级" clearable class="search-input" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -28,10 +28,10 @@
     </el-card>
 
     <!-- 表格区 -->
-    <el-card class="table-card" shadow="never">
+    <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span>班级列表</span>
+          <span class="card-title">班级列表</span>
           <el-button type="primary" @click="handleCreate">新增班级</el-button>
         </div>
       </template>
@@ -41,14 +41,19 @@
           <el-empty description="暂无班级数据" />
         </template>
         <el-table-column prop="name" label="名称" min-width="150" />
-        <el-table-column prop="majorName" label="所属专业" width="150" />
+        <el-table-column prop="majorName" label="所属专业" min-width="150" />
         <el-table-column prop="grade" label="年级" width="100" />
         <el-table-column prop="counselorId" label="辅导员" width="120" />
         <el-table-column prop="sortOrder" label="排序" width="100" />
+        <el-table-column prop="createdAt" label="创建时间" width="180" />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-popconfirm title="确定删除该班级？" @confirm="handleDelete(row)">
+              <template #reference>
+                <el-button type="danger" link size="small">删除</el-button>
+              </template>
+            </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
@@ -66,8 +71,8 @@
     </el-card>
 
     <!-- 弹窗区 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="580px" @close="handleDialogClose">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-position="top">
         <el-form-item label="名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入班级名称" />
         </el-form-item>
@@ -96,7 +101,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getClasses, createClass, updateClass, deleteClass } from '@/api/class'
 import { getMajors } from '@/api/major'
 
@@ -213,14 +218,11 @@ const handleEdit = (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该班级?', '提示', { type: 'warning' })
     await deleteClass(row.id)
     ElMessage.success('删除成功')
     fetchData()
   } catch {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
+    ElMessage.error('删除失败')
   }
 }
 
@@ -259,34 +261,36 @@ onMounted(() => {
 
 <style scoped>
 .class-list {
-  padding: var(--space-xl);
+  padding: var(--space-4);
 }
 
-.search-card {
-  margin-bottom: var(--space-lg);
-  border-radius: 8px;
+.filter-card {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-white, #ffffff);
   transition: box-shadow 200ms ease;
 }
 
-.search-card:hover {
+.filter-card:hover {
   box-shadow: var(--shadow-md);
 }
 
 .table-card {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   transition: box-shadow 200ms ease;
 }
 
 .table-card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-4);
 }
 
 .table-card :deep(.el-table) {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -296,24 +300,31 @@ onMounted(() => {
   align-items: center;
 }
 
+.card-title {
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-text-primary, #303133);
+}
+
 .search-input {
   width: 200px;
 }
 
-.major-select {
+.search-select {
   width: 200px;
 }
 
-.grade-input {
-  width: 120px;
-}
-
 .pagination-wrap {
-  margin-top: var(--space-lg);
+  margin-top: var(--space-4);
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
-.data-table { width: 100%; }
-.full-width { width: 100%; }
+.data-table {
+  width: 100%;
+}
+
+.full-width {
+  width: 100%;
+}
 </style>

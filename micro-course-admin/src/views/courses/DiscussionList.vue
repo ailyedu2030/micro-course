@@ -1,17 +1,27 @@
 <!--
-  讨论帖列表
+  讨论列表
   路由路径: /courses/discussions
-  Phase 3
+  Phase 1
   Author: jackie
 -->
 <template>
-  <div class="discussion-list">
-    <!-- 搜索区 -->
-    <el-card class="search-card" shadow="never">
+  <div class="discussion-list-page">
+    <!-- 顶栏筛选卡 -->
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="章节">
-          <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable class="search-input-w180">
-            <el-option v-for="ch in chapters" :key="ch.id" :label="ch.title" :value="ch.id" />
+        <el-form-item label="关键字">
+          <el-input v-model="searchForm.keyword" placeholder="标题/内容" clearable class="filter-input-w160" />
+        </el-form-item>
+        <el-form-item label="课程">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w180">
+            <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120">
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已发布" value="PUBLISHED" />
+            <el-option label="已删除" value="DELETED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -21,44 +31,40 @@
       </el-form>
     </el-card>
 
-    <!-- 表格区 -->
+    <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>讨论区</span>
-          <el-button type="primary" @click="handleCreate">发帖</el-button>
+          <span class="card-title">讨论列表</span>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+        <template #empty>
+          <el-empty description="暂无讨论数据" />
+        </template>
         <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="authorName" label="作者" width="120" />
-        <el-table-column prop="commentCount" label="评论数" width="90" align="center" />
-        <el-table-column prop="likeCount" label="点赞数" width="90" align="center" />
-        <el-table-column prop="createdAt" label="发布时间" width="160">
-          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-        </el-table-column>
-        <el-table-column prop="isPinned" label="置顶" width="90" align="center">
+        <el-table-column prop="courseName" label="课程" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="replyCount" label="回复数" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.isPinned" type="success" size="small">已置顶</el-tag>
-            <span v-else>-</span>
+            {{ row.replyCount ?? 0 }}
           </template>
         </el-table-column>
-        <el-table-column prop="isEssence" label="加精" width="90" align="center">
+        <el-table-column prop="createdAt" label="发布时间" width="170" />
+        <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.isEssence" type="success" size="small">已加精</el-tag>
-            <span v-else>-</span>
+            <el-tag v-if="row.status === 'PENDING'" type="warning" size="small">待审核</el-tag>
+            <el-tag v-else-if="row.status === 'PUBLISHED'" type="success" size="small">已发布</el-tag>
+            <el-tag v-else-if="row.status === 'DELETED'" type="info" size="small">已删除</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.status || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right" align="center">
+        <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleView(row)">查看</el-button>
-            <el-button type="warning" link size="small" @click="handleTogglePin(row)">
-              {{ row.isPinned ? '取消置顶' : '置顶' }}
-            </el-button>
-            <el-button type="warning" link size="small" @click="handleToggleEssence(row)">
-              {{ row.isEssence ? '取消加精' : '加精' }}
-            </el-button>
+            <el-button v-if="row.status === 'PENDING'" type="success" link size="small" @click="handleApprove(row)">通过</el-button>
+            <el-button v-if="row.status === 'PENDING'" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -75,30 +81,6 @@
         />
       </div>
     </el-card>
-
-    <!-- 发帖弹窗 -->
-    <el-dialog v-model="dialogVisible" title="发帖" width="580px" @close="handleDialogClose">
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入标题" />
-        </el-form-item>
-        <el-form-item label="章节" prop="chapterId">
-          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width">
-            <el-option v-for="ch in chapters" :key="ch.id" :label="ch.title" :value="ch.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="内容" prop="content">
-          <el-input v-model="formData.content" type="textarea" :rows="5" placeholder="请输入内容" />
-        </el-form-item>
-        <el-form-item label="匿名">
-          <el-checkbox v-model="formData.isAnonymous">匿名发布</el-checkbox>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">发布</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -106,51 +88,30 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPosts, createPost, deletePost, updatePostPin, updatePostEssence } from '@/api/discussion'
-import { getChapters } from '@/api/chapter'
+import { getDiscussions, approveDiscussion, rejectDiscussion, deleteDiscussion } from '@/api/discussion'
+import { getCourses } from '@/api/course'
 
 const router = useRouter()
 
 const loading = ref(false)
-const submitLoading = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
-const chapters = ref([])
+const courseOptions = ref([])
 
 const searchForm = reactive({
-  chapterId: ''
+  keyword: '',
+  courseId: '',
+  status: ''
 })
 
-const dialogVisible = ref(false)
-const formRef = ref(null)
-const formData = reactive({
-  title: '',
-  content: '',
-  chapterId: '',
-  isAnonymous: false
-})
-
-const formRules = {
-  title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入内容', trigger: 'blur' }],
-  chapterId: [{ required: true, message: '请选择章节', trigger: 'change' }]
-}
-
-function formatTime(dateStr) {
-  if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-const fetchChapters = async () => {
+const fetchCourseOptions = async () => {
   try {
-    const { data } = await getChapters({ size: 1000 })
-    chapters.value = data.items || []
+    const { data } = await getCourses({ page: 0, size: 1000 })
+    courseOptions.value = data.items || []
   } catch {
-    // ignore
+    ElMessage.error('获取课程列表失败')
   }
 }
 
@@ -160,19 +121,15 @@ const fetchData = async () => {
     const params = {
       page: page.value - 1,
       size: size.value,
-      chapterId: searchForm.chapterId || undefined
+      keyword: searchForm.keyword || undefined,
+      courseId: searchForm.courseId || undefined,
+      status: searchForm.status || undefined
     }
-    const { data } = await getPosts(params)
-    const items = data.items || []
-    // Sort: pinned first, then by createdAt desc
-    items.sort((a, b) => {
-      if (b.isPinned !== a.isPinned) return b.isPinned ? 1 : -1
-      return new Date(b.createdAt) - new Date(a.createdAt)
-    })
-    tableData.value = items
+    const { data } = await getDiscussions(params)
+    tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取帖子列表失败')
+    ElMessage.error('获取讨论列表失败')
   } finally {
     loading.value = false
   }
@@ -184,7 +141,9 @@ const handleSearch = () => {
 }
 
 const handleReset = () => {
-  searchForm.chapterId = ''
+  searchForm.keyword = ''
+  searchForm.courseId = ''
+  searchForm.status = ''
   page.value = 1
   fetchData()
 }
@@ -198,108 +157,71 @@ const handlePageChange = () => {
   fetchData()
 }
 
-const handleCreate = () => {
-  formData.title = ''
-  formData.content = ''
-  formData.chapterId = ''
-  formData.isAnonymous = false
-  dialogVisible.value = true
-}
-
 const handleView = (row) => {
-  router.push(`/discussions/${row.id}`)
+  router.push(`/courses/discussions/${row.id}`)
 }
 
-const handleTogglePin = async (row) => {
+const handleApprove = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定${row.isPinned ? '取消置顶' : '置顶'}该帖子?`, '提示', { type: 'warning' })
-    await updatePostPin(row.id, !row.isPinned)
-    ElMessage.success('操作成功')
+    await ElMessageBox.confirm('确定通过该讨论?', '提示', { type: 'warning' })
+    await approveDiscussion(row.id)
+    ElMessage.success('审核通过')
     fetchData()
-  } catch {
-    if (error !== 'cancel') ElMessage.error('操作失败')
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
   }
 }
 
-const handleToggleEssence = async (row) => {
+const handleReject = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定${row.isEssence ? '取消加精' : '加精'}该帖子?`, '提示', { type: 'warning' })
-    await updatePostEssence(row.id, !row.isEssence)
-    ElMessage.success('操作成功')
+    await ElMessageBox.confirm('确定驳回该讨论?', '提示', { type: 'warning' })
+    await rejectDiscussion(row.id)
+    ElMessage.success('驳回成功')
     fetchData()
-  } catch {
-    if (error !== 'cancel') ElMessage.error('操作失败')
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
   }
 }
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该帖子?', '提示', { type: 'warning' })
-    await deletePost(row.id)
+    await ElMessageBox.confirm('确定删除该讨论?', '提示', { type: 'warning' })
+    await deleteDiscussion(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch {
-    if (error !== 'cancel') ElMessage.error('删除失败')
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
   }
 }
 
-const handleSubmit = async () => {
-  if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitLoading.value = true
-    try {
-      await createPost({
-        title: formData.title,
-        content: formData.content,
-        chapterId: formData.chapterId,
-        isAnonymous: formData.isAnonymous
-      })
-      ElMessage.success('发布成功')
-      dialogVisible.value = false
-      fetchData()
-    } catch {
-      ElMessage.error('发布失败')
-    } finally {
-      submitLoading.value = false
-    }
-  })
-}
-
-const handleDialogClose = () => {
-  formRef.value?.resetFields()
-}
-
 onMounted(() => {
-  fetchChapters()
+  fetchCourseOptions()
   fetchData()
 })
 </script>
 
 <style scoped>
-.discussion-list {
-  padding: 20px;
+.discussion-list-page {
+  padding: var(--space-5);
 }
 
-.search-card {
-  margin-bottom: 16px;
-  transition: box-shadow 0.3s ease;
-}
-
-.search-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+.filter-card {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
 }
 
 .table-card {
-  transition: box-shadow 0.3s ease;
-}
-
-.table-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  border-radius: var(--radius-md);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
 }
 
 .card-header {
@@ -308,24 +230,57 @@ onMounted(() => {
   align-items: center;
 }
 
+.card-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
-.data-table { width: 100%; }
-.full-width { width: 100%; }
-.search-input-w180 { width: 180px; }
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: var(--color-bg-page);
+}
+
+.filter-input-w160 {
+  width: 160px;
+}
+
+.filter-input-w180 {
+  width: 180px;
+}
+
+.filter-input-w120 {
+  width: 120px;
+}
 
 @media (max-width: 768px) {
-  .discussion-list {
-    padding: 12px;
+  .discussion-list-page {
+    padding: var(--space-3);
   }
 
-  .search-card,
-  .table-card {
-    margin-bottom: 12px;
+  .filter-card {
+    margin-bottom: var(--space-3);
+  }
+
+  .filter-input-w160,
+  .filter-input-w180,
+  .filter-input-w120 {
+    width: 100%;
   }
 
   .pagination-wrap {

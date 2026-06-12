@@ -21,7 +21,7 @@ export function updateCourseStatus(id, status) {
 }
 
 export function submitCourseForReview(id) {
-  return request({ method: 'POST', url: `/courses/${id}/submit-review` })
+  return request({ method: 'POST', url: `/courses/${id}/submit` })
 }
 
 export function submitForReview(id) {

@@ -1,12 +1,69 @@
+<!--
+  教师端 - 学生列表
+  /teacher/students
+  Author: jackie
+-->
 <template>
-  <div class="student-list">
-    <!-- 搜索区 -->
+  <div class="student-list-container">
+    <!-- 搜索筛选区 -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="选择课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="course-select" @change="handleCourseChange">
-            <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
+          <el-select
+            v-model="searchForm.courseId"
+            placeholder="请选择课程"
+            clearable
+            class="course-select"
+            @change="handleCourseChange"
+          >
+            <el-option
+              v-for="item in courseOptions"
+              :key="item.id"
+              :label="item.title"
+              :value="item.id"
+            />
           </el-select>
+        </el-form-item>
+        <el-form-item label="班级">
+          <el-input
+            v-model="searchForm.className"
+            placeholder="输入班级名称"
+            clearable
+            class="filter-input"
+            @clear="handleSearch"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="专业">
+          <el-input
+            v-model="searchForm.majorName"
+            placeholder="输入专业名称"
+            clearable
+            class="filter-input"
+            @clear="handleSearch"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select
+            v-model="searchForm.status"
+            placeholder="全部状态"
+            clearable
+            class="status-select"
+            @change="handleSearch"
+          >
+            <el-option label="学习中" value="ACTIVE" />
+            <el-option label="已完成" value="COMPLETED" />
+            <el-option label="已退课" value="DROPPED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">
+            <el-icon><Search /></el-icon>搜索
+          </el-button>
+          <el-button @click="handleReset">
+            <el-icon><RefreshRight /></el-icon>重置
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -15,71 +72,240 @@
     <el-card class="table-card shadow-hover" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>学员列表</span>
-          <el-button v-if="tableData.length > 0" type="primary" @click="handleExport">导出 Excel</el-button>
+          <span class="card-title">学员列表</span>
+          <div class="card-actions">
+            <el-button
+              v-if="tableData.length > 0"
+              type="primary"
+              @click="handleExport"
+            >
+              <el-icon><Download /></el-icon>导出 Excel
+            </el-button>
+          </div>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+
+      <!-- 加载中 -->
+      <el-skeleton v-if="loading" :rows="6" animated />
+
+      <!-- 错误态 -->
+      <el-result
+        v-else-if="error"
+        icon="error"
+        title="数据加载失败"
+        sub-title="请稍后重试"
+        class="error-result"
+      >
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重试</el-button>
+        </template>
+      </el-result>
+
+      <!-- 空状态 -->
+      <el-empty
+        v-else-if="!loading && tableData.length === 0"
+        description="暂无学员数据"
+        :image-size="120"
+      />
+
+      <!-- 数据表格 -->
+      <el-table
+        v-else
+        v-loading="loading"
+        :data="tableData"
+        stripe
+        border
+        class="data-table"
+        @row-click="handleRowClick"
+      >
         <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="realName" label="姓名" width="120" />
-        <el-table-column prop="email" label="邮箱" min-width="180" />
-        <el-table-column prop="enrolledAt" label="选课时间" width="180" />
-        <el-table-column prop="progress" label="进度" width="120" align="center">
+        <el-table-column prop="username" label="学号" width="140" show-overflow-tooltip />
+        <el-table-column prop="realName" label="姓名" width="120" show-overflow-tooltip />
+        <el-table-column prop="className" label="班级" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="majorName" label="专业" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="progress" label="学习进度" width="180" align="center">
           <template #default="{ row }">
-            <el-progress :percentage="row.progress || 0" :stroke-width="10" />
+            <div class="progress-cell">
+              <el-progress
+                :percentage="row.progress || 0"
+                :stroke-width="8"
+                :color="getProgressColor(row.progress)"
+              />
+              <span class="progress-text">{{ row.progress || 0 }}%</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="lastActiveAt" label="最近活跃" width="180">
+        <el-table-column prop="enrolledAt" label="选课时间" width="170">
           <template #default="{ row }">
-            {{ row.lastActiveAt || '-' }}
+            <span class="text-secondary">{{ formatDate(row.enrolledAt) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="lastActiveAt" label="最近活跃" width="170">
+          <template #default="{ row }">
+            <span :class="isRecent(row.lastActiveAt) ? 'text-primary-color' : 'text-secondary'">
+              {{ formatDate(row.lastActiveAt) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="140" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link @click.stop="handleViewDetail(row)">
+              <el-icon><View /></el-icon>详情
+            </el-button>
+            <el-button type="primary" link @click.stop="handleSendMessage(row)">
+              <el-icon><Message /></el-icon>发消息
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!loading && tableData.length === 0" description="暂无学员数据" />
-      <div class="pagination-wrap">
+
+      <!-- 分页 -->
+      <div v-if="tableData.length > 0" class="pagination-wrap">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"
           :total="totalElements"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total,sizes,prev,pager,next"
+          layout="total, sizes, prev, pager, next"
           @size-change="handleSizeChange"
           @current-change="handlePageChange"
         />
       </div>
     </el-card>
+
+    <!-- 详情弹窗 -->
+    <el-dialog
+      v-model="detailVisible"
+      title="学员详情"
+      width="600px"
+      destroy-on-close
+    >
+      <el-descriptions :column="2" border v-if="currentStudent">
+        <el-descriptions-item label="学号">{{ currentStudent.username }}</el-descriptions-item>
+        <el-descriptions-item label="姓名">{{ currentStudent.realName }}</el-descriptions-item>
+        <el-descriptions-item label="班级">{{ currentStudent.className || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="专业">{{ currentStudent.majorName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="邮箱">{{ currentStudent.email || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="手机">{{ currentStudent.phone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="选课时间" :span="2">{{ formatDate(currentStudent.enrolledAt) }}</el-descriptions-item>
+        <el-descriptions-item label="学习进度" :span="2">
+          <el-progress :percentage="currentStudent.progress || 0" :stroke-width="10" />
+        </el-descriptions-item>
+        <el-descriptions-item label="最近活跃" :span="2">{{ formatDate(currentStudent.lastActiveAt) }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 发消息弹窗 -->
+    <el-dialog
+      v-model="messageVisible"
+      title="发送消息"
+      width="500px"
+      destroy-on-close
+    >
+      <el-form :model="messageForm" label-width="80px">
+        <el-form-item label="收件人">
+          <el-input :model-value="currentStudent?.realName || ''" disabled />
+        </el-form-item>
+        <el-form-item label="消息内容" required>
+          <el-input
+            v-model="messageForm.content"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入消息内容"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="messageVisible = false">取消</el-button>
+        <el-button type="primary" :loading="sendingMessage" @click="confirmSendMessage">发送</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 /**
- * 学员管理页面
- * @author Claude Code Agent
+ * 教师端 - 学员列表
+ * Vue 3.4 Composition API + script setup
  */
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as XLSX from 'xlsx'
+import {
+  Search, RefreshRight, Download, View, Message
+} from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
 import { getCourseEnrollments } from '@/api/enrollment'
+import { sendNotification } from '@/api/notification'
 import { useUserStore } from '@/store/user'
 
 const route = useRoute()
 const userStore = useUserStore()
 
+// 加载状态
 const loading = ref(false)
+const error = ref(false)
+
+// 表格数据
 const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 const courseOptions = ref([])
 
+// 搜索表单
 const searchForm = reactive({
-  courseId: ''
+  courseId: '',
+  className: '',
+  majorName: '',
+  status: ''
 })
 
-const fetchCourses = async () => {
+// 详情弹窗
+const detailVisible = ref(false)
+const currentStudent = ref(null)
+
+// 发消息弹窗
+const messageVisible = ref(false)
+const sendingMessage = ref(false)
+const messageForm = reactive({ content: '' })
+
+// 课程变化
+function handleCourseChange() {
+  page.value = 1
+  if (searchForm.courseId) {
+    fetchData()
+  } else {
+    tableData.value = []
+    totalElements.value = 0
+  }
+}
+
+// 搜索
+function handleSearch() {
+  page.value = 1
+  fetchData()
+}
+
+// 重置
+function handleReset() {
+  searchForm.courseId = ''
+  searchForm.className = ''
+  searchForm.majorName = ''
+  searchForm.status = ''
+  page.value = 1
+  tableData.value = []
+  totalElements.value = 0
+}
+
+// 获取课程列表
+async function fetchCourses() {
   try {
     const teacherId = userStore.userInfo?.id
     const { data } = await getCourses({ size: 1000, teacherId })
@@ -92,13 +318,15 @@ const fetchCourses = async () => {
   }
 }
 
-const fetchData = async () => {
+// 获取学员数据
+async function fetchData() {
   if (!searchForm.courseId) {
     tableData.value = []
     totalElements.value = 0
     return
   }
   loading.value = true
+  error.value = false
   try {
     const params = {
       page: page.value - 1,
@@ -114,39 +342,87 @@ const fetchData = async () => {
       tableData.value = result.items || []
       totalElements.value = result.totalElements || tableData.value.length
     }
+    // 过滤本地关键字
+    if (searchForm.className || searchForm.majorName || searchForm.status) {
+      tableData.value = tableData.value.filter(item => {
+        if (searchForm.className && !(item.className || '').includes(searchForm.className)) return false
+        if (searchForm.majorName && !(item.majorName || '').includes(searchForm.majorName)) return false
+        if (searchForm.status && item.status !== searchForm.status) return false
+        return true
+      })
+    }
   } catch {
+    error.value = true
     ElMessage.error('获取学员列表失败')
   } finally {
     loading.value = false
   }
 }
 
-const handleCourseChange = () => {
+// 翻页
+function handleSizeChange() {
   page.value = 1
   fetchData()
 }
 
-const handleSizeChange = () => {
-  page.value = 1
+function handlePageChange() {
   fetchData()
 }
 
-const handlePageChange = () => {
-  fetchData()
+// 行点击
+function handleRowClick(row) {
+  // 可选：展开详情
 }
 
-const handleExport = () => {
+// 查看详情
+function handleViewDetail(row) {
+  currentStudent.value = row
+  detailVisible.value = true
+}
+
+// 发消息
+function handleSendMessage(row) {
+  currentStudent.value = row
+  messageForm.content = ''
+  messageVisible.value = true
+}
+
+// 确认发送消息
+async function confirmSendMessage() {
+  if (!messageForm.content.trim()) {
+    ElMessage.warning('请输入消息内容')
+    return
+  }
+  sendingMessage.value = true
+  try {
+    await sendNotification({
+      userId: currentStudent.value.id,
+      content: messageForm.content
+    })
+    ElMessage.success('消息已发送')
+    messageVisible.value = false
+  } catch {
+    ElMessage.error('发送失败，请稍后重试')
+  } finally {
+    sendingMessage.value = false
+  }
+}
+
+// 导出 Excel
+function handleExport() {
   if (!tableData.value.length) {
     ElMessage.warning('暂无数据可导出')
     return
   }
-  const exportData = tableData.value.map(item => ({
-    用户名: item.username || '',
+  const exportData = tableData.value.map((item, index) => ({
+    序号: index + 1,
+    学号: item.username || '',
     姓名: item.realName || '',
-    邮箱: item.email || '',
-    选课时间: item.enrolledAt || '',
+    班级: item.className || '',
+    专业: item.majorName || '',
     进度: `${item.progress || 0}%`,
-    最近活跃: item.lastActiveAt || '-'
+    选课时间: formatDate(item.enrolledAt),
+    最近活跃: formatDate(item.lastActiveAt)
   }))
   const ws = XLSX.utils.json_to_sheet(exportData)
   const wb = XLSX.utils.book_new()
@@ -154,6 +430,27 @@ const handleExport = () => {
   const date = new Date().toISOString().split('T')[0]
   XLSX.writeFile(wb, `students-${date}.xlsx`)
   ElMessage.success('导出成功')
+}
+
+// 工具方法
+function formatDate(isoString) {
+  if (!isoString) return '-'
+  const d = new Date(isoString)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function getProgressColor(progress) {
+  if (progress >= 80) return '#67c23a'
+  if (progress >= 50) return '#409eff'
+  if (progress >= 30) return '#e6a23c'
+  return '#909399'
+}
+
+function isRecent(isoString) {
+  if (!isoString) return false
+  const diff = Date.now() - new Date(isoString).getTime()
+  return diff < 3 * 24 * 60 * 60 * 1000 // 3天内
 }
 
 onMounted(() => {
@@ -165,51 +462,94 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.student-list {
-  padding: 20px;
+.student-list-container {
+  padding: var(--space-4);
+  background: var(--el-bg-color-page);
 }
 
+/* 搜索区 */
 .search-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .course-select {
-  width: 200px;
+  width: 220px;
 }
 
-.data-table {
-  width: 100%;
+.filter-input {
+  width: 140px;
 }
 
-.table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+.status-select {
+  width: 120px;
 }
 
+/* 表格卡片 */
 .table-card {
-  transition: box-shadow var(--el-transition-duration) ease;
+  margin-bottom: var(--space-4);
 }
 
 .card-header {
-  font-size: 16px;
-  font-weight: 600;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.card-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+}
+
+.card-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* 表格 */
+.data-table {
+  width: 100%;
+  cursor: pointer;
+}
+
+/* 进度条单元格 */
+.progress-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progress-cell .el-progress {
+  flex: 1;
+}
+
+.progress-text {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* 错误态 */
+.error-result {
+  padding: var(--space-7) 0;
+}
+
+/* 分页 */
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
-@media (max-width: 768px) {
-  .student-list {
-    padding: 12px;
-  }
+/* 文字辅助类 */
+.text-secondary {
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
+}
 
-  .search-card {
-    margin-bottom: 12px;
-  }
+.text-primary-color {
+  color: var(--role-primary);
+  font-size: var(--text-sm);
 }
 </style>

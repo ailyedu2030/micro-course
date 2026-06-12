@@ -15,7 +15,7 @@ import com.microcourse.service.OperationLogService;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -41,7 +41,6 @@ public class AuthServiceImpl implements AuthService {
     private final OperationLogService operationLogService;
     private final HttpServletRequest httpServletRequest;
 
-    @Autowired
     public AuthServiceImpl(UserRepository userRepository, JwtUtil jwtUtil,
                            BCryptPasswordEncoder passwordEncoder, RedisUtil redisUtil,
                            OperationLogService operationLogService,

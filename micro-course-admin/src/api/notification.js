@@ -5,3 +5,4 @@ export function markAllAsRead() { return request({ method:'PUT', url:'/notificat
 export function getUnreadCount() { return request({ method:'GET', url:'/notifications/unread-count' }) }
 export function getPreferences() { return request({ method:'GET', url:'/notification-preferences/my' }) }
 export function updatePreferences(data) { return request({ method:'PUT', url:'/notification-preferences/my', data }) }
+export function sendNotification(data) { return request({ method:'POST', url:'/notifications', data }) }

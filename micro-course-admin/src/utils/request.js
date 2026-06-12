@@ -24,7 +24,8 @@ request.interceptors.response.use(response => {
 }, error => {
   if (error.response?.status === 401) {
     removeToken()
-    router.push('/login')
+    const currentPath = router.currentRoute.value.fullPath
+    router.push({ path: '/login', query: { redirect: currentPath } })
   }
   ElMessage.error(error.response?.data?.message || '网络错误')
   return Promise.reject(error)

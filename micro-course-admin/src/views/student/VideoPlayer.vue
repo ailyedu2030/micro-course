@@ -1,178 +1,576 @@
 <!--
-  视频播放器
+  视频播放器 - PC + H5 沉浸式深色主题
   路由路径: /student/video/:id
-  Phase 2
-  Author: jackie
+  role-video 主题: 黑底 + 白字 + 强调色 #6366f1
 -->
 <template>
-  <div class="video-player-page">
-    <div class="player-wrapper" :class="{ 'mini-mode': isMiniMode }">
-      <!-- 骨架屏 -->
-      <div v-if="loading" class="skeleton-container">
-        <el-skeleton :rows="8" animated />
-      </div>
-
-      <!-- 视频容器 -->
-      <div v-show="!loading" class="video-container" :class="{ 'mini-mode': isMiniMode }">
-        <video
-          ref="videoRef"
-          class="video-element"
-          @canplay="onCanPlay"
-          @timeupdate="onTimeUpdate"
-          @ended="onEnded"
-          @error="onError"
-          @dblclick="handleDoubleTap"
-          @touchstart="onTouchStart"
-          @touchend="onTouchEnd"
-        ></video>
-
-        <!-- 顶部控制栏 -->
-        <div class="top-controls">
-          <div class="title-bar">
-            <span class="video-title">{{ videoData.title || '视频加载中...' }}</span>
-          </div>
-          <div class="speed-control">
-            <el-select
-              v-model="playbackRate"
-              size="small"
-              placeholder="倍速"
-              @change="changeSpeed"
-            >
-              <el-option label="0.75x" :value="0.75" />
-              <el-option label="1x" :value="1" />
-              <el-option label="1.25x" :value="1.25" />
-              <el-option label="1.5x" :value="1.5" />
-              <el-option label="2x" :value="2" />
-            </el-select>
-          </div>
-        </div>
-
-        <!-- 底部控制栏 -->
-        <div class="bottom-controls">
-          <div class="progress-bar-container">
-            <span class="time-display">{{ formatTime(currentTime) }}</span>
-            <el-slider
-              v-model="sliderTime"
-              :max="duration"
-              :format-tooltip="formatTime"
-              @change="onSliderChange"
-            />
-            <span class="time-display">{{ formatTime(duration) }}</span>
-          </div>
-          <div class="control-buttons">
-            <el-button
-              :icon="isMiniMode ? 'Close' : 'FullScreen'"
-              size="small"
-              circle
-              @click="toggleFullscreen"
-            >
-              {{ isMiniMode ? '还原' : '全屏' }}
-            </el-button>
-            <el-button
-              v-if="isMiniMode"
-              size="small"
-              circle
-              @click="exitMiniMode"
-            >
-              关闭
-            </el-button>
-          </div>
-        </div>
-      </div>
+  <div class="video-player-root role-video">
+    <!-- Loading State -->
+    <div v-if="loading" class="player-loading">
+      <div class="loading-spinner"></div>
+      <span class="loading-text">视频加载中...</span>
     </div>
 
-    <!-- 小窗模式提示 -->
-    <transition name="fade">
-      <div v-if="showResumeTip" class="resume-tip">
-        <span>上次看到 {{ formatTime(resumePosition) }}</span>
+    <!-- Error State -->
+    <div v-else-if="errorMsg" class="player-error">
+      <div class="error-icon">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
       </div>
+      <p class="error-title">视频加载失败</p>
+      <p class="error-desc">{{ errorMsg }}</p>
+      <el-button type="primary" @click="retryLoad">重新加载</el-button>
+    </div>
+
+    <!-- Player Main -->
+    <template v-else>
+      <!-- PC Header (>= 769px) -->
+      <header class="player-header pc-header">
+        <div class="header-left">
+          <el-button class="back-btn" link @click="goBack" aria-label="返回">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </el-button>
+          <span class="header-title">{{ videoData.title || '视频加载中' }}</span>
+        </div>
+        <div class="header-right">
+          <el-dropdown trigger="click" @command="changeSpeed">
+            <span class="speed-btn">
+              {{ playbackRate }}x
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item :command="0.5" :class="{ active: playbackRate === 0.5 }">0.5x</el-dropdown-item>
+                <el-dropdown-item :command="0.75" :class="{ active: playbackRate === 0.75 }">0.75x</el-dropdown-item>
+                <el-dropdown-item :command="1" :class="{ active: playbackRate === 1 }">1x</el-dropdown-item>
+                <el-dropdown-item :command="1.25" :class="{ active: playbackRate === 1.25 }">1.25x</el-dropdown-item>
+                <el-dropdown-item :command="1.5" :class="{ active: playbackRate === 1.5 }">1.5x</el-dropdown-item>
+                <el-dropdown-item :command="2" :class="{ active: playbackRate === 2 }">2x</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <el-button link @click="showChapterList = !showChapterList" aria-label="章节列表">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+          </el-button>
+          <el-button link @click="toggleSettings" aria-label="设置">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </el-button>
+        </div>
+      </header>
+
+      <!-- H5 Header (<= 768px) -->
+      <header class="player-header h5-header">
+        <el-button class="back-btn" link @click="goBack" aria-label="返回">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </el-button>
+        <span class="header-title">{{ videoData.title || '视频' }}</span>
+        <div class="h5-header-right">
+          <el-dropdown trigger="click" @command="changeSpeed">
+            <span class="speed-btn">{{ playbackRate }}x</span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item :command="0.5" :class="{ active: playbackRate === 0.5 }">0.5x</el-dropdown-item>
+                <el-dropdown-item :command="0.75" :class="{ active: playbackRate === 0.75 }">0.75x</el-dropdown-item>
+                <el-dropdown-item :command="1" :class="{ active: playbackRate === 1 }">1x</el-dropdown-item>
+                <el-dropdown-item :command="1.25" :class="{ active: playbackRate === 1.25 }">1.25x</el-dropdown-item>
+                <el-dropdown-item :command="1.5" :class="{ active: playbackRate === 1.5 }">1.5x</el-dropdown-item>
+                <el-dropdown-item :command="2" :class="{ active: playbackRate === 2 }">2x</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <div class="player-body">
+        <!-- PC Left Content -->
+        <div class="player-main pc-main">
+          <!-- Video Container -->
+          <div
+            class="video-container"
+            :class="{ 'controls-visible': controlsVisible || !isPlaying }"
+            @mousemove="showControls"
+            @mouseleave="hideControlsDelayed"
+          >
+            <video
+              ref="videoRef"
+              class="video-element"
+              :poster="videoData.thumbnail"
+              @canplay="onCanPlay"
+              @timeupdate="onTimeUpdate"
+              @ended="onEnded"
+              @error="onVideoError"
+              @waiting="isBuffering = true"
+              @playing="isBuffering = false"
+              @progress="onProgress"
+              @dblclick="togglePlay"
+            ></video>
+
+            <!-- Buffering Spinner -->
+            <div v-if="isBuffering" class="video-buffering">
+              <div class="buffering-spinner"></div>
+            </div>
+
+            <!-- Center Play Button (when paused) -->
+            <div v-if="!isPlaying && !isBuffering && !loading" class="center-play-btn" @click="togglePlay">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+            </div>
+
+            <!-- Top Overlay -->
+            <div class="video-top-overlay">
+              <div class="video-title-overlay">{{ videoData.title }}</div>
+            </div>
+
+            <!-- Custom Controls -->
+            <div class="video-controls" :class="{ visible: controlsVisible || !isPlaying }">
+              <!-- Progress Bar -->
+              <div class="progress-track" @click="seekVideo" ref="progressTrack">
+                <div class="progress-buffer" :style="{ width: bufferedPercent + '%' }"></div>
+                <div class="progress-played" :style="{ width: progressPercent + '%' }">
+                  <div class="progress-thumb"></div>
+                </div>
+              </div>
+
+              <!-- Control Buttons -->
+              <div class="controls-row">
+                <div class="controls-left">
+                  <!-- Play/Pause -->
+                  <button class="ctrl-btn" @click="togglePlay" :aria-label="isPlaying ? '暂停' : '播放'">
+                    <svg v-if="isPlaying" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="4" width="4" height="16"/>
+                      <rect x="14" y="4" width="4" height="16"/>
+                    </svg>
+                    <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                  </button>
+
+                  <!-- Skip Backward -->
+                  <button class="ctrl-btn" @click="skipBackward" aria-label="快退10秒">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="11 19 2 12 11 5 11 19"/>
+                      <polygon points="22 19 13 12 22 5 22 19"/>
+                    </svg>
+                  </button>
+
+                  <!-- Skip Forward -->
+                  <button class="ctrl-btn" @click="skipForward" aria-label="快进10秒">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="13 19 22 12 13 5 13 19"/>
+                      <polygon points="2 19 11 12 2 5 2 19"/>
+                    </svg>
+                  </button>
+
+                  <!-- Volume -->
+                  <div class="volume-control">
+                    <button class="ctrl-btn" @click="toggleMute" :aria-label="isMuted ? '取消静音' : '静音'">
+                      <svg v-if="isMuted || volume === 0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                        <line x1="23" y1="9" x2="17" y2="15"/>
+                        <line x1="17" y1="9" x2="23" y2="15"/>
+                      </svg>
+                      <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                      </svg>
+                    </button>
+                    <el-slider
+                      v-model="volumePercent"
+                      :show-tooltip="false"
+                      class="volume-slider"
+                      @input="changeVolume"
+                    />
+                  </div>
+
+                  <!-- Time -->
+                  <span class="time-display">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
+                </div>
+
+                <div class="controls-right">
+                  <!-- Speed -->
+                  <el-dropdown trigger="click" @command="changeSpeed">
+                    <button class="ctrl-btn speed-ctrl-btn">
+                      {{ playbackRate }}x
+                    </button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item :command="0.5" :class="{ active: playbackRate === 0.5 }">0.5x</el-dropdown-item>
+                        <el-dropdown-item :command="0.75" :class="{ active: playbackRate === 0.75 }">0.75x</el-dropdown-item>
+                        <el-dropdown-item :command="1" :class="{ active: playbackRate === 1 }">1x</el-dropdown-item>
+                        <el-dropdown-item :command="1.25" :class="{ active: playbackRate === 1.25 }">1.25x</el-dropdown-item>
+                        <el-dropdown-item :command="1.5" :class="{ active: playbackRate === 1.5 }">1.5x</el-dropdown-item>
+                        <el-dropdown-item :command="2" :class="{ active: playbackRate === 2 }">2x</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+
+                  <!-- Subtitles -->
+                  <button v-if="videoData.subtitleUrl" class="ctrl-btn" :class="{ active: subtitlesEnabled }" @click="toggleSubtitles" aria-label="字幕">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="6" width="20" height="12" rx="2"/>
+                      <line x1="6" y1="12" x2="18" y2="12"/>
+                      <line x1="8" y1="16" x2="16" y2="16"/>
+                    </svg>
+                  </button>
+
+                  <!-- Fullscreen -->
+                  <button class="ctrl-btn" @click="toggleFullscreen" :aria-label="isFullscreen ? '退出全屏' : '全屏'">
+                    <svg v-if="!isFullscreen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="15 3 21 3 21 9"/>
+                      <polyline points="9 21 3 21 3 15"/>
+                      <line x1="21" y1="3" x2="14" y2="10"/>
+                      <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                    <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="4 14 10 14 10 20"/>
+                      <polyline points="20 10 14 10 14 4"/>
+                      <line x1="14" y1="10" x2="21" y2="3"/>
+                      <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subtitles -->
+            <div v-if="subtitlesEnabled && currentSubtitle" class="video-subtitles">
+              {{ currentSubtitle }}
+            </div>
+          </div>
+
+          <!-- Chapter Progress Chips (PC) -->
+          <div class="chapter-chips pc-chips">
+            <div
+              v-for="(chapter, index) in chapters"
+              :key="chapter.id"
+              class="chapter-chip"
+              :class="{
+                'is-active': currentChapterIndex === index,
+                'is-completed': chapter.isCompleted
+              }"
+              @click="switchChapter(chapter.id)"
+            >
+              <span class="chip-index">{{ index + 1 }}</span>
+              <span class="chip-title">{{ chapter.title }}</span>
+              <svg v-if="chapter.isCompleted" class="chip-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Video Info Card -->
+          <div class="video-info-card pc-info">
+            <div class="info-row">
+              <span class="info-label">课程：</span>
+              <span class="info-value">{{ videoData.courseTitle || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">章节：</span>
+              <span class="info-value">{{ currentChapter?.title || '-' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">时长：</span>
+              <span class="info-value">{{ formatTime(duration) }}</span>
+            </div>
+            <div v-if="lastPosition > 0" class="info-row">
+              <span class="info-label">上次进度：</span>
+              <span class="info-value">{{ formatTime(lastPosition) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Sidebar (PC >= 769px) -->
+        <aside class="player-sidebar pc-sidebar">
+          <el-tabs v-model="activeTab" class="sidebar-tabs">
+            <el-tab-pane label="章节" name="chapters">
+              <div class="tab-content chapters-tab">
+                <div v-if="chapters.length === 0" class="tab-empty">暂无章节</div>
+                <div
+                  v-for="(chapter, index) in chapters"
+                  :key="chapter.id"
+                  class="chapter-item"
+                  :class="{
+                    'is-active': currentChapterIndex === index,
+                    'is-completed': chapter.isCompleted
+                  }"
+                  @click="switchChapter(chapter.id)"
+                >
+                  <div class="chapter-index">{{ index + 1 }}</div>
+                  <div class="chapter-info">
+                    <div class="chapter-title">{{ chapter.title }}</div>
+                    <div class="chapter-duration">{{ formatTime(chapter.duration || 0) }}</div>
+                  </div>
+                  <svg v-if="chapter.isCompleted" class="chapter-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="笔记" name="notes">
+              <div class="tab-content notes-tab">
+                <div class="note-input-row">
+                  <span class="note-time-btn" @click="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
+                  <el-input
+                    v-model="noteText"
+                    placeholder="添加笔记..."
+                    class="note-input"
+                    @keyup.enter="addNote"
+                  />
+                  <el-button type="primary" size="small" @click="addNote">添加</el-button>
+                </div>
+                <div v-if="notes.length === 0" class="tab-empty">暂无笔记</div>
+                <div
+                  v-for="note in notes"
+                  :key="note.id"
+                  class="note-item"
+                  @mouseenter="highlightTime(note.time)"
+                  @mouseleave="highlightTime(null)"
+                >
+                  <span class="note-time" @click="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-content">{{ note.content }}</span>
+                  <el-button link size="small" @click="deleteNote(note.id)">删除</el-button>
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="讨论" name="discussions">
+              <div class="tab-content discussions-tab">
+                <div v-if="discussions.length === 0" class="tab-empty">暂无讨论</div>
+                <div
+                  v-for="post in discussions"
+                  :key="post.id"
+                  class="discussion-item"
+                >
+                  <div class="discussion-header">
+                    <span class="discussion-author">{{ post.authorName }}</span>
+                    <span class="discussion-time">{{ formatDateTime(post.createdAt) }}</span>
+                  </div>
+                  <div class="discussion-title">{{ post.title }}</div>
+                  <div class="discussion-preview">{{ post.content }}</div>
+                </div>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
+        </aside>
+
+        <!-- H5 Bottom Tabs (<= 768px) -->
+        <div class="h5-bottom-tabs">
+          <el-tabs v-model="activeTab" class="h5-tabs" swipeable>
+            <el-tab-pane label="章节" name="chapters">
+              <div class="tab-content chapters-tab h5-chapters">
+                <div v-if="chapters.length === 0" class="tab-empty">暂无章节</div>
+                <div
+                  v-for="(chapter, index) in chapters"
+                  :key="chapter.id"
+                  class="chapter-item h5-chapter-item"
+                  :class="{
+                    'is-active': currentChapterIndex === index,
+                    'is-completed': chapter.isCompleted
+                  }"
+                  @click="switchChapter(chapter.id)"
+                >
+                  <div class="chapter-index">{{ index + 1 }}</div>
+                  <div class="chapter-info">
+                    <div class="chapter-title">{{ chapter.title }}</div>
+                    <div class="chapter-duration">{{ formatTime(chapter.duration || 0) }}</div>
+                  </div>
+                  <svg v-if="chapter.isCompleted" class="chapter-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="笔记" name="notes">
+              <div class="tab-content notes-tab h5-notes">
+                <div class="note-input-row">
+                  <span class="note-time-btn" @click="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
+                  <el-input
+                    v-model="noteText"
+                    placeholder="添加笔记..."
+                    class="note-input"
+                    @keyup.enter="addNote"
+                  />
+                  <el-button type="primary" size="small" @click="addNote">添加</el-button>
+                </div>
+                <div v-if="notes.length === 0" class="tab-empty">暂无笔记</div>
+                <div
+                  v-for="note in notes"
+                  :key="note.id"
+                  class="note-item h5-note-item"
+                >
+                  <span class="note-time" @click="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-content">{{ note.content }}</span>
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="讨论" name="discussions">
+              <div class="tab-content discussions-tab h5-discussions">
+                <div v-if="discussions.length === 0" class="tab-empty">暂无讨论</div>
+                <div
+                  v-for="post in discussions"
+                  :key="post.id"
+                  class="discussion-item h5-discussion-item"
+                >
+                  <div class="discussion-header">
+                    <span class="discussion-author">{{ post.authorName }}</span>
+                    <span class="discussion-time">{{ formatDateTime(post.createdAt) }}</span>
+                  </div>
+                  <div class="discussion-title">{{ post.title }}</div>
+                  <div class="discussion-preview">{{ post.content }}</div>
+                </div>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
+      </div>
+    </template>
+
+    <!-- Speed Toast -->
+    <transition name="toast-fade">
+      <div v-if="speedToastVisible" class="speed-toast">{{ playbackRate }}x</div>
     </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import Hls from 'hls.js'
 import { getVideoById } from '@/api/video'
+import { getChapters } from '@/api/chapter'
+import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
+import { getPosts } from '@/api/discussion'
 import request from '@/utils/request'
+import { useUserStore } from '@/store/user'
 
-const props = defineProps({
-  videoId: {
-    type: [Number, String],
-    required: true
-  },
-  userId: {
-    type: [Number, String],
-    default: null
-  },
-  courseId: {
-    type: [Number, String],
-    default: null
-  },
-  chapterId: {
-    type: [Number, String],
-    default: null
-  }
-})
+const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
 
 // DOM refs
 const videoRef = ref(null)
+const progressTrack = ref(null)
+
+// Route params
+const videoId = computed(() => route.params.id)
+const courseId = computed(() => route.query.courseId)
+const chapterId = computed(() => route.query.chapterId)
 
 // State
 const loading = ref(true)
+const errorMsg = ref('')
 const videoData = ref({})
-const hlsInstance = ref(null)
+const chapters = ref([])
+const notes = ref([])
+const discussions = ref([])
+const activeTab = ref('chapters')
+const showChapterList = ref(false)
+const isMobile = ref(false)
+
+// Playback state
+const isPlaying = ref(false)
+const isBuffering = ref(false)
+const isMuted = ref(false)
+const isFullscreen = ref(false)
+const subtitlesEnabled = ref(false)
+const currentSubtitle = ref('')
 const playbackRate = ref(1)
+const volumePercent = ref(100)
 const currentTime = ref(0)
 const duration = ref(0)
-const sliderTime = ref(0)
-const isMiniMode = ref(false)
-const showResumeTip = ref(false)
-const resumePosition = ref(0)
+const bufferedPercent = ref(0)
+const lastPosition = ref(0)
+const currentChapterIndex = ref(0)
+const currentChapter = computed(() => chapters.value[currentChapterIndex.value])
 
-// Touch gesture state
-const lastTouchX = ref(0)
-const touchStartTime = ref(0)
-const tapCount = ref(0)
-let tapTimer = null
-
-// Progress record ID from server, used for PUT reporting
-const progressId = ref(null)
-
-// Progress reporting interval
-let progressInterval = null
+// Progress reporting
+let progressId = ref(null)
 let lastReportedProgress = 0
+let progressReportTimer = null
+let hideControlsTimer = null
+const controlsVisible = ref(true)
 
-// Check if URL is HLS
-const isHLS = (url) => {
-  return url && (url.endsWith('.m3u8') || url.includes('.m3u8'))
+// HLS
+let hlsInstance = ref(null)
+
+// Local storage key
+const STORAGE_KEY = computed(() => `video_progress_${videoId.value}`)
+
+// Computed
+const progressPercent = computed(() => {
+  if (!duration.value) return 0
+  return (currentTime.value / duration.value) * 100
+})
+
+// Utils
+const formatTime = (seconds) => {
+  if (!seconds || isNaN(seconds)) return '00:00'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-// Load video
+const formatDateTime = (isoString) => {
+  if (!isoString) return ''
+  const d = new Date(isoString)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Video load
 const loadVideo = async () => {
   try {
     loading.value = true
-    const res = await getVideoById(props.videoId)
+    errorMsg.value = ''
+    const res = await getVideoById(videoId.value)
     videoData.value = res.data || res
 
     await nextTick()
     initPlayer()
-    await loadProgress()
+    await Promise.all([loadChapters(), loadProgress(), loadDiscussions()])
+    loadLocalPosition()
   } catch {
-    ElMessage.error('视频加载失败')
+    errorMsg.value = '无法加载视频，请检查网络连接'
   } finally {
     loading.value = false
   }
 }
 
-// Initialize player
 const initPlayer = () => {
   const video = videoRef.value
   const url = videoData.value.hls_url || videoData.value.url
 
   if (!url) {
-    ElMessage.error('视频地址无效')
+    errorMsg.value = '视频地址无效'
     return
   }
 
@@ -186,11 +584,10 @@ const initPlayer = () => {
       })
       hlsInstance.value.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
-          ElMessage.error('视频播放出错')
+          errorMsg.value = '视频播放出错'
         }
       })
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS
       video.src = url
       video.play().catch(() => {})
     }
@@ -200,67 +597,65 @@ const initPlayer = () => {
   }
 }
 
-// Load progress from server (returns List, find by chapterId)
-const loadProgress = async () => {
-  if (!props.userId || !props.courseId) return
+const isHLS = (url) => {
+  return url && (url.endsWith('.m3u8') || url.includes('.m3u8'))
+}
 
+const retryLoad = () => {
+  loadVideo()
+}
+
+// Chapters
+const loadChapters = async () => {
+  if (!courseId.value) return
   try {
-    const res = await request({
-      method: 'GET',
-      url: '/learning-progress/progress',
-      params: {
-        userId: props.userId,
-        courseId: props.courseId
-      }
-    })
+    const res = await getChapters({ courseId: courseId.value })
+    const list = res.data?.items || res.data || []
+    chapters.value = list.map((c, i) => ({
+      ...c,
+      isCompleted: false
+    }))
+    // Mark current chapter
+    const idx = chapters.value.findIndex(c => Number(c.id) === Number(chapterId.value))
+    if (idx >= 0) currentChapterIndex.value = idx
+  } catch {
+    chapters.value = []
+  }
+}
 
+// Progress
+const loadProgress = async () => {
+  if (!userStore.userInfo?.id || !courseId.value) return
+  try {
+    const res = await getLearningProgress({
+      userId: userStore.userInfo.id,
+      courseId: courseId.value
+    })
     const list = res.data || []
     const progressData = Array.isArray(list)
-      ? list.find(p => Number(p.chapterId) === Number(props.chapterId)) || {}
+      ? list.find(p => Number(p.chapterId) === Number(chapterId.value))
       : {}
-
-    if (progressData.id) {
+    if (progressData?.id) {
       progressId.value = progressData.id
     }
-
-    if (progressData.videoPosition > 0) {
-      resumePosition.value = progressData.videoPosition
-      showResumeTip.value = true
-      setTimeout(() => {
-        showResumeTip.value = false
-      }, 3000)
-
-      const video = videoRef.value
-      if (video) {
-        const setPosition = () => {
-          if (video.duration) {
-            video.currentTime = progressData.videoPosition
-            video.removeEventListener('loadedmetadata', setPosition)
-          }
-        }
-        video.addEventListener('loadedmetadata', setPosition)
-      }
+    if (progressData?.videoPosition > 0) {
+      lastPosition.value = progressData.videoPosition
     }
   } catch {
-    // Silently ignore progress loading failure
+    // ignore
   }
 }
 
 const ensureProgressRecord = async () => {
   if (progressId.value) return true
-  if (!props.userId || !props.courseId) return false
-
+  if (!userStore.userInfo?.id || !courseId.value) return false
   try {
-    const res = await request({
-      method: 'POST',
-      url: '/learning-progress/progress',
-      data: {
-        userId: props.userId,
-        courseId: props.courseId,
-        chapterId: props.chapterId,
-        videoPosition: 0,
-        videoProgress: 0
-      }
+    const res = await createLearningProgress({
+      userId: userStore.userInfo.id,
+      courseId: courseId.value,
+      chapterId: chapterId.value,
+      videoPosition: 0,
+      videoProgress: 0
     })
     progressId.value = (res.data || res).id
     return !!progressId.value
@@ -269,43 +664,231 @@ const ensureProgressRecord = async () => {
   }
 }
 
-// Report progress every 10 seconds
-const startProgressReporting = () => {
-  progressInterval = setInterval(async () => {
-    const video = videoRef.value
-    if (!video || !video.duration || video.paused) return
-
-    const current = video.currentTime
-    const total = video.duration
-    const progressPercent = (current / total) * 100
-
-    if (Math.abs(progressPercent - lastReportedProgress) < 1) return
-
-    lastReportedProgress = progressPercent
-
-    try {
-      const hasRecord = await ensureProgressRecord()
-      if (!hasRecord) return
-
-      await request({
-        method: 'PUT',
-        url: `/learning-progress/progress/${progressId.value}`,
-        data: {
-          videoPosition: Math.floor(current),
-          videoProgress: Math.round(progressPercent)
-        }
-      })
-    } catch {
-      // Silently ignore progress reporting failure
-    }
-  }, 10000)
+const reportProgress = async () => {
+  const video = videoRef.value
+  if (!video || !video.duration || video.paused) return
+  const current = video.currentTime
+  const total = video.duration
+  const progressPercentVal = (current / total) * 100
+  if (Math.abs(progressPercentVal - lastReportedProgress) < 1) return
+  lastReportedProgress = progressPercentVal
+  try {
+    const hasRecord = await ensureProgressRecord()
+    if (!hasRecord) return
+    await updateLearningProgress(progressId.value, {
+      videoPosition: Math.floor(current),
+      videoProgress: Math.round(progressPercentVal)
+    })
+    saveLocalPosition(current)
+  } catch {
+    // ignore
+  }
 }
+
+const startProgressReporting = () => {
+  progressReportTimer = setInterval(() => {
+    reportProgress()
+  }, 30000) // 30 seconds
+}
+
+// Local position
+const saveLocalPosition = (time) => {
+  localStorage.setItem(STORAGE_KEY.value, JSON.stringify({ time, updatedAt: Date.now() }))
+}
+
+const loadLocalPosition = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY.value)
+    if (saved) {
+      const { time } = JSON.parse(saved)
+      if (time > 0 && time < duration.value - 10) {
+        lastPosition.value = time
+        const video = videoRef.value
+        if (video) {
+          video.currentTime = time
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Discussions
+const loadDiscussions = async () => {
+  if (!chapterId.value) return
+  try {
+    const res = await getPosts({ chapterId: chapterId.value, page: 0, size: 20 })
+    discussions.value = res.data?.items || res.data || []
+  } catch {
+    discussions.value = []
+  }
+}
+
+// Notes
+const noteText = ref('')
+
+const addNote = () => {
+  if (!noteText.value.trim()) return
+  const note = {
+    id: Date.now(),
+    time: currentTime.value,
+    content: noteText.value.trim(),
+    createdAt: new Date().toISOString()
+  }
+  notes.value.unshift(note)
+  noteText.value = ''
+  ElMessage.success('笔记已添加')
+}
+
+const deleteNote = (id) => {
+  notes.value = notes.value.filter(n => n.id !== id)
+}
+
+const insertNoteAtCurrentTime = () => {
+  noteText.value = ''
+}
+
+const highlightTime = (time) => {
+  // Could emit event to highlight in video if needed
+}
+
+const seekToTime = (time) => {
+  const video = videoRef.value
+  if (video) {
+    video.currentTime = time
+  }
+}
+
+// Chapter switching
+const switchChapter = async (id) => {
+  // Save current progress before switching
+  await reportProgress()
+  router.push({
+    query: {
+      ...route.query,
+      chapterId: id
+    }
+  })
+  // Reload video data for new chapter
+  const idx = chapters.value.findIndex(c => Number(c.id) === Number(id))
+  if (idx >= 0) {
+    currentChapterIndex.value = idx
+    chapters.value[idx].isCompleted = false
+  }
+  await loadVideo()
+}
+
+// Playback controls
+const togglePlay = () => {
+  const video = videoRef.value
+  if (!video) return
+  if (video.paused) {
+    video.play()
+    isPlaying.value = true
+  } else {
+    video.pause()
+    isPlaying.value = false
+  }
+}
+
+const skipBackward = () => {
+  const video = videoRef.value
+  if (video) {
+    video.currentTime = Math.max(video.currentTime - 10, 0)
+  }
+}
+
+const skipForward = () => {
+  const video = videoRef.value
+  if (video) {
+    video.currentTime = Math.min(video.currentTime + 10, video.duration)
+  }
+}
+
+const toggleMute = () => {
+  const video = videoRef.value
+  if (!video) return
+  video.muted = !video.muted
+  isMuted.value = video.muted
+}
+
+const changeVolume = (val) => {
+  const video = videoRef.value
+  if (video) {
+    video.volume = val / 100
+    volumePercent.value = val
+    isMuted.value = val === 0
+  }
+}
+
+const changeSpeed = (speed) => {
+  playbackRate.value = speed
+  const video = videoRef.value
+  if (video) {
+    video.playbackRate = speed
+  }
+  speedToastVisible.value = true
+  setTimeout(() => {
+    speedToastVisible.value = false
+  }, 1500)
+}
+
+const toggleSubtitles = () => {
+  subtitlesEnabled.value = !subtitlesEnabled.value
+}
+
+const toggleFullscreen = async () => {
+  const video = videoRef.value
+  if (!video) return
+  try {
+    if (!document.fullscreenElement) {
+      await video.requestFullscreen?.()
+      isFullscreen.value = true
+    } else {
+      await document.exitFullscreen?.()
+      isFullscreen.value = false
+    }
+  } catch {
+    isFullscreen.value = false
+  }
+}
+
+const seekVideo = (e) => {
+  const video = videoRef.value
+  const track = progressTrack.value
+  if (!video || !track) return
+  const rect = track.getBoundingClientRect()
+  const percent = (e.clientX - rect.left) / rect.width
+  video.currentTime = percent * video.duration
+}
+
+// Controls visibility
+const showControls = () => {
+  controlsVisible.value = true
+  if (hideControlsTimer) {
+    clearTimeout(hideControlsTimer)
+    hideControlsTimer = null
+  }
+}
+
+const hideControlsDelayed = () => {
+  hideControlsTimer = setTimeout(() => {
+    if (isPlaying.value) {
+      controlsVisible.value = false
+    }
+  }, 3000)
+}
+
+const speedToastVisible = ref(false)
 
 // Event handlers
 const onCanPlay = () => {
   const video = videoRef.value
   if (video) {
     duration.value = video.duration
+    video.playbackRate = playbackRate.value
+    video.volume = volumePercent.value / 100
   }
 }
 
@@ -313,199 +896,302 @@ const onTimeUpdate = () => {
   const video = videoRef.value
   if (video) {
     currentTime.value = video.currentTime
-    sliderTime.value = video.currentTime
+  }
+}
+
+const onProgress = () => {
+  const video = videoRef.value
+  if (video && video.buffered.length > 0) {
+    bufferedPercent.value = (video.buffered.end(video.buffered.length - 1) / video.duration) * 100
   }
 }
 
 const onEnded = async () => {
-  try {
-    const hasRecord = await ensureProgressRecord()
-    if (hasRecord) {
-      await request({
-        method: 'PUT',
-        url: `/learning-progress/progress/${progressId.value}`,
-        data: {
-          videoPosition: Math.floor(duration.value),
-          videoProgress: 100
-        }
-      })
-    }
-  } catch {
-    // Silently ignore
+  isPlaying.value = false
+  if (chapters.value[currentChapterIndex.value]) {
+    chapters.value[currentChapterIndex.value].isCompleted = true
   }
+  await reportProgress()
   ElMessage.success('视频播放完成')
 }
 
-const onError = () => {
-  ElMessage.error('视频播放出错')
+const onVideoError = () => {
+  errorMsg.value = '视频播放出错，请尝试刷新页面'
 }
 
-const changeSpeed = () => {
+// Keyboard shortcuts
+const handleKeydown = (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+  switch (e.code) {
+    case 'Space':
+      e.preventDefault()
+      togglePlay()
+      showControls()
+      break
+    case 'ArrowLeft':
+      e.preventDefault()
+      skipBackward()
+      showControls()
+      break
+    case 'ArrowRight':
+      e.preventDefault()
+      skipForward()
+      showControls()
+      break
+    case 'KeyF':
+      toggleFullscreen()
+      break
+    case 'KeyM':
+      toggleMute()
+      break
+  }
+}
+
+// Fullscreen change handler
+const handleFullscreenChange = () => {
+  isFullscreen.value = !!document.fullscreenElement
+}
+
+// Navigation
+const goBack = () => {
+  router.back()
+}
+
+const toggleSettings = () => {
+  // Could show settings panel
+}
+
+// Lifecycle
+let resizeTimer = null
+const handleResize = () => {
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    isMobile.value = window.innerWidth <= 768
+  }, 200)
+}
+
+onMounted(async () => {
+  isMobile.value = window.innerWidth <= 768
+  await nextTick()
+  loadVideo()
+  startProgressReporting()
+  document.addEventListener('keydown', handleKeydown)
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  // Save final position
   const video = videoRef.value
   if (video) {
-    video.playbackRate = playbackRate.value
+    saveLocalPosition(video.currentTime)
+    reportProgress()
   }
-}
-
-const onSliderChange = (val) => {
-  const video = videoRef.value
-  if (video) {
-    video.currentTime = val
-  }
-}
-
-const toggleFullscreen = async () => {
-  const video = videoRef.value
-  if (!video) return
-
-  if (!isMiniMode.value) {
-    try {
-      if (video.requestFullscreen) {
-        await video.requestFullscreen()
-      } else if (video.webkitRequestFullscreen) {
-        await video.webkitRequestFullscreen()
-      }
-    } catch {
-      // Fallback to mini mode
-      isMiniMode.value = true
-    }
-  } else {
-    isMiniMode.value = false
-  }
-}
-
-const exitMiniMode = () => {
-  isMiniMode.value = false
-}
-
-// Touch gesture handlers
-const onTouchStart = (e) => {
-  const touch = e.touches ? e.touches[0] : e
-  lastTouchX.value = touch.clientX
-  touchStartTime.value = Date.now()
-}
-
-const onTouchEnd = (e) => {
-  const touch = e.changedTouches ? e.changedTouches[0] : e
-  const deltaX = touch.clientX - lastTouchX.value
-  const duration_ms = Date.now() - touchStartTime.value
-
-  // Only treat as swipe if it's fast (< 500ms) and significant (> 50px)
-  if (Math.abs(deltaX) > 50 && duration_ms < 500) {
-    const video = videoRef.value
-    if (video) {
-      if (deltaX < 0) {
-        // Left swipe - forward 10s
-        video.currentTime = Math.min(video.currentTime + 10, video.duration)
-      } else {
-        // Right swipe - backward 10s
-        video.currentTime = Math.max(video.currentTime - 10, 0)
-      }
-    }
-  }
-}
-
-const handleDoubleTap = (e) => {
-  const video = videoRef.value
-  if (!video) return
-
-  // Use tap timer to distinguish double-tap from single tap
-  tapCount.value++
-  if (tapCount.value === 1) {
-    tapTimer = setTimeout(() => {
-      tapCount.value = 0
-    }, 300)
-  } else if (tapCount.value === 2) {
-    clearTimeout(tapTimer)
-    tapCount.value = 0
-
-    const rect = video.getBoundingClientRect()
-    const tapX = e.clientX - rect.left
-    const halfWidth = rect.width / 2
-
-    if (tapX < halfWidth) {
-      // Left half - rewind 10s
-      video.currentTime = Math.max(video.currentTime - 10, 0)
-    } else {
-      // Right half - forward 10s
-      video.currentTime = Math.min(video.currentTime + 10, video.duration)
-    }
-  }
-}
-
-const formatTime = (seconds) => {
-  if (!seconds || isNaN(seconds)) return '00:00'
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = Math.floor(seconds % 60)
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  }
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-// Cleanup
-const cleanup = () => {
   if (hlsInstance.value) {
     hlsInstance.value.destroy()
     hlsInstance.value = null
   }
-  if (progressInterval) {
-    clearInterval(progressInterval)
-    progressInterval = null
+  if (progressReportTimer) {
+    clearInterval(progressReportTimer)
+    progressReportTimer = null
   }
-}
-
-onMounted(async () => {
-  await nextTick()
-  loadVideo()
-  startProgressReporting()
-})
-
-onBeforeUnmount(() => {
-  cleanup()
+  if (hideControlsTimer) {
+    clearTimeout(hideControlsTimer)
+    hideControlsTimer = null
+  }
+  document.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  window.removeEventListener('resize', handleResize)
+  if (resizeTimer) clearTimeout(resizeTimer)
 })
 </script>
 
 <style scoped>
-.video-player-page {
-  padding: 20px;
-  background-color: #f5f7fa;
+/* ============================================================
+   Video Player - Immersive Dark Theme
+   role-video: #000 bg, #fff text, #6366f1 accent
+   ============================================================ */
+
+.video-player-root {
+  --vp-bg: #000000;
+  --vp-surface: #1a1a1a;
+  --vp-border: #333333;
+  --vp-text: #ffffff;
+  --vp-text-secondary: #999999;
+  --vp-accent: #6366f1;
+  --vp-accent-light: #818cf8;
+  --vp-progress-bg: #404040;
+  --vp-progress-buffered: #666666;
+
+  background: var(--vp-bg);
+  color: var(--vp-text);
   min-height: 100vh;
-}
-
-.player-wrapper {
-  max-width: 960px;
-  margin: 0 auto;
-}
-
-.skeleton-container {
-  background: #1a1a1a;
-  border-radius: 8px;
-  padding: 40px;
-  min-height: 400px;
   display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Loading */
+.player-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--space-4);
 }
 
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--vp-border);
+  border-top-color: var(--vp-accent);
+  border-radius: var(--radius-circle);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: var(--vp-text-secondary);
+  font-size: var(--text-base);
+}
+
+/* Error */
+.player-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.error-icon {
+  color: var(--vp-text-secondary);
+}
+
+.error-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  margin: 0;
+}
+
+.error-desc {
+  color: var(--vp-text-secondary);
+  font-size: var(--text-base);
+  margin: 0 0 var(--space-4);
+}
+
+/* Header */
+.player-header {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--vp-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.pc-header {
+  display: flex;
+}
+
+.h5-header {
+  display: none;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.header-title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.back-btn {
+  color: var(--vp-text);
+  padding: var(--space-1);
+}
+
+.speed-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--vp-text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--vp-surface);
+  transition: background 0.2s;
+}
+
+.speed-btn:hover {
+  background: var(--vp-border);
+}
+
+.h5-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Player Body */
+.player-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* PC Main */
+.player-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-6);
+  gap: var(--space-5);
+  overflow-y: auto;
+}
+
+.pc-main {
+  max-width: calc(100% - 360px);
+}
+
+/* Video Container */
 .video-container {
   position: relative;
-  background: #303133;
-  border-radius: 8px;
-  overflow: hidden;
+  width: 100%;
+  max-width: 1280px;
   aspect-ratio: 16 / 9;
-}
-
-.video-container.mini-mode {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 320px;
-  height: 180px;
-  z-index: 9999;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: var(--vp-bg);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
 }
 
 .video-element {
@@ -514,162 +1200,727 @@ onBeforeUnmount(() => {
   display: block;
 }
 
-.top-controls {
+/* Buffering */
+.video-buffering {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.buffering-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--vp-accent);
+  border-radius: var(--radius-circle);
+  animation: spin 1s linear infinite;
+}
+
+/* Center Play */
+.center-play-btn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--el-color-white);
+  transition: background 0.2s;
+}
+
+.center-play-btn:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Top Overlay */
+.video-top-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
-  z-index: 10;
+  pointer-events: none;
 }
 
-.title-bar {
-  flex: 1;
-  min-width: 0;
+.video-title-overlay {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
 }
 
-.video-title {
-  color: #f5f5f5;
-  font-size: 14px;
-  font-weight: 500;
+/* Custom Controls */
+.video-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.video-controls.visible {
+  opacity: 1;
+}
+
+/* Progress Track */
+.progress-track {
+  position: relative;
+  height: 4px;
+  background: var(--vp-progress-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-bottom: var(--space-3);
+}
+
+.progress-track:hover {
+  height: 6px;
+}
+
+.progress-track:hover .progress-thumb {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.progress-buffer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--vp-progress-buffered);
+  border-radius: var(--radius-sm);
+}
+
+.progress-played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--vp-accent);
+  border-radius: var(--radius-sm);
+}
+
+.progress-thumb {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: var(--vp-accent);
+  border-radius: var(--radius-circle);
+  transform: translateY(-50%) scale(0);
+  opacity: 0;
+  transition: all 0.2s;
+}
+
+/* Controls Row */
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.controls-left,
+.controls-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ctrl-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: var(--vp-text);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s;
+}
+
+.ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ctrl-btn.active {
+  color: var(--vp-accent);
+}
+
+.speed-ctrl-btn {
+  width: auto;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+/* Volume */
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.volume-slider {
+  width: 80px;
+  --el-slider-main-bg-color: var(--vp-accent);
+  --el-slider-runway-bg-color: var(--vp-progress-bg);
+}
+
+.volume-slider :deep(.el-slider__bar) {
+  background: var(--vp-accent);
+}
+
+/* Time Display */
+.time-display {
+  font-size: var(--text-sm);
+  color: var(--vp-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Subtitles */
+.video-subtitles {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  max-width: 80%;
+  text-align: center;
+}
+
+/* Chapter Chips */
+.chapter-chips {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  max-width: 1280px;
+  width: 100%;
+}
+
+.chapter-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--vp-surface);
+  border: 1px solid var(--vp-border);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: all 0.2s;
+}
+
+.chapter-chip:hover {
+  border-color: var(--vp-accent);
+}
+
+.chapter-chip.is-active {
+  background: var(--vp-accent);
+  border-color: var(--vp-accent);
+  color: var(--el-color-white);
+}
+
+.chapter-chip.is-completed {
+  color: var(--vp-text-secondary);
+}
+
+.chip-index {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-circle);
+  font-size: var(--text-xs);
+}
+
+.chip-title {
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.speed-control {
-  margin-left: 12px;
+.chip-check {
+  color: var(--el-color-success);
 }
 
-.speed-control :deep(.el-select) {
-  width: 80px;
+/* Video Info Card */
+.video-info-card {
+  max-width: 1280px;
+  width: 100%;
+  background: var(--vp-surface);
+  border: 1px solid var(--vp-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
 }
 
-.speed-control :deep(.el-input__wrapper) {
-  background-color: rgba(0, 0, 0, 0.5);
-  border: none;
+.info-row {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  padding: var(--space-1) 0;
 }
 
-.speed-control :deep(.el-input__inner) {
-  color: #f5f5f5;
+.info-label {
+  color: var(--vp-text-secondary);
 }
 
-.bottom-controls {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 12px 16px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-  z-index: 10;
+.info-value {
+  color: var(--vp-text);
 }
 
-.progress-bar-container {
+/* Sidebar */
+.player-sidebar {
+  width: 360px;
+  border-left: 1px solid var(--vp-border);
+  background: var(--vp-surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.pc-sidebar {
+  display: flex;
+}
+
+.sidebar-tabs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-tabs :deep(.el-tabs__header) {
+  margin: 0;
+  background: var(--vp-bg);
+  border-bottom: 1px solid var(--vp-border);
+}
+
+.sidebar-tabs :deep(.el-tabs__nav-wrap) {
+  background: var(--vp-bg);
+}
+
+.sidebar-tabs :deep(.el-tabs__item) {
+  color: var(--vp-text-secondary);
+  font-size: var(--text-base);
+  height: 48px;
+  line-height: 48px;
+  padding: 0 var(--space-4);
+}
+
+.sidebar-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--vp-accent);
+}
+
+.sidebar-tabs :deep(.el-tabs__active-bar) {
+  background: var(--vp-accent);
+}
+
+.sidebar-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.sidebar-tabs :deep(.el-tab-pane) {
+  height: 100%;
+}
+
+.tab-content {
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.tab-empty {
+  text-align: center;
+  color: var(--vp-text-secondary);
+  padding: var(--space-7) var(--space-4);
+  font-size: var(--text-base);
+}
+
+/* Chapter Item */
+.chapter-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.time-display {
-  color: #f5f5f5;
-  font-size: 12px;
-  min-width: 45px;
-  font-family: 'Helvetica Neue', monospace;
-}
-
-.control-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.control-buttons :deep(.el-button) {
-  background-color: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: #f5f5f5;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
   cursor: pointer;
+  transition: background 0.2s;
 }
 
-.control-buttons :deep(.el-button:hover) {
-  background-color: rgba(255, 255, 255, 0.3);
+.chapter-item:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.resume-tip {
+.chapter-item.is-active {
+  background: rgba(99, 102, 241, 0.15);
+  border-left: 3px solid var(--vp-accent);
+}
+
+.chapter-item.is-completed .chapter-check {
+  color: var(--el-color-success);
+}
+
+.chapter-index {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vp-border);
+  border-radius: var(--radius-circle);
+  font-size: var(--text-xs);
+  flex-shrink: 0;
+}
+
+.chapter-item.is-active .chapter-index {
+  background: var(--vp-accent);
+}
+
+.chapter-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chapter-title {
+  font-size: var(--text-base);
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-duration {
+  font-size: var(--text-xs);
+  color: var(--vp-text-secondary);
+}
+
+.chapter-check {
+  color: var(--vp-text-secondary);
+  flex-shrink: 0;
+}
+
+/* Notes */
+.note-input-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.note-time-btn {
+  font-size: var(--text-xs);
+  color: var(--vp-accent);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.note-input {
+  flex: 1;
+}
+
+.note-input :deep(.el-input__wrapper) {
+  background: var(--vp-bg);
+  border: 1px solid var(--vp-border);
+  box-shadow: none;
+}
+
+.note-input :deep(.el-input__inner) {
+  color: var(--vp-text);
+}
+
+.note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background 0.2s;
+}
+
+.note-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.note-time {
+  font-size: var(--text-xs);
+  color: var(--vp-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.note-content {
+  flex: 1;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+/* Discussions */
+.discussion-item {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.discussion-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.discussion-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.discussion-author {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.discussion-time {
+  font-size: var(--text-xs);
+  color: var(--vp-text-secondary);
+}
+
+.discussion-title {
+  font-size: var(--text-base);
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discussion-preview {
+  font-size: var(--text-xs);
+  color: var(--vp-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* H5 Bottom Tabs */
+.h5-bottom-tabs {
+  display: none;
+}
+
+/* Speed Toast */
+.speed-toast {
   position: fixed;
-  top: 80px;
+  top: 60px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.8);
-  color: #f5f5f5;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 14px;
+  background: rgba(0, 0, 0, 0.9);
+  color: var(--el-color-white);
+  padding: 8px 20px;
+  border-radius: var(--radius-2xl);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
   z-index: 9999;
+  pointer-events: none;
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
 }
 
-.fade-enter-from,
-.fade-leave-to {
+.toast-fade-enter-from,
+.toast-fade-leave-to {
   opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
 }
 
-/* Mobile responsive */
+/* ============================================================
+   Responsive: H5 (<= 768px)
+   ============================================================ */
 @media (max-width: 768px) {
-  .video-player-page {
-    padding: 0;
+  .player-body {
+    flex-direction: column;
   }
 
-  .player-wrapper {
+  .pc-header {
+    display: none;
+  }
+
+  .h5-header {
+    display: flex;
+  }
+
+  .player-main {
+    padding: 0;
     max-width: 100%;
   }
 
   .video-container {
+    max-width: 100%;
     border-radius: 0;
   }
 
-  .video-container.mini-mode {
-    width: 200px;
-    height: 112px;
-    bottom: 10px;
-    right: 10px;
+  .chapter-chips {
+    display: none;
   }
 
-  .top-controls {
-    padding: 8px 12px;
+  .video-info-card {
+    display: none;
   }
 
-  .video-title {
-    font-size: 12px;
+  .player-sidebar {
+    display: none;
   }
 
-  .bottom-controls {
-    padding: 8px 12px;
+  .h5-bottom-tabs {
+    display: block;
+    background: var(--vp-surface);
+    border-top: 1px solid var(--vp-border);
+  }
+
+  .h5-tabs {
+    --el-tabs-header-height: 48px;
+  }
+
+  .h5-tabs :deep(.el-tabs__header) {
+    margin: 0;
+  }
+
+  .h5-tabs :deep(.el-tabs__nav-wrap) {
+    background: var(--vp-bg);
+  }
+
+  .h5-tabs :deep(.el-tabs__item) {
+    color: var(--vp-text-secondary);
+    font-size: var(--text-base);
+    height: 48px;
+    line-height: 48px;
+  }
+
+  .h5-tabs :deep(.el-tabs__item.is-active) {
+    color: var(--vp-accent);
+  }
+
+  .h5-tabs :deep(.el-tabs__active-bar) {
+    background: var(--vp-accent);
+  }
+
+  .h5-tabs :deep(.el-tabs__content) {
+    padding: var(--space-3);
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .h5-chapters,
+  .h5-notes,
+  .h5-discussions {
+    padding-bottom: 24px;
+  }
+
+  .h5-chapter-item,
+  .h5-note-item,
+  .h5-discussion-item {
+    margin-bottom: var(--space-2);
+  }
+
+  .volume-slider {
+    width: 60px;
   }
 
   .time-display {
-    font-size: 10px;
-    min-width: 35px;
+    font-size: var(--text-xs);
   }
 
-  .speed-control :deep(.el-select) {
-    width: 70px;
+  .ctrl-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ctrl-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .video-title-overlay {
+    font-size: var(--text-xs);
   }
 }
 
-/* Portrait mode: 9:16 vertical video */
-@media (orientation: portrait) and (max-width: 768px) {
-  .video-container:not(.mini-mode) {
-    aspect-ratio: 9 / 16;
-    max-height: 100vh;
-  }
+/* ============================================================
+   Dropdown overrides for dark theme
+   ============================================================ */
+:deep(.el-dropdown-menu) {
+  background: var(--vp-surface);
+  border: 1px solid var(--vp-border);
+}
+
+:deep(.el-dropdown-menu__item) {
+  color: var(--vp-text);
+  font-size: var(--text-sm);
+}
+
+:deep(.el-dropdown-menu__item:hover) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--vp-text);
+}
+
+:deep(.el-dropdown-menu__item.active) {
+  color: var(--vp-accent);
+}
+
+/* Element Plus overrides */
+:deep(.el-button--primary) {
+  --el-button-bg-color: var(--vp-accent);
+  --el-button-border-color: var(--vp-accent);
+  --el-button-hover-bg-color: var(--vp-accent-light);
+  --el-button-hover-border-color: var(--vp-accent-light);
+}
+
+:deep(.el-input__wrapper) {
+  background: var(--vp-bg);
+  box-shadow: none;
+  border: 1px solid var(--vp-border);
+}
+
+:deep(.el-input__inner) {
+  color: var(--vp-text);
+}
+
+:deep(.el-input__wrapper:hover) {
+  box-shadow: none;
+  border-color: var(--vp-accent);
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--vp-accent);
+  border-color: var(--vp-accent);
+}
+
+:deep(.el-slider__runway) {
+  background: var(--vp-progress-bg);
+}
+
+:deep(.el-slider__bar) {
+  background: var(--vp-accent);
+}
+
+:deep(.el-slider__button) {
+  border-color: var(--vp-accent);
 }
 </style>

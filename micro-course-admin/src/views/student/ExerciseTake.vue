@@ -13,16 +13,53 @@
         <p class="page-subtitle">共 {{ exerciseList.length }} 个练习</p>
       </div>
 
-      <div v-if="loading" class="loading-wrap">
-        <el-icon class="is-loading"><Loading /></el-icon>
-        <span>加载中...</span>
+      <!-- Loading skeleton -->
+      <div v-if="loading" class="skeleton-wrap">
+        <el-skeleton :rows="5" animated />
       </div>
 
       <div v-else-if="exerciseList.length === 0" class="empty-wrap">
         <el-empty description="本章节暂无练习" />
       </div>
 
-      <div v-else class="exercise-cards">
+      <!-- PC: 2-column card grid -->
+      <div v-else-if="!isMobile" class="exercise-cards pc-grid">
+        <el-card
+          v-for="ex in exerciseList"
+          :key="ex.id"
+          class="exercise-card"
+          shadow="never"
+        >
+          <div class="card-body">
+            <div class="card-info">
+              <h3 class="exercise-title">{{ ex.title }}</h3>
+              <div class="exercise-meta">
+                <el-tag v-if="ex.questionCount" size="small" effect="plain">
+                  {{ ex.questionCount }} 题
+                </el-tag>
+                <el-tag v-if="ex.timeLimit" size="small" effect="plain" type="info">
+                  {{ ex.timeLimit }}分钟
+                </el-tag>
+                <el-tag v-if="ex.passScore" size="small" effect="plain" type="warning">
+                  及格 {{ ex.passScore }}分
+                </el-tag>
+              </div>
+            </div>
+            <div class="card-actions">
+              <el-button
+                type="primary"
+                size="default"
+                @click="startExercise(ex)"
+              >
+                开始答题
+              </el-button>
+            </div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- H5: single column -->
+      <div v-else class="exercise-cards h5-list">
         <el-card
           v-for="ex in exerciseList"
           :key="ex.id"
@@ -60,141 +97,350 @@
 
     <!-- ===== 答题界面 ===== -->
     <div v-else class="exercise-answer-view">
-      <!-- 顶部进度条 -->
-      <div class="progress-bar-wrap">
-        <div class="progress-inner">
-          <span class="progress-text">第 {{ currentIndex + 1 }} / {{ totalQuestions }} 题</span>
-          <el-progress
-            :percentage="progressPercent"
-            :show-text="false"
-            :stroke-width="6"
-            color="#667eea"
-          />
-         <span v-if="timeLimit" class="time-left">
-            <el-icon><Timer /></el-icon>
-            {{ formatTimeLeft(timeLeft) }}
-          </span>
+
+      <!-- ===== PC 答题布局 ===== -->
+      <template v-if="!isMobile">
+        <!-- 顶部进度条（sticky） -->
+        <div class="progress-bar-wrap">
+          <div class="progress-inner">
+            <span class="progress-text">第 {{ currentIndex + 1 }} / {{ totalQuestions }} 题</span>
+            <el-progress
+              :percentage="progressPercent"
+              :show-text="false"
+              :stroke-width="6"
+              :color="progressColor"
+            />
+            <span v-if="timeLimit" class="time-left">
+              <el-icon><Timer /></el-icon>
+              {{ formatTimeLeft(timeLeft) }}
+            </span>
+          </div>
         </div>
-      </div>
 
-      <!-- 题目卡片 -->
-      <div class="question-card-wrap">
-        <el-card class="question-card" shadow="never">
-          <!-- 题目类型标签 -->
-          <div class="question-type-bar">
-            <el-tag size="small" effect="plain" :type="questionTypeTagType(currentQuestion.questionType)">
-              {{ questionTypeLabel(currentQuestion.questionType) }}
-            </el-tag>
-          </div>
+        <!-- 主体：左侧题目 + 右侧答题卡 -->
+        <div class="answer-main pc-layout">
+          <!-- 左侧：题目区 -->
+          <div class="question-area">
+            <el-card class="question-card" shadow="never">
+              <div class="question-type-bar">
+                <el-tag size="small" effect="plain" :type="questionTypeTagType(currentQuestion.questionType)">
+                  {{ questionTypeLabel(currentQuestion.questionType) }}
+                </el-tag>
+              </div>
+              <div class="question-content">
+                <p class="question-text">{{ currentQuestion.content }}</p>
+              </div>
 
-          <!-- 题目内容 -->
-          <div class="question-content">
-            <p class="question-text">{{ currentQuestion.content }}</p>
-          </div>
+              <!-- 选项区 -->
+              <div class="question-options">
+                <template v-if="currentQuestion.questionType === 'SINGLE' || currentQuestion.questionType === 'JUDGE'">
+                  <el-radio-group
+                    v-model="answers[currentQuestion.id]"
+                    class="option-group"
+                    :disabled="submitted"
+                  >
+                    <div
+                      v-for="(opt, idx) in currentQuestion.options"
+                      :key="idx"
+                      class="option-item"
+                      :class="{
+                        'option-correct': submitted && opt.value === currentQuestion.answer,
+                        'option-wrong': submitted && opt.value === answers[currentQuestion.id] && opt.value !== currentQuestion.answer,
+                        'option-selected': answers[currentQuestion.id] === opt.value && !submitted,
+                      }"
+                    >
+                      <el-radio :value="opt.value" :label="opt.value">
+                        <span class="option-label">{{ opt.label }}.</span>
+                        <span class="option-text">{{ opt.text }}</span>
+                      </el-radio>
+                    </div>
+                  </el-radio-group>
+                </template>
 
-          <!-- 选项区 -->
-          <div class="question-options">
-            <!-- SINGLE / JUDGE -->
-            <template v-if="currentQuestion.questionType === 'SINGLE' || currentQuestion.questionType === 'JUDGE'">
-              <el-radio-group
-                v-model="answers[currentQuestion.id]"
-                class="option-group"
-                :disabled="submitted"
-              >
-                <div
-                  v-for="(opt, idx) in currentQuestion.options"
-                  :key="idx"
-                  class="option-item"
-                  :class="{
-                    'option-correct': submitted && opt.value === currentQuestion.answer,
-                    'option-wrong': submitted && opt.value === answers[currentQuestion.id] && opt.value !== currentQuestion.answer,
-                    'option-selected': answers[currentQuestion.id] === opt.value,
-                  }"
-                >
-                  <el-radio :value="opt.value" :label="opt.value">
-                    <span class="option-label">{{ opt.label }}.</span>
-                    <span class="option-text">{{ opt.text }}</span>
-                  </el-radio>
+                <template v-else-if="currentQuestion.questionType === 'MULTIPLE'">
+                  <el-checkbox-group
+                    v-model="multipleAnswers[currentQuestion.id]"
+                    class="option-group"
+                    :disabled="submitted"
+                  >
+                    <div
+                      v-for="(opt, idx) in currentQuestion.options"
+                      :key="idx"
+                      class="option-item"
+                      :class="{
+                        'option-correct': submitted && isMultipleCorrect(opt.value, currentQuestion.answer),
+                        'option-wrong': submitted && multipleAnswers[currentQuestion.id]?.includes(opt.value) && !isMultipleCorrect(opt.value, currentQuestion.answer),
+                      }"
+                    >
+                      <el-checkbox :value="opt.value" :label="opt.value">
+                        <span class="option-label">{{ opt.label }}.</span>
+                        <span class="option-text">{{ opt.text }}</span>
+                      </el-checkbox>
+                    </div>
+                  </el-checkbox-group>
+                </template>
+
+                <template v-else-if="currentQuestion.questionType === 'FILL'">
+                  <el-input
+                    v-model="answers[currentQuestion.id]"
+                    type="textarea"
+                    :rows="3"
+                    :disabled="submitted"
+                    placeholder="请输入您的答案"
+                    class="fill-input"
+                  />
+                </template>
+              </div>
+
+              <!-- 答案解析 -->
+              <div v-if="submitted" class="answer-analysis">
+                <div class="analysis-row user-answer">
+                  <span class="analysis-label">您的答案：</span>
+                  <span
+                    class="analysis-value"
+                    :class="isCurrentCorrect ? 'text-success' : 'text-danger'"
+                  >
+                    <el-icon v-if="!isCurrentCorrect"><Close /></el-icon>
+                    <el-icon v-else><Check /></el-icon>
+                    {{ formatUserAnswer(currentQuestion) }}
+                  </span>
                 </div>
-              </el-radio-group>
-            </template>
-
-            <!-- MULTIPLE -->
-            <template v-else-if="currentQuestion.questionType === 'MULTIPLE'">
-              <el-checkbox-group
-                v-model="multipleAnswers[currentQuestion.id]"
-                class="option-group"
-                :disabled="submitted"
-              >
-                <div
-                  v-for="(opt, idx) in currentQuestion.options"
-                  :key="idx"
-                  class="option-item"
-                  :class="{
-                    'option-correct': submitted && isMultipleCorrect(opt.value, currentQuestion.answer),
-                    'option-wrong': submitted && multipleAnswers[currentQuestion.id]?.includes(opt.value) && !isMultipleCorrect(opt.value, currentQuestion.answer),
-                  }"
-                >
-                  <el-checkbox :value="opt.value" :label="opt.value">
-                    <span class="option-label">{{ opt.label }}.</span>
-                    <span class="option-text">{{ opt.text }}</span>
-                  </el-checkbox>
+                <div class="analysis-row correct-answer">
+                  <span class="analysis-label">正确答案：</span>
+                  <span class="analysis-value text-success">
+                    <el-icon><Check /></el-icon>
+                    {{ formatCorrectAnswer(currentQuestion) }}
+                  </span>
                 </div>
-              </el-checkbox-group>
-            </template>
+                <div v-if="currentQuestion.explanation" class="analysis-row explanation">
+                  <span class="analysis-label">解析：</span>
+                  <span class="analysis-value explanation-text">{{ currentQuestion.explanation }}</span>
+                </div>
+              </div>
+            </el-card>
 
-            <!-- FILL -->
-            <template v-else-if="currentQuestion.questionType === 'FILL'">
-              <el-input
-                v-model="answers[currentQuestion.id]"
-                type="textarea"
-                :rows="3"
-                :disabled="submitted"
-                placeholder="请输入您的答案"
-                class="fill-input"
-              />
-            </template>
+            <!-- 底部导航 -->
+            <div class="bottom-nav-pc">
+              <el-button @click="prevQuestion" :disabled="currentIndex === 0">
+                上一题
+              </el-button>
+              <div class="nav-center">
+                <template v-if="!submitted">
+                  <el-button
+                    v-if="currentIndex < totalQuestions - 1"
+                    type="primary"
+                    @click="nextQuestion"
+                  >
+                    下一题
+                  </el-button>
+                  <el-button
+                    v-else
+                    type="success"
+                    :loading="submitting"
+                    @click="handleSubmit"
+                  >
+                    提交答案
+                  </el-button>
+                </template>
+                <template v-else>
+                  <el-button
+                    v-if="currentIndex < totalQuestions - 1"
+                    type="primary"
+                    @click="nextQuestion"
+                  >
+                    下一题
+                  </el-button>
+                  <template v-else>
+                    <el-button
+                      v-if="canRetry"
+                      type="warning"
+                      @click="handleRetry"
+                    >
+                      重新答题
+                    </el-button>
+                    <el-button
+                      type="primary"
+                      @click="handleBackToList"
+                    >
+                      返回练习列表
+                    </el-button>
+                  </template>
+                </template>
+              </div>
+            </div>
           </div>
 
-          <!-- 答案解析（提交后显示） -->
-          <div v-if="submitted" class="answer-analysis">
-            <div class="analysis-row user-answer">
-              <span class="analysis-label">您的答案：</span>
-              <span
-                class="analysis-value"
-                :class="isCurrentCorrect ? 'text-success' : 'text-danger'"
-              >
-                <el-icon v-if="!isCurrentCorrect"><Close /></el-icon>
-                <el-icon v-else><Check /></el-icon>
-                {{ formatUserAnswer(currentQuestion) }}
-              </span>
-            </div>
-            <div class="analysis-row correct-answer">
-              <span class="analysis-label">正确答案：</span>
-              <span class="analysis-value text-success">
-                <el-icon><Check /></el-icon>
-                {{ formatCorrectAnswer(currentQuestion) }}
-              </span>
-            </div>
-            <div v-if="currentQuestion.explanation" class="analysis-row explanation">
-              <span class="analysis-label">解析：</span>
-              <span class="analysis-value explanation-text">{{ currentQuestion.explanation }}</span>
-            </div>
+          <!-- 右侧：答题卡面板 -->
+          <div class="answer-sheet-panel">
+            <el-card class="answer-sheet-card" shadow="never">
+              <template #header>
+                <div class="answer-sheet-header">
+                  <span class="answer-sheet-title">答题卡</span>
+                  <span class="answer-sheet-count">
+                    {{ answeredCount }} / {{ totalQuestions }}
+                  </span>
+                </div>
+              </template>
+              <div class="question-dots">
+                <div
+                  v-for="(qId, idx) in questionIds"
+                  :key="qId"
+                  class="q-dot"
+                  :class="{
+                    'dot-current': idx === currentIndex,
+                    'dot-answered': isQuestionAnswered(qId),
+                    'dot-correct': submitted && isQuestionCorrect(qId),
+                    'dot-wrong': submitted && isQuestionWrong(qId),
+                  }"
+                  @click="jumpToQuestion(idx)"
+                >
+                  {{ idx + 1 }}
+                </div>
+              </div>
+              <div class="dot-legend">
+                <span class="legend-item"><span class="dot dot-answered"></span> 已答</span>
+                <span class="legend-item"><span class="dot dot-current"></span> 当前</span>
+                <span class="legend-item"><span class="dot dot-wrong"></span> 错误</span>
+                <span class="legend-item"><span class="dot dot-correct"></span> 正确</span>
+              </div>
+            </el-card>
           </div>
-        </el-card>
-      </div>
+        </div>
+      </template>
 
-      <!-- 底部导航按钮 -->
-      <div class="bottom-nav">
-        <el-button @click="prevQuestion" :disabled="currentIndex === 0">
-         上一题
-        </el-button>
+      <!-- ===== H5 答题布局 ===== -->
+      <template v-else>
+        <!-- 紧凑进度 -->
+        <div class="h5-progress-bar">
+          <div class="h5-progress-inner">
+            <span class="h5-progress-text">{{ currentIndex + 1 }} / {{ totalQuestions }}</span>
+            <el-progress
+              :percentage="progressPercent"
+              :show-text="false"
+              :stroke-width="4"
+              :color="progressColor"
+              class="h5-progress"
+            />
+            <span v-if="timeLimit" class="time-left">
+              <el-icon><Timer /></el-icon>
+              {{ formatTimeLeft(timeLeft) }}
+            </span>
+          </div>
+        </div>
 
-        <div class="nav-center">
+        <!-- 全屏题目卡片 -->
+        <div class="h5-question-wrap">
+          <el-card class="question-card" shadow="never">
+            <div class="question-type-bar">
+              <el-tag size="small" effect="plain" :type="questionTypeTagType(currentQuestion.questionType)">
+                {{ questionTypeLabel(currentQuestion.questionType) }}
+              </el-tag>
+            </div>
+            <div class="question-content">
+              <p class="question-text">{{ currentQuestion.content }}</p>
+            </div>
+
+            <div class="question-options">
+              <template v-if="currentQuestion.questionType === 'SINGLE' || currentQuestion.questionType === 'JUDGE'">
+                <el-radio-group
+                  v-model="answers[currentQuestion.id]"
+                  class="option-group"
+                  :disabled="submitted"
+                >
+                  <div
+                    v-for="(opt, idx) in currentQuestion.options"
+                    :key="idx"
+                    class="option-item"
+                    :class="{
+                      'option-correct': submitted && opt.value === currentQuestion.answer,
+                      'option-wrong': submitted && opt.value === answers[currentQuestion.id] && opt.value !== currentQuestion.answer,
+                      'option-selected': answers[currentQuestion.id] === opt.value && !submitted,
+                    }"
+                  >
+                    <el-radio :value="opt.value" :label="opt.value">
+                      <span class="option-label">{{ opt.label }}.</span>
+                      <span class="option-text">{{ opt.text }}</span>
+                    </el-radio>
+                  </div>
+                </el-radio-group>
+              </template>
+
+              <template v-else-if="currentQuestion.questionType === 'MULTIPLE'">
+                <el-checkbox-group
+                  v-model="multipleAnswers[currentQuestion.id]"
+                  class="option-group"
+                  :disabled="submitted"
+                >
+                  <div
+                    v-for="(opt, idx) in currentQuestion.options"
+                    :key="idx"
+                    class="option-item"
+                    :class="{
+                      'option-correct': submitted && isMultipleCorrect(opt.value, currentQuestion.answer),
+                      'option-wrong': submitted && multipleAnswers[currentQuestion.id]?.includes(opt.value) && !isMultipleCorrect(opt.value, currentQuestion.answer),
+                    }"
+                  >
+                    <el-checkbox :value="opt.value" :label="opt.value">
+                      <span class="option-label">{{ opt.label }}.</span>
+                      <span class="option-text">{{ opt.text }}</span>
+                    </el-checkbox>
+                  </div>
+                </el-checkbox-group>
+              </template>
+
+              <template v-else-if="currentQuestion.questionType === 'FILL'">
+                <el-input
+                  v-model="answers[currentQuestion.id]"
+                  type="textarea"
+                  :rows="3"
+                  :disabled="submitted"
+                  placeholder="请输入您的答案"
+                  class="fill-input"
+                />
+              </template>
+            </div>
+
+            <div v-if="submitted" class="answer-analysis">
+              <div class="analysis-row user-answer">
+                <span class="analysis-label">您的答案：</span>
+                <span
+                  class="analysis-value"
+                  :class="isCurrentCorrect ? 'text-success' : 'text-danger'"
+                >
+                  <el-icon v-if="!isCurrentCorrect"><Close /></el-icon>
+                  <el-icon v-else><Check /></el-icon>
+                  {{ formatUserAnswer(currentQuestion) }}
+                </span>
+              </div>
+              <div class="analysis-row correct-answer">
+                <span class="analysis-label">正确答案：</span>
+                <span class="analysis-value text-success">
+                  <el-icon><Check /></el-icon>
+                  {{ formatCorrectAnswer(currentQuestion) }}
+                </span>
+              </div>
+              <div v-if="currentQuestion.explanation" class="analysis-row explanation">
+                <span class="analysis-label">解析：</span>
+                <span class="analysis-value explanation-text">{{ currentQuestion.explanation }}</span>
+              </div>
+            </div>
+          </el-card>
+        </div>
+
+        <!-- H5 底部 prev/next 导航 -->
+        <div class="h5-bottom-nav">
+          <el-button
+            class="h5-nav-btn"
+            @click="prevQuestion"
+            :disabled="currentIndex === 0"
+          >
+            上一题
+          </el-button>
           <template v-if="!submitted">
             <el-button
               v-if="currentIndex < totalQuestions - 1"
               type="primary"
+              class="h5-nav-btn"
               @click="nextQuestion"
             >
               下一题
@@ -202,6 +448,7 @@
             <el-button
               v-else
               type="success"
+              class="h5-nav-btn"
               :loading="submitting"
               @click="handleSubmit"
             >
@@ -212,6 +459,7 @@
             <el-button
               v-if="currentIndex < totalQuestions - 1"
               type="primary"
+              class="h5-nav-btn"
               @click="nextQuestion"
             >
               下一题
@@ -220,12 +468,14 @@
               <el-button
                 v-if="canRetry"
                 type="warning"
+                class="h5-nav-btn"
                 @click="handleRetry"
               >
                 重新答题
               </el-button>
               <el-button
                 type="primary"
+                class="h5-nav-btn"
                 @click="handleBackToList"
               >
                 返回练习列表
@@ -233,7 +483,7 @@
             </template>
           </template>
         </div>
-      </div>
+      </template>
 
       <!-- ===== 结果展示 ===== -->
       <el-dialog
@@ -248,7 +498,7 @@
           <div class="result-score" :class="resultPassed ? 'passed' : 'failed'">
             <div class="score-number">{{ submitResult.score }}</div>
             <div class="score-label">得分</div>
-           <div class="score-total">满分 {{ submitResult.totalScore }}</div>
+            <div class="score-total">满分 {{ submitResult.totalScore }}</div>
           </div>
           <div class="result-status">
             <el-tag
@@ -286,6 +536,10 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
+// ===== 响应式布局 =====
+const isMobile = ref(window.innerWidth <= 768)
+const progressColor = 'var(--role-primary)'
+
 // ===== 练习列表视图 =====
 const loading = ref(false)
 const exerciseList = ref([])
@@ -321,6 +575,47 @@ const maxAttempts = computed(() => currentExercise.value?.maxAttempts || 999)
 const attemptNo = ref(1)
 
 const canRetry = computed(() => attemptNo.value < maxAttempts.value)
+
+// ===== 答题卡辅助 =====
+const answeredCount = computed(() => {
+  return questionIds.value.filter(id => {
+    const ans = answers[id]
+    if (Array.isArray(ans)) return ans.length > 0
+    return !!ans
+  }).length
+})
+
+function isQuestionAnswered(qId) {
+  const ans = answers[qId]
+  if (Array.isArray(ans)) return ans.length > 0
+  return !!ans
+}
+
+function isQuestionCorrect(qId) {
+  const q = questions.value.find(q => q.id === qId)
+  if (!q) return false
+  if (q.questionType === 'MULTIPLE') {
+    const userArr = multipleAnswers[qId] || []
+    const correctArr = parseMultipleAnswer(q.answer)
+    return userArr.length === correctArr.length && userArr.every(v => correctArr.includes(v))
+  }
+  return String(answers[qId] || '') === String(q.answer)
+}
+
+function isQuestionWrong(qId) {
+  const q = questions.value.find(q => q.id === qId)
+  if (!q) return false
+  if (q.questionType === 'MULTIPLE') {
+    const userArr = multipleAnswers[qId] || []
+    const correctArr = parseMultipleAnswer(q.answer)
+    return !(userArr.length === correctArr.length && userArr.every(v => correctArr.includes(v)))
+  }
+  return String(answers[qId] || '') !== String(q.answer)
+}
+
+function jumpToQuestion(idx) {
+  currentIndex.value = idx
+}
 
 // ===== 结果 =====
 const resultVisible = ref(false)
@@ -603,8 +898,9 @@ function formatCorrectAnswer(q) {
 </script>
 
 <style scoped>
+/* ===== 全局基础 ===== */
 .exercise-take-page {
-  max-width: 720px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 24px 16px 100px;
   min-height: 100vh;
@@ -612,50 +908,56 @@ function formatCorrectAnswer(q) {
 
 /* ===== 练习列表 ===== */
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
 }
 
 .page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #303133;
-  margin: 0 0 4px;
+  font-size: var(--text-2xl, 22px);
+  font-weight: var(--weight-bold, 700);
+  color: var(--el-text-color-primary);
+  margin: 0 0 var(--space-1);
 }
 
 .page-subtitle {
-  font-size: 14px;
-  color: #909399;
+  font-size: var(--text-sm, 14px);
+  color: var(--el-text-color-secondary);
   margin: 0;
 }
 
-.loading-wrap,
+.skeleton-wrap {
+  padding: var(--space-2) 0;
+}
+
 .empty-wrap {
+  padding: var(--space-8) 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 60px 0;
-  color: #909399;
+  justify-content: center;
 }
 
-.loading-wrap .el-icon {
-  font-size: 24px;
+/* PC 2-column grid */
+.exercise-cards.pc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
 }
 
-.exercise-cards {
+/* H5 single column */
+.exercise-cards.h5-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .exercise-card {
-  border-radius: 8px;
-  transition: box-shadow 0.2s ease;
+  border-radius: var(--radius-lg, 12px);
+  transition: transform var(--duration-base, 200ms) ease,
+              box-shadow var(--duration-base, 200ms) ease;
   cursor: pointer;
 }
 
 .exercise-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg, 0 4px 16px rgba(0,0,0,0.1));
 }
 
 :deep(.el-card__body) {
@@ -666,8 +968,8 @@ function formatCorrectAnswer(q) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  gap: 16px;
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-4);
 }
 
 .card-info {
@@ -676,10 +978,10 @@ function formatCorrectAnswer(q) {
 }
 
 .exercise-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 8px;
+  font-size: var(--text-base, 16px);
+  font-weight: var(--weight-semibold, 600);
+  color: var(--el-text-color-primary);
+  margin: 0 0 var(--space-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -688,7 +990,7 @@ function formatCorrectAnswer(q) {
 .exercise-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .card-actions {
@@ -699,38 +1001,39 @@ function formatCorrectAnswer(q) {
   cursor: pointer;
 }
 
-/* ===== 答题界面 ===== */
+/* ===== 答题界面 PC 布局 ===== */
 .progress-bar-wrap {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #f5f5f5;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--role-primary-light);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
   padding: 12px 0;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .progress-inner {
-  max-width: 720px;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
 }
 
 .progress-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
+  font-size: var(--text-sm, 14px);
+  font-weight: var(--weight-semibold, 600);
+  color: var(--el-text-color-primary);
   white-space: nowrap;
 }
 
 .time-left {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  color: #e6a23c;
+  gap: var(--space-1);
+  font-size: var(--text-sm, 14px);
+  color: var(--el-color-warning);
   white-space: nowrap;
 }
 
@@ -738,155 +1041,173 @@ function formatCorrectAnswer(q) {
   flex: 1;
 }
 
+/* PC 双栏布局 */
+.answer-main.pc-layout {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+.question-area {
+  flex: 0 0 60%;
+  min-width: 0;
+}
+
+.answer-sheet-panel {
+  flex: 0 0 38%;
+  position: sticky;
+  top: 80px;
+}
+
 /* 题目卡片 */
 .question-card {
-  border-radius: 8px;
-  margin-bottom: 80px;
-  transition: box-shadow 0.2s ease;
+  border-radius: var(--radius-lg, 12px);
+  transition: box-shadow var(--duration-base, 200ms) ease;
 }
 
 .question-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg, 0 4px 16px rgba(0,0,0,0.1));
 }
 
 :deep(.el-card__body) {
-  padding: 20px 24px;
+  padding: var(--space-5) var(--space-6);
 }
 
 .question-type-bar {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .question-content {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .question-text {
-  font-size: 16px;
+  font-size: var(--text-base, 16px);
   line-height: 1.8;
-  color: #303133;
+  color: var(--el-text-color-primary);
   margin: 0;
   white-space: pre-wrap;
 }
 
 .question-options {
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 
 .option-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
 }
 
 .option-item {
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid #e4e7ed;
-  transition: background 0.2s;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--el-border-color);
+  transition: background var(--duration-base, 200ms) ease,
+              border-color var(--duration-base, 200ms) ease,
+              transform var(--duration-base, 200ms) ease;
 }
 
 .option-item:hover {
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
+  transform: translateY(-1px);
 }
 
 .option-item.option-selected {
-  background: #ecf5ff;
-  border-color: #409eff;
+  background: var(--role-primary-light);
+  border-color: var(--role-primary);
 }
 
 .option-item.option-correct {
-  background: #f0f9eb;
-  border-color: #67c23a;
+  background: var(--el-color-success-light-9);
+  border-color: var(--el-color-success);
 }
 
 .option-item.option-wrong {
-  background: #fef0f0;
-  border-color: #f56c6c;
+  background: var(--el-color-danger-light-9);
+  border-color: var(--el-color-danger);
 }
 
 .option-label {
-  font-weight: 600;
-  margin-right: 4px;
+  font-weight: var(--weight-semibold, 600);
+  margin-right: var(--space-1);
 }
 
 .option-text {
-  font-size: 15px;
-  color: #303133;
+  font-size: var(--text-base, 15px);
+  color: var(--el-text-color-primary);
 }
 
 .fill-input {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 /* 答案解析 */
 .answer-analysis {
-  margin-top: 24px;
+  margin-top: var(--space-6);
   padding-top: 20px;
-  border-top: 1px dashed #e4e7ed;
+  border-top: 1px dashed var(--el-border-color);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .analysis-row {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  font-size: 14px;
-  line-height: 1.6;
+  gap: var(--space-2);
+  font-size: var(--text-sm, 14px);
+  line-height: var(--leading-relaxed);
 }
 
 .analysis-label {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   white-space: nowrap;
   min-width: 70px;
 }
 
 .analysis-value {
-  color: #303133;
+  color: var(--el-text-color-primary);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .text-success {
-  color: #67c23a;
-  font-weight: 600;
+  color: var(--el-color-success);
+  font-weight: var(--weight-semibold, 600);
 }
 
 .text-danger {
-  color: #f56c6c;
-  font-weight: 600;
+  color: var(--el-color-danger);
+  font-weight: var(--weight-semibold, 600);
 }
 
 .explanation-text {
-  color: #606266;
+  color: var(--el-text-color-secondary);
   white-space: pre-wrap;
 }
 
-/* 底部导航 */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #f5f5f5;
-  border-top: 1px solid #e4e7ed;
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
-  z-index: 100;
-  padding: 12px 16px;
+/* PC 底部导航 */
+.bottom-nav-pc {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
-.bottom-nav .el-button {
-  min-width: 100px;
+.bottom-nav-pc .el-button {
   cursor: pointer;
+  min-width: 100px;
 }
 
 .nav-center {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   justify-content: center;
 }
 
@@ -894,12 +1215,192 @@ function formatCorrectAnswer(q) {
   cursor: pointer;
 }
 
-/* 结果弹窗 */
+/* ===== 答题卡面板 ===== */
+.answer-sheet-card {
+  border-radius: var(--radius-lg, 12px);
+}
+
+:deep(.el-card__header) {
+  padding: var(--space-3) var(--space-4);
+}
+
+.answer-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.answer-sheet-title {
+  font-weight: var(--weight-semibold, 600);
+  color: var(--el-text-color-primary);
+  font-size: var(--text-base, 16px);
+}
+
+.answer-sheet-count {
+  font-size: var(--text-sm, 14px);
+  color: var(--el-text-color-secondary);
+}
+
+.question-dots {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.q-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--el-border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs, 12px);
+  font-weight: var(--weight-semibold, 600);
+  cursor: pointer;
+  transition: all var(--duration-base, 200ms) ease;
+  background: var(--el-bg-color-overlay);
+  color: var(--el-text-color-secondary);
+}
+
+.q-dot:hover {
+  border-color: var(--role-primary);
+  color: var(--role-primary);
+}
+
+.q-dot.dot-current {
+  border-color: var(--role-primary);
+  background: var(--role-primary-light);
+  color: var(--role-primary);
+}
+
+.q-dot.dot-answered {
+  border-color: var(--role-primary);
+  background: var(--role-primary-light);
+  color: var(--role-primary);
+}
+
+.q-dot.dot-correct {
+  border-color: var(--el-color-success);
+  background: var(--el-color-success-light-9);
+  color: var(--el-color-success);
+}
+
+.q-dot.dot-wrong {
+  border-color: var(--el-color-danger);
+  background: var(--el-color-danger-light-9);
+  color: var(--el-color-danger);
+}
+
+.dot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs, 12px);
+  color: var(--el-text-color-secondary);
+}
+
+.legend-item .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  border: 2px solid;
+}
+
+.legend-item .dot.dot-answered {
+  border-color: var(--role-primary);
+  background: var(--role-primary-light);
+}
+
+.legend-item .dot.dot-current {
+  border-color: var(--role-primary);
+  background: var(--role-primary-light);
+}
+
+.legend-item .dot.dot-wrong {
+  border-color: var(--el-color-danger);
+  background: var(--el-color-danger-light-9);
+}
+
+.legend-item .dot.dot-correct {
+  border-color: var(--el-color-success);
+  background: var(--el-color-success-light-9);
+}
+
+/* ===== H5 布局 ===== */
+.h5-progress-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--role-primary-light);
+  padding: var(--space-3) var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.h5-progress-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.h5-progress-text {
+  font-size: var(--text-xs, 12px);
+  font-weight: var(--weight-semibold, 600);
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+}
+
+.h5-progress {
+  flex: 1;
+}
+
+.h5-question-wrap {
+  padding: 0 var(--space-3);
+  margin-bottom: 80px;
+}
+
+.h5-question-wrap .question-card:hover {
+  box-shadow: var(--shadow-lg, 0 4px 16px rgba(0,0,0,0.1));
+}
+
+.h5-question-wrap :deep(.el-card__body) {
+  padding: var(--space-4);
+}
+
+.h5-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--role-primary-light);
+  border-top: 1px solid rgba(99, 102, 241, 0.1);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+  z-index: 100;
+  padding: var(--space-3) var(--space-3);
+  display: flex;
+  gap: var(--space-3);
+}
+
+.h5-nav-btn {
+  flex: 1;
+  cursor: pointer;
+}
+
+/* ===== 结果弹窗 ===== */
 .result-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: var(--space-5);
   padding: 16px 0;
 }
 
@@ -907,7 +1408,7 @@ function formatCorrectAnswer(q) {
   text-align: center;
   width: 120px;
   height: 120px;
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -915,59 +1416,62 @@ function formatCorrectAnswer(q) {
 }
 
 .result-score.passed {
-  background: #f0f9eb;
-  border: 3px solid #67c23a;
+  background: linear-gradient(135deg, var(--role-primary-light), var(--el-bg-color-overlay));
+  border: 3px solid var(--role-primary);
 }
 
 .result-score.failed {
-  background: #fef0f0;
-  border: 3px solid #f56c6c;
+  background: var(--el-color-danger-light-9);
+  border: 3px solid var(--el-color-danger);
 }
 
 .score-number {
   font-size: 36px;
-  font-weight: 700;
-  color: inherit;
+  font-weight: var(--weight-bold, 700);
   line-height: 1;
 }
 
 .passed .score-number {
-  color: #67c23a;
+  color: var(--role-primary);
 }
 
 .failed .score-number {
-  color: #f56c6c;
+  color: var(--el-color-danger);
 }
 
 .score-label {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
+  font-size: var(--text-xs, 12px);
+  color: var(--el-text-color-secondary);
+  margin-top: var(--space-1);
 }
 
 .score-total {
-  font-size: 12px;
-  color: #c0c4cc;
+  font-size: var(--text-xs, 12px);
+  color: var(--el-text-color-placeholder);
 }
 
 .result-status {
-  font-size: 18px;
+  font-size: var(--text-lg, 18px);
 }
 
 .result-detail {
-  font-size: 14px;
-  color: #606266;
+  font-size: var(--text-sm, 14px);
+  color: var(--el-text-color-secondary);
 }
 
-/* All buttons cursor */
+/* ===== 全局按钮指针 ===== */
 .exercise-take-page :deep(.el-button) {
   cursor: pointer;
 }
 
-/* 响应式 */
+/* ===== 响应式 ===== */
 @media (max-width: 768px) {
   .exercise-take-page {
     padding: 16px 12px 100px;
+  }
+
+  .exercise-cards.pc-grid {
+    grid-template-columns: 1fr;
   }
 
   .card-body {
@@ -981,18 +1485,6 @@ function formatCorrectAnswer(q) {
 
   .card-actions .el-button {
     width: 100%;
-  }
-
-  .question-card :deep(.el-card__body) {
-    padding: 16px;
-  }
-
-  .bottom-nav {
-    padding: 10px 12px;
-  }
-
-  .bottom-nav .el-button {
-    min-width: 80px;
   }
 }
 </style>

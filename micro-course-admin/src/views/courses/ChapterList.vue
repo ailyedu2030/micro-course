@@ -5,12 +5,12 @@
   Author: jackie
 -->
 <template>
-  <div class="chapter-list">
-    <!-- 搜索区 -->
-    <el-card class="search-card" shadow="never">
+  <div class="chapter-list-page">
+    <!-- 顶栏筛选卡 -->
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="search-input-w240" @change="handleSearch">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w240" @change="handleSearch">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -21,38 +21,40 @@
       </el-form>
     </el-card>
 
-    <!-- 表格区 -->
+    <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>章节列表</span>
+          <span class="card-title">章节列表</span>
           <el-button type="primary" @click="handleCreate">新增章节</el-button>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
-        <el-table-column prop="sortOrder" label="排序" width="100" />
-        <el-table-column prop="title" label="标题" min-width="150" />
-        <el-table-column prop="chapterType" label="类型" width="120">
+        <template #empty>
+          <el-empty description="暂无章节数据" />
+        </template>
+        <el-table-column type="index" label="序号" width="70" align="center" />
+        <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
+        <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="chapterType" label="类型" width="120" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.chapterType === 'VIDEO'" type="primary">视频</el-tag>
-            <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="success">练习</el-tag>
-            <el-tag v-else type="warning">混合</el-tag>
+            <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
+            <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="success" size="small">练习</el-tag>
+            <el-tag v-else-if="row.chapterType === 'MIXED'" type="warning" size="small">混合</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="duration" label="时长" width="100">
+        <el-table-column prop="duration" label="时长" width="100" align="center">
           <template #default="{ row }">
             {{ row.duration ? `${row.duration}分钟` : '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
-        </el-table-column>
-        <el-table-column #empty>
-          <el-empty description="暂无章节数据" />
         </el-table-column>
       </el-table>
       <div class="pagination-wrap">
@@ -68,7 +70,7 @@
       </div>
     </el-card>
 
-    <!-- 弹窗区 -->
+    <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
         <el-form-item label="课程" prop="courseId">
@@ -186,7 +188,6 @@ const handleReset = () => {
   page.value = 1
   tableData.value = []
   totalElements.value = 0
-  fetchData()
 }
 
 const handleSizeChange = () => {
@@ -230,7 +231,7 @@ const handleDelete = async (row) => {
     await deleteChapter(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -270,16 +271,21 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.chapter-list {
-  padding: 20px;
+.chapter-list-page {
+  padding: var(--space-5);
 }
 
-.search-card {
-  margin-bottom: 16px;
+.filter-card {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.table-card {
+  border-radius: var(--radius-md);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-5);
 }
 
 .card-header {
@@ -288,20 +294,61 @@ onMounted(() => {
   align-items: center;
 }
 
+.card-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
-.data-table { width: 100%; }
-.full-width { width: 100%; }
-.search-input-w240 { width: 240px; }
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: var(--color-bg-page);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.filter-input-w240 {
+  width: 240px;
+}
 
 @media (max-width: 768px) {
-  .chapter-list { padding: 12px; }
-  .search-input-w240 { width: 100%; }
-  .card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .pagination-wrap { justify-content: center; }
+  .chapter-list-page {
+    padding: var(--space-3);
+  }
+
+  .filter-card {
+    margin-bottom: var(--space-3);
+  }
+
+  .filter-input-w240 {
+    width: 100%;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+  }
 }
 </style>

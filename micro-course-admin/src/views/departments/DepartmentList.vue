@@ -12,6 +12,9 @@
         <el-form-item label="名称">
           <el-input v-model="searchForm.name" placeholder="请输入院系名称" clearable class="search-input" />
         </el-form-item>
+        <el-form-item label="编码">
+          <el-input v-model="searchForm.code" placeholder="请输入院系编码" clearable class="search-input" />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
@@ -27,7 +30,15 @@
           <el-button type="primary" @click="handleCreate">新增院系</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+      <el-table
+        v-loading="loading"
+        :data="tableData"
+        stripe
+        border
+        class="data-table"
+        row-key="id"
+        :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+      >
         <el-table-column type="index" label="序号" width="70" align="center" />
         <template #empty>
           <el-empty description="暂无院系数据" />
@@ -39,7 +50,11 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-popconfirm title="确定删除该院系？" @confirm="handleDelete(row)">
+              <template #reference>
+                <el-button type="danger" link size="small">删除</el-button>
+              </template>
+            </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
@@ -57,8 +72,8 @@
     </el-card>
 
     <!-- 弹窗区 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="540px" @close="handleDialogClose">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-position="top">
         <el-form-item label="名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入院系名称" />
         </el-form-item>
@@ -79,7 +94,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from '@/api/department'
 
 const loading = ref(false)
@@ -90,7 +105,8 @@ const page = ref(1)
 const size = ref(10)
 
 const searchForm = reactive({
-  name: ''
+  name: '',
+  code: ''
 })
 
 const dialogVisible = ref(false)
@@ -117,12 +133,13 @@ const fetchData = async () => {
     const params = {
       page: page.value - 1,
       size: size.value,
-      name: searchForm.name || undefined
+      name: searchForm.name || undefined,
+      code: searchForm.code || undefined
     }
     const { data } = await getDepartments(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch {
+  } catch (error) {
     ElMessage.error('获取院系列表失败')
   } finally {
     loading.value = false
@@ -136,6 +153,7 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.name = ''
+  searchForm.code = ''
   page.value = 1
   fetchData()
 }
@@ -171,14 +189,11 @@ const handleEdit = (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该院系?', '提示', { type: 'warning' })
     await deleteDepartment(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
+  } catch (error) {
+    ElMessage.error('删除失败')
   }
 }
 
@@ -221,7 +236,7 @@ onMounted(() => {
 
 .search-card {
   margin-bottom: var(--space-lg);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   transition: box-shadow 200ms ease;
 }
 
@@ -230,7 +245,7 @@ onMounted(() => {
 }
 
 .table-card {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   transition: box-shadow 200ms ease;
 }
 
@@ -243,7 +258,7 @@ onMounted(() => {
 }
 
 .table-card :deep(.el-table) {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -260,9 +275,14 @@ onMounted(() => {
 .pagination-wrap {
   margin-top: var(--space-lg);
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
-.data-table { width: 100%; }
-.full-width { width: 100%; }
+.data-table {
+  width: 100%;
+}
+
+.full-width {
+  width: 100%;
+}
 </style>

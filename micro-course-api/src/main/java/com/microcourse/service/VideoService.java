@@ -4,6 +4,7 @@ import com.microcourse.dto.VideoCreateRequest;
 import com.microcourse.dto.VideoUpdateRequest;
 import com.microcourse.dto.VideoVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.entity.Video;
 
 public interface VideoService {
 
@@ -11,7 +12,11 @@ public interface VideoService {
 
     VideoVO getById(Long id);
 
+    Video findEntityById(Long id);
+
     VideoVO create(VideoCreateRequest request);
+
+    Video createEntity(Video video);
 
     VideoVO update(Long id, VideoUpdateRequest request);
 

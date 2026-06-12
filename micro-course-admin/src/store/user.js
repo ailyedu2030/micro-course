@@ -28,9 +28,11 @@ export const useUserStore = defineStore('user', {
       return res.data
     },
     async logout() {
-      try { await logoutApi() } catch { /* ignore */ }
+      try { await logoutApi() } catch (e) { console.warn(e); }
       removeToken()
-      localStorage.removeItem('userRole')
+      // 清全部 micro_course_ 前缀 storage
+      Object.keys(localStorage).filter(k => k.startsWith('micro_course_')).forEach(k => localStorage.removeItem(k))
+      Object.keys(sessionStorage).filter(k => k.startsWith('micro_course_')).forEach(k => sessionStorage.removeItem(k))
       this.token = ''
       this.userInfo = null
     }

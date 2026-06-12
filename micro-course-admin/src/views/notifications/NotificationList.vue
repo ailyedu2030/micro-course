@@ -5,7 +5,7 @@
   Author: jackie
 -->
 <template>
-  <div class="notification-list">
+  <div class="notification-list-page">
     <!-- 顶栏 -->
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
@@ -16,7 +16,7 @@
       </div>
     </el-card>
 
-    <!-- 表格区 -->
+    <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <template #empty>
@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getNotifications, markAsRead, markAllAsRead, getUnreadCount } from '@/api/notification'
 
@@ -143,17 +143,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.notification-list {
-  padding: 20px;
+.notification-list-page {
+  padding: var(--space-5);
 }
 
 .toolbar-card {
-  margin-bottom: 16px;
-  transition: box-shadow 0.3s ease;
-}
-
-.toolbar-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
 }
 
 .toolbar {
@@ -168,49 +164,58 @@ onMounted(() => {
 }
 
 .unread-tip {
-  font-size: 14px;
-  color: #666;
+  font-size: var(--text-base);
+  color: var(--color-text-regular);
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  gap: var(--space-1);
 }
 
 .table-card {
-  transition: box-shadow 0.3s ease;
-}
-
-.table-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.dash-placeholder {
-  color: #999;
+  border-radius: var(--radius-md);
 }
 
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
-.data-table { width: 100%; }
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: var(--color-bg-page);
+}
+
+.dash-placeholder {
+  color: var(--color-text-placeholder);
+}
 
 @media (max-width: 768px) {
-  .notification-list {
-    padding: 12px;
+  .notification-list-page {
+    padding: var(--space-3);
+  }
+
+  .toolbar-card {
+    margin-bottom: var(--space-3);
   }
 
   .toolbar {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: var(--space-3);
   }
 
   .pagination-wrap {
     justify-content: center;
   }
-}</style>
+}
+</style>

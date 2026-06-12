@@ -1,18 +1,47 @@
 <!--
-  操作日志页面
+  管理员 - 操作日志
   /admin/logs
-  Phase 7 - 管理后台补齐
+  Author: jackie
 -->
 <template>
   <div class="operation-logs-container">
     <!-- 搜索筛选区 -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="用户ID">
-          <el-input v-model="searchForm.userId" placeholder="请输入用户ID" clearable class="search-user-id" />
+        <el-form-item label="操作人">
+          <el-input
+            v-model="searchForm.username"
+            placeholder="输入用户名"
+            clearable
+            class="filter-input"
+            @clear="handleSearch"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="模块">
+          <el-select
+            v-model="searchForm.module"
+            placeholder="全部模块"
+            clearable
+            class="filter-select"
+            @change="handleSearch"
+          >
+            <el-option label="用户管理" value="USER" />
+            <el-option label="课程管理" value="COURSE" />
+            <el-option label="成绩管理" value="GRADE" />
+            <el-option label="系统设置" value="SETTING" />
+            <el-option label="权限管理" value="PERMISSION" />
+            <el-option label="认证" value="AUTH" />
+          </el-select>
         </el-form-item>
         <el-form-item label="动作类型">
-          <el-select v-model="searchForm.action" placeholder="全部" clearable class="search-action">
+          <el-select
+            v-model="searchForm.action"
+            placeholder="全部动作"
+            clearable
+            class="filter-select"
+            @change="handleSearch"
+          >
             <el-option label="登录" value="LOGIN" />
             <el-option label="登出" value="LOGOUT" />
             <el-option label="创建" value="CREATE" />
@@ -21,7 +50,7 @@
             <el-option label="其他" value="OTHER" />
           </el-select>
         </el-form-item>
-        <el-form-item label="日期范围">
+        <el-form-item label="时间范围">
           <el-date-picker
             v-model="dateRange"
             type="daterange"
@@ -29,49 +58,104 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
-            class="search-date-range"
+            class="date-range-picker"
             @change="handleDateChange"
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">
+            <el-icon><Search /></el-icon>搜索
+          </el-button>
+          <el-button @click="handleReset">
+            <el-icon><RefreshRight /></el-icon>重置
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <!-- 表格区 -->
     <el-card class="table-card shadow-hover" shadow="never">
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">操作日志</span>
+          <span class="card-count">共 {{ totalElements }} 条记录</span>
+        </div>
+      </template>
+
+      <!-- 加载中 -->
+      <el-skeleton v-if="loading" :rows="6" animated />
+
+      <!-- 错误态 -->
+      <el-result
+        v-else-if="error"
+        icon="error"
+        title="数据加载失败"
+        sub-title="请稍后重试"
+        class="error-result"
+      >
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重试</el-button>
+        </template>
+      </el-result>
+
+      <!-- 空状态 -->
+      <el-empty
+        v-else-if="!loading && tableData.length === 0"
+        description="暂无操作日志"
+        :image-size="120"
+      />
+
+      <!-- 数据表格 -->
+      <el-table
+        v-else
+        v-loading="loading"
+        :data="tableData"
+        stripe
+        border
+        class="data-table"
+      >
         <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="createdAt" label="时间" min-width="170">
-          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-        </el-table-column>
-        <el-table-column prop="userId" label="用户ID" width="100" align="center" />
-        <el-table-column prop="username" label="用户名" min-width="120" />
-        <el-table-column prop="action" label="动作" width="100" align="center">
+        <el-table-column prop="createdAt" label="时间" width="180">
           <template #default="{ row }">
-            <el-tag v-if="row.action === 'LOGIN'" type="success" size="small">登录</el-tag>
-            <el-tag v-else-if="row.action === 'LOGOUT'" type="info" size="small">登出</el-tag>
-            <el-tag v-else-if="row.action === 'CREATE'" type="primary" size="small">创建</el-tag>
-            <el-tag v-else-if="row.action === 'UPDATE'" type="warning" size="small">更新</el-tag>
-            <el-tag v-else-if="row.action === 'DELETE'" type="danger" size="small">删除</el-tag>
-            <el-tag v-else type="info" size="small">其他</el-tag>
+            <span class="text-secondary">{{ formatTime(row.createdAt) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="targetType" label="对象类型" width="120" align="center">
-          <template #default="{ row }">{{ row.targetType || '-' }}</template>
+        <el-table-column prop="username" label="操作人" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="ipAddress" label="IP 地址" width="150" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span class="text-secondary">{{ row.ipAddress || '-' }}</span>
+          </template>
         </el-table-column>
-        <el-table-column prop="targetId" label="对象ID" width="100" align="center">
-          <template #default="{ row }">{{ row.targetId || '-' }}</template>
+        <el-table-column prop="module" label="模块" width="120" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="getModuleTagType(row.module)">
+              {{ getModuleLabel(row.module) }}
+            </el-tag>
+          </template>
         </el-table-column>
-        <el-table-column prop="detail" label="详情" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="ipAddress" label="IP地址" width="140" align="center">
-          <template #default="{ row }">{{ row.ipAddress || '-' }}</template>
+        <el-table-column prop="action" label="动作" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="getActionTagType(row.action)">
+              {{ getActionLabel(row.action) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="detail" label="详情" min-width="260" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span class="text-secondary">{{ row.detail || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="handleViewDetail(row)">
+              <el-icon><View /></el-icon>详情
+            </el-button>
+          </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!loading && tableData.length === 0" description="暂无操作日志" />
-      <div class="pagination-wrap">
+
+      <!-- 分页 -->
+      <div v-if="tableData.length > 0" class="pagination-wrap">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"
@@ -83,32 +167,77 @@
         />
       </div>
     </el-card>
+
+    <!-- 详情弹窗 -->
+    <el-dialog
+      v-model="detailVisible"
+      title="日志详情"
+      width="560px"
+      destroy-on-close
+    >
+      <el-descriptions :column="2" border v-if="currentLog">
+        <el-descriptions-item label="时间" :span="2">{{ formatTime(currentLog.createdAt) }}</el-descriptions-item>
+        <el-descriptions-item label="操作人">{{ currentLog.username || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="用户ID">{{ currentLog.userId || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="IP 地址">{{ currentLog.ipAddress || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="模块">
+          <el-tag size="small" :type="getModuleTagType(currentLog.module)">
+            {{ getModuleLabel(currentLog.module) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="动作">
+          <el-tag size="small" :type="getActionTagType(currentLog.action)">
+            {{ getActionLabel(currentLog.action) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="对象类型">{{ currentLog.targetType || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="对象ID">{{ currentLog.targetId || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="详情" :span="2">{{ currentLog.detail || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="请求方法">{{ currentLog.method || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="请求路径">{{ currentLog.path || '-' }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 /**
- * 操作日志页面
+ * 管理员 - 操作日志
  * Vue 3.4 Composition API + script setup
  */
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Search, RefreshRight, View } from '@element-plus/icons-vue'
 import { getLogs } from '@/api/operation-log'
 
+// 加载状态
 const loading = ref(false)
+const error = ref(false)
+
+// 表格数据
 const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(20)
 const dateRange = ref(null)
 
+// 搜索表单
 const searchForm = reactive({
-  userId: '',
+  username: '',
+  module: '',
   action: '',
   startTime: '',
   endTime: ''
 })
 
+// 详情弹窗
+const detailVisible = ref(false)
+const currentLog = ref(null)
+
+// 日期范围变化
 function handleDateChange(val) {
   if (val && val.length === 2) {
     searchForm.startTime = val[0]
@@ -119,42 +248,16 @@ function handleDateChange(val) {
   }
 }
 
-function formatTime(isoString) {
-  if (!isoString) return '-'
-  const d = new Date(isoString)
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
-    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
-
-async function fetchData() {
-  loading.value = true
-  try {
-    const params = {
-      page: page.value - 1,
-      size: size.value,
-      userId: searchForm.userId || undefined,
-      action: searchForm.action || undefined,
-      startTime: searchForm.startTime || undefined,
-      endTime: searchForm.endTime || undefined
-    }
-    const { data } = await getLogs(params)
-    tableData.value = data.items || []
-    totalElements.value = data.totalElements || 0
-  } catch {
-    ElMessage.error('获取操作日志失败')
-  } finally {
-    loading.value = false
-  }
-}
-
+// 搜索
 function handleSearch() {
   page.value = 1
   fetchData()
 }
 
+// 重置
 function handleReset() {
-  searchForm.userId = ''
+  searchForm.username = ''
+  searchForm.module = ''
   searchForm.action = ''
   searchForm.startTime = ''
   searchForm.endTime = ''
@@ -163,6 +266,32 @@ function handleReset() {
   fetchData()
 }
 
+// 获取数据
+async function fetchData() {
+  loading.value = true
+  error.value = false
+  try {
+    const params = {
+      page: page.value - 1,
+      size: size.value,
+      username: searchForm.username || undefined,
+      module: searchForm.module || undefined,
+      action: searchForm.action || undefined,
+      startTime: searchForm.startTime || undefined,
+      endTime: searchForm.endTime || undefined
+    }
+    const { data } = await getLogs(params)
+    tableData.value = data.items || []
+    totalElements.value = data.totalElements || 0
+  } catch {
+    error.value = true
+    ElMessage.error('获取操作日志失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 翻页
 function handleSizeChange() {
   page.value = 1
   fetchData()
@@ -172,6 +301,69 @@ function handlePageChange() {
   fetchData()
 }
 
+// 查看详情
+function handleViewDetail(row) {
+  currentLog.value = row
+  detailVisible.value = true
+}
+
+// 工具方法
+function formatTime(isoString) {
+  if (!isoString) return '-'
+  const d = new Date(isoString)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function getModuleLabel(module) {
+  const map = {
+    USER: '用户管理',
+    COURSE: '课程管理',
+    GRADE: '成绩管理',
+    SETTING: '系统设置',
+    PERMISSION: '权限管理',
+    AUTH: '认证'
+  }
+  return map[module] || module || '-'
+}
+
+function getModuleTagType(module) {
+  const map = {
+    USER: 'primary',
+    COURSE: 'success',
+    GRADE: 'warning',
+    SETTING: 'info',
+    PERMISSION: 'danger',
+    AUTH: ''
+  }
+  return map[module] || 'info'
+}
+
+function getActionLabel(action) {
+  const map = {
+    LOGIN: '登录',
+    LOGOUT: '登出',
+    CREATE: '创建',
+    UPDATE: '更新',
+    DELETE: '删除',
+    OTHER: '其他'
+  }
+  return map[action] || action || '-'
+}
+
+function getActionTagType(action) {
+  const map = {
+    LOGIN: 'success',
+    LOGOUT: 'info',
+    CREATE: 'primary',
+    UPDATE: 'warning',
+    DELETE: 'danger',
+    OTHER: 'info'
+  }
+  return map[action] || 'info'
+}
+
 onMounted(() => {
   fetchData()
 })
@@ -179,40 +371,69 @@ onMounted(() => {
 
 <style scoped>
 .operation-logs-container {
-  padding: 20px;
+  padding: var(--space-4);
+  background: var(--el-bg-color-page);
 }
 
+/* 搜索区 */
 .search-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
-.search-user-id {
+.filter-input {
   width: 140px;
 }
 
-.search-action {
+.filter-select {
   width: 140px;
 }
 
-.search-date-range {
+.date-range-picker {
   width: 240px;
 }
 
+/* 表格卡片 */
+.table-card {
+  margin-bottom: var(--space-4);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+}
+
+.card-count {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+/* 表格 */
 .data-table {
   width: 100%;
 }
 
-.table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+/* 错误态 */
+.error-result {
+  padding: var(--space-7) 0;
 }
 
-.table-card {
-  transition: box-shadow var(--el-transition-duration) ease;
-}
-
+/* 分页 */
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
+}
+
+/* 文字辅助 */
+.text-secondary {
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
 }
 </style>

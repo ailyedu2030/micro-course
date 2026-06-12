@@ -1,35 +1,112 @@
 <!--
-  登录页面
-  路由路径: /login
-  Phase 1
-  Author: jackie
+  登录页面 · 教育专业感 + 现代学习感
+  PC 端: 居中卡片 + 渐变背景
+  H5 端: 全屏 + 顶部品牌区
+  依据: docs/DESIGN.md v1.1
 -->
 <template>
-  <div class="login-page">
-    <div class="login-box">
-      <h2 class="login-title">微课管理平台</h2>
-      <el-form ref="formRef" :model="form" :rules="rules">
-        <el-form-item prop="username"><el-input v-model="form.username" placeholder="用户名" size="large" /></el-form-item>
-        <el-form-item prop="password"><el-input v-model="form.password" type="password" placeholder="密码" size="large" @keyup.enter="handleLogin" /></el-form-item>
-        <el-form-item><el-button type="primary" size="large" :loading="loading" class="login-btn" @click="handleLogin">登录</el-button></el-form-item>
-      </el-form>
+  <div class="login-page" :class="{ 'is-mobile': isMobile }">
+    <div class="login-decoration" aria-hidden="true">
+      <div class="deco-circle deco-1"></div>
+      <div class="deco-circle deco-2"></div>
+      <div class="deco-circle deco-3"></div>
+    </div>
+
+    <div class="login-container">
+      <div class="login-brand">
+        <div class="brand-icon">
+          <el-icon :size="36"><Reading /></el-icon>
+        </div>
+        <h1 class="brand-title">微课管理平台</h1>
+        <p class="brand-subtitle">让学习更高效 · 让教学更轻松</p>
+      </div>
+
+      <el-card class="login-box" shadow="never">
+        <h2 class="login-title">账号登录</h2>
+        <p class="login-tip">请使用您的账号登录系统</p>
+
+        <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="handleLogin">
+          <el-form-item prop="username" label="用户名">
+            <el-input v-model="form.username" placeholder="用户名" :prefix-icon="User" clearable aria-label="用户名" />
+          </el-form-item>
+          <el-form-item prop="password" label="密码">
+            <el-input
+              v-model="form.password"
+              type="password"
+              placeholder="密码"
+              :prefix-icon="Lock"
+              show-password
+              clearable
+              aria-label="密码"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button
+              type="primary"
+              size="large"
+              :loading="loading"
+              class="login-btn"
+              @click="handleLogin"
+            >
+              {{ loading ? '登录中...' : '登 录' }}
+            </el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="login-roles" aria-label="测试账号">
+          <span class="role-tip">测试账号：</span>
+          <el-tag
+            v-for="r in quickAccounts"
+            :key="r.label"
+            :type="r.type"
+            class="role-tag"
+            @click="fillAccount(r)"
+            effect="plain"
+            round
+          >
+            {{ r.label }}
+          </el-tag>
+        </div>
+      </el-card>
+
+      <p class="login-footer">
+        © {{ new Date().getFullYear() }} 微课管理平台 · Powered by Vue 3 + Element Plus
+      </p>
     </div>
   </div>
 </template>
+
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
+import { User, Lock, Reading } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const formRef = ref(null)
 const loading = ref(false)
+const isMobile = ref(false)
+
 const form = reactive({ username: '', password: '' })
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+}
+
+const quickAccounts = [
+  { label: '管理员', type: 'danger', username: 'admin', password: 'admin123' },
+  { label: '教务处', type: 'warning', username: 'academic', password: '123456' },
+  { label: '教师', type: 'success', username: 'teacher', password: '123456' },
+  { label: '学生', type: 'primary', username: 'student', password: '123456' }
+]
+
+const fillAccount = (acc) => {
+  form.username = acc.username
+  form.password = acc.password
+  ElMessage.info(`已填入 ${acc.label} 账号`)
 }
 
 const handleLogin = async () => {
@@ -40,7 +117,16 @@ const handleLogin = async () => {
     try {
       await userStore.login(form)
       ElMessage.success('登录成功')
-      router.push('/')
+      const redirect = route.query.redirect
+      if (redirect) {
+        router.push(redirect)
+      } else {
+        const role = userStore.role
+        if (role === 'STUDENT') router.push('/student/courses')
+        else if (role === 'TEACHER') router.push('/teacher/dashboard')
+        else if (role === 'ACADEMIC') router.push('/users')
+        else router.push('/admin/dashboard')
+      }
     } catch {
       // 错误已由 request.js 拦截器统一提示
     } finally {
@@ -48,43 +134,219 @@ const handleLogin = async () => {
     }
   })
 }
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 </script>
 
 <style scoped>
 .login-page {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  position: relative;
+  background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 50%, var(--role-primary-dark) 100%);
+  overflow: hidden;
+  padding: var(--space-5);
+}
+
+.login-decoration {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.deco-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  animation: float 20s infinite ease-in-out;
+}
+
+.deco-1 {
+  width: 400px;
+  height: 400px;
+  top: -100px;
+  left: -100px;
+  animation-delay: 0s;
+}
+
+.deco-2 {
+  width: 300px;
+  height: 300px;
+  bottom: -80px;
+  right: -80px;
+  animation-delay: -7s;
+}
+
+.deco-3 {
+  width: 200px;
+  height: 200px;
+  top: 40%;
+  right: 20%;
+  animation-delay: -14s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -30px) scale(1.05); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+.login-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: var(--space-6);
+  color: var(--el-color-white);
+}
+
+.brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-3);
+  color: var(--el-color-white);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.brand-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  margin: 0 0 var(--space-1);
+  color: var(--el-color-white);
+  letter-spacing: 1px;
+}
+
+.brand-subtitle {
+  font-size: var(--text-sm);
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.5px;
+}
+
+.login-box {
+  width: 100%;
+  padding: var(--space-6) var(--space-5);
+  background: var(--el-bg-color-overlay);
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2) !important;
 }
 
 .login-title {
   text-align: center;
-  margin-bottom: 30px;
-  color: #303133;
-  font-size: 24px;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  margin: 0 0 var(--space-1);
 }
 
-.login-box {
-  width: 400px;
-  padding: 40px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transition: box-shadow 200ms ease;
-}
-
-.login-box:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+.login-tip {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  margin: 0 0 var(--space-5);
 }
 
 .login-btn {
   width: 100%;
+  height: 44px;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--role-primary), var(--role-primary-dark));
+  border: none;
   cursor: pointer;
 }
 
-@media (max-width: 768px) {
-  .login-box { width: 90%; padding: 20px; }
+.login-btn:hover {
+  background: linear-gradient(135deg, var(--role-primary-dark), var(--role-primary-dark));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+}
+
+.login-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.login-roles {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--el-border-color-lighter);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.role-tip {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+
+.role-tag {
+  cursor: pointer;
+  font-size: var(--text-xs);
+  transition: all var(--duration-base) var(--ease-out);
+}
+
+.role-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: var(--space-5);
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.5px;
+}
+
+/* H5 端 */
+.login-page.is-mobile .login-container {
+  max-width: 100%;
+}
+
+.login-page.is-mobile .login-box {
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.login-page.is-mobile .brand-title {
+  font-size: var(--text-xl);
+}
+
+.login-page.is-mobile .deco-1,
+.login-page.is-mobile .deco-2,
+.login-page.is-mobile .deco-3 {
+  opacity: 0.6;
 }
 </style>

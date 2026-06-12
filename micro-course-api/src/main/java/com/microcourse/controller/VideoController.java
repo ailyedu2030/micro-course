@@ -8,7 +8,7 @@ import com.microcourse.dto.R;
 import com.microcourse.entity.Video;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.VideoRepository;
+
 import com.microcourse.service.VideoService;
 import com.microcourse.service.VideoTranscodeService;
 import com.microcourse.util.VideoSignUtil;
@@ -39,16 +39,13 @@ public class VideoController {
     private final VideoService videoService;
     private final VideoTranscodeService videoTranscodeService;
     private final VideoSignUtil videoSignUtil;
-    private final VideoRepository videoRepository;
 
     public VideoController(VideoService videoService,
                           VideoTranscodeService videoTranscodeService,
-                          VideoSignUtil videoSignUtil,
-                          VideoRepository videoRepository) {
+                          VideoSignUtil videoSignUtil) {
         this.videoService = videoService;
         this.videoTranscodeService = videoTranscodeService;
         this.videoSignUtil = videoSignUtil;
-        this.videoRepository = videoRepository;
     }
 
     @GetMapping
@@ -152,7 +149,7 @@ public class VideoController {
         video.setUpdatedAt(LocalDateTime.now());
         video.setVersion(0);
 
-        videoRepository.insert(video);
+        videoService.createEntity(video);
 
         // 异步执行文件传输与转码，不阻塞当前线程
         final Long videoId = video.getId();
@@ -186,7 +183,7 @@ public class VideoController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> play(@PathVariable Long id,
                                       @RequestParam("sign") String sign) {
-        Video video = videoRepository.selectById(id);
+        Video video = videoService.findEntityById(id);
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }

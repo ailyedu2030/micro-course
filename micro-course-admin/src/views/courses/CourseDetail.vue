@@ -5,13 +5,13 @@
   Author: jackie
 -->
 <template>
-  <div class="course-detail">
-    <!-- 课程信息区 -->
+  <div class="course-detail-page">
+    <!-- 课程信息卡 -->
     <el-card class="info-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>{{ isEditMode ? '编辑课程' : '课程详情' }}</span>
-          <div>
+          <span class="card-title">{{ isEditMode ? '编辑课程' : '课程详情' }}</span>
+          <div class="header-actions">
             <el-button v-if="!isEditMode && courseData.status === 0" type="primary" @click="handleSubmitForReview">提交审核</el-button>
             <el-button v-if="!isEditMode && courseData.status === 1" type="success" @click="handleApprove">审核通过</el-button>
             <el-button v-if="!isEditMode && courseData.status === 1" type="danger" @click="handleReject">驳回</el-button>
@@ -26,28 +26,29 @@
       <!-- 查看模式 -->
       <div v-if="!isEditMode" class="course-view">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="课程标题">{{ courseData.title }}</el-descriptions-item>
-          <el-descriptions-item label="分类">{{ courseData.categoryName }}</el-descriptions-item>
-          <el-descriptions-item label="教师ID">{{ courseData.teacherId }}</el-descriptions-item>
+          <el-descriptions-item label="课程标题">{{ courseData.title || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="分类">{{ courseData.categoryName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="教师ID">{{ courseData.teacherId || '-' }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag v-if="courseData.status === 0" type="info" size="small">草稿</el-tag>
             <el-tag v-else-if="courseData.status === 1" type="warning" size="small">待审核</el-tag>
             <el-tag v-else-if="courseData.status === 2" type="success" size="small">通过</el-tag>
             <el-tag v-else-if="courseData.status === 3" type="danger" size="small">驳回</el-tag>
-            <el-tag v-else-if="courseData.status === 4" type="primary" size="small">已发布</el-tag>
-            <el-tag v-else-if="courseData.status === 5" size="small">下架</el-tag>
+            <el-tag v-else-if="courseData.status === 4" type="success" size="small">已发布</el-tag>
+            <el-tag v-else-if="courseData.status === 5" type="warning" size="small">下架</el-tag>
             <el-tag v-else type="info" size="small">归档</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="学分">{{ courseData.creditHours }}</el-descriptions-item>
-          <el-descriptions-item label="学期">{{ courseData.semester }}</el-descriptions-item>
+          <el-descriptions-item label="学分">{{ courseData.creditHours ?? '-' }}</el-descriptions-item>
+          <el-descriptions-item label="学期">{{ courseData.semester || '-' }}</el-descriptions-item>
           <el-descriptions-item label="难度">
             <el-tag v-if="courseData.difficulty === 'BEGINNER'" size="small">初级</el-tag>
             <el-tag v-else-if="courseData.difficulty === 'INTERMEDIATE'" size="small">中级</el-tag>
             <el-tag v-else-if="courseData.difficulty === 'ADVANCED'" size="small">高级</el-tag>
+            <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="评分">{{ courseData.rating ? courseData.rating.toFixed(1) : '-' }}</el-descriptions-item>
           <el-descriptions-item label="学生数">{{ courseData.studentCount || 0 }}</el-descriptions-item>
-          <el-descriptions-item label="课程描述" :span="2">{{ courseData.description }}</el-descriptions-item>
+          <el-descriptions-item label="课程描述" :span="2">{{ courseData.description || '-' }}</el-descriptions-item>
         </el-descriptions>
       </div>
 
@@ -87,29 +88,32 @@
       </el-form>
     </el-card>
 
-    <!-- 章节管理区 -->
+    <!-- 章节管理卡 -->
     <el-card v-if="!isEditMode" class="chapter-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>章节管理 <span class="drag-hint">(可拖拽排序)</span></span>
+          <span class="card-title">章节管理 <span class="drag-hint">(可拖拽排序)</span></span>
           <el-button type="primary" size="small" @click="handleCreateChapter">新增章节</el-button>
         </div>
       </template>
-      <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe border class="full-width">
+      <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe border class="data-table">
+        <template #empty>
+          <el-empty description="暂无章节数据" />
+        </template>
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="chapterType" label="类型" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.chapterType === 'VIDEO'" size="small">视频</el-tag>
+            <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
             <el-tag v-else-if="row.chapterType === 'DOCUMENT'" type="info" size="small">文档</el-tag>
             <el-tag v-else-if="row.chapterType === 'QUIZ'" type="warning" size="small">测验</el-tag>
-            <el-tag v-else type="info" size="small">{{ row.chapterType }}</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="duration" label="时长(分钟)" width="120" align="center">
           <template #default="{ row }">
-            {{ row.duration || '-' }}
+            {{ row.duration ?? '-' }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right" align="center">
@@ -119,7 +123,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="sort-actions">
+      <div v-if="chapters.length > 0" class="sort-actions">
         <el-button type="warning" size="small" @click="handleSaveSort">保存排序</el-button>
       </div>
     </el-card>
@@ -153,10 +157,6 @@
 </template>
 
 <script setup>
-/**
- * 课程详情页面 - Phase 6 增强：拖拽章节排序
- * @author Claude Code Agent
- */
 import { ref, reactive, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -193,7 +193,6 @@ const formRules = {
   teacherId: [{ required: true, message: '请输入教师ID', trigger: 'blur' }]
 }
 
-// 章节相关
 const chapterLoading = ref(false)
 const chapterSubmitLoading = ref(false)
 const chapters = ref([])
@@ -282,13 +281,7 @@ const initSortable = () => {
 }
 
 const handleSaveSort = async () => {
-  const ids = chapters.value.map(item => item.id)
-  try {
-    // 尝试调用后端排序API，如未实现则提示
-    ElMessage.info('后端排序API未提供，已本地保存排序结果')
-  } catch {
-    ElMessage.error('保存排序失败')
-  }
+  ElMessage.info('后端排序API未提供，已本地保存排序结果')
 }
 
 const switchToEdit = () => {
@@ -326,7 +319,7 @@ const handleApprove = async () => {
     await updateCourseStatus(courseId.value, 2)
     ElMessage.success('审核通过成功')
     fetchCourse()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -339,7 +332,7 @@ const handleReject = async () => {
     await updateCourseStatus(courseId.value, 3)
     ElMessage.success('驳回成功')
     fetchCourse()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -352,7 +345,7 @@ const handlePublish = async () => {
     await updateCourseStatus(courseId.value, 4)
     ElMessage.success('发布成功')
     fetchCourse()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -365,7 +358,7 @@ const handleUnpublish = async () => {
     await updateCourseStatus(courseId.value, 5)
     ElMessage.success('下架成功')
     fetchCourse()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }
@@ -378,14 +371,13 @@ const handleSubmitForReview = async () => {
     await submitCourseForReview(courseId.value)
     ElMessage.success('提交成功，课程已进入审核流程')
     fetchCourse()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('提交失败')
     }
   }
 }
 
-// 章节操作
 const handleCreateChapter = () => {
   chapterDialogTitle.value = '新增章节'
   isChapterEdit.value = false
@@ -414,7 +406,7 @@ const handleDeleteChapter = async (row) => {
     await deleteChapter(row.id)
     ElMessage.success('删除成功')
     fetchChapters()
-  } catch {
+  } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
@@ -469,26 +461,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.course-detail {
-  padding: 20px;
+.course-detail-page {
+  padding: var(--space-5);
 }
 
 .info-card {
-  margin-bottom: 16px;
-  transition: box-shadow 0.3s ease;
-}
-
-.info-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
 }
 
 .chapter-card {
-  margin-bottom: 16px;
-  transition: box-shadow 0.3s ease;
-}
-
-.chapter-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
 }
 
 .card-header {
@@ -497,36 +480,67 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.course-view {
-  max-width: 900px;
+.card-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .drag-hint {
-  font-size: 12px;
-  color: #909399;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
   font-weight: normal;
 }
 
 .sort-actions {
-  margin-top: 12px;
+  margin-top: var(--space-3);
   display: flex;
   justify-content: flex-end;
 }
 
-@media (max-width: 768px) {
-  .course-detail {
-    padding: 12px;
-  }
-
-  .info-card {
-    margin-bottom: 12px;
-  }
-
-  .chapter-card {
-    margin-bottom: 12px;
-  }
+.course-view {
+  max-width: 900px;
 }
 
-.full-width { width: 100%; }
-.form-container { max-width: 800px; }
+.form-container {
+  max-width: 800px;
+}
+
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: var(--color-bg-page);
+}
+
+.full-width {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .course-detail-page {
+    padding: var(--space-3);
+  }
+
+  .info-card,
+  .chapter-card {
+    margin-bottom: var(--space-3);
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+  }
+}
 </style>

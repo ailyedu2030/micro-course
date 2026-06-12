@@ -5,39 +5,41 @@
   Author: jackie
 -->
 <template>
-  <div class="tag-list">
-    <!-- 搜索区 -->
-    <el-card class="search-card" shadow="never">
-      <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="名称">
-          <el-input v-model="searchForm.name" placeholder="请输入标签名称" clearable class="search-input-w200" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
+  <div class="tag-list-page">
+    <!-- 顶栏 -->
+    <el-card class="toolbar-card" shadow="never">
+      <div class="toolbar">
+        <span class="toolbar-title">标签管理</span>
+        <el-button type="primary" @click="handleCreate">新增标签</el-button>
+      </div>
     </el-card>
 
-    <!-- 表格区 -->
+    <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>标签列表</span>
-          <el-button type="primary" @click="handleCreate">新增标签</el-button>
-        </div>
-      </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
-        <el-table-column prop="name" label="名称" min-width="150" />
-        <el-table-column prop="createdAt" label="创建时间" width="180" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <template #empty>
+          <el-empty description="暂无标签数据" />
+        </template>
+        <el-table-column type="index" label="序号" width="70" align="center" />
+        <el-table-column prop="name" label="标签名" min-width="150" />
+        <el-table-column prop="color" label="颜色" width="120" align="center">
           <template #default="{ row }">
+            <span class="color-swatch" :style="{ backgroundColor: row.color || '#409eff' }"></span>
+            <span class="color-value">{{ row.color || '#409eff' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="usageCount" label="使用次数" width="120" align="center">
+          <template #default="{ row }">
+            {{ row.usageCount ?? 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+        <el-table-column label="操作" width="150" fixed="right" align="center">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
-        <template #empty>
-          <el-empty description="暂无数据" />
-        </template>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -52,11 +54,20 @@
       </div>
     </el-card>
 
-    <!-- 弹窗区 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="400px" @close="handleDialogClose">
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
-        <el-form-item label="名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入标签名称" />
+    <!-- 弹窗表单 -->
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
+        <el-form-item label="标签名" prop="name">
+          <el-input v-model="formData.name" placeholder="请输入标签名" />
+        </el-form-item>
+        <el-form-item label="颜色" prop="color">
+          <div class="color-picker-row">
+            <el-color-picker v-model="formData.color" />
+            <el-input v-model="formData.color" placeholder="#409eff" class="color-input" />
+          </div>
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入描述" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -70,7 +81,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTags, createTag } from '@/api/tag'
+import { getTags, createTag, updateTag, deleteTag } from '@/api/tag'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -79,30 +90,27 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 
-const searchForm = reactive({
-  name: ''
-})
-
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增标签')
+const isEdit = ref(false)
+const currentId = ref(null)
 const formRef = ref(null)
 
 const formData = reactive({
-  name: ''
+  name: '',
+  color: '#409eff',
+  description: ''
 })
 
 const formRules = {
-  name: [{ required: true, message: '请输入标签名称', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入标签名', trigger: 'blur' }],
+  color: [{ required: true, message: '请选择颜色', trigger: 'change' }]
 }
 
 const fetchData = async () => {
   loading.value = true
   try {
-    const params = {
-      page: page.value - 1,
-      size: size.value,
-      name: searchForm.name || undefined
-    }
+    const params = { page: page.value - 1, size: size.value }
     const { data } = await getTags(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
@@ -111,17 +119,6 @@ const fetchData = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const handleSearch = () => {
-  page.value = 1
-  fetchData()
-}
-
-const handleReset = () => {
-  searchForm.name = ''
-  page.value = 1
-  fetchData()
 }
 
 const handleSizeChange = () => {
@@ -135,17 +132,34 @@ const handlePageChange = () => {
 
 const handleCreate = () => {
   dialogTitle.value = '新增标签'
+  isEdit.value = false
+  currentId.value = null
   formData.name = ''
+  formData.color = '#409eff'
+  formData.description = ''
+  dialogVisible.value = true
+}
+
+const handleEdit = (row) => {
+  dialogTitle.value = '编辑标签'
+  isEdit.value = true
+  currentId.value = row.id
+  formData.name = row.name
+  formData.color = row.color || '#409eff'
+  formData.description = row.description || ''
   dialogVisible.value = true
 }
 
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm('确定删除该标签?', '提示', { type: 'warning' })
-    // tag API 没有 delete 方法，提示不支持
-    ElMessage.error('该标签不支持删除')
-  } catch {
-    // cancel
+    await deleteTag(row.id)
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
   }
 }
 
@@ -155,12 +169,17 @@ const handleSubmit = async () => {
     if (!valid) return
     submitLoading.value = true
     try {
-      await createTag(formData)
-      ElMessage.success('创建成功')
+      if (isEdit.value) {
+        await updateTag(currentId.value, formData)
+        ElMessage.success('编辑成功')
+      } else {
+        await createTag(formData)
+        ElMessage.success('创建成功')
+      }
       dialogVisible.value = false
       fetchData()
     } catch {
-      ElMessage.error('创建失败')
+      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
     } finally {
       submitLoading.value = false
     }
@@ -177,60 +196,87 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.tag-list {
-  padding: 20px;
+.tag-list-page {
+  padding: var(--space-5);
 }
 
-.search-card {
-  margin-bottom: 16px;
-  transition: box-shadow 0.3s ease;
+.toolbar-card {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
 }
 
-.search-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.table-card {
-  transition: box-shadow 0.3s ease;
-}
-
-.table-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.table-card :deep(.el-card__header) {
-  padding: 12px 20px;
-}
-
-.card-header {
+.toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.toolbar-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.table-card {
+  border-radius: var(--radius-md);
+}
+
 .pagination-wrap {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
 }
 
-.data-table { width: 100%; }
-.search-input-w200 { width: 200px; }
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: var(--color-bg-page);
+}
+
+.color-swatch {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  vertical-align: middle;
+  margin-right: var(--space-1);
+}
+
+.color-value {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-family: monospace;
+}
+
+.color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.color-input {
+  width: 120px;
+}
+
+.full-width {
+  width: 100%;
+}
 
 @media (max-width: 768px) {
-  .tag-list {
-    padding: 12px;
+  .tag-list-page {
+    padding: var(--space-3);
   }
 
-  .search-card,
-  .table-card {
-    margin-bottom: 12px;
-  }
-
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+  .toolbar-card {
+    margin-bottom: var(--space-3);
   }
 
   .pagination-wrap {

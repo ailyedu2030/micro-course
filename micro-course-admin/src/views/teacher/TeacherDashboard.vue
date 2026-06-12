@@ -1,366 +1,750 @@
 <template>
   <div class="teacher-dashboard">
-    <!-- 顶部统计卡片 -->
+    <!-- 顶部欢迎条 -->
+    <div class="welcome-bar">
+      <div class="welcome-left">
+        <span class="welcome-date">{{ welcomeDate }}</span>
+        <span class="welcome-weather">{{ weather }}</span>
+      </div>
+      <div class="welcome-greeting">
+        <span class="greeting-name">{{ userName }}</span>
+        <span class="greeting-suffix">{{ greeting }}</span>
+      </div>
+    </div>
+
+    <!-- 4 个 stat-card -->
     <el-row :gutter="16" class="stats-row">
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card shadow-hover" shadow="never">
-          <div class="stat-icon student-icon">
-            <el-icon><User /></el-icon>
+        <el-card class="stat-card" shadow="never">
+          <div class="stat-icon-wrap">
+            <el-icon class="stat-icon"><Reading /></el-icon>
           </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ overview.studentCount || 0 }}</div>
-            <div class="stat-label">选课学生数</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card shadow-hover" shadow="never">
-          <div class="stat-icon completion-icon">
-            <el-icon><CircleCheck /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ overview.completionRate || 0 }}%</div>
-            <div class="stat-label">平均完成率</div>
+          <div class="stat-body">
+            <el-skeleton :loading="statsLoading" animated :rows="1">
+              <template #template>
+                <el-skeleton-item class="skeleton-value" />
+              </template>
+              <template #default>
+                <div class="stat-value">{{ stats.courseCount ?? 0 }}</div>
+              </template>
+            </el-skeleton>
+            <div class="stat-label">我的课程数</div>
           </div>
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card shadow-hover" shadow="never">
-          <div class="stat-icon score-icon">
-            <el-icon><Medal /></el-icon>
+        <el-card class="stat-card" shadow="never">
+          <div class="stat-icon-wrap">
+            <el-icon class="stat-icon"><User /></el-icon>
           </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ overview.avgScore || 0 }}</div>
-            <div class="stat-label">平均成绩</div>
+          <div class="stat-body">
+            <el-skeleton :loading="statsLoading" animated :rows="1">
+              <template #template>
+                <el-skeleton-item class="skeleton-value" />
+              </template>
+              <template #default>
+                <div class="stat-value">{{ stats.studentCount ?? 0 }}</div>
+              </template>
+            </el-skeleton>
+            <div class="stat-label">在学学员数</div>
           </div>
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card shadow-hover" shadow="never">
-          <div class="stat-icon duration-icon">
-            <el-icon><VideoPlay /></el-icon>
+        <el-card class="stat-card" shadow="never">
+          <div class="stat-icon-wrap">
+            <el-icon class="stat-icon"><Document /></el-icon>
           </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ formatDuration(overview.totalWatchTime) }}</div>
-            <div class="stat-label">视频学习总时长</div>
+          <div class="stat-body">
+            <el-skeleton :loading="statsLoading" animated :rows="1">
+              <template #template>
+                <el-skeleton-item class="skeleton-value" />
+              </template>
+              <template #default>
+                <div class="stat-value">{{ stats.pendingHomework ?? 0 }}</div>
+              </template>
+            </el-skeleton>
+            <div class="stat-label">待批改作业</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="stat-card" shadow="never">
+          <div class="stat-icon-wrap">
+            <el-icon class="stat-icon"><QuestionFilled /></el-icon>
+          </div>
+          <div class="stat-body">
+            <el-skeleton :loading="statsLoading" animated :rows="1">
+              <template #template>
+                <el-skeleton-item class="skeleton-value" />
+              </template>
+              <template #default>
+                <div class="stat-value">{{ stats.pendingQuestions ?? 0 }}</div>
+              </template>
+            </el-skeleton>
+            <div class="stat-label">学员提问</div>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <!-- 中部图表区 -->
-    <el-card class="chart-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>近 7 天学习活跃度</span>
-        </div>
-      </template>
-      <div ref="chartRef" class="chart-container"></div>
-    </el-card>
+    <!-- 中部主体区：左侧图表 + 右侧待办通知 -->
+    <el-row :gutter="16" class="main-row">
+      <!-- 左侧 60% -->
+      <el-col :xs="24" :md="14">
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>最近 7 天学情</span>
+            </div>
+          </template>
+          <el-skeleton :loading="activityLoading" animated :rows="3">
+            <template #template>
+              <el-skeleton-item class="skeleton-chart" />
+            </template>
+            <template #default>
+              <div v-if="activityError" class="chart-error">
+                <el-icon><WarningFilled /></el-icon>
+                <span>加载失败</span>
+              </div>
+              <div v-else ref="studyChartRef" class="chart-container"></div>
+            </template>
+          </el-skeleton>
+        </el-card>
+        <el-card class="chart-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>学员活跃度</span>
+            </div>
+          </template>
+          <el-skeleton :loading="activityLoading" animated :rows="3">
+            <template #template>
+              <el-skeleton-item class="skeleton-chart" />
+            </template>
+            <template #default>
+              <div v-if="activityError" class="chart-error">
+                <el-icon><WarningFilled /></el-icon>
+                <span>加载失败</span>
+              </div>
+              <div v-else ref="activeChartRef" class="chart-container"></div>
+            </template>
+          </el-skeleton>
+        </el-card>
+      </el-col>
 
-    <!-- 底部课程列表 -->
+      <!-- 右侧 40% -->
+      <el-col :xs="24" :md="10">
+        <el-card class="list-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>待办</span>
+            </div>
+          </template>
+          <el-skeleton :loading="tasksLoading" animated :rows="3">
+            <template #template>
+              <el-skeleton-item class="skeleton-item" />
+              <el-skeleton-item class="skeleton-item" />
+              <el-skeleton-item class="skeleton-item" />
+            </template>
+            <template #default>
+              <div v-if="tasksError" class="list-error">
+                <span>加载失败</span>
+              </div>
+              <div v-else-if="tasks.length === 0" class="list-empty">
+                <span>暂无待办</span>
+              </div>
+              <ul v-else class="list-ul">
+                <li v-for="task in tasks" :key="task.id" class="list-item">
+                  <span class="item-type">{{ task.type }}</span>
+                  <span class="item-title">{{ task.title }}</span>
+                  <span class="item-time">{{ formatTime(task.createdAt) }}</span>
+                </li>
+              </ul>
+            </template>
+          </el-skeleton>
+        </el-card>
+        <el-card class="list-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>最新通知</span>
+            </div>
+          </template>
+          <el-skeleton :loading="notifLoading" animated :rows="3">
+            <template #template>
+              <el-skeleton-item class="skeleton-item" />
+              <el-skeleton-item class="skeleton-item" />
+              <el-skeleton-item class="skeleton-item" />
+            </template>
+            <template #default>
+              <div v-if="notifError" class="list-error">
+                <span>加载失败</span>
+              </div>
+              <div v-else-if="notifications.length === 0" class="list-empty">
+                <span>暂无通知</span>
+              </div>
+              <ul v-else class="list-ul">
+                <li v-for="notif in notifications" :key="notif.id" class="list-item">
+                  <span class="item-title">{{ notif.title }}</span>
+                  <span class="item-time">{{ formatTime(notif.createdAt) }}</span>
+                </li>
+              </ul>
+            </template>
+          </el-skeleton>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 底部：我教的课程 -->
     <el-card class="course-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>我的课程</span>
+          <span>我教的课程</span>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="categoryName" label="分类" width="120" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.status === 0" type="info" size="small">草稿</el-tag>
-            <el-tag v-else-if="row.status === 1" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="row.status === 2" type="success" size="small">通过</el-tag>
-            <el-tag v-else-if="row.status === 3" type="danger" size="small">驳回</el-tag>
-            <el-tag v-else-if="row.status === 4" type="primary" size="small">已发布</el-tag>
-            <el-tag v-else-if="row.status === 5" size="small">下架</el-tag>
-            <el-tag v-else type="info" size="small">归档</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="studentCount" label="学生数" width="90" align="center" />
-        <el-table-column prop="rating" label="评分" width="80" align="center">
-          <template #default="{ row }">
-            {{ row.rating ? row.rating.toFixed(1) : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right" align="center">
-          <template #default="{ row }">
-            <el-button type="primary" link size="small" style="cursor:pointer" @click="handleView(row)">查看</el-button>
-           <el-button type="primary" link size="small" style="cursor:pointer" @click="handleStudents(row)">学员</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-     <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="size"
-          :total="totalElements"
-          :page-sizes="[10, 20, 50]"
-          layout="total,sizes,prev,pager,next"
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-        />
-      </div>
+      <el-skeleton :loading="coursesLoading" animated :rows="2">
+        <template #template>
+          <div class="course-grid">
+            <el-skeleton-item v-for="i in 4" :key="i" class="skeleton-course" />
+          </div>
+        </template>
+        <template #default>
+          <div v-if="coursesError" class="course-error">
+            <span>加载失败</span>
+          </div>
+          <div v-else-if="courses.length === 0" class="course-empty">
+            <span>暂无课程</span>
+          </div>
+          <div v-else class="course-grid">
+            <div v-for="course in courses" :key="course.id" class="course-card-item">
+              <div class="course-cover">
+                <img v-if="course.cover" :src="course.cover" :alt="course.title" class="course-cover-img" />
+                <div v-else class="course-cover-placeholder">
+                  <el-icon><VideoPlay /></el-icon>
+                </div>
+              </div>
+              <div class="course-info">
+                <div class="course-title">{{ course.title }}</div>
+                <div class="course-meta">
+                  <span class="course-student">
+                    <el-icon><User /></el-icon>
+                    {{ course.studentCount ?? 0 }} 学员
+                  </span>
+                  <el-rate v-if="course.rating" :model-value="course.rating" disabled show-score size="small" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </el-skeleton>
     </el-card>
   </div>
 </template>
 
 <script setup>
-/**
- * 教师数据看板
- * @author Claude Code Agent
- */
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { User, CircleCheck, Medal, VideoPlay } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { getCourses } from '@/api/course'
-import { getOverview, getUserTrend } from '@/api/admin-stats'
 import { useUserStore } from '@/store/user'
+import { getStats, getStudentActivity, getPendingTasks, getNotifications, getMyCourses } from '@/api/teacher'
 
-const router = useRouter()
 const userStore = useUserStore()
 
-const loading = ref(false)
-const tableData = ref([])
-const totalElements = ref(0)
-const page = ref(1)
-const size = ref(10)
-
-const overview = ref({
-  studentCount: 0,
-  completionRate: 0,
-  avgScore: 0,
-  totalWatchTime: 0
+// 欢迎信息
+const now = new Date()
+const welcomeDate = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 ${['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()]}`
+const weather = '晴'
+const userName = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || '老师')
+const greeting = computed(() => {
+  const h = now.getHours()
+  if (h < 12) return '，上午好'
+  if (h < 14) return '，中午好'
+  if (h < 18) return '，下午好'
+  return '，晚上好'
 })
 
-const chartRef = ref(null)
-let chartInstance = null
+// 统计数据
+const statsLoading = ref(true)
+const stats = ref({ courseCount: 0, studentCount: 0, pendingHomework: 0, pendingQuestions: 0 })
 
-const formatDuration = (minutes) => {
-  if (!minutes) return '0分钟'
-  if (minutes < 60) return `${minutes}分钟`
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`
-}
+// 学情图表
+const activityLoading = ref(true)
+const activityError = ref(false)
+const studyChartRef = ref(null)
+const activeChartRef = ref(null)
+let studyChart = null
+let activeChart = null
 
-const fetchOverview = async () => {
+// 待办/通知
+const tasksLoading = ref(true)
+const tasksError = ref(false)
+const tasks = ref([])
+
+const notifLoading = ref(true)
+const notifError = ref(false)
+const notifications = ref([])
+
+// 课程
+const coursesLoading = ref(true)
+const coursesError = ref(false)
+const courses = ref([])
+
+// 加载统计数据
+async function loadStats() {
+  statsLoading.value = true
   try {
-    const res = await getOverview()
-    overview.value = res.data || {}
+    const res = await getStats()
+    stats.value = res.data || {}
   } catch {
-    //静默失败，使用默认值
-  }
-}
-
-const fetchTrend = async () => {
-  try {
-    const res = await getUserTrend(7)
-    const trendData = res.data || []
-    renderChart(trendData)
-  } catch {
-    // 静默失败，渲染空图表
-    renderChart([])
-  }
-}
-
-const renderChart = (data) => {
-  if (!chartRef.value) return
-  if (chartInstance) {
-    chartInstance.dispose()
-  }
-  chartInstance = echarts.init(chartRef.value)
-  const dates = data.map(item => item.date || item.dateStr || '')
-  const values = data.map(item => item.count || item.value || 0)
-  const option = {
-    tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: dates, boundaryGap: false },
-    yAxis: { type: 'value', minInterval: 1 },
-    series: [{
-      name: '学习人数',
-      type: 'line',
-      smooth: true,
-      data: values,
-      areaStyle: { opacity: 0.2 },
-      lineStyle: { width: 2 },
-      itemStyle: { color: '#409eff' }
-    }],
-    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true }
-  }
-  chartInstance.setOption(option)
-}
-
-const fetchData = async () => {
-  loading.value = true
-  try {
-    const teacherId = userStore.userInfo?.id
-    const params = {
-      page: page.value - 1,
-      size: size.value,
-      teacherId: teacherId || undefined
-    }
-    const { data } = await getCourses(params)
-    tableData.value = data.items || []
-    totalElements.value = data.totalElements || 0
-  } catch {
-    ElMessage.error('获取课程列表失败')
+    // 静默失败
   } finally {
-    loading.value = false
+    statsLoading.value = false
   }
 }
 
-const handleSizeChange = () => {
-  page.value = 1
-  fetchData()
+// 加载学情图表
+async function loadActivity() {
+  activityLoading.value = true
+  activityError.value = false
+  try {
+    const res = await getStudentActivity(7)
+    const data = res.data || []
+    renderStudyChart(data)
+    renderActiveChart(data)
+  } catch {
+    activityError.value = true
+    renderStudyChart([])
+    renderActiveChart([])
+  } finally {
+    activityLoading.value = false
+  }
 }
 
-const handlePageChange = () => {
-  fetchData()
+function renderStudyChart(data) {
+  if (!studyChartRef.value) return
+  if (studyChart) studyChart.dispose()
+  studyChart = echarts.init(studyChartRef.value)
+  const dates = data.map(item => item.date || '')
+  const studyMinutes = data.map(item => item.studyMinutes ?? 0)
+  const completionRate = data.map(item => item.completionRate ?? 0)
+  studyChart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['学习时长(分钟)', '完成率(%)'], bottom: 0 },
+    grid: { left: '3%', right: '4%', bottom: '18%', top: '8%', containLabel: true },
+    xAxis: { type: 'category', data: dates, boundaryGap: false },
+    yAxis: [
+      { type: 'value', name: '分钟', minInterval: 1 },
+      { type: 'value', name: '%', minInterval: 1, max: 100 }
+    ],
+    series: [
+      {
+        name: '学习时长(分钟)',
+        type: 'line',
+        smooth: true,
+        data: studyMinutes,
+        itemStyle: { color: 'var(--role-primary)' },
+        lineStyle: { width: 2 },
+        areaStyle: { opacity: 0.1 }
+      },
+      {
+        name: '完成率(%)',
+        type: 'line',
+        smooth: true,
+        yAxisIndex: 1,
+        data: completionRate,
+        itemStyle: { color: '#67c23a' },
+        lineStyle: { width: 2 },
+        areaStyle: { opacity: 0.1 }
+      }
+    ]
+  })
 }
 
-const handleView = (row) => {
-  router.push(`/courses/${row.id}`)
+function renderActiveChart(data) {
+  if (!activeChartRef.value) return
+  if (activeChart) activeChart.dispose()
+  activeChart = echarts.init(activeChartRef.value)
+  const dates = data.map(item => item.date || '')
+  const activeUsers = data.map(item => item.activeUsers ?? 0)
+  activeChart.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
+    xAxis: { type: 'category', data: dates, boundaryGap: false },
+    yAxis: { type: 'value', name: '活跃学员', minInterval: 1 },
+    series: [{
+      name: '活跃学员',
+      type: 'bar',
+      data: activeUsers,
+      itemStyle: { color: 'var(--role-primary)', borderRadius: [4, 4, 0, 0] },
+      barWidth: '50%'
+    }]
+  })
 }
 
-const handleStudents = (row) => {
-  router.push(`/teacher/students?courseId=${row.id}`)
+// 加载待办
+async function loadTasks() {
+  tasksLoading.value = true
+  tasksError.value = false
+  try {
+    const res = await getPendingTasks(5)
+    tasks.value = res.data || []
+  } catch {
+    tasksError.value = true
+  } finally {
+    tasksLoading.value = false
+  }
 }
 
-const handleResize = () => {
-  chartInstance?.resize()
+// 加载通知
+async function loadNotifications() {
+  notifLoading.value = true
+  notifError.value = false
+  try {
+    const res = await getNotifications(5)
+    notifications.value = res.data || []
+  } catch {
+    notifError.value = true
+  } finally {
+    notifLoading.value = false
+  }
+}
+
+// 加载课程
+async function loadCourses() {
+  coursesLoading.value = true
+  coursesError.value = false
+  try {
+    const res = await getMyCourses()
+    courses.value = res.data?.items || res.data || []
+  } catch {
+    coursesError.value = true
+  } finally {
+    coursesLoading.value = false
+  }
+}
+
+function formatTime(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+function resizeCharts() {
+  studyChart?.resize()
+  activeChart?.resize()
 }
 
 onMounted(async () => {
-  await fetchOverview()
-  await fetchTrend()
-  await fetchData()
-  window.addEventListener('resize', handleResize)
+  await Promise.all([
+    loadStats(),
+    loadActivity(),
+    loadTasks(),
+    loadNotifications(),
+    loadCourses()
+  ])
+  window.addEventListener('resize', resizeCharts)
 })
 
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  chartInstance?.dispose()
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', resizeCharts)
+  studyChart?.dispose()
+  activeChart?.dispose()
 })
 </script>
 
 <style scoped>
 .teacher-dashboard {
-  padding: 20px;
+  padding: var(--space-5);
+  background: var(--el-bg-color);
+  min-height: 100vh;
 }
 
+/* 欢迎条 */
+.welcome-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--el-bg-color-overlay);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.welcome-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.welcome-date {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+.welcome-weather {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  padding: 2px 8px;
+  background: var(--el-fill-color-light);
+  border-radius: var(--radius-pill);
+}
+
+.welcome-greeting {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+}
+
+.greeting-name {
+  color: var(--role-primary);
+}
+
+/* stat-row */
 .stats-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
-.data-table {
-  width: 100%;
-}
-
+/* stat-card */
 .stat-card {
   display: flex;
   align-items: center;
-  padding: 16px;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  cursor: default;
 }
 
-.stat-icon {
+.stat-icon-wrap {
   width: 48px;
   height: 48px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  background: var(--role-primary-light-9);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  margin-right: 16px;
+  flex-shrink: 0;
 }
 
-.student-icon {
-  background: #e6f4ff;
-  color: #1677ff;
+.stat-icon {
+  font-size: 22px;
+  color: var(--role-primary);
 }
 
-.completion-icon {
-  background: #f6ffed;
-  color: #52c41a;
-}
-
-.score-icon {
-  background: #fff7e6;
-  color: #fa8c16;
-}
-
-.duration-icon {
-  background: #f0f5ff;
-  color: #7c6cff;
-}
-
-.stat-content {
+.stat-body {
   flex: 1;
+  min-width: 0;
 }
 
 .stat-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  line-height: 1.2;
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--role-primary);
+  line-height: var(--leading-tight);
 }
 
 .stat-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 4px;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  margin-top: var(--space-1);
 }
 
+/* 主区域 */
+.main-row {
+  margin-bottom: var(--space-4);
+}
+
+/* 图表卡片 */
 .chart-card {
-  margin-bottom: 16px;
-}
-
-.chart-container {
-  height: 300px;
-  width: 100%;
+  margin-bottom: var(--space-4);
 }
 
 .card-header {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
 }
 
-.course-card :deep(.el-card__header) {
-  padding: 12px 20px;
+.chart-container {
+  height: 260px;
+  width: 100%;
 }
 
-.pagination-wrap {
-  margin-top: 16px;
+.chart-error,
+.list-error,
+.list-empty,
+.course-error,
+.course-empty {
+  height: 200px;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
+}
+
+/* 列表卡片 */
+.list-card {
+  margin-bottom: var(--space-4);
+}
+
+.list-ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  font-size: var(--text-sm);
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+.item-type {
+  font-size: var(--text-xs);
+  padding: 1px 6px;
+  background: var(--role-primary-light-9);
+  color: var(--role-primary);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.item-title {
+  flex: 1;
+  color: var(--el-text-color-regular);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-time {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-placeholder);
+  flex-shrink: 0;
+}
+
+/* 课程网格 */
+.course-card {
+  margin-bottom: var(--space-4);
+}
+
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+.course-card-item {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--el-fill-color-lighter);
+  transition: box-shadow var(--duration-base) var(--ease-out);
+  cursor: default;
+}
+
+.course-card-item:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.course-cover {
+  height: 100px;
+  background: var(--el-fill-color);
+  overflow: hidden;
+}
+
+.course-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.course-cover-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--el-text-color-placeholder);
+  font-size: 32px;
+}
+
+.course-info {
+  padding: var(--space-3);
+}
+
+.course-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: var(--space-2);
+}
+
+.course-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.course-student {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+
+/* Skeleton */
+.skeleton-value {
+  width: 60px;
+  height: 32px;
+}
+
+.skeleton-chart {
+  height: 260px;
+  border-radius: var(--radius-md);
+}
+
+.skeleton-item {
+  height: 40px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-course {
+  height: 150px;
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 1024px) {
+  .course-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
-  .stats-row {
-    margin-bottom: 12px;
+  .teacher-dashboard {
+    padding: var(--space-3);
   }
 
-  .stat-card {
-    padding: 12px;
-    margin-bottom: 12px;
+  .welcome-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
   }
 
-  .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
+  .course-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .stat-value {
-    font-size: 20px;
-  }
-
-  .chart-container {
-    height: 220px;
+  .stats-row .el-col {
+    margin-bottom: var(--space-3);
   }
 }
 </style>

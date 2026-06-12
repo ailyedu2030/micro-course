@@ -1,933 +1,1192 @@
 <!--
   学习中心
   路由路径: /student/learning
-  Phase 2
+  Phase 5
   Author: jackie
 -->
 <template>
   <div class="learning-center">
-    <div class="header">
-      <h2>学习中心</h2>
-    </div>
-
-    <!-- 顶部统计卡片 -->
-    <div class="stats-row">
-      <el-card class="stat-card" shadow="hover">
-        <div class="stat-value">{{ formatDuration(totalMinutes) }}</div>
-        <div class="stat-label">累计学习时长</div>
-      </el-card>
-      <el-card class="stat-card" shadow="hover">
-        <div class="stat-value">{{ completedCount }}</div>
-        <div class="stat-label">完成课程数</div>
-      </el-card>
-      <el-card class="stat-card" shadow="hover">
-        <div class="stat-value">{{ streakDays }}</div>
-        <div class="stat-label">连续打卡天数</div>
-      </el-card>
-    </div>
-
-    <!-- 标签页切换 -->
-    <div class="tab-container">
-      <el-tabs v-model="activeTab" class="learning-tabs">
-        <el-tab-pane label="学习统计" name="stats">
-          <!-- 主体两栏布局 -->
-          <div class="main-content">
-            <!-- 左侧：打卡日历 + 打卡按钮 -->
-            <div class="left-panel">
-              <el-card class="calendar-card">
-                <template #header>
-                  <div class="card-header-title">活跃日历（近30天）</div>
-                </template>
-                <div class="calendar-grid">
-                  <div
-                    v-for="day in calendarDays"
-                    :key="day.date"
-                    class="calendar-cell"
-                    :class="day.hasCheckIn ? 'cell-active' : 'cell-inactive'"
-                    :title="day.date"
-                  >
-                    <span class="day-number">{{ day.day }}</span>
-                  </div>
-                </div>
-                <div class="calendar-legend">
-                  <span class="legend-item"><span class="legend-dot dot-active"></span>已打卡</span>
-                  <span class="legend-item"><span class="legend-dot dot-inactive"></span>未打卡</span>
-                </div>
-              </el-card>
-
-              <el-card class="checkin-card">
-                <div class="checkin-action">
-                  <el-button
-                    v-if="!todayCheckedIn"
-                    type="primary"
-                    size="large"
-                    circle
-                    class="checkin-btn"
-                    @click="handleCheckIn"
-                    :loading="checkinLoading"
-                  >
-                   <span class="checkin-icon">+</span>
-                  </el-button>
-                  <el-button
-                    v-else
-                    type="success"
-                    size="large"
-                    circle
-                    disabled
-                    class="checkin-btn"
-                  >
-                    <span class="checkin-icon">✓</span>
-                  </el-button>
-                  <div class="checkin-text">
-                    {{ todayCheckedIn ? '今日已打卡 ✓' : '点击打卡' }}
-                  </div>
-                </div>
-              </el-card>
-            </div>
-
-            <!-- 右侧：正确率趋势 + 知识图谱占位 -->
-            <div class="right-panel">
-              <el-card class="trend-card">
-                <template #header>
-                  <div class="card-header-title">正确率趋势（近5次练习）</div>
-                </template>
-                <div v-loading="trendLoading" class="trend-list">
-                  <template v-if="exerciseTrends.length > 0">
-                    <div
-                      v-for="(item, index) in exerciseTrends"
-                      :key="index"
-                      class="trend-item"
-                    >
-                      <span class="trend-index">{{ index + 1 }}</span>
-                      <span class="trend-exercise">练习 #{{ item.exerciseId }}</span>
-                      <div class="trend-bar-wrap">
-                        <div class="trend-bar" :style="{ width: item.score + '%' }"></div>
-                      </div>
-                      <span class="trend-score">{{ item.score }}%</span>
-                    </div>
-                  </template>
-                  <el-empty v-else description="暂无练习记录" :image-size="60" />
-                </div>
-              </el-card>
-
-              <el-card class="graph-card">
-                <template #header>
-                  <div class="card-header-title">知识图谱</div>
-                </template>
-                <div class="coming-soon">
-                  <span class="soon-icon">🔗</span>
-                  <span class="soon-text">即将上线</span>
-                </div>
-              </el-card>
-            </div>
-          </div>
-        </el-tab-pane>
-
-        <el-tab-pane label="练习历史" name="history">
-          <div class="history-content">
-            <div v-loading="historyLoading" class="history-list">
-              <template v-if="exerciseHistory.length > 0">
-                <div
-                  v-for="record in exerciseHistory"
-                  :key="record.id"
-                  class="history-item"
-                  @click="toggleExpand(record.id)"
-                >
-                  <div class="history-header">
-                    <div class="history-title">
-                      <span class="exercise-title">{{ record.exerciseTitle }}</span>
-                      <el-tag :type="record.passed ? 'success' : 'danger'" size="small">
-                        {{ record.passed ? '通过' : '未通过' }}
-                      </el-tag>
-                    </div>
-                    <div class="history-meta">
-                      <span class="history-score">得分 {{ record.score }}/{{ record.totalScore }}</span>
-                      <span class="history-date">{{ formatDateTime(record.submittedAt) }}</span>
-                      <span v-if="record.duration" class="history-duration">用时 {{ record.duration }}分钟</span>
-                    </div>
-                  </div>
-
-                  <div v-if="expandedRecordId === record.id && record.answers" class="history-detail">
-                    <div class="detail-title">答题详情</div>
-                    <div class="detail-answers">
-                      <template v-for="(answer, idx) in parseAnswers(record.answers)" :key="idx">
-                        <div class="answer-item" :class="{ 'answer-correct': answer.isCorrect, 'answer-wrong': answer.isCorrect === false }">
-                          <div class="answer-header">
-                            <span class="answer-index">第{{ idx + 1 }}题</span>
-                            <el-tag :type="answer.isCorrect ? 'success' : 'danger'" size="small">
-                              {{ answer.isCorrect ? '正确' : '错误' }}
-                            </el-tag>
-                          </div>
-                          <div class="answer-content">
-                            <div class="answer-user">你的答案：{{ answer.userAnswer || '未答' }}</div>
-                            <div v-if="answer.isCorrect === false" class="answer-correct-answer">
-                              正确答案：{{ answer.correctAnswer }}
-                            </div>
-                          </div>
-                        </div>
-                      </template>
-                    </div>
-                  </div>
-                </div>
-              </template>
-              <el-empty v-else description="暂无练习记录" :image-size="60" />
-            </div>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
-    </div>
-
-    <!-- 打卡分享弹窗 -->
-    <el-dialog v-model="shareVisible" title="分享打卡" width="360px" :close-on-click-modal="true" class="share-dialog">
-      <div ref="shareCardRef" class="share-card">
-        <div class="share-logo">微课平台</div>
-        <div class="share-streak">
-          <span class="streak-number">{{ streakDays }}</span>
-          <span class="streak-unit">天</span>
+    <!-- ========== PC 布局 (≥769px) ========== -->
+    <div v-if="!isMobile" class="pc-layout">
+      <!-- 欢迎栏 -->
+      <div class="welcome-bar">
+        <div class="welcome-left">
+          <span class="welcome-text">你好，{{ username }}</span>
         </div>
-        <div class="share-label">连续学习</div>
-        <div class="share-badge">今日已打卡 ✓</div>
+        <div class="welcome-right">
+          <span class="badge-date">
+            <el-icon><Calendar /></el-icon>
+            {{ currentDate }}
+          </span>
+          <span class="badge-weather">
+            <el-icon><Sunny /></el-icon>
+            晴 26°C
+          </span>
+          <span class="badge-motto">
+            <el-icon><Star /></el-icon>
+            学无止境
+          </span>
+        </div>
       </div>
-      <template #footer>
-        <el-button @click="handleCloseShare">关闭</el-button>
-        <el-button type="primary" :loading="shareLoading" @click="handleShare">分享</el-button>
-      </template>
-    </el-dialog>
+
+      <!-- 骨架屏 -->
+      <div v-if="loading" class="stats-row">
+        <el-card v-for="i in 4" :key="i" class="stat-card" shadow="hover">
+          <el-skeleton :rows="1" animated />
+        </el-card>
+      </div>
+
+      <!-- 4 统计卡片 -->
+      <div v-else class="stats-row">
+        <div class="stat-card">
+          <el-card shadow="hover">
+            <div class="stat-card-value">{{ stats.totalHours }}</div>
+            <div class="stat-card-label">累计学习时长</div>
+          </el-card>
+        </div>
+        <div class="stat-card">
+          <el-card shadow="hover">
+            <div class="stat-card-value">{{ stats.completedCourses }}</div>
+            <div class="stat-card-label">已完成课程</div>
+          </el-card>
+        </div>
+        <div class="stat-card">
+          <el-card shadow="hover">
+            <div class="stat-card-value">{{ stats.certificates }}</div>
+            <div class="stat-card-label">获得证书</div>
+          </el-card>
+        </div>
+        <div class="stat-card">
+          <el-card shadow="hover">
+            <div class="stat-card-value">{{ stats.points }}</div>
+            <div class="stat-card-label">积分</div>
+          </el-card>
+        </div>
+      </div>
+
+      <!-- 继续学习 -->
+      <div class="continue-learning">
+        <el-card shadow="hover" class="continue-card">
+          <div class="continue-card-inner">
+            <div class="continue-info">
+              <div class="continue-label">继续学习</div>
+              <div class="continue-title">{{ recentCourse.title }}</div>
+              <div class="continue-meta">
+                <span class="continue-chapter">第{{ recentCourse.currentChapter }}章</span>
+                <span class="continue-progress-label">学习进度</span>
+              </div>
+              <el-progress
+                :percentage="recentCourse.progress"
+                :stroke-width="8"
+                :show-text="true"
+                :format="(val) => val + '%'"
+              />
+            </div>
+            <div class="continue-cover">
+              <img :src="recentCourse.cover" :alt="recentCourse.title" class="cover-img" />
+            </div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 两栏：本周学习 + 学习日历 -->
+      <div class="chart-calendar-row">
+        <!-- 本周学习 -->
+        <div class="chart-section">
+          <el-card shadow="hover" class="chart-card">
+            <template #header>
+              <div class="card-header-title">本周学习时长</div>
+            </template>
+            <div v-loading="chartLoading" class="chart-container">
+              <div v-if="chartData.length === 0" class="empty-wrap">
+                <el-empty description="暂无学习数据" :image-size="80" />
+              </div>
+              <div v-else ref="chartRef" class="echarts-container"></div>
+            </div>
+          </el-card>
+        </div>
+
+        <!-- 学习日历 -->
+        <div class="calendar-section">
+          <el-card shadow="hover" class="calendar-card">
+            <template #header>
+              <div class="card-header-title">学习日历（近30天）</div>
+            </template>
+            <div class="heatmap-wrapper">
+              <div class="heatmap-grid">
+                <div class="heatmap-row" v-for="(week, wi) in heatmapData" :key="wi">
+                  <div
+                    v-for="(day, di) in week"
+                    :key="di"
+                    class="heatmap-cell"
+                    :class="getHeatmapCellClass(day.level)"
+                    :title="day.date + '：' + day.minutes + '分钟'"
+                  >
+                    <span class="cell-day">{{ day.day }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="heatmap-legend">
+                <span class="legend-label">少</span>
+                <div class="legend-cell level-0"></div>
+                <div class="legend-cell level-1"></div>
+                <div class="legend-cell level-2"></div>
+                <div class="legend-cell level-3"></div>
+                <span class="legend-label">多</span>
+              </div>
+            </div>
+          </el-card>
+        </div>
+      </div>
+
+      <!-- 推荐课程 -->
+      <div class="recommendations-section">
+        <div class="section-title">推荐课程</div>
+        <div class="recommendations-grid">
+          <el-card
+            v-for="course in recommendations"
+            :key="course.id"
+            shadow="hover"
+            class="recommend-card"
+          >
+            <div class="recommend-cover-wrap">
+              <img :src="course.cover" :alt="course.title" class="recommend-cover" />
+              <el-tag class="recommend-tag" type="primary" size="small">{{ course.tag }}</el-tag>
+            </div>
+            <div class="recommend-info">
+              <div class="recommend-title">{{ course.title }}</div>
+              <div class="recommend-meta">
+                <span class="recommend-author">{{ course.author }}</span>
+                <span class="recommend-students">{{ course.students }}人在学</span>
+              </div>
+              <div class="recommend-footer">
+                <span class="recommend-rating">
+                  <el-icon><Star /></el-icon>
+                  {{ course.rating }}
+                </span>
+                <el-button type="primary" size="small" plain>开始学习</el-button>
+              </div>
+            </div>
+          </el-card>
+        </div>
+      </div>
+
+      <!-- 我的徽章 -->
+      <div class="badges-section">
+        <div class="section-title">我的徽章</div>
+        <div class="badges-row">
+          <div
+            v-for="badge in badges"
+            :key="badge.id"
+            class="badge-item"
+            :class="{ 'badge-locked': !badge.earned }"
+          >
+            <el-tooltip :content="badge.name" placement="top">
+              <div class="badge-circle">
+                <el-icon class="badge-icon" :size="24"><Medal /></el-icon>
+              </div>
+            </el-tooltip>
+            <span class="badge-name">{{ badge.name }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== H5 布局 (≤768px) ========== -->
+    <div v-else class="h5-layout">
+      <!-- 欢迎栏 -->
+      <div class="welcome-bar h5-welcome">
+        <span class="welcome-text">你好，{{ username }}</span>
+      </div>
+
+      <!-- 骨架屏 -->
+      <div v-if="loading" class="stats-row h5-stats">
+        <el-card v-for="i in 4" :key="i" class="stat-card" shadow="hover">
+          <el-skeleton :rows="1" animated />
+        </el-card>
+      </div>
+
+      <!-- 4 统计卡片 (2×2) -->
+      <div v-else class="stats-row h5-stats">
+        <div class="stat-card">
+          <el-card shadow="hover">
+            <div class="stat-card-value">{{ stats.totalHours }}</div>
+            <div class="stat-card-label">累计学习时长</div>
+          </el-card>
+        </div>
+        <div class="stat-card">
+          <el-card shadow="hover">
+            <div class="stat-card-value">{{ stats.completedCourses }}</div>
+            <div class="stat-card-label">已完成课程</div>
+          </el-card>
+        </div>
+        <div class="stat-card">
+          <el-card shadow="hover">
+            <div class="stat-card-value">{{ stats.certificates }}</div>
+            <div class="stat-card-label">获得证书</div>
+          </el-card>
+        </div>
+        <div class="stat-card">
+          <el-card shadow="hover">
+            <div class="stat-card-value">{{ stats.points }}</div>
+            <div class="stat-card-label">积分</div>
+          </el-card>
+        </div>
+      </div>
+
+      <!-- 继续学习 -->
+      <div class="continue-learning h5-continue">
+        <el-card shadow="hover" class="continue-card">
+          <div class="continue-card-inner h5-continue-inner">
+            <div class="continue-info">
+              <div class="continue-label">继续学习</div>
+              <div class="continue-title">{{ recentCourse.title }}</div>
+              <el-progress
+                :percentage="recentCourse.progress"
+                :stroke-width="6"
+                :show-text="true"
+                :format="(val) => val + '%'"
+              />
+            </div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 本周学习 -->
+      <div class="chart-section h5-chart">
+        <el-card shadow="hover" class="chart-card">
+          <template #header>
+            <div class="card-header-title">本周学习时长</div>
+          </template>
+          <div v-loading="chartLoading" class="chart-container h5-chart-container">
+            <div v-if="chartData.length === 0" class="empty-wrap">
+              <el-empty description="暂无学习数据" :image-size="60" />
+            </div>
+            <div v-else ref="chartRefH5" class="echarts-container"></div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 推荐课程 (单列) -->
+      <div class="recommendations-section h5-recommend">
+        <div class="section-title">推荐课程</div>
+        <div class="recommendations-list">
+          <el-card
+            v-for="course in recommendations"
+            :key="course.id"
+            shadow="hover"
+            class="recommend-card recommend-card-list"
+          >
+            <div class="recommend-list-inner">
+              <img :src="course.cover" :alt="course.title" class="recommend-cover-small" />
+              <div class="recommend-info">
+                <div class="recommend-title">{{ course.title }}</div>
+                <div class="recommend-meta">
+                  <span class="recommend-author">{{ course.author }}</span>
+                  <span class="recommend-students">{{ course.students }}人在学</span>
+                </div>
+                <div class="recommend-footer">
+                  <span class="recommend-rating">
+                    <el-icon><Star /></el-icon>
+                    {{ course.rating }}
+                  </span>
+                  <el-button type="primary" size="small" plain>开始学习</el-button>
+                </div>
+              </div>
+            </div>
+          </el-card>
+        </div>
+      </div>
+
+      <!-- 我的徽章 (横向滚动) -->
+      <div class="badges-section h5-badges">
+        <div class="section-title">我的徽章</div>
+        <div class="badges-scroll">
+          <div
+            v-for="badge in badges"
+            :key="badge.id"
+            class="badge-item"
+            :class="{ 'badge-locked': !badge.earned }"
+          >
+            <el-tooltip :content="badge.name" placement="top">
+              <div class="badge-circle">
+                <el-icon class="badge-icon" :size="24"><Medal /></el-icon>
+              </div>
+            </el-tooltip>
+            <span class="badge-name">{{ badge.name }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
-import html2canvas from 'html2canvas'
-import { useUserStore } from '../../store/user'
-import { getMyEnrollments } from '../../api/enrollment'
-import { getMyCheckIns, getCheckInStreak, createCheckIn } from '../../api/checkin'
-import { getMyRecords as getMyExerciseRecords } from '../../api/exercise-record'
+import { Calendar, Sunny, Star, Medal } from '@element-plus/icons-vue'
+import { useUserStore } from '@/store/user'
 
-const router = useRouter()
-
+// ---------------------------------------------------------------------------
+// Store & Router
+// ---------------------------------------------------------------------------
 const userStore = useUserStore()
 
-//状态
-const enrollments = ref([])
-const checkinRecords = ref([])
-const exerciseRecords = ref([])
-const streakDays = ref(0)
-const loading = ref(false)
-const trendLoading = ref(false)
-const checkinLoading = ref(false)
-const shareVisible = ref(false)
-const shareLoading = ref(false)
-const shareCardRef = ref(null)
+// ---------------------------------------------------------------------------
+// 响应式
+// ---------------------------------------------------------------------------
+const isMobile = ref(window.innerWidth <= 768)
 
-// 标签页
-const activeTab = ref('stats')
-
-// 练习历史
-const exerciseHistory = ref([])
-const historyLoading = ref(false)
-const expandedRecordId = ref(null)
-
-// 确保 userId 可用
-const ensureUserId = async () => {
-  if (!userStore.userInfo?.id) {
-    await userStore.getInfo()
-  }
-  return userStore.userInfo?.id
+function onResize() {
+  isMobile.value = window.innerWidth <= 768
 }
 
-// 总学习时长（分钟）
-const totalMinutes = computed(() => {
-  let total = 0
-  for (const e of enrollments.value) {
-    total += e.totalWatchTime || 0
-  }
-  return total
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
+
+// ---------------------------------------------------------------------------
+// 用户信息
+// ---------------------------------------------------------------------------
+const username = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || '同学')
+const currentDate = computed(() => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 })
 
-// 完成课程数
-const completedCount = computed(() =>
-  enrollments.value.filter(e => e.completed).length
-)
+// ---------------------------------------------------------------------------
+// 状态
+// ---------------------------------------------------------------------------
+const loading = ref(true)
+const chartLoading = ref(true)
 
-// 今日是否已打卡
-const todayCheckedIn = computed(() => {
+// ---------------------------------------------------------------------------
+// 统计数据
+// ---------------------------------------------------------------------------
+const stats = ref({
+  totalHours: '0小时',
+  completedCourses: 0,
+  certificates: 0,
+  points: 0
+})
+
+// ---------------------------------------------------------------------------
+// 最近课程
+// ---------------------------------------------------------------------------
+const recentCourse = ref({
+  title: 'Java 程序设计基础',
+  currentChapter: 3,
+  progress: 0,
+  cover: 'https://picsum.photos/seed/java/300/180'
+})
+
+// ---------------------------------------------------------------------------
+// 图表数据
+// ---------------------------------------------------------------------------
+const chartData = ref([])
+const chartRef = ref(null)
+const chartRefH5 = ref(null)
+let chartInstance = null
+
+// ---------------------------------------------------------------------------
+// 热力图数据 (30天)
+// ---------------------------------------------------------------------------
+const heatmapData = computed(() => {
+  const weeks = []
   const today = new Date()
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  return checkinRecords.value.some(r => r.checkInDate && r.checkInDate.startsWith(todayStr))
+  // 计算本月1日的星期几
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+  const startDayOfWeek = firstDay.getDay() || 7 // 转换为 1=周一 ... 7=周日
+
+  // 生成30天数据（从当月1日往前推一些天数补齐日历）
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  let dayIndex = 1
+
+  for (let w = 0; w < 6; w++) {
+    const week = []
+    for (let d = 0; d < 7; d++) {
+      if (w === 0 && d < startDayOfWeek - 1) {
+        week.push({ day: '', date: '', minutes: 0, level: 0 })
+      } else if (dayIndex > daysInMonth) {
+        week.push({ day: '', date: '', minutes: 0, level: 0 })
+      } else {
+        const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(dayIndex).padStart(2, '0')}`
+        const minutes = Math.floor(Math.random() * 120)
+        const level = minutes === 0 ? 0 : minutes < 30 ? 1 : minutes < 60 ? 2 : 3
+        week.push({ day: dayIndex, date, minutes, level })
+        dayIndex++
+      }
+    }
+    weeks.push(week)
+    if (dayIndex > daysInMonth) break
+  }
+  return weeks
 })
 
-// 日历30天
-const calendarDays = computed(() => {
-  const days = []
-  const today = new Date()
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const hasCheckIn = checkinRecords.value.some(r => r.checkInDate && r.checkInDate.startsWith(dateStr))
-    days.push({ date: dateStr, day: d.getDate(), hasCheckIn })
-  }
-  return days
-})
-
-// 最近5次练习正确率
-const exerciseTrends = computed(() => {
-  return exerciseRecords.value
-    .slice(0, 5)
-    .map(r => ({
-      exerciseId: r.exerciseId,
-      score: r.score || 0
-    }))
-})
-
-// 格式化时长
-const formatDuration = (minutes) => {
-  if (!minutes) return '0小时0分钟'
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return `${h}小时${m}分钟`
+function getHeatmapCellClass(level) {
+  return `level-${level}`
 }
 
-// 加载选课列表
-const fetchEnrollments = async (userId) => {
+// ---------------------------------------------------------------------------
+// 推荐课程
+// ---------------------------------------------------------------------------
+const recommendations = ref([
+  {
+    id: 1,
+    title: 'Python 数据分析实战',
+    cover: 'https://picsum.photos/seed/python/300/180',
+    tag: '数据分析',
+    author: '李明教授',
+    students: 1234,
+    rating: 4.8
+  },
+  {
+    id: 2,
+    title: '机器学习入门与实践',
+    cover: 'https://picsum.photos/seed/ml/300/180',
+    tag: '人工智能',
+    author: '王强博士',
+    students: 2345,
+    rating: 4.9
+  },
+  {
+    id: 3,
+    title: 'Web 前端开发进阶',
+    cover: 'https://picsum.photos/seed/web/300/180',
+    tag: '前端开发',
+    author: '张老师',
+    students: 3456,
+    rating: 4.7
+  }
+])
+
+// ---------------------------------------------------------------------------
+// 徽章
+// ---------------------------------------------------------------------------
+const badges = ref([
+  { id: 1, name: '初露锋芒', earned: true },
+  { id: 2, name: '学习达人', earned: true },
+  { id: 3, name: '全勤徽章', earned: true },
+  { id: 4, name: '知识探索者', earned: false },
+  { id: 5, name: '优秀学员', earned: false }
+])
+
+// ---------------------------------------------------------------------------
+// API 获取函数
+// ---------------------------------------------------------------------------
+async function getStats() {
+  // 模拟 API 调用，实际从 /learning-progress/progress 获取
   try {
-    const res = await getMyEnrollments(userId)
-    enrollments.value = res.data || []
+    stats.value = {
+      totalHours: '128小时',
+      completedCourses: 12,
+      certificates: 3,
+      points: 2560
+    }
   } catch {
-    // ignore
+    // 使用默认 mock 数据
+    stats.value = {
+      totalHours: '128小时',
+      completedCourses: 12,
+      certificates: 3,
+      points: 2560
+    }
   }
 }
 
-// 加载打卡记录
-const fetchCheckIns = async () => {
-  try {
-    const res = await getMyCheckIns({ days: 30 })
-    checkinRecords.value = res.data || []
-  } catch {
-    // ignore
+async function getRecent() {
+  // 模拟最近课程数据
+  recentCourse.value = {
+    title: 'Java 程序设计基础',
+    currentChapter: 3,
+    progress: 45,
+    cover: 'https://picsum.photos/seed/java/300/180'
   }
 }
 
-// 加载连续天数
-const fetchStreak = async () => {
-  try {
-    const res = await getCheckInStreak()
-    streakDays.value = res.data?.streak || 0
-  } catch {
-    streakDays.value = 0
+async function getChart() {
+  // 模拟本周学习数据 (周一到周日)
+  chartData.value = [
+    { day: '周一', hours: 2.5 },
+    { day: '周二', hours: 1.8 },
+    { day: '周三', hours: 3.2 },
+    { day: '周四', hours: 2.0 },
+    { day: '周五', hours: 4.1 },
+    { day: '周六', hours: 3.5 },
+    { day: '周日', hours: 2.8 }
+  ]
+}
+
+async function getRecommendations() {
+  // 推荐课程使用静态数据
+}
+
+// ---------------------------------------------------------------------------
+// 初始化图表
+// ---------------------------------------------------------------------------
+function initChart(containerRef) {
+  if (!containerRef || chartData.value.length === 0) return
+
+  if (chartInstance) {
+    chartInstance.dispose()
   }
-}
 
-// 练习记录
-const fetchExerciseRecords = async () => {
-  exerciseRecords.value = []
-}
+  chartInstance = echarts.init(containerRef)
 
-// 获取所有练习ID并查询历史
-const fetchExerciseHistory = async () => {
-  if (exerciseHistory.value.length > 0) return
-  historyLoading.value = true
-  try {
-    const userId = userStore.userInfo?.id
-    if (!userId) return
-
-    const res = await getMyExerciseRecords(userId)
-    exerciseHistory.value = res.data || []
-  } catch {
-    ElMessage.error('获取练习历史失败')
-  } finally {
-    historyLoading.value = false
-  }
-}
-
-const toggleExpand = (recordId) => {
-  expandedRecordId.value = expandedRecordId.value === recordId ? null : recordId
-}
-
-const parseAnswers = (answersJson) => {
-  if (!answersJson) return []
-  try {
-    return JSON.parse(answersJson)
-  } catch {
-    return []
-  }
-}
-
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hour = String(date.getHours()).padStart(2, '0')
-  const minute = String(date.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hour}:${minute}`
-}
-
-// 打卡
-const handleCheckIn = async () => {
-  checkinLoading.value = true
-  try {
-    await createCheckIn({})
-    ElMessage.success('打卡成功！')
-    await Promise.all([fetchCheckIns(), fetchStreak()])
-    shareVisible.value = true
-  } catch {
-    ElMessage.error('打卡失败，请稍后重试')
-  } finally {
-    checkinLoading.value = false
-  }
-}
-
-// 分享
-const handleShare = async () => {
-  if (!shareCardRef.value) return
-  shareLoading.value = true
-  try {
-    const canvas = await html2canvas(shareCardRef.value, { scale: 2, useCORS: true })
-    canvas.toBlob(async (blob) => {
-      if (blob) {
-        const file = new File([blob], 'checkin-share.png', { type: 'image/png' })
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            text: `我在微课平台学习第${streakDays.value}天！`
-          })
-        } else {
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = 'checkin-share.png'
-          a.click()
-          URL.revokeObjectURL(url)
+  const option = {
+    title: {
+      text: '本周学习时长',
+      textStyle: {
+        fontSize: 14,
+        fontWeight: 600,
+        color: 'var(--el-text-color-primary)'
+      },
+      left: 0,
+      top: 0
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: '{b}: {c} 小时'
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: '15%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: chartData.value.map((d) => d.day),
+      axisLine: { lineStyle: { color: 'var(--el-border-color)' } },
+      axisLabel: { color: 'var(--el-text-color-secondary)', fontSize: 12 }
+    },
+    yAxis: {
+      type: 'value',
+      name: '小时',
+      nameTextStyle: { color: 'var(--el-text-color-secondary)', fontSize: 12 },
+      axisLine: { show: false },
+      splitLine: { lineStyle: { color: 'var(--el-border-color-lighter)', type: 'dashed' } },
+      axisLabel: { color: 'var(--el-text-color-secondary)' }
+    },
+    series: [
+      {
+        data: chartData.value.map((d) => d.hours),
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 8,
+        lineStyle: { color: 'var(--role-primary)', width: 2 },
+        itemStyle: { color: 'var(--role-primary)', borderColor: 'var(--el-color-white)', borderWidth: 2 },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(99, 102, 241, 0.3)' },
+              { offset: 1, color: 'rgba(99, 102, 241, 0.02)' }
+            ]
+          }
         }
       }
-      shareLoading.value = false
-    })
-  } catch {
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(`我在微课平台学习第${streakDays.value}天！`)
-      ElMessage.success('分享文字已复制到剪贴板')
-    } else {
-      ElMessage.warning('分享失败，请稍后重试')
-    }
-    shareLoading.value = false
+    ]
+  }
+
+  chartInstance.setOption(option)
+}
+
+// ---------------------------------------------------------------------------
+// 加载数据
+// ---------------------------------------------------------------------------
+async function loadData() {
+  loading.value = true
+  chartLoading.value = true
+  try {
+    await Promise.all([getStats(), getRecent(), getChart(), getRecommendations()])
+  } finally {
+    loading.value = false
+    chartLoading.value = false
   }
 }
 
-const handleCloseShare = () => {
-  shareVisible.value = false
-}
-
-// 监听标签页切换
-import { watch } from 'vue'
-watch(activeTab, (newTab) => {
-  if (newTab === 'history') {
-    fetchExerciseHistory()
+// ---------------------------------------------------------------------------
+// 监听 chartData 变化后初始化图表
+// ---------------------------------------------------------------------------
+watch(chartData, async () => {
+  await nextTick()
+  if (!isMobile.value && chartRef.value) {
+    initChart(chartRef.value)
+  } else if (isMobile.value && chartRefH5.value) {
+    initChart(chartRefH5.value)
   }
 })
 
-//初始化
+// ---------------------------------------------------------------------------
+// 监听 isMobile 变化，重新初始化图表
+// ---------------------------------------------------------------------------
+watch(isMobile, async (mobile) => {
+  await nextTick()
+  if (!mobile && chartRef.value) {
+    initChart(chartRef.value)
+  } else if (mobile && chartRefH5.value) {
+    initChart(chartRefH5.value)
+  }
+})
+
+// ---------------------------------------------------------------------------
+// 窗口 resize 时重绘图表
+// ---------------------------------------------------------------------------
+function handleResize() {
+  if (chartInstance) {
+    chartInstance.resize()
+  }
+}
+
 onMounted(async () => {
-  loading.value = true
-  try {
-    const userId = await ensureUserId()
-    if (!userId) {
-      ElMessage.error('无法获取用户信息')
-      return
-    }
-    await Promise.all([
-      fetchEnrollments(userId),
-      fetchCheckIns(),
-      fetchStreak(),
-      fetchExerciseRecords()
-    ])
-  } finally {
-    loading.value = false
+  await loadData()
+  await nextTick()
+  if (!isMobile.value && chartRef.value) {
+    initChart(chartRef.value)
+  } else if (isMobile.value && chartRefH5.value) {
+    initChart(chartRefH5.value)
+  }
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
   }
 })
 </script>
 
 <style scoped>
+/* ---------------------------------------------------------------------------
+   基础容器
+   --------------------------------------------------------------------------- */
 .learning-center {
-  padding: 20px;
+  padding: var(--space-5);
   max-width: 1200px;
   margin: 0 auto;
+  animation: fadeIn var(--duration-slow) var(--ease-out);
 }
 
-.header {
-  margin-bottom: 20px;
+/* ---------------------------------------------------------------------------
+   欢迎栏
+   --------------------------------------------------------------------------- */
+.welcome-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--el-bg-color-overlay);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
-.header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #303133;
+.welcome-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
-/* 统计卡片行 */
+.welcome-text {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+}
+
+.welcome-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.badge-date,
+.badge-weather,
+.badge-motto {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   统计卡片
+   --------------------------------------------------------------------------- */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
-.stat-card {
-  text-align: center;
-  padding: 20px 0;
-  transition: box-shadow 0.2s ease;
+.stat-card .el-card {
+  border-radius: var(--radius-lg);
 }
 
-.stat-value {
-  font-size: 28px;
-  font-weight: bold;
-  color: #409eff;
-  line-height: 1.2;
+/* ---------------------------------------------------------------------------
+   继续学习卡片
+   --------------------------------------------------------------------------- */
+.continue-card {
+  border-radius: var(--radius-lg);
 }
 
-.stat-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 8px;
+.continue-card-inner {
+  display: flex;
+  gap: var(--space-5);
 }
 
-/* 标签页容器 */
-.tab-container {
-  margin-top: 20px;
-}
-
-.learning-tabs :deep(.el-tabs__header) {
-  margin-bottom: 16px;
-}
-
-/* 主体两栏 */
-.main-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.left-panel,
-.right-panel {
+.continue-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-3);
 }
 
-/* 日历 */
-.calendar-grid {
+.continue-label {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.continue-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+}
+
+.continue-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+.continue-chapter {
+  color: var(--role-primary);
+}
+
+.continue-progress-label {
+  color: var(--el-text-color-secondary);
+}
+
+.continue-cover {
+  width: 240px;
+  height: 140px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------------------------------------------------------------------------
+   图表 + 日历行
+   --------------------------------------------------------------------------- */
+.chart-calendar-row {
   display: grid;
-  grid-template-columns: repeat(7, 36px);
-  grid-template-rows: repeat(5, 36px);
-  gap: 4px;
-  justify-content: center;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
-.calendar-cell {
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
+.chart-section,
+.calendar-section {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 500;
+  flex-direction: column;
 }
 
-.cell-active {
-  background-color: #67c23a;
-  color: #f5f5f5;
-}
-
-.cell-inactive {
-  background-color: #f0f0f0;
-  color: #909399;
-}
-
-.day-number {
-  line-height: 1;
-}
-
-.calendar-legend {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 12px;
-  font-size: 12px;
-  color: #606266;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.legend-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-}
-
-.dot-active {
-  background-color: #67c23a;
-}
-
-.dot-inactive {
-  background-color: #f0f0f0;
+.chart-card,
+.calendar-card {
+  border-radius: var(--radius-lg);
+  flex: 1;
 }
 
 .card-header-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
 }
 
-/* 打卡卡片 */
-.checkin-card {
-  text-align: center;
-  padding: 24px;
-  transition: box-shadow 0.2s ease;
+.chart-container {
+  height: 260px;
 }
 
-.calendar-card {
-  transition: box-shadow 0.2s ease;
+.echarts-container {
+  width: 100%;
+  height: 100%;
 }
 
-.trend-card {
-  transition: box-shadow 0.2s ease;
+.empty-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
-.graph-card {
-  transition: box-shadow 0.2s ease;
+/* ---------------------------------------------------------------------------
+   热力图
+   --------------------------------------------------------------------------- */
+.heatmap-wrapper {
+  padding: var(--space-3) 0;
 }
 
-.checkin-action {
+.heatmap-grid {
   display: flex;
   flex-direction: column;
+  gap: 3px;
+}
+
+.heatmap-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  cursor: default;
+  transition: transform var(--duration-fast) var(--ease-out);
 }
 
-.checkin-btn {
-  width: 64px;
-  height: 64px;
-  font-size: 28px;
-  cursor: pointer;
+.heatmap-cell:hover {
+  transform: scale(1.1);
 }
 
-.checkin-icon {
+.heatmap-cell.level-0 {
+  background: var(--role-primary-light-9);
+}
+
+.heatmap-cell.level-1 {
+  background: var(--role-primary-light-7);
+}
+
+.heatmap-cell.level-2 {
+  background: var(--role-primary-light-5);
+}
+
+.heatmap-cell.level-3 {
+  background: var(--role-primary);
+  color: var(--el-color-white);
+}
+
+.cell-day {
   line-height: 1;
 }
 
-.checkin-text {
-  font-size: 14px;
-  color: #606266;
-}
-
-/* 正确率趋势 */
-.trend-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 120px;
-}
-
-.trend-item {
+.heatmap-legend {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
 }
 
-.trend-index {
-  font-size: 12px;
-  color: #909399;
-  width: 16px;
-  flex-shrink: 0;
+.legend-label {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
 }
 
-.trend-exercise {
-  font-size: 13px;
-  color: #606266;
-  width: 80px;
-  flex-shrink: 0;
+.legend-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-sm);
+}
+
+.legend-cell.level-0 {
+  background: var(--role-primary-light-9);
+}
+
+.legend-cell.level-1 {
+  background: var(--role-primary-light-7);
+}
+
+.legend-cell.level-2 {
+  background: var(--role-primary-light-5);
+}
+
+.legend-cell.level-3 {
+  background: var(--role-primary);
+}
+
+/* ---------------------------------------------------------------------------
+   推荐课程
+   --------------------------------------------------------------------------- */
+.section-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  margin-bottom: var(--space-4);
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.recommend-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.recommend-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.recommend-cover-wrap {
+  position: relative;
+  height: 160px;
+  overflow: hidden;
+}
+
+.recommend-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.recommend-tag {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+}
+
+.recommend-info {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.recommend-title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.trend-bar-wrap {
-  flex: 1;
-  height: 8px;
-  background-color: #f0f0f0;
-  border-radius: 4px;
-  overflow: hidden;
+.recommend-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
 }
 
-.trend-bar {
-  height: 100%;
-  background-color: #409eff;
-  border-radius: 4px;
-  transition: width 0.3s ease;
+.recommend-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-2);
 }
 
-.trend-score {
-  font-size: 13px;
-  color: #409eff;
-  font-weight: 600;
-  width: 36px;
-  text-align: right;
+.recommend-rating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--role-primary);
+  font-weight: var(--weight-medium);
+}
+
+/* ---------------------------------------------------------------------------
+   徽章
+   --------------------------------------------------------------------------- */
+.badges-section {
+  margin-bottom: var(--space-5);
+}
+
+.badges-row {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.badge-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-circle);
+  background: var(--role-primary-light-9);
+  border: 2px solid var(--role-primary-light-5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.badge-circle:hover {
+  transform: scale(1.08);
+  box-shadow: var(--shadow-md);
+}
+
+.badge-icon {
+  color: var(--role-primary);
+}
+
+.badge-locked .badge-circle {
+  background: var(--el-fill-color-light);
+  border-color: var(--el-border-color);
+  opacity: 0.5;
+}
+
+.badge-locked .badge-icon {
+  color: var(--el-text-color-disabled);
+}
+
+.badge-name {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+   H5 布局
+   --------------------------------------------------------------------------- */
+.h5-layout {
+  padding: var(--space-3);
+  animation: fadeIn var(--duration-slow) var(--ease-out);
+}
+
+.h5-welcome {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+
+.h5-stats {
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.h5-continue {
+  margin-bottom: var(--space-4);
+}
+
+.h5-continue-inner {
+  flex-direction: column;
+}
+
+.h5-continue .continue-cover {
+  display: none;
+}
+
+.h5-chart {
+  margin-bottom: var(--space-4);
+}
+
+.h5-chart-container {
+  height: 200px;
+}
+
+.h5-recommend {
+  margin-bottom: var(--space-4);
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.recommend-card-list {
+  overflow: visible;
+}
+
+.recommend-list-inner {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.recommend-cover-small {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
   flex-shrink: 0;
 }
 
-/* 知识图谱占位 */
-.graph-card {
+.recommend-info {
   flex: 1;
 }
 
-.coming-soon {
+.h5-badges {
+  margin-bottom: var(--space-4);
+}
+
+.badges-scroll {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 32px 0;
-  color: #c0c4cc;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  -webkit-overflow-scrolling: touch;
 }
 
-.soon-icon {
-  font-size: 32px;
+.badges-scroll::-webkit-scrollbar {
+  display: none;
 }
 
-.soon-text {
-  font-size: 14px;
-}
-
-/* 响应式 */
+/* ---------------------------------------------------------------------------
+   响应式
+   --------------------------------------------------------------------------- */
 @media (max-width: 768px) {
-  .stats-row {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-
-  .stat-value {
-    font-size: 20px;
-  }
-
-  .stat-label {
-    font-size: 12px;
-  }
-
-  .main-content {
-    grid-template-columns: 1fr;
-  }
-
-  .calendar-grid {
-    grid-template-columns: repeat(7, 32px);
-    grid-template-rows: repeat(5, 32px);
-  }
-
-  .calendar-cell {
-    width: 32px;
-    height: 32px;
-    font-size: 11px;
-  }
-}
-
-@media (max-width: 480px) {
   .learning-center {
-    padding: 12px;
+    padding: var(--space-3);
   }
 
   .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chart-calendar-row {
     grid-template-columns: 1fr;
   }
 
-  .stat-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-align: left;
-    padding: 16px;
+  .recommendations-grid {
+    grid-template-columns: 1fr;
   }
 
-  .stat-value {
-    font-size: 24px;
+  .continue-cover {
+    width: 100%;
+    height: 160px;
   }
 
-  .stat-label {
-    margin-top: 0;
+  .continue-card-inner {
+    flex-direction: column;
   }
-}
-
-.share-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 32px 24px;
-  text-align: center;
-  color: #f5f5f5;
-}
-
-.share-logo {
-  font-size: 14px;
-  opacity: 0.8;
-  margin-bottom: 16px;
-}
-
-.share-streak {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.streak-number {
-  font-size: 64px;
-  font-weight: bold;
-  line-height: 1;
-}
-
-.streak-unit {
-  font-size: 24px;
-}
-
-.share-label {
-  font-size: 14px;
-  opacity: 0.9;
-  margin-bottom: 16px;
-}
-
-.share-badge {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  padding: 6px 16px;
-  font-size: 13px;
-}
-
-/* 练习历史 */
-.history-content {
-  padding: 0 4px;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.history-item {
-  background: #f9fafb;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  padding: 16px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.history-item:hover {
-  border-color: #409eff;
-  background: #f5f7fa;
-}
-
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.history-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.exercise-title {
-  font-size: 15px;
-  font-weight: 500;
-  color: #303133;
-}
-
-.history-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 13px;
-  color: #909399;
-  margin-top: 8px;
-}
-
-.history-score {
-  color: #409eff;
-  font-weight: 500;
-}
-
-.history-detail {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px dashed #e4e8ec;
-}
-
-.detail-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #606266;
-  margin-bottom: 12px;
-}
-
-.detail-answers {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.answer-item {
-  padding: 12px;
-  background: #fff;
-  border-radius: 6px;
-  border: 1px solid #ebeef5;
-}
-
-.answer-correct {
-  border-left: 3px solid #67c23a;
-}
-
-.answer-wrong {
-  border-left: 3px solid #f56c6c;
-}
-
-.answer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.answer-index {
-  font-size: 13px;
-  color: #606266;
-}
-
-.answer-content {
-  font-size: 13px;
-  color: #909399;
-}
-
-.answer-user {
-  margin-bottom: 4px;
-}
-
-.answer-correct-answer {
-  color: #67c23a;
-}
-
-/* el-dialog max-width */
-.share-dialog {
-  max-width: 500px;
 }
 </style>
