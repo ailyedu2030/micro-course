@@ -393,7 +393,7 @@ async function fetchSettings() {
       try {
         const parsed = JSON.parse(storedCas)
         Object.assign(casForm, parsed)
-      } catch {}
+      } catch (e) { console.warn('配置解析失败:', e); }
     }
   } catch {
     // 不报错，用默认值

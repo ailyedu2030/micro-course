@@ -1,10 +1,11 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.*;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.TeacherService;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,58 +22,41 @@ public class TeacherController {
 
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<TeacherStatsVO> getStats(@AuthenticationPrincipal UserDetails userDetails) {
-        Long teacherId = getCurrentUserId(userDetails);
-        return R.ok(teacherService.getStats(teacherId));
+    public R<TeacherStatsVO> getStats() {
+        return R.ok(teacherService.getStats(getCurrentUserId()));
     }
 
     @GetMapping("/student-activity")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<List<StudentActivityVO>> getStudentActivity(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam(defaultValue = "7") int days) {
-        Long teacherId = getCurrentUserId(userDetails);
-        return R.ok(teacherService.getStudentActivity(teacherId, days));
+    public R<List<StudentActivityVO>> getStudentActivity(@RequestParam(defaultValue = "7") int days) {
+        return R.ok(teacherService.getStudentActivity(getCurrentUserId(), days));
     }
 
     @GetMapping("/pending-tasks")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<List<PendingTaskVO>> getPendingTasks(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam(defaultValue = "5") int size) {
-        Long teacherId = getCurrentUserId(userDetails);
-        return R.ok(teacherService.getPendingTasks(teacherId, size));
+    public R<List<PendingTaskVO>> getPendingTasks(@RequestParam(defaultValue = "5") int size) {
+        return R.ok(teacherService.getPendingTasks(getCurrentUserId(), size));
     }
 
     @GetMapping("/notifications")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<List<TeacherNotificationVO>> getNotifications(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam(defaultValue = "5") int size) {
-        Long teacherId = getCurrentUserId(userDetails);
-        return R.ok(teacherService.getNotifications(teacherId, size));
+    public R<List<TeacherNotificationVO>> getNotifications(@RequestParam(defaultValue = "5") int size) {
+        return R.ok(teacherService.getNotifications(getCurrentUserId(), size));
     }
 
     @GetMapping("/courses")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<PageResult<TeacherCourseVO>> getMyCourses(
-            @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "8") int size) {
-        Long teacherId = getCurrentUserId(userDetails);
-        return R.ok(teacherService.getMyCourses(teacherId, page, size));
+        return R.ok(teacherService.getMyCourses(getCurrentUserId(), page, size));
     }
 
-    private Long getCurrentUserId(UserDetails userDetails) {
-        // 从 UserDetails 获取用户 ID（通过自定义 UserDetails 实现）
-        if (userDetails instanceof com.microcourse.entity.User) {
-            return ((com.microcourse.entity.User) userDetails).getId();
+    private Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof Long) {
+            return (Long) principal;
         }
-        // 降级处理：从 username 解析（假设 username 是数字 ID）
-        try {
-            return Long.parseLong(userDetails.getUsername());
-        } catch (NumberFormatException e) {
-            return 1L; // 降级默认值
-        }
+        throw new BusinessException(ErrorCode.TOKEN_INVALID, "无法识别当前用户");
     }
 }

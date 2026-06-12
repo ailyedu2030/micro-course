@@ -1,11 +1,12 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.*;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.GradeService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -36,21 +37,14 @@ public class GradeController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<GradeVO> create(
-            @Valid @RequestBody GradeCreateRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        Long teacherId = getCurrentUserId(userDetails);
-        return R.ok(gradeService.create(request, teacherId));
+    public R<GradeVO> create(@Valid @RequestBody GradeCreateRequest request) {
+        return R.ok(gradeService.create(request, getCurrentUserId()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<GradeVO> update(
-            @PathVariable Long id,
-            @Valid @RequestBody GradeUpdateRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        Long teacherId = getCurrentUserId(userDetails);
-        return R.ok(gradeService.update(id, request, teacherId));
+    public R<GradeVO> update(@PathVariable Long id, @Valid @RequestBody GradeUpdateRequest request) {
+        return R.ok(gradeService.update(id, request, getCurrentUserId()));
     }
 
     @DeleteMapping("/{id}")
@@ -60,14 +54,11 @@ public class GradeController {
         return R.ok();
     }
 
-    private Long getCurrentUserId(UserDetails userDetails) {
-        if (userDetails instanceof com.microcourse.entity.User) {
-            return ((com.microcourse.entity.User) userDetails).getId();
+    private Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof Long) {
+            return (Long) principal;
         }
-        try {
-            return Long.parseLong(userDetails.getUsername());
-        } catch (NumberFormatException e) {
-            return 1L;
-        }
+        throw new BusinessException(ErrorCode.TOKEN_INVALID, "无法识别当前用户");
     }
 }

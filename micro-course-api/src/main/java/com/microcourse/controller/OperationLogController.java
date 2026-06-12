@@ -7,8 +7,8 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.OperationLogVO;
 import com.microcourse.entity.OperationLog;
-import com.microcourse.entity.User;
-import com.microcourse.repository.UserRepository;
+import com.microcourse.dto.UserVO;
+import com.microcourse.service.UserService;
 import com.microcourse.service.OperationLogService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,14 +30,14 @@ import java.util.stream.Collectors;
 public class OperationLogController {
 
     private final OperationLogService operationLogService;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ObjectMapper objectMapper;
 
     public OperationLogController(OperationLogService operationLogService,
-                                  UserRepository userRepository,
+                                  UserService userService,
                                   ObjectMapper objectMapper) {
         this.operationLogService = operationLogService;
-        this.userRepository = userRepository;
+        this.userService = userService;
         this.objectMapper = objectMapper;
     }
 
@@ -89,9 +89,13 @@ public class OperationLogController {
         }
         // 获取用户名
         if (log.getUserId() != null) {
-            User user = userRepository.selectById(log.getUserId());
-            if (user != null) {
-                vo.setUsername(user.getUsername());
+            try {
+                UserVO user = userService.getUserById(log.getUserId());
+                if (user != null) {
+                    vo.setUsername(user.getUsername());
+                }
+            } catch (Exception e) {
+                // user may be deleted
             }
         }
         return vo;
