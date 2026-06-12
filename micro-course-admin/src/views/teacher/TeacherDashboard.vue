@@ -288,6 +288,20 @@ const coursesLoading = ref(true)
 const coursesError = ref(false)
 const courses = ref([])
 
+// 定时刷新
+const refreshInterval = ref(60000)
+let refreshTimer = null
+
+async function refreshAll() {
+  await Promise.all([
+    loadStats(),
+    loadActivity(),
+    loadTasks(),
+    loadNotifications(),
+    loadCourses()
+  ])
+}
+
 // 加载统计数据
 async function loadStats() {
   statsLoading.value = true
@@ -442,12 +456,19 @@ onMounted(async () => {
     loadCourses()
   ])
   window.addEventListener('resize', resizeCharts)
+  refreshTimer = setInterval(() => {
+    refreshAll()
+  }, refreshInterval.value)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCharts)
   studyChart?.dispose()
   activeChart?.dispose()
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>
 

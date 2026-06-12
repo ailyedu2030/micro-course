@@ -152,12 +152,12 @@
       <div class="batch-import-tip">
         <el-alert type="info" :closable="false" show-icon>
           <template #title>
-            请下载模板并按格式填写后上传。支持 .xlsx 格式文件。
+            请按模板格式填写后上传。支持 .xlsx 格式文件。
           </template>
         </el-alert>
       </div>
       <div class="download-template">
-        <el-button type="primary" link @click="handleDownloadTemplate">下载用户导入模板</el-button>
+        <span class="template-tip">模板文件请联系系统管理员获取</span>
       </div>
       <el-upload
         ref="uploadRef"
@@ -448,16 +448,6 @@ const handleFileRemove = () => {
   uploadFile.value = null
 }
 
-const handleDownloadTemplate = () => {
-  // 下载模板 - 假设后端提供模板下载接口，或使用本地模板文件
-  const templateUrl = '/templates/user_import_template.xlsx'
-  const link = document.createElement('a')
-  link.href = templateUrl
-  link.download = 'user_import_template.xlsx'
-  link.click()
-  ElMessage.info('模板下载中...')
-}
-
 const handleBatchImport = async () => {
   if (!uploadFile.value) {
     ElMessage.warning('请先选择要导入的文件')
@@ -480,18 +470,29 @@ const handleBatchImport = async () => {
   }
 }
 
-// 教师审核 - 打开弹窗时加载待审核教师 (mock)
-const loadPendingTeachers = () => {
+// 教师审核 - 打开弹窗时加载待审核教师
+const loadPendingTeachers = async () => {
   teacherLoading.value = true
-  // Mock 数据 - 实际应调用后端 API 获取待审核教师列表
-  // 后端暂无 teacher_status 字段，此处使用前端 mock
-  setTimeout(() => {
-    pendingTeachers.value = [
-      { id: 101, username: 'zhangsan', realName: '张三', teacherNo: 'T2024001', departmentName: '计算机学院', createdAt: '2024-06-10 10:30:00' },
-      { id: 102, username: 'lisi', realName: '李四', teacherNo: 'T2024002', departmentName: '数学学院', createdAt: '2024-06-11 14:20:00' }
-    ]
+  try {
+    const { data } = await getUsers({
+      role: 'TEACHER',
+      status: 2, // 待审核教师使用 status=2（禁用状态）
+      size: 100
+    })
+    const items = data.items || []
+    pendingTeachers.value = items
+      .filter(t => t.status === 2)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 20)
+    if (pendingTeachers.value.length === 0) {
+      ElMessage.info('暂无待审核教师')
+    }
+  } catch {
+    pendingTeachers.value = []
+    ElMessage.error('获取待审核教师列表失败')
+  } finally {
     teacherLoading.value = false
-  }, 500)
+  }
 }
 
 // 监听教师审核弹窗打开
@@ -590,6 +591,11 @@ onMounted(() => {
 
 .download-template {
   margin: var(--space-3) 0;
+}
+
+.template-tip {
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
 }
 
 .batch-upload {

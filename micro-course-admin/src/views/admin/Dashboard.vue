@@ -317,6 +317,21 @@ const logs = ref([])
 const healthLoading = ref(true)
 const health = ref({ db: '-', redis: '-', disk: '-', memory: '-' })
 
+// 定时刷新
+const refreshInterval = ref(60000)
+let refreshTimer = null
+
+async function refreshAll() {
+  await Promise.all([
+    loadStats(),
+    loadTrends(),
+    loadCategoryStats(),
+    loadActivity(),
+    loadLogs()
+  ])
+  loadHealth()
+}
+
 async function loadHealth() {
   healthLoading.value = true
   try {
@@ -538,6 +553,9 @@ onMounted(async () => {
   ])
   window.addEventListener('resize', resizeCharts)
   loadHealth()
+  refreshTimer = setInterval(() => {
+    refreshAll()
+  }, refreshInterval.value)
 })
 
 onBeforeUnmount(() => {
@@ -545,6 +563,10 @@ onBeforeUnmount(() => {
   trendsChart?.dispose()
   categoryChart?.dispose()
   activityChart?.dispose()
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>
 

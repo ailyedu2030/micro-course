@@ -243,6 +243,20 @@ const hotCourseLoading = ref(true)
 const hotCourseError = ref(false)
 const hotCourses = ref([])
 
+// 定时刷新
+const refreshInterval = ref(60000)
+let refreshTimer = null
+
+async function refreshAll() {
+  await Promise.all([
+    loadStats(),
+    loadDepartmentStats(),
+    loadTrend(),
+    loadWarnings(),
+    loadHotCourses()
+  ])
+}
+
 // Load overview stats
 async function loadStats() {
   statsLoading.value = true
@@ -438,12 +452,19 @@ onMounted(async () => {
     loadHotCourses()
   ])
   window.addEventListener('resize', debouncedResizeCharts)
+  refreshTimer = setInterval(() => {
+    refreshAll()
+  }, refreshInterval.value)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', debouncedResizeCharts)
   deptChartInstance?.dispose()
   trendChartInstance?.dispose()
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>
 

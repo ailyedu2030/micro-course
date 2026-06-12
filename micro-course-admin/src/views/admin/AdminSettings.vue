@@ -68,7 +68,7 @@
               <el-input v-model="systemForm.logoUrl" placeholder="请输入 Logo 地址" />
             </el-form-item>
             <el-form-item label="系统版本">
-              <el-input v-model="systemForm.version" disabled />
+              <el-input :model-value="APP_VERSION" disabled />
             </el-form-item>
             <el-form-item label="文件上传大小限制">
               <el-input-number
@@ -283,7 +283,7 @@
           </template>
           <el-descriptions :column="1" border class="about-descriptions">
             <el-descriptions-item label="系统名称">微课管理平台</el-descriptions-item>
-            <el-descriptions-item label="当前版本">v1.0.0</el-descriptions-item>
+            <el-descriptions-item label="当前版本">{{ APP_VERSION }}</el-descriptions-item>
             <el-descriptions-item label="技术栈">
               Spring Boot 3.2 + Vue 3.4 + Element Plus 2.5
             </el-descriptions-item>
@@ -310,6 +310,8 @@
  * Vue 3.4 Composition API + script setup
  */
 import { ref, reactive, onMounted } from 'vue'
+// 版本号从环境变量动态读取
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0'
 import { ElMessage } from 'element-plus'
 import {
   InfoFilled, Setting, Message, Lock, Check, Key
@@ -327,7 +329,7 @@ const activeMenu = ref('system')
 const systemForm = reactive({
   platformName: '微课管理平台',
   logoUrl: '',
-  version: 'v1.0.0',
+  version: APP_VERSION,
   maxUploadSize: 100,
   sessionTimeout: 120,
   allowRegistration: true,
@@ -412,9 +414,10 @@ async function handleSave(menu) {
   saving.value = true
   try {
     if (menu === 'cas') {
-      // CAS 配置保存到 localStorage (mock)
+      // TODO: 后端暂无 /admin/settings/cas 接口，先保留 localStorage mock
+      // 提示用户此为演示功能
       localStorage.setItem('cas_settings', JSON.stringify(casForm))
-      ElMessage.success('CAS 配置保存成功')
+      ElMessage.warning('CAS 配置已本地保存（演示功能，正式环境请配置后端 API）')
       saving.value = false
       return
     }
@@ -452,10 +455,10 @@ async function handleTestCas() {
     ElMessage.warning('请先填写 CAS 服务器 URL')
     return
   }
-  ElMessage.info('正在测试 CAS 连接...')
-  // Mock 测试 - 实际应调用后端 API
+  ElMessage.warning('CAS 连接测试需要后端支持，当前为演示模式')
+  // 模拟测试结果
   setTimeout(() => {
-    ElMessage.success('CAS 连接测试成功')
+    ElMessage.success('模拟测试成功（实际需后端支持）')
   }, 1500)
 }
 
