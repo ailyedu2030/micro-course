@@ -539,7 +539,7 @@ onMounted(async () => {
 
 .cell-active {
   background-color: #67c23a;
-  color: #fff;
+  color: #f5f5f5;
 }
 
 .cell-inactive {
@@ -754,7 +754,7 @@ onMounted(async () => {
   border-radius: 12px;
   padding: 32px 24px;
   text-align: center;
-  color: #fff;
+  color: #f5f5f5;
 }
 
 .share-logo {

@@ -61,3 +61,33 @@ public class CourseReviewController {
         return null;
     }
 }
+
+/**
+ * 个人评价控制器（独立路径，不受 /api/courses/{courseId}/reviews 限制）
+ */
+@RestController
+@RequestMapping("/api/reviews")
+class MyReviewController {
+
+    private final CourseReviewService courseReviewService;
+
+    public MyReviewController(CourseReviewService courseReviewService) {
+        this.courseReviewService = courseReviewService;
+    }
+
+    /**
+     * 获取当前用户的所有评价
+     * GET /api/reviews/my
+     */
+    @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
+    public R<PageResult<CourseReviewVO>> getMyReviews(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Long userId = SecurityContextHolder.getContext().getAuthentication().getPrincipal() instanceof Long
+                ? (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal()
+                : 0L;
+        PageResult<CourseReviewVO> result = courseReviewService.getMyReviews(userId, page, size);
+        return R.ok(result);
+    }
+}

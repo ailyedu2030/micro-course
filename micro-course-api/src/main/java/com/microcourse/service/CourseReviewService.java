@@ -30,4 +30,9 @@ public interface CourseReviewService {
      * @return 分页结果
      */
     PageResult<CourseReviewVO> listByCourse(Long courseId, int page, int size);
+
+    /**
+     * 分页查询当前用户的所有评价
+     */
+    PageResult<CourseReviewVO> getMyReviews(Long userId, int page, int size);
 }

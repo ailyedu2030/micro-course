@@ -41,11 +41,11 @@
           </template>
           <el-scrollbar height="400px">
             <el-radio-group v-model="selectedCategoryId" class="category-group" @change="handleCategoryChange">
-              <el-radio label="" class="category-radio">全部课程</el-radio>
+              <el-radio value="" class="category-radio">全部课程</el-radio>
               <el-radio
                 v-for="cat in categoryTree"
                 :key="cat.id"
-                :label="String(cat.id)"
+                :value="cat.id"
                 class="category-radio"
               >
                 {{ cat.name }}
@@ -302,7 +302,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: #f5f5f5;
 }
 
 .recommend-tag {

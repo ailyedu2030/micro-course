@@ -3,7 +3,7 @@
     <!-- 顶部统计卡片 -->
     <el-row :gutter="16" class="stats-row">
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" shadow="never">
+        <el-card class="stat-card shadow-hover" shadow="never">
           <div class="stat-icon student-icon">
             <el-icon><User /></el-icon>
           </div>
@@ -14,7 +14,7 @@
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" shadow="never">
+        <el-card class="stat-card shadow-hover" shadow="never">
           <div class="stat-icon completion-icon">
             <el-icon><CircleCheck /></el-icon>
           </div>
@@ -25,7 +25,7 @@
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" shadow="never">
+        <el-card class="stat-card shadow-hover" shadow="never">
           <div class="stat-icon score-icon">
             <el-icon><Medal /></el-icon>
           </div>
@@ -36,7 +36,7 @@
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" shadow="never">
+        <el-card class="stat-card shadow-hover" shadow="never">
           <div class="stat-icon duration-icon">
             <el-icon><VideoPlay /></el-icon>
           </div>

@@ -7,28 +7,28 @@
   <div class="dashboard-container">
     <!-- 统计卡片区 -->
     <div class="stat-cards">
-      <el-card class="stat-card" shadow="never">
+      <el-card class="stat-card shadow-hover" shadow="never">
         <div class="stat-icon user-icon"><el-icon :size="28"><User /></el-icon></div>
         <div class="stat-content">
           <div class="stat-label">用户总数</div>
           <div class="stat-value">{{ overview.userTotal ?? 0 }}</div>
         </div>
       </el-card>
-      <el-card class="stat-card" shadow="never">
+      <el-card class="stat-card shadow-hover" shadow="never">
         <div class="stat-icon active-icon"><el-icon :size="28"><UserFilled /></el-icon></div>
         <div class="stat-content">
           <div class="stat-label">活跃用户(7d)</div>
           <div class="stat-value">{{ overview.activeUsers7d ?? 0 }}</div>
         </div>
       </el-card>
-      <el-card class="stat-card" shadow="never">
+      <el-card class="stat-card shadow-hover" shadow="never">
         <div class="stat-icon course-icon"><el-icon :size="28"><Reading /></el-icon></div>
         <div class="stat-content">
           <div class="stat-label">课程总数</div>
           <div class="stat-value">{{ overview.courseTotal ?? 0 }}</div>
         </div>
       </el-card>
-      <el-card class="stat-card" shadow="never">
+      <el-card class="stat-card shadow-hover" shadow="never">
         <div class="stat-icon enroll-icon"><el-icon :size="28"><Tickets /></el-icon></div>
         <div class="stat-content">
           <div class="stat-label">报名总数</div>

@@ -1,0 +1,214 @@
+/* ==========================================================================
+   微课管理平台 · 设计 Token（覆盖 Element Plus 默认主题）
+   依据: docs/DESIGN.md v1.0 / ui-ux-pro-max
+   ========================================================================== */
+
+/* 色彩 Token */
+:root {
+  --el-color-primary: #409eff;
+  --el-color-primary-dark-2: #337ecc;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+
+  --el-color-success: #67c23a;
+  --el-color-warning: #e6a23c;
+  --el-color-danger: #f56c6c;
+  --el-color-info: #909399;
+
+  /* 文字色 */
+  --el-text-color-primary: #303133;
+  --el-text-color-regular: #606266;
+  --el-text-color-secondary: #909399;
+  --el-text-color-placeholder: #c0c4cc;
+
+  /* 背景色 */
+  --el-bg-color: #f0f2f5;
+  --el-bg-color-overlay: #ffffff;
+
+  /* 边框色 */
+  --el-border-color: #e4e7ed;
+  --el-border-color-light: #ebeef5;
+  --el-border-color-lighter: #f2f6fc;
+
+  /* 圆角 */
+  --el-border-radius-base: 4px;
+  --el-border-radius-small: 2px;
+  --el-border-radius-round: 20px;
+  --el-border-radius-circle: 50%;
+
+  /* 阴影 */
+  --el-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --el-box-shadow-light: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --el-box-shadow-lighter: 0 1px 1px rgba(0, 0, 0, 0.03);
+  --el-box-shadow-dark: 0 4px 16px rgba(0, 0, 0, 0.1);
+
+  /* 过渡 */
+  --el-transition-duration: 0.2s;
+  --el-transition-function-ease-in-out-bezier: cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+/* 卡片阴影（覆盖 el-card 默认） */
+.el-card {
+  --el-card-border-color: var(--el-border-color-light);
+  box-shadow: var(--el-box-shadow) !important;
+  transition: box-shadow var(--el-transition-duration) ease, transform var(--el-transition-duration) ease;
+}
+
+.el-card.shadow-hover:hover {
+  box-shadow: var(--el-box-shadow-dark) !important;
+}
+
+/* 统计卡片 */
+.stat-card .el-card {
+  border-radius: 8px;
+}
+
+.stat-card .el-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--el-box-shadow-dark) !important;
+}
+
+/* 表格 */
+.el-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.el-table th.el-table__cell {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+/* 按钮 hover 效果 */
+.el-button {
+  transition: all var(--el-transition-duration) ease;
+}
+
+.el-button:active {
+  transform: scale(0.97);
+}
+
+/* 弹窗 */
+.el-dialog {
+  border-radius: 8px;
+}
+
+.el-dialog__header {
+  padding: 20px 20px 0;
+}
+
+.el-dialog__body {
+  padding: 16px 20px;
+}
+
+.el-dialog__footer {
+  padding: 0 20px 20px;
+}
+
+/* 表单标签粗体 */
+.el-form-item__label {
+  font-weight: 500;
+}
+
+/* 分页居中 */
+.el-pagination {
+  margin-top: 16px;
+  justify-content: center;
+}
+
+/* 空状态图标色 */
+.el-empty__image {
+  opacity: 0.6;
+}
+
+/* 标签圆角 */
+.el-tag {
+  border-radius: 4px;
+}
+
+/* 进度条圆角 */
+.el-progress-bar__outer {
+  border-radius: 4px;
+}
+
+.el-progress-bar__inner {
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* 步骤条 */
+.el-steps {
+  --el-step-title-font-size: 14px;
+}
+
+/* 步骤条连接符 */
+.el-step.is-horizontal .el-step__line {
+  top: 13px;
+}
+
+/* 卡片头部 */
+.el-card__header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* 正文区域 */
+.page-container {
+  padding: 20px;
+  background: var(--el-bg-color);
+  min-height: 100vh;
+}
+
+/* 搜索卡片 */
+.search-card {
+  margin-bottom: 16px;
+}
+
+.search-card .el-card__body {
+  padding: 16px 20px;
+}
+
+/* 表格卡片 */
+.table-card {
+  margin-bottom: 16px;
+}
+
+.table-card .el-card__body {
+  padding: 0;
+}
+
+/* 移动端表格水平滚动 */
+@media (max-width: 768px) {
+  .el-table {
+    overflow-x: auto;
+    display: block;
+  }
+
+  .el-dialog {
+    width: 90% !important;
+  }
+
+  .page-container {
+    padding: 12px;
+  }
+
+  .el-card__body {
+    padding: 12px;
+  }
+}
+
+/* prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

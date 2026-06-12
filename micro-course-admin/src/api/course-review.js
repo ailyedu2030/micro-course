@@ -23,3 +23,12 @@ export function createReview(courseId, data) {
 export function getReviews(courseId, params) {
   return request({ method: 'GET', url: `/courses/${courseId}/reviews`, params })
 }
+
+/**
+ * 获取当前用户的所有评价
+ * @param {object} params - 分页参数 { page, size }
+ * @returns {Promise} my reviews list
+ */
+export function getMyReviews(params) {
+  return request({ method: 'GET', url: '/reviews/my', params })
+}

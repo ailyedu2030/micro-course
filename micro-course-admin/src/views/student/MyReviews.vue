@@ -63,7 +63,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getReviews } from '@/api/course-review'
+import { getReviews, getMyReviews } from '@/api/course-review'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
@@ -92,9 +92,8 @@ const fetchMyReviews = async () => {
 
   loading.value = true
   try {
-    const { data } = await getReviews(null, {
-      ...pagination.value,
-      userId
+    const { data } = await getMyReviews({
+      ...pagination.value
     })
     reviews.value = data?.items || data || []
     pagination.total = data?.totalElements || 0

@@ -533,7 +533,7 @@ onBeforeUnmount(() => {
 }
 
 .video-title {
-  color: #fff;
+  color: #f5f5f5;
   font-size: 14px;
   font-weight: 500;
   overflow: hidden;
@@ -555,7 +555,7 @@ onBeforeUnmount(() => {
 }
 
 .speed-control :deep(.el-input__inner) {
-  color: #fff;
+  color: #f5f5f5;
 }
 
 .bottom-controls {
@@ -576,7 +576,7 @@ onBeforeUnmount(() => {
 }
 
 .time-display {
-  color: #fff;
+  color: #f5f5f5;
   font-size: 12px;
   min-width: 45px;
   font-family: 'Helvetica Neue', monospace;
@@ -591,7 +591,7 @@ onBeforeUnmount(() => {
 .control-buttons :deep(.el-button) {
   background-color: rgba(255, 255, 255, 0.2);
   border: none;
-  color: #fff;
+  color: #f5f5f5;
 }
 
 .control-buttons :deep(.el-button:hover) {
@@ -604,7 +604,7 @@ onBeforeUnmount(() => {
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(0, 0, 0, 0.8);
-  color: #fff;
+  color: #f5f5f5;
   padding: 10px 20px;
   border-radius: 20px;
   font-size: 14px;
