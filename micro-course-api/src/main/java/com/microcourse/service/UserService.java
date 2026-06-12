@@ -35,4 +35,9 @@ public interface UserService {
      * @return 导入结果
      */
     BatchImportResultVO batchImportUsers(MultipartFile file);
+
+    /**
+     * 上传用户头像，返回头像URL
+     */
+    String uploadAvatar(Long userId, MultipartFile file);
 }

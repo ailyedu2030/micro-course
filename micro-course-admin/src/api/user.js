@@ -13,3 +13,20 @@ export function updateUserStatus(id, data) { return request({ method: 'PUT', url
 export function batchImportUsers(formData) {
   return request({ method: 'POST', url: '/users/batch', data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
 }
+
+/**
+ * 上传用户头像
+ * POST /users/{userId}/avatar
+ * @param {number} userId
+ * @param {File} file
+ */
+export function uploadAvatar(userId, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    method: 'POST',
+    url: `/users/${userId}/avatar`,
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}

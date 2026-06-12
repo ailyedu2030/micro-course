@@ -403,6 +403,40 @@ public class UserServiceImpl implements UserService {
         return result;
     }
 
+    @Override
+    @Transactional
+    public String uploadAvatar(Long userId, MultipartFile file) {
+        User user = userRepository.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        try {
+            // 保存到 uploads/avatars/ 目录
+            String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
+            java.io.File dir = new java.io.File(uploadDir);
+            if (!dir.exists()) dir.mkdirs();
+
+            // 文件名: userId_timestamp.ext
+            String originalName = file.getOriginalFilename();
+            String ext = "";
+            if (originalName != null && originalName.contains(".")) {
+                ext = originalName.substring(originalName.lastIndexOf("."));
+            }
+            String filename = userId + "_" + System.currentTimeMillis() + ext;
+            java.io.File dest = new java.io.File(uploadDir + filename);
+            file.transferTo(dest);
+
+            // 更新数据库
+            String avatarUrl = "/avatars/" + filename;
+            user.setAvatar(avatarUrl);
+            userRepository.updateById(user);
+
+            return avatarUrl;
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像上传失败");
+        }
+    }
+
     private UserVO convertToVO(User user) {
         UserVO vo = new UserVO();
         vo.setId(user.getId());

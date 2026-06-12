@@ -73,6 +73,11 @@ springdoc:
       max-file-size: 2GB
       max-request-size: 2GB
 
+  # 静态资源映射 - 头像文件访问
+  web:
+    resources:
+      static-locations: classpath:/static/,file:./uploads/
+
 logging:
   level:
     com.microcourse: debug

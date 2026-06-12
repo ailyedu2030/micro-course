@@ -64,8 +64,15 @@
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column label="头像" width="80" align="center">
           <template #default="{ row }">
-            <el-avatar v-if="row.avatar" :src="row.avatar" :size="40" />
-            <el-avatar v-else :size="40">{{ row.realName?.charAt(0) || 'U' }}</el-avatar>
+            <el-upload
+              :show-file-list="false"
+              :before-upload="(file) => handleAvatarUpload(file, row)"
+              accept="image/*"
+              class="avatar-uploader"
+            >
+              <el-avatar v-if="row.avatar" :src="row.avatar" :size="40" class="clickable-avatar" />
+              <el-avatar v-else :size="40" class="clickable-avatar">{{ row.realName?.charAt(0) || 'U' }}</el-avatar>
+            </el-upload>
           </template>
         </el-table-column>
         <el-table-column prop="username" label="账号" min-width="120" />
@@ -222,7 +229,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { getUsers, updateUser, updateUserStatus, batchImportUsers } from '@/api/user'
+import { getUsers, updateUser, updateUserStatus, batchImportUsers, uploadAvatar } from '@/api/user'
 import { getDepartments } from '@/api/department'
 import { getMajors } from '@/api/major'
 import { getClasses } from '@/api/class'
@@ -530,6 +537,21 @@ const handleRejectTeacher = async (row) => {
   }
 }
 
+// 头像上传
+async function handleAvatarUpload(file, row) {
+  const isJPG = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/gif' || file.type === 'image/webp'
+  const isLt2M = file.size / 1024 / 1024 < 2
+  if (!isJPG) { ElMessage.error('头像仅支持 JPG/PNG/GIF/WebP 格式'); return false }
+  if (!isLt2M) { ElMessage.error('头像大小不能超过 2MB'); return false }
+  try {
+    const res = await uploadAvatar(row.id, file)
+    const avatarUrl = res.data || res
+    row.avatar = avatarUrl + '?t=' + Date.now()
+    fetchData()
+  } catch { ElMessage.error('上传失败') }
+  return false
+}
+
 onMounted(() => {
   fetchDepartments()
   fetchData()
@@ -703,4 +725,8 @@ onMounted(() => {
   padding: 16px 20px;
   border-top: 1px solid #F1F5F9;
 }
+
+.avatar-uploader { display: inline-block; cursor: pointer; }
+.clickable-avatar { cursor: pointer; transition: opacity 0.2s; }
+.clickable-avatar:hover { opacity: 0.8; }
 </style>

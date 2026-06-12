@@ -121,4 +121,26 @@ public class UserController {
         BatchImportResultVO result = userService.batchImportUsers(file);
         return R.ok(result);
     }
+
+    /**
+     * POST /api/users/{id}/avatar
+     * 上传用户头像
+     */
+    @PostMapping("/{id}/avatar")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+    public R<String> uploadAvatar(@PathVariable Long id,
+                                   @RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
+        }
+        if (file.getSize() > 2 * 1024 * 1024) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像大小不能超过 2MB");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "只支持图片格式");
+        }
+        String avatarUrl = userService.uploadAvatar(id, file);
+        return R.ok(avatarUrl);
+    }
 }
