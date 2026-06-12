@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { getUnreadCount, getNotifications, markAsRead, markAllAsRead } from '../api/notification'
+import { isAuthenticated } from '../utils/auth'
 
 export const useNotificationStore = defineStore('notification', {
   state: () => ({
@@ -45,6 +46,7 @@ export const useNotificationStore = defineStore('notification', {
       }
     },
     startPolling(intervalMs = 30000) {
+      if (!isAuthenticated()) return
       this.fetchUnreadCount()
       this.pollingTimer = setInterval(() => {
         this.fetchUnreadCount()

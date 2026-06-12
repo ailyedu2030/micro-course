@@ -20,14 +20,21 @@ request.interceptors.response.use(response => {
     ElMessage.error(res.message || '请求失败')
     return Promise.reject(new Error(res.message))
   }
-  return res   // 返回 { code, message, data, timestamp }
+  return res
 }, error => {
-  if (error.response?.status === 401) {
+  const status = error.response?.status
+  if (status === 401) {
     removeToken()
-    const currentPath = router.currentRoute.value.fullPath
-    router.push({ path: '/login', query: { redirect: currentPath } })
+    if (router.currentRoute.value.path !== '/login') {
+      const currentPath = router.currentRoute.value.fullPath
+      router.push({ path: '/login', query: { redirect: currentPath } })
+      ElMessage.warning('登录已过期，请重新登录')
+    }
+  } else if (status === 403) {
+    ElMessage.error('无权访问该资源')
+  } else {
+    ElMessage.error(error.response?.data?.message || '网络错误')
   }
-  ElMessage.error(error.response?.data?.message || '网络错误')
   return Promise.reject(error)
 })
 

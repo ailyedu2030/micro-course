@@ -16,6 +16,7 @@
 import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from './store/user'
+import { isAuthenticated } from './utils/auth'
 import Layout from './components/Layout.vue'
 import StudentLayout from './components/StudentLayout.vue'
 
@@ -30,13 +31,12 @@ const appClass = computed(() => ({
   'role-staff': !isStudent.value
 }))
 
-// 响应式主题切换：role 变化时 Element Plus 变量自动跟随 .role-* 变化
-watch(() => userStore.role, (role) => {
-  // design-tokens.css 已通过 .role-* 类切换变量，此处仅作安全兜案
+watch(() => userStore.role, () => {
+  // design-tokens.css 已通过 .role-* 类切换变量
 }, { immediate: true })
 
 onMounted(() => {
-  if (!userStore.userInfo) {
+  if (isAuthenticated() && !userStore.userInfo) {
     userStore.getInfo()
   }
 })
