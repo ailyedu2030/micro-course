@@ -127,6 +127,14 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     @Override
     @Transactional
     public LearningProgressVO create(ProgressCreateRequest request) {
+        // Validate chapterId exists if provided (FK constraint)
+        if (request.getChapterId() != null) {
+            CourseChapter chapter = courseChapterRepository.selectById(request.getChapterId());
+            if (chapter == null) {
+                throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
+            }
+        }
+
         LearningProgress progress = new LearningProgress();
         progress.setUserId(request.getUserId());
         progress.setCourseId(request.getCourseId());

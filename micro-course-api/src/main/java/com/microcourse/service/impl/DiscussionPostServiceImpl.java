@@ -10,6 +10,7 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.PostCreateRequest;
 import com.microcourse.dto.PostUpdateRequest;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.DiscussionComment;
 import com.microcourse.entity.User;
@@ -20,6 +21,7 @@ import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.service.DiscussionPostService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,15 +40,18 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     private final DiscussionCommentRepository commentRepository;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
+    private final CourseChapterRepository courseChapterRepository;
 
     public DiscussionPostServiceImpl(DiscussionPostRepository postRepository,
                                      DiscussionCommentRepository commentRepository,
                                      UserRepository userRepository,
-                                     CourseRepository courseRepository) {
+                                     CourseRepository courseRepository,
+                                     CourseChapterRepository courseChapterRepository) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
+        this.courseChapterRepository = courseChapterRepository;
     }
 
        @Override
@@ -234,6 +239,12 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Override
     @Transactional
     public DiscussionPostVO create(PostCreateRequest req, Long userId) {
+        // Validate chapterId exists (FK constraint)
+        CourseChapter chapter = courseChapterRepository.selectById(req.getChapterId());
+        if (chapter == null) {
+            throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
+        }
+
         DiscussionPost post = new DiscussionPost();
         post.setCourseId(req.getCourseId());
         post.setChapterId(req.getChapterId());
