@@ -4,9 +4,9 @@
   Author: jackie
 -->
 <template>
-  <div class="page-container">
+  <div class="teaching-class-list">
     <!-- 搜索区 -->
-    <div class="filter-card">
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="课程名">
           <el-input v-model="searchForm.courseName" placeholder="请输入课程名称" clearable class="search-input" />
@@ -29,15 +29,17 @@
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
-    </div>
+    </el-card>
 
     <!-- 表格区 -->
-    <div class="table-card">
-      <div class="card-header">
-        <span class="card-title">教学班列表</span>
-        <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增教学班</el-button>
-      </div>
-      <el-table v-loading="loading" :data="tableData" stripe class="data-table">
+    <el-card class="table-card">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">教学班列表</span>
+          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增教学班</el-button>
+        </div>
+      </template>
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="教学班名称" min-width="150" show-overflow-tooltip />
@@ -80,7 +82,7 @@
           @current-change="handlePageChange"
         />
       </div>
-    </div>
+    </el-card>
 
     <!-- 弹窗区 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="720px" @close="handleDialogClose" destroy-on-close>
@@ -379,31 +381,38 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-container {
-  padding: 24px 28px;
-  background: #F8F9FB;
-  min-height: 100vh;
+.teaching-class-list {
+  padding: var(--space-4);
 }
 
 .filter-card {
-  background: white;
-  border-radius: 14px;
-  padding: 16px 20px;
-  margin-bottom: 16px;
-  box-shadow: none;
-  border: 1px solid #EDEFF2;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-white, #ffffff);
+  transition: box-shadow 200ms ease;
+}
+
+.filter-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .table-card {
-  background: white;
-  border-radius: 14px;
-  box-shadow: none;
-  border: 1px solid #EDEFF2;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 200ms ease;
+}
+
+.table-card:hover {
+  box-shadow: var(--shadow-lg);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: 16px 20px;
-  border-bottom: 1px solid #F0F1F3;
+  padding: var(--space-3) var(--space-4);
+}
+
+.table-card :deep(.el-table) {
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .card-header {
@@ -413,9 +422,9 @@ onMounted(() => {
 }
 
 .card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-text-primary, #303133);
 }
 
 .search-input {
@@ -427,39 +436,13 @@ onMounted(() => {
 }
 
 .pagination-wrap {
-  padding: 16px 20px;
-  border-top: 1px solid #F0F1F3;
+  margin-top: var(--space-4);
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .data-table {
   width: 100%;
-}
-
-:deep(.el-table) {
-  border: none !important;
-}
-:deep(.el-table th.el-table__cell) {
-  background: #F8F9FB;
-  color: #8A94A6;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #EDEFF2;
-}
-:deep(.el-table td.el-table__cell) {
-  padding: 14px 16px;
-  color: #2C3E50;
-  border-bottom: 1px solid #F0F1F3;
-}
-:deep(.el-table__row:hover > td) {
-  background: #F6F8FA !important;
-}
-:deep(.el-table .el-table__row--striped td) {
-  background: transparent !important;
 }
 
 .full-width {
@@ -506,13 +489,5 @@ onMounted(() => {
 
 .text-danger {
   color: var(--el-color-danger);
-}
-
-:deep(.el-button) {
-  border-radius: 8px;
-}
-
-:deep(.el-dialog) {
-  border-radius: 12px;
 }
 </style>

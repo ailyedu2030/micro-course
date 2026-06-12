@@ -5,9 +5,9 @@
   Author: jackie
 -->
 <template>
-  <div class="page-container">
+  <div class="review-list-page">
     <!-- 顶栏筛选卡 -->
-    <div class="filter-card">
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="课程">
           <el-input v-model="searchForm.courseName" placeholder="课程名称" clearable class="filter-input-w160" />
@@ -33,14 +33,16 @@
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
-    </div>
+    </el-card>
 
     <!-- 表格卡 -->
-    <div class="table-card">
-      <div class="card-header">
-        <span class="card-title">评价列表</span>
-      </div>
-      <el-table v-loading="loading" :data="tableData" stripe class="data-table">
+    <el-card class="table-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">评价列表</span>
+        </div>
+      </template>
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <template #empty>
           <el-empty description="暂无评价数据" />
         </template>
@@ -83,7 +85,7 @@
           @current-change="handlePageChange"
         />
       </div>
-    </div>
+    </el-card>
   </div>
 </template>
 
@@ -191,31 +193,30 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-container {
-  padding: 24px 28px;
-  background: #F8F9FB;
+.review-list-page {
+  padding: 24px;
+  background: #F5F6FA;
   min-height: 100%;
 }
 
 .filter-card {
+  margin-bottom: 24px;
   background: white;
-  border-radius: 14px;
-  padding: 16px 20px;
-  margin-bottom: 16px;
-  box-shadow: none;
-  border: 1px solid #EDEFF2;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: none;
 }
 
 .table-card {
   background: white;
-  border-radius: 14px;
-  box-shadow: none;
-  border: 1px solid #EDEFF2;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: none;
 }
 
 .table-card :deep(.el-card__header) {
   padding: 16px 20px;
-  border-bottom: 1px solid #F0F1F3;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .card-header {
@@ -231,39 +232,34 @@ onMounted(() => {
 }
 
 .pagination-wrap {
-  padding: 16px 20px;
-  border-top: 1px solid #F0F1F3;
+  margin-top: 24px;
   display: flex;
   justify-content: flex-end;
 }
 
 .data-table {
   width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-:deep(.el-table) {
-  border: none !important;
-}
-:deep(.el-table th.el-table__cell) {
-  background: #F8F9FB;
-  color: #8A94A6;
-  font-size: 12px;
+
+.data-table :deep(.el-table__header) th {
+  background: #F8FAFC;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #EDEFF2;
+  color: #1E293B;
 }
-:deep(.el-table td.el-table__cell) {
-  padding: 14px 16px;
-  color: #2C3E50;
-  border-bottom: 1px solid #F0F1F3;
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 0.2s ease;
 }
-:deep(.el-table__row:hover > td) {
-  background: #F6F8FA !important;
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: #F1F5F9;
 }
-:deep(.el-table .el-table__row--striped td) {
-  background: transparent !important;
+
+.data-table :deep(.el-table__row--striped > td) {
+  background: transparent;
 }
 
 .rating-stars {
@@ -288,7 +284,7 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .page-container {
+  .review-list-page {
     padding: 16px;
   }
 

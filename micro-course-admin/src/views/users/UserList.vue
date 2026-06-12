@@ -5,9 +5,9 @@
   Author: jackie
 -->
 <template>
-  <div class="page-container">
+  <div class="user-list">
     <!-- 搜索区 -->
-    <div class="filter-card">
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
           <el-input v-model="searchForm.keyword" placeholder="账号/姓名" clearable class="filter-input" />
@@ -46,19 +46,21 @@
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
-    </div>
+    </el-card>
 
     <!-- 表格区 -->
-    <div class="table-card">
-      <div class="card-header">
-        <span class="card-title">用户列表</span>
-        <div class="header-actions">
-          <el-button type="warning" @click="teacherApprovalVisible = true">教师审核</el-button>
-          <el-button type="success" v-if="userRole !== 'ACADEMIC'" @click="batchImportVisible = true">批量导入</el-button>
-          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增用户</el-button>
+    <el-card class="table-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">用户列表</span>
+          <div class="header-actions">
+            <el-button type="warning" @click="teacherApprovalVisible = true">教师审核</el-button>
+            <el-button type="success" v-if="userRole !== 'ACADEMIC'" @click="batchImportVisible = true">批量导入</el-button>
+            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增用户</el-button>
+          </div>
         </div>
-      </div>
-      <el-table v-loading="loading" :data="tableData" stripe class="data-table">
+      </template>
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column label="头像" width="80" align="center">
           <template #default="{ row }">
@@ -126,7 +128,7 @@
           @current-change="handlePageChange"
         />
       </div>
-    </div>
+    </el-card>
 
     <!-- 编辑弹窗 -->
     <el-dialog v-model="dialogVisible" title="编辑用户" width="600px" @close="handleDialogClose">
@@ -557,30 +559,23 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-container {
-  padding: 24px 28px;
-  background: #F8F9FB;
+.user-list {
+  padding: 24px;
+  background: #F5F6FA;
   min-height: 100vh;
 }
 
 .filter-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
   background: white;
-  border-radius: 14px;
-  padding: 16px 20px;
-  margin-bottom: 16px;
-  box-shadow: none;
-  border: 1px solid #EDEFF2;
-}
-
-.filter-card :deep(.el-form-item) {
-  margin-bottom: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .table-card {
+  border-radius: 12px;
   background: white;
-  border-radius: 14px;
-  box-shadow: none;
-  border: 1px solid #EDEFF2;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .card-header {
@@ -588,7 +583,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #F0F1F3;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .card-title {
@@ -599,46 +594,47 @@ onMounted(() => {
 
 .filter-input {
   width: 160px;
+  border-radius: 8px;
 }
 
 .filter-select {
   width: 140px;
+  border-radius: 8px;
 }
 
 .data-table {
   width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-:deep(.el-table) {
-  border: none !important;
-}
-:deep(.el-table th.el-table__cell) {
-  background: #F8F9FB;
-  color: #8A94A6;
-  font-size: 12px;
+.data-table :deep(.el-table__header th) {
+  background: #F8FAFC !important;
+  color: #1E293B;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #EDEFF2;
+  font-size: 14px;
 }
-:deep(.el-table td.el-table__cell) {
-  padding: 14px 16px;
-  color: #2C3E50;
-  border-bottom: 1px solid #F0F1F3;
+
+.data-table :deep(.el-table__row:hover > td) {
+  background: #F1F5F9 !important;
 }
-:deep(.el-table__row:hover > td) {
-  background: #F6F8FA !important;
+
+.data-table :deep(.el-table__row) {
+  transition: background 150ms ease;
 }
-:deep(.el-table .el-table__row--striped td) {
-  background: transparent !important;
+
+.data-table :deep(.el-table__body tr) {
+  background: white;
+}
+
+.data-table :deep(.el-table__body tr:hover > td) {
+  background: #F1F5F9 !important;
 }
 
 .pagination-wrap {
-  padding: 16px 20px;
-  border-top: 1px solid #F0F1F3;
+  margin-top: 24px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .full-width {

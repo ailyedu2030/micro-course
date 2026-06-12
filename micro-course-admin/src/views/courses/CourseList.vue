@@ -5,9 +5,9 @@
   Author: jackie
 -->
 <template>
-  <div class="page-container">
+  <div class="course-list-page">
     <!-- 顶栏筛选卡 -->
-    <div class="filter-card">
+    <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
           <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable class="filter-input-w160" />
@@ -36,15 +36,17 @@
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
-    </div>
+    </el-card>
 
     <!-- 表格卡 -->
-    <div class="table-card">
-      <div class="card-header">
-        <span class="card-title">课程列表</span>
-        <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增课程</el-button>
-      </div>
-      <el-table v-loading="loading" :data="tableData" stripe class="data-table" @row-click="handleRowClick">
+    <el-card class="table-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">课程列表</span>
+          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增课程</el-button>
+        </div>
+      </template>
+      <el-table v-loading="loading" :data="tableData" stripe border class="data-table" @row-click="handleRowClick">
         <template #empty>
           <el-empty description="暂无课程数据" />
         </template>
@@ -106,7 +108,7 @@
           @current-change="handlePageChange"
         />
       </div>
-    </div>
+    </el-card>
 
     <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose">
@@ -382,31 +384,30 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-container {
-  padding: 24px 28px;
-  background: #F8F9FB;
+.course-list-page {
+  padding: 24px;
+  background: #F5F6FA;
   min-height: 100%;
 }
 
 .filter-card {
+  margin-bottom: 24px;
   background: white;
-  border-radius: 14px;
-  padding: 16px 20px;
-  margin-bottom: 16px;
-  box-shadow: none;
-  border: 1px solid #EDEFF2;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: none;
 }
 
 .table-card {
   background: white;
-  border-radius: 14px;
-  box-shadow: none;
-  border: 1px solid #EDEFF2;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: none;
 }
 
 .table-card :deep(.el-card__header) {
   padding: 16px 20px;
-  border-bottom: 1px solid #F0F1F3;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .card-header {
@@ -422,39 +423,35 @@ onMounted(() => {
 }
 
 .pagination-wrap {
-  padding: 16px 20px;
-  border-top: 1px solid #F0F1F3;
+  margin-top: 24px;
   display: flex;
   justify-content: flex-end;
 }
 
 .data-table {
   width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-:deep(.el-table) {
-  border: none !important;
-}
-:deep(.el-table th.el-table__cell) {
-  background: #F8F9FB;
-  color: #8A94A6;
-  font-size: 12px;
+
+.data-table :deep(.el-table__header) th {
+  background: #F8FAFC;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #EDEFF2;
+  color: #1E293B;
 }
-:deep(.el-table td.el-table__cell) {
-  padding: 14px 16px;
-  color: #2C3E50;
-  border-bottom: 1px solid #F0F1F3;
+
+.data-table :deep(.el-table__row) {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
-:deep(.el-table__row:hover > td) {
-  background: #F6F8FA !important;
+
+.data-table :deep(.el-table__row:hover > td) {
+  background-color: #F1F5F9;
 }
-:deep(.el-table .el-table__row--striped td) {
-  background: transparent !important;
+
+.data-table :deep(.el-table__row--striped > td) {
+  background: transparent;
 }
 
 .table-thumb {
@@ -464,9 +461,11 @@ onMounted(() => {
   object-fit: cover;
 }
 
+
 .no-thumb {
   color: #c0c4cc;
 }
+
 
 .filter-input-w160 {
   width: 160px;
@@ -480,6 +479,7 @@ onMounted(() => {
   width: 100%;
 }
 
+
 /* Button border-radius */
 :deep(.el-button) {
   border-radius: 8px;
@@ -491,7 +491,7 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .page-container {
+  .course-list-page {
     padding: 16px;
   }
 
