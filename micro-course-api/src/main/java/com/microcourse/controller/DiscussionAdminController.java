@@ -39,4 +39,48 @@ public class DiscussionAdminController {
         PageResult<DiscussionPostVO> result = postService.pageAdmin(query);
         return R.ok(result);
     }
+
+    /**
+     * GET /api/discussions/{id}
+     * 讨论详情（管理端）
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<DiscussionPostVO> getById(@PathVariable Long id) {
+        DiscussionPostVO vo = postService.getById(id);
+        return R.ok(vo);
+    }
+
+    /**
+     * PUT /api/discussions/{id}/approve
+     * 审核通过
+     */
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> approve(@PathVariable Long id) {
+        postService.updateStatus(id, "APPROVED");
+        return R.ok();
+    }
+
+    /**
+     * PUT /api/discussions/{id}/reject
+     * 审核驳回
+     */
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> reject(@PathVariable Long id) {
+        postService.updateStatus(id, "REJECTED");
+        return R.ok();
+    }
+
+    /**
+     * DELETE /api/discussions/{id}
+     * 删除讨论（管理端）
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> delete(@PathVariable Long id) {
+        postService.delete(id, null);
+        return R.ok();
+    }
 }

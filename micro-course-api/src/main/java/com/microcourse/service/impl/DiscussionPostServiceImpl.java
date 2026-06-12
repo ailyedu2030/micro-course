@@ -337,6 +337,26 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         postRepository.updateById(post);
     }
 
+    @Override
+    @Transactional
+    public void updateStatus(Long id, String status) {
+        DiscussionPost post = postRepository.selectById(id);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        Integer statusVal = switch (status) {
+            case "APPROVED" -> 1;   // PUBLISHED
+            case "REJECTED" -> 2;   // DELETED
+            case "PENDING"  -> 0;
+            case "PUBLISHED" -> 1;
+            case "DELETED"  -> 2;
+            default -> throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        };
+        post.setStatus(statusVal);
+        post.setUpdatedAt(LocalDateTime.now());
+        postRepository.updateById(post);
+    }
+
     private DiscussionPostVO convertToVO(DiscussionPost post) {
         DiscussionPostVO vo = new DiscussionPostVO();
         vo.setId(post.getId());

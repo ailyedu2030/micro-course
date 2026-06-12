@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -51,9 +52,12 @@ public class VideoController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<VideoVO>> page(
-            @RequestParam Long courseId,
+            @RequestParam(required = false) Long courseId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        if (courseId == null) {
+            return R.ok(PageResult.of(List.of(), 0L, page, size));
+        }
         PageResult<VideoVO> result = videoService.page(courseId, page, size);
         return R.ok(result);
     }

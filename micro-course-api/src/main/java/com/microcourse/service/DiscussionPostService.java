@@ -25,4 +25,9 @@ public interface DiscussionPostService {
     void updatePin(Long id, boolean pinned);
 
     void updateEssence(Long id, boolean essence);
+
+    /**
+     * 更新讨论状态（审核通过/驳回）
+     */
+    void updateStatus(Long id, String status);
 }
