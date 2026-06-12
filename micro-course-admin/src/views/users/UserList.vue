@@ -53,7 +53,11 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">用户列表</span>
-          <el-button type="primary" @click="handleCreate">新增用户</el-button>
+          <div class="header-actions">
+            <el-button type="warning" @click="teacherApprovalVisible = true">教师审核</el-button>
+            <el-button type="success" @click="batchImportVisible = true">批量导入</el-button>
+            <el-button type="primary" @click="handleCreate">新增用户</el-button>
+          </div>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
@@ -142,6 +146,69 @@
         <el-button type="primary" :loading="dialogLoading" @click="handleDialogSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量导入弹窗 -->
+    <el-dialog v-model="batchImportVisible" title="批量导入用户" width="500px">
+      <div class="batch-import-tip">
+        <el-alert type="info" :closable="false" show-icon>
+          <template #title>
+            请下载模板并按格式填写后上传。支持 .xlsx 格式文件。
+          </template>
+        </el-alert>
+      </div>
+      <div class="download-template">
+        <el-button type="primary" link @click="handleDownloadTemplate">下载用户导入模板</el-button>
+      </div>
+      <el-upload
+        ref="uploadRef"
+        class="batch-upload"
+        drag
+        accept=".xlsx,.xls"
+        :auto-upload="false"
+        :limit="1"
+        :on-change="handleFileChange"
+        :on-remove="handleFileRemove"
+      >
+        <el-icon class="upload-icon"><UploadFilled /></el-icon>
+        <div class="upload-text">将文件拖到此处，或<em>点击上传</em></div>
+        <template #tip>
+          <div class="upload-tip">只能上传 xlsx/xls 文件，且不超过 10MB</div>
+        </template>
+      </el-upload>
+      <template #footer>
+        <el-button @click="batchImportVisible = false">取消</el-button>
+        <el-button type="primary" :loading="importLoading" :disabled="!uploadFile" @click="handleBatchImport">开始导入</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 教师审核弹窗 -->
+    <el-dialog v-model="teacherApprovalVisible" title="教师入驻审核" width="700px" destroy-on-close>
+      <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--space-4)">
+        <template #title>
+          待审核教师列表。审核通过后，教师将获得创建课程的权限。
+        </template>
+      </el-alert>
+      <el-table v-loading="teacherLoading" :data="pendingTeachers" stripe border class="data-table">
+        <el-table-column type="index" label="序号" width="60" align="center" />
+        <el-table-column prop="username" label="账号" min-width="120" />
+        <el-table-column prop="realName" label="姓名" min-width="100" />
+        <el-table-column prop="teacherNo" label="教师编号" min-width="120" />
+        <el-table-column prop="departmentName" label="院系" min-width="120" />
+        <el-table-column prop="createdAt" label="申请时间" min-width="160" />
+        <el-table-column label="操作" width="160" align="center">
+          <template #default="{ row }">
+            <el-button type="success" size="small" @click="handleApproveTeacher(row)">通过</el-button>
+            <el-button type="danger" size="small" @click="handleRejectTeacher(row)">驳回</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div v-if="pendingTeachers.length === 0 && !teacherLoading" class="empty-tip">
+        <el-empty description="暂无待审核教师" :image-size="80" />
+      </div>
+      <template #footer>
+        <el-button @click="teacherApprovalVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -153,7 +220,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getUsers, updateUserStatus } from '@/api/user'
+import { UploadFilled } from '@element-plus/icons-vue'
+import { getUsers, updateUserStatus, batchImportUsers } from '@/api/user'
 import { getDepartments } from '@/api/department'
 import { getMajors } from '@/api/major'
 import { getClasses } from '@/api/class'
@@ -172,6 +240,17 @@ const classes = ref([])
 const dialogVisible = ref(false)
 const dialogLoading = ref(false)
 const formRef = ref(null)
+
+// 批量导入
+const batchImportVisible = ref(false)
+const uploadRef = ref(null)
+const uploadFile = ref(null)
+const importLoading = ref(false)
+
+// 教师审核
+const teacherApprovalVisible = ref(false)
+const teacherLoading = ref(false)
+const pendingTeachers = ref([])
 
 const searchForm = reactive({
   keyword: '',
@@ -356,6 +435,93 @@ const handleDelete = async (row) => {
   }
 }
 
+// 批量导入
+const handleFileChange = (file) => {
+  uploadFile.value = file.raw
+}
+
+const handleFileRemove = () => {
+  uploadFile.value = null
+}
+
+const handleDownloadTemplate = () => {
+  // 下载模板 - 假设后端提供模板下载接口，或使用本地模板文件
+  const templateUrl = '/templates/user_import_template.xlsx'
+  const link = document.createElement('a')
+  link.href = templateUrl
+  link.download = 'user_import_template.xlsx'
+  link.click()
+  ElMessage.info('模板下载中...')
+}
+
+const handleBatchImport = async () => {
+  if (!uploadFile.value) {
+    ElMessage.warning('请先选择要导入的文件')
+    return
+  }
+  importLoading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', uploadFile.value)
+    await batchImportUsers(formData)
+    ElMessage.success('导入成功')
+    batchImportVisible.value = false
+    uploadFile.value = null
+    uploadRef.value?.clearFiles()
+    fetchData()
+  } catch {
+    ElMessage.error('导入失败，请检查文件格式')
+  } finally {
+    importLoading.value = false
+  }
+}
+
+// 教师审核 - 打开弹窗时加载待审核教师 (mock)
+const loadPendingTeachers = () => {
+  teacherLoading.value = true
+  // Mock 数据 - 实际应调用后端 API 获取待审核教师列表
+  // 后端暂无 teacher_status 字段，此处使用前端 mock
+  setTimeout(() => {
+    pendingTeachers.value = [
+      { id: 101, username: 'zhangsan', realName: '张三', teacherNo: 'T2024001', departmentName: '计算机学院', createdAt: '2024-06-10 10:30:00' },
+      { id: 102, username: 'lisi', realName: '李四', teacherNo: 'T2024002', departmentName: '数学学院', createdAt: '2024-06-11 14:20:00' }
+    ]
+    teacherLoading.value = false
+  }, 500)
+}
+
+// 监听教师审核弹窗打开
+import { watch } from 'vue'
+watch(teacherApprovalVisible, (val) => {
+  if (val) {
+    loadPendingTeachers()
+  }
+})
+
+// 通过教师
+const handleApproveTeacher = async (row) => {
+  try {
+    // Mock - 后端暂无教师审核 API
+    await updateUserStatus(row.id, { status: 1 })
+    ElMessage.success(`教师 ${row.realName} 审核通过`)
+    loadPendingTeachers()
+  } catch {
+    ElMessage.error('操作失败')
+  }
+}
+
+// 驳回教师
+const handleRejectTeacher = async (row) => {
+  try {
+    // Mock - 后端暂无教师审核 API
+    await updateUserStatus(row.id, { status: 2 })
+    ElMessage.success(`教师 ${row.realName} 已驳回`)
+    loadPendingTeachers()
+  } catch {
+    ElMessage.error('操作失败')
+  }
+}
+
 onMounted(() => {
   fetchDepartments()
   fetchData()
@@ -407,5 +573,47 @@ onMounted(() => {
 
 .full-width {
   width: 100%;
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.batch-import-tip {
+  margin-bottom: var(--space-4);
+}
+
+.download-template {
+  margin: var(--space-3) 0;
+}
+
+.batch-upload {
+  width: 100%;
+}
+
+.upload-icon {
+  font-size: 32px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.upload-text {
+  color: var(--el-text-color-regular);
+}
+
+.upload-text em {
+  color: var(--el-color-primary);
+  font-style: normal;
+}
+
+.upload-tip {
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+}
+
+.empty-tip {
+  padding: var(--space-4) 0;
 }
 </style>

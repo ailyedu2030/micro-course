@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.ChapterCreateRequest;
 import com.microcourse.dto.ChapterUpdateRequest;
 import com.microcourse.dto.ChapterVO;
+import com.microcourse.dto.ChapterSortRequest;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
@@ -127,6 +128,35 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         // Owner check: only course teacher or ADMIN can delete chapter
         assertCourseOwnerByCourseId(chapter.getCourseId());
         chapterRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void sort(List<ChapterSortRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return;
+        }
+        // 校验所有章节属于同一课程
+        Long courseId = null;
+        for (ChapterSortRequest req : requests) {
+            CourseChapter chapter = chapterRepository.selectById(req.getId());
+            if (chapter == null) {
+                throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
+            }
+            if (courseId == null) {
+                courseId = chapter.getCourseId();
+                // Owner check
+                assertCourseOwnerByCourseId(courseId);
+            }
+        }
+
+        // 批量更新 sortOrder
+        for (ChapterSortRequest req : requests) {
+            CourseChapter chapter = chapterRepository.selectById(req.getId());
+            chapter.setSortOrder(req.getSortOrder());
+            chapter.setUpdatedAt(LocalDateTime.now());
+            chapterRepository.updateById(chapter);
+        }
     }
 
     private ChapterVO convertToVO(CourseChapter chapter) {

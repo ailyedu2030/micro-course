@@ -17,6 +17,8 @@ public class SubmitAnswerRequest {
 
     private Integer duration;
 
+    private Integer attemptNo;
+
     public SubmitAnswerRequest() {}
 
     public Long getExerciseId() { return exerciseId; }
@@ -27,6 +29,8 @@ public class SubmitAnswerRequest {
     public void setAnswers(List<AnswerItem> answers) { this.answers = answers; }
     public Integer getDuration() { return duration; }
     public void setDuration(Integer duration) { this.duration = duration; }
+    public Integer getAttemptNo() { return attemptNo; }
+    public void setAttemptNo(Integer attemptNo) { this.attemptNo = attemptNo; }
 
     public static class AnswerItem {
         private Long questionId;

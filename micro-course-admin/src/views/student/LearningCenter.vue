@@ -327,6 +327,10 @@ import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { Calendar, Sunny, Star, Medal } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
+import { getCompletion } from '@/api/learning-progress'
+import { getMyEnrollments } from '@/api/enrollment'
+import { getMyBadges } from '@/api/badge'
+import { getMyCheckIns } from '@/api/checkin'
 
 // ---------------------------------------------------------------------------
 // Store & Router
@@ -475,50 +479,134 @@ const badges = ref([
 // API 获取函数
 // ---------------------------------------------------------------------------
 async function getStats() {
-  // 模拟 API 调用，实际从 /learning-progress/progress 获取
   try {
+    const userId = userStore.userInfo?.id
+    const [completionData, enrollmentData] = await Promise.all([
+      getCompletion({ userId }),
+      getMyEnrollments(userId)
+    ])
+
+    const enrollments = Array.isArray(enrollmentData?.data) ? enrollmentData.data : []
+    const completedCourses = enrollments.filter(e => e.completed).length
+
+    // 从 completionData 中汇总总学习时长（分钟转小时）
+    const completionMap = completionData?.data || {}
+    let totalMinutes = 0
+    Object.values(completionMap).forEach(v => {
+      if (v && typeof v === 'object' && v.totalWatchTime) {
+        totalMinutes += v.totalWatchTime || 0
+      }
+    })
+    const totalHours = totalMinutes > 0 ? `${Math.round(totalMinutes / 60)}小时` : '0小时'
+
     stats.value = {
-      totalHours: '128小时',
-      completedCourses: 12,
-      certificates: 3,
-      points: 2560
+      totalHours,
+      completedCourses,
+      certificates: 0,   // 后端暂无证书 API
+      points: 0          // 后端暂无积分 API
     }
   } catch {
-    // 使用默认 mock 数据
     stats.value = {
-      totalHours: '128小时',
-      completedCourses: 12,
-      certificates: 3,
-      points: 2560
+      totalHours: '0小时',
+      completedCourses: 0,
+      certificates: 0,
+      points: 0
     }
   }
 }
 
 async function getRecent() {
-  // 模拟最近课程数据
-  recentCourse.value = {
-    title: 'Java 程序设计基础',
-    currentChapter: 3,
-    progress: 45,
-    cover: 'https://picsum.photos/seed/java/300/180'
+  try {
+    const userId = userStore.userInfo?.id
+    const { data } = await getMyEnrollments(userId)
+    const enrollments = Array.isArray(data) ? data : []
+
+    // 取第一个进行中的课程作为"继续学习"
+    const inProgress = enrollments.find(e => !e.completed && e.progress > 0)
+    if (inProgress) {
+      recentCourse.value = {
+        title: inProgress.courseTitle || inProgress.title || '课程',
+        currentChapter: 1,
+        progress: inProgress.progress || 0,
+        cover: inProgress.courseCover || inProgress.coverUrl || 'https://picsum.photos/seed/course/300/180'
+      }
+    }
+  } catch {
+    // 保持默认 mock
   }
 }
 
 async function getChart() {
-  // 模拟本周学习数据 (周一到周日)
-  chartData.value = [
-    { day: '周一', hours: 2.5 },
-    { day: '周二', hours: 1.8 },
-    { day: '周三', hours: 3.2 },
-    { day: '周四', hours: 2.0 },
-    { day: '周五', hours: 4.1 },
-    { day: '周六', hours: 3.5 },
-    { day: '周日', hours: 2.8 }
-  ]
+  try {
+    const { data } = await getMyCheckIns({ days: 7 })
+    const checkIns = Array.isArray(data) ? data : []
+
+    // 转换打卡记录为每日学习小时
+    const dayMap = {}
+    const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+    dayLabels.forEach((label, idx) => {
+      dayMap[idx] = { day: label, hours: 0 }
+    })
+
+    checkIns.forEach(record => {
+      if (record.checkInAt) {
+        const d = new Date(record.checkInAt)
+        // getDay(): 0=周日, 1=周一...6=周六
+        const dayOfWeek = d.getDay()
+        const idx = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // 转为 0=周一...6=周日
+        if (dayMap[idx]) {
+          dayMap[idx].hours += (record.duration || record.minutes || 0) / 60
+        }
+      }
+    })
+
+    chartData.value = Object.values(dayMap)
+  } catch {
+    chartData.value = []
+  }
 }
 
 async function getRecommendations() {
-  // 推荐课程使用静态数据
+  try {
+    const userId = userStore.userInfo?.id
+    const { data } = await getMyEnrollments(userId)
+    const enrollments = Array.isArray(data) ? data : []
+
+    // 取进行中的课程作为推荐
+    const inProgress = enrollments
+      .filter(e => !e.completed)
+      .slice(0, 3)
+      .map(e => ({
+        id: e.courseId,
+        title: e.courseTitle || e.title,
+        cover: e.courseCover || e.coverUrl,
+        tag: '学习中',
+        author: e.teacherName || '',
+        students: e.studentCount || 0,
+        rating: e.avgRating || 0
+      }))
+
+    if (inProgress.length > 0) {
+      recommendations.value = inProgress
+    }
+  } catch {
+    // 保持默认 mock
+  }
+}
+
+async function getBadges() {
+  try {
+    const { data } = await getMyBadges()
+    const badgeList = Array.isArray(data) ? data : []
+
+    badges.value = badgeList.map(b => ({
+      id: b.id,
+      name: b.name || b.badgeName || '徽章',
+      earned: b.earned !== false
+    }))
+  } catch {
+    // 保持默认 mock
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -605,7 +693,7 @@ async function loadData() {
   loading.value = true
   chartLoading.value = true
   try {
-    await Promise.all([getStats(), getRecent(), getChart(), getRecommendations()])
+    await Promise.all([getStats(), getRecent(), getChart(), getRecommendations(), getBadges()])
   } finally {
     loading.value = false
     chartLoading.value = false

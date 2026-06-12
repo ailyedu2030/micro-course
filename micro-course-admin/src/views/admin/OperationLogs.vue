@@ -47,8 +47,21 @@
             <el-option label="创建" value="CREATE" />
             <el-option label="更新" value="UPDATE" />
             <el-option label="删除" value="DELETE" />
+            <el-option label="审核通过" value="COURSE_APPROVE" />
+            <el-option label="审核驳回" value="COURSE_REJECT" />
             <el-option label="其他" value="OTHER" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="课程ID">
+          <el-input
+            v-model="searchForm.targetId"
+            placeholder="输入课程ID"
+            clearable
+            class="filter-input"
+            type="number"
+            @clear="handleSearch"
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="时间范围">
           <el-date-picker
@@ -230,7 +243,8 @@ const searchForm = reactive({
   module: '',
   action: '',
   startTime: '',
-  endTime: ''
+  endTime: '',
+  targetId: ''
 })
 
 // 详情弹窗
@@ -261,6 +275,7 @@ function handleReset() {
   searchForm.action = ''
   searchForm.startTime = ''
   searchForm.endTime = ''
+  searchForm.targetId = ''
   dateRange.value = null
   page.value = 1
   fetchData()
@@ -278,7 +293,8 @@ async function fetchData() {
       module: searchForm.module || undefined,
       action: searchForm.action || undefined,
       startTime: searchForm.startTime || undefined,
-      endTime: searchForm.endTime || undefined
+      endTime: searchForm.endTime || undefined,
+      targetId: searchForm.targetId ? Number(searchForm.targetId) : undefined
     }
     const { data } = await getLogs(params)
     tableData.value = data.items || []

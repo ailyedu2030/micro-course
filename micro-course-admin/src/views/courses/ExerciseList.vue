@@ -99,6 +99,18 @@
         <el-form-item label="及格分数" prop="passScore">
           <el-input-number v-model="formData.passScore" :min="0" :max="100" class="full-width" />
         </el-form-item>
+        <el-form-item label="时间限制(分钟)" prop="timeLimit">
+          <el-input-number v-model="formData.timeLimit" :min="0" placeholder="0表示无限制" class="full-width" />
+        </el-form-item>
+        <el-form-item label="答题次数" prop="maxAttempts">
+          <el-input-number v-model="formData.maxAttempts" :min="0" placeholder="0表示无限制" class="full-width" />
+        </el-form-item>
+        <el-form-item label="题目乱序" prop="shuffleQuestions">
+          <el-switch v-model="formData.shuffleQuestions" />
+        </el-form-item>
+        <el-form-item label="选项乱序" prop="shuffleOptions">
+          <el-switch v-model="formData.shuffleOptions" />
+        </el-form-item>
         <el-form-item label="描述" prop="description">
           <el-input v-model="formData.description" type="textarea" placeholder="请输入描述" :rows="3" />
         </el-form-item>
@@ -145,7 +157,11 @@ const formData = reactive({
   title: '',
   duration: 30,
   passScore: 60,
-  description: ''
+  description: '',
+  timeLimit: null,
+  maxAttempts: null,
+  shuffleQuestions: false,
+  shuffleOptions: false
 })
 
 const formRules = {
@@ -239,6 +255,10 @@ const handleCreate = () => {
   formData.duration = 30
   formData.passScore = 60
   formData.description = ''
+  formData.timeLimit = null
+  formData.maxAttempts = null
+  formData.shuffleQuestions = false
+  formData.shuffleOptions = false
   formChapterOptions.value = searchForm.chapterId ? chapterOptions.value : []
   dialogVisible.value = true
 }
@@ -253,6 +273,10 @@ const handleEdit = (row) => {
   formData.duration = row.duration || 30
   formData.passScore = row.passScore || 60
   formData.description = row.description || ''
+  formData.timeLimit = row.timeLimit || null
+  formData.maxAttempts = row.maxAttempts || null
+  formData.shuffleQuestions = row.shuffleQuestions || false
+  formData.shuffleOptions = row.shuffleOptions || false
   formChapterOptions.value = chapterOptions.value
   dialogVisible.value = true
 }

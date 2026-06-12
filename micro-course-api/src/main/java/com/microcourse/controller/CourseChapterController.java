@@ -6,6 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/chapters")
@@ -53,6 +54,13 @@ public class CourseChapterController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         chapterService.delete(id);
+        return R.ok();
+    }
+
+    @PutMapping("/sort")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> sort(@Valid @RequestBody List<ChapterSortRequest> requests) {
+        chapterService.sort(requests);
         return R.ok();
     }
 }

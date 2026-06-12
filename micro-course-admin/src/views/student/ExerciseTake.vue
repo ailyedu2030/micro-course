@@ -781,7 +781,8 @@ async function doSubmit() {
       exerciseId: currentExercise.value.id,
       userId,
       answers: answerList,
-      duration
+      duration,
+      attemptNo: attemptNo.value
     })
     submitResult.value = data
     resultVisible.value = true

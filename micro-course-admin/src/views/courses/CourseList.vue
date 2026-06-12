@@ -152,7 +152,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourses, createCourse, updateCourseStatus, deleteCourse } from '@/api/course'
+import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 
 const router = useRouter()
@@ -274,7 +274,7 @@ const handleView = (row) => {
 const handleApprove = async (row) => {
   try {
     await ElMessageBox.confirm('确定审核通过该课程?', '提示', { type: 'warning' })
-    await updateCourseStatus(row.id, 2)
+    await approveCourse(row.id)
     ElMessage.success('审核通过成功')
     fetchData()
   } catch (error) {
@@ -286,8 +286,13 @@ const handleApprove = async (row) => {
 
 const handleReject = async (row) => {
   try {
-    await ElMessageBox.confirm('确定驳回该课程?', '提示', { type: 'warning' })
-    await updateCourseStatus(row.id, 3)
+    const { value } = await ElMessageBox.prompt('请输入驳回原因（选填）', '驳回课程', {
+      confirmButtonText: '确定驳回',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '请填写驳回原因，以便教师修改后重新提交'
+    })
+    await rejectCourse(row.id, value || '')
     ElMessage.success('驳回成功')
     fetchData()
   } catch (error) {

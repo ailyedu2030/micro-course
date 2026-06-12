@@ -128,6 +128,33 @@
         <el-form-item label="答案解析" prop="analysis">
           <el-input v-model="formData.analysis" type="textarea" :rows="2" placeholder="请输入答案解析" />
         </el-form-item>
+        <!-- 单选/多选选项编辑 -->
+        <el-form-item v-if="formData.questionType === 'SINGLE_CHOICE' || formData.questionType === 'MULTIPLE_CHOICE'" label="选项" prop="options">
+          <div class="options-editor">
+            <div v-for="(opt, idx) in optionList" :key="idx" class="option-item">
+              <el-input v-model="opt.label" placeholder="选项内容" class="option-input" />
+              <el-radio v-if="formData.questionType === 'SINGLE_CHOICE'" :model-value="opt.correct" @click="setSingleCorrect(idx)" title="设为正确答案">√</el-radio>
+              <el-checkbox v-if="formData.questionType === 'MULTIPLE_CHOICE'" v-model="opt.correct" title="设为正确答案">√</el-checkbox>
+              <el-button type="danger" link @click="removeOption(idx)">删除</el-button>
+            </div>
+            <el-button type="primary" plain size="small" @click="addOption">添加选项</el-button>
+          </div>
+        </el-form-item>
+        <!-- 判断题答案 -->
+        <el-form-item v-if="formData.questionType === 'TRUE_FALSE'" label="正确答案" prop="answer">
+          <el-radio-group v-model="formData.answer">
+            <el-radio label="true">正确</el-radio>
+            <el-radio label="false">错误</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <!-- 填空题答案 -->
+        <el-form-item v-if="formData.questionType === 'SHORT_ANSWER'" label="正确答案" prop="answer">
+          <el-input v-model="formData.answer" placeholder="请输入正确答案" />
+        </el-form-item>
+        <!-- 多选题部分给分规则 -->
+        <el-form-item v-if="formData.questionType === 'MULTIPLE_CHOICE'" label="部分给分规则" prop="partialScore">
+          <el-input v-model="formData.partialScore" type="textarea" :rows="2" placeholder="如: A=30;B=30;C=40;D=40 (选对部分得部分分)" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -164,13 +191,18 @@ const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
 
+const optionList = ref([])
+
 const formData = reactive({
   questionType: '',
   difficulty: '',
   categoryId: '',
   content: '',
   score: 10,
-  analysis: ''
+  analysis: '',
+  options: '',
+  answer: '',
+  partialScore: ''
 })
 
 const formRules = {
@@ -243,6 +275,10 @@ const handleCreate = () => {
   formData.content = ''
   formData.score = 10
   formData.analysis = ''
+  formData.options = ''
+  formData.answer = ''
+  formData.partialScore = ''
+  optionList.value = []
   dialogVisible.value = true
 }
 
@@ -256,7 +292,33 @@ const handleEdit = (row) => {
   formData.content = row.content
   formData.score = row.score || 10
   formData.analysis = row.analysis || ''
+  formData.answer = row.answer || ''
+  formData.partialScore = row.partialScore || ''
+  // 解析选项
+  if (row.options) {
+    try {
+      optionList.value = JSON.parse(row.options)
+    } catch {
+      optionList.value = []
+    }
+  } else {
+    optionList.value = []
+  }
   dialogVisible.value = true
+}
+
+function addOption() {
+  optionList.value.push({ label: '', correct: false })
+}
+
+function removeOption(idx) {
+  optionList.value.splice(idx, 1)
+}
+
+function setSingleCorrect(idx) {
+  optionList.value.forEach((opt, i) => {
+    opt.correct = i === idx
+  })
 }
 
 const handleDelete = async (row) => {
@@ -278,11 +340,19 @@ const handleSubmit = async () => {
     if (!valid) return
     submitLoading.value = true
     try {
+      // 序列化选项
+      if (formData.questionType === 'SINGLE_CHOICE' || formData.questionType === 'MULTIPLE_CHOICE') {
+        formData.options = JSON.stringify(optionList.value)
+        // 提取正确答案
+        const correctOptions = optionList.value.filter(o => o.correct).map(o => o.label)
+        formData.answer = correctOptions.join(',')
+      }
+      const payload = { ...formData }
       if (isEdit.value) {
-        await updateQuestion(currentId.value, formData)
+        await updateQuestion(currentId.value, payload)
         ElMessage.success('编辑成功')
       } else {
-        await createQuestion(formData)
+        await createQuestion(payload)
         ElMessage.success('创建成功')
       }
       dialogVisible.value = false
@@ -369,6 +439,25 @@ onMounted(() => {
 
 .filter-input-w160 {
   width: 160px;
+}
+
+.options-editor {
+  width: 100%;
+  padding: var(--space-2);
+  background: var(--el-fill-color-light);
+  border-radius: var(--radius-sm);
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.option-input {
+  flex: 1;
+  max-width: 300px;
 }
 
 @media (max-width: 768px) {

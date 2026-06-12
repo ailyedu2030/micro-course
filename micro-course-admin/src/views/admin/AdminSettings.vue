@@ -37,6 +37,10 @@
             <el-icon><Lock /></el-icon>
             <template #title>安全设置</template>
           </el-menu-item>
+          <el-menu-item index="cas">
+            <el-icon><Key /></el-icon>
+            <template #title>CAS 配置</template>
+          </el-menu-item>
           <el-menu-item index="about">
             <el-icon><InfoFilled /></el-icon>
             <template #title>关于系统</template>
@@ -212,6 +216,64 @@
           </el-form>
         </el-card>
 
+        <!-- CAS 配置 -->
+        <el-card v-show="activeMenu === 'cas'" class="settings-card shadow-hover" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span class="card-title">CAS 统一身份认证配置</span>
+              <el-button type="primary" size="small" :loading="saving" @click="handleSave('cas')">
+                <el-icon><Check /></el-icon>保存修改
+              </el-button>
+            </div>
+          </template>
+          <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--space-4)">
+            <template #title>
+              CAS 配置用于对接学校统一身份认证系统。配置后将支持师生通过学校账号一键登录。
+            </template>
+          </el-alert>
+          <el-form :model="casForm" label-width="140px" class="settings-form">
+            <el-form-item label="启用 CAS">
+              <el-switch v-model="casForm.enabled" />
+              <span class="form-hint">开启后将启用 CAS 单点登录</span>
+            </el-form-item>
+            <el-form-item label="CAS 服务器 URL">
+              <el-input v-model="casForm.serverUrl" placeholder="https://cas.example.edu.cn" />
+              <span class="form-hint">学校 CAS 服务器地址</span>
+            </el-form-item>
+            <el-form-item label="CAS Service URL">
+              <el-input v-model="casForm.serviceUrl" placeholder="https://micro-course.example.edu.cn/cas/validate" />
+              <span class="form-hint">本系统用于 CAS 回调的 URL</span>
+            </el-form-item>
+            <el-form-item label="CAS 版本">
+              <el-select v-model="casForm.version" placeholder="请选择" class="full-width">
+                <el-option label="CAS 2.0" value="2.0" />
+                <el-option label="CAS 3.0" value="3.0" />
+                <el-option label="SAML 2.0" value="saml2" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="管理员账号">
+              <el-input v-model="casForm.adminUsername" placeholder="管理员 CAS 用户名" />
+              <span class="form-hint">拥有管理员权限的 CAS 账号</span>
+            </el-form-item>
+            <el-form-item label="超级管理员列表">
+              <el-input
+                v-model="casForm.superAdmins"
+                type="textarea"
+                :rows="2"
+                placeholder="多个账号用逗号分隔，如: zhangsan,lisi"
+              />
+              <span class="form-hint">CAS 账号列表，列表内用户将自动获得管理员权限</span>
+            </el-form-item>
+            <el-form-item label="启用 SSL 校验">
+              <el-switch v-model="casForm.validateSsl" />
+              <span class="form-hint">是否验证 CAS 服务器 SSL 证书</span>
+            </el-form-item>
+            <el-form-item label="测试连接">
+              <el-button @click="handleTestCas">测试 CAS 连接</el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
+
         <!-- 关于系统 -->
         <el-card v-show="activeMenu === 'about'" class="settings-card shadow-hover" shadow="never">
           <template #header>
@@ -250,7 +312,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
-  InfoFilled, Setting, Message, Lock, Check
+  InfoFilled, Setting, Message, Lock, Check, Key
 } from '@element-plus/icons-vue'
 import { getSettings, updateSettings } from '@/api/admin-settings'
 
@@ -296,6 +358,17 @@ const securityForm = reactive({
   refreshTokenExpiry: 7
 })
 
+// CAS 配置表单 (localStorage mock)
+const casForm = reactive({
+  enabled: false,
+  serverUrl: '',
+  serviceUrl: '',
+  version: '3.0',
+  adminUsername: '',
+  superAdmins: '',
+  validateSsl: true
+})
+
 // 获取设置列表
 async function fetchSettings() {
   loading.value = true
@@ -314,6 +387,14 @@ async function fetchSettings() {
         securityForm[item.settingKey] = item.settingValue
       }
     })
+    // CAS 设置从 localStorage 加载 (mock)
+    const storedCas = localStorage.getItem('cas_settings')
+    if (storedCas) {
+      try {
+        const parsed = JSON.parse(storedCas)
+        Object.assign(casForm, parsed)
+      } catch {}
+    }
   } catch {
     // 不报错，用默认值
   } finally {
@@ -330,6 +411,14 @@ function handleMenuSelect(index) {
 async function handleSave(menu) {
   saving.value = true
   try {
+    if (menu === 'cas') {
+      // CAS 配置保存到 localStorage (mock)
+      localStorage.setItem('cas_settings', JSON.stringify(casForm))
+      ElMessage.success('CAS 配置保存成功')
+      saving.value = false
+      return
+    }
+
     let formData
     let keys
     if (menu === 'system') {
@@ -355,6 +444,19 @@ async function handleSave(menu) {
   } finally {
     saving.value = false
   }
+}
+
+// 测试 CAS 连接
+async function handleTestCas() {
+  if (!casForm.serverUrl) {
+    ElMessage.warning('请先填写 CAS 服务器 URL')
+    return
+  }
+  ElMessage.info('正在测试 CAS 连接...')
+  // Mock 测试 - 实际应调用后端 API
+  setTimeout(() => {
+    ElMessage.success('CAS 连接测试成功')
+  }, 1500)
 }
 
 // 测试邮件

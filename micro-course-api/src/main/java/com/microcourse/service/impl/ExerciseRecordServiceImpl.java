@@ -57,7 +57,14 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
         }
 
-        // 2. 查 exercise_questions 列表
+        // 2. 校验答题次数是否超限
+        if (request.getAttemptNo() != null && exercise.getMaxAttempts() != null) {
+            if (request.getAttemptNo() > exercise.getMaxAttempts()) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "已超过最大答题次数");
+            }
+        }
+
+        // 3. 查 exercise_questions 列表
         LambdaQueryWrapper<ExerciseQuestion> eqWrapper = new LambdaQueryWrapper<>();
         eqWrapper.eq(ExerciseQuestion::getExerciseId, request.getExerciseId())
                 .orderByAsc(ExerciseQuestion::getSortOrder);
@@ -73,7 +80,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             eqMap.put(eq.getQuestionId(), eq);
         }
 
-        // 3. 逐题批改
+        // 4. 逐题批改
         List<SubmitAnswerRequest.AnswerItem> answerList = request.getAnswers();
         int totalScore = 0;
         List<GradingResult> gradingResults = new ArrayList<>();
@@ -94,17 +101,17 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             totalScore += result.score;
         }
 
-        // 4. 计算总分，判断是否通过
+        // 5. 计算总分，判断是否通过
         boolean passed = totalScore >= exercise.getPassScore();
 
-        // 5. 查当前用户第几次答题
+        // 6. 查当前用户第几次答题
         LambdaQueryWrapper<ExerciseRecord> countWrapper = new LambdaQueryWrapper<>();
         countWrapper.eq(ExerciseRecord::getUserId, request.getUserId())
                 .eq(ExerciseRecord::getExerciseId, request.getExerciseId());
         long existingCount = exerciseRecordRepository.selectCount(countWrapper);
         int attemptNo = (int) existingCount + 1;
 
-        // 6. 构建 answers JSON
+        // 7. 构建 answers JSON
         String answersJson;
         try {
             answersJson = objectMapper.writeValueAsString(gradingResults);
@@ -112,7 +119,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             answersJson = "[]";
         }
 
-        // 7. 插入 exercise_record
+        // 8. 插入 exercise_record
         ExerciseRecord record = new ExerciseRecord();
         record.setExerciseId(request.getExerciseId());
         record.setUserId(request.getUserId());
@@ -125,7 +132,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         record.setSubmittedAt(LocalDateTime.now());
         exerciseRecordRepository.insert(record);
 
-        // 8. 错题入库
+        // 9. 错题入库
         for (GradingResult result : gradingResults) {
             if (!result.isCorrect && result.questionType != null &&
                 !result.questionType.equals("SHORT_ANSWER") && !result.questionType.equals("ESSAY")) {

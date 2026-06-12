@@ -39,7 +39,7 @@ public class EnrollmentController {
     }
 
     @GetMapping("/course/{courseId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN')")
     public R<List<EnrollmentVO>> getCourseEnrollments(@PathVariable Long courseId) {
         List<EnrollmentVO> list = enrollmentService.getCourseEnrollments(courseId);
         return R.ok(list);
