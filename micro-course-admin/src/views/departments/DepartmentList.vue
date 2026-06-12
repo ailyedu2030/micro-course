@@ -235,34 +235,31 @@ onMounted(() => {
 
 <style scoped>
 .department-list {
-  padding: var(--space-xl);
+  padding: 24px;
+  background: #F5F6FA;
+  min-height: 100vh;
 }
 
 .search-card {
-  margin-bottom: var(--space-lg);
-  border-radius: var(--radius-md);
-  transition: box-shadow 200ms ease;
-}
-
-.search-card:hover {
-  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .table-card {
-  border-radius: var(--radius-md);
-  transition: box-shadow 200ms ease;
-}
-
-.table-card:hover {
-  box-shadow: var(--shadow-md);
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .table-card :deep(.el-table) {
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -270,23 +267,68 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 .search-input {
   width: 200px;
-}
-
-.pagination-wrap {
-  margin-top: var(--space-lg);
-  display: flex;
-  justify-content: center;
+  border-radius: 8px;
 }
 
 .data-table {
   width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__header th) {
+  background: #F8FAFC !important;
+  color: #1E293B;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background: #F1F5F9 !important;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background 150ms ease;
+}
+
+.data-table :deep(.el-table__body tr) {
+  background: white;
+}
+
+.data-table :deep(.el-table__body tr:hover > td) {
+  background: #F1F5F9 !important;
+}
+
+.pagination-wrap {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
 }
 
 .full-width {
   width: 100%;
+}
+
+/* 弹窗 border-radius 12px */
+:deep(.el-dialog) {
+  border-radius: 12px;
+}
+:deep(.el-dialog__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
+}
+:deep(.el-dialog__body) {
+  padding: 20px;
+}
+:deep(.el-dialog__footer) {
+  padding: 16px 20px;
+  border-top: 1px solid #F1F5F9;
 }
 </style>

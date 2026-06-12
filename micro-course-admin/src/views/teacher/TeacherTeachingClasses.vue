@@ -462,26 +462,32 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .teacher-teaching-classes {
-  padding: var(--space-4);
+  padding: 24px;
+  background: #F5F6FA;
+  min-height: calc(100vh - 120px);
 }
 
+/* 课程卡片 & 教学班卡片 */
 .course-card,
 .class-card {
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  transition: box-shadow 200ms ease;
-  height: calc(100vh - 120px);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+  height: calc(100vh - 168px);
   overflow-y: auto;
 }
 
 .course-card:hover,
 .class-card:hover {
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
 }
 
 .course-card :deep(.el-card__header),
 .class-card :deep(.el-card__header) {
-  padding: var(--space-3) var(--space-4);
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .card-header {
@@ -491,77 +497,78 @@ onBeforeUnmount(() => {
 }
 
 .card-title {
-  font-size: var(--text-md);
-  font-weight: 500;
-  color: var(--el-text-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 /* 课程列表 */
 .course-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .course-item {
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--el-border-color-lighter);
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #F1F5F9;
+  border-left: 3px solid transparent;
   cursor: pointer;
   transition: all 200ms ease;
 }
 
 .course-item:hover {
-  border-color: var(--role-primary);
-  background-color: var(--role-primary-light-9);
+  background: #F8FAFC;
+  border-left-color: #4F46E5;
 }
 
 .course-item.is-active {
-  border-color: var(--role-primary);
-  background-color: var(--role-primary-light-9);
+  background: #EEF2FF;
+  border-left-color: #4F46E5;
 }
 
 .course-title {
-  font-size: var(--text-base);
+  font-size: 14px;
   font-weight: 500;
-  color: var(--el-text-color-primary);
-  margin-bottom: var(--space-1);
+  color: #1E293B;
+  margin-bottom: 4px;
 }
 
 .course-info {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  color: #475569;
 }
 
 /* 教学班列表 */
 .empty-tip {
-  padding: var(--space-6) 0;
+  padding: 24px 0;
 }
 
 .class-groups {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 24px;
 }
 
 .class-group {
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: var(--radius-md);
+  border: 1px solid #F1F5F9;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .group-header {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background-color: var(--el-fill-color-light);
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: #F8FAFC;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .group-count {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  color: #475569;
   margin-left: auto;
 }
 
@@ -571,7 +578,7 @@ onBeforeUnmount(() => {
 }
 
 .class-item {
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .class-item:last-child {
@@ -582,25 +589,25 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-3);
+  padding: 12px 16px;
   cursor: pointer;
   transition: background-color 200ms ease;
 }
 
 .class-summary:hover {
-  background-color: var(--el-fill-color-light);
+  background-color: #F1F5F9;
 }
 
 .class-info {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .class-name {
-  font-size: var(--text-base);
+  font-size: 14px;
   font-weight: 500;
-  color: var(--el-text-color-primary);
+  color: #1E293B;
 }
 
 .status-tag {
@@ -610,9 +617,9 @@ onBeforeUnmount(() => {
 .class-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
+  gap: 12px;
+  font-size: 13px;
+  color: #475569;
 }
 
 .expand-icon {
@@ -622,29 +629,41 @@ onBeforeUnmount(() => {
 
 /* 展开详情 */
 .class-detail {
-  padding: var(--space-3);
-  background-color: var(--el-fill-color-lighter);
-  border-top: 1px solid var(--el-border-color-lighter);
+  padding: 16px;
+  background-color: #F8FAFC;
+  border-top: 1px solid #F1F5F9;
 }
 
 .detail-actions {
   display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.detail-actions :deep(.el-button) {
+  border-radius: 8px;
 }
 
 .student-table {
   width: 100%;
 }
 
+.student-table :deep(.el-table__header-wrapper th) {
+  background: #F8FAFC;
+}
+
+.student-table :deep(.el-table__row:hover > td) {
+  background: #F1F5F9;
+}
+
 .no-students {
-  padding: var(--space-4);
+  padding: 16px;
   text-align: center;
-  color: var(--el-text-color-secondary);
+  color: #475569;
 }
 
 .loading-wrap {
-  padding: var(--space-3);
+  padding: 16px;
 }
 
 .full-width {
@@ -652,7 +671,26 @@ onBeforeUnmount(() => {
 }
 
 .text-secondary {
-  color: var(--el-text-color-secondary);
-  font-size: var(--text-sm);
+  color: #475569;
+  font-size: 13px;
+}
+
+/* 弹窗样式 */
+.teacher-teaching-classes :deep(.el-dialog) {
+  border-radius: 12px;
+}
+
+.teacher-teaching-classes :deep(.el-button) {
+  border-radius: 8px;
+}
+
+.teacher-teaching-classes :deep(.el-button--primary) {
+  border-radius: 8px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.teacher-teaching-classes :deep(.el-button--primary:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
 }
 </style>

@@ -276,20 +276,29 @@ onMounted(() => {
 
 <style scoped>
 .chapter-list-page {
-  padding: var(--space-5);
+  padding: 24px;
+  background: #F5F6FA;
+  min-height: 100%;
 }
 
 .filter-card {
-  margin-bottom: var(--space-4);
-  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: none;
 }
 
 .table-card {
-  border-radius: var(--radius-md);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: none;
 }
 
 .table-card :deep(.el-card__header) {
-  padding: var(--space-3) var(--space-5);
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .card-header {
@@ -299,21 +308,27 @@ onMounted(() => {
 }
 
 .card-title {
-  font-size: var(--text-md);
+  font-size: 16px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: #1E293B;
 }
 
 .pagination-wrap {
-  margin-top: var(--space-4);
+  margin-top: 24px;
   display: flex;
   justify-content: flex-end;
 }
 
 .data-table {
   width: 100%;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   overflow: hidden;
+}
+
+.data-table :deep(.el-table__header) th {
+  background: #F8FAFC;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 .data-table :deep(.el-table__row) {
@@ -321,7 +336,11 @@ onMounted(() => {
 }
 
 .data-table :deep(.el-table__row:hover > td) {
-  background-color: var(--color-bg-page);
+  background-color: #F1F5F9;
+}
+
+.data-table :deep(.el-table__row--striped > td) {
+  background: transparent;
 }
 
 .full-width {
@@ -332,13 +351,21 @@ onMounted(() => {
   width: 240px;
 }
 
+:deep(.el-button) {
+  border-radius: 8px;
+}
+
+:deep(.el-dialog) {
+  border-radius: 12px;
+}
+
 @media (max-width: 768px) {
   .chapter-list-page {
-    padding: var(--space-3);
+    padding: 16px;
   }
 
   .filter-card {
-    margin-bottom: var(--space-3);
+    margin-bottom: 16px;
   }
 
   .filter-input-w240 {
@@ -348,7 +375,7 @@ onMounted(() => {
   .card-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-2);
+    gap: 8px;
   }
 
   .pagination-wrap {

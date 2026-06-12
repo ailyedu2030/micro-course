@@ -538,43 +538,79 @@ onMounted(() => {
 
 <style scoped>
 .user-list {
-  padding: var(--space-xl);
+  padding: 24px;
+  background: #F5F6FA;
+  min-height: 100vh;
 }
 
 .filter-card {
-  margin-bottom: var(--space-lg);
-  border-radius: 8px;
+  margin-bottom: 24px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .table-card {
-  border-radius: 8px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .card-title {
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 .filter-input {
   width: 160px;
+  border-radius: 8px;
 }
 
 .filter-select {
   width: 140px;
+  border-radius: 8px;
 }
 
 .data-table {
   width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__header th) {
+  background: #F8FAFC !important;
+  color: #1E293B;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background: #F1F5F9 !important;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background 150ms ease;
+}
+
+.data-table :deep(.el-table__body tr) {
+  background: white;
+}
+
+.data-table :deep(.el-table__body tr:hover > td) {
+  background: #F1F5F9 !important;
 }
 
 .pagination-wrap {
-  margin-top: var(--space-lg);
+  margin-top: 24px;
   display: flex;
   justify-content: center;
 }
@@ -585,7 +621,7 @@ onMounted(() => {
 
 .header-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .batch-import-tip {
@@ -616,7 +652,7 @@ onMounted(() => {
 }
 
 .upload-text em {
-  color: var(--el-color-primary);
+  color: #4F46E5;
   font-style: normal;
 }
 
@@ -628,5 +664,43 @@ onMounted(() => {
 
 .empty-tip {
   padding: var(--space-4) 0;
+}
+
+/* 角色标签颜色系统 */
+:deep(.el-tag--danger) {
+  --el-tag-bg-color: rgba(79, 70, 229, 0.1);
+  --el-tag-text-color: #4F46E5;
+  --el-tag-border-color: rgba(79, 70, 229, 0.2);
+}
+:deep(.el-tag--warning) {
+  --el-tag-bg-color: rgba(245, 158, 11, 0.1);
+  --el-tag-text-color: #F59E0B;
+  --el-tag-border-color: rgba(245, 158, 11, 0.2);
+}
+:deep(.el-tag--success) {
+  --el-tag-bg-color: rgba(16, 185, 129, 0.1);
+  --el-tag-text-color: #10B981;
+  --el-tag-border-color: rgba(16, 185, 129, 0.2);
+}
+:deep(.el-tag--primary) {
+  --el-tag-bg-color: rgba(59, 130, 246, 0.1);
+  --el-tag-text-color: #3B82F6;
+  --el-tag-border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* 弹窗 border-radius 12px */
+:deep(.el-dialog) {
+  border-radius: 12px;
+}
+:deep(.el-dialog__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
+}
+:deep(.el-dialog__body) {
+  padding: 20px;
+}
+:deep(.el-dialog__footer) {
+  padding: 16px 20px;
+  border-top: 1px solid #F1F5F9;
 }
 </style>

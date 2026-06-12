@@ -265,36 +265,31 @@ onMounted(() => {
 
 <style scoped>
 .class-list {
-  padding: var(--space-4);
+  padding: 24px;
+  background: #F5F6FA;
+  min-height: 100vh;
 }
 
 .filter-card {
-  margin-bottom: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--color-white, #ffffff);
-  transition: box-shadow 200ms ease;
-}
-
-.filter-card:hover {
-  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .table-card {
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  transition: box-shadow 200ms ease;
-}
-
-.table-card:hover {
-  box-shadow: var(--shadow-lg);
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: var(--space-3) var(--space-4);
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .table-card :deep(.el-table) {
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -305,30 +300,73 @@ onMounted(() => {
 }
 
 .card-title {
-  font-size: var(--text-md);
-  font-weight: 500;
-  color: var(--color-text-primary, #303133);
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 .search-input {
   width: 200px;
+  border-radius: 8px;
 }
 
 .search-select {
   width: 200px;
+  border-radius: 8px;
 }
 
 .pagination-wrap {
-  margin-top: var(--space-4);
+  margin-top: 24px;
   display: flex;
   justify-content: center;
 }
 
 .data-table {
   width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__header th) {
+  background: #F8FAFC !important;
+  color: #1E293B;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background: #F1F5F9 !important;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background 150ms ease;
+}
+
+.data-table :deep(.el-table__body tr) {
+  background: white;
+}
+
+.data-table :deep(.el-table__body tr:hover > td) {
+  background: #F1F5F9 !important;
 }
 
 .full-width {
   width: 100%;
+}
+
+/* 弹窗 border-radius 12px */
+:deep(.el-dialog) {
+  border-radius: 12px;
+}
+:deep(.el-dialog__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
+}
+:deep(.el-dialog__body) {
+  padding: 20px;
+}
+:deep(.el-dialog__footer) {
+  padding: 16px 20px;
+  border-top: 1px solid #F1F5F9;
 }
 </style>

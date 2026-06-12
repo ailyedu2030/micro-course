@@ -391,69 +391,125 @@ onMounted(() => {
 
 <style scoped>
 .operation-logs-container {
-  padding: var(--space-4);
-  background: var(--el-bg-color-page);
+  padding: 24px;
+  background: #F5F6FA;
+  min-height: 100vh;
 }
 
-/* 搜索区 */
 .search-card {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .filter-input {
   width: 140px;
+  border-radius: 8px;
 }
 
 .filter-select {
   width: 140px;
+  border-radius: 8px;
 }
 
 .date-range-picker {
   width: 240px;
 }
 
-/* 表格卡片 */
 .table-card {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .card-title {
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 .card-count {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
+  font-size: 14px;
+  color: #64748B;
 }
 
-/* 表格 */
 .data-table {
   width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-/* 错误态 */
+.data-table :deep(.el-table__header th) {
+  background: #F8FAFC !important;
+  color: #1E293B;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background: #F1F5F9 !important;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background 150ms ease;
+}
+
+.data-table :deep(.el-table__body tr) {
+  background: white;
+}
+
+.data-table :deep(.el-table__body tr:hover > td) {
+  background: #F1F5F9 !important;
+}
+
 .error-result {
   padding: var(--space-7) 0;
 }
 
-/* 分页 */
 .pagination-wrap {
-  margin-top: var(--space-4);
+  margin-top: 24px;
   display: flex;
   justify-content: flex-end;
 }
 
-/* 文字辅助 */
 .text-secondary {
-  color: var(--el-text-color-secondary);
-  font-size: var(--text-sm);
+  color: #64748B;
+  font-size: 14px;
+}
+
+/* 弹窗 border-radius 12px */
+:deep(.el-dialog) {
+  border-radius: 12px;
+}
+:deep(.el-dialog__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
+}
+:deep(.el-dialog__body) {
+  padding: 20px;
+}
+:deep(.el-dialog__footer) {
+  padding: 16px 20px;
+  border-top: 1px solid #F1F5F9;
+}
+
+/* el-descriptions 精致化 */
+:deep(.el-descriptions__label) {
+  background: #F8FAFC !important;
+  color: #1E293B;
+  font-weight: 500;
+}
+:deep(.el-descriptions__cell) {
+  padding: 12px 16px !important;
 }
 </style>

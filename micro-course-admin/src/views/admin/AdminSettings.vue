@@ -483,54 +483,58 @@ onMounted(() => {
 
 <style scoped>
 .admin-settings-container {
-  padding: var(--space-4);
-  background: var(--el-bg-color-page);
+  padding: 24px;
+  background: #F5F6FA;
+  min-height: 100vh;
 }
 
-/* 说明卡片 */
 .info-card {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .info-content {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-3);
+  gap: 12px;
 }
 
 .info-icon {
-  color: var(--role-primary);
+  color: #4F46E5;
   flex-shrink: 0;
   margin-top: 2px;
 }
 
 .info-title {
-  margin: 0 0 var(--space-1);
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 .info-desc {
   margin: 0;
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
+  font-size: 14px;
+  color: #64748B;
 }
 
-/* 布局 */
 .settings-layout {
   display: grid;
   grid-template-columns: 200px 1fr;
-  gap: var(--space-4);
+  gap: 24px;
   align-items: start;
 }
 
-/* 左侧菜单 */
 .menu-card {
   position: sticky;
-  top: var(--space-4);
+  top: 24px;
   padding: 0;
   overflow: hidden;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .settings-menu {
@@ -543,65 +547,101 @@ onMounted(() => {
   width: 100%;
 }
 
-/* 右侧表单 */
+/* 高亮项左边框 #4F46E5 */
+.settings-menu :deep(.el-menu-item.is-active) {
+  background: rgba(79, 70, 229, 0.05);
+  border-left: 3px solid #4F46E5;
+  padding-left: 17px;
+}
+
+.settings-menu :deep(.el-menu-item) {
+  border-left: 3px solid transparent;
+  padding-left: 20px;
+  transition: all 200ms ease;
+}
+
+.settings-menu :deep(.el-menu-item:hover) {
+  background: rgba(79, 70, 229, 0.05);
+}
+
 .settings-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 24px;
 }
 
-/* 设置卡片 */
 .settings-card {
   margin-bottom: 0;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .card-title {
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
-/* 表单 */
 .settings-form {
   max-width: 640px;
+  padding: 20px 0;
 }
 
-.settings-form .el-input,
-.settings-form .el-select,
-.settings-form .el-input-number {
+.settings-form :deep(.el-input),
+.settings-form :deep(.el-select),
+.settings-form :deep(.el-input-number) {
   width: 280px;
+  border-radius: 8px;
 }
 
 .form-unit {
-  margin-left: var(--space-2);
-  color: var(--el-text-color-secondary);
-  font-size: var(--text-sm);
+  margin-left: 8px;
+  color: #64748B;
+  font-size: 14px;
 }
 
 .form-hint {
-  margin-left: var(--space-3);
-  color: var(--el-text-color-secondary);
-  font-size: var(--text-xs);
+  margin-left: 12px;
+  color: #64748B;
+  font-size: 12px;
 }
 
-/* 关于描述 */
 .about-descriptions {
   max-width: 480px;
 }
 
 .about-link {
-  color: var(--role-primary);
+  color: #4F46E5;
   text-decoration: none;
 }
 
 .about-link:hover {
   text-decoration: underline;
+}
+
+/* 弹窗 border-radius 12px */
+:deep(.el-dialog) {
+  border-radius: 12px;
+}
+:deep(.el-dialog__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
+}
+:deep(.el-dialog__body) {
+  padding: 20px;
+}
+:deep(.el-dialog__footer) {
+  padding: 16px 20px;
+  border-top: 1px solid #F1F5F9;
 }
 
 @media (max-width: 1023px) {

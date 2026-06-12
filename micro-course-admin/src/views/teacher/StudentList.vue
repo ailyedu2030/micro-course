@@ -463,13 +463,17 @@ onMounted(() => {
 
 <style scoped>
 .student-list-container {
-  padding: var(--space-4);
-  background: var(--el-bg-color-page);
+  padding: 24px;
+  background: #F5F6FA;
+  min-height: calc(100vh - 120px);
 }
 
 /* 搜索区 */
 .search-card {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .course-select {
@@ -486,7 +490,16 @@ onMounted(() => {
 
 /* 表格卡片 */
 .table-card {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.table-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
 }
 
 .card-header {
@@ -496,14 +509,28 @@ onMounted(() => {
 }
 
 .card-title {
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 .card-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: 8px;
+}
+
+.card-actions :deep(.el-button) {
+  border-radius: 8px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.card-actions :deep(.el-button--primary) {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.card-actions :deep(.el-button--primary:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
 }
 
 /* 表格 */
@@ -512,11 +539,26 @@ onMounted(() => {
   cursor: pointer;
 }
 
+.data-table :deep(.el-table__header-wrapper th) {
+  background: #F8FAFC;
+  color: #1E293B;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 200ms ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background: #F1F5F9;
+}
+
 /* 进度条单元格 */
 .progress-cell {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .progress-cell .el-progress {
@@ -524,32 +566,51 @@ onMounted(() => {
 }
 
 .progress-text {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  color: #475569;
   min-width: 36px;
   text-align: right;
 }
 
 /* 错误态 */
 .error-result {
-  padding: var(--space-7) 0;
+  padding: 48px 0;
 }
 
 /* 分页 */
 .pagination-wrap {
-  margin-top: var(--space-4);
+  margin-top: 24px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 /* 文字辅助类 */
 .text-secondary {
-  color: var(--el-text-color-secondary);
-  font-size: var(--text-sm);
+  color: #475569;
+  font-size: 13px;
 }
 
 .text-primary-color {
-  color: var(--role-primary);
-  font-size: var(--text-sm);
+  color: #4F46E5;
+  font-size: 13px;
+}
+
+/* 弹窗样式 */
+.student-list-container :deep(.el-dialog) {
+  border-radius: 12px;
+}
+
+.student-list-container :deep(.el-button) {
+  border-radius: 8px;
+}
+
+.student-list-container :deep(.el-button--primary) {
+  border-radius: 8px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.student-list-container :deep(.el-button--primary:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
 }
 </style>

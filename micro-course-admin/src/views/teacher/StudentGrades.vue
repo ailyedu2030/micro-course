@@ -504,13 +504,17 @@ onUnmounted(() => {
 
 <style scoped>
 .student-grades-container {
-  padding: var(--space-4);
-  background: var(--el-bg-color-page);
+  padding: 24px;
+  background: #F5F6FA;
+  min-height: calc(100vh - 120px);
 }
 
 /* 搜索区 */
 .search-card {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .course-select {
@@ -521,43 +525,61 @@ onUnmounted(() => {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
 .stat-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   text-align: center;
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
 }
 
 .stat-item {
-  padding: var(--space-2) 0;
+  padding: 16px 0;
 }
 
 .stat-value {
-  font-size: var(--text-3xl);
-  font-weight: var(--weight-bold);
-  line-height: var(--leading-tight);
-  color: var(--el-text-color-primary);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1E293B;
 }
 
 .stat-label {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
-  margin-top: var(--space-2);
+  font-size: 14px;
+  color: #475569;
+  margin-top: 8px;
 }
 
 /* 图表 + 表格网格 */
 .content-grid {
   display: grid;
   grid-template-columns: 320px 1fr;
-  gap: var(--space-4);
+  gap: 24px;
   align-items: start;
 }
 
 /* 图表卡片 */
 .chart-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   position: sticky;
-  top: var(--space-4);
+  top: 24px;
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.chart-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
 }
 
 .chart-container {
@@ -567,19 +589,30 @@ onUnmounted(() => {
 
 /* 表格卡片 */
 .table-card {
-  margin-bottom: var(--space-4);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-bottom: 24px;
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.table-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .card-title {
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 /* 表格 */
@@ -587,23 +620,38 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.data-table :deep(.el-table__header-wrapper th) {
+  background: #F8FAFC;
+  color: #1E293B;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background-color 200ms ease;
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background: #F1F5F9;
+}
+
 /* 分数颜色 */
-.score-excellent { color: var(--el-color-success); font-weight: var(--weight-semibold); }
-.score-good { color: var(--role-primary); font-weight: var(--weight-semibold); }
-.score-pass { color: var(--el-color-warning); font-weight: var(--weight-semibold); }
-.score-fail { color: var(--el-color-danger); font-weight: var(--weight-semibold); }
+.score-excellent { color: #67c23a; font-weight: 600; }
+.score-good { color: #4F46E5; font-weight: 600; }
+.score-pass { color: #e6a23c; font-weight: 600; }
+.score-fail { color: #f56c6c; font-weight: 600; }
 
 /* 文字辅助 */
-.text-secondary { color: var(--el-text-color-secondary); font-size: var(--text-sm); }
-.text-primary-color { color: var(--role-primary); }
-.text-success { color: var(--el-color-success); }
-.text-danger { color: var(--el-color-danger); }
+.text-secondary { color: #475569; font-size: 13px; }
+.text-primary-color { color: #4F46E5; }
+.text-success { color: #67c23a; }
+.text-danger { color: #f56c6c; }
 
 /* 分页 */
 .pagination-wrap {
-  margin-top: var(--space-4);
+  margin-top: 24px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 /* 批改弹窗 */
@@ -611,9 +659,28 @@ onUnmounted(() => {
   width: 160px;
 }
 
+/* 弹窗样式 */
+.student-grades-container :deep(.el-dialog) {
+  border-radius: 12px;
+}
+
+.student-grades-container :deep(.el-button) {
+  border-radius: 8px;
+}
+
+.student-grades-container :deep(.el-button--primary) {
+  border-radius: 8px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.student-grades-container :deep(.el-button--primary:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+}
+
 /* 空提示 */
 .empty-hint {
-  margin-top: var(--space-8);
+  margin-top: 48px;
 }
 
 @media (max-width: 1279px) {
