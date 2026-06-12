@@ -202,7 +202,7 @@
 
       <!-- 横向滚动 Tab Bar -->
       <div class="h5-tabs">
-        <el-scroll-bar>
+        <div class="h5-tab-scroll">
           <div class="h5-tab-bar">
             <div
               class="h5-tab-item"
@@ -210,7 +210,7 @@
               @click="activeTab = 'in-progress'"
             >
               <el-icon><Reading /></el-icon>
-              <span>进行中</span>
+              进行中
               <span v-if="inProgressCourses.length > 0" class="h5-tab-badge">{{ inProgressCourses.length }}</span>
             </div>
             <div
@@ -219,20 +219,20 @@
               @click="activeTab = 'completed'"
             >
               <el-icon><CircleCheck /></el-icon>
-              <span>已完成</span>
+              已完成
               <span v-if="completedCourses.length > 0" class="h5-tab-badge">{{ completedCourses.length }}</span>
             </div>
             <div
               class="h5-tab-item"
-              :class="{ active: activeTab === 'favorited' }"
-              @click="activeTab = 'favorited'"
+              :class="{ active: activeTab === 'favorites' }"
+              @click="activeTab = 'favorites'"
             >
               <el-icon><Star /></el-icon>
-              <span>已收藏</span>
-              <span v-if="favoritedCourses.length > 0" class="h5-tab-badge">{{ favoritedCourses.length }}</span>
+              收藏
+              <span v-if="favoriteCourses.length > 0" class="h5-tab-badge">{{ favoriteCourses.length }}</span>
             </div>
           </div>
-        </el-scroll-bar>
+        </div>
       </div>
 
       <!-- Loading 状态 -->
@@ -724,6 +724,12 @@ const handleContinue = (courseId) => {
   background: var(--el-bg-color-overlay);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--el-border-color-lighter);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.h5-tab-scroll {
+  display: flex;
 }
 
 .h5-tab-bar {
