@@ -79,7 +79,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> updateStatus(@PathVariable Long id,
                                  @Valid @RequestBody UserStatusRequest request) {
         userService.updateStatus(id, request);
