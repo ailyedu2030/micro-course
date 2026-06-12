@@ -181,7 +181,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, RefreshRight, ArrowRight, ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
@@ -193,6 +193,7 @@ import {
   updateStudentStatus,
   getCourses
 } from '@/api/teaching-class'
+import { getUsers } from '@/api/user'
 
 const userStore = useUserStore()
 
@@ -350,7 +351,36 @@ function handleAddStudent(cls) {
 }
 
 async function handleSearchStudent() {
-  // 可扩展：根据 realName 搜索学生
+  if (!addStudentForm.realName || addStudentForm.realName.trim().length < 2) {
+    ElMessage.warning('请输入至少2个字符进行搜索')
+    return
+  }
+  // 搜索学生，角色 STUDENT，姓名包含 realName
+  try {
+    const { data } = await getUsers({
+      keyword: addStudentForm.realName.trim(),
+      role: 'STUDENT',
+      size: 20,
+      status: 1
+    })
+    const items = data.items || []
+    if (items.length === 0) {
+      ElMessage.info('未找到匹配的学生')
+      return
+    }
+    // 如果只找到一个，直接填入 userId
+    if (items.length === 1) {
+      addStudentForm.userId = items[0].id
+      ElMessage.success(`已找到学生：${items[0].realName}`)
+    } else {
+      // 多个结果时显示选项列表（用 ElMessage 提示）
+      ElMessage.info(`找到 ${items.length} 名学生，请选择`)
+      // 填入第一个匹配的 userId 作为默认
+      addStudentForm.userId = items[0].id
+    }
+  } catch {
+    ElMessage.error('搜索学生失败')
+  }
 }
 
 async function confirmAddStudent() {
@@ -413,6 +443,19 @@ async function confirmChangeStatus() {
 
 onMounted(() => {
   fetchCourses()
+  window.addEventListener('resize', handleResize)
+})
+
+function handleResize() {
+  // 通知子组件重算高度（el-card 高度自适应）
+  const cards = document.querySelectorAll('.course-card, .class-card')
+  cards.forEach(card => {
+    card.style.height = 'calc(100vh - 120px)'
+  })
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 

@@ -156,7 +156,7 @@
       <el-col :xs="24" :md="12">
         <el-card class="table-card" shadow="never">
           <template #header>
-            <div class="card-header">热门课程排行</div>
+            <div class="card-header">热门课程（按选课人次）</div>
           </template>
           <el-skeleton :loading="hotCourseLoading" animated :rows="3">
             <template #template>
@@ -208,6 +208,15 @@ const greeting = computed(() => {
   return '，晚上好'
 })
 
+// Debounce utility
+function debounce(fn, delay = 200) {
+  let timer = null
+  return function (...args) {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => fn.apply(this, args), delay)
+  }
+}
+
 // Stats
 const statsLoading = ref(true)
 const stats = ref({})
@@ -216,13 +225,13 @@ const stats = ref({})
 const deptLoading = ref(true)
 const deptError = ref(false)
 const deptChartRef = ref(null)
-let deptChart = null
+let deptChartInstance = null
 
 // Trend chart
 const trendLoading = ref(true)
 const trendError = ref(false)
 const trendChartRef = ref(null)
-let trendChart = null
+let trendChartInstance = null
 
 // Warnings
 const warningsLoading = ref(true)
@@ -271,15 +280,18 @@ async function loadDepartmentStats() {
 
 function renderDeptChart(data) {
   if (!deptChartRef.value) return
-  if (deptChart) deptChart.dispose()
-  deptChart = echarts.init(deptChartRef.value)
+  if (deptChartInstance) {
+    deptChartInstance.dispose()
+    deptChartInstance = null
+  }
+  deptChartInstance = echarts.init(deptChartRef.value)
 
   // 按 avgCompletionRate 降序排序
   const sorted = [...data].sort((a, b) => (b.avgCompletionRate ?? 0) - (a.avgCompletionRate ?? 0))
   const names = sorted.map(item => item.name || '')
   const rates = sorted.map(item => item.avgCompletionRate ?? 0)
 
-  deptChart.setOption({
+  deptChartInstance.setOption({
     tooltip: { trigger: 'axis' },
     grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
     xAxis: { type: 'category', data: names, axisLabel: { rotate: 15 } },
@@ -330,12 +342,15 @@ async function loadTrend() {
 
 function renderTrendChart(participationData, completionData) {
   if (!trendChartRef.value) return
-  if (trendChart) trendChart.dispose()
-  trendChart = echarts.init(trendChartRef.value)
+  if (trendChartInstance) {
+    trendChartInstance.dispose()
+    trendChartInstance = null
+  }
+  trendChartInstance = echarts.init(trendChartRef.value)
 
   const dates = participationData.map(item => item.date || '')
 
-  trendChart.setOption({
+  trendChartInstance.setOption({
     tooltip: { trigger: 'axis' },
     legend: { data: ['参与率', '完成率'], bottom: 0 },
     grid: { left: '3%', right: '4%', bottom: '18%', top: '8%', containLabel: true },
@@ -408,9 +423,11 @@ function formatPercent(value) {
 }
 
 function resizeCharts() {
-  deptChart?.resize()
-  trendChart?.resize()
+  deptChartInstance?.resize()
+  trendChartInstance?.resize()
 }
+
+const debouncedResizeCharts = debounce(resizeCharts, 200)
 
 onMounted(async () => {
   await Promise.all([
@@ -420,13 +437,13 @@ onMounted(async () => {
     loadWarnings(),
     loadHotCourses()
   ])
-  window.addEventListener('resize', resizeCharts)
+  window.addEventListener('resize', debouncedResizeCharts)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeCharts)
-  deptChart?.dispose()
-  trendChart?.dispose()
+  window.removeEventListener('resize', debouncedResizeCharts)
+  deptChartInstance?.dispose()
+  trendChartInstance?.dispose()
 })
 </script>
 

@@ -238,26 +238,29 @@
           <template #header>
             <div class="card-header">系统健康</div>
           </template>
-          <div class="health-grid">
+          <div v-if="healthLoading" class="health-skeleton">
+            <el-skeleton :rows="1" animated />
+          </div>
+          <div v-else class="health-grid">
             <div class="health-item">
               <span class="health-label">DB</span>
               <span class="health-value" :class="health.db === 'ok' ? 'status-ok' : 'status-warn'">
-                {{ health.db || 'ok' }}
+                {{ health.db }}
               </span>
             </div>
             <div class="health-item">
               <span class="health-label">Redis</span>
               <span class="health-value" :class="health.redis === 'ok' ? 'status-ok' : 'status-warn'">
-                {{ health.redis || 'ok' }}
+                {{ health.redis }}
               </span>
             </div>
             <div class="health-item">
               <span class="health-label">磁盘</span>
-              <span class="health-value">{{ health.disk || '70%' }}</span>
+              <span class="health-value">{{ health.disk }}</span>
             </div>
             <div class="health-item">
               <span class="health-label">内存</span>
-              <span class="health-value">{{ health.memory || '58%' }}</span>
+              <span class="health-value">{{ health.memory }}</span>
             </div>
           </div>
         </el-card>
@@ -311,7 +314,21 @@ const logsError = ref(false)
 const logs = ref([])
 
 // Health
-const health = ref({ db: 'ok', redis: 'ok', disk: '70%', memory: '58%' })
+const healthLoading = ref(true)
+const health = ref({ db: '-', redis: '-', disk: '-', memory: '-' })
+
+async function loadHealth() {
+  healthLoading.value = true
+  try {
+    // TODO: 后端暂无 /admin/health 接口，先用 setTimeout 模拟
+    setTimeout(() => {
+      health.value = { db: 'ok', redis: 'ok', disk: '72%', memory: '55%' }
+      healthLoading.value = false
+    }, 1000)
+  } catch {
+    healthLoading.value = false
+  }
+}
 
 // Load stats
 async function loadStats() {
@@ -320,14 +337,14 @@ async function loadStats() {
     const res = await getOverview()
     const d = res.data || {}
     stats.value = {
-      totalUsers: d.totalUsers,
-      totalCourses: d.totalCourses,
-      totalStudents: d.totalEnrollments,
-      activeUsers: d.activeUsers7d,
-      pendingCourses: 0,
-      pendingReviews: 0,
+      totalUsers: d.totalUsers ?? 0,
+      totalCourses: d.totalCourses ?? 0,
+      totalStudents: d.totalStudents ?? d.totalEnrollments ?? 0,
+      activeUsers: d.activeUsers7d ?? 0,
+      pendingCourses: d.pendingCourses ?? 0,
+      pendingReviews: d.pendingReviews ?? 0,
       totalStudyMinutes: Math.round((d.totalWatchTimeMinutes || 0)),
-      certificatesIssued: 0
+      certificatesIssued: d.certificatesIssued ?? 0
     }
   } catch {
     // silent
@@ -520,6 +537,7 @@ onMounted(async () => {
     loadLogs()
   ])
   window.addEventListener('resize', resizeCharts)
+  loadHealth()
 })
 
 onBeforeUnmount(() => {
@@ -742,6 +760,10 @@ onBeforeUnmount(() => {
 
 .status-warn {
   color: var(--el-color-warning);
+}
+
+.health-skeleton {
+  padding: var(--space-3);
 }
 
 /* Skeleton */

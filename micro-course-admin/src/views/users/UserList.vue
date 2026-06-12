@@ -221,7 +221,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
-import { getUsers, updateUserStatus, batchImportUsers } from '@/api/user'
+import { getUsers, updateUser, updateUserStatus, batchImportUsers } from '@/api/user'
 import { getDepartments } from '@/api/department'
 import { getMajors } from '@/api/major'
 import { getClasses } from '@/api/class'
@@ -402,7 +402,11 @@ const handleDialogSave = async () => {
   try {
     await formRef.value.validate()
     dialogLoading.value = true
-    // await updateUser(formData) // TODO: implement update API
+    await updateUser(formData.id, {
+      username: formData.username,
+      realName: formData.realName,
+      role: formData.role
+    })
     ElMessage.success('保存成功')
     dialogVisible.value = false
     fetchData()

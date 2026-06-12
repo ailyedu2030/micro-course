@@ -106,9 +106,7 @@
         <el-form-item label="最大人数" prop="maxStudents">
           <el-input-number v-model="formData.maxStudents" :min="1" :max="999" class="full-width" />
         </el-form-item>
-        <el-form-item label="上课时间">
-          <el-input v-model="formData.classTime" placeholder="如 周一 3-4节" />
-        </el-form-item>
+
         <el-form-item label="上课地点">
           <el-input v-model="formData.location" placeholder="如 教学楼A101" />
         </el-form-item>
@@ -191,7 +189,6 @@ const formData = reactive({
   teacherId: null,
   semester: '',
   maxStudents: 30,
-  classTime: '',
   location: '',
   classSchedules: []
 })
@@ -312,7 +309,6 @@ function handleCreate() {
   formData.teacherId = null
   formData.semester = ''
   formData.maxStudents = 30
-  formData.classTime = ''
   formData.location = ''
   formData.classSchedules = []
   dialogVisible.value = true
@@ -329,7 +325,6 @@ async function handleEdit(row) {
     formData.teacherId = data.teacherId
     formData.semester = data.semester
     formData.maxStudents = data.maxStudents
-    formData.classTime = data.classTime || ''
     formData.location = data.location || ''
     formData.classSchedules = data.classSchedules || []
   } catch {

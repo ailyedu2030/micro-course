@@ -129,6 +129,7 @@
   --space-7: 32px;
   --space-8: 48px;
   --space-9: 64px;
+  --space-10: 80px;
 
   /* 字号 */
   --text-xs: 12px;
@@ -151,6 +152,12 @@
   --leading-snug: 1.375;
   --leading-normal: 1.5;
   --leading-relaxed: 1.625;
+
+  /* 行高别名（与 --text-* 命名对齐） */
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
 
   /* 圆角 */
   --radius-sm: 4px;

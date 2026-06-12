@@ -363,6 +363,8 @@ function getActionLabel(action) {
     CREATE: '创建',
     UPDATE: '更新',
     DELETE: '删除',
+    COURSE_APPROVE: '审核通过',
+    COURSE_REJECT: '审核驳回',
     OTHER: '其他'
   }
   return map[action] || action || '-'
@@ -375,6 +377,8 @@ function getActionTagType(action) {
     CREATE: 'primary',
     UPDATE: 'warning',
     DELETE: 'danger',
+    COURSE_APPROVE: 'success',
+    COURSE_REJECT: 'danger',
     OTHER: 'info'
   }
   return map[action] || 'info'
