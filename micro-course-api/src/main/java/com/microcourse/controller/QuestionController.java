@@ -45,7 +45,7 @@ public class QuestionController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<QuestionVO> create(@Valid @RequestBody QuestionCreateRequest request) {
         QuestionVO vo = questionService.create(request);
         return R.ok(vo);
@@ -73,7 +73,7 @@ public class QuestionController {
      * @param courseId 课程ID（路径参数）
      */
     @PostMapping("/batch/import")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<BatchImportResultVO> batchImport(
             @RequestParam("file") MultipartFile file,
             @RequestParam Long courseId) {

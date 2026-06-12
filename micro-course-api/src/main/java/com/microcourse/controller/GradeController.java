@@ -36,7 +36,7 @@ public class GradeController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<GradeVO> create(@Valid @RequestBody GradeCreateRequest request) {
         return R.ok(gradeService.create(request, getCurrentUserId()));
     }

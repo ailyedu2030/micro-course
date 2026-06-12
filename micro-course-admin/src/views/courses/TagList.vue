@@ -10,7 +10,7 @@
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <span class="toolbar-title">标签管理</span>
-        <el-button type="primary" @click="handleCreate">新增标签</el-button>
+        <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增标签</el-button>
       </div>
     </el-card>
 
@@ -79,9 +79,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import { getTags, createTag, updateTag, deleteTag } from '@/api/tag'
+
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const submitLoading = ref(false)

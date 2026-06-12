@@ -31,7 +31,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">练习列表</span>
-          <el-button type="primary" @click="handleCreate">新增练习</el-button>
+          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增练习</el-button>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
@@ -207,13 +207,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import { getExercises, createExercise, updateExercise, deleteExercise, addQuestionsToExercise, removeQuestionFromExercise } from '@/api/exercise'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getQuestions } from '@/api/question'
 import { getCategories } from '@/api/course-category'
+
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const submitLoading = ref(false)

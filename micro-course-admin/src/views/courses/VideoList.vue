@@ -34,9 +34,9 @@
               accept="video/*"
               :show-file-list="false"
             >
-              <el-button type="success" size="small">批量上传视频</el-button>
+              <el-button type="success" size="small" v-if="userRole !== 'ACADEMIC'">批量上传视频</el-button>
             </el-upload>
-            <el-button type="primary" @click="handleCreate">新增视频</el-button>
+            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增视频</el-button>
           </div>
         </div>
       </template>
@@ -172,11 +172,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
+import { useUserStore } from '@/store/user'
 import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideo } from '@/api/video'
 import { getCourses } from '@/api/course'
+
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const submitLoading = ref(false)

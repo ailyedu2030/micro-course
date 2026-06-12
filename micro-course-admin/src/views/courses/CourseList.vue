@@ -43,7 +43,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">课程列表</span>
-          <el-button type="primary" @click="handleCreate">新增课程</el-button>
+          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增课程</el-button>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table" @row-click="handleRowClick">
@@ -149,13 +149,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 
 const router = useRouter()
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const submitLoading = ref(false)

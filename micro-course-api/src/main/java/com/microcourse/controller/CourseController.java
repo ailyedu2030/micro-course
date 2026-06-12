@@ -52,7 +52,7 @@ public class CourseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<CourseVO> create(@Valid @RequestBody CourseCreateRequest request) {
         CourseVO vo = courseService.create(request);
         return R.ok(vo);
@@ -87,7 +87,7 @@ public class CourseController {
      * 权限：TEACHER, ADMIN
      */
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> submitForReview(@PathVariable Long id) {
         courseService.submitForReview(id);
         return R.ok();
@@ -138,7 +138,7 @@ public class CourseController {
      * @return 新课程VO
      */
     @PostMapping("/{id}/copy")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<CourseVO> copy(@PathVariable Long id) {
         CourseVO vo = courseService.copy(id);
         return R.ok(vo);

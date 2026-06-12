@@ -70,7 +70,7 @@ public class VideoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<VideoVO> create(@Valid @RequestBody VideoCreateRequest request) {
         VideoVO vo = videoService.create(request);
         return R.ok(vo);
@@ -98,7 +98,7 @@ public class VideoController {
      * 立即返回 Video 记录，文件传输与转码异步进行
      */
     @PostMapping("/upload")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<VideoVO> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam("courseId") Long courseId,

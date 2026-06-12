@@ -85,7 +85,7 @@
                   <!-- 展开：学生管理 -->
                   <div v-if="expandedClassId === cls.id" class="class-detail">
                     <div class="detail-actions">
-                      <el-button type="primary" size="small" @click="handleAddStudent(cls)">
+                      <el-button type="primary" size="small" v-if="userRole !== 'ACADEMIC'" @click="handleAddStudent(cls)">
                         <el-icon><Plus /></el-icon>添加学生
                       </el-button>
                       <el-button size="small" @click="handleRefreshStudents(cls)">
@@ -196,6 +196,7 @@ import {
 import { getUsers } from '@/api/user'
 
 const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 // 加载状态
 const loadingCourses = ref(false)

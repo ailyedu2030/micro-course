@@ -36,7 +36,7 @@ public class CourseChapterController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<ChapterVO> create(@Valid @RequestBody ChapterCreateRequest request) {
         ChapterVO vo = chapterService.create(request);
         return R.ok(vo);

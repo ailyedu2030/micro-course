@@ -26,7 +26,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">章节列表</span>
-          <el-button type="primary" @click="handleCreate">新增章节</el-button>
+          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增章节</el-button>
         </div>
       </template>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
@@ -107,10 +107,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import { getChapters, createChapter, updateChapter, deleteChapter } from '@/api/chapter'
 import { getCourses } from '@/api/course'
+
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const submitLoading = ref(false)

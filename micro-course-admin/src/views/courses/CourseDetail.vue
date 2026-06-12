@@ -93,7 +93,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">章节管理 <span class="drag-hint">(可拖拽排序)</span></span>
-          <el-button type="primary" size="small" @click="handleCreateChapter">新增章节</el-button>
+          <el-button type="primary" size="small" v-if="userRole !== 'ACADEMIC'" @click="handleCreateChapter">新增章节</el-button>
         </div>
       </template>
       <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe border class="data-table">
@@ -161,12 +161,15 @@ import { ref, reactive, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
+import { useUserStore } from '@/store/user'
 import { getCourseById, updateCourse, updateCourseStatus, submitCourseForReview } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const courseId = computed(() => route.params.id)
 const isEditMode = computed(() => route.path.includes('/edit'))

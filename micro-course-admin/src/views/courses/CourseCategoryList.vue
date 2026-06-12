@@ -10,7 +10,7 @@
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <span class="toolbar-title">课程分类管理</span>
-        <el-button type="primary" @click="handleCreate">新增分类</el-button>
+        <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增分类</el-button>
       </div>
     </el-card>
 
@@ -27,7 +27,7 @@
         <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="success" link size="small" @click="handleAddChild(row)" v-if="row.parentId === null">添加子分类</el-button>
+            <el-button type="success" link size="small" @click="handleAddChild(row)" v-if="userRole !== 'ACADEMIC' && row.parentId === null">添加子分类</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -73,9 +73,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/api/course-category'
+
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const submitLoading = ref(false)

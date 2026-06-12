@@ -39,7 +39,7 @@ public class TeachingClassController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
     public R<TeachingClassVO> create(@Valid @RequestBody TeachingClassCreateRequest request) {
         TeachingClassVO vo = teachingClassService.create(request);
         return R.ok(vo);
@@ -68,7 +68,7 @@ public class TeachingClassController {
     }
 
     @PostMapping("/{id}/students")
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
     public R<Void> addStudent(@PathVariable Long id, @RequestParam Long userId) {
         teachingClassService.addStudent(id, userId);
         return R.ok();

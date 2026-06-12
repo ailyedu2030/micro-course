@@ -55,8 +55,8 @@
           <span class="card-title">用户列表</span>
           <div class="header-actions">
             <el-button type="warning" @click="teacherApprovalVisible = true">教师审核</el-button>
-            <el-button type="success" @click="batchImportVisible = true">批量导入</el-button>
-            <el-button type="primary" @click="handleCreate">新增用户</el-button>
+            <el-button type="success" v-if="userRole !== 'ACADEMIC'" @click="batchImportVisible = true">批量导入</el-button>
+            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增用户</el-button>
           </div>
         </div>
       </template>
@@ -217,16 +217,19 @@
  * 用户列表页
  * Vue 3.4 Composition API + script setup
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
+import { useUserStore } from '@/store/user'
 import { getUsers, updateUser, updateUserStatus, batchImportUsers } from '@/api/user'
 import { getDepartments } from '@/api/department'
 import { getMajors } from '@/api/major'
 import { getClasses } from '@/api/class'
 
 const router = useRouter()
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const tableData = ref([])
