@@ -44,7 +44,7 @@ public class DepartmentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<DepartmentVO> update(@PathVariable Long id,
                                   @Valid @RequestBody DepartmentUpdateRequest request) {
         DepartmentVO vo = departmentService.update(id, request);
@@ -52,7 +52,7 @@ public class DepartmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
         departmentService.delete(id);
         return R.ok();
