@@ -23,7 +23,7 @@
         class="layout-menu"
       >
         <!-- 基础数据 -->
-        <el-sub-menu index="base">
+        <el-sub-menu index="base" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
           <template #title>
             <el-icon><Grid /></el-icon>
             <span v-show="!collapsed">基础数据</span>
@@ -56,7 +56,7 @@
             <el-icon><VideoCamera /></el-icon>
             <template #title>课程列表</template>
           </el-menu-item>
-          <el-menu-item index="/courses/review">
+          <el-menu-item index="/courses/review" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
             <el-icon><Film /></el-icon>
             <template #title>课程审核</template>
           </el-menu-item>
@@ -87,7 +87,7 @@
         </el-sub-menu>
 
         <!-- 教学管理 -->
-        <el-sub-menu index="teaching">
+        <el-sub-menu index="teaching" v-if="userStore.role === 'TEACHER' || userStore.role === 'ADMIN'">
           <template #title>
             <el-icon><UserFilled /></el-icon>
             <span v-show="!collapsed">教学管理</span>
@@ -119,28 +119,28 @@
         </el-sub-menu>
 
         <!-- 系统管理 -->
-        <el-sub-menu index="system">
+        <el-sub-menu index="system" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
           <template #title>
             <el-icon><Setting /></el-icon>
             <span v-show="!collapsed">系统管理</span>
           </template>
-          <el-menu-item index="/academic/dashboard">
+          <el-menu-item index="/academic/dashboard" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
             <el-icon><DataAnalysis /></el-icon>
             <template #title>教务驾驶舱</template>
           </el-menu-item>
-          <el-menu-item index="/admin/dashboard">
+          <el-menu-item index="/admin/dashboard" v-if="userStore.role === 'ADMIN'">
             <el-icon><Odometer /></el-icon>
             <template #title>数据看板</template>
           </el-menu-item>
-          <el-menu-item index="/admin/logs">
+          <el-menu-item index="/admin/logs" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
             <el-icon><Clock /></el-icon>
             <template #title>操作日志</template>
           </el-menu-item>
-          <el-menu-item index="/admin/settings">
+          <el-menu-item index="/admin/settings" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
             <el-icon><Tools /></el-icon>
             <template #title>系统设置</template>
           </el-menu-item>
-          <el-menu-item index="/admin/teaching-classes">
+          <el-menu-item index="/admin/teaching-classes" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
             <el-icon><Reading /></el-icon>
             <template #title>教学班管理</template>
           </el-menu-item>
