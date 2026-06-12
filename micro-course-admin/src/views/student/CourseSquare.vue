@@ -550,7 +550,7 @@ onMounted(() => {
    Hero (160px 3 段渐变 + 装饰圆)
    ================================================ */
 :root {
-  --content-max-width: 1280px;
+  --content-max-width: 1200px;
 }
 
 .hero-section {
