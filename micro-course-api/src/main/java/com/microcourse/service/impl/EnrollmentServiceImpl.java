@@ -1,8 +1,12 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.EnrollmentCreateRequest;
+import com.microcourse.dto.EnrollmentQueryRequest;
 import com.microcourse.dto.EnrollmentRankingVO;
+import com.microcourse.dto.PageResult;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.entity.Course;
@@ -94,6 +98,49 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         wrapper.orderByDesc(Enrollment::getEnrolledAt);
         List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
         return convertToVOList(enrollments);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<EnrollmentVO> getEnrollmentPage(EnrollmentQueryRequest query) {
+        int page = query.getPage() != null ? query.getPage() : 0;
+        int size = query.getSize() != null ? query.getSize() : 10;
+
+        // 预处理：studentName → userIds，courseName → courseIds
+        java.util.Set<Long> filterUserIds = null;
+        if (query.getStudentName() != null && !query.getStudentName().isBlank()) {
+            LambdaQueryWrapper<User> uWrapper = new LambdaQueryWrapper<>();
+            uWrapper.like(User::getRealName, query.getStudentName().trim());
+            filterUserIds = userRepository.selectList(uWrapper).stream()
+                    .map(User::getId).collect(java.util.stream.Collectors.toSet());
+            if (filterUserIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
+            }
+        }
+
+        java.util.Set<Long> filterCourseIds = null;
+        if (query.getCourseName() != null && !query.getCourseName().isBlank()) {
+            LambdaQueryWrapper<Course> cWrapper = new LambdaQueryWrapper<>();
+            cWrapper.like(Course::getTitle, query.getCourseName().trim());
+            filterCourseIds = courseRepository.selectList(cWrapper).stream()
+                    .map(Course::getId).collect(java.util.stream.Collectors.toSet());
+            if (filterCourseIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
+            }
+        }
+
+        // 构建查询条件
+        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+        if (filterUserIds != null) wrapper.in(Enrollment::getUserId, filterUserIds);
+        if (filterCourseIds != null) wrapper.in(Enrollment::getCourseId, filterCourseIds);
+        if (query.getStatus() != null && !query.getStatus().isBlank()) {
+            wrapper.eq(Enrollment::getEnrollmentStatus, query.getStatus());
+        }
+        wrapper.orderByDesc(Enrollment::getEnrolledAt);
+
+        IPage<Enrollment> pageResult = enrollmentRepository.selectPage(new Page<>(page + 1, size), wrapper);
+        List<EnrollmentVO> voList = convertToVOList(pageResult.getRecords());
+        return PageResult.of(voList, pageResult.getTotal(), page, size);
     }
 
     @Override

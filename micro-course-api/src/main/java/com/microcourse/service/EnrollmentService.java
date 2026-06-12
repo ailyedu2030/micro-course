@@ -1,6 +1,8 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.EnrollmentCreateRequest;
+import com.microcourse.dto.EnrollmentQueryRequest;
+import com.microcourse.dto.PageResult;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 
@@ -13,6 +15,8 @@ public interface EnrollmentService {
     EnrollmentVO enroll(EnrollmentCreateRequest request);
 
     List<EnrollmentVO> getMyEnrollments(Long userId, Boolean completed);
+
+    PageResult<EnrollmentVO> getEnrollmentPage(EnrollmentQueryRequest query);
 
     List<EnrollmentVO> getCourseEnrollments(Long courseId);
 

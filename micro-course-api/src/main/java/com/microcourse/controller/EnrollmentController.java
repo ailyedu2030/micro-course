@@ -1,7 +1,9 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.EnrollmentCreateRequest;
+import com.microcourse.dto.EnrollmentQueryRequest;
 import com.microcourse.dto.EnrollmentRankingVO;
+import com.microcourse.dto.PageResult;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.R;
@@ -41,6 +43,24 @@ public class EnrollmentController {
         Long userId = getCurrentUserId();
         List<EnrollmentVO> list = enrollmentService.getMyEnrollments(userId, completed);
         return R.ok(list);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<PageResult<EnrollmentVO>> getEnrollments(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String studentName,
+            @RequestParam(required = false) String courseName,
+            @RequestParam(required = false) String status) {
+        EnrollmentQueryRequest query = new EnrollmentQueryRequest();
+        query.setPage(page);
+        query.setSize(size);
+        query.setStudentName(studentName);
+        query.setCourseName(courseName);
+        query.setStatus(status);
+        PageResult<EnrollmentVO> result = enrollmentService.getEnrollmentPage(query);
+        return R.ok(result);
     }
 
     @GetMapping("/course/{courseId}")
