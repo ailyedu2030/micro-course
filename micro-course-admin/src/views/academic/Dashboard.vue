@@ -1,10 +1,8 @@
 <template>
   <div class="academic-dashboard">
-    <!-- 顶部欢迎条 -->
+    <!-- 顶部欢迎条 — 玻璃态 -->
     <div class="welcome-bar">
-      <div class="welcome-left">
-        <span class="welcome-date">{{ welcomeDate }}</span>
-      </div>
+      <div class="welcome-date">{{ welcomeDate }}</div>
       <div class="welcome-greeting">
         <span class="greeting-name">教务处</span>
         <span class="greeting-suffix">{{ greeting }}</span>
@@ -15,7 +13,7 @@
     <el-row :gutter="16" class="stats-row">
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap primary-icon">
+          <div class="stat-icon-zone stat-icon-zone--primary">
             <el-icon><Reading /></el-icon>
           </div>
           <div class="stat-body">
@@ -31,7 +29,7 @@
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap success-icon">
+          <div class="stat-icon-zone stat-icon-zone--success">
             <el-icon><User /></el-icon>
           </div>
           <div class="stat-body">
@@ -47,7 +45,7 @@
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap warning-icon">
+          <div class="stat-icon-zone stat-icon-zone--warning">
             <el-icon><TrendCharts /></el-icon>
           </div>
           <div class="stat-body">
@@ -63,7 +61,7 @@
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap purple-icon">
+          <div class="stat-icon-zone stat-icon-zone--purple">
             <el-icon><Finished /></el-icon>
           </div>
           <div class="stat-body">
@@ -137,11 +135,11 @@
               <div v-if="warningsError" class="table-error">
                 <span>加载失败</span>
               </div>
-              <el-table v-else :data="warnings" stripe class="warning-table">
+              <el-table v-else :data="warnings" class="warning-table">
                 <el-table-column prop="name" label="课程名称" min-width="160" show-overflow-tooltip />
                 <el-table-column prop="completionRate" label="完成率" width="100" align="center">
                   <template #default="{ row }">
-                    <span :class="row.completionRate < 30 ? 'rate-danger' : 'rate-normal'">
+                    <span :class="row.completionRate < 30 ? 'rate-danger' : 'rate-success'">
                       {{ formatPercent(row.completionRate) }}
                     </span>
                   </template>
@@ -168,7 +166,7 @@
               <div v-if="hotCourseError" class="table-error">
                 <span>加载失败</span>
               </div>
-              <el-table v-else :data="hotCourses" stripe class="hot-table">
+              <el-table v-else :data="hotCourses" class="hot-table">
                 <el-table-column type="index" label="排名" width="60" align="center" />
                 <el-table-column prop="name" label="课程名称" min-width="160" show-overflow-tooltip />
                 <el-table-column prop="enrollmentCount" label="选课人次" width="100" align="center" sortable />
@@ -306,30 +304,45 @@ function renderDeptChart(data) {
   const rates = sorted.map(item => item.avgCompletionRate ?? 0)
 
   deptChartInstance.setOption({
-    tooltip: { trigger: 'axis' },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
-    xAxis: { type: 'category', data: names, axisLabel: { rotate: 15 } },
+    tooltip: {
+      trigger: 'axis',
+      borderRadius: 8,
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: '#E2E8F0',
+      shadowColor: 'rgba(0,0,0,0.08)',
+      shadowBlur: 8,
+      textStyle: { color: '#1E293B', fontSize: 13 }
+    },
+    grid: { left: '3%', right: '4%', bottom: '8%', top: '8%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: names,
+      axisLabel: { rotate: 15, color: '#64748B', fontSize: 12 },
+      axisLine: { lineStyle: { color: '#F1F5F9' } },
+      axisTick: { show: false }
+    },
     yAxis: {
       type: 'value',
       name: '完成率',
       minInterval: 1,
       max: 100,
-      axisLabel: { formatter: '{value}%' }
+      axisLabel: { formatter: '{value}%', color: '#64748B', fontSize: 12 },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: '#F1F5F9' } }
     },
     series: [{
       name: '完成率',
       type: 'bar',
       data: rates,
       itemStyle: {
-        color: function(params) {
-          const rate = rates[params.dataIndex]
-          if (rate < 30) return 'var(--el-color-danger)'
-          if (rate < 60) return 'var(--el-color-warning)'
-          return 'var(--role-primary)'
-        },
-        borderRadius: [4, 4, 0, 0]
+        borderRadius: [8, 8, 0, 0],
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: '#4F46E5' },
+          { offset: 1, color: '#818CF8' }
+        ])
       },
-      barWidth: '50%'
+      barWidth: '60%'
     }]
   })
 }
@@ -365,16 +378,35 @@ function renderTrendChart(participationData, completionData) {
   const dates = participationData.map(item => item.date || '')
 
   trendChartInstance.setOption({
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['参与率', '完成率'], bottom: 0 },
+    color: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444'],
+    tooltip: {
+      trigger: 'axis',
+      borderRadius: 8,
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: '#E2E8F0',
+      shadowColor: 'rgba(0,0,0,0.08)',
+      shadowBlur: 8,
+      textStyle: { color: '#1E293B', fontSize: 13 }
+    },
+    legend: { data: ['参与率', '完成率'], bottom: 0, textStyle: { color: '#64748B', fontSize: 12 } },
     grid: { left: '3%', right: '4%', bottom: '18%', top: '8%', containLabel: true },
-    xAxis: { type: 'category', data: dates, boundaryGap: false },
+    xAxis: {
+      type: 'category',
+      data: dates,
+      boundaryGap: false,
+      axisLabel: { color: '#64748B', fontSize: 12 },
+      axisLine: { lineStyle: { color: '#F1F5F9' } },
+      axisTick: { show: false }
+    },
     yAxis: {
       type: 'value',
       name: '比率',
       minInterval: 1,
       max: 100,
-      axisLabel: { formatter: '{value}%' }
+      axisLabel: { formatter: '{value}%', color: '#64748B', fontSize: 12 },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: '#F1F5F9' } }
     },
     series: [
       {
@@ -382,18 +414,18 @@ function renderTrendChart(participationData, completionData) {
         type: 'line',
         smooth: true,
         data: participationData.map(item => item.participationRate ?? 0),
-        itemStyle: { color: 'var(--el-color-success)' },
+        itemStyle: { color: '#4F46E5' },
         lineStyle: { width: 2 },
-        areaStyle: { opacity: 0.08 }
+        areaStyle: { opacity: 0.12 }
       },
       {
         name: '完成率',
         type: 'line',
         smooth: true,
         data: completionData.map(item => item.completionRate ?? 0),
-        itemStyle: { color: 'var(--el-color-warning)' },
+        itemStyle: { color: '#10B981' },
         lineStyle: { width: 2 },
-        areaStyle: { opacity: 0.08 }
+        areaStyle: { opacity: 0.12 }
       }
     ]
   })
@@ -469,61 +501,88 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* =============================================
+   Academic Dashboard — Indigo Education Style
+   ============================================= */
+
 .academic-dashboard {
-  padding: var(--space-5);
-  background: var(--el-bg-color);
+  --color-primary: #4F46E5;
+  --color-secondary: #818CF8;
+  --color-surface: #ffffff;
+  --color-bg: #F5F6FA;
+  --color-text: #1E293B;
+  --color-muted: #64748B;
+  --color-border: #F1F5F9;
+
+  padding: 24px;
+  background: var(--color-bg);
   min-height: 100vh;
 }
 
-/* 欢迎条 */
+/* =============================================
+   1. Welcome Bar — 玻璃态
+   ============================================= */
 .welcome-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-5);
-  padding: var(--space-4) var(--space-5);
-  background: var(--el-bg-color-overlay);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.welcome-left {
-  display: flex;
-  align-items: center;
+  margin-bottom: 24px;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.15);
+  color: white;
 }
 
 .welcome-date {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
+  font-size: 14px;
+  opacity: 0.8;
 }
 
 .welcome-greeting {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
 }
 
 .greeting-name {
-  color: var(--role-primary);
+  color: white;
 }
 
-/* stat-grid */
+.greeting-suffix {
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+/* =============================================
+   2. 4 个 Stat Cards
+   ============================================= */
 .stats-row {
-  margin-bottom: var(--space-4);
+  margin-bottom: 16px;
 }
 
 .stat-card {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  gap: 16px;
+  padding: 20px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   cursor: default;
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-.stat-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+}
+
+/* 左侧 52×52 圆角方形图标区 */
+.stat-icon-zone {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -531,11 +590,25 @@ onBeforeUnmount(() => {
   font-size: 22px;
 }
 
-.primary-icon { background: var(--role-primary-light-9); color: var(--role-primary); }
-.success-icon { background: var(--el-color-success-light-9); color: var(--el-color-success); }
-.warning-icon { background: var(--el-color-warning-light-9); color: var(--el-color-warning); }
-.info-icon { background: var(--el-color-info-light-9); color: var(--el-color-info); }
-.purple-icon { background: var(--role-primary-light); color: var(--role-primary); }
+.stat-icon-zone--primary {
+  background: #EEF2FF;
+  color: #4F46E5;
+}
+
+.stat-icon-zone--success {
+  background: #ECFDF5;
+  color: #10B981;
+}
+
+.stat-icon-zone--warning {
+  background: #FEF3C7;
+  color: #F59E0B;
+}
+
+.stat-icon-zone--purple {
+  background: #FAF5FF;
+  color: #8B5CF6;
+}
 
 .stat-body {
   flex: 1;
@@ -543,34 +616,41 @@ onBeforeUnmount(() => {
 }
 
 .stat-value {
-  font-size: var(--text-3xl);
-  font-weight: var(--weight-bold);
-  color: var(--role-primary);
-  line-height: var(--leading-tight);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
 }
 
 .stat-label {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
-  margin-top: var(--space-1);
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-top: 4px;
 }
 
-/* 图表行 */
+/* =============================================
+   3. 图表面板
+   ============================================= */
 .charts-row {
-  margin-bottom: var(--space-4);
+  margin-bottom: 16px;
 }
 
 .chart-card {
-  margin-bottom: var(--space-4);
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
 }
 
 .card-header {
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  color: var(--el-text-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .header-tag {
@@ -578,7 +658,7 @@ onBeforeUnmount(() => {
 }
 
 .chart-container {
-  height: 260px;
+  height: 300px;
   width: 100%;
 }
 
@@ -588,65 +668,89 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--el-text-color-secondary);
-  font-size: var(--text-sm);
+  color: var(--color-muted);
+  font-size: 13px;
 }
 
-/* 底部表格 */
+/* =============================================
+   5. 预警表格 + 热门表格
+   ============================================= */
 .bottom-row {
-  margin-bottom: var(--space-4);
+  margin-bottom: 16px;
 }
 
 .table-card {
-  margin-bottom: var(--space-4);
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
 }
 
 .warning-table,
 .hot-table {
-  font-size: var(--text-sm);
+  font-size: 13px;
+}
+
+.warning-table .el-table__header th,
+.hot-table .el-table__header th {
+  background: #F8FAFC;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.warning-table .el-table__row:hover td,
+.hot-table .el-table__row:hover td {
+  background: #F1F5F9 !important;
 }
 
 .rate-danger {
-  color: var(--el-color-danger);
-  font-weight: var(--weight-semibold);
+  color: #EF4444;
+  font-weight: 700;
 }
 
-.rate-normal {
-  color: var(--el-text-color-primary);
+.rate-success {
+  color: #10B981;
 }
 
-/* Skeleton */
+/* =============================================
+   Skeleton
+   ============================================= */
 .skeleton-value {
   width: 60px;
   height: 32px;
 }
 
 .skeleton-chart {
-  height: 260px;
-  border-radius: var(--radius-md);
+  height: 300px;
+  border-radius: 8px;
 }
 
 .skeleton-item {
   height: 40px;
-  margin-bottom: var(--space-2);
-  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border-radius: 6px;
 }
 
+/* =============================================
+   Responsive
+   ============================================= */
 @media (max-width: 1024px) {
   .stats-row .el-col {
-    margin-bottom: var(--space-3);
+    margin-bottom: 12px;
   }
 }
 
 @media (max-width: 768px) {
   .academic-dashboard {
-    padding: var(--space-3);
+    padding: 16px;
   }
 
   .welcome-bar {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-2);
+    gap: 8px;
+    padding: 20px 24px;
   }
 }
 </style>

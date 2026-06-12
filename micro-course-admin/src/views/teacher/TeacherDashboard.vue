@@ -1,22 +1,24 @@
 <template>
   <div class="teacher-dashboard">
-    <!-- 顶部欢迎条 -->
+    <!-- 顶部欢迎条 — 玻璃态 -->
     <div class="welcome-bar">
       <div class="welcome-left">
-        <span class="welcome-date">{{ welcomeDate }}</span>
-        <span class="welcome-weather">{{ weather }}</span>
+        <div class="welcome-date">{{ welcomeDate }}</div>
+        <div class="welcome-greeting">
+          <span class="greeting-name">{{ userName }}</span>
+          <span class="greeting-suffix">{{ greeting }}</span>
+        </div>
       </div>
-      <div class="welcome-greeting">
-        <span class="greeting-name">{{ userName }}</span>
-        <span class="greeting-suffix">{{ greeting }}</span>
+      <div class="welcome-right">
+        <span class="welcome-title">教师工作台</span>
       </div>
     </div>
 
     <!-- 4 个 stat-card -->
     <el-row :gutter="16" class="stats-row">
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap">
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-icon-course">
             <el-icon class="stat-icon"><Reading /></el-icon>
           </div>
           <div class="stat-body">
@@ -30,11 +32,11 @@
             </el-skeleton>
             <div class="stat-label">我的课程数</div>
           </div>
-        </el-card>
+        </div>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap">
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-icon-student">
             <el-icon class="stat-icon"><User /></el-icon>
           </div>
           <div class="stat-body">
@@ -48,11 +50,11 @@
             </el-skeleton>
             <div class="stat-label">在学学员数</div>
           </div>
-        </el-card>
+        </div>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap">
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-icon-homework">
             <el-icon class="stat-icon"><Document /></el-icon>
           </div>
           <div class="stat-body">
@@ -66,11 +68,11 @@
             </el-skeleton>
             <div class="stat-label">待批改作业</div>
           </div>
-        </el-card>
+        </div>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap">
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-icon-question">
             <el-icon class="stat-icon"><QuestionFilled /></el-icon>
           </div>
           <div class="stat-body">
@@ -84,20 +86,18 @@
             </el-skeleton>
             <div class="stat-label">学员提问</div>
           </div>
-        </el-card>
+        </div>
       </el-col>
     </el-row>
 
     <!-- 中部主体区：左侧图表 + 右侧待办通知 -->
     <el-row :gutter="16" class="main-row">
-      <!-- 左侧 60% -->
+      <!-- 左侧图表 -->
       <el-col :xs="24" :md="14">
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>最近 7 天学情</span>
-            </div>
-          </template>
+        <div class="chart-card">
+          <div class="card-header">
+            <span>最近 7 天学情</span>
+          </div>
           <el-skeleton :loading="activityLoading" animated :rows="3">
             <template #template>
               <el-skeleton-item class="skeleton-chart" />
@@ -110,13 +110,11 @@
               <div v-else ref="studyChartRef" class="chart-container"></div>
             </template>
           </el-skeleton>
-        </el-card>
-        <el-card class="chart-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>学员活跃度</span>
-            </div>
-          </template>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <span>学员活跃度</span>
+          </div>
           <el-skeleton :loading="activityLoading" animated :rows="3">
             <template #template>
               <el-skeleton-item class="skeleton-chart" />
@@ -129,17 +127,15 @@
               <div v-else ref="activeChartRef" class="chart-container"></div>
             </template>
           </el-skeleton>
-        </el-card>
+        </div>
       </el-col>
 
-      <!-- 右侧 40% -->
+      <!-- 右侧待办通知 -->
       <el-col :xs="24" :md="10">
-        <el-card class="list-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>待办</span>
-            </div>
-          </template>
+        <div class="list-card">
+          <div class="card-header">
+            <span>待办</span>
+          </div>
           <el-skeleton :loading="tasksLoading" animated :rows="3">
             <template #template>
               <el-skeleton-item class="skeleton-item" />
@@ -155,20 +151,18 @@
               </div>
               <ul v-else class="list-ul">
                 <li v-for="task in tasks" :key="task.id" class="list-item">
-                  <span class="item-type">{{ task.type }}</span>
+                  <span :class="['item-type', `item-type-${task.typeColor || 'default'}`]">{{ task.type }}</span>
                   <span class="item-title">{{ task.title }}</span>
                   <span class="item-time">{{ formatTime(task.createdAt) }}</span>
                 </li>
               </ul>
             </template>
           </el-skeleton>
-        </el-card>
-        <el-card class="list-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>最新通知</span>
-            </div>
-          </template>
+        </div>
+        <div class="list-card">
+          <div class="card-header">
+            <span>最新通知</span>
+          </div>
           <el-skeleton :loading="notifLoading" animated :rows="3">
             <template #template>
               <el-skeleton-item class="skeleton-item" />
@@ -190,17 +184,15 @@
               </ul>
             </template>
           </el-skeleton>
-        </el-card>
+        </div>
       </el-col>
     </el-row>
 
     <!-- 底部：我教的课程 -->
-    <el-card class="course-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>我教的课程</span>
-        </div>
-      </template>
+    <div class="course-card">
+      <div class="card-header">
+        <span>我教的课程</span>
+      </div>
       <el-skeleton :loading="coursesLoading" animated :rows="2">
         <template #template>
           <div class="course-grid">
@@ -236,7 +228,7 @@
           </div>
         </template>
       </el-skeleton>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -341,23 +333,30 @@ function renderStudyChart(data) {
   const studyMinutes = data.map(item => item.studyMinutes ?? 0)
   const completionRate = data.map(item => item.completionRate ?? 0)
   studyChart.setOption({
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['学习时长(分钟)', '完成率(%)'], bottom: 0 },
+    color: ['#4F46E5', '#10B981'],
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#ffffff',
+      borderRadius: 8,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+      padding: [10, 14]
+    },
+    legend: { data: ['学习时长(分钟)', '完成率(%)'], bottom: 0, textStyle: { color: '#64748B', fontSize: 12 } },
     grid: { left: '3%', right: '4%', bottom: '18%', top: '8%', containLabel: true },
-    xAxis: { type: 'category', data: dates, boundaryGap: false },
+    xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
     yAxis: [
-      { type: 'value', name: '分钟', minInterval: 1 },
-      { type: 'value', name: '%', minInterval: 1, max: 100 }
+      { type: 'value', name: '分钟', minInterval: 1, axisLine: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
+      { type: 'value', name: '%', minInterval: 1, max: 100, axisLine: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } }
     ],
     series: [
       {
         name: '学习时长(分钟)',
         type: 'line',
         smooth: true,
+        lineStyle: { width: 3 },
         data: studyMinutes,
-        itemStyle: { color: 'var(--role-primary)' },
-        lineStyle: { width: 2 },
-        areaStyle: { opacity: 0.1 }
+        itemStyle: { color: '#4F46E5' },
+        areaStyle: { opacity: 0.12 }
       },
       {
         name: '完成率(%)',
@@ -365,9 +364,9 @@ function renderStudyChart(data) {
         smooth: true,
         yAxisIndex: 1,
         data: completionRate,
-        itemStyle: { color: '#67c23a' },
-        lineStyle: { width: 2 },
-        areaStyle: { opacity: 0.1 }
+        itemStyle: { color: '#10B981' },
+        lineStyle: { width: 3 },
+        areaStyle: { opacity: 0.12 }
       }
     ]
   })
@@ -380,15 +379,22 @@ function renderActiveChart(data) {
   const dates = data.map(item => item.date || '')
   const activeUsers = data.map(item => item.activeUsers ?? 0)
   activeChart.setOption({
-    tooltip: { trigger: 'axis' },
+    color: ['#4F46E5'],
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#ffffff',
+      borderRadius: 8,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+      padding: [10, 14]
+    },
     grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
-    xAxis: { type: 'category', data: dates, boundaryGap: false },
-    yAxis: { type: 'value', name: '活跃学员', minInterval: 1 },
+    xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
+    yAxis: { type: 'value', name: '活跃学员', minInterval: 1, axisLine: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
     series: [{
       name: '活跃学员',
       type: 'bar',
       data: activeUsers,
-      itemStyle: { color: 'var(--role-primary)', borderRadius: [4, 4, 0, 0] },
+      itemStyle: { color: '#4F46E5', borderRadius: [4, 4, 0, 0] },
       barWidth: '50%'
     }]
   })
@@ -474,80 +480,103 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .teacher-dashboard {
-  padding: var(--space-5);
-  background: var(--el-bg-color);
+  padding: 24px;
+  background: #F5F6FA;
   min-height: 100vh;
 }
 
-/* 欢迎条 */
+/* 欢迎条 — 玻璃态 */
 .welcome-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-5);
-  padding: var(--space-4) var(--space-5);
-  background: var(--el-bg-color-overlay);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.15);
+  color: white;
 }
 
 .welcome-left {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-direction: column;
+  gap: 4px;
 }
 
 .welcome-date {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
-}
-
-.welcome-weather {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
-  padding: 2px 8px;
-  background: var(--el-fill-color-light);
-  border-radius: var(--radius-pill);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .welcome-greeting {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
 }
 
 .greeting-name {
-  color: var(--role-primary);
+  color: white;
+}
+
+.greeting-suffix {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.welcome-right .welcome-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 2px;
 }
 
 /* stat-row */
 .stats-row {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
 }
 
 /* stat-card */
 .stat-card {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  gap: 16px;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   cursor: default;
+  transition: transform 200ms, box-shadow 200ms;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .stat-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  background: var(--role-primary-light-9);
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
+.stat-icon-course { background: #EEF2FF; }
+.stat-icon-course .stat-icon { color: #4F46E5; }
+
+.stat-icon-student { background: #ECFDF5; }
+.stat-icon-student .stat-icon { color: #10B981; }
+
+.stat-icon-homework { background: #FEF3C7; }
+.stat-icon-homework .stat-icon { color: #F59E0B; }
+
+.stat-icon-question { background: #FEF2F2; }
+.stat-icon-question .stat-icon { color: #EF4444; }
+
 .stat-icon {
   font-size: 22px;
-  color: var(--role-primary);
 }
 
 .stat-body {
@@ -556,36 +585,41 @@ onBeforeUnmount(() => {
 }
 
 .stat-value {
-  font-size: var(--text-3xl);
-  font-weight: var(--weight-bold);
-  color: var(--role-primary);
-  line-height: var(--leading-tight);
+  font-size: 28px;
+  font-weight: 700;
+  color: #1E293B;
+  line-height: 1.2;
 }
 
 .stat-label {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
-  margin-top: var(--space-1);
+  font-size: 13px;
+  color: #64748B;
+  margin-top: 4px;
 }
 
 /* 主区域 */
 .main-row {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
 }
 
 /* 图表卡片 */
 .chart-card {
-  margin-bottom: var(--space-4);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
 }
 
 .card-header {
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  color: var(--el-text-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .chart-container {
-  height: 260px;
+  height: 300px;
   width: 100%;
 }
 
@@ -598,13 +632,16 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--el-text-color-secondary);
-  font-size: var(--text-sm);
+  color: #64748B;
+  font-size: 14px;
 }
 
 /* 列表卡片 */
 .list-card {
-  margin-bottom: var(--space-4);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
 }
 
 .list-ul {
@@ -616,10 +653,15 @@ onBeforeUnmount(() => {
 .list-item {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  font-size: var(--text-sm);
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #F1F5F9;
+  font-size: 14px;
+  transition: background 150ms;
+}
+
+.list-item:hover {
+  background: #F8FAFC;
 }
 
 .list-item:last-child {
@@ -627,54 +669,63 @@ onBeforeUnmount(() => {
 }
 
 .item-type {
-  font-size: var(--text-xs);
-  padding: 1px 6px;
-  background: var(--role-primary-light-9);
-  color: var(--role-primary);
-  border-radius: var(--radius-sm);
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 4px;
   flex-shrink: 0;
+  font-weight: 500;
 }
+
+.item-type-homework { background: #FEF3C7; color: #D97706; }
+.item-type-question { background: #FEF2F2; color: #DC2626; }
+.item-type-course   { background: #EEF2FF; color: #4F46E5; }
+.item-type-notice  { background: #ECFDF5; color: #059669; }
+.item-type-default { background: #F1F5F9; color: #64748B; }
 
 .item-title {
   flex: 1;
-  color: var(--el-text-color-regular);
+  color: #475569;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .item-time {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-placeholder);
+  font-size: 12px;
+  color: #94A3B8;
   flex-shrink: 0;
 }
 
 /* 课程网格 */
 .course-card {
-  margin-bottom: var(--space-4);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .course-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-4);
+  gap: 24px;
+  padding: 20px;
 }
 
 .course-card-item {
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   overflow: hidden;
-  background: var(--el-fill-color-lighter);
-  transition: box-shadow var(--duration-base) var(--ease-out);
+  background: #F8FAFC;
+  transition: box-shadow 200ms, transform 200ms;
   cursor: default;
 }
 
 .course-card-item:hover {
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .course-cover {
   height: 100px;
-  background: var(--el-fill-color);
+  background: #EEF2FF;
   overflow: hidden;
 }
 
@@ -689,36 +740,36 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--el-text-color-placeholder);
+  color: #94A3B8;
   font-size: 32px;
 }
 
 .course-info {
-  padding: var(--space-3);
+  padding: 12px;
 }
 
 .course-title {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  color: #1E293B;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-bottom: var(--space-2);
+  margin-bottom: 6px;
 }
 
 .course-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 12px;
 }
 
 .course-student {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  color: #64748B;
 }
 
 /* Skeleton */
@@ -728,19 +779,19 @@ onBeforeUnmount(() => {
 }
 
 .skeleton-chart {
-  height: 260px;
-  border-radius: var(--radius-md);
+  height: 300px;
+  border-radius: 8px;
 }
 
 .skeleton-item {
   height: 40px;
-  margin-bottom: var(--space-2);
-  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border-radius: 8px;
 }
 
 .skeleton-course {
   height: 150px;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
 }
 
 @media (max-width: 1024px) {
@@ -751,21 +802,26 @@ onBeforeUnmount(() => {
 
 @media (max-width: 768px) {
   .teacher-dashboard {
-    padding: var(--space-3);
+    padding: 16px;
   }
 
   .welcome-bar {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-2);
+    gap: 12px;
+    padding: 20px 24px;
+  }
+
+  .welcome-right .welcome-title {
+    font-size: 22px;
   }
 
   .course-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .stats-row .el-col {
-    margin-bottom: var(--space-3);
+  .stats-row :deep(.el-col) {
+    margin-bottom: 12px;
   }
 }
 </style>

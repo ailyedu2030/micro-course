@@ -15,7 +15,7 @@
     <el-row :gutter="16" class="stats-row">
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap primary-icon">
+          <div class="stat-icon-wrap icon-indigo">
             <el-icon><User /></el-icon>
           </div>
           <div class="stat-body">
@@ -31,7 +31,7 @@
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap success-icon">
+          <div class="stat-icon-wrap icon-green">
             <el-icon><Reading /></el-icon>
           </div>
           <div class="stat-body">
@@ -47,7 +47,7 @@
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap warning-icon">
+          <div class="stat-icon-wrap icon-amber">
             <el-icon><Tickets /></el-icon>
           </div>
           <div class="stat-body">
@@ -63,7 +63,7 @@
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap info-icon">
+          <div class="stat-icon-wrap icon-blue">
             <el-icon><UserFilled /></el-icon>
           </div>
           <div class="stat-body">
@@ -79,7 +79,7 @@
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap danger-icon">
+          <div class="stat-icon-wrap icon-red">
             <el-icon><Clock /></el-icon>
           </div>
           <div class="stat-body">
@@ -95,7 +95,7 @@
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap purple-icon">
+          <div class="stat-icon-wrap icon-purple">
             <el-icon><ChatLineSquare /></el-icon>
           </div>
           <div class="stat-body">
@@ -111,7 +111,7 @@
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap orange-icon">
+          <div class="stat-icon-wrap icon-orange">
             <el-icon><Timer /></el-icon>
           </div>
           <div class="stat-body">
@@ -121,13 +121,13 @@
                 <div class="stat-value">{{ formatDuration(stats.totalStudyMinutes) }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">累计学习时长</div>
+            <div class="stat-label">学习时长</div>
           </div>
         </el-card>
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card class="stat-card" shadow="never">
-          <div class="stat-icon-wrap teal-icon">
+          <div class="stat-icon-wrap icon-pink">
             <el-icon><Medal /></el-icon>
           </div>
           <div class="stat-body">
@@ -335,7 +335,6 @@ async function refreshAll() {
 async function loadHealth() {
   healthLoading.value = true
   try {
-    // TODO: 后端暂无 /admin/health 接口，先用 setTimeout 模拟
     setTimeout(() => {
       health.value = { db: 'ok', redis: 'ok', disk: '72%', memory: '55%' }
       healthLoading.value = false
@@ -397,38 +396,45 @@ function renderTrendsChart(data) {
   trendsChart = echarts.init(trendsChartRef.value)
   const dates = (data.users || []).map(item => item.date || '')
   trendsChart.setOption({
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['用户', '课程', '学员'], bottom: 0 },
-    grid: { left: '3%', right: '4%', bottom: '18%', top: '8%', containLabel: true },
-    xAxis: { type: 'category', data: dates, boundaryGap: false },
-    yAxis: { type: 'value', name: '数量', minInterval: 1 },
+    color: ['#4F46E5', '#10B981', '#F59E0B'],
+    tooltip: {
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: '#E2E8F0',
+      borderWidth: 1,
+      textStyle: { color: '#1E293B' },
+      extraCssText: 'border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);'
+    },
+    legend: { data: ['用户', '课程', '学员'], bottom: 0, textStyle: { color: '#64748B' } },
+    grid: { left: '3%', right: '4%', bottom: '12%', top: '8%', containLabel: true },
+    xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#F1F5F9' } }, splitLine: { show: false } },
+    yAxis: { type: 'value', name: '数量', minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
     series: [
       {
         name: '用户',
         type: 'line',
         smooth: true,
         data: (data.users || []).map(item => item.count ?? 0),
-        itemStyle: { color: 'var(--role-primary)' },
-        lineStyle: { width: 2 },
-        areaStyle: { opacity: 0.08 }
+        itemStyle: { color: '#4F46E5' },
+        lineStyle: { width: 3 },
+        areaStyle: { opacity: 0.12 }
       },
       {
         name: '课程',
         type: 'line',
         smooth: true,
         data: (data.courses || []).map(item => item.count ?? 0),
-        itemStyle: { color: 'var(--el-color-success)' },
-        lineStyle: { width: 2 },
-        areaStyle: { opacity: 0.08 }
+        itemStyle: { color: '#10B981' },
+        lineStyle: { width: 3 },
+        areaStyle: { opacity: 0.12 }
       },
       {
         name: '学员',
         type: 'line',
         smooth: true,
         data: (data.students || []).map(item => item.count ?? 0),
-        itemStyle: { color: 'var(--el-color-warning)' },
-        lineStyle: { width: 2 },
-        areaStyle: { opacity: 0.08 }
+        itemStyle: { color: '#F59E0B' },
+        lineStyle: { width: 3 },
+        areaStyle: { opacity: 0.12 }
       }
     ]
   })
@@ -457,16 +463,22 @@ function renderCategoryChart(data) {
   categoryChart = echarts.init(categoryChartRef.value)
   const pieData = data.map(item => ({ name: item.name, value: item.value }))
   categoryChart.setOption({
-    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-    legend: { bottom: 0, type: 'scroll' },
+    color: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6'],
+    tooltip: {
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: '#E2E8F0',
+      borderWidth: 1,
+      textStyle: { color: '#1E293B' },
+      extraCssText: 'border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);'
+    },
+    legend: { bottom: 0, type: 'scroll', textStyle: { color: '#64748B' } },
     series: [{
       type: 'pie',
       radius: ['40%', '70%'],
       avoidLabelOverlap: false,
-        itemStyle: { borderRadius: 8, borderColor: 'var(--el-color-white)', borderWidth: 2 },
-      label: { show: true, formatter: '{b}: {c}' },
-      data: pieData,
-      color: ['var(--role-primary)', 'var(--el-color-success)', 'var(--el-color-warning)', 'var(--el-color-danger)', 'var(--el-color-info)', 'var(--role-primary)']
+      itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
+      label: { show: true, formatter: '{b}: {c}', color: '#1E293B' },
+      data: pieData
     }]
   })
 }
@@ -495,18 +507,25 @@ function renderActivityChart(data) {
   const dates = data.map(item => item.date || '')
   const activeUsers = data.map(item => item.activeUsers ?? 0)
   activityChart.setOption({
-    tooltip: { trigger: 'axis' },
+    color: ['#4F46E5'],
+    tooltip: {
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: '#E2E8F0',
+      borderWidth: 1,
+      textStyle: { color: '#1E293B' },
+      extraCssText: 'border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);'
+    },
     grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
-    xAxis: { type: 'category', data: dates, boundaryGap: false },
-    yAxis: { type: 'value', name: '活跃用户', minInterval: 1 },
+    xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#F1F5F9' } }, splitLine: { show: false } },
+    yAxis: { type: 'value', name: '活跃用户', minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
     series: [{
       name: '活跃用户',
       type: 'line',
       smooth: true,
       data: activeUsers,
-      itemStyle: { color: 'var(--role-primary)' },
-      lineStyle: { width: 2 },
-      areaStyle: { opacity: 0.1 }
+      itemStyle: { color: '#4F46E5' },
+      lineStyle: { width: 3 },
+      areaStyle: { opacity: 0.12 }
     }]
   })
 }
@@ -572,21 +591,21 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .admin-dashboard {
-  padding: var(--space-5);
-  background: var(--el-bg-color);
+  padding: 24px;
+  background: #F5F6FA;
   min-height: 100vh;
 }
 
-/* 欢迎条 */
+/* ===== 欢迎条 ===== */
 .welcome-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-5);
-  padding: var(--space-4) var(--space-5);
-  background: var(--el-bg-color-overlay);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #4F46E5 0%, #818CF8 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(79,70,229,0.15);
 }
 
 .welcome-left {
@@ -595,52 +614,69 @@ onBeforeUnmount(() => {
 }
 
 .welcome-date {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
 }
 
 .welcome-greeting {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
 }
 
 .greeting-name {
-  color: var(--role-primary);
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
 }
 
-/* stat-grid */
+.greeting-suffix {
+  font-size: 16px;
+  color: rgba(255,255,255,0.9);
+}
+
+/* ===== Stat Cards ===== */
 .stats-row {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
 }
 
 .stat-card {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  gap: 16px;
+  padding: 20px;
   cursor: default;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: none;
+  transition: all 200ms ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
 }
 
 .stat-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 22px;
+  font-size: 24px;
 }
 
-.primary-icon { background: var(--role-primary-light-9); color: var(--role-primary); }
-.success-icon { background: var(--el-color-success-light-9); color: var(--el-color-success); }
-.warning-icon { background: var(--el-color-warning-light-9); color: var(--el-color-warning); }
-.info-icon { background: var(--el-color-info-light-9); color: var(--el-color-info); }
-.danger-icon { background: var(--el-color-danger-light-9); color: var(--el-color-danger); }
-.purple-icon { background: var(--role-primary-light); color: var(--role-primary); }
-.orange-icon { background: var(--el-color-warning-light-9); color: var(--el-color-warning); }
-.teal-icon { background: var(--el-color-info-light-9); color: var(--el-color-info); }
+.icon-indigo  { background: #EEF2FF; color: #4F46E5; }
+.icon-green   { background: #ECFDF5; color: #10B981; }
+.icon-amber   { background: #FEF3C7; color: #F59E0B; }
+.icon-blue    { background: #EFF6FF; color: #3B82F6; }
+.icon-red     { background: #FEF2F2; color: #EF4444; }
+.icon-purple  { background: #FAF5FF; color: #8B5CF6; }
+.icon-orange  { background: #FFF7ED; color: #F97316; }
+.icon-pink    { background: #FDF2F8; color: #EC4899; }
 
 .stat-body {
   flex: 1;
@@ -648,36 +684,43 @@ onBeforeUnmount(() => {
 }
 
 .stat-value {
-  font-size: var(--text-3xl);
-  font-weight: var(--weight-bold);
-  color: var(--role-primary);
-  line-height: var(--leading-tight);
+  font-size: 28px;
+  font-weight: 700;
+  color: #1E293B;
+  line-height: 1.1;
 }
 
 .stat-label {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
-  margin-top: var(--space-1);
+  font-size: 13px;
+  color: #64748B;
+  margin-top: 4px;
 }
 
-/* 图表行 */
+/* ===== Chart Cards ===== */
 .charts-row {
-  margin-bottom: var(--space-4);
+  margin-bottom: 24px;
 }
 
 .chart-card {
-  margin-bottom: var(--space-4);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: none;
+  margin-bottom: 24px;
 }
 
 .card-header {
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  color: var(--el-text-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .chart-container {
-  height: 260px;
+  height: 300px;
   width: 100%;
+  padding: 12px;
 }
 
 .chart-error,
@@ -687,24 +730,36 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--el-text-color-secondary);
-  font-size: var(--text-sm);
+  color: #94A3B8;
+  font-size: 13px;
 }
 
-/* 列表卡片 */
+/* ===== List Card ===== */
 .list-card {
-  margin-bottom: var(--space-4);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: none;
+  margin-bottom: 24px;
 }
 
 .list-ul {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 20px;
 }
 
 .list-item {
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  padding: 12px 0;
+  border-bottom: 1px solid #F1F5F9;
+  transition: background 150ms ease;
+}
+
+.list-item:hover {
+  background: #F8FAFC;
+  margin: 0 -8px;
+  padding: 12px 8px;
+  border-radius: 8px;
 }
 
 .list-item:last-child {
@@ -714,112 +769,115 @@ onBeforeUnmount(() => {
 .log-main {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .log-action {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-primary);
-  font-weight: var(--weight-medium);
+  font-size: 13px;
+  color: #1E293B;
+  font-weight: 500;
 }
 
 .log-target {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-regular);
+  font-size: 13px;
+  color: #64748B;
 }
 
 .log-sub {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .log-operator {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  color: #94A3B8;
 }
 
 .log-time {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-placeholder);
+  font-size: 12px;
+  color: #94A3B8;
 }
 
-/* 健康卡 */
+/* ===== Health Card ===== */
 .health-card {
-  margin-bottom: var(--space-4);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: none;
+  margin-bottom: 24px;
 }
 
 .health-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-3);
+  gap: 12px;
+  padding: 16px 20px;
 }
 
 .health-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3);
-  background: var(--el-fill-color-light);
-  border-radius: var(--radius-sm);
+  padding: 12px;
+  background: #F8FAFC;
+  border-radius: 8px;
 }
 
 .health-label {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  color: #64748B;
 }
 
 .health-value {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
-.status-ok {
-  color: var(--el-color-success);
-}
-
-.status-warn {
-  color: var(--el-color-warning);
-}
+.status-ok  { color: #10B981; }
+.status-warn { color: #F59E0B; }
 
 .health-skeleton {
-  padding: var(--space-3);
+  padding: 12px;
 }
 
-/* Skeleton */
+/* ===== Skeleton ===== */
 .skeleton-value {
   width: 60px;
   height: 32px;
 }
 
 .skeleton-chart {
-  height: 260px;
-  border-radius: var(--radius-md);
+  height: 300px;
+  border-radius: 8px;
 }
 
 .skeleton-item {
   height: 40px;
-  margin-bottom: var(--space-2);
-  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  border-radius: 8px;
 }
 
+/* ===== Responsive ===== */
 @media (max-width: 1024px) {
   .stats-row .el-col {
-    margin-bottom: var(--space-3);
+    margin-bottom: 16px;
   }
 }
 
 @media (max-width: 768px) {
   .admin-dashboard {
-    padding: var(--space-3);
+    padding: 16px;
   }
 
   .welcome-bar {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-2);
+    gap: 8px;
+    padding: 20px 24px;
+    border-radius: 12px;
   }
 }
 </style>
