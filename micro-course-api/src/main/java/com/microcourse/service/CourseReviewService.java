@@ -35,4 +35,9 @@ public interface CourseReviewService {
      * 分页查询当前用户的所有评价
      */
     PageResult<CourseReviewVO> getMyReviews(Long userId, int page, int size);
+
+    /**
+     * 管理后台：分页查询所有评价（可按课程筛选）
+     */
+    PageResult<CourseReviewVO> listAll(int page, int size, Long courseId);
 }

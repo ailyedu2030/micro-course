@@ -76,6 +76,20 @@ class MyReviewController {
     }
 
     /**
+     * 管理后台：分页查询所有评价
+     * GET /api/reviews
+     */
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<PageResult<CourseReviewVO>> listAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Long courseId) {
+        PageResult<CourseReviewVO> result = courseReviewService.listAll(page, size, courseId);
+        return R.ok(result);
+    }
+
+    /**
      * 获取当前用户的所有评价
      * GET /api/reviews/my
      */

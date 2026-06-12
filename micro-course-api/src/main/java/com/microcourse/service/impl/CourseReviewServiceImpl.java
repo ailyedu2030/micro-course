@@ -108,6 +108,21 @@ public class CourseReviewServiceImpl implements CourseReviewService {
                 .collect(Collectors.toList()), result.getTotal(), page, size);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<CourseReviewVO> listAll(int page, int size, Long courseId) {
+        Page<CourseReview> pg = new Page<>(page + 1, size);
+        LambdaQueryWrapper<CourseReview> wrapper = new LambdaQueryWrapper<>();
+        if (courseId != null) {
+            wrapper.eq(CourseReview::getCourseId, courseId);
+        }
+        wrapper.orderByDesc(CourseReview::getCreatedAt);
+        IPage<CourseReview> result = courseReviewRepository.selectPage(pg, wrapper);
+        return PageResult.of(result.getRecords().stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList()), result.getTotal(), page, size);
+    }
+
     private CourseReviewVO convertToVO(CourseReview review) {
         CourseReviewVO vo = new CourseReviewVO();
         vo.setId(review.getId());
