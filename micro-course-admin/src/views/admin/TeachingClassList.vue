@@ -372,6 +372,9 @@ async function handleSubmit() {
 
 function handleDialogClose() {
   formRef.value?.resetFields()
+  // Manually clear classSchedules because resetFields() cannot reset dynamic array rows
+  // that have no prop attribute in the form item
+  formData.classSchedules = []
 }
 
 onMounted(() => {

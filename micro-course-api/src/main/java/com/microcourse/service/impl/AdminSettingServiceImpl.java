@@ -2,6 +2,7 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.AdminSettingVO;
+import com.microcourse.dto.SettingUpdateRequest;
 import com.microcourse.entity.AdminSetting;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -12,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -64,17 +64,44 @@ public class AdminSettingServiceImpl implements AdminSettingService {
 
     @Override
     @Transactional
-    public void updateBatch(Map<String, String> settings) {
+    public void updateBatch(List<SettingUpdateRequest> settings) {
         LocalDateTime now = LocalDateTime.now();
-        for (Map.Entry<String, String> entry : settings.entrySet()) {
+        for (SettingUpdateRequest req : settings) {
             LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(AdminSetting::getSettingKey, entry.getKey());
+            wrapper.eq(AdminSetting::getSettingKey, req.getKey());
             AdminSetting setting = adminSettingRepository.selectOne(wrapper);
             if (setting != null) {
-                setting.setSettingValue(entry.getValue());
+                setting.setSettingValue(req.getValue());
                 setting.setUpdatedAt(now);
                 adminSettingRepository.updateById(setting);
+            } else {
+                // Upsert: key 不存在时插入新记录
+                AdminSetting newSetting = new AdminSetting();
+                newSetting.setSettingKey(req.getKey());
+                newSetting.setSettingValue(req.getValue());
+                newSetting.setUpdatedAt(now);
+                adminSettingRepository.insert(newSetting);
             }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void upsert(String key, String value) {
+        LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AdminSetting::getSettingKey, key);
+        AdminSetting setting = adminSettingRepository.selectOne(wrapper);
+        LocalDateTime now = LocalDateTime.now();
+        if (setting != null) {
+            setting.setSettingValue(value);
+            setting.setUpdatedAt(now);
+            adminSettingRepository.updateById(setting);
+        } else {
+            AdminSetting newSetting = new AdminSetting();
+            newSetting.setSettingKey(key);
+            newSetting.setSettingValue(value);
+            newSetting.setUpdatedAt(now);
+            adminSettingRepository.insert(newSetting);
         }
     }
 

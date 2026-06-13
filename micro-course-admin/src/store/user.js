@@ -6,6 +6,7 @@ export const useUserStore = defineStore('user', {
   state: () => ({ token: localStorage.getItem('micro_course_token') || '', userInfo: null }),
   getters: {
     isLoggedIn: (state) => !!state.token,
+    userId: (state) => state.userInfo?.id || null,
     role: (state) => state.userInfo?.role || '',
     realName: (state) => state.userInfo?.realName || '',
     username: (state) => state.userInfo?.username || ''

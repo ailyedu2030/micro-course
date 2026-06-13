@@ -1,9 +1,9 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.AdminSettingVO;
+import com.microcourse.dto.SettingUpdateRequest;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 系统配置服务接口
@@ -39,7 +39,15 @@ public interface AdminSettingService {
     /**
      * 批量更新配置
      *
-     * @param settings key-value 配置映射
+     * @param settings 配置更新请求列表
      */
-    void updateBatch(Map<String, String> settings);
+    void updateBatch(List<SettingUpdateRequest> settings);
+
+    /**
+     * Upsert 单个配置（key 不存在则插入，存在则更新）
+     *
+     * @param key   配置键
+     * @param value 配置值
+     */
+    void upsert(String key, String value);
 }

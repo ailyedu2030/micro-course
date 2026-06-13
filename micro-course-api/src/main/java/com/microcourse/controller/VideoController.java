@@ -21,13 +21,13 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -93,8 +93,8 @@ public class VideoController {
 
     /**
      * 视频文件上传
-     * 验证 contentType 以 video/ 开头，大小 ≤ 2GB
-     * 存储到 /data/videos/{courseId}/{videoId}.mp4
+     * 验证扩展名 mp4/mov/mkv，大小 ≤ 2GB
+     * 存储到 uploads/videos/{courseId}/{videoId}.mp4
      * 立即返回 Video 记录，文件传输与转码异步进行
      */
     @PostMapping("/upload")
@@ -104,29 +104,15 @@ public class VideoController {
             @RequestParam("courseId") Long courseId,
             @RequestParam(value = "chapterId", required = false) Long chapterId) {
 
-        // 验证文件非空
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
-        }
-
-        // 验证 contentType
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("video/")) {
-            throw new BusinessException(ErrorCode.VIDEO_UPLOAD_INVALID_FORMAT);
-        }
-
-        // 验证大小
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new BusinessException(ErrorCode.VIDEO_UPLOAD_TOO_LARGE);
-        }
+        // 校验文件类型、大小
+        validateVideoFile(file);
 
         // 生成唯一文件名
         String originalFilename = file.getOriginalFilename();
         String uuid = UUID.randomUUID().toString().replace("-", "");
-        String savedFileName = uuid + "_" + (originalFilename != null ? originalFilename : "video.mp4");
 
-        // 存储路径：/data/videos/{courseId}/
-        String baseDir = "/data/videos/" + courseId;
+        // 存储路径：uploads/videos/{courseId}/{videoId}.mp4（先占位，videoId 需回写）
+        String baseDir = "uploads/videos/" + courseId;
         String tempFileName = uuid + ".mp4";
 
         try {
@@ -142,9 +128,9 @@ public class VideoController {
         video.setChapterId(chapterId);
         video.setCourseId(courseId);
         video.setTitle(originalFilename != null ? originalFilename : "未命名视频");
-        video.setFileName(savedFileName);
+        video.setFileName(originalFilename != null ? originalFilename : "video.mp4");
         video.setFileSize(file.getSize());
-        video.setMimeType(contentType);
+        video.setMimeType(file.getContentType());
         video.setUrl(targetPath.toString());
         video.setOriginalPath(targetPath.toString());
         video.setStatus(0); // UPLOADING
@@ -170,6 +156,26 @@ public class VideoController {
 
         // 立即返回 Video 记录
         return R.ok(videoService.getById(video.getId()));
+    }
+
+    /**
+     * 校验视频文件扩展名和大小
+     */
+    private void validateVideoFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
+        }
+        String originalFilename = file.getOriginalFilename();
+        String ext = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            ext = originalFilename.substring(originalFilename.lastIndexOf(".") + 1);
+        }
+        if (!Set.of("mp4", "mov", "mkv").contains(ext.toLowerCase())) {
+            throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID);
+        }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BusinessException(ErrorCode.VIDEO_TOO_LARGE);
+        }
     }
 
     /**

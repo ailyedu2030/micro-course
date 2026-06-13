@@ -77,6 +77,7 @@
           <template #default="{ row }">
             <el-tag v-if="row.status === 0" type="info" size="small">草稿</el-tag>
             <el-tag v-else-if="row.status === 1" type="warning" size="small">待审核</el-tag>
+            <div v-if="row.status === 1" class="review-hint">审核中，预计48h</div>
             <el-tag v-else-if="row.status === 2" type="success" size="small">通过</el-tag>
             <el-tag v-else-if="row.status === 3" type="danger" size="small">驳回</el-tag>
             <el-tag v-else-if="row.status === 4" type="success" size="small">已发布</el-tag>
@@ -215,7 +216,9 @@ const fetchData = async () => {
       keyword: searchForm.keyword || undefined,
       categoryId: searchForm.categoryId || undefined,
       teacherName: searchForm.teacherName || undefined,
-      status: searchForm.status !== '' ? searchForm.status : undefined
+      status: searchForm.status !== '' ? searchForm.status : undefined,
+      // 教师自动过滤为自己的课程
+      teacherId: userStore.role === 'TEACHER' ? userStore.userId : undefined
     }
     const { data } = await getCourses(params)
     tableData.value = data.items || []
@@ -347,9 +350,10 @@ const handleDelete = async (row) => {
 
 const handleCopy = async (row) => {
   try {
-    await copyCourse(row.id)
-    ElMessage.success('复制成功')
-    fetchData()
+    const { data } = await copyCourse(row.id)
+    const newId = data?.id || data
+    ElMessage.success('复制成功，即将跳转到编辑页面')
+    router.push(`/courses/${newId}/edit`)
   } catch {
     ElMessage.error('复制失败')
   }
@@ -464,6 +468,13 @@ onMounted(() => {
 
 .no-thumb {
   color: #c0c4cc;
+}
+
+.review-hint {
+  font-size: 11px;
+  color: #909399;
+  margin-top: 2px;
+  line-height: 1.2;
 }
 
 

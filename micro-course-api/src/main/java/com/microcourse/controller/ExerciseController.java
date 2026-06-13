@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/exercises")
@@ -64,7 +65,12 @@ public class ExerciseController {
 
     @PostMapping("/{id}/questions")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
-    public R<Void> addQuestions(@PathVariable Long id, @RequestBody List<Long> questionIds) {
+    public R<Void> addQuestions(@PathVariable Long id, @RequestBody Map<String, List<Long>> body) {
+        List<Long> questionIds = body.get("questionIds");
+        if (questionIds == null || questionIds.isEmpty()) {
+            throw new com.microcourse.exception.BusinessException(
+                com.microcourse.exception.ErrorCode.BAD_REQUEST_PARAM, "questionIds 不能为空");
+        }
         exerciseService.addQuestions(id, questionIds);
         return R.ok();
     }

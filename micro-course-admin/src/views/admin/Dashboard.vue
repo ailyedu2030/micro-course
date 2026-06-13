@@ -86,10 +86,10 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.pendingCourses ?? 0 }}</div>
+                <div class="stat-value">{{ stats.videoPlayCount ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">待审课程</div>
+            <div class="stat-label">视频播放次数</div>
           </div>
         </el-card>
       </el-col>
@@ -102,10 +102,10 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.pendingReviews ?? 0 }}</div>
+                <div class="stat-value">{{ stats.exerciseSubmitCount ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">待批评论</div>
+            <div class="stat-label">练习提交次数</div>
           </div>
         </el-card>
       </el-col>
@@ -272,10 +272,10 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import {
-  User, UserFilled, Reading, Tickets, Clock, ChatLineSquare, Timer, Medal
+  User, UserFilled, Reading, Tickets, Timer, Medal
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { getOverview, getUserTrend, getCourseTrend, getCourseDistribution, getLearningBehavior } from '@/api/admin-stats'
+import { getOverview, getUserTrend, getCourseTrend, getCourseDistribution, getLearningBehavior, getHealth } from '@/api/admin-stats'
 import { getLogs } from '@/api/operation-log'
 
 const now = new Date()
@@ -333,23 +333,39 @@ async function refreshAll() {
 }
 
 async function loadHealth() {
-  // 后端无 /admin/health 端点，健康监控暂时为空实现
-  healthLoading.value = false
+  try {
+    const res = await getHealth()
+    health.value = res.data || {}
+  } catch {
+    // ignore - health is not critical
+  } finally {
+    healthLoading.value = false
+  }
 }
 
 // Load stats
 async function loadStats() {
   statsLoading.value = true
   try {
-    const res = await getOverview()
-    const d = res.data || {}
+    const [overviewRes, behaviorRes] = await Promise.all([
+      getOverview(),
+      getLearningBehavior()
+    ])
+    const d = overviewRes.data || {}
+    // 学习行为数据
+    const behaviorData = behaviorRes.data || {}
+    // 兼容不同的返回结构：可能是 { videoPlayCount, exerciseSubmitCount } 或 { items: [...] }
+    const items = Array.isArray(behaviorData) ? behaviorData : (behaviorData.items || [])
+    const videoPlayCount = items.reduce?.((sum, item) => sum + (item.videoPlayCount || 0), 0) || behaviorData.videoPlayCount || 0
+    const exerciseSubmitCount = items.reduce?.((sum, item) => sum + (item.exerciseSubmitCount || 0), 0) || behaviorData.exerciseSubmitCount || 0
+
     stats.value = {
       totalUsers: d.totalUsers ?? 0,
       totalCourses: d.totalCourses ?? 0,
-      totalStudents: d.totalStudents ?? d.totalEnrollments ?? 0,
+      totalStudents: d.totalEnrollments ?? 0,
       activeUsers: d.activeUsers7d ?? 0,
-      pendingCourses: d.pendingCourses ?? 0,
-      pendingReviews: d.pendingReviews ?? 0,
+      videoPlayCount,
+      exerciseSubmitCount,
       totalStudyMinutes: Math.round((d.totalWatchTimeMinutes || 0)),
       certificatesIssued: d.certificatesIssued ?? 0
     }

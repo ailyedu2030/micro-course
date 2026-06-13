@@ -14,6 +14,7 @@ import com.microcourse.entity.Question;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.QuestionRepository;
 import com.microcourse.repository.UserRepository;
@@ -33,13 +34,16 @@ public class QuestionServiceImpl implements QuestionService {
     private final QuestionRepository questionRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
+    private final CourseCategoryRepository categoryRepository;
 
     public QuestionServiceImpl(QuestionRepository questionRepository,
                               CourseRepository courseRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              CourseCategoryRepository categoryRepository) {
         this.questionRepository = questionRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     @Override
@@ -281,6 +285,7 @@ public class QuestionServiceImpl implements QuestionService {
             Course course = courseRepository.selectById(question.getCourseId());
             if (course != null) {
                 vo.setCourseTitle(course.getTitle());
+                vo.setCategoryId(course.getCategoryId());
             }
         }
 
@@ -288,6 +293,14 @@ public class QuestionServiceImpl implements QuestionService {
             User user = userRepository.selectById(question.getTeacherId());
             if (user != null) {
                 vo.setTeacherName(user.getRealName());
+            }
+        }
+
+        // Populate category name if categoryId is set
+        if (vo.getCategoryId() != null) {
+            var category = categoryRepository.selectById(vo.getCategoryId());
+            if (category != null) {
+                vo.setCategoryName(category.getName());
             }
         }
 

@@ -295,8 +295,8 @@ public class CourseServiceImpl implements CourseService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // Owner check: only course teacher or ADMIN can approve
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+        // Admin check: only ADMIN can approve
+        if (!SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // PENDING_REVIEW(1) → APPROVED(2)
@@ -316,8 +316,8 @@ public class CourseServiceImpl implements CourseService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // Owner check: only course teacher or ADMIN can reject
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+        // Admin check: only ADMIN can reject
+        if (!SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // PENDING_REVIEW(1) → REJECTED(3)
@@ -338,8 +338,8 @@ public class CourseServiceImpl implements CourseService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // Owner check: only course teacher or ADMIN can publish
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+        // Admin check: only ADMIN can publish
+        if (!SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // APPROVED(2) → PUBLISHED(4)

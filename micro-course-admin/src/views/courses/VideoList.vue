@@ -10,8 +10,13 @@
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="所属课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200" @change="handleCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="章节" v-if="searchForm.courseId">
+          <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable class="filter-input-w200">
+            <el-option v-for="item in chapterOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -34,7 +39,7 @@
               accept="video/*"
               :show-file-list="false"
             >
-              <el-button type="success" size="small" v-if="userRole !== 'ACADEMIC'">批量上传视频</el-button>
+              <el-button type="success" size="small" v-if="userRole !== 'ACADEMIC'" :disabled="!searchForm.courseId || !searchForm.chapterId">批量上传视频</el-button>
             </el-upload>
             <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增视频</el-button>
           </div>
@@ -50,8 +55,16 @@
           <span class="queue-status">
             <el-tag v-if="item.status === 'success'" type="success" size="small">成功</el-tag>
             <el-tag v-else-if="item.status === 'error'" type="danger" size="small">失败</el-tag>
+            <el-tag v-else-if="item.status === 'cancelled'" type="info" size="small">已取消</el-tag>
             <el-tag v-else type="info" size="small">上传中</el-tag>
           </span>
+          <el-button
+            v-if="item.status === 'uploading'"
+            type="danger"
+            size="small"
+            link
+            @click="handleCancelUpload(idx)"
+          >取消</el-button>
         </div>
         <div class="queue-summary">
           成功: {{ uploadSuccess }} / 失败: {{ uploadError }} / 总计: {{ uploadQueue.length }}
@@ -176,8 +189,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideo, uploadVideoCover } from '@/api/video'
+import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo } from '@/api/video'
 import { getCourses } from '@/api/course'
+import { getChapters } from '@/api/chapter'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
@@ -189,9 +203,11 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 const courseOptions = ref([])
+const chapterOptions = ref([])
 
 const searchForm = reactive({
-  courseId: ''
+  courseId: '',
+  chapterId: ''
 })
 
 const dialogVisible = ref(false)
@@ -217,6 +233,7 @@ const formRules = {
 const uploadQueue = ref([])
 const uploadSuccess = ref(0)
 const uploadError = ref(0)
+const uploadXHRMap = ref({}) // store XHR objects for cancel
 
 const coverDialogVisible = ref(false)
 const previewDialogVisible = ref(false)
@@ -266,6 +283,8 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.courseId = ''
+  searchForm.chapterId = ''
+  chapterOptions.value = []
   page.value = 1
   tableData.value = []
   totalElements.value = 0
@@ -298,24 +317,96 @@ const handleBeforeUpload = (file) => {
   return true
 }
 
+const handleCancelUpload = (idx) => {
+  const item = uploadQueue.value[idx]
+  if (item && item.xhr) {
+    item.xhr.abort()
+    item.status = 'cancelled'
+  }
+}
+
 const handleBatchUpload = async ({ file }) => {
   const queueItem = uploadQueue.value.find(i => i.name === file.name)
   if (!queueItem) return
 
+  const courseId = searchForm.courseId
+  const chapterId = searchForm.chapterId
+  if (!courseId || !chapterId) {
+    queueItem.status = 'error'
+    uploadError.value++
+    ElMessage.error('请先选择课程和章节')
+    return
+  }
+
   try {
     const formData = new FormData()
     formData.append('file', file)
-    await uploadVideo(formData, (p) => {
-      queueItem.percentage = Math.round(p)
+    formData.append('courseId', courseId)
+    formData.append('chapterId', chapterId)
+
+    const xhr = new XMLHttpRequest()
+    queueItem.xhr = xhr
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        queueItem.percentage = Math.round((e.loaded / e.total) * 100)
+      }
     })
-    queueItem.status = 'success'
-    uploadSuccess.value++
-    ElMessage.success(`${file.name} 上传成功`)
-    fetchData()
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        queueItem.status = 'success'
+        uploadSuccess.value++
+        ElMessage.success(`${file.name} 上传成功`)
+        fetchData()
+      } else {
+        queueItem.status = 'error'
+        uploadError.value++
+        try {
+          const err = JSON.parse(xhr.responseText)
+          ElMessage.error(`${file.name} 上传失败: ${err.message || '未知错误'}`)
+        } catch {
+          ElMessage.error(`${file.name} 上传失败`)
+        }
+      }
+      delete uploadXHRMap.value[file.name]
+    })
+
+    xhr.addEventListener('error', () => {
+      queueItem.status = 'error'
+      uploadError.value++
+      ElMessage.error(`${file.name} 上传失败`)
+      delete uploadXHRMap.value[file.name]
+    })
+
+    xhr.addEventListener('abort', () => {
+      queueItem.status = 'cancelled'
+      delete uploadXHRMap.value[file.name]
+    })
+
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+    xhr.open('POST', `${baseURL}/api/videos/upload`)
+    const token = localStorage.getItem('micro_course_token')
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+    }
+    xhr.send(formData)
   } catch {
     queueItem.status = 'error'
     uploadError.value++
     ElMessage.error(`${file.name} 上传失败`)
+  }
+}
+
+const handleCourseChange = async (courseId) => {
+  searchForm.chapterId = ''
+  chapterOptions.value = []
+  if (!courseId) return
+  try {
+    const { data } = await getChapters({ courseId, size: 1000 })
+    chapterOptions.value = data.items || []
+  } catch {
+    // chapters are optional for search; silently fail
   }
 }
 

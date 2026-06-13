@@ -48,3 +48,12 @@ export function getCourseDistribution() {
 export function getLearningBehavior(days = 30) {
   return request({ method: 'GET', url: '/admin/stats/learning-behavior', params: { days } })
 }
+
+/**
+ * 获取系统健康状态
+ * GET /admin/stats/health
+ * 响应: { db, redis, disk, memory }
+ */
+export function getHealth() {
+  return request({ method: 'GET', url: '/admin/stats/health' })
+}

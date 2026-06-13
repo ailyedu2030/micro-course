@@ -31,6 +31,8 @@ public enum ErrorCode {
     QUESTION_NOT_FOUND(9001, "题目不存在", 404),
     EXERCISE_NOT_FOUND(9002, "练习不存在", 404),
     EXERCISE_QUESTION_NOT_FOUND(9003, "练习题目不存在", 404),
+    VIDEO_FORMAT_INVALID(12009, "不支持的视频格式", 400),
+    VIDEO_TOO_LARGE(12010, "视频文件不能超过2GB", 413),
     VIDEO_NOT_FOUND(9004, "视频不存在", 404),
     BAD_REQUEST_PARAM(9005, "参数错误", 400),
     DISCUSSION_POST_NOT_FOUND(10001, "帖子不存在", 404),
@@ -49,7 +51,8 @@ public enum ErrorCode {
     ADMIN_SETTING_NOT_FOUND(12008, "系统配置不存在", 404),
     BADGE_NOT_FOUND(13001, "徽章不存在", 404),
     CERTIFICATE_NOT_FOUND(13002, "证书不存在", 404),
-    TAG_NOT_FOUND(14001, "标签不存在", 404);
+    TAG_NOT_FOUND(14001, "标签不存在", 404),
+    BANNER_NOT_FOUND(15001, "Banner 不存在", 404);
 
     private final int code;
     private final String message;

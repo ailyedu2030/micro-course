@@ -27,6 +27,7 @@ import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.OperationLogService;
 import com.microcourse.service.UserService;
+import com.microcourse.util.IpUtil;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -264,7 +265,7 @@ public class UserServiceImpl implements UserService {
         log.setTargetType("USER");
         log.setTargetId(user.getId());
         log.setDetail("{\"field\":\"status\",\"old\":" + oldStatus + ",\"new\":" + newStatus + "}");
-        log.setIp("0.0.0.0");
+        log.setIp(IpUtil.getClientIp());
         log.setSuccess(true);
         operationLogService.log(log);
     }
@@ -301,7 +302,7 @@ public class UserServiceImpl implements UserService {
         log.setTargetType("USER");
         log.setTargetId(user.getId());
         log.setDetail("{\"field\":\"teacherStatus\",\"old\":" + oldStatus + ",\"new\":" + newStatus + ",\"reason\":\"" + (request.getReason() != null ? request.getReason() : "") + "\"}");
-        log.setIp("0.0.0.0");
+        log.setIp(IpUtil.getClientIp());
         log.setSuccess(true);
         operationLogService.log(log);
     }

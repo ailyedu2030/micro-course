@@ -12,6 +12,7 @@ import com.microcourse.entity.OperationLog;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AuthService;
 import com.microcourse.service.OperationLogService;
+import com.microcourse.util.IpUtil;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -110,7 +111,7 @@ public class AuthServiceImpl implements AuthService {
             logEntry.setAction("LOGIN");
             logEntry.setTargetType("USER");
             logEntry.setTargetId(user.getId());
-            logEntry.setIp("0.0.0.0");
+            logEntry.setIp(IpUtil.getClientIp());
             logEntry.setSuccess(true);
             operationLogService.log(logEntry);
 
@@ -198,7 +199,7 @@ public class AuthServiceImpl implements AuthService {
             logEntry.setAction("LOGOUT");
             logEntry.setTargetType("USER");
             logEntry.setTargetId(user.getId());
-            logEntry.setIp("0.0.0.0");
+            logEntry.setIp(IpUtil.getClientIp());
             logEntry.setSuccess(true);
             operationLogService.log(logEntry);
         }

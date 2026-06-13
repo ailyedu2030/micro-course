@@ -16,6 +16,8 @@ public class QuestionVO {
     private String partialScore;
     private String explanation;
     private Integer difficulty;
+    private Long categoryId;
+    private String categoryName;
     private Integer version;
     private Integer status;
     private LocalDateTime createdAt;
@@ -47,6 +49,10 @@ public class QuestionVO {
     public void setExplanation(String explanation) { this.explanation = explanation; }
     public Integer getDifficulty() { return difficulty; }
     public void setDifficulty(Integer difficulty) { this.difficulty = difficulty; }
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+    public String getCategoryName() { return categoryName; }
+    public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
     public Integer getStatus() { return status; }

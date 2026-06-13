@@ -47,3 +47,9 @@ export function deleteCourse(id) {
 export function copyCourse(id) {
   return request({ method: 'POST', url: `/courses/${id}/copy` })
 }
+
+export function updateCourseCover(id, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({ method: 'POST', url: `/courses/${id}/cover`, data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
+}

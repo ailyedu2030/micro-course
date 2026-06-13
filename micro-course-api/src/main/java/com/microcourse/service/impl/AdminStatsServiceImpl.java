@@ -21,9 +21,12 @@ import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.AdminStatsService;
+import com.microcourse.util.RedisUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -46,6 +49,8 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     private final ExerciseRepository exerciseRepository;
     private final DiscussionPostRepository discussionPostRepository;
     private final LearningProgressRepository learningProgressRepository;
+    private final RedisUtil redisUtil;
+    private final DataSource dataSource;
 
     public AdminStatsServiceImpl(UserRepository userRepository,
                                   CourseRepository courseRepository,
@@ -53,7 +58,9 @@ public class AdminStatsServiceImpl implements AdminStatsService {
                                   VideoRepository videoRepository,
                                   ExerciseRepository exerciseRepository,
                                   DiscussionPostRepository discussionPostRepository,
-                                  LearningProgressRepository learningProgressRepository) {
+                                  LearningProgressRepository learningProgressRepository,
+                                  RedisUtil redisUtil,
+                                  DataSource dataSource) {
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -61,6 +68,8 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         this.exerciseRepository = exerciseRepository;
         this.discussionPostRepository = discussionPostRepository;
         this.learningProgressRepository = learningProgressRepository;
+        this.redisUtil = redisUtil;
+        this.dataSource = dataSource;
     }
 
     @Override
@@ -221,5 +230,52 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         result.add(completed);
 
         return result;
+    }
+
+    @Override
+    public Map<String, String> getHealth() {
+        Map<String, String> health = new LinkedHashMap<>();
+
+        // DB check
+        try (Connection conn = dataSource.getConnection()) {
+            boolean valid = conn.isValid(2);
+            health.put("db", valid ? "OK" : "ERROR");
+        } catch (Exception e) {
+            health.put("db", "ERROR: " + e.getMessage());
+        }
+
+        // Redis check
+        try {
+            String pong = redisUtil.ping();
+            health.put("redis", "PONG".equals(pong) ? "OK" : "ERROR");
+        } catch (Exception e) {
+            health.put("redis", "ERROR: " + e.getMessage());
+        }
+
+        // Disk check (runtime mxbean)
+        try {
+            java.io.File root = new java.io.File("/");
+            long total = root.getTotalSpace();
+            long free = root.getFreeSpace();
+            long used = total - free;
+            double usedPercent = (used * 100.0) / total;
+            health.put("disk", String.format("%.1f%% used", usedPercent));
+        } catch (Exception e) {
+            health.put("disk", "UNKNOWN");
+        }
+
+        // Memory check (JVM)
+        try {
+            Runtime rt = Runtime.getRuntime();
+            long totalMem = rt.totalMemory();
+            long freeMem = rt.freeMemory();
+            long usedMem = totalMem - freeMem;
+            double usedPercent = (usedMem * 100.0) / totalMem;
+            health.put("memory", String.format("%.1f%% used", usedPercent));
+        } catch (Exception e) {
+            health.put("memory", "UNKNOWN");
+        }
+
+        return health;
     }
 }

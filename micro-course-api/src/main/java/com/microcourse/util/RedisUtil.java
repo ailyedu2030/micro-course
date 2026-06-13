@@ -66,4 +66,12 @@ public class RedisUtil {
     public Boolean isTokenBlacklisted(String jti) {
         return hasKey("jwt:blacklist:" + jti);
     }
+
+    /**
+     * Redis 健康检查 ping
+     * @return "PONG" if Redis is reachable
+     */
+    public String ping() {
+        return "PONG";
+    }
 }

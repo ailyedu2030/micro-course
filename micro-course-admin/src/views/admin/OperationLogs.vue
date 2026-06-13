@@ -8,6 +8,17 @@
     <!-- 搜索筛选区 -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
+        <el-form-item label="用户ID">
+          <el-input
+            v-model="searchForm.userId"
+            placeholder="输入用户ID"
+            clearable
+            class="filter-input"
+            type="number"
+            @clear="handleSearch"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
         <el-form-item label="操作人">
           <el-input
             v-model="searchForm.username"
@@ -134,9 +145,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="username" label="操作人" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="ipAddress" label="IP 地址" width="150" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span class="text-secondary">{{ row.ipAddress || '-' }}</span>
+        <el-table-column prop="ip" label="IP 地址" width="150" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span class="text-secondary">{{ row.ip || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="module" label="模块" width="120" align="center">
@@ -192,7 +203,7 @@
         <el-descriptions-item label="时间" :span="2">{{ formatTime(currentLog.createdAt) }}</el-descriptions-item>
         <el-descriptions-item label="操作人">{{ currentLog.username || '-' }}</el-descriptions-item>
         <el-descriptions-item label="用户ID">{{ currentLog.userId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="IP 地址">{{ currentLog.ipAddress || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="IP 地址">{{ currentLog.ip || '-' }}</el-descriptions-item>
         <el-descriptions-item label="模块">
           <el-tag size="small" :type="getModuleTagType(currentLog.module)">
             {{ getModuleLabel(currentLog.module) }}
@@ -239,6 +250,7 @@ const dateRange = ref(null)
 
 // 搜索表单
 const searchForm = reactive({
+  userId: '',
   username: '',
   module: '',
   action: '',
@@ -270,6 +282,7 @@ function handleSearch() {
 
 // 重置
 function handleReset() {
+  searchForm.userId = ''
   searchForm.username = ''
   searchForm.module = ''
   searchForm.action = ''
@@ -289,6 +302,7 @@ async function fetchData() {
     const params = {
       page: page.value - 1,
       size: size.value,
+      userId: searchForm.userId ? Number(searchForm.userId) : undefined,
       username: searchForm.username || undefined,
       module: searchForm.module || undefined,
       action: searchForm.action || undefined,

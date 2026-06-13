@@ -3,6 +3,7 @@ package com.microcourse.dto;
 public class EnrollmentQueryRequest {
     private Integer page = 0;
     private Integer size = 10;
+    private Long teacherId;
     private String studentName;
     private String courseName;
     private String status;
@@ -11,6 +12,8 @@ public class EnrollmentQueryRequest {
     public void setPage(Integer page) { this.page = page; }
     public Integer getSize() { return size; }
     public void setSize(Integer size) { this.size = size; }
+    public Long getTeacherId() { return teacherId; }
+    public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
     public String getStudentName() { return studentName; }
     public void setStudentName(String studentName) { this.studentName = studentName; }
     public String getCourseName() { return courseName; }

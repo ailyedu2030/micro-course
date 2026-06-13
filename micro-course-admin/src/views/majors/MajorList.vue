@@ -212,8 +212,13 @@ const handleDelete = async (row) => {
     await deleteMajor(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch {
-    ElMessage.error('删除失败')
+  } catch (error) {
+    const code = error.response?.data?.code
+    if (code === 3002) {
+      ElMessage.error('该专业下存在班级，无法删除')
+    } else {
+      ElMessage.error('删除失败')
+    }
   }
 }
 

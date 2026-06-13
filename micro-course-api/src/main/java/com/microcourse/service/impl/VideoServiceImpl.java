@@ -235,6 +235,14 @@ public class VideoServiceImpl implements VideoService {
             }
         }
 
+        // Load chapter name
+        if (video.getChapterId() != null) {
+            CourseChapter chapter = chapterRepository.selectById(video.getChapterId());
+            if (chapter != null) {
+                vo.setChapterName(chapter.getTitle());
+            }
+        }
+
         return vo;
     }
 
@@ -267,6 +275,14 @@ public class VideoServiceImpl implements VideoService {
             Course course = courseMap.get(video.getCourseId());
             if (course != null) {
                 vo.setCourseName(course.getTitle());
+            }
+        }
+
+        // Load chapter name
+        if (video.getChapterId() != null) {
+            CourseChapter chapter = chapterRepository.selectById(video.getChapterId());
+            if (chapter != null) {
+                vo.setChapterName(chapter.getTitle());
             }
         }
 

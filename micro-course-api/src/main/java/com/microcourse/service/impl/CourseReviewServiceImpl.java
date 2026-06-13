@@ -3,7 +3,7 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.microcourse.dto.CourseReviewCreateRequest;
+import com.microcourse.dto.CourseReviewRequest;
 import com.microcourse.dto.CourseReviewVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.CourseReview;
@@ -45,11 +45,11 @@ public class CourseReviewServiceImpl implements CourseReviewService {
 
     @Override
     @Transactional
-    public CourseReviewVO create(CourseReviewCreateRequest request, Long userId) {
+    public CourseReviewVO create(Long courseId, CourseReviewRequest request, Long userId) {
         // 验证用户已选修该课程
         LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
         enrollWrapper.eq(Enrollment::getUserId, userId)
-                .eq(Enrollment::getCourseId, request.getCourseId());
+                .eq(Enrollment::getCourseId, courseId);
         Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
         if (enrollment == null) {
             throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
@@ -63,14 +63,14 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         // 检查是否已评价（每人每课程只能评价一次）
         LambdaQueryWrapper<CourseReview> reviewWrapper = new LambdaQueryWrapper<>();
         reviewWrapper.eq(CourseReview::getUserId, userId)
-                .eq(CourseReview::getCourseId, request.getCourseId());
+                .eq(CourseReview::getCourseId, courseId);
         CourseReview existing = courseReviewRepository.selectOne(reviewWrapper);
         if (existing != null) {
             throw new BusinessException(ErrorCode.COURSE_REVIEW_ALREADY_EXISTS);
         }
 
         CourseReview review = new CourseReview();
-        review.setCourseId(request.getCourseId());
+        review.setCourseId(courseId);
         review.setUserId(userId);
         review.setRating(request.getRating());
         review.setContent(request.getContent());

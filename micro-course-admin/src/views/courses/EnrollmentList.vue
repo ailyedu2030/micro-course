@@ -17,9 +17,7 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120">
-            <el-option label="学习中" value="ACTIVE" />
-            <el-option label="已完成" value="COMPLETED" />
-            <el-option label="已过期" value="EXPIRED" />
+            <el-option label="学习中" value="ENROLLED" />
             <el-option label="已取消" value="CANCELLED" />
           </el-select>
         </el-form-item>
@@ -42,7 +40,7 @@
           <el-empty description="暂无报名数据" />
         </template>
         <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="studentName" label="学员" min-width="120" />
+        <el-table-column prop="userName" label="学员" min-width="120" />
         <el-table-column prop="courseName" label="课程" min-width="180" show-overflow-tooltip />
         <el-table-column prop="progress" label="学习进度" width="140" align="center">
           <template #default="{ row }">
@@ -53,16 +51,14 @@
           </template>
         </el-table-column>
         <el-table-column prop="enrolledAt" label="报名时间" width="170" />
-        <el-table-column prop="status" label="状态" width="120" align="center">
+        <el-table-column prop="enrollmentStatus" label="状态" width="120" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 'ACTIVE'" type="primary" size="small">学习中</el-tag>
-            <el-tag v-else-if="row.status === 'COMPLETED'" type="success" size="small">已完成</el-tag>
-            <el-tag v-else-if="row.status === 'EXPIRED'" type="warning" size="small">已过期</el-tag>
-            <el-tag v-else-if="row.status === 'CANCELLED'" type="info" size="small">已取消</el-tag>
-            <el-tag v-else type="info" size="small">{{ row.status || '-' }}</el-tag>
+            <el-tag v-if="row.enrollmentStatus === 'ENROLLED'" type="primary" size="small">学习中</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'CANCELLED'" type="info" size="small">已取消</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'PENDING'" type="warning" size="small">待审核</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.enrollmentStatus || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="expiredAt" label="到期时间" width="170" />
       </el-table>
       <div class="pagination-wrap">
         <el-pagination

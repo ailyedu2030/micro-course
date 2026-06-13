@@ -239,10 +239,12 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Override
     @Transactional
     public DiscussionPostVO create(PostCreateRequest req, Long userId) {
-        // Validate chapterId exists (FK constraint)
-        CourseChapter chapter = courseChapterRepository.selectById(req.getChapterId());
-        if (chapter == null) {
-            throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
+        // Validate chapterId exists only when provided (FK constraint)
+        if (req.getChapterId() != null) {
+            CourseChapter chapter = courseChapterRepository.selectById(req.getChapterId());
+            if (chapter == null) {
+                throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
+            }
         }
 
         DiscussionPost post = new DiscussionPost();

@@ -241,7 +241,7 @@ import {
   Search, RefreshRight, Download, View, Message
 } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
-import { getCourseEnrollments } from '@/api/enrollment'
+import { getCourseEnrollments, getEnrollments } from '@/api/enrollment'
 import { sendNotification } from '@/api/notification'
 import { useUserStore } from '@/store/user'
 
@@ -300,8 +300,7 @@ function handleReset() {
   searchForm.majorName = ''
   searchForm.status = ''
   page.value = 1
-  tableData.value = []
-  totalElements.value = 0
+  fetchData()
 }
 
 // 获取课程列表
@@ -320,21 +319,31 @@ async function fetchCourses() {
 
 // 获取学员数据
 async function fetchData() {
-  if (!searchForm.courseId) {
-    tableData.value = []
-    totalElements.value = 0
-    return
-  }
   loading.value = true
   error.value = false
   try {
-    const params = {
-      page: page.value - 1,
-      size: size.value,
-      courseId: searchForm.courseId
+    let result
+    if (searchForm.courseId) {
+      // 按课程查询
+      const params = {
+        page: page.value - 1,
+        size: size.value,
+        courseId: searchForm.courseId
+      }
+      const { data } = await getCourseEnrollments(params)
+      result = data
+    } else {
+      // 查询教师所有课程的学生
+      const params = {
+        page: page.value - 1,
+        size: size.value,
+        teacherId: userStore.userId,
+        studentName: searchForm.className || undefined,
+        status: searchForm.status || undefined
+      }
+      const { data } = await getEnrollments(params)
+      result = data
     }
-    const { data } = await getCourseEnrollments(params)
-    const result = data
     if (Array.isArray(result)) {
       tableData.value = result
       totalElements.value = result.length
@@ -455,9 +464,8 @@ function isRecent(isoString) {
 
 onMounted(() => {
   fetchCourses()
-  if (searchForm.courseId) {
-    fetchData()
-  }
+  // 默认加载该教师所有课程的学生
+  fetchData()
 })
 </script>
 

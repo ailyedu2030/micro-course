@@ -119,7 +119,17 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
 
         java.util.Set<Long> filterCourseIds = null;
-        if (query.getCourseName() != null && !query.getCourseName().isBlank()) {
+        // teacherId 过滤：获取该教师的所有课程
+        if (query.getTeacherId() != null) {
+            LambdaQueryWrapper<Course> cWrapper = new LambdaQueryWrapper<>();
+            cWrapper.eq(Course::getTeacherId, query.getTeacherId())
+                    .isNull(Course::getDeletedAt);
+            filterCourseIds = courseRepository.selectList(cWrapper).stream()
+                    .map(Course::getId).collect(java.util.stream.Collectors.toSet());
+            if (filterCourseIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
+            }
+        } else if (query.getCourseName() != null && !query.getCourseName().isBlank()) {
             LambdaQueryWrapper<Course> cWrapper = new LambdaQueryWrapper<>();
             cWrapper.like(Course::getTitle, query.getCourseName().trim());
             filterCourseIds = courseRepository.selectList(cWrapper).stream()

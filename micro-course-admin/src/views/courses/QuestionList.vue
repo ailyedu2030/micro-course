@@ -57,6 +57,7 @@
               style="display: inline-block; margin-right: 8px">
               <el-button type="success" size="small">导入Excel</el-button>
             </el-upload>
+            <el-button type="warning" size="small" @click="handleExportExcel">导出Excel</el-button>
             <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增题目</el-button>
           </div>
         </div>
@@ -77,13 +78,17 @@
         </el-table-column>
         <el-table-column prop="difficulty" label="难度" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.difficulty === 'EASY'" type="success" size="small">简单</el-tag>
-            <el-tag v-else-if="row.difficulty === 'MEDIUM'" type="warning" size="small">中等</el-tag>
-            <el-tag v-else-if="row.difficulty === 'HARD'" type="danger" size="small">困难</el-tag>
+            <el-tag v-if="row.difficulty === 1" type="success" size="small">简单</el-tag>
+            <el-tag v-else-if="row.difficulty === 2" type="warning" size="small">中等</el-tag>
+            <el-tag v-else-if="row.difficulty === 3" type="danger" size="small">困难</el-tag>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="categoryName" label="分类" width="120" />
+        <el-table-column prop="categoryName" label="分类" width="120">
+          <template #default="{ row }">
+            {{ row.categoryName || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="content" label="题目内容" min-width="250" show-overflow-tooltip />
         <el-table-column prop="score" label="分值" width="80" align="center">
           <template #default="{ row }">
@@ -197,6 +202,7 @@ import { useUserStore } from '@/store/user'
 import { getQuestions, createQuestion, updateQuestion, deleteQuestion, batchImportQuestion } from '@/api/question'
 import { getCategories } from '@/api/course-category'
 import { getCourses } from '@/api/course'
+import * as XLSX from 'xlsx'
 import QuestionPreview from './QuestionPreview.vue'
 
 const userStore = useUserStore()
@@ -287,6 +293,62 @@ const handleImportExcel = async (file) => {
     ElMessage.error('导入失败')
   }
   return false
+}
+
+const handleExportExcel = async () => {
+  if (tableData.value.length === 0) {
+    ElMessage.warning('暂无题目数据可导出')
+    return
+  }
+  try {
+    ElMessage.info('正在获取全部题目数据，请稍候…')
+    // Fetch ALL filtered data (remove pagination limits by using a large size)
+    const params = {
+      size: 10000,
+      courseId: searchForm.courseId || undefined,
+      questionType: searchForm.questionType || undefined,
+      difficulty: searchForm.difficulty || undefined,
+      categoryId: searchForm.categoryId || undefined,
+      keyword: searchForm.keyword || undefined
+    }
+    const { data } = await getQuestions(params)
+    const allData = data.items || []
+    if (allData.length === 0) {
+      ElMessage.warning('没有找到可导出的题目数据')
+      return
+    }
+    const exportData = allData.map(q => ({
+      '题型': getQuestionTypeLabel(q.questionType),
+      '难度': getDifficultyLabel(q.difficulty),
+      '分类': q.categoryName || '',
+      '题目内容': q.content,
+      '分值': q.score,
+      '正确答案': q.answer,
+      '答案解析': q.analysis || ''
+    }))
+    const ws = XLSX.utils.json_to_sheet(exportData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '题目列表')
+    XLSX.writeFile(wb, `题目导出_${Date.now()}.xlsx`)
+    ElMessage.success(`导出成功，共 ${exportData.length} 条`)
+  } catch {
+    ElMessage.error('导出失败')
+  }
+}
+
+function getQuestionTypeLabel(type) {
+  const map = {
+    'SINGLE_CHOICE': '单选题',
+    'MULTIPLE_CHOICE': '多选题',
+    'TRUE_FALSE': '判断题',
+    'SHORT_ANSWER': '简答题'
+  }
+  return map[type] || type || ''
+}
+
+function getDifficultyLabel(diff) {
+  const map = { 'EASY': '简单', 'MEDIUM': '中等', 'HARD': '困难' }
+  return map[diff] || diff || ''
 }
 
 const handlePreview = (row) => {

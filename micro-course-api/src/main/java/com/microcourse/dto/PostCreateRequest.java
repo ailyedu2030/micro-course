@@ -6,10 +6,8 @@ import jakarta.validation.constraints.Size;
 
 public class PostCreateRequest {
 
-    @NotNull(message = "课程ID不能为空")
     private Long courseId;
 
-    @NotNull(message = "章节ID不能为空")
     private Long chapterId;
 
     @NotBlank(message = "标题不能为空")

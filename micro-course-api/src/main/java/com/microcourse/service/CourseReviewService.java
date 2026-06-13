@@ -1,6 +1,6 @@
 package com.microcourse.service;
 
-import com.microcourse.dto.CourseReviewCreateRequest;
+import com.microcourse.dto.CourseReviewRequest;
 import com.microcourse.dto.CourseReviewVO;
 import com.microcourse.dto.PageResult;
 
@@ -15,11 +15,12 @@ public interface CourseReviewService {
     /**
      * 创建课程评价
      *
-     * @param request 评价创建请求
-     * @param userId  当前操作用户ID
+     * @param courseId 课程ID（从路径获取）
+     * @param request  评价创建请求
+     * @param userId   当前操作用户ID
      * @return 评价视图对象
      */
-    CourseReviewVO create(CourseReviewCreateRequest request, Long userId);
+    CourseReviewVO create(Long courseId, CourseReviewRequest request, Long userId);
 
     /**
      * 分页查询课程评价列表

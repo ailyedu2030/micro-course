@@ -39,4 +39,10 @@ public interface AdminStatsService {
      * @return 各行为类型次数列表
      */
     List<java.util.Map<String, Object>> getLearningBehavior();
+
+    /**
+     * 获取系统健康状态
+     * @return 健康状态Map（db/redis/disk/memory）
+     */
+    java.util.Map<String, String> getHealth();
 }

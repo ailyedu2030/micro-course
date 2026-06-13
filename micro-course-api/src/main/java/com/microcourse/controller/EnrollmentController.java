@@ -57,12 +57,14 @@ public class EnrollmentController {
     public R<PageResult<EnrollmentVO>> getEnrollments(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) String studentName,
             @RequestParam(required = false) String courseName,
             @RequestParam(required = false) String status) {
         EnrollmentQueryRequest query = new EnrollmentQueryRequest();
         query.setPage(page);
         query.setSize(size);
+        query.setTeacherId(teacherId);
         query.setStudentName(studentName);
         query.setCourseName(courseName);
         query.setStatus(status);

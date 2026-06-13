@@ -49,6 +49,10 @@
           <el-descriptions-item label="评分">{{ courseData.rating ? courseData.rating.toFixed(1) : '-' }}</el-descriptions-item>
           <el-descriptions-item label="学生数">{{ courseData.studentCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="课程描述" :span="2">{{ courseData.description || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="封面">
+            <el-image v-if="courseData.coverUrl" :src="courseData.coverUrl" style="width:120px;height:80px;border-radius:4px" fit="cover" />
+            <span v-else>-</span>
+          </el-descriptions-item>
         </el-descriptions>
       </div>
 
@@ -80,6 +84,18 @@
             <el-option label="中级" value="INTERMEDIATE" />
             <el-option label="高级" value="ADVANCED" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="封面图" prop="coverUrl">
+          <el-upload
+            ref="coverUploadRef"
+            :auto-upload="false"
+            :limit="1"
+            accept="image/*"
+            :on-change="handleCoverChange"
+          >
+            <el-button size="small">选择图片</el-button>
+          </el-upload>
+          <img v-if="coverPreviewUrl" :src="coverPreviewUrl" class="cover-preview-img" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
@@ -162,7 +178,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
 import { useUserStore } from '@/store/user'
-import { getCourseById, updateCourse, updateCourseStatus, submitCourseForReview } from '@/api/course'
+import { getCourseById, updateCourse, updateCourseStatus, submitCourseForReview, updateCourseCover } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 
@@ -195,6 +211,10 @@ const formRules = {
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
   teacherId: [{ required: true, message: '请输入教师ID', trigger: 'blur' }]
 }
+
+const coverUploadRef = ref(null)
+const coverPreviewUrl = ref('')
+const coverFile = ref(null)
 
 const chapterLoading = ref(false)
 const chapterSubmitLoading = ref(false)
@@ -315,7 +335,15 @@ const handleSubmit = async () => {
     submitLoading.value = true
     try {
       await updateCourse(courseId.value, formData)
-      ElMessage.success('保存成功')
+      let coverOk = true
+      if (coverFile.value) {
+        coverOk = await handleUploadCover()
+      }
+      if (coverOk) {
+        ElMessage.success('保存成功')
+      } else {
+        ElMessage.warning('课程信息已保存，但封面上传失败，请稍后重新上传')
+      }
       router.push(`/courses/${courseId.value}`)
     } catch {
       ElMessage.error('保存失败')
@@ -323,6 +351,23 @@ const handleSubmit = async () => {
       submitLoading.value = false
     }
   })
+}
+
+const handleCoverChange = (file) => {
+  coverFile.value = file.raw
+  coverPreviewUrl.value = URL.createObjectURL(file.raw)
+}
+
+const handleUploadCover = async () => {
+  if (!coverFile.value) return true
+  try {
+    await updateCourseCover(courseId.value, coverFile.value)
+    ElMessage.success('封面上传成功')
+    return true
+  } catch {
+    ElMessage.error('封面上传失败')
+    return false
+  }
 }
 
 const handleApprove = async () => {
@@ -539,6 +584,14 @@ onUnmounted(() => {
 
 .full-width {
   width: 100%;
+}
+
+.cover-preview-img {
+  margin-top: 8px;
+  width: 120px;
+  height: 80px;
+  border-radius: 4px;
+  object-fit: cover;
 }
 
 @media (max-width: 768px) {

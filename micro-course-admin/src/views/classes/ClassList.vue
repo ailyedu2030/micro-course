@@ -43,7 +43,7 @@
         <el-table-column prop="name" label="名称" min-width="150" />
         <el-table-column prop="majorName" label="所属专业" min-width="150" />
         <el-table-column prop="grade" label="年级" width="100" />
-        <el-table-column prop="counselorId" label="辅导员" width="120" />
+        <el-table-column prop="counselorName" label="辅导员" width="120" />
         <el-table-column prop="sortOrder" label="排序" width="100" />
         <el-table-column prop="createdAt" label="创建时间" width="180" />
         <el-table-column label="操作" width="150" fixed="right">
@@ -85,7 +85,9 @@
           <el-input v-model="formData.grade" placeholder="请输入年级" />
         </el-form-item>
         <el-form-item label="辅导员" prop="counselorId">
-          <el-input v-model="formData.counselorId" placeholder="请输入辅导员" />
+          <el-select v-model="formData.counselorId" placeholder="请选择辅导员" class="full-width" filterable>
+            <el-option v-for="item in teacherOptions" :key="item.id" :label="item.realName || item.username" :value="item.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
           <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
@@ -105,6 +107,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getClasses, createClass, updateClass, deleteClass } from '@/api/class'
 import { getMajors } from '@/api/major'
+import { getUsers } from '@/api/user'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
@@ -117,6 +120,7 @@ const page = ref(1)
 const size = ref(10)
 
 const majorOptions = ref([])
+const teacherOptions = ref([])
 
 const searchForm = reactive({
   name: '',
@@ -134,7 +138,7 @@ const formData = reactive({
   name: '',
   majorId: null,
   grade: '',
-  counselorId: '',
+  counselorId: null,
   sortOrder: 0
 })
 
@@ -151,6 +155,15 @@ const fetchMajors = async () => {
     majorOptions.value = data.items || []
   } catch {
     ElMessage.error('获取专业列表失败')
+  }
+}
+
+const fetchTeachers = async () => {
+  try {
+    const { data } = await getUsers({ role: 'TEACHER', size: 1000 })
+    teacherOptions.value = data.items || []
+  } catch {
+    ElMessage.error('获取辅导员列表失败')
   }
 }
 
@@ -203,7 +216,7 @@ const handleCreate = () => {
   formData.name = ''
   formData.majorId = null
   formData.grade = ''
-  formData.counselorId = ''
+  formData.counselorId = null
   formData.sortOrder = 0
   dialogVisible.value = true
 }
@@ -225,8 +238,13 @@ const handleDelete = async (row) => {
     await deleteClass(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch {
-    ElMessage.error('删除失败')
+  } catch (error) {
+    const code = error.response?.data?.code
+    if (code === 3003 || code === 409) {
+      ElMessage.error('该班级下存在学生，无法删除')
+    } else {
+      ElMessage.error('删除失败')
+    }
   }
 }
 
@@ -259,6 +277,7 @@ const handleDialogClose = () => {
 
 onMounted(() => {
   fetchMajors()
+  fetchTeachers()
   fetchData()
 })
 </script>

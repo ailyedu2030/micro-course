@@ -251,6 +251,7 @@ const questionPage = ref(1)
 const questionSize = ref(10)
 const selectedQuestions = ref([])
 const categoryOptions = ref([])
+const currentCourseId = ref(null)
 
 const questionSearchForm = reactive({
   questionType: '',
@@ -441,6 +442,7 @@ const handleDialogClose = () => {
 // 选题组卷相关方法
 const handleSelectQuestions = async (row) => {
   currentId.value = row.id
+  currentCourseId.value = row.courseId
   questionPickerVisible.value = true
   selectedQuestions.value = []
   questionPage.value = 1
@@ -467,6 +469,7 @@ const fetchQuestionData = async () => {
     const params = {
       page: questionPage.value - 1,
       size: questionSize.value,
+      courseId: currentCourseId.value,
       questionType: questionSearchForm.questionType || undefined,
       difficulty: questionSearchForm.difficulty || undefined,
       categoryId: questionSearchForm.categoryId || undefined
@@ -529,6 +532,7 @@ const handleAddQuestions = async () => {
 const handleQuestionPickerClose = () => {
   questionTableRef.value?.clearSelection()
   selectedQuestions.value = []
+  currentCourseId.value = null
 }
 
 onMounted(() => {

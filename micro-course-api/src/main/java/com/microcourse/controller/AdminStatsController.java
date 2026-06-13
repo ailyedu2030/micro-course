@@ -83,4 +83,14 @@ public class AdminStatsController {
         List<Map<String, Object>> result = adminStatsService.getLearningBehavior();
         return R.ok(result);
     }
+
+    /**
+     * GET /api/admin/stats/health
+     * 返回系统健康状态
+     */
+    @GetMapping("/health")
+    public R<Map<String, String>> getHealth() {
+        Map<String, String> health = adminStatsService.getHealth();
+        return R.ok(health);
+    }
 }

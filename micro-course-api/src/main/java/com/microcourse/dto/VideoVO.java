@@ -23,6 +23,7 @@ public class VideoVO {
     private String errorMessage;
     private String originalPath;
     private Integer sortOrder;
+    private String chapterName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer version;
@@ -67,6 +68,8 @@ public class VideoVO {
     public void setOriginalPath(String originalPath) { this.originalPath = originalPath; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public String getChapterName() { return chapterName; }
+    public void setChapterName(String chapterName) { this.chapterName = chapterName; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -28,7 +28,7 @@
     </el-card>
 
     <!-- 统计卡片 -->
-    <div v-if="searchForm.courseId" class="stats-grid">
+    <div v-if="tableData.length > 0" class="stats-grid">
       <el-card class="stat-card shadow-hover" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-primary-color">{{ stats.averageScore ?? '-' }}</div>
@@ -58,7 +58,7 @@
     </div>
 
     <!-- 图表 + 表格 -->
-    <div v-if="searchForm.courseId" class="content-grid">
+    <div v-if="tableData.length > 0" class="content-grid">
       <!-- 成绩分布图 -->
       <el-card class="chart-card shadow-hover" shadow="never">
         <template #header>
@@ -146,10 +146,10 @@
       </el-card>
     </div>
 
-    <!-- 空状态提示（未选课程） -->
+    <!-- 空状态提示（无数据） -->
     <el-empty
-      v-if="!searchForm.courseId"
-      description="请先选择课程查看成绩"
+      v-if="!loading && tableData.length === 0 && !searchForm.courseId"
+      description="暂无学生数据"
       :image-size="120"
       class="empty-hint"
     />
@@ -214,7 +214,7 @@ import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { getCourses } from '@/api/course'
-import { getCourseEnrollments } from '@/api/enrollment'
+import { getCourseEnrollments, getEnrollments } from '@/api/enrollment'
 import { submitGrade } from '@/api/grade'
 import { useUserStore } from '@/store/user'
 
@@ -279,21 +279,27 @@ async function fetchCourses() {
 
 // 获取成绩数据
 async function fetchData() {
-  if (!searchForm.courseId) {
-    tableData.value = []
-    totalElements.value = 0
-    resetStats()
-    return
-  }
   loading.value = true
   try {
-    const params = {
-      page: page.value - 1,
-      size: size.value,
-      courseId: searchForm.courseId
+    let result
+    if (searchForm.courseId) {
+      const params = {
+        page: page.value - 1,
+        size: size.value,
+        courseId: searchForm.courseId
+      }
+      const { data } = await getCourseEnrollments(params)
+      result = data
+    } else {
+      // 获取该教师所有课程的选课记录
+      const params = {
+        page: page.value - 1,
+        size: size.value,
+        teacherId: userStore.userId
+      }
+      const { data } = await getEnrollments(params)
+      result = data
     }
-    const { data } = await getCourseEnrollments(params)
-    const result = data
     let items = []
     if (Array.isArray(result)) {
       items = result
@@ -302,16 +308,19 @@ async function fetchData() {
       items = result.items || []
       totalElements.value = result.totalElements || items.length
     }
-    // 模拟成绩数据（实际项目中从成绩接口获取）
-    tableData.value = items.map((item, index) => ({
+    // 映射成绩数据
+    const courseTitle = searchForm.courseId
+      ? (courseOptions.value.find(c => c.id === parseInt(searchForm.courseId))?.title || '')
+      : ''
+    tableData.value = items.map((item) => ({
       ...item,
-      courseName: courseOptions.value.find(c => c.id === searchForm.courseId)?.title || '',
+      courseName: courseTitle || item.courseName || item.courseTitle || '',
       score: item.exerciseAvgScore != null ? Math.round(item.exerciseAvgScore * 10) / 10 : null,
       comment: '',
       gradedAt: item.exerciseAvgScore != null ? item.lastWatchAt : null
     }))
     updateStats(tableData.value)
-    renderChart(tableData.value)
+    if (tableData.value.length > 0) renderChart(tableData.value)
   } catch {
     ElMessage.error('获取成绩数据失败')
   } finally {
@@ -414,17 +423,7 @@ function renderChart(items) {
 // 课程变化
 function handleCourseChange() {
   page.value = 1
-  if (searchForm.courseId) {
-    fetchData()
-  } else {
-    tableData.value = []
-    totalElements.value = 0
-    resetStats()
-    if (chartInstance) {
-      chartInstance.dispose()
-      chartInstance = null
-    }
-  }
+  fetchData()
 }
 
 // 翻页
@@ -490,9 +489,8 @@ function handleResize() {
 
 onMounted(() => {
   fetchCourses()
-  if (searchForm.courseId) {
-    fetchData()
-  }
+  // 默认加载该教师所有课程的学生成绩
+  fetchData()
   window.addEventListener('resize', handleResize)
 })
 

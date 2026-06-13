@@ -46,8 +46,8 @@
           </el-menu-item>
         </el-sub-menu>
 
-        <!-- 课程管理 -->
-        <el-sub-menu index="course">
+        <!-- 课程管理 - 仅 ADMIN -->
+        <el-sub-menu index="course" v-if="userStore.role === 'ADMIN'">
           <template #title>
             <el-icon><Notebook /></el-icon>
             <span v-show="!collapsed">课程管理</span>
@@ -56,7 +56,7 @@
             <el-icon><VideoCamera /></el-icon>
             <template #title>课程列表</template>
           </el-menu-item>
-          <el-menu-item index="/courses/review" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
+          <el-menu-item index="/courses/review">
             <el-icon><Film /></el-icon>
             <template #title>课程审核</template>
           </el-menu-item>
@@ -87,7 +87,7 @@
         </el-sub-menu>
 
         <!-- 教学管理 -->
-        <el-sub-menu index="teaching" v-if="userStore.role === 'TEACHER' || userStore.role === 'ADMIN'">
+        <el-sub-menu index="teaching" v-if="userStore.role === 'TEACHER' || userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
           <template #title>
             <el-icon><UserFilled /></el-icon>
             <span v-show="!collapsed">教学管理</span>
@@ -108,9 +108,26 @@
             <el-icon><Reading /></el-icon>
             <template #title>我的教学班</template>
           </el-menu-item>
-          <el-menu-item index="/discussions">
+          <!-- 教师课程管理（仅在教师角色时可见） -->
+          <el-menu-item index="/courses" v-if="userStore.role === 'TEACHER'">
+            <el-icon><Notebook /></el-icon>
+            <template #title>课程管理</template>
+          </el-menu-item>
+          <el-menu-item index="/videos" v-if="userStore.role === 'TEACHER'">
+            <el-icon><VideoPlay /></el-icon>
+            <template #title>视频管理</template>
+          </el-menu-item>
+          <el-menu-item index="/exercises" v-if="userStore.role === 'TEACHER'">
+            <el-icon><Edit /></el-icon>
+            <template #title>练习管理</template>
+          </el-menu-item>
+          <el-menu-item index="/student/discussions">
             <el-icon><ChatLineSquare /></el-icon>
             <template #title>讨论区</template>
+          </el-menu-item>
+          <el-menu-item index="/teacher/questions">
+            <el-icon><Document /></el-icon>
+            <template #title>题库管理</template>
           </el-menu-item>
           <el-menu-item index="/favorites">
             <el-icon><Star /></el-icon>

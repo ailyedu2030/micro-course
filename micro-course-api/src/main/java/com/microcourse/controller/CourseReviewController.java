@@ -1,9 +1,11 @@
 package com.microcourse.controller;
 
-import com.microcourse.dto.CourseReviewCreateRequest;
+import com.microcourse.dto.CourseReviewRequest;
 import com.microcourse.dto.CourseReviewVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.CourseReviewService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,7 +21,7 @@ import java.util.List;
  * @since 2026-06-12
  */
 @RestController
-@RequestMapping("/api/courses/{courseId}/reviews")
+@RequestMapping("/api/courses/{id}/reviews")
 public class CourseReviewController {
 
     private final CourseReviewService courseReviewService;
@@ -30,40 +32,43 @@ public class CourseReviewController {
 
     /**
      * 创建课程评价
-     * POST /api/courses/{courseId}/reviews
+     * POST /api/courses/{id}/reviews
      * 权限: STUDENT 或 ADMIN
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
-    public R<CourseReviewVO> create(@PathVariable Long courseId,
-                                    @Valid @RequestBody CourseReviewCreateRequest request) {
+    public R<CourseReviewVO> create(@PathVariable Long id,
+                                    @Valid @RequestBody CourseReviewRequest request) {
         Long userId = getCurrentUserId();
-        CourseReviewVO vo = courseReviewService.create(request, userId);
+        CourseReviewVO vo = courseReviewService.create(id, request, userId);
         return R.ok(vo);
     }
 
     /**
      * 分页查询课程评价列表
-     * GET /api/courses/{courseId}/reviews
+     * GET /api/courses/{id}/reviews
      * 权限: 已认证用户
      */
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public R<PageResult<CourseReviewVO>> list(@PathVariable Long courseId,
+    public R<PageResult<CourseReviewVO>> list(@PathVariable Long id,
                                               @RequestParam(defaultValue = "0") int page,
                                               @RequestParam(defaultValue = "20") int size) {
-        return R.ok(courseReviewService.listByCourse(courseId, page, size));
+        return R.ok(courseReviewService.listByCourse(id, page, size));
     }
 
     private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof Long) return (Long) principal;
-        return null;
+        if (principal instanceof String) {
+            try { return Long.parseLong((String) principal); } catch (NumberFormatException e) { /* fall through */ }
+        }
+        throw new BusinessException(ErrorCode.NO_PERMISSION);
     }
 }
 
 /**
- * 个人评价控制器（独立路径，不受 /api/courses/{courseId}/reviews 限制）
+ * 个人评价控制器（独立路径，不受 /api/courses/{id}/reviews 限制）
  */
 @RestController
 @RequestMapping("/api/reviews")

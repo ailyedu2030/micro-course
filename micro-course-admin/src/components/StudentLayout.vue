@@ -1,12 +1,12 @@
 <!--
   学生端布局组件 - PC / H5 双端分离
-  PC (≥ 769px): 顶部 Header + 内容区
+  PC (> 768px): 顶部 Header + 内容区
   H5 (≤ 768px): 顶部 Header + 内容区 + 底部 Tab Bar
   Phase 2
 -->
 <template>
   <div class="student-layout role-student">
-    <!-- ====== PC 端顶部导航 (≥ 769px) ====== -->
+    <!-- ====== PC 端顶部导航 (> 768px) ====== -->
     <header class="layout-header layout-header--pc">
       <div class="header-left">
         <div class="logo">
@@ -152,14 +152,27 @@ onMounted(() => window.addEventListener('resize', onResize))
 onUnmounted(() => window.removeEventListener('resize', onResize))
 
 // ---------------------------------------------------------------------------
-// 菜单项
+// 菜单项（从 router 动态读取，meta.menuTab = true 的学生端路由）
 // ---------------------------------------------------------------------------
-const menuItems = [
-  { label: '广场', path: '/student/courses', icon: markRaw(Grid) },
-  { label: '学习', path: '/student/learning', icon: markRaw(VideoPlay) },
-  { label: '消息', path: '/student/notifications', icon: markRaw(Bell) },
-  { label: '我的', path: '/student/profile', icon: markRaw(User) },
-]
+const ICON_MAP = {
+  Grid,
+  VideoPlay,
+  Bell,
+  User,
+  DataLine,
+}
+
+const STUDENT_TAB_ROUTES = ['/student/courses', '/student/learning', '/student/notifications', '/student/profile']
+
+const menuItems = router.getRoutes()
+  .filter(r => r.path.startsWith('/student') && r.meta?.menuTab)
+  .filter(r => STUDENT_TAB_ROUTES.includes(r.path))
+  .sort((a, b) => (a.meta?.menuOrder ?? 99) - (b.meta?.menuOrder ?? 99))
+  .map(r => ({
+    label: r.meta?.menuLabel ?? r.name?.replace(/^Student/, '') ?? r.path,
+    path: r.path,
+    icon: markRaw(ICON_MAP[r.meta?.menuIcon] ?? Grid),
+  }))
 
 // ---------------------------------------------------------------------------
 // 活跃路由判断
@@ -507,7 +520,7 @@ onUnmounted(() => notificationStore.stopPolling())
 }
 
 /* PC 端：内容容器限宽 1200px 居中 (学生端统一布局约束) */
-@media (min-width: 769px) {
+@media (min-width: 768px) {
   .layout-content {
     max-width: 1200px;
     margin: 0 auto;
@@ -590,7 +603,7 @@ onUnmounted(() => notificationStore.stopPolling())
   }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 768px) {
   .layout-header--pc {
     display: flex;
   }
@@ -605,7 +618,7 @@ onUnmounted(() => notificationStore.stopPolling())
 }
 
 /* ---------------------------------------------------------------------------
-   9. 下拉菜单图标对齐
+   9. PC 端内容限宽 (> 768px)
    --------------------------------------------------------------------------- */
 :deep(.el-dropdown-menu__item) {
   display: flex;
