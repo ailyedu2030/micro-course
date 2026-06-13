@@ -443,6 +443,14 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+function formatTotalTime(data) {
+  if (!data) return '0h'
+  const seconds = data.totalSeconds || data || 0
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${Math.round(seconds / 60)}min`
+  return `${(seconds / 3600).toFixed(1)}h`
+}
+
 function getChapterProgress(chapterId) {
   const ch = chapters.value.find(c => c.id === chapterId)
   if (!ch?.lessons?.length) return 0
@@ -460,27 +468,43 @@ function buildProgressMap(progressList) {
 async function loadCourse(cid) {
   loading.value = true
   try {
-    // ✅ 一次并行调用获取课程和进度（修复 N+1）
-    const [courseRes, progressRes] = await Promise.all([
+    // ✅ 并行获取课程、进度、视频
+    const [courseRes, progressRes, videosRes] = await Promise.all([
       getCourseById(cid),
-      getLearningProgress({ courseId: cid })
+      getLearningProgress({ courseId: cid }),
+      getVideos({ courseId: cid, size: 200 })
     ])
 
     course.value = courseRes.data || {}
 
-    // ✅ 使用已获取的 progressRes 构建 progressMap（修复：之前获取了但从未使用）
+    // ✅ 构建 progressMap（key=chapterId）
     progressMap.value = buildProgressMap(progressRes.data || [])
 
-    // 构建章节-课时树（courseRes.data.chapters 应已内嵌 lessons）
+    // 构建视频映射：chapterId → videos[]
+    const videosList = videosRes.data?.items || []
+    const videosByChapter = {}
+    videosList.forEach(v => {
+      const chId = v.chapterId
+      if (!videosByChapter[chId]) videosByChapter[chId] = []
+      videosByChapter[chId].push(v)
+    })
+
+    // 构建章节-课时树
     const rawChapters = courseRes.data.chapters || []
     chapters.value = rawChapters.map(ch => {
       const prog = progressMap.value[ch.id]
+      const videos = videosByChapter[ch.id] || []
+      // 将视频作为该章节的 lessons
+      const lessons = videos.map(v => ({
+        id: v.id,
+        title: v.title,
+        duration: v.duration,
+        video: { ...v, url: v.url, coverUrl: v.coverUrl, playUrl: v.url },
+        status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
+      }))
       return {
         ...ch,
-        lessons: (ch.lessons || []).map(l => ({
-          ...l,
-          status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
-        })),
+        lessons: lessons.length > 0 ? lessons : (ch.lessons || []),
         exercises: ch.exercises || []
       }
     })
@@ -525,8 +549,8 @@ async function loadProgress() {
       videoTotal: chapters.value.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0),
       exerciseCompleted: 0,
       exerciseTotal: 0,
-      totalTime: timeRes.data || '0h',
-      streakDays: studyDaysRes.data || 0
+      totalTime: formatTotalTime(timeRes.data),
+      streakDays: (studyDaysRes.data?.totalDays) || 0
     }
   } catch (err) {
     console.error('loadProgress error:', err)

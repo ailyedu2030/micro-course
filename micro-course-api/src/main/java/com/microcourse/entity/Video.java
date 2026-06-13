@@ -20,32 +20,42 @@ public class Video {
 
     private String title;
 
+    @TableField("original_name")
     private String fileName;
 
+    @TableField("file_size")
     private Long fileSize;
 
+    @TableField("file_md5")
     private String fileMd5;
 
+    @TableField("mime_type")
     private String mimeType;
 
     private Integer duration;
 
     private String url;
 
+    @TableField("m3u8_url")
     private String hlsUrl;
 
+    @TableField("thumbnail_url")
     private String thumbnailUrl;
 
+    @TableField("cover_url")
     private String coverUrl;
 
     private Integer status;
 
     private Integer progress;
 
+    @TableField("error_message")
     private String errorMessage;
 
+    @TableField("original_path")
     private String originalPath;
 
+    @TableField("sort_order")
     private Integer sortOrder;
 
     private LocalDateTime createdAt;
