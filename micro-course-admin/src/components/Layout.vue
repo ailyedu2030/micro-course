@@ -109,19 +109,19 @@
             <template #title>我的教学班</template>
           </el-menu-item>
           <!-- 教师课程管理（仅在教师角色时可见） -->
-          <el-menu-item index="/courses" v-if="userStore.role === 'TEACHER'">
+          <el-menu-item index="/teacher/courses" v-if="userStore.role === 'TEACHER'">
             <el-icon><Notebook /></el-icon>
             <template #title>课程管理</template>
           </el-menu-item>
-          <el-menu-item index="/videos" v-if="userStore.role === 'TEACHER'">
+          <el-menu-item index="/teacher/videos" v-if="userStore.role === 'TEACHER'">
             <el-icon><VideoPlay /></el-icon>
             <template #title>视频管理</template>
           </el-menu-item>
-          <el-menu-item index="/exercises" v-if="userStore.role === 'TEACHER'">
+          <el-menu-item index="/teacher/exercises" v-if="userStore.role === 'TEACHER'">
             <el-icon><Edit /></el-icon>
             <template #title>练习管理</template>
           </el-menu-item>
-          <el-menu-item index="/student/discussions">
+          <el-menu-item index="/teacher/discussions" v-if="userStore.role === 'TEACHER'">
             <el-icon><ChatLineSquare /></el-icon>
             <template #title>讨论区</template>
           </el-menu-item>
@@ -129,7 +129,7 @@
             <el-icon><Document /></el-icon>
             <template #title>题库管理</template>
           </el-menu-item>
-          <el-menu-item index="/favorites">
+          <el-menu-item index="/teacher/favorites" v-if="userStore.role === 'TEACHER'">
             <el-icon><Star /></el-icon>
             <template #title>收藏管理</template>
           </el-menu-item>

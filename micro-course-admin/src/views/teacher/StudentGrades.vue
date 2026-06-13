@@ -214,8 +214,7 @@ import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { getCourses } from '@/api/course'
-import { getCourseEnrollments, getEnrollments } from '@/api/enrollment'
-import { submitGrade } from '@/api/grade'
+import { getGrades, submitGrade } from '@/api/grade'
 import { useUserStore } from '@/store/user'
 
 echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
@@ -281,43 +280,24 @@ async function fetchCourses() {
 async function fetchData() {
   loading.value = true
   try {
-    let result
-    if (searchForm.courseId) {
-      const params = {
-        page: page.value - 1,
-        size: size.value,
-        courseId: searchForm.courseId
-      }
-      const { data } = await getCourseEnrollments(params)
-      result = data
-    } else {
-      // 获取该教师所有课程的选课记录
-      const params = {
-        page: page.value - 1,
-        size: size.value,
-        teacherId: userStore.userId
-      }
-      const { data } = await getEnrollments(params)
-      result = data
+    const params = {
+      page: page.value - 1,
+      size: size.value,
+      courseId: searchForm.courseId || undefined
     }
-    let items = []
-    if (Array.isArray(result)) {
-      items = result
-      totalElements.value = result.length
-    } else {
-      items = result.items || []
-      totalElements.value = result.totalElements || items.length
-    }
+    const { data } = await getGrades(params)
+    const result = data || {}
+    const items = result.items || []
+    totalElements.value = result.totalElements || items.length
     // 映射成绩数据
-    const courseTitle = searchForm.courseId
-      ? (courseOptions.value.find(c => c.id === parseInt(searchForm.courseId))?.title || '')
-      : ''
     tableData.value = items.map((item) => ({
-      ...item,
-      courseName: courseTitle || item.courseName || item.courseTitle || '',
-      score: item.exerciseAvgScore != null ? Math.round(item.exerciseAvgScore * 10) / 10 : null,
-      comment: '',
-      gradedAt: item.exerciseAvgScore != null ? item.lastWatchAt : null
+      id: item.id,
+      realName: item.studentName || item.userName || item.realName || '-',
+      courseName: item.courseName || '',
+      score: item.score != null ? Math.round(item.score * 10) / 10 : null,
+      comment: item.comment || '',
+      gradedAt: item.gradedAt || item.updatedAt || null,
+      enrollmentId: item.enrollmentId
     }))
     updateStats(tableData.value)
     if (tableData.value.length > 0) renderChart(tableData.value)
@@ -453,7 +433,7 @@ async function confirmGrade() {
   savingGrade.value = true
   try {
     await submitGrade({
-      enrollmentId: currentStudent.value.id,
+      enrollmentId: currentStudent.value.enrollmentId,
       score: gradeForm.score,
       comment: gradeForm.comment
     })

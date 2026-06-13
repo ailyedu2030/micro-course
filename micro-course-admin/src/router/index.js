@@ -44,7 +44,11 @@ const routes = [
 
   // 教师端路由
   { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('../views/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
-  { path: '/teacher/courses', redirect: '/teacher/dashboard' },
+  { path: '/teacher/courses', name: 'TeacherCourseList', component: () => import('../views/courses/CourseList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/videos', name: 'TeacherVideoList', component: () => import('../views/courses/VideoList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/exercises', name: 'TeacherExerciseList', component: () => import('../views/courses/ExerciseList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/discussions', name: 'TeacherDiscussions', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/favorites', name: 'TeacherFavorites', component: () => import('../views/courses/FavoriteList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/questions', name: 'TeacherQuestions', component: () => import('../views/courses/QuestionList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/students', name: 'studentList', component: () => import('../views/teacher/StudentList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/grades', name: 'studentGrades', component: () => import('../views/teacher/StudentGrades.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },

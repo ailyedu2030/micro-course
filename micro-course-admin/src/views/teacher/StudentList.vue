@@ -52,9 +52,9 @@
             class="status-select"
             @change="handleSearch"
           >
-            <el-option label="学习中" value="ACTIVE" />
-            <el-option label="已完成" value="COMPLETED" />
-            <el-option label="已退课" value="DROPPED" />
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已报名" value="ENROLLED" />
+            <el-option label="已取消" value="CANCELLED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -119,7 +119,7 @@
         @row-click="handleRowClick"
       >
         <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="username" label="学号" width="140" show-overflow-tooltip />
+        <el-table-column prop="userName" label="学号" width="140" show-overflow-tooltip />
         <el-table-column prop="realName" label="姓名" width="120" show-overflow-tooltip />
         <el-table-column prop="className" label="班级" min-width="140" show-overflow-tooltip />
         <el-table-column prop="majorName" label="专业" min-width="140" show-overflow-tooltip />
