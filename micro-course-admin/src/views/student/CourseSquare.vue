@@ -507,7 +507,7 @@ const fetchCourses = async () => {
     const params = {
       page: page.value - 1,
       size: size.value,
-      status: 4
+      status: 2
     }
     if (searchForm.keyword) params.keyword = searchForm.keyword
     if (selectedCategoryId.value) params.categoryId = selectedCategoryId.value

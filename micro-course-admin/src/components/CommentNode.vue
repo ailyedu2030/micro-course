@@ -7,7 +7,7 @@
 <template>
   <div class="comment-node" :style="{ marginLeft: depth > 0 ? 'var(--space-6)' : '0' }">
     <!-- 节点卡片 -->
-    <div class="comment-card" :class="{ 'is-child': depth > 0 }">
+    <div class="comment-card" :class="{ 'is-child': depth > 0, 'is-teacher-reply': isTeacherReply }">
       <!-- 头像 + 用户名 + 时间 + 角色标签 -->
       <div class="comment-header">
         <el-avatar :size="28" :icon="UserIcon" class="comment-avatar" />
@@ -107,6 +107,7 @@ const liked = ref(false)
 
 const hasChildren = computed(() => props.comment.children && props.comment.children.length > 0)
 const childrenCount = computed(() => props.comment.children?.length || 0)
+const isTeacherReply = computed(() => props.comment.isTeacherReply || props.comment.roleTag === 'TEACHER')
 
 const displayName = computed(() => {
   if (props.comment.isAnonymous) return '匿名用户'
@@ -161,6 +162,12 @@ const handleReply = () => {
   border-radius: var(--radius-sm);
   padding: var(--space-3);
   background: var(--role-primary-light-9);
+}
+
+.comment-card.is-teacher-reply {
+  border-left: 3px solid var(--el-color-success);
+  background: var(--el-color-success-light-9);
+  border-radius: var(--radius-sm);
 }
 
 .comment-header {

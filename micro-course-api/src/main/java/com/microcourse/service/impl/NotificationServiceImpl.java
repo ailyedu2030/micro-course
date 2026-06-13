@@ -43,9 +43,12 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<NotificationVO> getMyNotifications(Long userId, int page, int size) {
+    public PageResult<NotificationVO> getMyNotifications(Long userId, String type, int page, int size) {
         LambdaQueryWrapper<Notification> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Notification::getUserId, userId);
+        if (type != null && !type.isEmpty()) {
+            wrapper.eq(Notification::getType, type);
+        }
         wrapper.orderByDesc(Notification::getCreatedAt);
 
         Page<Notification> ipage = notificationRepository.selectPage(

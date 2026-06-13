@@ -162,7 +162,7 @@ const ICON_MAP = {
   DataLine,
 }
 
-const STUDENT_TAB_ROUTES = ['/student/courses', '/student/learning', '/student/notifications', '/student/profile']
+const STUDENT_TAB_ROUTES = ['/student/courses', '/student/training', '/student/notifications', '/student/profile']
 
 const menuItems = router.getRoutes()
   .filter(r => r.path.startsWith('/student') && r.meta?.menuTab)
@@ -208,7 +208,7 @@ const avatarStyle = computed(() => ({
 const h5TitleMap = {
   '/student/courses': '课程广场',
   '/student/my-courses': '我的课程',
-  '/student/learning': '学习中心',
+  '/student/training': '训练中心',
   '/student/notifications': '消息通知',
   '/student/profile': '个人中心',
   '/student/reviews': '我的评价',
@@ -221,7 +221,7 @@ const pageTitle = computed(() => {
 })
 const showBackBtn = computed(() => {
   // 只有在子页面（非 4 个主 Tab）才显示返回按钮
-  const mainPaths = ['/student/courses', '/student/learning', '/student/notifications', '/student/profile']
+  const mainPaths = ['/student/courses', '/student/training', '/student/notifications', '/student/profile']
   return !mainPaths.some(p => route.path.startsWith(p))
 })
 

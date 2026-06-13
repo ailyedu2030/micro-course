@@ -53,6 +53,8 @@ public class LearningProgressController {
     @PostMapping("/progress")
     @PreAuthorize("isAuthenticated()")
     public R<LearningProgressVO> create(@Valid @RequestBody ProgressCreateRequest request) {
+        Long userId = getCurrentUserId();
+        request.setUserId(userId);
         LearningProgressVO vo = learningProgressService.create(request);
         return R.ok(vo);
     }

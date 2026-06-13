@@ -18,15 +18,25 @@
 
     <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
+      <!-- 类型过滤标签页 -->
+      <div class="type-filter-bar">
+        <el-button
+          v-for="tab in typeTabs"
+          :key="tab.value"
+          :type="typeFilter === tab.value ? 'primary' : 'default'"
+          size="small"
+          @click="handleTypeChange(tab.value)"
+        >{{ tab.label }}</el-button>
+      </div>
       <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
         <template #empty>
           <el-empty description="暂无通知" />
         </template>
         <el-table-column prop="type" label="类型" width="140" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.type === 'COURSE_APPROVED'" type="success" size="small">课程通过</el-tag>
-            <el-tag v-else-if="row.type === 'COURSE_REJECTED'" type="danger" size="small">课程驳回</el-tag>
-            <el-tag v-else-if="row.type === 'NEW_COURSE'" type="warning" size="small">新课发布</el-tag>
+            <el-tag v-if="row.type === 'ENROLLMENT'" type="success" size="small">选课通知</el-tag>
+            <el-tag v-else-if="row.type === 'GRADE'" type="warning" size="small">成绩通知</el-tag>
+            <el-tag v-else-if="row.type === 'DISCUSSION'" type="primary" size="small">讨论通知</el-tag>
             <el-tag v-else type="info" size="small">系统通知</el-tag>
           </template>
         </el-table-column>
@@ -76,6 +86,15 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 const unreadCount = ref(0)
+const typeFilter = ref('')
+
+const typeTabs = [
+  { label: '全部', value: '' },
+  { label: '选课', value: 'ENROLLMENT' },
+  { label: '成绩', value: 'GRADE' },
+  { label: '讨论', value: 'DISCUSSION' },
+  { label: '系统', value: 'SYSTEM' }
+]
 
 const truncate = (text, length) => {
   if (!text) return ''
@@ -95,6 +114,7 @@ const fetchData = async () => {
   loading.value = true
   try {
     const params = { page: page.value - 1, size: size.value }
+    if (typeFilter.value) params.type = typeFilter.value
     const res = await getNotifications(params)
     tableData.value = res.data?.items || []
     totalElements.value = res.data?.totalElements || 0
@@ -136,6 +156,12 @@ const handlePageChange = () => {
   fetchData()
 }
 
+const handleTypeChange = (value) => {
+  typeFilter.value = value
+  page.value = 1
+  fetchData()
+}
+
 onMounted(() => {
   fetchData()
   fetchUnreadCount()
@@ -173,6 +199,13 @@ onMounted(() => {
 
 .table-card {
   border-radius: var(--radius-md);
+}
+
+.type-filter-bar {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
 }
 
 .pagination-wrap {

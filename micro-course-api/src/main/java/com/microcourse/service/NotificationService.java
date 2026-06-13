@@ -8,7 +8,7 @@ public interface NotificationService {
 
     NotificationVO send(NotificationCreateRequest request, Long senderId);
 
-    PageResult<NotificationVO> getMyNotifications(Long userId, int page, int size);
+    PageResult<NotificationVO> getMyNotifications(Long userId, String type, int page, int size);
 
     void markAsRead(Long id, Long userId);
 

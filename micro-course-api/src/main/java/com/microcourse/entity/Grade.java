@@ -18,7 +18,7 @@ public class Grade {
     @TableField("course_id")
     private Long courseId;
 
-    @TableField("student_id")
+    @TableField("user_id")
     private Long studentId;
 
     @TableField("exercise_id")

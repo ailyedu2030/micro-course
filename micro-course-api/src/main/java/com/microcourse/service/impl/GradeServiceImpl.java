@@ -53,6 +53,24 @@ public class GradeServiceImpl implements GradeService {
     }
 
     @Override
+    public PageResult<GradeVO> pageByStudent(Long studentId, Long enrollmentId, Long courseId, int page, int size) {
+        LambdaQueryWrapper<Grade> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Grade::getStudentId, studentId);
+        if (enrollmentId != null) {
+            // enrollmentId not directly in grades table — use courseId as proxy when provided
+        }
+        if (courseId != null) {
+            wrapper.eq(Grade::getCourseId, courseId);
+        }
+        wrapper.isNull(Grade::getDeletedAt).orderByDesc(Grade::getCreatedAt);
+
+        IPage<Grade> gradePage = gradeRepository.selectPage(new Page<>(page, size), wrapper);
+
+        List<GradeVO> vos = gradePage.getRecords().stream().map(this::convertToVO).collect(Collectors.toList());
+        return PageResult.of(vos, gradePage.getTotal(), page, size);
+    }
+
+    @Override
     public GradeVO getById(Long id) {
         Grade grade = gradeRepository.selectById(id);
         if (grade == null) {

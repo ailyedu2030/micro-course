@@ -6,6 +6,8 @@ public interface GradeService {
 
     PageResult<GradeVO> page(Long courseId, Long studentId, int page, int size);
 
+    PageResult<GradeVO> pageByStudent(Long studentId, Long enrollmentId, Long courseId, int page, int size);
+
     GradeVO getById(Long id);
 
     GradeVO create(GradeCreateRequest request, Long teacherId);

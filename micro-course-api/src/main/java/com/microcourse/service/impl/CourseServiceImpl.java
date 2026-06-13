@@ -84,7 +84,22 @@ public class CourseServiceImpl implements CourseService {
         if (query.getDifficulty() != null) {
             wrapper.eq(Course::getDifficulty, query.getDifficulty());
         }
-        wrapper.orderByDesc(Course::getCreatedAt);
+        // 排序
+        String sortBy = query.getSortBy();
+        String sortOrder = "asc".equalsIgnoreCase(query.getSortOrder()) ? "asc" : "desc";
+        if ("studentCount".equals(sortBy)) {
+            if ("asc".equals(sortOrder)) wrapper.orderByAsc(Course::getStudentCount);
+            else wrapper.orderByDesc(Course::getStudentCount);
+        } else if ("avgRating".equals(sortBy)) {
+            if ("asc".equals(sortOrder)) wrapper.orderByAsc(Course::getAvgRating);
+            else wrapper.orderByDesc(Course::getAvgRating);
+        } else if ("updatedAt".equals(sortBy)) {
+            if ("asc".equals(sortOrder)) wrapper.orderByAsc(Course::getUpdatedAt);
+            else wrapper.orderByDesc(Course::getUpdatedAt);
+        } else {
+            // 默认按创建时间倒序
+            wrapper.orderByDesc(Course::getCreatedAt);
+        }
 
         IPage<Course> ipage = courseRepository.selectPage(
                 new Page<>(query.getPage() + 1, query.getSize()), wrapper);

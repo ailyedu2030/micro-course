@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotNull;
 
 public class ProgressCreateRequest {
 
-    @NotNull(message = "用户ID不能为空")
     private Long userId;
 
     @NotNull(message = "课程ID不能为空")
@@ -29,6 +28,8 @@ public class ProgressCreateRequest {
     private Double playbackSpeed;
 
     private Integer confidence;
+
+    private Boolean completed;
 
     public ProgressCreateRequest() {}
 
@@ -56,4 +57,6 @@ public class ProgressCreateRequest {
     public void setPlaybackSpeed(Double playbackSpeed) { this.playbackSpeed = playbackSpeed; }
     public Integer getConfidence() { return confidence; }
     public void setConfidence(Integer confidence) { this.confidence = confidence; }
+    public Boolean getCompleted() { return completed; }
+    public void setCompleted(Boolean completed) { this.completed = completed; }
 }

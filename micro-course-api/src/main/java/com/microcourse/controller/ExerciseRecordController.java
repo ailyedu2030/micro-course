@@ -24,7 +24,11 @@ public class ExerciseRecordController {
 
     @PostMapping("/submit")
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
-    public R<ExerciseRecordVO> submitAnswer(@Valid @RequestBody SubmitAnswerRequest request) {
+    public R<ExerciseRecordVO> submitAnswer(
+            @Valid @RequestBody SubmitAnswerRequest request,
+            Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        request.setUserId(userId);
         ExerciseRecordVO vo = exerciseRecordService.submitAnswer(request);
         return R.ok(vo);
     }

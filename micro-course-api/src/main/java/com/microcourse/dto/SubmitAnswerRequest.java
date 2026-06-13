@@ -9,7 +9,6 @@ public class SubmitAnswerRequest {
     @NotNull(message = "练习ID不能为空")
     private Long exerciseId;
 
-    @NotNull(message = "用户ID不能为空")
     private Long userId;
 
     @NotNull(message = "答案列表不能为空")

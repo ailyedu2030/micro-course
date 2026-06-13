@@ -8,6 +8,7 @@ import com.microcourse.dto.SubmitAnswerRequest;
 import com.microcourse.entity.Exercise;
 import com.microcourse.entity.ExerciseQuestion;
 import com.microcourse.entity.ExerciseRecord;
+import com.microcourse.entity.Grade;
 import com.microcourse.entity.Question;
 import com.microcourse.entity.WrongQuestion;
 import com.microcourse.exception.BusinessException;
@@ -15,12 +16,14 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ExerciseQuestionRepository;
 import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.ExerciseRepository;
+import com.microcourse.repository.GradeRepository;
 import com.microcourse.repository.QuestionRepository;
 import com.microcourse.repository.WrongQuestionRepository;
 import com.microcourse.service.ExerciseRecordService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -34,6 +37,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     private final ExerciseQuestionRepository exerciseQuestionRepository;
     private final QuestionRepository questionRepository;
     private final WrongQuestionRepository wrongQuestionRepository;
+    private final GradeRepository gradeRepository;
     private final ObjectMapper objectMapper;
 
     public ExerciseRecordServiceImpl(ExerciseRecordRepository exerciseRecordRepository,
@@ -41,12 +45,14 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                                        ExerciseQuestionRepository exerciseQuestionRepository,
                                        QuestionRepository questionRepository,
                                        WrongQuestionRepository wrongQuestionRepository,
+                                       GradeRepository gradeRepository,
                                        ObjectMapper objectMapper) {
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.exerciseRepository = exerciseRepository;
         this.exerciseQuestionRepository = exerciseQuestionRepository;
         this.questionRepository = questionRepository;
         this.wrongQuestionRepository = wrongQuestionRepository;
+        this.gradeRepository = gradeRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -134,7 +140,23 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         record.setSubmittedAt(LocalDateTime.now());
         exerciseRecordRepository.insert(record);
 
-        // 9. 错题入库
+        // 9. 同步更新 grades 表
+        Grade grade = new Grade();
+        grade.setStudentId(request.getUserId());
+        grade.setExerciseId(request.getExerciseId());
+        grade.setCourseId(exercise.getCourseId());
+        grade.setScore(BigDecimal.valueOf(totalScore));
+        grade.setTotalScore(BigDecimal.valueOf(exercise.getTotalScore()));
+        grade.setPassed(passed);
+        grade.setAttemptNo(attemptNo);
+        grade.setDuration(request.getDuration());
+        grade.setSubmittedAt(LocalDateTime.now());
+        grade.setGradedAt(LocalDateTime.now());
+        grade.setCreatedAt(LocalDateTime.now());
+        grade.setUpdatedAt(LocalDateTime.now());
+        gradeRepository.insert(grade);
+
+        // 10. 错题入库
         for (GradingResult result : gradingResults) {
             if (!result.isCorrect && result.questionType != null &&
                 !result.questionType.equals("SHORT_ANSWER") && !result.questionType.equals("ESSAY")) {
@@ -143,6 +165,16 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         }
 
         return convertToVO(record, exercise);
+    }
+
+    private String normalizeQuestionType(String type) {
+        if (type == null) return null;
+        return switch (type) {
+            case "SINGLE_CHOICE" -> "SINGLE";
+            case "MULTIPLE_CHOICE" -> "MULTIPLE";
+            case "FILL_BLANK" -> "FILL";
+            default -> type;
+        };
     }
 
     private GradingResult gradeQuestion(Question question, String userAnswer, Integer fullScore) {
@@ -161,13 +193,14 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         String correctAnswer = question.getAnswer();
         boolean isCorrect;
 
-        switch (question.getQuestionType()) {
+        String qType = normalizeQuestionType(question.getQuestionType());
+        switch (qType) {
             case "SINGLE":
                 // 单选题：直接字符串对比
                 isCorrect = userAnswer.trim().equals(correctAnswer.trim());
                 break;
             case "MULTIPLE":
-                // 多选题：解析JSON数组，排序后对比
+                // 多选题：解析JSON数组或逗号分隔，排序后对比
                 isCorrect = compareMultipleAnswers(userAnswer, correctAnswer);
                 break;
             case "JUDGE":
@@ -196,8 +229,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
 
     private boolean compareMultipleAnswers(String userAnswer, String correctAnswer) {
         try {
-            List<String> userList = objectMapper.readValue(userAnswer, List.class);
-            List<String> correctList = objectMapper.readValue(correctAnswer, List.class);
+            List<String> userList = parseAnswerList(userAnswer);
+            List<String> correctList = parseAnswerList(correctAnswer);
 
             List<String> sortedUser = new ArrayList<>(userList);
             List<String> sortedCorrect = new ArrayList<>(correctList);
@@ -208,6 +241,24 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private List<String> parseAnswerList(String answer) {
+        if (answer == null) return Collections.emptyList();
+        String trimmed = answer.trim();
+        if (trimmed.startsWith("[")) {
+            // JSON array format: ["A","B","C"]
+            try {
+                return objectMapper.readValue(trimmed, List.class);
+            } catch (JsonProcessingException e) {
+                return Collections.emptyList();
+            }
+        }
+        // Comma-separated format: A,B,C
+        return Arrays.stream(trimmed.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(java.util.stream.Collectors.toList());
     }
 
     private void upsertWrongQuestion(Long userId, Long questionId, Long courseId) {

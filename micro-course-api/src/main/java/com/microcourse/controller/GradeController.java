@@ -29,6 +29,16 @@ public class GradeController {
         return R.ok(gradeService.page(courseId, studentId, page, size));
     }
 
+    @GetMapping("/my")
+    @PreAuthorize("hasRole('STUDENT')")
+    public R<PageResult<GradeVO>> getMyGrades(
+            @RequestParam(required = false) Long courseId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Long userId = getCurrentUserId();
+        return R.ok(gradeService.pageByStudent(userId, null, courseId, page, size));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<GradeVO> getById(@PathVariable Long id) {

@@ -23,10 +23,11 @@ public class NotificationController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<NotificationVO>> getMyNotifications(
+            @RequestParam(required = false) String type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Long userId = getCurrentUserId();
-        PageResult<NotificationVO> result = notificationService.getMyNotifications(userId, page, size);
+        PageResult<NotificationVO> result = notificationService.getMyNotifications(userId, type, page, size);
         return R.ok(result);
     }
 

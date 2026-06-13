@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.CourseFavoriteVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseFavorite;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseFavoriteRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.CourseFavoriteService;
@@ -31,7 +33,7 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     public void favorite(Long userId, Long courseId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
-            return;
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
         LambdaQueryWrapper<CourseFavorite> wrapper = new LambdaQueryWrapper<>();

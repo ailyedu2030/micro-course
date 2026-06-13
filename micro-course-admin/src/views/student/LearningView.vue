@@ -345,7 +345,7 @@ import { getCourseById } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getVideos } from '@/api/video'
 import { getExercises } from '@/api/exercise'
-import { getLearningProgress, updateLearningProgress, getStudyDays, getTotalTime } from '@/api/learning-progress'
+import { getLearningProgress, updateLearningProgress, createLearningProgress, getStudyDays, getTotalTime } from '@/api/learning-progress'
 import { getMyFavorites, addFavorite, removeFavorite } from '@/api/favorite'
 
 // ==================== 路由 & 状态 ====================
@@ -452,7 +452,7 @@ function getChapterProgress(chapterId) {
 
 function buildProgressMap(progressList) {
   const map = {}
-  ;(progressList || []).forEach(p => { map[p.lessonId] = p })
+  ;(progressList || []).forEach(p => { map[p.chapterId] = p })
   return map
 }
 
@@ -473,14 +473,17 @@ async function loadCourse(cid) {
 
     // 构建章节-课时树（courseRes.data.chapters 应已内嵌 lessons）
     const rawChapters = courseRes.data.chapters || []
-    chapters.value = rawChapters.map(ch => ({
-      ...ch,
-      lessons: (ch.lessons || []).map(l => ({
-        ...l,
-        status: progressMap.value[l.id]?.completed ? 'COMPLETED' : 'NOT_STARTED'
-      })),
-      exercises: ch.exercises || []
-    }))
+    chapters.value = rawChapters.map(ch => {
+      const prog = progressMap.value[ch.id]
+      return {
+        ...ch,
+        lessons: (ch.lessons || []).map(l => ({
+          ...l,
+          status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
+        })),
+        exercises: ch.exercises || []
+      }
+    })
 
     // 设置默认展开第一章
     if (chapters.value.length > 0) {
@@ -505,12 +508,13 @@ async function loadProgress() {
     const [studyDaysRes, timeRes] = await Promise.all([getStudyDays(), getTotalTime()])
 
     // progressMap 已在 loadCourse 中构建，此处直接使用
-    // 更新章节中课时的完成状态（防御： chapters 可能尚未加载）
+    // 更新章节中课时的完成状态（防御：chapters 可能尚未加载）
     if (chapters.value.length > 0) {
       chapters.value.forEach(ch => {
+        const prog = progressMap.value[ch.id]
         if (ch.lessons) {
           ch.lessons.forEach(l => {
-            l.status = progressMap.value[l.id]?.completed ? 'COMPLETED' : 'NOT_STARTED'
+            l.status = prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
           })
         }
       })
@@ -568,8 +572,9 @@ function selectLesson(lessonId) {
   isPlaying.value = false
   currentTime.value = 0
   duration.value = 0
-  // 恢复播放进度
-  const saved = progressMap.value[lessonId]
+  // 恢复播放进度（通过章节ID查找）
+  const chapterId = currentChapter.value?.id
+  const saved = progressMap.value[chapterId]
   if (saved?.videoPosition && videoRef.value) {
     videoRef.value.currentTime = saved.videoPosition
   }
@@ -601,8 +606,9 @@ function togglePlay() {
 function onVideoLoaded() {
   duration.value = videoRef.value.duration
   videoLoading.value = false
-  // 恢复播放位置
-  const saved = progressMap.value[currentLessonId.value]
+  // 恢复播放位置（通过章节ID查找）
+  const chapterId = currentChapter.value?.id
+  const saved = progressMap.value[chapterId]
   if (saved?.videoPosition) {
     videoRef.value.currentTime = saved.videoPosition
   }
@@ -662,22 +668,26 @@ function onControlsMouseMove() {
 
 // ==================== 进度保存（每 10 秒） ====================
 async function saveVideoProgress() {
-  if (!currentLessonId.value || !videoRef.value) return
+  if (!currentChapter.value || !videoRef.value) return
   try {
-    const lessonProgress = progressMap.value[currentLessonId.value]
+    const chapterId = currentChapter.value.id
+    const lessonProgress = progressMap.value[chapterId]
     if (lessonProgress?.id) {
       await updateLearningProgress(lessonProgress.id, {
         videoPosition: Math.floor(videoRef.value.currentTime),
         completed: false
       })
     } else {
-      // 创建新进度
-      await updateLearningProgress(null, {
-        lessonId: currentLessonId.value,
+      const res = await createLearningProgress({
         courseId: courseId.value,
+        chapterId: chapterId,
         videoPosition: Math.floor(videoRef.value.currentTime),
-        completed: false
+        videoProgress: 0
       })
+      const newId = res.data?.id || (res.data || res).id
+      if (newId) {
+        progressMap.value[chapterId] = { id: newId }
+      }
     }
   } catch {
     // 静默失败
@@ -685,17 +695,22 @@ async function saveVideoProgress() {
 }
 
 async function markLessonComplete() {
-  if (!currentLessonId.value) return
+  if (!currentChapter.value) return
   try {
-    const lessonProgress = progressMap.value[currentLessonId.value]
+    const chapterId = currentChapter.value.id
+    const lessonProgress = progressMap.value[chapterId]
     if (lessonProgress?.id) {
       await updateLearningProgress(lessonProgress.id, { completed: true })
     } else {
-      await updateLearningProgress(null, {
-        lessonId: currentLessonId.value,
+      const res = await createLearningProgress({
         courseId: courseId.value,
+        chapterId: chapterId,
         completed: true
       })
+      const newId = res.data?.id || (res.data || res).id
+      if (newId) {
+        progressMap.value[chapterId] = { id: newId }
+      }
     }
     // 更新本地状态
     const lesson = allLessons.value.find(l => l.id === currentLessonId.value)

@@ -59,9 +59,9 @@ const routes = [
   { path: '/student/courses/:id', name: 'StudentCourseDetail', component: () => import('../views/student/CourseDetail.vue'), meta: { requiresAuth: true } },
   { path: '/student/courses/:id/play/:videoId?', name: 'StudentVideoPlay', component: () => import('../views/student/VideoPlayer.vue'), meta: { requiresAuth: true, layout: 'video' } },
   { path: '/student/my-courses', name: 'StudentMyCourses', component: () => import('../views/student/MyCourses.vue'), meta: { requiresAuth: true } },
-  { path: '/student/training', name: 'StudentTraining', component: () => import('../views/student/TrainingCenter.vue'), meta: { requiresAuth: true } },
+  { path: '/student/training', name: 'StudentTraining', component: () => import('../views/student/TrainingCenter.vue'), meta: { requiresAuth: true, menuTab: true, menuLabel: '练习', menuIcon: 'Star', menuOrder: 2 } },
   // Fix P1: /student/learning 路由 - 无 courseId 时显示学习中心，有 courseId 时重定向到学习页面
-  { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningView.vue'), meta: { requiresAuth: true, menuTab: true, menuLabel: '学习', menuIcon: 'VideoPlay', menuOrder: 2 } },
+  { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningView.vue'), meta: { requiresAuth: true, menuTab: true, menuLabel: '学习', menuIcon: 'VideoPlay', menuOrder: 5 } },
   { path: '/student/learning/:courseId', redirect: (to) => {
     if (!to.params.courseId) return '/student/learning'
     return `/student/learning?courseId=${to.params.courseId}`

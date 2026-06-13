@@ -78,7 +78,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.setCourseId(request.getCourseId());
         enrollment.setUserId(request.getUserId());
         enrollment.setSourceChannel(request.getSourceChannel());
-        enrollment.setEnrollmentStatus("PENDING");
+        enrollment.setEnrollmentStatus("ENROLLED");
         enrollment.setProgress(0.0);
         enrollment.setCompleted(false);
         enrollment.setEnrolledAt(LocalDateTime.now());
@@ -91,7 +91,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     public List<EnrollmentVO> getMyEnrollments(Long userId, Boolean completed) {
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Enrollment::getUserId, userId);
+        wrapper.eq(Enrollment::getUserId, userId)
+                .ne(Enrollment::getEnrollmentStatus, "CANCELLED");
         if (completed != null) {
             wrapper.eq(Enrollment::getCompleted, completed);
         }

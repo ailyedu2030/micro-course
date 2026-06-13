@@ -148,7 +148,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         progress.setPlatform(request.getPlatform());
         progress.setPlaybackSpeed(request.getPlaybackSpeed());
         progress.setConfidence(request.getConfidence());
-        progress.setCompleted(false);
+        progress.setCompleted(request.getCompleted() != null ? request.getCompleted() : false);
         progress.setLastWatchAt(LocalDateTime.now());
         progress.setCreatedAt(LocalDateTime.now());
         progress.setUpdatedAt(LocalDateTime.now());
