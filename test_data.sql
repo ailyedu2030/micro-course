@@ -147,31 +147,31 @@ INSERT INTO course_chapters (id, course_id, title, description, sort_order, chap
 -- ============================================================
 INSERT INTO videos (id, chapter_id, course_id, title, original_name, file_size, duration, url, status, sort_order, created_at, updated_at, version) VALUES
 -- Java Chapter 1
-(1,  1, 1, 'Java开发环境搭建', 'java-env.mp4', 524288000, 3600, 'https://cdn.microcourse.edu/videos/java-env.mp4', 2, 1, NOW(), NOW(), 1),
-(2,  1, 1, '第一个Java程序', 'java-first.mp4', 314572800, 3600, 'https://cdn.microcourse.edu/videos/java-first.mp4', 2, 2, NOW(), NOW(), 1),
+(1,  1, 1, 'Java开发环境搭建', 'java-env.mp4', 524288000, 3600, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
+(2,  1, 1, '第一个Java程序', 'java-first.mp4', 314572800, 3600, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 2, NOW(), NOW(), 1),
 -- Java Chapter 2
-(3,  2, 1, '类与对象详解', 'java-oop.mp4', 629145600, 5400, 'https://cdn.microcourse.edu/videos/java-oop.mp4', 2, 1, NOW(), NOW(), 1),
-(4,  2, 1, '继承与多态', 'java-polymorph.mp4', 524288000, 5400, 'https://cdn.microcourse.edu/videos/java-polymorph.mp4', 2, 2, NOW(), NOW(), 1),
+(3,  2, 1, '类与对象详解', 'java-oop.mp4', 629145600, 5400, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
+(4,  2, 1, '继承与多态', 'java-polymorph.mp4', 524288000, 5400, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 2, NOW(), NOW(), 1),
 -- Java Chapter 3
-(5,  3, 1, 'String类源码解读', 'java-string.mp4', 419430400, 7200, 'https://cdn.microcourse.edu/videos/java-string.mp4', 2, 1, NOW(), NOW(), 1),
+(5,  3, 1, 'String类源码解读', 'java-string.mp4', 419430400, 7200, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
 -- DS Chapter 1
-(6,  4, 2, '数组与链表实现', 'ds-array.mp4', 471859200, 5400, 'https://cdn.microcourse.edu/videos/ds-array.mp4', 2, 1, NOW(), NOW(), 1),
-(7,  4, 2, '栈和队列应用', 'ds-stack.mp4', 314572800, 5400, 'https://cdn.microcourse.edu/videos/ds-stack.mp4', 2, 2, NOW(), NOW(), 1),
+(6,  4, 2, '数组与链表实现', 'ds-array.mp4', 471859200, 5400, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
+(7,  4, 2, '栈和队列应用', 'ds-stack.mp4', 314572800, 5400, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 2, NOW(), NOW(), 1),
 -- DS Chapter 2
-(8,  5, 2, '二叉树遍历', 'ds-tree.mp4', 524288000, 7200, 'https://cdn.microcourse.edu/videos/ds-tree.mp4', 2, 1, NOW(), NOW(), 1),
+(8,  5, 2, '二叉树遍历', 'ds-tree.mp4', 524288000, 7200, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
 -- DB Chapter 1
-(9,  7, 3, 'SQL基础查询', 'db-sql.mp4', 419430400, 5400, 'https://cdn.microcourse.edu/videos/db-sql.mp4', 2, 1, NOW(), NOW(), 1),
-(10, 7, 3, '连接查询与子查询', 'db-join.mp4', 367001600, 5400, 'https://cdn.microcourse.edu/videos/db-join.mp4', 2, 2, NOW(), NOW(), 1),
+(9,  7, 3, 'SQL基础查询', 'db-sql.mp4', 419430400, 5400, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
+(10, 7, 3, '连接查询与子查询', 'db-join.mp4', 367001600, 5400, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 2, NOW(), NOW(), 1),
 -- DB Chapter 2
-(11, 8, 3, 'ER图设计方法', 'db-er.mp4', 314572800, 3600, 'https://cdn.microcourse.edu/videos/db-er.mp4', 2, 1, NOW(), NOW(), 1),
+(11, 8, 3, 'ER图设计方法', 'db-er.mp4', 314572800, 3600, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
 -- Web Chapter 1
-(12, 10, 4, 'RESTful API设计原则', 'web-rest.mp4', 262144000, 3600, 'https://cdn.microcourse.edu/videos/web-rest.mp4', 2, 1, NOW(), NOW(), 1),
+(12, 10, 4, 'RESTful API设计原则', 'web-rest.mp4', 262144000, 3600, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
 -- Web Chapter 2
-(13, 11, 4, 'Vue3核心概念', 'web-vue.mp4', 524288000, 5400, 'https://cdn.microcourse.edu/videos/web-vue.mp4', 2, 1, NOW(), NOW(), 1),
+(13, 11, 4, 'Vue3核心概念', 'web-vue.mp4', 524288000, 5400, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
 -- ML Chapter 1
-(14, 13, 5, '机器学习入门概述', 'ml-intro.mp4', 209715200, 2700, 'https://cdn.microcourse.edu/videos/ml-intro.mp4', 2, 1, NOW(), NOW(), 1),
+(14, 13, 5, '机器学习入门概述', 'ml-intro.mp4', 209715200, 2700, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1),
 -- ML Chapter 2
-(15, 14, 5, '线性回归详解', 'ml-linear.mp4', 419430400, 7200, 'https://cdn.microcourse.edu/videos/ml-linear.mp4', 2, 1, NOW(), NOW(), 1);
+(15, 14, 5, '线性回归详解', 'ml-linear.mp4', 419430400, 7200, 'https://www.w3schools.com/html/mov_bbb.mp4', 2, 1, NOW(), NOW(), 1);
 
 -- ============================================================
 -- 9. 练习 (每课程1-2个)
@@ -388,10 +388,10 @@ INSERT INTO notifications (id, user_id, type, title, content, related_id, channe
 -- 20. 轮播图
 -- ============================================================
 INSERT INTO banners (id, image_url, link_url, sort_order, enabled, created_at) VALUES
-(1, 'https://cdn.microcourse.edu/banners/java-course.jpg', '/course/1', 1, true, NOW()),
-(2, 'https://cdn.microcourse.edu/banners/ds-course.jpg',   '/course/2', 2, true, NOW()),
-(3, 'https://cdn.microcourse.edu/banners/ml-course.jpg',  '/course/5', 3, true, NOW()),
-(4, 'https://cdn.microcourse.edu/banners/welcome.jpg',     '/home',     4, true, NOW());
+(1, 'https://via.placeholder.com/800x400.png?text=Course+Banner', '/course/1', 1, true, NOW()),
+(2, 'https://via.placeholder.com/800x400.png?text=Course+Banner',   '/course/2', 2, true, NOW()),
+(3, 'https://via.placeholder.com/800x400.png?text=Course+Banner',  '/course/5', 3, true, NOW()),
+(4, 'https://via.placeholder.com/800x400.png?text=Course+Banner',     '/home',     4, true, NOW());
 
 -- ============================================================
 -- 验证数据
