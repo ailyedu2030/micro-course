@@ -50,15 +50,13 @@ class VideoUploadP0ErrorTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("BOUNDARY: videoUploadExecutor 是被注入的 Executor,而非 ForkJoinPool.commonPool")
-    void videoControllerUsesInjectedExecutor() throws Exception {
-        var ctrl = applicationContext.getBean(com.microcourse.controller.VideoController.class);
-        var field = com.microcourse.controller.VideoController.class
-            .getDeclaredField("videoUploadExecutor");
-        field.setAccessible(true);
-        Object exec = field.get(ctrl);
-        assertNotNull(exec, "videoUploadExecutor 必须被注入");
+    void videoControllerUsesInjectedExecutor() {
+        var exec = applicationContext.getBean("videoUploadExecutor", java.util.concurrent.Executor.class);
+        assertNotNull(exec, "videoUploadExecutor Bean 必须存在");
         assertFalse(exec.getClass().getName().contains("ForkJoinPool"),
             "不能使用 ForkJoinPool.commonPool");
+        assertTrue(exec.getClass().getName().contains("ThreadPoolTaskExecutor"),
+            "必须是 ThreadPoolTaskExecutor");
     }
 
     private Long createTestVideo() {

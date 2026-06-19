@@ -1,6 +1,7 @@
 package com.microcourse;
 
 import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,14 @@ public abstract class BaseIntegrationTest {
     /**
      * 获取 admin 的 Bearer token（缓存，全类只登录一次避免Redis限流）
      */
+    @BeforeEach
+    public void resetLoginState() {
+        cachedAdminToken = null;
+        try {
+            applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("login:lock:admin");
+        } catch (Exception ignored) {}
+    }
+
     @AfterEach
     public void cleanupLoginCache() {
         cachedAdminToken = null;

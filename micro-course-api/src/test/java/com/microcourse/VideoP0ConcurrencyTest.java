@@ -56,11 +56,16 @@ class VideoP0ConcurrencyTest extends BaseIntegrationTest {
         pool.shutdown();
         pool.awaitTermination(30, TimeUnit.SECONDS);
 
+        // 等待 @Async 异步任务实际执行完成
+        java.util.concurrent.TimeUnit.MILLISECONDS.sleep(2000);
+
         Video after = videoRepository.selectById(videoId);
         // 修复后:5 个并发调用全部 return,但只有 CAS 成功的那一个把 status 改为 TRANSCODING(1)
         // 数据库状态依然正确;若数据库可见其他状态(2=COMPLETED/3=FAILED)亦证明 transcode 路径只跑了一次
-        assertTrue(after.getStatus() == 1 || after.getStatus() == 2 || after.getStatus() == 3,
-            "状态必须在合法集合 {TRANSCODING, COMPLETED, FAILED} 内");
+        Integer status = after.getStatus();
+        assertNotNull(status, "Video 状态不能为 null");
+        assertTrue(status == 1 || status == 2 || status == 3,
+            "状态必须在合法集合 {TRANSCODING, COMPLETED, FAILED} 内, 实际=" + status);
     }
 
     private Long createTestVideo() {

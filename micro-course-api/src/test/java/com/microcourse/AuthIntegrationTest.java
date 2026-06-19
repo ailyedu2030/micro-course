@@ -34,6 +34,10 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginJson("admin", "wrongpassword")))
                 .andExpect(status().isUnauthorized());
+        // 清除登录失败计数，避免影响其他测试
+        clearAdminToken();
+        com.microcourse.util.RedisUtil ru = applicationContext.getBean(com.microcourse.util.RedisUtil.class);
+        ru.delete("login:lock:admin");
     }
 
     @Test

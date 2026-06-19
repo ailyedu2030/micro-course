@@ -23,6 +23,7 @@ import com.microcourse.service.EnrollmentService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -83,7 +84,17 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.setEnrolledAt(LocalDateTime.now());
         enrollment.setUpdatedAt(LocalDateTime.now());
 
-        enrollmentRepository.insert(enrollment);
+        try {
+            enrollmentRepository.insert(enrollment);
+        } catch (DuplicateKeyException e) {
+            // 并发场景下 check-then-insert 幂等兜底
+            LambdaQueryWrapper<Enrollment> retryWrapper = new LambdaQueryWrapper<>();
+            retryWrapper.eq(Enrollment::getUserId, request.getUserId())
+                    .eq(Enrollment::getCourseId, request.getCourseId());
+            Enrollment existing = enrollmentRepository.selectOne(retryWrapper);
+            if (existing != null) return convertToVO(existing);
+            throw e;
+        }
         return convertToVO(enrollment);
     }
 
