@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/micro_course_test
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:5433/micro_course_test}
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -10,8 +10,8 @@ spring:
     locations: classpath:db/migration
 
   redis:
-    host: localhost
-    port: 16379
+    host: ${TEST_REDIS_HOST:localhost}
+    port: ${TEST_REDIS_PORT:6380}
 
 jwt:
   secret: test-secret-key-for-integration-tests-must-be-at-least-32-chars
