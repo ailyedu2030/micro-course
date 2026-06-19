@@ -1,6 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isAuthenticated } from '../utils/auth'
 import { useUserStore } from '../store/user'
+import NProgress from 'nprogress'
+import 'nprogress/nprogress.css'
+
+NProgress.configure({ showSpinner: false })
 
 const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/auth/Login.vue'), meta: { requiresAuth: false } },
@@ -105,6 +109,7 @@ function isStaffOnlyPath(path) {
 const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach(async (to, from, next) => {
+  NProgress.start()
   if (to.meta.requiresAuth !== false && !isAuthenticated()) return next('/login')
 
   // 优先从 store 获取角色，store 为空则调用 /api/auth/me
@@ -135,6 +140,14 @@ router.beforeEach(async (to, from, next) => {
     }
   }
   next()
+})
+
+router.afterEach(() => {
+  NProgress.done()
+})
+
+router.onError(() => {
+  NProgress.done()
 })
 
 export default router

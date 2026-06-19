@@ -179,8 +179,14 @@
           </el-breadcrumb>
         </div>
 
-        <!-- 右侧：通知 + 用户 -->
+        <!-- 右侧：主题切换 + 通知 + 用户 -->
         <div class="header-right">
+          <el-tooltip :content="isDark ? '切换亮色模式' : '切换深色模式'" placement="bottom">
+            <el-icon class="header-icon theme-toggle-btn" @click="toggleTheme" :aria-label="isDark ? '切换亮色模式' : '切换深色模式'">
+              <Moon v-if="!isDark" />
+              <Sunny v-else />
+            </el-icon>
+          </el-tooltip>
           <el-icon class="header-icon" @click="$router.push('/notifications')" aria-label="通知中心">
             <el-badge :value="notificationStore.unreadCount" :hidden="!notificationStore.unreadCount" :max="99">
               <Bell />
@@ -222,7 +228,7 @@
       <!-- 主体内容 -->
       <el-main class="layout-main">
         <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
+          <transition name="page-fade" mode="out-in">
             <component :is="Component" />
           </transition>
         </router-view>
@@ -240,7 +246,7 @@ import {
   Fold, Expand, Bell, ArrowDown, Microphone, Grid, OfficeBuilding, Reading,
   School, User, Notebook, VideoCamera, Film, FolderOpened, List, VideoPlay,
   Tickets, Document, Edit, UserFilled, DataAnalysis, Finished, ChatLineSquare,
-  Star, Setting, Odometer, Clock, Tools, SwitchButton
+  Star, Setting, Odometer, Clock, Tools, SwitchButton, Sunny, Moon
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
@@ -248,6 +254,31 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
+
+// 深色模式状态
+const isDark = ref(false)
+
+function initTheme() {
+  const saved = localStorage.getItem('theme')
+  if (saved === 'dark') {
+    isDark.value = true
+    document.documentElement.setAttribute('data-theme', 'dark')
+  } else {
+    isDark.value = false
+    document.documentElement.removeAttribute('data-theme')
+  }
+}
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  if (isDark.value) {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    localStorage.setItem('theme', 'dark')
+  } else {
+    document.documentElement.removeAttribute('data-theme')
+    localStorage.setItem('theme', 'light')
+  }
+}
 
 // 侧边栏折叠状态
 const collapsed = ref(false)
@@ -305,6 +336,8 @@ watch(() => route.path, () => {
 })
 
 onMounted(() => {
+  // 恢复主题
+  initTheme()
   // 恢复折叠状态
   const saved = localStorage.getItem('sidebar_collapsed')
   if (saved !== null) {
@@ -526,6 +559,10 @@ onUnmounted(() => {
   background-color: var(--role-primary-light-9);
 }
 
+.theme-toggle-btn {
+  font-size: 20px;
+}
+
 .user-avatar-wrapper {
   display: flex;
   align-items: center;
@@ -574,16 +611,7 @@ onUnmounted(() => {
   flex: 1;
 }
 
-/* ==================== 页面切换动画 ==================== */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity var(--duration-slow) var(--ease-out);
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
+/* ==================== 页面切换动画 (已迁移到 design-tokens.css .page-fade-*) ==================== */
 
 /* ==================== 响应式 ==================== */
 @media (max-width: 1200px) {

@@ -6,7 +6,11 @@
 -->
 <template>
   <div id="app" :class="appClass">
-    <router-view v-if="isLoginPage || isVideoPage" />
+    <router-view v-if="isLoginPage || isVideoPage" v-slot="{ Component }">
+      <transition name="page-fade" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
     <StudentLayout v-else-if="isStudent" />
     <Layout v-else />
   </div>
