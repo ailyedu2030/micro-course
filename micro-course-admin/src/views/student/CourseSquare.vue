@@ -330,8 +330,7 @@
               background
               class="course-pagination"
               @size-change="handleSizeChange"
-              @current-change="handlePageChange"
-            />
+              @current-change="handlePageChange" aria-label="分页导航" />
           </div>
         </div>
       </main>

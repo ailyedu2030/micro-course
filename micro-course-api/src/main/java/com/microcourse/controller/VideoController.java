@@ -198,6 +198,35 @@ public class VideoController {
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new BusinessException(ErrorCode.VIDEO_TOO_LARGE);
         }
+        // R3-SEC-006 修复:服务端文件魔数检测 — 客户端可伪造 MIME 与扩展名,验证文件头字节
+        try (java.io.InputStream is = file.getInputStream()) {
+            byte[] magic = new byte[12];
+            int read = is.read(magic);
+            if (read < 12) {
+                throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID, "文件过小,无法验证格式");
+            }
+            boolean validMagic = isMp4Magic(magic) || isMovMagic(magic) || isMkvMagic(magic);
+            if (!validMagic) {
+                throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID, "文件魔数校验失败,不是有效的 MP4/MOV/MKV 视频");
+            }
+        } catch (java.io.IOException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
+        }
+    }
+
+    /** MP4 / MOV 文件魔数:00 00 00 ?? 66 74 79 70 (ftyp box) */
+    private static boolean isMp4Magic(byte[] b) {
+        return b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p';
+    }
+
+    private static boolean isMovMagic(byte[] b) {
+        return isMp4Magic(b);
+    }
+
+    /** MKV/WebM (EBML) 文件魔数:1A 45 DF A3 */
+    private static boolean isMkvMagic(byte[] b) {
+        return (b[0] & 0xff) == 0x1A && (b[1] & 0xff) == 0x45
+                && (b[2] & 0xff) == 0xDF && (b[3] & 0xff) == 0xA3;
     }
 
     /**

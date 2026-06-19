@@ -6,6 +6,8 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.BannerRepository;
 import com.microcourse.service.BannerService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +25,12 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
+    @Cacheable(value = "banners", key = "'list'")
     @Transactional(readOnly = true)
     public List<BannerVO> list() {
         List<Banner> banners = bannerRepository.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Banner>()
+                        .eq(Banner::getEnabled, true)
                         .orderByAsc(Banner::getSortOrder)
                         .last("LIMIT 50")
         );
@@ -36,6 +40,7 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
+    @CacheEvict(value = "banners", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public BannerVO create(String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled) {
         Banner banner = new Banner();
@@ -50,6 +55,7 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
+    @CacheEvict(value = "banners", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public BannerVO update(Long id, String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled) {
         Banner banner = bannerRepository.selectById(id);
@@ -74,6 +80,7 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
+    @CacheEvict(value = "banners", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Banner banner = bannerRepository.selectById(id);
@@ -84,6 +91,7 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
+    @CacheEvict(value = "banners", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public void toggleStatus(Long id, Boolean enabled) {
         Banner banner = bannerRepository.selectById(id);

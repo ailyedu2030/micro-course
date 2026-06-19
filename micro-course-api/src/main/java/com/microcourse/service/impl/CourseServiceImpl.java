@@ -127,7 +127,7 @@ public class CourseServiceImpl implements CourseService {
         final java.util.Map<Long, User> finalTeacherMap = teacherMap;
 
         List<CourseVO> vos = ipage.getRecords().stream()
-                .map(course -> convertToVO(course, finalCategoryMap, finalTeacherMap))
+                .map(course -> convertToVOFromMaps(course, finalCategoryMap, finalTeacherMap))
                 .collect(Collectors.toList());
 
         PageResult<CourseVO> result = new PageResult<>();
@@ -145,12 +145,18 @@ public class CourseServiceImpl implements CourseService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        CourseVO vo = convertToVO(course);
+        // RES-NEW-2 修复:批量预加载 category/teacher,避免 N+1
+        CourseCategory category = course.getCategoryId() != null
+                ? categoryRepository.selectById(course.getCategoryId()) : null;
+        User teacher = course.getTeacherId() != null
+                ? userRepository.selectById(course.getTeacherId()) : null;
+        CourseVO vo = convertToVO(course, category, teacher);
 
-        // Load chapters
+        // RES-NEW-3 修复:章节列表限制 200 条,防止超大课程返回数 MB payload
         LambdaQueryWrapper<CourseChapter> chapterWrapper = new LambdaQueryWrapper<>();
         chapterWrapper.eq(CourseChapter::getCourseId, id)
-                .orderByAsc(CourseChapter::getSortOrder);
+                .orderByAsc(CourseChapter::getSortOrder)
+                .last("LIMIT 200");
         List<CourseChapter> chapters = chapterRepository.selectList(chapterWrapper);
         vo.setChapters(chapters.stream().map(this::convertChapterToVO).collect(Collectors.toList()));
 
@@ -450,6 +456,13 @@ public class CourseServiceImpl implements CourseService {
     }
 
     private CourseVO convertToVO(Course course) {
+        return convertToVO(course, null, null);
+    }
+
+    /**
+     * RES-NEW-2 修复:接受预加载的 category/teacher,避免 N+1
+     */
+    private CourseVO convertToVO(Course course, CourseCategory preloadedCategory, User preloadedTeacher) {
         CourseVO vo = new CourseVO();
         vo.setId(course.getId());
         vo.setTitle(course.getTitle());
@@ -479,17 +492,19 @@ public class CourseServiceImpl implements CourseService {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
         }
 
-        // Load category name
+        // Category name — 优先用预加载对象,fallback selectById
         if (course.getCategoryId() != null) {
-            CourseCategory category = categoryRepository.selectById(course.getCategoryId());
+            CourseCategory category = preloadedCategory != null ? preloadedCategory
+                    : categoryRepository.selectById(course.getCategoryId());
             if (category != null) {
                 vo.setCategoryName(category.getName());
             }
         }
 
-        // Load teacher name
+        // Teacher name — 优先用预加载对象,fallback selectById
         if (course.getTeacherId() != null) {
-            User teacher = userRepository.selectById(course.getTeacherId());
+            User teacher = preloadedTeacher != null ? preloadedTeacher
+                    : userRepository.selectById(course.getTeacherId());
             if (teacher != null) {
                 vo.setTeacherName(teacher.getRealName());
             }
@@ -498,8 +513,8 @@ public class CourseServiceImpl implements CourseService {
         return vo;
     }
 
-    private CourseVO convertToVO(Course course, java.util.Map<Long, CourseCategory> categoryMap,
-                                 java.util.Map<Long, User> teacherMap) {
+    private CourseVO convertToVOFromMaps(Course course, java.util.Map<Long, CourseCategory> categoryMap,
+                                        java.util.Map<Long, User> teacherMap) {
         CourseVO vo = new CourseVO();
         vo.setId(course.getId());
         vo.setTitle(course.getTitle());

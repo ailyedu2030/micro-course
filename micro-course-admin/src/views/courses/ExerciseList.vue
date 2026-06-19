@@ -78,8 +78,7 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-        />
+          @current-change="handlePageChange" aria-label="分页导航" />
       </div>
     </el-card>
 
@@ -199,8 +198,7 @@
             layout="total,sizes,prev,pager,next"
             small
             @size-change="handleQuestionSizeChange"
-            @current-change="handleQuestionPageChange"
-          />
+            @current-change="handleQuestionPageChange" aria-label="分页导航" />
         </div>
       </div>
       <template #footer>

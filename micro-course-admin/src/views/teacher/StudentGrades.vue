@@ -124,8 +124,7 @@
                 link
                 :disabled="!searchForm.courseId"
                 @click="handleGrade(row)"
-              >
-                <el-icon><Edit /></el-icon>{{ row.score != null ? '查看' : '批改' }}
+               aria-label="编辑"><el-icon><Edit /></el-icon>{{ row.score != null ? '查看' : '批改' }}
               </el-button>
             </template>
           </el-table-column>
@@ -140,8 +139,7 @@
             :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next"
             @size-change="handleSizeChange"
-            @current-change="handlePageChange"
-          />
+            @current-change="handlePageChange" aria-label="分页导航" />
         </div>
       </el-card>
     </div>

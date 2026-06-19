@@ -8,6 +8,8 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.AdminSettingRepository;
 import com.microcourse.service.AdminSettingService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
+    @Cacheable(value = "adminSettings", key = "'all'")
     @Transactional(readOnly = true)
     public List<AdminSettingVO> getAll() {
         List<AdminSetting> settings = adminSettingRepository.selectList(null);
@@ -40,6 +43,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
+    @Cacheable(value = "adminSettings", key = "#key")
     @Transactional(readOnly = true)
     public String getByKey(String key) {
         LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
@@ -49,6 +53,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
+    @CacheEvict(value = "adminSettings", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public void update(String key, String value) {
         LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
@@ -63,6 +68,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
+    @CacheEvict(value = "adminSettings", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public void updateBatch(List<SettingUpdateRequest> settings) {
         LocalDateTime now = LocalDateTime.now();
@@ -86,6 +92,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
+    @CacheEvict(value = "adminSettings", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public void upsert(String key, String value) {
         LocalDateTime now = LocalDateTime.now();

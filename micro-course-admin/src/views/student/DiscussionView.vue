@@ -43,8 +43,7 @@
             :page-sizes="[10, 20, 50]"
             layout="total,sizes,prev,pager,next"
             @size-change="handleSizeChange"
-            @current-change="handlePageChange"
-          />
+            @current-change="handlePageChange" aria-label="分页导航" />
         </div>
       </el-card>
     </template>
@@ -89,8 +88,7 @@
           :page-sizes="[10, 20, 50]"
           layout="total,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-        />
+          @current-change="handlePageChange" aria-label="分页导航" />
       </div>
     </template>
 

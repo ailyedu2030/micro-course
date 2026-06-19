@@ -9,8 +9,7 @@
     <!-- ===================== 1. 顶部导航栏 ===================== -->
     <header class="learning-header">
       <div class="header-left">
-        <el-button text class="back-btn" @click="goBack">
-          <el-icon><ArrowLeft /></el-icon>
+        <el-button text class="back-btn" @click="goBack" aria-label="操作"><el-icon><ArrowLeft /></el-icon>
           <span>返回</span>
         </el-button>
       </div>
@@ -31,13 +30,11 @@
           <span class="progress-text">{{ totalProgress }}%</span>
         </div>
         <!-- 笔记按钮 -->
-        <el-button text class="header-btn" @click="activeTab = 'course'" title="笔记">
-          <el-icon><Edit /></el-icon>
+        <el-button text class="header-btn" @click="activeTab = 'course'" title="笔记" aria-label="操作"><el-icon><Edit /></el-icon>
           <span>笔记</span>
         </el-button>
         <!-- 收藏按钮 -->
-        <el-button text class="header-btn" :class="{ 'is-favorited': isFavorited }" @click="toggleFavorite" :title="isFavorited ? '取消收藏' : '收藏课程'">
-          <el-icon><Star /></el-icon>
+        <el-button text class="header-btn" :class="{ 'is-favorited': isFavorited }" @click="toggleFavorite" :title="isFavorited ? '取消收藏' : '收藏课程'" aria-label="操作"><el-icon><Star /></el-icon>
           <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
         </el-button>
       </div>
@@ -144,8 +141,7 @@
               v-if="prevLesson"
               class="nav-btn prev-btn"
               @click="goToLesson(prevLesson)"
-            >
-              <el-icon><ArrowLeft /></el-icon>
+             aria-label="操作"><el-icon><ArrowLeft /></el-icon>
               上一节: {{ prevLesson.title }}
             </el-button>
             <div v-else />
@@ -215,8 +211,7 @@
                   <p>共 {{ currentExercises.length }} 道练习题</p>
                 </div>
               </div>
-              <el-button type="primary" size="large" round @click="goExercise">
-                <el-icon><CaretRight /></el-icon>
+              <el-button type="primary" size="large" round @click="goExercise" aria-label="编辑"><el-icon><CaretRight /></el-icon>
                 开始练习
               </el-button>
             </div>
@@ -305,12 +300,10 @@
               </div>
             </div>
             <div class="stats-actions">
-              <el-button type="primary" size="small" @click="continueLearning">
-                <el-icon><VideoPlay /></el-icon>
+              <el-button type="primary" size="small" @click="continueLearning" aria-label="编辑"><el-icon><VideoPlay /></el-icon>
                 继续学习
               </el-button>
-              <el-button size="small" @click="activeTab = 'exam'">
-                <el-icon><Edit /></el-icon>
+              <el-button size="small" @click="activeTab = 'exam'" aria-label="操作"><el-icon><Edit /></el-icon>
                 开始练习
               </el-button>
             </div>

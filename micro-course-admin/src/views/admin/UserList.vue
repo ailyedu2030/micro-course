@@ -52,11 +52,9 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>搜索
+          <el-button type="primary" @click="handleSearch" aria-label="编辑"><el-icon><Search /></el-icon>搜索
           </el-button>
-          <el-button @click="handleReset">
-            <el-icon><RefreshRight /></el-icon>重置
+          <el-button @click="handleReset" aria-label="操作"><el-icon><RefreshRight /></el-icon>重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -69,11 +67,9 @@
           <span class="card-count">共 {{ totalElements }} 条记录</span>
         </div>
         <div class="toolbar-right">
-          <el-button type="success" @click="handleImport">
-            <el-icon><Upload /></el-icon>Excel 导入
+          <el-button type="success" @click="handleImport" aria-label="确认"><el-icon><Upload /></el-icon>Excel 导入
           </el-button>
-          <el-button type="primary" @click="handleExport">
-            <el-icon><Download /></el-icon>导出
+          <el-button type="primary" @click="handleExport" aria-label="编辑"><el-icon><Download /></el-icon>导出
           </el-button>
         </div>
       </div>
@@ -149,8 +145,7 @@
         </el-table-column>
         <el-table-column label="操作" width="120" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleViewDetail(row)">
-              <el-icon><View /></el-icon>详情
+            <el-button type="primary" link @click="handleViewDetail(row)" aria-label="编辑"><el-icon><View /></el-icon>详情
             </el-button>
           </template>
         </el-table-column>
@@ -165,8 +160,7 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-        />
+          @current-change="handlePageChange" aria-label="分页导航" />
       </div>
     </el-card>
 
@@ -194,8 +188,7 @@
             <el-table-column prop="majorName" label="majorName" />
             <el-table-column prop="className" label="className" />
           </el-table>
-          <el-button type="primary" text @click="handleDownloadTemplate">
-            <el-icon><Download /></el-icon>下载模板文件
+          <el-button type="primary" text @click="handleDownloadTemplate" aria-label="编辑"><el-icon><Download /></el-icon>下载模板文件
           </el-button>
         </div>
         <el-upload
