@@ -68,6 +68,16 @@ public class ExerciseRecordController {
         return R.ok(vo);
     }
 
+    @GetMapping("/my/{exerciseId}/attempt-count")
+    @PreAuthorize("isAuthenticated()")
+    public R<Map<String, Object>> getMyAttemptCount(
+            @PathVariable Long exerciseId,
+            Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        int count = exerciseRecordService.getAttemptCount(userId, exerciseId);
+        return R.ok(Map.of("attemptCount", count));
+    }
+
     private Long extractUserId(Authentication authentication) {
         Object principal = authentication.getPrincipal();
         if (principal instanceof Long) {

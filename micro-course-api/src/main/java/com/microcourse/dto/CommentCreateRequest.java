@@ -15,6 +15,8 @@ public class CommentCreateRequest {
     @Size(max = 2000, message = "评论最多2000字符")
     private String content;
 
+    private Boolean isAnonymous;
+
     public CommentCreateRequest() {}
 
     public Long getPostId() { return postId; }
@@ -23,4 +25,6 @@ public class CommentCreateRequest {
     public void setParentId(Long parentId) { this.parentId = parentId; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+    public Boolean getIsAnonymous() { return isAnonymous; }
+    public void setIsAnonymous(Boolean isAnonymous) { this.isAnonymous = isAnonymous; }
 }

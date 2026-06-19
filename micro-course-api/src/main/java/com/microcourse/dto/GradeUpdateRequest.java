@@ -8,6 +8,7 @@ public class GradeUpdateRequest {
     private BigDecimal totalScore;
     private Boolean passed;
     private Integer duration;
+    private String comment;
 
     public GradeUpdateRequest() {}
 
@@ -19,4 +20,6 @@ public class GradeUpdateRequest {
     public void setPassed(Boolean passed) { this.passed = passed; }
     public Integer getDuration() { return duration; }
     public void setDuration(Integer duration) { this.duration = duration; }
+    public String getComment() { return comment; }
+    public void setComment(String comment) { this.comment = comment; }
 }

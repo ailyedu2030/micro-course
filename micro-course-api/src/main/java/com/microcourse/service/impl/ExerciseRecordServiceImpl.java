@@ -464,6 +464,19 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         return result;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public int getAttemptCount(Long userId, Long exerciseId) {
+        QueryWrapper<ExerciseRecord> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id", userId)
+                .eq("exercise_id", exerciseId)
+                .select("COALESCE(MAX(attempt_no), 0) AS max_no");
+        Map<String, Object> row = exerciseRecordRepository.selectMaps(wrapper).stream()
+                .findFirst().orElse(Collections.singletonMap("max_no", 0));
+        Object maxVal = row.get("max_no");
+        return (maxVal instanceof Number n) ? n.intValue() : 0;
+    }
+
     private ExerciseRecordVO convertToVO(ExerciseRecord record, Exercise exercise) {
         ExerciseRecordVO vo = new ExerciseRecordVO();
         vo.setId(record.getId());

@@ -14,6 +14,7 @@ import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.DiscussionCommentService;
 import com.microcourse.util.SecurityUtil;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -30,13 +31,16 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     private final DiscussionCommentRepository commentRepository;
     private final DiscussionPostRepository postRepository;
     private final UserRepository userRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public DiscussionCommentServiceImpl(DiscussionCommentRepository commentRepository,
                                         DiscussionPostRepository postRepository,
-                                        UserRepository userRepository) {
+                                        UserRepository userRepository,
+                                        JdbcTemplate jdbcTemplate) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -48,10 +52,15 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
                .orderByAsc(DiscussionComment::getCreatedAt)
                .last("LIMIT 500"); // DISC-NEW-3 修复:硬上限防 OOM
         List<DiscussionComment> flatList = commentRepository.selectList(wrapper);
-        return buildCommentTreeWithUsers(flatList);
+
+        // 获取帖子 OP 的 userId 用于 isOp 标记
+        DiscussionPost post = postRepository.selectById(postId);
+        Long opUserId = (post != null) ? post.getUserId() : null;
+
+        return buildCommentTreeWithUsers(flatList, opUserId);
     }
 
-    private List<DiscussionCommentVO> buildCommentTreeWithUsers(List<DiscussionComment> flatList) {
+    private List<DiscussionCommentVO> buildCommentTreeWithUsers(List<DiscussionComment> flatList, Long opUserId) {
         if (flatList.isEmpty()) {
             return new java.util.ArrayList<>();
         }
@@ -64,12 +73,23 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
             userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
         }
         final java.util.Map<Long, User> finalUserMap = userMap;
-        return buildCommentTreeWithBatchLoad(flatList, finalUserMap);
+        return buildCommentTreeWithBatchLoad(flatList, finalUserMap, opUserId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DiscussionCommentVO create(CommentCreateRequest req, Long userId) {
+        // P1: 评论防刷—30 秒内只能评论一次
+        DiscussionComment lastComment = commentRepository.selectOne(
+                new LambdaQueryWrapper<DiscussionComment>()
+                        .eq(DiscussionComment::getUserId, userId)
+                        .orderByDesc(DiscussionComment::getCreatedAt)
+                        .last("LIMIT 1"));
+        if (lastComment != null && lastComment.getCreatedAt() != null
+                && lastComment.getCreatedAt().plusSeconds(30).isAfter(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "评论过于频繁，请 30 秒后再试");
+        }
+
         // 检测当前用户角色是否为教师或管理员
         boolean isTeacherOrAdmin = false;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -88,6 +108,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         comment.setParentId(req.getParentId());
         comment.setUserId(userId);
         comment.setContent(req.getContent());
+        comment.setIsAnonymous(req.getIsAnonymous() != null ? req.getIsAnonymous() : false);
         comment.setIsTeacherReply(isTeacherOrAdmin);
         comment.setLikeCount(0);
         comment.setStatus(1);
@@ -127,32 +148,49 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void like(Long id) {
+    public void like(Long id, Long userId) {
         DiscussionComment comment = commentRepository.selectById(id);
         if (comment == null || comment.getStatus() == 0) {
             throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
         }
-        // DISC-NEW-2 修复:原子 SQL 累加,避免并发丢失更新
-        commentRepository.update(null,
-                new LambdaUpdateWrapper<DiscussionComment>()
-                        .eq(DiscussionComment::getId, id)
-                        .setSql("like_count = COALESCE(like_count, 0) + 1")
-                        .set(DiscussionComment::getUpdatedAt, LocalDateTime.now()));
+        // P1: 点赞去重—toggle 逻辑
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM discussion_comment_likes WHERE user_id = ? AND comment_id = ?",
+                Integer.class, userId, id);
+        if (count != null && count > 0) {
+            // 已点赞 → 取消
+            jdbcTemplate.update("DELETE FROM discussion_comment_likes WHERE user_id = ? AND comment_id = ?", userId, id);
+            commentRepository.update(null,
+                    new LambdaUpdateWrapper<DiscussionComment>()
+                            .eq(DiscussionComment::getId, id)
+                            .setSql("like_count = GREATEST(COALESCE(like_count, 0) - 1, 0)")
+                            .set(DiscussionComment::getUpdatedAt, LocalDateTime.now()));
+        } else {
+            // 未点赞 → 点赞
+            jdbcTemplate.update("INSERT INTO discussion_comment_likes (user_id, comment_id, created_at) VALUES (?, ?, ?)",
+                    userId, id, java.sql.Timestamp.valueOf(LocalDateTime.now()));
+            commentRepository.update(null,
+                    new LambdaUpdateWrapper<DiscussionComment>()
+                            .eq(DiscussionComment::getId, id)
+                            .setSql("like_count = COALESCE(like_count, 0) + 1")
+                            .set(DiscussionComment::getUpdatedAt, LocalDateTime.now()));
+        }
     }
 
     @Override
     public List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> flatList) {
-        // 调用内部批量加载版本
-        return buildCommentTreeWithUsers(flatList);
+        // 调用内部批量加载版本（无 OP 信息时传 null）
+        return buildCommentTreeWithUsers(flatList, null);
     }
 
     private List<DiscussionCommentVO> buildCommentTreeWithBatchLoad(List<DiscussionComment> flatList,
-                                                       java.util.Map<Long, User> userMap) {
+                                                       java.util.Map<Long, User> userMap,
+                                                       Long opUserId) {
         List<DiscussionCommentVO> result = new ArrayList<>();
         for (DiscussionComment comment : flatList) {
             if (comment.getParentId() == null) {
-                DiscussionCommentVO vo = convertToVO(comment, userMap);
-                vo.setChildren(buildChildren(comment.getId(), flatList, userMap));
+                DiscussionCommentVO vo = convertToVO(comment, userMap, opUserId);
+                vo.setChildren(buildChildren(comment.getId(), flatList, userMap, opUserId));
                 result.add(vo);
             }
         }
@@ -160,12 +198,13 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     }
 
     private List<DiscussionCommentVO> buildChildren(Long parentId, List<DiscussionComment> flatList,
-                                                      java.util.Map<Long, User> userMap) {
+                                                      java.util.Map<Long, User> userMap,
+                                                      Long opUserId) {
         List<DiscussionCommentVO> children = new ArrayList<>();
         for (DiscussionComment comment : flatList) {
             if (parentId.equals(comment.getParentId())) {
-                DiscussionCommentVO vo = convertToVO(comment, userMap);
-                vo.setChildren(buildChildren(comment.getId(), flatList, userMap));
+                DiscussionCommentVO vo = convertToVO(comment, userMap, opUserId);
+                vo.setChildren(buildChildren(comment.getId(), flatList, userMap, opUserId));
                 children.add(vo);
             }
         }
@@ -179,33 +218,51 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         vo.setParentId(comment.getParentId());
         vo.setUserId(comment.getUserId());
         vo.setContent(comment.getContent());
+        vo.setIsAnonymous(comment.getIsAnonymous());
         vo.setIsTeacherReply(comment.getIsTeacherReply());
         vo.setLikeCount(comment.getLikeCount());
         vo.setCreatedAt(comment.getCreatedAt());
-        if (comment.getUserId() != null) {
+        // P0-1: 匿名评论隐藏用户信息
+        if (Boolean.TRUE.equals(comment.getIsAnonymous())) {
+            vo.setAuthorName("匿名用户");
+            vo.setUserId(null);
+        } else if (comment.getUserId() != null) {
             User user = userRepository.selectById(comment.getUserId());
             if (user != null) {
-                vo.setAuthorName(user.getUsername());
+                vo.setAuthorName(user.getRealName() != null ? user.getRealName() : user.getUsername());
+                vo.setRoleTag(user.getRole() != null ? user.getRole().name() : null);
             }
         }
         return vo;
     }
 
-    private DiscussionCommentVO convertToVO(DiscussionComment comment, java.util.Map<Long, User> userMap) {
+    private DiscussionCommentVO convertToVO(DiscussionComment comment, java.util.Map<Long, User> userMap, Long opUserId) {
         DiscussionCommentVO vo = new DiscussionCommentVO();
         vo.setId(comment.getId());
         vo.setPostId(comment.getPostId());
         vo.setParentId(comment.getParentId());
         vo.setUserId(comment.getUserId());
         vo.setContent(comment.getContent());
+        vo.setIsAnonymous(comment.getIsAnonymous());
         vo.setIsTeacherReply(comment.getIsTeacherReply());
         vo.setLikeCount(comment.getLikeCount());
         vo.setCreatedAt(comment.getCreatedAt());
-        if (comment.getUserId() != null) {
+        // P0-1: 匿名评论隐藏用户信息
+        if (Boolean.TRUE.equals(comment.getIsAnonymous())) {
+            vo.setAuthorName("匿名用户");
+            vo.setUserId(null);
+        } else if (comment.getUserId() != null) {
             User user = userMap.get(comment.getUserId());
             if (user != null) {
-                vo.setAuthorName(user.getUsername());
+                vo.setAuthorName(user.getRealName() != null ? user.getRealName() : user.getUsername());
+                vo.setRoleTag(user.getRole() != null ? user.getRole().name() : null);
             }
+        }
+        // isOp: 评论者是帖子作者
+        if (opUserId != null && comment.getUserId() != null && !Boolean.TRUE.equals(comment.getIsAnonymous())) {
+            vo.setIsOp(comment.getUserId().equals(opUserId));
+        } else {
+            vo.setIsOp(false);
         }
         return vo;
     }

@@ -1,19 +1,21 @@
 package com.microcourse.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
 
 public class NotificationVO {
 
     private Long id;
     private Long userId;
-    private Long senderId;
     private String type;
     private String title;
     private String content;
     private Long relatedId;
     private String channel;
     private Boolean isRead;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime readAt;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
     public NotificationVO() {}

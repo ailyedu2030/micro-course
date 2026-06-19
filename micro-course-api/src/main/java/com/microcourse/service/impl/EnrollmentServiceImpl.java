@@ -9,15 +9,20 @@ import com.microcourse.dto.EnrollmentRankingVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
+import com.microcourse.dto.StudentDetailVO;
+import com.microcourse.entity.Classes;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
+import com.microcourse.entity.Major;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.ClassesRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.LearningProgressRepository;
+import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.EnrollmentService;
 import org.springframework.security.core.Authentication;
@@ -40,15 +45,21 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final LearningProgressRepository learningProgressRepository;
+    private final ClassesRepository classesRepository;
+    private final MajorRepository majorRepository;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
                                  CourseRepository courseRepository,
                                  UserRepository userRepository,
-                                 LearningProgressRepository learningProgressRepository) {
+                                 LearningProgressRepository learningProgressRepository,
+                                 ClassesRepository classesRepository,
+                                 MajorRepository majorRepository) {
         this.enrollmentRepository = enrollmentRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.learningProgressRepository = learningProgressRepository;
+        this.classesRepository = classesRepository;
+        this.majorRepository = majorRepository;
     }
 
     @Override
@@ -129,14 +140,58 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             }
         }
 
+        // P0-4: className → classIds → userIds（服务端关联过滤）
+        if (query.getClassName() != null && !query.getClassName().isBlank()) {
+            LambdaQueryWrapper<Classes> clsWrapper = new LambdaQueryWrapper<>();
+            clsWrapper.like(Classes::getName, query.getClassName().trim());
+            java.util.Set<Long> classIds = classesRepository.selectList(clsWrapper).stream()
+                    .map(Classes::getId).collect(java.util.stream.Collectors.toSet());
+            if (classIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
+            }
+            LambdaQueryWrapper<User> cuWrapper = new LambdaQueryWrapper<>();
+            cuWrapper.in(User::getClassId, classIds);
+            java.util.Set<Long> classUserIds = userRepository.selectList(cuWrapper).stream()
+                    .map(User::getId).collect(java.util.stream.Collectors.toSet());
+            if (classUserIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
+            }
+            filterUserIds = filterUserIds != null
+                    ? filterUserIds.stream().filter(classUserIds::contains).collect(java.util.stream.Collectors.toSet())
+                    : classUserIds;
+            if (filterUserIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
+            }
+        }
+
+        // P0-4: majorName → majorIds → userIds（服务端关联过滤）
+        if (query.getMajorName() != null && !query.getMajorName().isBlank()) {
+            LambdaQueryWrapper<Major> mjWrapper = new LambdaQueryWrapper<>();
+            mjWrapper.like(Major::getName, query.getMajorName().trim());
+            java.util.Set<Long> majorIds = majorRepository.selectList(mjWrapper).stream()
+                    .map(Major::getId).collect(java.util.stream.Collectors.toSet());
+            if (majorIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
+            }
+            LambdaQueryWrapper<User> muWrapper = new LambdaQueryWrapper<>();
+            muWrapper.in(User::getMajorId, majorIds);
+            java.util.Set<Long> majorUserIds = userRepository.selectList(muWrapper).stream()
+                    .map(User::getId).collect(java.util.stream.Collectors.toSet());
+            if (majorUserIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
+            }
+            filterUserIds = filterUserIds != null
+                    ? filterUserIds.stream().filter(majorUserIds::contains).collect(java.util.stream.Collectors.toSet())
+                    : majorUserIds;
+            if (filterUserIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
+            }
+        }
+
         java.util.Set<Long> filterCourseIds = null;
         // teacherId 过滤：获取该教师的所有课程
         if (query.getTeacherId() != null) {
-            LambdaQueryWrapper<Course> cWrapper = new LambdaQueryWrapper<>();
-            cWrapper.eq(Course::getTeacherId, query.getTeacherId())
-                    .isNull(Course::getDeletedAt);
-            filterCourseIds = courseRepository.selectList(cWrapper).stream()
-                    .map(Course::getId).collect(java.util.stream.Collectors.toSet());
+            filterCourseIds = getCourseIdsByTeacherId(query.getTeacherId());
             if (filterCourseIds.isEmpty()) {
                 return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
             }
@@ -171,6 +226,17 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 .orderByDesc(Enrollment::getEnrolledAt);
         List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
         return convertToVOList(enrollments);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<EnrollmentVO> getCourseEnrollmentPage(Long courseId, int page, int size) {
+        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Enrollment::getCourseId, courseId)
+                .orderByDesc(Enrollment::getEnrolledAt);
+        IPage<Enrollment> pageResult = enrollmentRepository.selectPage(new Page<>(page + 1, size), wrapper);
+        List<EnrollmentVO> voList = convertToVOList(pageResult.getRecords());
+        return PageResult.of(voList, pageResult.getTotal(), page, size);
     }
 
     @Override
@@ -268,13 +334,31 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             userRepository.selectBatchIds(teacherIds).forEach(t -> teacherMap.put(t.getId(), t));
         }
 
+        // P0-3: 预加载 classes 和 majors（批量避免 N+1）
+        java.util.Set<Long> classIds = userMap.values().stream()
+                .map(User::getClassId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> majorIds = userMap.values().stream()
+                .map(User::getMajorId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, Classes> classMap = new java.util.HashMap<>();
+        java.util.Map<Long, Major> majorMap = new java.util.HashMap<>();
+        if (!classIds.isEmpty()) {
+            classesRepository.selectBatchIds(classIds).forEach(c -> classMap.put(c.getId(), c));
+        }
+        if (!majorIds.isEmpty()) {
+            majorRepository.selectBatchIds(majorIds).forEach(m -> majorMap.put(m.getId(), m));
+        }
+
         final java.util.Map<Long, Course> finalCourseMap = courseMap;
         final java.util.Map<Long, User> finalUserMap = userMap;
         final java.util.Map<Long, User> finalTeacherMap = teacherMap;
         final java.util.Map<String, LocalDateTime> finalLastWatchMap = lastWatchMap;
+        final java.util.Map<Long, Classes> finalClassMap = classMap;
+        final java.util.Map<Long, Major> finalMajorMap = majorMap;
 
         return enrollments.stream()
-                .map(e -> convertToVO(e, finalCourseMap, finalUserMap, finalTeacherMap, finalLastWatchMap))
+                .map(e -> convertToVO(e, finalCourseMap, finalUserMap, finalTeacherMap, finalLastWatchMap, finalClassMap, finalMajorMap))
                 .collect(Collectors.toList());
     }
 
@@ -331,12 +415,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public long countByTeacherId(Long teacherId) {
-        List<Long> courseIds = courseRepository.selectList(
-            new LambdaQueryWrapper<Course>()
-                .eq(Course::getTeacherId, teacherId)
-                .isNull(Course::getDeletedAt)
-                .select(Course::getId))
-            .stream().map(Course::getId).collect(Collectors.toList());
+        java.util.Set<Long> courseIds = getCourseIdsByTeacherId(teacherId);
         if (courseIds.isEmpty()) {
             return 0;
         }
@@ -349,12 +428,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public long countCompletedByTeacherId(Long teacherId) {
-        List<Long> courseIds = courseRepository.selectList(
-            new LambdaQueryWrapper<Course>()
-                .eq(Course::getTeacherId, teacherId)
-                .isNull(Course::getDeletedAt)
-                .select(Course::getId))
-            .stream().map(Course::getId).collect(Collectors.toList());
+        java.util.Set<Long> courseIds = getCourseIdsByTeacherId(teacherId);
         if (courseIds.isEmpty()) {
             return 0;
         }
@@ -368,12 +442,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public double getAvgScoreByTeacherId(Long teacherId) {
-        List<Long> courseIds = courseRepository.selectList(
-            new LambdaQueryWrapper<Course>()
-                .eq(Course::getTeacherId, teacherId)
-                .isNull(Course::getDeletedAt)
-                .select(Course::getId))
-            .stream().map(Course::getId).collect(Collectors.toList());
+        java.util.Set<Long> courseIds = getCourseIdsByTeacherId(teacherId);
         if (courseIds.isEmpty()) {
             return 0;
         }
@@ -390,6 +459,34 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             .mapToDouble(e -> e.getFinalScore().doubleValue())
             .average()
             .orElse(0);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StudentDetailVO getStudentDetail(Long userId) {
+        User user = userRepository.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        StudentDetailVO vo = new StudentDetailVO();
+        vo.setUserId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setRealName(user.getRealName());
+        vo.setEmail(user.getEmail());
+        vo.setPhone(user.getPhone());
+        if (user.getClassId() != null) {
+            Classes cls = classesRepository.selectById(user.getClassId());
+            if (cls != null) {
+                vo.setClassName(cls.getName());
+            }
+        }
+        if (user.getMajorId() != null) {
+            Major major = majorRepository.selectById(user.getMajorId());
+            if (major != null) {
+                vo.setMajorName(major.getName());
+            }
+        }
+        return vo;
     }
 
     private EnrollmentVO convertToVO(Enrollment enrollment) {
@@ -423,11 +520,25 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             }
         }
 
-        // Load user name
+        // P0-3: 填充用户维度字段
         if (enrollment.getUserId() != null) {
             User user = userRepository.selectById(enrollment.getUserId());
             if (user != null) {
                 vo.setUserName(user.getRealName());
+                vo.setUsername(user.getUsername());
+                vo.setRealName(user.getRealName());
+                if (user.getClassId() != null) {
+                    Classes cls = classesRepository.selectById(user.getClassId());
+                    if (cls != null) {
+                        vo.setClassName(cls.getName());
+                    }
+                }
+                if (user.getMajorId() != null) {
+                    Major major = majorRepository.selectById(user.getMajorId());
+                    if (major != null) {
+                        vo.setMajorName(major.getName());
+                    }
+                }
             }
         }
 
@@ -437,7 +548,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private EnrollmentVO convertToVO(Enrollment enrollment, java.util.Map<Long, Course> courseMap,
                                      java.util.Map<Long, User> userMap,
                                      java.util.Map<Long, User> teacherMap,
-                                     java.util.Map<String, LocalDateTime> lastWatchMap) {
+                                     java.util.Map<String, LocalDateTime> lastWatchMap,
+                                     java.util.Map<Long, Classes> classMap,
+                                     java.util.Map<Long, Major> majorMap) {
         EnrollmentVO vo = new EnrollmentVO();
         vo.setId(enrollment.getId());
         vo.setCourseId(enrollment.getCourseId());
@@ -468,11 +581,27 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             }
         }
 
-        // Load user name（使用预加载的 Map）
+        // P0-3: 填充用户维度字段（使用预加载的 Map）
         if (enrollment.getUserId() != null) {
             User user = userMap.get(enrollment.getUserId());
             if (user != null) {
                 vo.setUserName(user.getRealName());
+                vo.setUsername(user.getUsername());
+                vo.setRealName(user.getRealName());
+                // 关联 class 名称
+                if (user.getClassId() != null && classMap != null) {
+                    Classes cls = classMap.get(user.getClassId());
+                    if (cls != null) {
+                        vo.setClassName(cls.getName());
+                    }
+                }
+                // 关联 major 名称
+                if (user.getMajorId() != null && majorMap != null) {
+                    Major major = majorMap.get(user.getMajorId());
+                    if (major != null) {
+                        vo.setMajorName(major.getName());
+                    }
+                }
             }
         }
 
@@ -486,6 +615,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         return vo;
     }
 
+    /** P1-3: getCurrentUserId 类型安全 —— 兼容 Long / String / Number 类型 principal */
     private Long getCurrentUserId() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) {
@@ -493,6 +623,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
         Object principal = authentication.getPrincipal();
         if (principal instanceof Long) return (Long) principal;
+        if (principal instanceof Number) return ((Number) principal).longValue();
+        if (principal instanceof String str) {
+            try { return Long.parseLong(str); } catch (NumberFormatException ignored) { /* fall through */ }
+        }
         throw new BusinessException(ErrorCode.TOKEN_INVALID);
     }
 
@@ -503,5 +637,16 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             if (granted.getAuthority().equals("ROLE_ADMIN")) return true;
         }
         return false;
+    }
+
+    /** P2: 提取教师课程 ID 集合的公共方法，消除重复代码 */
+    private java.util.Set<Long> getCourseIdsByTeacherId(Long teacherId) {
+        LambdaQueryWrapper<Course> cWrapper = new LambdaQueryWrapper<>();
+        cWrapper.eq(Course::getTeacherId, teacherId)
+                .isNull(Course::getDeletedAt)
+                .select(Course::getId);
+        return courseRepository.selectList(cWrapper).stream()
+                .map(Course::getId)
+                .collect(java.util.stream.Collectors.toSet());
     }
 }

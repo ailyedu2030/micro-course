@@ -16,3 +16,7 @@ export function getRecordById(id) {
 export function getAccuracyTrend(params) {
   return request({ method: 'GET', url: '/exercise-records/my/accuracy-trend', params })
 }
+
+export function getMyAttemptCount(exerciseId) {
+  return request({ method: 'GET', url: `/exercise-records/my/${exerciseId}/attempt-count` })
+}

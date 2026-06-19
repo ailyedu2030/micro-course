@@ -5,12 +5,12 @@
 import request from '../utils/request'
 
 /**
- * 提交/更新成绩
- * POST /grades
+ * 教师批改/提交成绩
+ * POST /grades/teacher-grade
  * @param {Object} data - { enrollmentId, score, comment }
  */
 export function submitGrade(data) {
-  return request({ method: 'POST', url: '/grades', data })
+  return request({ method: 'POST', url: '/grades/teacher-grade', data })
 }
 
 /**

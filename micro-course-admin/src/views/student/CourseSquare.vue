@@ -58,7 +58,7 @@
             <el-option label="高级" :value="3" />
           </el-select>
 
-          <div class="category-scroll">
+          <div class="category-scroll" v-loading="categoriesLoading">
             <el-radio-group
               v-model="selectedCategoryId"
               class="category-chip-group"
@@ -94,7 +94,7 @@
     </div>
 
     <!-- ============ 精选推荐 ============ -->
-    <section v-if="recommendedCourses.length > 0" class="recommended-section">
+    <section v-show="recommendedCourses.length > 0" class="recommended-section">
       <div class="main-content">
         <main class="course-area" aria-busy="loading">
           <h2 class="section-title">精选推荐</h2>
@@ -117,16 +117,17 @@
                   @keydown.enter="handleCourseClick(course.id)"
                 >
                   <div class="course-cover">
+                    <div class="cover-placeholder" aria-hidden="true">
+                      <el-icon :size="48"><VideoPlay /></el-icon>
+                    </div>
                     <img
                       v-if="course.coverUrl"
                       :src="course.coverUrl"
                       :alt="course.title"
                       loading="lazy"
                       class="cover-img"
+                      @error="handleImgError"
                     />
-                    <div v-else class="cover-placeholder" aria-hidden="true">
-                      <el-icon :size="48"><VideoPlay /></el-icon>
-                    </div>
                     <el-tag type="warning" size="small" class="recommend-badge">推荐</el-tag>
                     <el-tag
                       v-if="course.difficulty"
@@ -260,16 +261,17 @@
               >
                 <!-- 缩略图 16:9 -->
                 <div class="course-cover">
+                  <div class="cover-placeholder" aria-hidden="true">
+                    <el-icon :size="48"><VideoPlay /></el-icon>
+                  </div>
                   <img
                     v-if="course.coverUrl"
                     :src="course.coverUrl"
                     :alt="course.title"
                     loading="lazy"
                     class="cover-img"
+                    @error="handleImgError"
                   />
-                  <div v-else class="cover-placeholder" aria-hidden="true">
-                    <el-icon :size="48"><VideoPlay /></el-icon>
-                  </div>
                   <el-tag
                     v-if="course.categoryName"
                     class="category-chip"
@@ -326,6 +328,7 @@
               v-model:page-size="size"
               :total="totalElements"
               :page-sizes="[12, 24, 48]"
+              :disabled="loading"
               layout="total, sizes, prev, pager, next, jumper"
               background
               class="course-pagination"
@@ -450,6 +453,7 @@ const router = useRouter()
 const loading = ref(false)
 const error = ref(false)
 const sidebarLoading = ref(false)
+const categoriesLoading = ref(false)
 const courseList = ref([])
 const categoryList = ref([])
 const hotCourses = ref([])
@@ -499,11 +503,15 @@ const formatDate = (dateStr) => {
 
 // 拉分类
 const fetchCategories = async () => {
+  categoriesLoading.value = true
   try {
     const { data } = await getCategories({ size: 1000 })
     categoryList.value = data?.items || data || []
   } catch (e) {
     console.warn('分类加载失败:', e)
+    ElMessage.warning('分类加载失败')
+  } finally {
+    categoriesLoading.value = false
   }
 }
 
@@ -540,14 +548,18 @@ const fetchSideCourses = async () => {
     const { data: hotData } = await getCourses({
       page: 0,
       size: 5,
-      sort: 'studentCount,desc'
+      sortBy: 'studentCount',
+      sortOrder: 'desc',
+      status: 2
     })
     hotCourses.value = (hotData?.items || []).slice(0, 5)
 
     const { data: newestData } = await getCourses({
       page: 0,
       size: 5,
-      sort: 'createdAt,desc'
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+      status: 2
     })
     newestCourses.value = (newestData?.items || []).slice(0, 5)
   } catch (e) {
@@ -560,15 +572,21 @@ const fetchSideCourses = async () => {
 // 拉精选推荐
 const loadRecommended = async () => {
   try {
-    const { data } = await getCourses({ recommended: true, size: 8 })
+    const { data } = await getCourses({ recommended: true, size: 8, status: 2 })
     recommendedCourses.value = data?.items || []
-  } catch {
-    // silent
+  } catch (e) {
+    console.warn('推荐课程加载失败:', e)
+    recommendedCourses.value = []
   }
 }
 
 // 搜索
 const handleSearch = () => {
+  // 清除防抖 timer，防止 Enter 和 watch 双重触发
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
   page.value = 1
   fetchCourses()
 }
@@ -606,24 +624,38 @@ const handleCourseClick = (id) => {
   router.push(`/student/courses/${id}`)
 }
 
+// 封面图加载失败兜底：隐藏 img，露出底层占位符
+const handleImgError = (e) => {
+  e.target.style.display = 'none'
+}
+
 // 防抖搜索 (300ms)
 let debounceTimer = null
 
-watch(() => searchForm.keyword, (newVal) => {
+watch(() => searchForm.keyword, (newVal, oldVal) => {
   if (debounceTimer) clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => {
-    page.value = 1
-    fetchCourses()
-  }, 300)
+  // 清空时立即搜索；输入中时至少 2 字符才触发防抖
+  if (!newVal) {
+    debounceTimer = setTimeout(() => {
+      page.value = 1
+      fetchCourses()
+    }, 100)
+  } else if (newVal.length >= 2) {
+    debounceTimer = setTimeout(() => {
+      page.value = 1
+      fetchCourses()
+    }, 300)
+  }
 })
 
 onUnmounted(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
 })
 
-onMounted(() => {
-  fetchCategories()
-  fetchCourses()
+onMounted(async () => {
+  // 首屏优先：分类 + 课程列表并行
+  await Promise.all([fetchCategories(), fetchCourses()])
+  // 次要内容延迟加载：侧栏 + 推荐并行
   fetchSideCourses()
   loadRecommended()
 })
@@ -891,6 +923,7 @@ onMounted(() => {
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-wide);
   box-shadow: var(--shadow-chip);
+  z-index: 2;
 }
 
 /* ================================================
@@ -937,10 +970,14 @@ onMounted(() => {
 }
 
 .cover-img {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  z-index: 1;
   transition: transform var(--duration-slow) var(--ease-out);
 }
 
@@ -968,6 +1005,7 @@ onMounted(() => {
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-wide);
   box-shadow: var(--shadow-chip);
+  z-index: 2;
 }
 
 /* 分类 chip (浮在缩略图右下) */
@@ -982,6 +1020,7 @@ onMounted(() => {
   border: none;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   color: var(--el-text-color-primary);
+  z-index: 2;
 }
 
 /* 课程信息 */
@@ -1323,34 +1362,29 @@ onMounted(() => {
 }
 
 /* ================================================
-   H5 Waterfall Layout (<= 768px)
+   H5 Layout (<= 768px) — 仅使用 el-row/el-col，不用 column-count
    ================================================ */
 @media (max-width: 768px) {
-  .course-grid {
-    column-count: 2;
-    column-gap: var(--space-3);
+  .main-content {
+    flex-direction: column;
   }
 
-  .course-grid :deep(.el-row) {
-    display: block;
-    margin: 0 !important;
-    width: 100% !important;
+  .course-area {
+    flex: 1;
+  }
+
+  .sidebar {
+    flex: 1;
+    position: static;
   }
 
   .course-grid :deep(.el-col) {
-    display: block;
-    width: 100% !important;
-    margin-bottom: var(--space-3);
-    break-inside: avoid;
-  }
-
-  .course-card {
-    margin-bottom: 0;
-    break-inside: avoid;
+    flex: 0 0 50%;
+    max-width: 50%;
   }
 
   .course-grid .pagination-wrap {
-    column-span: all;
+    width: 100%;
   }
 }
 </style>

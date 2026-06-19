@@ -7,6 +7,7 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.R;
+import com.microcourse.dto.StudentDetailVO;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.EnrollmentService;
@@ -61,7 +62,9 @@ public class EnrollmentController {
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) String studentName,
             @RequestParam(required = false) String courseName,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String className,
+            @RequestParam(required = false) String majorName) {
         EnrollmentQueryRequest query = new EnrollmentQueryRequest();
         query.setPage(page);
         query.setSize(size);
@@ -69,15 +72,29 @@ public class EnrollmentController {
         query.setStudentName(studentName);
         query.setCourseName(courseName);
         query.setStatus(status);
+        query.setClassName(className);
+        query.setMajorName(majorName);
         PageResult<EnrollmentVO> result = enrollmentService.getEnrollmentPage(query);
         return R.ok(result);
     }
 
+    /** P1-1: 收紧权限仅 TEACHER/ADMIN；P1-2: 返回分页结果 */
     @GetMapping("/course/{courseId}")
-    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN')")
-    public R<List<EnrollmentVO>> getCourseEnrollments(@PathVariable Long courseId) {
-        List<EnrollmentVO> list = enrollmentService.getCourseEnrollments(courseId);
-        return R.ok(list);
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<PageResult<EnrollmentVO>> getCourseEnrollments(
+            @PathVariable Long courseId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PageResult<EnrollmentVO> result = enrollmentService.getCourseEnrollmentPage(courseId, page, size);
+        return R.ok(result);
+    }
+
+    /** P0-2: 获取学员详情（关联 users + classes + majors） */
+    @GetMapping("/student-detail/{userId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<StudentDetailVO> getStudentDetail(@PathVariable Long userId) {
+        StudentDetailVO detail = enrollmentService.getStudentDetail(userId);
+        return R.ok(detail);
     }
 
     @GetMapping("/course/{courseId}/ranking")
@@ -145,9 +162,14 @@ public class EnrollmentController {
         writer.close();
     }
 
+    /** P1-3: getCurrentUserId 类型安全 —— 兼容 Long / String / Number 类型 principal */
     private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof Long) return (Long) principal;
-        throw new com.microcourse.exception.BusinessException(com.microcourse.exception.ErrorCode.TOKEN_INVALID);
+        if (principal instanceof Number) return ((Number) principal).longValue();
+        if (principal instanceof String str) {
+            try { return Long.parseLong(str); } catch (NumberFormatException ignored) { /* fall through */ }
+        }
+        throw new BusinessException(ErrorCode.TOKEN_INVALID);
     }
 }

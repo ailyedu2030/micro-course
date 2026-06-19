@@ -60,6 +60,26 @@ public final class SecurityUtil {
      * @param userId 要校验的用户 ID
      * @return true 表示当前用户是 ADMIN 或 userId 匹配
      */
+    /**
+     * 判断当前用户是否拥有指定角色
+     *
+     * @param role 角色名（不含 ROLE_ 前缀，如 "TEACHER"）
+     * @return true 表示拥有该角色
+     */
+    public static boolean hasRole(String role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        String authority = "ROLE_" + role;
+        for (GrantedAuthority granted : auth.getAuthorities()) {
+            if (authority.equals(granted.getAuthority())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean isOwnerOrAdmin(Long userId) {
         if (isAdmin()) {
             return true;

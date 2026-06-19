@@ -4,6 +4,7 @@ import com.microcourse.dto.LearningProgressVO;
 import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.dto.ProgressUpdateRequest;
 import com.microcourse.dto.R;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.LearningProgressService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,7 +33,7 @@ public class LearningProgressController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<Void> root() {
-        return R.fail(400, "缺少查询参数，请使用 /api/learning-progress/progress?courseId=X");
+        return R.fail(ErrorCode.BAD_REQUEST_PARAM);
     }
 
     @GetMapping("/progress")

@@ -23,6 +23,8 @@ public class GradeCreateRequest {
 
     private Integer duration;
 
+    private String comment;
+
     public GradeCreateRequest() {}
 
     public Long getCourseId() { return courseId; }
@@ -41,4 +43,6 @@ public class GradeCreateRequest {
     public void setAttemptNo(Integer attemptNo) { this.attemptNo = attemptNo; }
     public Integer getDuration() { return duration; }
     public void setDuration(Integer duration) { this.duration = duration; }
+    public String getComment() { return comment; }
+    public void setComment(String comment) { this.comment = comment; }
 }

@@ -25,6 +25,9 @@ public class DiscussionComment {
 
     private String content;
 
+    @TableField("is_anonymous")
+    private Boolean isAnonymous;
+
     @TableField("is_teacher_reply")
     private Boolean isTeacherReply;
 
@@ -54,6 +57,8 @@ public class DiscussionComment {
     public void setUserId(Long userId) { this.userId = userId; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+    public Boolean getIsAnonymous() { return isAnonymous; }
+    public void setIsAnonymous(Boolean isAnonymous) { this.isAnonymous = isAnonymous; }
     public Boolean getIsTeacherReply() { return isTeacherReply; }
     public void setIsTeacherReply(Boolean isTeacherReply) { this.isTeacherReply = isTeacherReply; }
     public Integer getLikeCount() { return likeCount; }

@@ -103,7 +103,7 @@
         <!-- 顶部进度条（sticky） -->
         <div class="progress-bar-wrap">
           <div class="progress-inner">
-            <span class="progress-text">第 {{ currentIndex + 1 }} / {{ totalQuestions }} 题</span>
+            <span class="progress-text">第 {{ currentIndex + 1 }} / {{ totalQuestions }} 题 · 已答 {{ answeredCount }} 题</span>
             <el-progress
               :percentage="progressPercent"
               :show-text="false"
@@ -114,6 +114,10 @@
               <el-icon><Timer /></el-icon>
               {{ formatTimeLeft(timeLeft) }}
             </span>
+            <span class="time-elapsed">
+              <el-icon><Timer /></el-icon>
+              已用 {{ formatTimeLeft(elapsedTime) }}
+            </span>
           </div>
         </div>
 
@@ -121,7 +125,10 @@
         <div class="answer-main pc-layout">
           <!-- 左侧：题目区 -->
           <div class="question-area">
-            <el-card class="question-card" shadow="never">
+            <el-card v-if="questionsLoading" class="question-card" shadow="never">
+              <el-skeleton :rows="8" animated />
+            </el-card>
+            <el-card v-else class="question-card" shadow="never">
               <div class="question-type-bar">
                 <el-tag size="small" effect="plain" :type="questionTypeTagType(currentQuestion.questionType)">
                   {{ questionTypeLabel(currentQuestion.questionType) }}
@@ -313,7 +320,7 @@
         <!-- 紧凑进度 -->
         <div class="h5-progress-bar">
           <div class="h5-progress-inner">
-            <span class="h5-progress-text">{{ currentIndex + 1 }} / {{ totalQuestions }}</span>
+            <span class="h5-progress-text">{{ currentIndex + 1 }}/{{ totalQuestions }} · 已答{{ answeredCount }}题</span>
             <el-progress
               :percentage="progressPercent"
               :show-text="false"
@@ -325,12 +332,19 @@
               <el-icon><Timer /></el-icon>
               {{ formatTimeLeft(timeLeft) }}
             </span>
+            <span class="time-elapsed">
+              <el-icon><Timer /></el-icon>
+              已用 {{ formatTimeLeft(elapsedTime) }}
+            </span>
           </div>
         </div>
 
         <!-- 全屏题目卡片 -->
         <div class="h5-question-wrap">
-          <el-card class="question-card" shadow="never">
+          <el-card v-if="questionsLoading" class="question-card" shadow="never">
+            <el-skeleton :rows="8" animated />
+          </el-card>
+          <el-card v-else class="question-card" shadow="never">
             <div class="question-type-bar">
               <el-tag size="small" effect="plain" :type="questionTypeTagType(currentQuestion.questionType)">
                 {{ questionTypeLabel(currentQuestion.questionType) }}
@@ -514,7 +528,7 @@
           </div>
         </div>
         <template #footer>
-          <el-button @click="resultVisible = false">查看解析</el-button>
+          <el-button @click="handleViewAnalysis">查看解析</el-button>
           <el-button v-if="canRetry" type="warning" @click="handleRetry">重新答题</el-button>
           <el-button type="primary" @click="handleBackToList">返回练习列表</el-button>
         </template>
@@ -524,12 +538,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Close, Timer, Loading } from '@element-plus/icons-vue'
 import { getExercises, getExerciseById, submitExerciseRecord } from '@/api/exercise'
 import { getQuestionById } from '@/api/question'
+import { getMyAttemptCount } from '@/api/exercise-record'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -540,8 +555,13 @@ const userStore = useUserStore()
 const isMobile = ref(window.innerWidth <= 768)
 const progressColor = 'var(--role-primary)'
 
+function handleResize() {
+  isMobile.value = window.innerWidth <= 768
+}
+
 // ===== 练习列表视图 =====
 const loading = ref(false)
+const questionsLoading = ref(false)
 const exerciseList = ref([])
 const exerciseStarted = ref(false)
 const submitting = ref(false)
@@ -558,6 +578,8 @@ const answers = reactive({})     // questionId → answer string | string[]
 const multipleAnswers = reactive({}) // questionId → string[] (多选用)
 const timeLeft = ref(0)
 let timerInterval = null
+const elapsedTime = ref(0)
+let elapsedTimerInterval = null
 
 const totalQuestions = computed(() => questionIds.value.length)
 const progressPercent = computed(() => {
@@ -578,14 +600,15 @@ const canRetry = computed(() => attemptNo.value < maxAttempts.value)
 
 // ===== 答题卡辅助 =====
 const answeredCount = computed(() => {
-  return questionIds.value.filter(id => {
-    const ans = answers[id]
-    if (Array.isArray(ans)) return ans.length > 0
-    return !!ans
-  }).length
+  return questionIds.value.filter(id => isQuestionAnswered(id)).length
 })
 
 function isQuestionAnswered(qId) {
+  const q = questions.value.find(q => q.id === qId)
+  if (q && q.questionType === 'MULTIPLE') {
+    const arr = multipleAnswers[qId]
+    return Array.isArray(arr) && arr.length > 0
+  }
   const ans = answers[qId]
   if (Array.isArray(ans)) return ans.length > 0
   return !!ans
@@ -627,11 +650,14 @@ const correctCount = computed(() =>
 
 // ===== 生命周期 =====
 onMounted(async () => {
+  window.addEventListener('resize', handleResize)
   await fetchExerciseList()
 })
 
 onUnmounted(() => {
   clearTimer()
+  clearElapsedTimer()
+  window.removeEventListener('resize', handleResize)
 })
 
 // ===== API =====
@@ -657,24 +683,37 @@ async function startExercise(exercise) {
     const ids = (data.questions || []).map(q => q.questionId)
     questionIds.value = ids
     questions.value = []
+    questionsLoading.value = true
 
     await Promise.allSettled(
       ids.map(id => loadQuestion(id))
     )
+    questionsLoading.value = false
+
+    // 从后端获取真实的答题次数（防止刷新页面绕过限制）
+    try {
+      const { data: attemptData } = await getMyAttemptCount(exercise.id)
+      attemptNo.value = (attemptData?.attemptCount || 0) + 1
+    } catch {
+      attemptNo.value = 1
+    }
 
     // 重置答题状态
-    attemptNo.value = (data.attemptNo || 0) + 1
     Object.keys(answers).forEach(k => delete answers[k])
     Object.keys(multipleAnswers).forEach(k => delete multipleAnswers[k])
     submitted.value = false
     exerciseStarted.value = true
     resultVisible.value = false
+    currentIndex.value = 0
 
     // 启动计时器
     if (data.timeLimit) {
       timeLeft.value = data.timeLimit * 60
       startTimer()
     }
+
+    // 启动答题用时计时器
+    startElapsedTimer()
   } catch {
     ElMessage.error('加载练习详情失败')
   }
@@ -694,6 +733,7 @@ async function loadQuestion(id) {
     questions.value.push(data)
   } catch (e) {
     console.warn('[ExerciseTake] loadQuestion failed id=', id, e)
+    ElMessage.error(`题目加载失败（ID: ${id}）`)
   }
 }
 
@@ -724,6 +764,21 @@ function formatTimeLeft(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+function startElapsedTimer() {
+  clearElapsedTimer()
+  elapsedTime.value = 0
+  elapsedTimerInterval = setInterval(() => {
+    elapsedTime.value++
+  }, 1000)
+}
+
+function clearElapsedTimer() {
+  if (elapsedTimerInterval) {
+    clearInterval(elapsedTimerInterval)
+    elapsedTimerInterval = null
+  }
+}
+
 // ===== 导航 =====
 function prevQuestion() {
   if (currentIndex.value > 0) currentIndex.value--
@@ -735,15 +790,21 @@ function nextQuestion() {
 
 // ===== 提交 =====
 async function handleSubmit() {
-  // 检查是否所有题都答了
-  const unanswered = questionIds.value.filter(id => {
-    const ans = answers[id]
-    if (Array.isArray(ans)) return ans.length === 0
-    return !ans
-  })
-  if (unanswered.length > 0 && currentIndex.value < totalQuestions.value - 1) {
-    ElMessage.warning(`还有 ${unanswered.length} 题未作答，请检查`)
-    return
+  // 检查是否所有题都答了（包括多选题）
+  const unanswered = questionIds.value.filter(id => !isQuestionAnswered(id))
+  if (unanswered.length > 0) {
+    try {
+      await ElMessageBox.confirm(
+        `还有 ${unanswered.length} 题未作答，确定要提交吗？`,
+        '未完成提示',
+        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+      )
+    } catch {
+      // 用户选择继续答题 → 跳转到第一个未答题目
+      const firstUnansweredIdx = questionIds.value.findIndex(id => !isQuestionAnswered(id))
+      if (firstUnansweredIdx >= 0) currentIndex.value = firstUnansweredIdx
+      return
+    }
   }
   await doSubmit()
 }
@@ -751,6 +812,7 @@ async function handleSubmit() {
 async function doSubmit() {
   if (submitting.value) return // 防重复提交
   clearTimer()
+  clearElapsedTimer()
   submitting.value = true
   submitted.value = true
 
@@ -768,7 +830,7 @@ async function doSubmit() {
     return
   }
 
-  const duration = timeLimit.value ? timeLimit.value * 60 - timeLeft.value : 0
+  const duration = elapsedTime.value || (timeLimit.value ? timeLimit.value * 60 - timeLeft.value : 0)
 
   const answerList = questionIds.value.map(qId => ({
     questionId: qId,
@@ -796,31 +858,22 @@ async function doSubmit() {
 }
 
 // ===== 重做 =====
-function handleRetry() {
+async function handleRetry() {
   if (!canRetry.value) {
     ElMessage.warning('已达到最大答题次数')
     return
   }
-  attemptNo.value++
-  // 重置答案
-  questionIds.value.forEach(id => {
-    answers[id] = ''
-    multipleAnswers[id] = []
-  })
-  submitted.value = false
   resultVisible.value = false
-  currentIndex.value = 0
-
-  // 重启计时器
-  if (timeLimit.value) {
-    timeLeft.value = timeLimit.value * 60
-    startTimer()
+  // 重新从后端加载题目并重置状态
+  if (currentExercise.value) {
+    await startExercise(currentExercise.value)
   }
 }
 
 // ===== 返回列表 =====
 function handleBackToList() {
   clearTimer()
+  clearElapsedTimer()
   exerciseStarted.value = false
   resultVisible.value = false
   submitted.value = false
@@ -828,6 +881,16 @@ function handleBackToList() {
   currentExercise.value = null
   questions.value = []
   questionIds.value = []
+}
+
+// ===== 查看解析 =====
+function handleViewAnalysis() {
+  resultVisible.value = false
+  currentIndex.value = 0
+  nextTick(() => {
+    const el = document.querySelector('.question-card')
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
 }
 
 // ===== 辅助方法 =====
@@ -1036,6 +1099,15 @@ function formatCorrectAnswer(q) {
   gap: var(--space-1);
   font-size: var(--text-sm, 14px);
   color: var(--el-color-warning);
+  white-space: nowrap;
+}
+
+.time-elapsed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm, 14px);
+  color: var(--el-text-color-secondary);
   white-space: nowrap;
 }
 
@@ -1387,7 +1459,7 @@ function formatCorrectAnswer(q) {
   border-top: 1px solid rgba(99, 102, 241, 0.1);
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
   z-index: 100;
-  padding: var(--space-3) var(--space-3);
+  padding: var(--space-3) var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
   display: flex;
   gap: var(--space-3);
 }

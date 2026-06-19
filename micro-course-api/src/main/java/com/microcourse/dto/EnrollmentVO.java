@@ -24,6 +24,12 @@ public class EnrollmentVO {
     private LocalDateTime updatedAt;
     private LocalDateTime lastWatchAt;
 
+    /** P0-3: 学员管理表格需要的用户维度字段 */
+    private String username;    // 学号（users.username）
+    private String realName;    // 姓名
+    private String className;   // 班级名称（关联 classes 表）
+    private String majorName;   // 专业名称（关联 majors 表）
+
     public EnrollmentVO() {}
 
     public Long getId() { return id; }
@@ -62,4 +68,12 @@ public class EnrollmentVO {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public LocalDateTime getLastWatchAt() { return lastWatchAt; }
     public void setLastWatchAt(LocalDateTime lastWatchAt) { this.lastWatchAt = lastWatchAt; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getRealName() { return realName; }
+    public void setRealName(String realName) { this.realName = realName; }
+    public String getClassName() { return className; }
+    public void setClassName(String className) { this.className = className; }
+    public String getMajorName() { return majorName; }
+    public void setMajorName(String majorName) { this.majorName = majorName; }
 }

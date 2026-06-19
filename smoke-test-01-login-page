@@ -1,0 +1,29 @@
+- generic [ref=e38]:
+  - generic [ref=e39]:
+    - img [ref=e42]
+    - heading "微课管理平台" [level=1] [ref=e45]
+    - paragraph [ref=e46]: 让学习更高效 · 让教学更轻松
+  - generic [ref=e48]:
+    - heading "账号登录" [level=2] [ref=e49]
+    - paragraph [ref=e50]: 请使用您的账号登录系统
+    - generic [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]: "* 用户名"
+        - generic [ref=e56]:
+          - img [ref=e59]
+          - textbox "用户名" [ref=e61]: admin
+      - generic [ref=e63]:
+        - generic [ref=e64]: "* 密码"
+        - generic [ref=e67]:
+          - img [ref=e70]
+          - textbox "密码" [ref=e73]: admin123
+          - img [ref=e76] [cursor=pointer]
+      - button "登 录" [ref=e81] [cursor=pointer]:
+        - generic [ref=e82]: 登 录
+    - generic "测试账号" [ref=e83]:
+      - generic [ref=e84]: 测试账号：
+      - generic [ref=e86] [cursor=pointer]: 管理员
+      - generic [ref=e88] [cursor=pointer]: 教务处
+      - generic [ref=e90] [cursor=pointer]: 教师
+      - generic [ref=e92] [cursor=pointer]: 学生
+  - paragraph [ref=e93]: © 2026 微课管理平台 · Powered by Vue 3 + Element Plus

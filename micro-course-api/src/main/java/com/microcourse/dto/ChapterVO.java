@@ -1,6 +1,7 @@
 package com.microcourse.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class ChapterVO {
 
@@ -15,6 +16,8 @@ public class ChapterVO {
     private LocalDateTime updatedAt;
     private Integer version;
     private String learningObjectives;
+    private List<String> keyConcepts;
+    private List<Object> exercises;
 
     public ChapterVO() {}
 
@@ -40,4 +43,8 @@ public class ChapterVO {
     public void setVersion(Integer version) { this.version = version; }
     public String getLearningObjectives() { return learningObjectives; }
     public void setLearningObjectives(String learningObjectives) { this.learningObjectives = learningObjectives; }
+    public List<String> getKeyConcepts() { return keyConcepts; }
+    public void setKeyConcepts(List<String> keyConcepts) { this.keyConcepts = keyConcepts; }
+    public List<Object> getExercises() { return exercises; }
+    public void setExercises(List<Object> exercises) { this.exercises = exercises; }
 }

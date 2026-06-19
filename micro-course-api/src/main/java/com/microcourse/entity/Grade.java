@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -54,6 +55,9 @@ public class Grade {
 
     private String comment;
 
+    @Version
+    private Integer version;
+
     public Grade() {}
 
     public Long getId() { return id; }
@@ -88,4 +92,6 @@ public class Grade {
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
     public String getComment() { return comment; }
     public void setComment(String comment) { this.comment = comment; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
 }

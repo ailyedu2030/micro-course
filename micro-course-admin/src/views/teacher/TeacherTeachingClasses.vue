@@ -100,7 +100,7 @@
                       class="student-table"
                     >
                       <el-table-column type="index" label="序号" width="60" align="center" />
-                      <el-table-column prop="username" label="学号" width="120" show-overflow-tooltip />
+                      <el-table-column prop="studentNo" label="学号" width="120" show-overflow-tooltip />
                       <el-table-column prop="realName" label="姓名" width="100" show-overflow-tooltip />
                       <el-table-column prop="status" label="状态" width="100" align="center">
                         <template #default="{ row }">
@@ -141,18 +141,31 @@
     </el-row>
 
     <!-- 添加学生弹窗 -->
-    <el-dialog v-model="addStudentVisible" title="添加学生" width="500px" destroy-on-close :close-on-press-escape="true">
+    <el-dialog v-model="addStudentVisible" title="添加学生" width="560px" destroy-on-close :close-on-press-escape="true">
       <el-form :model="addStudentForm" label-width="80px">
-        <el-form-item label="学生ID">
-          <el-input v-model="addStudentForm.userId" placeholder="请输入学生ID" clearable />
+        <el-form-item label="搜索学生">
+          <el-input v-model="addStudentForm.realName" placeholder="输入姓名或学号，按回车搜索" clearable @keyup.enter="handleSearchStudent">
+            <template #append>
+              <el-button @click="handleSearchStudent">搜索</el-button>
+            </template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="学生姓名">
-          <el-input v-model="addStudentForm.realName" placeholder="请输入学生姓名搜索" clearable @keyup.enter="handleSearchStudent" />
+        <el-form-item v-if="searchResults.length > 0" label="搜索结果">
+          <el-table :data="searchResults" size="small" highlight-current-row max-height="240" @current-change="handleSelectStudent" border>
+            <el-table-column prop="studentNo" label="学号" width="120" />
+            <el-table-column prop="realName" label="姓名" width="100" />
+            <el-table-column prop="departmentName" label="院系" show-overflow-tooltip />
+          </el-table>
+        </el-form-item>
+        <el-form-item v-if="addStudentForm.userId" label="已选学生">
+          <el-tag type="success" closable @close="addStudentForm.userId = null">
+            {{ selectedStudentLabel }}
+          </el-tag>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="addStudentVisible = false">取消</el-button>
-        <el-button type="primary" :loading="addingStudent" @click="confirmAddStudent">添加</el-button>
+        <el-button type="primary" :loading="addingStudent" :disabled="!addStudentForm.userId" @click="confirmAddStudent">添加</el-button>
       </template>
     </el-dialog>
 
@@ -268,9 +281,14 @@ async function fetchCourses() {
   loadingCourses.value = true
   try {
     const teacherId = userStore.userInfo?.id
-    const { data } = await getCourses({ size: 1000, teacherId })
+    if (!teacherId) {
+      ElMessage.error('无法获取当前用户信息')
+      return
+    }
+    const { data } = await getCourses({ size: 100, teacherId })
     courseOptions.value = data.items || []
-  } catch {
+  } catch (error) {
+    console.error('获取课程列表失败', error)
     ElMessage.error('获取课程列表失败')
   } finally {
     loadingCourses.value = false
@@ -297,7 +315,8 @@ async function fetchClasses() {
     const { data } = await getTeachingClasses(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch {
+  } catch (error) {
+    console.error('获取教学班列表失败', error)
     ElMessage.error('获取教学班列表失败')
   } finally {
     loadingClasses.value = false
@@ -315,13 +334,16 @@ async function handleExpandClass(cls) {
 }
 
 // 获取学生列表
-async function fetchStudents(cls) {
+async function fetchStudents(cls, force = false) {
   if (!cls.id) return
+  // P1-6: 有缓存数据则直接使用，避免重复请求
+  if (!force && studentData[cls.id] && studentData[cls.id].length > 0) return
   studentLoading[cls.id] = true
   try {
     const { data } = await getTeachingClassStudents(cls.id)
     studentData[cls.id] = Array.isArray(data) ? data : (data.items || [])
-  } catch {
+  } catch (error) {
+    console.error('获取班级学生列表失败', error)
     ElMessage.error(`获取班级学生列表失败`)
     studentData[cls.id] = []
   } finally {
@@ -331,21 +353,28 @@ async function fetchStudents(cls) {
 
 // 刷新学生列表
 async function handleRefreshStudents(cls) {
-  await fetchStudents(cls)
+  await fetchStudents(cls, true)
 }
 
 // 添加学生弹窗
 const addStudentVisible = ref(false)
 const addStudentForm = reactive({
-  userId: '',
+  userId: null,
   realName: ''
 })
 const currentClassForAdd = ref(null)
+const searchResults = ref([])
+const selectedStudentLabel = computed(() => {
+  if (!addStudentForm.userId) return ''
+  const found = searchResults.value.find(s => s.id === addStudentForm.userId)
+  return found ? `${found.realName}（${found.studentNo || ''}）` : `ID: ${addStudentForm.userId}`
+})
 
 function handleAddStudent(cls) {
   currentClassForAdd.value = cls
-  addStudentForm.userId = ''
+  addStudentForm.userId = null
   addStudentForm.realName = ''
+  searchResults.value = []
   addStudentVisible.value = true
 }
 
@@ -354,7 +383,6 @@ async function handleSearchStudent() {
     ElMessage.warning('请输入至少2个字符进行搜索')
     return
   }
-  // 搜索学生，角色 STUDENT，姓名包含 realName
   try {
     const { data } = await getUsers({
       keyword: addStudentForm.realName.trim(),
@@ -363,28 +391,34 @@ async function handleSearchStudent() {
       status: 1
     })
     const items = data.items || []
+    searchResults.value = items
     if (items.length === 0) {
       ElMessage.info('未找到匹配的学生')
+      addStudentForm.userId = null
       return
     }
-    // 如果只找到一个，直接填入 userId
     if (items.length === 1) {
       addStudentForm.userId = items[0].id
       ElMessage.success(`已找到学生：${items[0].realName}`)
     } else {
-      // 多个结果时显示选项列表（用 ElMessage 提示）
-      ElMessage.info(`找到 ${items.length} 名学生，请选择`)
-      // 填入第一个匹配的 userId 作为默认
-      addStudentForm.userId = items[0].id
+      ElMessage.info(`找到 ${items.length} 名学生，请在列表中选择`)
+      addStudentForm.userId = null
     }
-  } catch {
+  } catch (error) {
+    console.error('搜索学生失败', error)
     ElMessage.error('搜索学生失败')
   }
 }
 
+function handleSelectStudent(row) {
+  if (row) {
+    addStudentForm.userId = row.id
+  }
+}
+
 async function confirmAddStudent() {
-  if (!addStudentForm.userId && !addStudentForm.realName) {
-    ElMessage.warning('请输入学生ID或姓名')
+  if (!addStudentForm.userId) {
+    ElMessage.warning('请先搜索并选择学生')
     return
   }
   if (!currentClassForAdd.value) return
@@ -393,8 +427,11 @@ async function confirmAddStudent() {
     await addStudentToClass(currentClassForAdd.value.id, addStudentForm.userId)
     ElMessage.success('添加成功')
     addStudentVisible.value = false
+    // 清除缓存以便刷新
+    delete studentData[currentClassForAdd.value.id]
     await fetchStudents(currentClassForAdd.value)
-  } catch {
+  } catch (error) {
+    console.error('添加学生失败', error)
     ElMessage.error('添加失败')
   } finally {
     addingStudent.value = false
@@ -406,8 +443,11 @@ async function handleRemoveStudent(cls, student) {
   try {
     await removeStudentFromClass(cls.id, student.id)
     ElMessage.success('移除成功')
+    // 清除缓存以便刷新
+    delete studentData[cls.id]
     await fetchStudents(cls)
-  } catch {
+  } catch (error) {
+    console.error('移除学生失败', error)
     ElMessage.error('移除失败')
   }
 }
@@ -432,8 +472,11 @@ async function confirmChangeStatus() {
     await updateStudentStatus(currentClassForStatus.value.id, currentStudentItem.value.id, changeStatusForm.status)
     ElMessage.success('状态修改成功')
     changeStatusVisible.value = false
+    // 清除缓存以便刷新
+    delete studentData[currentClassForStatus.value.id]
     await fetchStudents(currentClassForStatus.value)
-  } catch {
+  } catch (error) {
+    console.error('修改学生状态失败', error)
     ElMessage.error('状态修改失败')
   } finally {
     changingStatus.value = false

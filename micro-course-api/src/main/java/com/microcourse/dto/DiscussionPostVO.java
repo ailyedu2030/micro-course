@@ -17,6 +17,7 @@ public class DiscussionPostVO {
     private Boolean isEssence;
     private Integer commentCount;
     private Integer likeCount;
+    private Boolean isOwner;
     private LocalDateTime createdAt;
     private List<DiscussionCommentVO> children;
     private String courseName;
@@ -46,8 +47,12 @@ public class DiscussionPostVO {
     public void setIsEssence(Boolean isEssence) { this.isEssence = isEssence; }
     public Integer getCommentCount() { return commentCount; }
     public void setCommentCount(Integer commentCount) { this.commentCount = commentCount; }
+    public Integer getReplyCount() { return commentCount; }
+    public void setReplyCount(Integer replyCount) { this.commentCount = replyCount; }
     public Integer getLikeCount() { return likeCount; }
     public void setLikeCount(Integer likeCount) { this.likeCount = likeCount; }
+    public Boolean getIsOwner() { return isOwner; }
+    public void setIsOwner(Boolean isOwner) { this.isOwner = isOwner; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public List<DiscussionCommentVO> getChildren() { return children; }

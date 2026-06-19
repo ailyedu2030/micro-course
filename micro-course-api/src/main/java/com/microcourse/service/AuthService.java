@@ -5,6 +5,7 @@ import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
 import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserVO;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 认证服务接口
@@ -53,4 +54,11 @@ public interface AuthService {
      * @param request 修改密码请求
      */
     void changePassword(ChangePasswordRequest request);
+
+    /**
+     * 上传当前用户头像（multipart 文件上传）
+     * @param file 头像图片文件
+     * @return 头像访问 URL
+     */
+    String uploadAvatar(MultipartFile file);
 }

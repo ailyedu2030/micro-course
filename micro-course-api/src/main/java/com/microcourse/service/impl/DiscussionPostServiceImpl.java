@@ -208,8 +208,12 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Transactional(readOnly = true)
     public DiscussionPostVO getById(Long id) {
         DiscussionPost post = postRepository.selectById(id);
-        if (post == null || post.getStatus() == 0) {
+        // P0-7: 区分"不存在"和"待审核"
+        if (post == null) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        if (post.getStatus() != null && post.getStatus() == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子正在审核中，暂时无法查看");
         }
 
         // N+1 修复：批量预加载 post author 和 comment authors
@@ -236,7 +240,15 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         final java.util.Map<Long, User> finalUserMap = userMap;
 
         DiscussionPostVO vo = convertToVO(post, finalUserMap);
-        vo.setChildren(buildCommentTree(comments, finalUserMap));
+        vo.setChildren(buildCommentTree(comments, finalUserMap, post.getUserId()));
+
+        // P0-4: 设置 isOwner，让匿名帖子作者也能删除自己的帖子
+        try {
+            Long currentUserId = com.microcourse.util.SecurityUtil.getCurrentUserId();
+            vo.setIsOwner(post.getUserId() != null && post.getUserId().equals(currentUserId));
+        } catch (Exception e) {
+            vo.setIsOwner(false);
+        }
 
         return vo;
     }
@@ -448,6 +460,12 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
 
     private List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> comments,
                                                         java.util.Map<Long, User> userMap) {
+        return buildCommentTree(comments, userMap, null);
+    }
+
+    private List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> comments,
+                                                        java.util.Map<Long, User> userMap,
+                                                        Long opUserId) {
         if (comments == null || comments.isEmpty()) {
             return new ArrayList<>();
         }
@@ -461,17 +479,29 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             vo.setParentId(c.getParentId());
             vo.setUserId(c.getUserId());
             vo.setContent(c.getContent());
+            vo.setIsAnonymous(c.getIsAnonymous());
             vo.setIsTeacherReply(c.getIsTeacherReply());
             vo.setLikeCount(c.getLikeCount());
             vo.setCreatedAt(c.getCreatedAt());
             vo.setChildren(new ArrayList<>());
 
-            // 查作者名（使用预加载的 Map）
-            if (c.getUserId() != null) {
+            // P0-1: 匿名评论隐藏用户信息
+            if (Boolean.TRUE.equals(c.getIsAnonymous())) {
+                vo.setAuthorName("匿名用户");
+                vo.setUserId(null);
+            } else if (c.getUserId() != null) {
                 User author = userMap.get(c.getUserId());
                 if (author != null) {
                     vo.setAuthorName(author.getRealName() != null ? author.getRealName() : author.getUsername());
+                    vo.setRoleTag(author.getRole() != null ? author.getRole().name() : null);
                 }
+            }
+
+            // isOp: 评论者是帖子作者
+            if (opUserId != null && c.getUserId() != null && !Boolean.TRUE.equals(c.getIsAnonymous())) {
+                vo.setIsOp(c.getUserId().equals(opUserId));
+            } else {
+                vo.setIsOp(false);
             }
 
             voMap.put(c.getId(), vo);

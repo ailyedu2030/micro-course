@@ -1,0 +1,61 @@
+- generic [ref=e37]:
+  - banner [ref=e38]:
+    - generic [ref=e40] [cursor=pointer]:
+      - img [ref=e42]
+      - generic [ref=e44]: 微课平台
+    - navigation "主导航" [ref=e45]:
+      - link "广场" [ref=e46] [cursor=pointer]:
+        - /url: /student/courses
+        - img [ref=e48]
+        - generic [ref=e50]: 广场
+      - link "我的课程" [ref=e51] [cursor=pointer]:
+        - /url: /student/my-courses
+        - img [ref=e53]
+        - generic [ref=e55]: 我的课程
+      - link "消息" [ref=e56] [cursor=pointer]:
+        - /url: /student/notifications
+        - img [ref=e58]
+        - generic [ref=e62]: 消息
+      - link "我的" [ref=e63] [cursor=pointer]:
+        - /url: /student/profile
+        - img [ref=e65]
+        - generic [ref=e67]: 我的
+    - generic [ref=e68]:
+      - generic [ref=e70]:
+        - img [ref=e73]
+        - textbox "搜索课程..." [ref=e75]
+      - button "通知中心" [ref=e78] [cursor=pointer]:
+        - img [ref=e80]
+      - button "陈 学生" [ref=e85] [cursor=pointer]:
+        - generic [ref=e86]: 陈
+        - generic [ref=e88]: 学生
+        - img [ref=e90]
+  - main [ref=e92]:
+    - generic [ref=e94]:
+      - generic [ref=e95]:
+        - button "操作" [ref=e97] [cursor=pointer]:
+          - generic [ref=e98]
+        - heading "数据库系统原理" [level=1] [ref=e104]
+        - generic [ref=e105]:
+          - button "查看课程进度" [ref=e106] [cursor=pointer]
+          - button "操作" [ref=e119] [cursor=pointer]
+          - button "操作" [ref=e126] [cursor=pointer]
+      - generic [ref=e133]:
+        - button "课程" [ref=e134] [cursor=pointer]:
+          - img [ref=e136]
+          - generic [ref=e138]: 课程
+        - button "公告" [ref=e139] [cursor=pointer]:
+          - img [ref=e141]
+          - generic [ref=e145]: 公告
+        - button "讨论" [ref=e146] [cursor=pointer]:
+          - img [ref=e148]
+          - generic [ref=e151]: 讨论
+        - button "考试" [ref=e152] [cursor=pointer]:
+          - img [ref=e154]
+          - generic [ref=e157]: 考试
+      - generic [ref=e158]:
+        - main [ref=e159]:
+          - generic [ref=e160]
+          - generic [ref=e194]
+        - complementary [ref=e205]:
+          - generic [ref=e206]

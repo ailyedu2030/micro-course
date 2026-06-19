@@ -62,7 +62,7 @@
       <main class="content-main">
         <!-- 视频播放器 -->
         <div class="video-section">
-          <div class="video-container">
+          <div class="video-container" @mousemove="onControlsMouseMove">
             <!-- 加载骨架屏 -->
             <div v-if="videoLoading" class="video-skeleton">
               <div class="skeleton-shimmer" />
@@ -70,7 +70,7 @@
             </div>
             <!-- 视频元素 -->
             <video
-              v-else-if="currentVideo"
+              v-else-if="currentVideo && !videoError"
               ref="videoRef"
               class="video-player"
               :src="currentVideo.url || currentVideo.playUrl"
@@ -82,8 +82,20 @@
               @ended="onVideoEnded"
               @waiting="isBuffering = true"
               @canplay="isBuffering = false"
+              @error="onVideoError"
               playsinline
             />
+            <!-- 缓冲提示 -->
+            <div v-if="isBuffering && currentVideo && !videoError" class="buffering-overlay">
+              <el-icon class="buffering-spinner" size="36"><Loading /></el-icon>
+              <span>缓冲中...</span>
+            </div>
+            <!-- 视频加载失败 -->
+            <div v-else-if="videoError" class="video-error">
+              <el-icon size="48" color="#EF4444"><WarningFilled /></el-icon>
+              <p>视频加载失败，请重试</p>
+              <el-button type="primary" size="small" @click="retryVideo" aria-label="操作">重试</el-button>
+            </div>
             <!-- 无视频占位 -->
             <div v-else class="video-empty">
               <el-icon size="48" color="#475569"><VideoCamera /></el-icon>
@@ -91,7 +103,7 @@
             </div>
 
             <!-- 自定义控制栏 -->
-            <div v-if="currentVideo && !videoLoading" class="video-controls" :class="{ visible: showControls || !isPlaying }">
+            <div v-if="currentVideo && !videoLoading && !videoError" class="video-controls" :class="{ visible: showControls || !isPlaying }">
               <!-- 进度条 -->
               <div class="progress-wrap" role="slider" tabindex="0" :aria-label="`视频进度 当前 ${Math.round(playPercent)}%`" :aria-valuemin="0" :aria-valuemax="100" :aria-valuenow="Math.round(playPercent)" @click="seekVideo" @mousemove="onProgressHover" @mouseleave="hoverTime = null" @keydown.left.prevent="seekRelative(-5)" @keydown.right.prevent="seekRelative(5)">
                 <div class="progress-track">
@@ -331,7 +343,7 @@ import { ElMessage } from 'element-plus'
 import {
   ArrowLeft, ArrowRight, Edit, Star, VideoCamera, VideoPlay, VideoPause,
   FullScreen, List, Document, Bell, ChatDotRound, CircleCheck, DataAnalysis,
-  CaretRight, Close, Loading
+  CaretRight, Close, Loading, WarningFilled
 } from '@element-plus/icons-vue'
 
 import { getCourseById } from '@/api/course'
@@ -367,6 +379,7 @@ const chapters = ref([])
 const progressMap = ref({}) // lessonId -> progress
 const loading = ref(true)
 const videoLoading = ref(true)
+const videoError = ref(false)
 const drawerOpen = ref(false)
 const expandedChapters = ref([])
 
@@ -395,6 +408,8 @@ const playbackRate = ref(1)
 const playbackRates = [0.5, 0.75, 1, 1.25, 1.5, 2]
 let controlsTimer = null
 let progressSaveTimer = null
+let lastSaveTime = Date.now()  // P0-3: 上次保存时间，用于计算 watchDelta
+let saveFailCount = 0  // P2-1: 连续保存失败计数
 
 const playPercent = computed(() => {
   return duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0
@@ -453,7 +468,7 @@ function getChapterProgress(chapterId) {
 
 function buildProgressMap(progressList) {
   const map = {}
-  ;(progressList || []).forEach(p => { map[p.chapterId] = p })
+  ;(progressList || []).forEach(p => { map[p.lessonId] = p })
   return map
 }
 
@@ -470,7 +485,7 @@ async function loadCourse(cid) {
 
     course.value = courseRes.data || {}
 
-    // ✅ 构建 progressMap（key=chapterId）
+    // ✅ 构建 progressMap（key=lessonId）
     progressMap.value = buildProgressMap(progressRes.data || [])
 
     // 构建视频映射：chapterId → videos[]
@@ -485,16 +500,18 @@ async function loadCourse(cid) {
     // 构建章节-课时树
     const rawChapters = courseRes.data.chapters || []
     chapters.value = rawChapters.map(ch => {
-      const prog = progressMap.value[ch.id]
       const videos = videosByChapter[ch.id] || []
-      // 将视频作为该章节的 lessons
-      const lessons = videos.map(v => ({
-        id: v.id,
-        title: v.title,
-        duration: v.duration,
-        video: { ...v, url: v.url, coverUrl: v.coverUrl, playUrl: v.url },
-        status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
-      }))
+      // 将视频作为该章节的 lessons（每个 lesson 独立查询进度）
+      const lessons = videos.map(v => {
+        const prog = progressMap.value[v.id]
+        return {
+          id: v.id,
+          title: v.title,
+          duration: v.duration,
+          video: { ...v, url: v.url, coverUrl: v.coverUrl, playUrl: v.url },
+          status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
+        }
+      })
       return {
         ...ch,
         lessons: lessons.length > 0 ? lessons : (ch.lessons || []),
@@ -528,9 +545,9 @@ async function loadProgress() {
     // 更新章节中课时的完成状态（防御：chapters 可能尚未加载）
     if (chapters.value.length > 0) {
       chapters.value.forEach(ch => {
-        const prog = progressMap.value[ch.id]
         if (ch.lessons) {
           ch.lessons.forEach(l => {
+            const prog = progressMap.value[l.id]
             l.status = prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
           })
         }
@@ -555,7 +572,7 @@ async function checkFavorite() {
   try {
     const res = await getMyFavorites()
     const favorites = res.data || []
-    isFavorited.value = favorites.some(f => f.targetId === courseId.value && f.type === 'COURSE')
+    isFavorited.value = favorites.some(f => f.courseId === courseId.value)
   } catch (e) {
     console.warn('[LearningView] checkFavorite 查询收藏状态失败', e)
   }
@@ -566,14 +583,14 @@ async function toggleFavorite() {
     if (isFavorited.value) {
       // 取消收藏（需要找到收藏ID）
       const res = await getMyFavorites()
-      const fav = (res.data || []).find(f => f.targetId === courseId.value && f.type === 'COURSE')
+      const fav = (res.data || []).find(f => f.courseId === courseId.value)
       if (fav) {
         await removeFavorite(fav.id)
         isFavorited.value = false
         ElMessage.success('已取消收藏')
       }
     } else {
-      await addFavorite({ targetId: courseId.value, type: 'COURSE' })
+      await addFavorite({ courseId: courseId.value })
       isFavorited.value = true
       ElMessage.success('已添加收藏')
     }
@@ -586,15 +603,11 @@ async function toggleFavorite() {
 function selectLesson(lessonId) {
   currentLessonId.value = lessonId
   videoLoading.value = true
+  videoError.value = false
   isPlaying.value = false
   currentTime.value = 0
   duration.value = 0
-  // 恢复播放进度（通过章节ID查找）
-  const chapterId = currentChapter.value?.id
-  const saved = progressMap.value[chapterId]
-  if (saved?.videoPosition && videoRef.value) {
-    videoRef.value.currentTime = saved.videoPosition
-  }
+  // 播放进度恢复由 onVideoLoaded() 处理，此处不再操作 videoRef（DOM 尚未更新）
   nextTick(() => { videoLoading.value = false })
 }
 
@@ -623,9 +636,8 @@ function togglePlay() {
 function onVideoLoaded() {
   duration.value = videoRef.value.duration
   videoLoading.value = false
-  // 恢复播放位置（通过章节ID查找）
-  const chapterId = currentChapter.value?.id
-  const saved = progressMap.value[chapterId]
+  // 恢复播放位置（通过 lessonId 查找）
+  const saved = progressMap.value[currentLessonId.value]
   if (saved?.videoPosition) {
     videoRef.value.currentTime = saved.videoPosition
   }
@@ -683,62 +695,139 @@ function onControlsMouseMove() {
   }, 3000)
 }
 
+// P0-6: 视频加载错误处理
+function onVideoError() {
+  videoLoading.value = false
+  videoError.value = true
+}
+
+function retryVideo() {
+  videoError.value = false
+  if (currentLessonId.value) {
+    selectLesson(currentLessonId.value)
+  }
+}
+
+function seekRelative(delta) {
+  if (!videoRef.value) return
+  videoRef.value.currentTime = Math.max(0, Math.min(duration.value, videoRef.value.currentTime + delta))
+}
+
 // ==================== 进度保存（每 10 秒） ====================
 async function saveVideoProgress() {
-  if (!currentChapter.value || !videoRef.value) return
+  // P1-10: 只在播放中保存进度
+  if (!isPlaying.value) return
+  if (!currentLessonId.value || !videoRef.value) return
   try {
-    const chapterId = currentChapter.value.id
-    const lessonProgress = progressMap.value[chapterId]
+    const lessonId = currentLessonId.value
+    // P0-3: 计算 watchDelta（距上次保存的秒数）
+    const now = Date.now()
+    const watchDelta = Math.floor((now - lastSaveTime) / 1000)
+    lastSaveTime = now
+
+    const lessonProgress = progressMap.value[lessonId]
     if (lessonProgress?.id) {
+      // P0-1: 只上传 videoPosition，不传 completed
       await updateLearningProgress(lessonProgress.id, {
         videoPosition: Math.floor(videoRef.value.currentTime),
-        completed: false
+        watchDelta
       })
     } else {
-      const res = await createLearningProgress({
-        courseId: courseId.value,
-        chapterId: chapterId,
-        videoPosition: Math.floor(videoRef.value.currentTime),
-        videoProgress: 0
-      })
-      const newId = res.data?.id || (res.data || res).id
-      if (newId) {
-        progressMap.value[chapterId] = { id: newId }
+      // P0-7: create 可能因 UNIQUE 冲突失败，添加重试逻辑
+      try {
+        const res = await createLearningProgress({
+          courseId: courseId.value,
+          chapterId: currentChapter.value?.id,
+          lessonId: lessonId,
+          videoPosition: Math.floor(videoRef.value.currentTime),
+          watchDelta
+        })
+        const newId = res.data?.id || (res.data || res).id
+        if (newId) {
+          progressMap.value[lessonId] = { id: newId, lessonId }
+        }
+      } catch (createErr) {
+        // UNIQUE 冲突：查询已有记录后重试 update
+        console.warn('[LearningView] create 冲突，尝试查询已有记录', createErr)
+        const existing = await getLearningProgress({ courseId: courseId.value, lessonId })
+        const record = (existing.data || []).find(p => p.lessonId === lessonId)
+        if (record?.id) {
+          progressMap.value[lessonId] = record
+          await updateLearningProgress(record.id, {
+            videoPosition: Math.floor(videoRef.value.currentTime),
+            watchDelta
+          })
+        }
       }
     }
+    saveFailCount = 0
   } catch (e) {
+    saveFailCount++
     console.warn('[LearningView] saveVideoProgress 保存进度失败', e)
+    if (saveFailCount >= 3) {
+      ElMessage.warning('进度保存异常，请检查网络')
+      saveFailCount = 0
+    }
   }
 }
 
 async function markLessonComplete() {
-  if (!currentChapter.value) return
+  if (!currentLessonId.value) return
+  // P0-7: 串行化 - 先暂停定时器，防止与 saveVideoProgress 竞态
+  clearInterval(progressSaveTimer)
+  let marked = false
   try {
-    const chapterId = currentChapter.value.id
-    const lessonProgress = progressMap.value[chapterId]
+    const lessonId = currentLessonId.value
+    const lessonProgress = progressMap.value[lessonId]
     if (lessonProgress?.id) {
       await updateLearningProgress(lessonProgress.id, { completed: true })
     } else {
-      const res = await createLearningProgress({
-        courseId: courseId.value,
-        chapterId: chapterId,
-        completed: true
-      })
-      const newId = res.data?.id || (res.data || res).id
-      if (newId) {
-        progressMap.value[chapterId] = { id: newId }
+      // P0-7: create 可能因 UNIQUE 冲突失败，添加重试逻辑
+      try {
+        const res = await createLearningProgress({
+          courseId: courseId.value,
+          chapterId: currentChapter.value?.id,
+          lessonId: lessonId,
+          completed: true
+        })
+        const newId = res.data?.id || (res.data || res).id
+        if (newId) {
+          progressMap.value[lessonId] = { id: newId, lessonId }
+        }
+      } catch (createErr) {
+        // UNIQUE 冲突：查询已有记录后重试 update
+        console.warn('[LearningView] create 冲突，尝试查询已有记录', createErr)
+        const existing = await getLearningProgress({ courseId: courseId.value, lessonId })
+        const record = (existing.data || []).find(p => p.lessonId === lessonId)
+        if (record?.id) {
+          progressMap.value[lessonId] = record
+          await updateLearningProgress(record.id, { completed: true })
+        }
       }
     }
-    // 更新本地状态
-    const lesson = allLessons.value.find(l => l.id === currentLessonId.value)
-    if (lesson) lesson.status = 'COMPLETED'
+    marked = true
   } catch (e) {
     console.warn('[LearningView] markLessonComplete 标记完成失败', e)
+    ElMessage.warning('完成标记失败，可稍后重试')
+  } finally {
+    // P2-3: 仅在 API 成功后更新本地状态
+    if (marked) {
+      const lesson = allLessons.value.find(l => l.id === currentLessonId.value)
+      if (lesson) lesson.status = 'COMPLETED'
+    }
+    // P0-7: 恢复定时器
+    progressSaveTimer = setInterval(saveVideoProgress, 10000)
   }
 }
 
 // ==================== 导航 & 交互 ====================
-function goBack() { router.back() }
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/student/courses')
+  }
+}
 
 function goExercise() {
   if (!currentLessonId.value) return
@@ -765,13 +854,19 @@ onMounted(async () => {
   await loadCourse(courseId.value)
   await Promise.all([loadProgress(), checkFavorite()])
 
-  // 启动进度保存定时器（每 10 秒）
+  // 启动进度保存定时器（每 10 秒，P1-10: saveVideoProgress 内部判断 isPlaying）
   progressSaveTimer = setInterval(saveVideoProgress, 10000)
+})
+
+// P1-6: 监听 courseId 变化（URL query 切换课程）
+const stopCourseWatch = watch(() => route.query.courseId, (newId) => {
+  if (newId) loadCourse(parseInt(newId))
 })
 
 onUnmounted(() => {
   clearInterval(progressSaveTimer)
   clearTimeout(controlsTimer)
+  stopCourseWatch()
 })
 </script>
 
@@ -989,6 +1084,43 @@ onUnmounted(() => {
   gap: 12px;
   background: linear-gradient(145deg, #1E293B, #0F172A);
   color: #64748B;
+}
+
+/* P0-6: 视频加载失败状态 */
+.video-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(145deg, #1E293B, #0F172A);
+  color: #EF4444;
+}
+.video-error p {
+  font-size: 14px;
+  color: #94A3B8;
+  margin: 4px 0 8px;
+}
+
+/* P2-2: 缓冲提示 */
+.buffering-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 10;
+}
+.buffering-spinner {
+  animation: spin 1s linear infinite;
 }
 
 /* ===== 自定义控制栏 ===== */

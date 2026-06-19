@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 认证控制器
@@ -77,5 +78,12 @@ public class AuthController {
     public R<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(request);
         return R.ok();
+    }
+
+    @PostMapping("/avatar")
+    @PreAuthorize("isAuthenticated()")
+    public R<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        String avatarUrl = authService.uploadAvatar(file);
+        return R.ok(avatarUrl);
     }
 }

@@ -120,7 +120,7 @@
 import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  Grid, VideoPlay, DataLine, Bell, User, Star, Setting,
+  Grid, VideoPlay, DataLine, Bell, User, Star, Setting, Reading,
   Microphone, Search, ArrowDown, ArrowLeft, SwitchButton
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
@@ -142,14 +142,22 @@ const router = useRouter()
 // ---------------------------------------------------------------------------
 // 响应式
 // ---------------------------------------------------------------------------
+// P2-1: resize 事件添加防抖，避免频繁触发响应式计算
 const isMobile = ref(window.innerWidth <= 768)
+let resizeTimer = null
 
 function onResize() {
-  isMobile.value = window.innerWidth <= 768
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    isMobile.value = window.innerWidth <= 768
+  }, 150)
 }
 
 onMounted(() => window.addEventListener('resize', onResize))
-onUnmounted(() => window.removeEventListener('resize', onResize))
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  clearTimeout(resizeTimer)
+})
 
 // ---------------------------------------------------------------------------
 // 菜单项（从 router 动态读取，meta.menuTab = true 的学生端路由）
@@ -160,13 +168,12 @@ const ICON_MAP = {
   Bell,
   User,
   DataLine,
+  Reading,
 }
 
-const STUDENT_TAB_ROUTES = ['/student/courses', '/student/my-courses', '/student/notifications', '/student/profile']
-
+// P1-2: 从 router 动态读取 menuTab 标记的路由，无需二次硬编码过滤
 const menuItems = router.getRoutes()
   .filter(r => r.path.startsWith('/student') && r.meta?.menuTab)
-  .filter(r => STUDENT_TAB_ROUTES.includes(r.path))
   .sort((a, b) => (a.meta?.menuOrder ?? 99) - (b.meta?.menuOrder ?? 99))
   .map(r => ({
     label: r.meta?.menuLabel ?? r.name?.replace(/^Student/, '') ?? r.path,
@@ -177,11 +184,12 @@ const menuItems = router.getRoutes()
 // ---------------------------------------------------------------------------
 // 活跃路由判断
 // ---------------------------------------------------------------------------
+// P1-6: 精确匹配 — 避免 startsWith('/student/my-courses') 误匹配其他路由
 function isActive(path) {
   if (path === '/student/courses') {
-    return route.path === '/student/courses' || route.path === '/student/redirect'
+    return route.path === '/student/courses' || route.path.startsWith('/student/courses/') || route.path === '/student/redirect'
   }
-  return route.path.startsWith(path)
+  return route.path === path || route.path.startsWith(path + '/')
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +213,7 @@ const avatarStyle = computed(() => ({
 // ---------------------------------------------------------------------------
 // H5 头部
 // ---------------------------------------------------------------------------
+// P1-7: H5 标题映射 — 增加更多路径覆盖 + 兜底使用 route.meta.menuLabel / 默认值
 const h5TitleMap = {
   '/student/courses': '课程广场',
   '/student/my-courses': '我的课程',
@@ -213,10 +222,16 @@ const h5TitleMap = {
   '/student/reviews': '我的评价',
   '/student/report': '我的周报',
   '/student/settings': '设置',
+  '/student/learning': '学习',
+  '/student/learning-stats': '学习统计',
+  '/student/training': '训练中心',
+  '/student/exams': '考试',
+  '/student/achievements': '成就墙',
+  '/student/discussions': '讨论',
 }
 const pageTitle = computed(() => {
   const found = Object.entries(h5TitleMap).find(([k]) => route.path.startsWith(k))
-  return found ? found[1] : '微课平台'
+  return found ? found[1] : (route.meta?.menuLabel || '微课平台')
 })
 const showBackBtn = computed(() => {
   // 只有在子页面（非 4 个主 Tab）才显示返回按钮
@@ -225,8 +240,13 @@ const showBackBtn = computed(() => {
   return !mainPaths.includes(route.path)
 })
 
+// P2-3: 返回按钮 — 无历史记录时兜底到课程广场首页
 function handleBack() {
-  router.back()
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/student/courses')
+  }
 }
 
 // ---------------------------------------------------------------------------

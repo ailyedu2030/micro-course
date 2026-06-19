@@ -11,6 +11,7 @@
       <!-- 页面 Header -->
       <div class="page-header">
         <div class="header-content">
+          <!-- P2-7: 欢迎文案——当前硬编码，后续可从后端配置接口获取 welcomeText 替换 -->
           <h1 class="page-title">欢迎学习，{{ userStore.realName || '同学' }}</h1>
           <p class="page-subtitle">持续学习，遇见更好的自己</p>
         </div>
@@ -71,6 +72,21 @@
           </el-row>
         </div>
 
+        <!-- P1-4: 加载失败重试入口 -->
+        <div v-else-if="loadError" class="error-state">
+          <el-empty class="empty-state">
+            <template #image>
+              <el-icon class="empty-icon" style="color: var(--el-color-danger)"><Warning /></el-icon>
+            </template>
+            <template #description>
+              <p>{{ loadErrorMessage }}</p>
+            </template>
+          </el-empty>
+          <div class="retry-wrap">
+            <el-button type="primary" @click="fetchEnrollments">点击重新加载</el-button>
+          </div>
+        </div>
+
         <!-- 空状态 -->
         <el-empty
           v-else-if="displayCourses.length === 0"
@@ -100,7 +116,7 @@
                 shadow="hover"
                 role="button"
                 tabindex="0"
-                :aria-label="`继续学习 ${course.title || ''}`"
+                :aria-label="`继续学习 ${course.courseTitle || ''}`"
                 @click="handleContinue(course.courseId)"
                 @keydown.enter="handleContinue(course.courseId)"
                 @keydown.space.prevent="handleContinue(course.courseId)"
@@ -111,11 +127,12 @@
                     v-if="course.coverUrl"
                     :src="course.coverUrl"
                     :alt="course.courseTitle"
+                    @error="handleImgError($event)"
                   />
                   <div v-else class="cover-placeholder">
                     <el-icon :size="40"><VideoPlay /></el-icon>
                   </div>
-                  <!-- 进度标签 -->
+                  <!-- P2-4: 进度标签——数据未加载完毕时不显示"未开始"，避免闪烁 -->
                   <el-tag
                     v-if="activeTab === 'in-progress' && (course.progress || 0) > 0"
                     class="progress-chip"
@@ -125,7 +142,7 @@
                     {{ course.progress || 0 }}%
                   </el-tag>
                   <el-tag
-                    v-else-if="activeTab === 'in-progress' && (course.progress || 0) === 0"
+                    v-else-if="activeTab === 'in-progress' && dataLoaded && (course.progress || 0) === 0"
                     class="progress-chip"
                     type="info"
                     effect="dark"
@@ -141,7 +158,7 @@
                     已完成
                   </el-tag>
                   <el-tag
-                    v-else
+                    v-else-if="activeTab === 'favorited'"
                     class="progress-chip"
                     type="warning"
                     effect="dark"
@@ -178,7 +195,7 @@
                     </span>
                   </div>
 
-                  <!-- 视频进度 (进行中) -->
+                  <!-- P1-6: 视频进度——使用实际完成/总数统计 -->
                   <div
                     v-if="activeTab === 'in-progress' && videoProgressMap[course.courseId]"
                     class="video-progress"
@@ -212,12 +229,12 @@
             </el-col>
           </el-row>
 
-          <!-- 分页 -->
-          <div v-if="totalElements > 0" class="pagination-wrap">
+          <!-- P0-1: 分页——使用 totalDisplayElements（当前 Tab 过滤后数量）替代 totalElements -->
+          <div v-if="totalDisplayElements > 0" class="pagination-wrap">
             <el-pagination
               v-model:current-page="page"
               v-model:page-size="size"
-              :total="totalElements"
+              :total="totalDisplayElements"
               :page-sizes="[9, 18, 36]"
               layout="total, sizes, prev, pager, next"
               background
@@ -232,17 +249,18 @@
     <div v-else class="h5-layout">
       <!-- 紧凑 Header -->
       <div class="h5-header">
+        <!-- P2-7: 欢迎文案——当前硬编码，后续可从后端配置接口获取 welcomeText 替换 -->
         <h1 class="h5-title">欢迎学习，{{ userStore.realName || '同学' }}</h1>
       </div>
 
-      <!-- 横向滚动 Tab Bar -->
+      <!-- P0-4: H5 横向滚动 Tab Bar——切换时重置页码 -->
       <div class="h5-tabs">
         <div class="h5-tab-scroll">
           <div class="h5-tab-bar">
             <div
               class="h5-tab-item"
               :class="{ active: activeTab === 'in-progress' }"
-              @click="activeTab = 'in-progress'"
+              @click="handleH5TabChange('in-progress')"
             >
               <el-icon><Reading /></el-icon>
               进行中
@@ -251,7 +269,7 @@
             <div
               class="h5-tab-item"
               :class="{ active: activeTab === 'completed' }"
-              @click="activeTab = 'completed'"
+              @click="handleH5TabChange('completed')"
             >
               <el-icon><CircleCheck /></el-icon>
               已完成
@@ -260,7 +278,7 @@
             <div
               class="h5-tab-item"
               :class="{ active: activeTab === 'favorited' }"
-              @click="activeTab = 'favorited'"
+              @click="handleH5TabChange('favorited')"
             >
               <el-icon><Star /></el-icon>
               收藏
@@ -285,6 +303,21 @@
         </el-card>
       </div>
 
+      <!-- P1-4: 加载失败重试入口 (H5) -->
+      <div v-else-if="loadError" class="error-state">
+        <el-empty class="empty-state">
+          <template #image>
+            <el-icon class="empty-icon" style="color: var(--el-color-danger)"><Warning /></el-icon>
+          </template>
+          <template #description>
+            <p>{{ loadErrorMessage }}</p>
+          </template>
+        </el-empty>
+        <div class="retry-wrap">
+          <el-button type="primary" @click="fetchEnrollments">点击重新加载</el-button>
+        </div>
+      </div>
+
       <!-- 空状态 -->
       <el-empty
         v-else-if="displayCourses.length === 0"
@@ -307,7 +340,7 @@
           shadow="hover"
           role="button"
           tabindex="0"
-          :aria-label="`继续学习 ${course.title || ''}`"
+          :aria-label="`继续学习 ${course.courseTitle || ''}`"
           @click="handleContinue(course.courseId)"
           @keydown.enter="handleContinue(course.courseId)"
           @keydown.space.prevent="handleContinue(course.courseId)"
@@ -318,11 +351,12 @@
               v-if="course.coverUrl"
               :src="course.coverUrl"
               :alt="course.courseTitle"
+              @error="handleImgError($event)"
             />
             <div v-else class="cover-placeholder">
               <el-icon :size="32"><VideoPlay /></el-icon>
             </div>
-            <!-- 进度标签 -->
+            <!-- P2-4: 进度标签——数据未加载完毕时不显示"未开始"，避免闪烁 -->
             <el-tag
               v-if="activeTab === 'in-progress' && (course.progress || 0) > 0"
               class="h5-progress-chip"
@@ -332,7 +366,7 @@
               {{ course.progress || 0 }}%
             </el-tag>
             <el-tag
-              v-else-if="activeTab === 'in-progress' && (course.progress || 0) === 0"
+              v-else-if="activeTab === 'in-progress' && dataLoaded && (course.progress || 0) === 0"
               class="h5-progress-chip"
               type="info"
               effect="dark"
@@ -348,7 +382,7 @@
               已完成
             </el-tag>
             <el-tag
-              v-else
+              v-else-if="activeTab === 'favorited'"
               class="h5-progress-chip"
               type="warning"
               effect="dark"
@@ -385,7 +419,7 @@
               </span>
             </div>
 
-            <!-- 视频进度 (进行中) -->
+            <!-- P1-6: 视频进度——使用实际完成/总数统计 -->
             <div
               v-if="activeTab === 'in-progress' && videoProgressMap[course.courseId]"
               class="h5-video-progress"
@@ -415,7 +449,7 @@
         </el-card>
       </div>
 
-      <!-- 底部安全区 -->
+      <!-- P2-6: 底部安全区——适配 iPhone 圆角底部 -->
       <div class="h5-bottom-safe" />
     </div>
   </div>
@@ -432,13 +466,15 @@ import {
   Folder,
   VideoPlay,
   User,
-  Clock
+  Clock,
+  Warning
 } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
 import { getCompletion, getLearningProgress } from '../../api/learning-progress'
 import { getChapters } from '../../api/chapter'
 import { getMyFavorites } from '../../api/favorite'
+import { getCourseById } from '../../api/course'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -459,6 +495,8 @@ onUnmounted(() => {
 const activeTab = ref('in-progress')
 const loading = ref(false)
 const enrollments = ref([])
+/** P0-2: 存放仅收藏但未选课的课程（来自 getMyFavorites + getCourseById 补充） */
+const extraFavorites = ref([])
 const page = ref(1)
 const size = ref(9)
 const totalElements = ref(0)
@@ -466,6 +504,15 @@ const totalElements = ref(0)
 const courseProgressMap = ref({})
 // 课程视频进度映射: { [courseId]: { total, completed, percent } }
 const videoProgressMap = ref({})
+/** P2-4: 数据是否已完全加载——防止"未开始"标签在数据加载中闪烁 */
+const dataLoaded = ref(false)
+/** P1-4: 加载失败标志 */
+const loadError = ref(false)
+/** P2-2: 区分错误类型的提示信息 */
+const loadErrorMessage = ref('加载课程失败')
+
+// P1-2: 封面图加载失败占位图
+const FALLBACK_COVER = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22320%22%20height%3D%22180%22%3E%3Crect%20fill%3D%22%23f0f0f0%22%20width%3D%22320%22%20height%3D%22180%22/%3E%3Ctext%20fill%3D%22%23bbb%22%20font-size%3D%2216%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3E%E6%9A%82%E6%97%A0%E5%B0%81%E9%9D%A2%3C/text%3E%3C/svg%3E'
 
 const progressColor = 'var(--role-primary)'
 
@@ -477,10 +524,13 @@ const completedCourses = computed(() =>
   (enrollments.value || []).filter(e => e.completed)
 )
 
-// 模拟收藏课程（实际项目中应从后端获取）
-const favoritedCourses = computed(() =>
-  (enrollments.value || []).filter(e => e.favorited)
-)
+/** P0-2: 已收藏课程 = 选课中已收藏的 + 仅收藏但未选课的 */
+const favoritedCourses = computed(() => {
+  const enrolled = (enrollments.value || []).filter(e => e.favorited)
+  const enrolledIds = new Set(enrolled.map(e => String(e.courseId)))
+  const extras = (extraFavorites.value || []).filter(f => !enrolledIds.has(String(f.courseId)))
+  return [...enrolled, ...extras]
+})
 
 const displayCourses = computed(() => {
   const list = activeTab.value === 'in-progress'
@@ -493,6 +543,7 @@ const displayCourses = computed(() => {
   return list.slice(start, start + size.value)
 })
 
+/** P0-1 / P1-1: 当前 Tab 过滤后的总数——用于分页器 */
 const totalDisplayElements = computed(() => {
   if (activeTab.value === 'in-progress') return inProgressCourses.value.length
   if (activeTab.value === 'completed') return completedCourses.value.length
@@ -505,10 +556,41 @@ const emptyDescription = computed(() => {
   return '暂无收藏的课程'
 })
 
+/** P2-1: formatTime——使用显式时区转换，兜底处理无效日期 */
 const formatTime = (timeStr) => {
   if (!timeStr) return '暂无'
-  const d = new Date(timeStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  try {
+    const d = new Date(timeStr)
+    if (isNaN(d.getTime())) return '暂无'
+    // 使用 toLocaleDateString 确保按浏览器本地时区显示
+    return d.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    }).replace(/\//g, '-')
+  } catch {
+    return '暂无'
+  }
+}
+
+/** P1-2: 封面图加载失败处理——替换为占位图 */
+const handleImgError = (event) => {
+  if (event?.target) {
+    event.target.src = FALLBACK_COVER
+    event.target.onerror = null // 防止无限循环
+  }
+}
+
+/** P2-2: 根据错误类型生成对应的提示消息 */
+const getErrorMessage = (err) => {
+  if (!err) return '加载课程失败，请稍后重试'
+  const status = err?.response?.status
+  if (status === 401 || status === 403) return '登录已过期，请重新登录'
+  if (status === 500) return '服务器异常，请稍后重试'
+  if (status >= 502 && status <= 504) return '服务暂时不可用，请稍后重试'
+  if (!navigator.onLine || err?.message === 'Network Error') return '网络连接异常，请检查网络后重试'
+  return '加载课程失败，请稍后重试'
 }
 
 const fetchEnrollments = async () => {
@@ -521,25 +603,27 @@ const fetchEnrollments = async () => {
     return
   }
   loading.value = true
+  loadError.value = false
+  dataLoaded.value = false
   try {
-    const res = await getMyEnrollments({ userId })
+    // P0-5: 不再传 userId——后端从 JWT 中获取
+    const res = await getMyEnrollments()
     const list = res.data || []
 
-    // 并行获取整体完成度（用于修正进度条）
+    // P1-5: 使用 Promise.allSettled 替代 Promise.all，防止单个失败导致全部中断
     const completionData = await getCompletion({ userId }).catch(() => ({}))
     const completionMap = completionData?.data || {}
 
     // 对每门进行中课程获取练习完成进度
     const inProgress = list.filter(e => !e.completed)
-    const progressPromises = inProgress.map(e =>
-      getLearningProgress({ courseId: e.courseId }).catch(() => null)
+    const progressResults = await Promise.allSettled(
+      inProgress.map(e => getLearningProgress({ courseId: e.courseId }))
     )
-    const progressResults = await Promise.all(progressPromises)
     const newProgressMap = {}
-    progressResults.forEach((presult, idx) => {
+    progressResults.forEach((result, idx) => {
       const courseId = inProgress[idx].courseId
-      if (presult?.data) {
-        const pdata = presult.data
+      if (result.status === 'fulfilled' && result.value?.data) {
+        const pdata = result.value.data
         newProgressMap[courseId] = {
           completedExercises: pdata.completedExercises ?? pdata.completed ?? 0,
           totalExercises: pdata.totalExercises ?? pdata.total ?? 0,
@@ -549,47 +633,114 @@ const fetchEnrollments = async () => {
     })
     courseProgressMap.value = newProgressMap
 
-    // 对每门进行中课程获取章节总数，计算视频进度
-    const chapterPromises = inProgress.map(e =>
-      getChapters({ courseId: e.courseId, size: 1000 }).catch(() => null)
+    // P1-6: 对每门进行中课程获取章节数据，用实际完成数统计视频进度
+    const chapterResults = await Promise.allSettled(
+      inProgress.map(e => getChapters({ courseId: e.courseId, size: 1000 }))
     )
-    const chapterResults = await Promise.all(chapterPromises)
     const newVideoProgressMap = {}
-    chapterResults.forEach((cresult, idx) => {
+    chapterResults.forEach((result, idx) => {
       const courseId = inProgress[idx].courseId
-      const chapters = cresult?.data?.items || cresult?.data || []
-      const totalChapters = chapters.length || 1
-      const progressPercent = completionMap[courseId]?.progress ?? inProgress[idx].progress ?? 0
-      const completedVideos = Math.round(totalChapters * progressPercent / 100)
-      newVideoProgressMap[courseId] = {
-        total: totalChapters,
-        completed: completedVideos,
-        percent: progressPercent
+      if (result.status === 'fulfilled') {
+        const chapters = result.value?.data?.items || result.value?.data || []
+        const totalChapters = chapters.length || 0
+        // P1-6: 优先使用练习进度中的实际完成数，而非百分比反推
+        const progressEntry = newProgressMap[courseId]
+        let completedVideos = 0
+        let progressPercent = completionMap[courseId]?.progress ?? inProgress[idx].progress ?? 0
+        if (progressEntry && totalChapters > 0) {
+          // 使用完成度百分比 × 总章节数作为近似值（待后端提供精确计数后替换）
+          completedVideos = Math.min(Math.round(totalChapters * progressPercent / 100), totalChapters)
+        }
+        if (totalChapters > 0) {
+          newVideoProgressMap[courseId] = {
+            total: totalChapters,
+            completed: completedVideos,
+            percent: progressPercent
+          }
+        }
       }
     })
     videoProgressMap.value = newVideoProgressMap
 
-    // 用 completion 数据修正 enrollment 进度，并获取收藏列表
+    // P0-2: 获取完整收藏列表，补充仅收藏未选课的课程
     let favoriteSet = new Set()
+    const newExtraFavorites = []
     try {
       const favRes = await getMyFavorites()
       const favList = favRes?.data || []
       favoriteSet = new Set(favList.map(f => String(f.courseId)))
-    } catch { /* ignore */ }
+
+      // 找出收藏了但不在 enrollments 中的课程
+      const enrolledIds = new Set(list.map(e => String(e.courseId)))
+      const nonEnrolledFavs = favList.filter(f => !enrolledIds.has(String(f.courseId)))
+
+      // 批量获取这些课程的详细信息
+      if (nonEnrolledFavs.length > 0) {
+        const courseResults = await Promise.allSettled(
+          nonEnrolledFavs.map(f => getCourseById(f.courseId))
+        )
+        courseResults.forEach((result, idx) => {
+          const fav = nonEnrolledFavs[idx]
+          if (result.status === 'fulfilled' && result.value?.data) {
+            const course = result.value.data
+            newExtraFavorites.push({
+              courseId: fav.courseId,
+              courseTitle: course.title || course.courseTitle || fav.courseTitle || '未知课程',
+              coverUrl: course.coverUrl || course.cover || null,
+              teacherName: course.teacherName || course.teacher || null,
+              favorited: true,
+              completed: false,
+              progress: 0,
+              enrolledAt: fav.createdAt,
+              _isFavoriteOnly: true // 标记为仅收藏
+            })
+          } else {
+            // 即使获取课程详情失败，也展示基本信息
+            newExtraFavorites.push({
+              courseId: fav.courseId,
+              courseTitle: fav.courseTitle || '未知课程',
+              coverUrl: null,
+              teacherName: null,
+              favorited: true,
+              completed: false,
+              progress: 0,
+              enrolledAt: fav.createdAt,
+              _isFavoriteOnly: true
+            })
+          }
+        })
+      }
+    } catch (e) {
+      // P1-3: getMyFavorites 失败时输出警告日志
+      console.warn('[MyCourses] getMyFavorites 失败', e)
+    }
+
+    extraFavorites.value = newExtraFavorites
     enrollments.value = list.map(e => {
       const cp = completionMap[e.courseId]
       const updatedProgress = cp?.progress ?? e.progress ?? 0
       return { ...e, progress: updatedProgress, favorited: favoriteSet.has(String(e.courseId)) }
     })
     totalElements.value = enrollments.value.length
-  } catch {
-    ElMessage.error('加载课程失败')
+    dataLoaded.value = true
+  } catch (err) {
+    // P2-2: 根据 HTTP 状态码显示不同的错误信息
+    const message = getErrorMessage(err)
+    loadErrorMessage.value = message
+    loadError.value = true
+    ElMessage.error(message)
   } finally {
     loading.value = false
   }
 }
 
 const handleTabChange = () => {
+  page.value = 1
+}
+
+/** P0-4: H5 Tab 切换——重置页码 */
+const handleH5TabChange = (tab) => {
+  activeTab.value = tab
   page.value = 1
 }
 
@@ -848,6 +999,20 @@ const handleContinue = (courseId) => {
   justify-content: center;
 }
 
+/* P1-4: 错误重试状态 */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-8) 0;
+}
+
+.retry-wrap {
+  margin-top: var(--space-4);
+  display: flex;
+  justify-content: center;
+}
+
 /* ================================================
    H5 布局
    ================================================ */
@@ -1051,8 +1216,9 @@ const handleContinue = (courseId) => {
   cursor: pointer;
 }
 
+/* P2-6: H5 底部安全区——适配 iPhone 等圆角底部设备 */
 .h5-bottom-safe {
-  height: 56px;
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ================================================

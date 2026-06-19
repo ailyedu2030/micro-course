@@ -86,10 +86,24 @@ public class TeacherServiceImpl implements TeacherService {
         }
         stats.setStudentCount((int) studentCount);
 
-        // 待批改作业（未批改的练习记录）
+        // 待批改作业（已提交但未批改的练习记录）
         if (!courseIds.isEmpty()) {
-            // 获取教师课程关联的练习
+            List<Long> exerciseIds = exerciseRepository.selectList(
+                new LambdaQueryWrapper<Exercise>()
+                    .in(Exercise::getCourseId, courseIds)
+                    .isNull(Exercise::getDeletedAt)
+                    .select(Exercise::getId))
+                .stream().map(Exercise::getId).collect(Collectors.toList());
+
             long pendingHomework = 0;
+            if (!exerciseIds.isEmpty()) {
+                pendingHomework = exerciseRecordRepository.selectCount(
+                    new LambdaQueryWrapper<ExerciseRecord>()
+                        .in(ExerciseRecord::getExerciseId, exerciseIds)
+                        .isNull(ExerciseRecord::getScore)
+                        .isNotNull(ExerciseRecord::getSubmittedAt)
+                        .isNull(ExerciseRecord::getDeletedAt));
+            }
             stats.setPendingHomework((int) pendingHomework);
         } else {
             stats.setPendingHomework(0);
@@ -144,8 +158,9 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public List<StudentActivityVO> getStudentActivity(Long teacherId, int days) {
-        List<StudentActivityVO> result = new ArrayList<>();
         LocalDate today = LocalDate.now();
+        LocalDateTime rangeStart = today.minusDays(days - 1).atStartOfDay();
+        LocalDateTime rangeEnd = today.plusDays(1).atStartOfDay();
 
         List<Long> courseIds = courseRepository.selectList(
             new LambdaQueryWrapper<Course>()
@@ -154,6 +169,22 @@ public class TeacherServiceImpl implements TeacherService {
                 .select(Course::getId))
             .stream().map(Course::getId).collect(Collectors.toList());
 
+        // 一次查询整个时间范围，避免 N+1
+        List<LearningProgress> allProgress = Collections.emptyList();
+        if (!courseIds.isEmpty()) {
+            allProgress = learningProgressRepository.selectList(
+                new LambdaQueryWrapper<LearningProgress>()
+                    .in(LearningProgress::getCourseId, courseIds)
+                    .ge(LearningProgress::getLastWatchAt, rangeStart)
+                    .lt(LearningProgress::getLastWatchAt, rangeEnd)
+                    .isNull(LearningProgress::getDeletedAt));
+        }
+
+        // 按日期分组
+        Map<LocalDate, List<LearningProgress>> grouped = allProgress.stream()
+            .collect(Collectors.groupingBy(p -> p.getLastWatchAt().toLocalDate()));
+
+        List<StudentActivityVO> result = new ArrayList<>();
         for (int i = days - 1; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
             String dateStr = date.format(DateTimeFormatter.ofPattern("MM-dd"));
@@ -161,42 +192,25 @@ public class TeacherServiceImpl implements TeacherService {
             StudentActivityVO vo = new StudentActivityVO();
             vo.setDate(dateStr);
 
-            // 学习时长（分钟）- 从 learning_progress 统计
-            LocalDateTime startOfDay = date.atStartOfDay();
-            LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+            List<LearningProgress> dayProgress = grouped.getOrDefault(date, Collections.emptyList());
 
-            if (!courseIds.isEmpty()) {
-                List<LearningProgress> progressList = learningProgressRepository.selectList(
-                    new LambdaQueryWrapper<LearningProgress>()
-                        .in(LearningProgress::getCourseId, courseIds)
-                        .ge(LearningProgress::getLastWatchAt, startOfDay)
-                        .lt(LearningProgress::getLastWatchAt, endOfDay)
-                        .isNull(LearningProgress::getDeletedAt));
+            int totalMinutes = dayProgress.stream()
+                .mapToInt(p -> p.getTotalWatchTime() != null ? p.getTotalWatchTime() : 0)
+                .sum();
+            vo.setStudyMinutes(totalMinutes / 60);
 
-                int totalMinutes = progressList.stream()
-                    .mapToInt(p -> p.getTotalWatchTime() != null ? p.getTotalWatchTime() : 0)
-                    .sum();
-                vo.setStudyMinutes(totalMinutes / 60); // 转为分钟
+            long activeUsers = dayProgress.stream()
+                .map(LearningProgress::getUserId)
+                .distinct()
+                .count();
+            vo.setActiveUsers((int) activeUsers);
 
-                // 活跃学员数
-                long activeUsers = progressList.stream()
-                    .map(LearningProgress::getUserId)
-                    .distinct()
-                    .count();
-                vo.setActiveUsers((int) activeUsers);
-
-                // 完成率（当天完成章节数/总学习进度数）
-                long completed = progressList.stream()
-                    .filter(p -> Boolean.TRUE.equals(p.getCompleted()))
-                    .count();
-                int completionRate = progressList.isEmpty() ? 0 :
-                    (int) (completed * 100 / progressList.size());
-                vo.setCompletionRate(completionRate);
-            } else {
-                vo.setStudyMinutes(0);
-                vo.setActiveUsers(0);
-                vo.setCompletionRate(0);
-            }
+            long completed = dayProgress.stream()
+                .filter(p -> Boolean.TRUE.equals(p.getCompleted()))
+                .count();
+            int completionRate = dayProgress.isEmpty() ? 0 :
+                (int) (completed * 100 / dayProgress.size());
+            vo.setCompletionRate(completionRate);
 
             result.add(vo);
         }
@@ -230,12 +244,13 @@ public class TeacherServiceImpl implements TeacherService {
 
             List<ExerciseRecord> records = new ArrayList<>();
             if (!exerciseIds.isEmpty()) {
-                records = exerciseRecordRepository.selectList(
+                Page<ExerciseRecord> recordPage = new Page<>(1, Math.min(size, 100));
+                exerciseRecordRepository.selectPage(recordPage,
                     new LambdaQueryWrapper<ExerciseRecord>()
                         .in(ExerciseRecord::getExerciseId, exerciseIds)
                         .isNull(ExerciseRecord::getDeletedAt)
-                        .orderByDesc(ExerciseRecord::getSubmittedAt)
-                        .last("LIMIT " + size));
+                        .orderByDesc(ExerciseRecord::getSubmittedAt));
+                records = recordPage.getRecords();
             }
 
             for (ExerciseRecord record : records) {
@@ -250,12 +265,13 @@ public class TeacherServiceImpl implements TeacherService {
 
         // 未回复的讨论帖
         if (!courseIds.isEmpty()) {
-            List<DiscussionPost> posts = discussionPostRepository.selectList(
+            Page<DiscussionPost> postPage = new Page<>(1, Math.min(size, 100));
+            discussionPostRepository.selectPage(postPage,
                 new LambdaQueryWrapper<DiscussionPost>()
                     .in(DiscussionPost::getCourseId, courseIds)
                     .isNull(DiscussionPost::getDeletedAt)
-                    .orderByDesc(DiscussionPost::getCreatedAt)
-                    .last("LIMIT " + size));
+                    .orderByDesc(DiscussionPost::getCreatedAt));
+            List<DiscussionPost> posts = postPage.getRecords();
 
             for (DiscussionPost post : posts) {
                 PendingTaskVO task = new PendingTaskVO();
@@ -276,11 +292,12 @@ public class TeacherServiceImpl implements TeacherService {
         User user = userRepository.selectById(teacherId);
         Long userId = user != null ? user.getId() : teacherId;
 
-        List<Notification> notifications = notificationRepository.selectList(
+        Page<Notification> notifPage = new Page<>(1, Math.min(size, 100));
+        notificationRepository.selectPage(notifPage,
             new LambdaQueryWrapper<Notification>()
                 .eq(Notification::getUserId, userId)
-                .orderByDesc(Notification::getCreatedAt)
-                .last("LIMIT " + size));
+                .orderByDesc(Notification::getCreatedAt));
+        List<Notification> notifications = notifPage.getRecords();
 
         return notifications.stream().map(n -> {
             TeacherNotificationVO vo = new TeacherNotificationVO();
@@ -306,7 +323,8 @@ public class TeacherServiceImpl implements TeacherService {
             TeacherCourseVO vo = new TeacherCourseVO();
             vo.setId(c.getId());
             vo.setTitle(c.getTitle());
-            vo.setCover(c.getCoverUrl());
+            String coverUrl = c.getCoverUrl();
+            vo.setCover(coverUrl != null && coverUrl.startsWith("https://") ? coverUrl : null);
             vo.setStudentCount(c.getStudentCount());
             vo.setRating(c.getAvgRating());
             vo.setStatus(c.getStatus());

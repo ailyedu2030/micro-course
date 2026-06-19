@@ -39,8 +39,17 @@
         :image-size="120"
       />
 
-      <!-- 数据表格 -->
-      <el-table v-else :data="tableData" stripe border class="data-table" :row-class-name="rowClassName">
+      <!-- ====== PC 数据表格 (> 768px) ====== -->
+      <el-table
+        v-else-if="!isMobile"
+        :data="tableData"
+        stripe
+        border
+        class="data-table"
+        :row-class-name="rowClassName"
+        @row-click="handleRowClick"
+        style="cursor: pointer;"
+      >
         <el-table-column prop="type" label="类型" width="140" align="center">
           <template #default="{ row }">
             <el-tag :type="getNotifTagType(row.type)" size="small" effect="light">
@@ -69,11 +78,45 @@
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button v-if="!row.isRead" type="primary" link size="small" @click="handleMarkRead(row)">标记已读</el-button>
+            <el-button v-if="!row.isRead" type="primary" link size="small" @click.stop="handleMarkRead(row)">标记已读</el-button>
             <span v-else class="dash-placeholder">—</span>
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- ====== H5 卡片列表 (≤ 768px) ====== -->
+      <div v-else class="card-list">
+        <div
+          v-for="row in tableData"
+          :key="row.id"
+          class="notification-card"
+          :class="{ 'card-unread': !row.isRead }"
+          @click="handleRowClick(row)"
+        >
+          <div class="card-header">
+            <el-tag :type="getNotifTagType(row.type)" size="small" effect="light">
+              {{ getNotifTagLabel(row.type) }}
+            </el-tag>
+            <span class="card-time">{{ row.createdAt }}</span>
+          </div>
+          <div class="card-title" :class="{ 'title-unread': !row.isRead }">{{ row.title }}</div>
+          <div class="card-content">{{ truncate(row.content, 80) }}</div>
+          <div class="card-footer">
+            <el-badge v-if="!row.isRead" is-dot class="unread-dot">
+              <el-tag type="warning" size="small" effect="light">未读</el-tag>
+            </el-badge>
+            <el-tag v-else type="info" size="small" effect="light">已读</el-tag>
+            <el-button
+              v-if="!row.isRead"
+              type="primary"
+              link
+              size="small"
+              @click.stop="handleMarkRead(row)"
+            >标记已读</el-button>
+          </div>
+        </div>
+      </div>
+
       <div v-if="tableData.length > 0" class="pagination-wrap">
         <el-pagination
           v-model:current-page="page"
@@ -89,17 +132,40 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getNotifications, markAsRead, markAllAsRead, getUnreadCount } from '@/api/notification'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useNotificationStore } from '@/store/notification'
 
+// ---------------------------------------------------------------------------
+// Store & Router
+// ---------------------------------------------------------------------------
+const notificationStore = useNotificationStore()
+const route = useRoute()
+const router = useRouter()
+
+// ---------------------------------------------------------------------------
+// P0-5: 统一使用 Store 的 unreadCount（移除组件本地 unreadCount ref）
+// ---------------------------------------------------------------------------
+const unreadCount = computed(() => notificationStore.unreadCount)
+
+// ---------------------------------------------------------------------------
+// 响应式：移动端检测
+// ---------------------------------------------------------------------------
+const isMobile = ref(window.innerWidth <= 768)
+function onResize() { isMobile.value = window.innerWidth <= 768 }
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
+
+// ---------------------------------------------------------------------------
+// 分页 & 过滤状态（P2: 从 URL query 初始化）
+// ---------------------------------------------------------------------------
 const loading = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
-const page = ref(1)
-const size = ref(10)
-const unreadCount = ref(0)
-const typeFilter = ref('')
+const page = ref(Number(route.query.page) || 1)
+const size = ref(Number(route.query.size) || 10)
+const typeFilter = ref(route.query.type || '')
 
 const typeTabs = [
   { label: '全部', value: '' },
@@ -136,23 +202,28 @@ function rowClassName({ row }) {
   return row.isRead ? '' : 'row-unread'
 }
 
-const fetchUnreadCount = async () => {
-  try {
-    const res = await getUnreadCount()
-    unreadCount.value = res.data || 0
-  } catch {
-    ElMessage.error('获取未读数量失败')
-  }
+// ---------------------------------------------------------------------------
+// P2: 同步分页/过滤状态到 URL query
+// ---------------------------------------------------------------------------
+function syncQueryToUrl() {
+  const query = {}
+  if (page.value !== 1) query.page = page.value
+  if (size.value !== 10) query.size = size.value
+  if (typeFilter.value) query.type = typeFilter.value
+  router.replace({ query })
 }
 
+// ---------------------------------------------------------------------------
+// P2: 统一使用 Store action 获取数据
+// ---------------------------------------------------------------------------
 const fetchData = async () => {
   loading.value = true
   try {
     const params = { page: page.value - 1, size: size.value }
     if (typeFilter.value) params.type = typeFilter.value
-    const res = await getNotifications(params)
-    tableData.value = res.data?.items || []
-    totalElements.value = res.data?.totalElements || 0
+    const data = await notificationStore.fetchList(params)
+    tableData.value = notificationStore.list
+    totalElements.value = notificationStore.totalElements
   } catch {
     ElMessage.error('获取通知列表失败')
   } finally {
@@ -160,46 +231,79 @@ const fetchData = async () => {
   }
 }
 
+// ---------------------------------------------------------------------------
+// P2: 统一使用 Store action 标记已读
+// ---------------------------------------------------------------------------
 const handleMarkRead = async (row) => {
-  try {
-    await markAsRead(row.id)
-    row.isRead = true
-    unreadCount.value = Math.max(0, unreadCount.value - 1)
-    ElMessage.success('已标记为已读')
-  } catch {
-    ElMessage.error('操作失败')
-  }
+  await notificationStore.markRead(row.id)
+  // store.markRead 已更新 list 里的 isRead 和 unreadCount
+  const item = tableData.value.find(n => n.id === row.id)
+  if (item) item.isRead = true
 }
 
+// ---------------------------------------------------------------------------
+// P1: "全部标记已读" 添加二次确认
+// ---------------------------------------------------------------------------
 const handleMarkAllRead = async () => {
   try {
-    await markAllAsRead()
-    unreadCount.value = 0
-    tableData.value.forEach(n => { n.isRead = true })
-    ElMessage.success('全部已标记为已读')
+    await ElMessageBox.confirm(
+      `确认将所有 ${unreadCount.value} 条未读消息标记为已读？`,
+      '全部标记已读',
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+    )
   } catch {
-    ElMessage.error('操作失败')
+    return // 用户取消
+  }
+  await notificationStore.markAllRead()
+  tableData.value.forEach(n => { n.isRead = true })
+  ElMessage.success('全部已标记为已读')
+}
+
+// ---------------------------------------------------------------------------
+// P1: 通知行点击跳转（根据 type + relatedId）
+// ---------------------------------------------------------------------------
+const ROUTE_MAP = {
+  ENROLLMENT: (id) => `/student/courses/${id}`,
+  GRADE: (id) => `/student/courses/${id}`,
+  DISCUSSION: (id) => `/student/courses/${id}`,
+}
+
+async function handleRowClick(row) {
+  // 自动标记已读
+  if (!row.isRead) {
+    await notificationStore.markRead(row.id)
+    row.isRead = true
+  }
+  // 有关联资源则跳转
+  if (row.relatedId && ROUTE_MAP[row.type]) {
+    router.push(ROUTE_MAP[row.type](row.relatedId))
   }
 }
 
 const handleSizeChange = () => {
   page.value = 1
+  syncQueryToUrl()
   fetchData()
 }
 
 const handlePageChange = () => {
+  syncQueryToUrl()
   fetchData()
 }
 
 const handleTypeChange = (value) => {
   typeFilter.value = value
   page.value = 1
+  syncQueryToUrl()
   fetchData()
 }
 
+// ---------------------------------------------------------------------------
+// 初始化
+// ---------------------------------------------------------------------------
 onMounted(() => {
   fetchData()
-  fetchUnreadCount()
+  notificationStore.fetchUnreadCount()
 })
 </script>
 
@@ -289,6 +393,62 @@ onMounted(() => {
 .unread-dot :deep(.el-badge__content.is-dot) {
   top: 2px;
   right: -2px;
+}
+
+/* ====== P1: H5 卡片列表 (≤ 768px) ====== */
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.notification-card {
+  background: var(--el-bg-color-overlay, #fff);
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.notification-card:active {
+  background-color: var(--el-fill-color-light, #f5f7fa);
+}
+
+.notification-card.card-unread {
+  background-color: #EFF6FF;
+  border-left: 3px solid var(--el-color-primary);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.card-time {
+  font-size: var(--text-xs, 12px);
+  color: var(--el-text-color-secondary, #909399);
+}
+
+.card-title {
+  font-size: var(--text-base);
+  margin-bottom: var(--space-1);
+  line-height: 1.4;
+}
+
+.card-content {
+  font-size: var(--text-sm, 13px);
+  color: var(--el-text-color-secondary, #909399);
+  line-height: 1.5;
+  margin-bottom: var(--space-2);
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 @media (max-width: 768px) {

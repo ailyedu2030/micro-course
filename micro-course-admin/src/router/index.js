@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isAuthenticated } from '../utils/auth'
 import { useUserStore } from '../store/user'
+import { ElMessage } from 'element-plus'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 
@@ -9,28 +10,29 @@ NProgress.configure({ showSpinner: false })
 const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/auth/Login.vue'), meta: { requiresAuth: false } },
   { path: '/', name: 'Home', redirect: '/admin/dashboard' },
-  { path: '/profile', redirect: (to) => { const role = sessionStorage.getItem('userRole') || ''; if (role === 'STUDENT') return '/student/profile'; return getRoleHomePage(role); } },
+  // P0-2: 从 userStore 读取角色（beforeEach 中已填充），避免与 sessionStorage 双源不一致
+  { path: '/profile', redirect: () => { const role = useUserStore().role || ''; if (role === 'STUDENT') return '/student/profile'; return getRoleHomePage(role); } },
   { path: '/departments', name: 'DepartmentList', component: () => import('../views/departments/DepartmentList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/majors', name: 'MajorList', component: () => import('../views/majors/MajorList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/classes', name: 'ClassList', component: () => import('../views/classes/ClassList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/users', name: 'UserList', component: () => import('../views/users/UserList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
-  { path: '/users/create', name: 'UserCreate', component: () => import('../views/users/UserForm.vue'), meta: { requiresAuth: true } },
-  { path: '/users/:id/edit', name: 'UserEdit', component: () => import('../views/users/UserForm.vue'), meta: { requiresAuth: true } },
-  { path: '/courses', name: 'CourseList', component: () => import('../views/courses/CourseList.vue'), meta: { requiresAuth: true } },
+  { path: '/users/create', name: 'UserCreate', component: () => import('../views/users/UserForm.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/users/:id/edit', name: 'UserEdit', component: () => import('../views/users/UserForm.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/courses', name: 'CourseList', component: () => import('../views/courses/CourseList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/courses/create', name: 'CourseCreate', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true } },
   { path: '/courses/:id', name: 'CourseView', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true } },
   { path: '/courses/:id/edit', name: 'CourseEdit', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true } },
   { path: '/course-categories', name: 'CourseCategoryList', component: () => import('../views/courses/CourseCategoryList.vue'), meta: { requiresAuth: true } },
   { path: '/tags', name: 'TagList', component: () => import('../views/courses/TagList.vue'), meta: { requiresAuth: true } },
-  { path: '/chapters', name: 'ChapterList', component: () => import('../views/courses/ChapterList.vue'), meta: { requiresAuth: true } },
-  { path: '/videos', name: 'VideoList', component: () => import('../views/courses/VideoList.vue'), meta: { requiresAuth: true } },
-  { path: '/enrollments', name: 'EnrollmentList', component: () => import('../views/courses/EnrollmentList.vue'), meta: { requiresAuth: true } },
-  { path: '/favorites', name: 'FavoriteList', component: () => import('../views/courses/FavoriteList.vue'), meta: { requiresAuth: true } },
-  { path: '/questions', name: 'QuestionList', component: () => import('../views/courses/QuestionList.vue'), meta: { requiresAuth: true } },
-  { path: '/exercises', name: 'ExerciseList', component: () => import('../views/courses/ExerciseList.vue'), meta: { requiresAuth: true } },
+  { path: '/chapters', name: 'ChapterList', component: () => import('../views/courses/ChapterList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
+  { path: '/videos', name: 'VideoList', component: () => import('../views/courses/VideoList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
+  { path: '/enrollments', name: 'EnrollmentList', component: () => import('../views/courses/EnrollmentList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
+  { path: '/favorites', name: 'FavoriteList', component: () => import('../views/courses/FavoriteList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
+  { path: '/questions', name: 'QuestionList', component: () => import('../views/courses/QuestionList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
+  { path: '/exercises', name: 'ExerciseList', component: () => import('../views/courses/ExerciseList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/courses/:courseId/exercises/form', name: 'ExerciseForm', component: () => import('../views/courses/ExerciseForm.vue'), meta: { requiresAuth: true } },
-  { path: '/discussions', name: 'DiscussionList', component: () => import('../views/courses/DiscussionList.vue'), meta: { requiresAuth: true } },
-  { path: '/discussions/:id', name: 'DiscussionDetail', component: () => import('../views/courses/DiscussionDetail.vue'), meta: { requiresAuth: true } },
+  { path: '/discussions', name: 'DiscussionList', component: () => import('../views/courses/DiscussionList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
+  { path: '/discussions/:id', name: 'DiscussionDetail', component: () => import('../views/courses/DiscussionDetail.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/notifications', name: 'NotificationList', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true } },
   { path: '/courses/review', name: 'CourseReview', component: () => import('../views/courses/CourseReviewList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
 
@@ -66,13 +68,9 @@ const routes = [
   { path: '/student/my-courses', name: 'StudentMyCourses', component: () => import('../views/student/MyCourses.vue'), meta: { requiresAuth: true, menuTab: true, menuLabel: '我的课程', menuIcon: 'Reading', menuOrder: 2 } },
   // /student/training 保留为隐藏路由（训练中心），不显示在导航标签页
   { path: '/student/training', name: 'StudentTraining', component: () => import('../views/student/TrainingCenter.vue'), meta: { requiresAuth: true } },
-  // Fix P1: /student/learning 路由 - 无 courseId 时显示学习中心，有 courseId 时重定向到学习页面
+  // Fix P1: /student/learning 路由 - 无 courseId 时显示学习中心，使用查询参数 ?courseId= 传递
   { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningView.vue'), meta: { requiresAuth: true } },
-  { path: '/student/learning/:courseId', redirect: (to) => {
-    if (!to.params.courseId) return '/student/learning'
-    return `/student/learning?courseId=${to.params.courseId}`
-  }, meta: { requiresAuth: true } },
-  { path: '/student/learning-stats', name: 'LearningCenter', component: () => import('../views/student/LearningCenter.vue'), meta: { requiresAuth: true } },
+  { path: '/student/learning-stats', name: 'StudentLearningStats', component: () => import('../views/student/LearningCenter.vue'), meta: { requiresAuth: true } },
   { path: '/student/notifications', name: 'StudentNotifications', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true, menuTab: true, menuLabel: '消息', menuIcon: 'Bell', menuOrder: 3 } },
   { path: '/student/announcements', redirect: '/student/notifications' },
   { path: '/student/exams', name: 'StudentExams', component: () => import('../views/student/Exams.vue'), meta: { requiresAuth: true } },
@@ -86,8 +84,14 @@ const routes = [
   { path: '/student/reviews', name: 'StudentMyReviews', component: () => import('../views/student/MyReviews.vue'), meta: { requiresAuth: true } },
   { path: '/student/settings', name: 'StudentSettings', component: () => import('../views/student/Settings.vue'), meta: { requiresAuth: true } },
   { path: '/student/achievements', name: 'StudentAchievements', component: () => import('../views/student/AchievementWall.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'ADMIN'] } },
-  // UX-NEW-2 修复:404 通配路由
-  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue') },
+  // P1-4: 404 通配路由 — 根据角色重定向到对应首页
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue'), beforeEnter: (to, from, next) => {
+    try {
+      const userStore = useUserStore()
+      if (userStore.role) return next(getRoleHomePage(userStore.role))
+    } catch { /* store 未初始化，显示 404 页面 */ }
+    next()
+  } },
 ]
 
 function getRoleHomePage(role) {
@@ -97,6 +101,8 @@ function getRoleHomePage(role) {
   return '/admin/dashboard'
 }
 
+// P1-3: STAFF_ONLY_PATHS — 仅限管理/教学角色访问的路径前缀列表
+// 学生端（STUDENT）命中这些路径时，beforeEach 会强制重定向到 /student/courses
 const STAFF_ONLY_PATHS = [
   '/departments', '/majors', '/classes',
   '/courses', '/course-categories', '/tags', '/chapters', '/videos',
@@ -148,8 +154,11 @@ router.afterEach(() => {
   NProgress.done()
 })
 
-router.onError(() => {
+// P1-5: 路由加载异常时给用户可感知的反馈
+router.onError((error) => {
   NProgress.done()
+  console.error('[router] 路由加载失败:', error)
+  ElMessage.error('页面加载失败，请刷新重试')
 })
 
 export default router

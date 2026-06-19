@@ -21,6 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -289,9 +290,6 @@ public class AuthServiceImpl implements AuthService {
         if (request.getGender() != null) {
             user.setGender(request.getGender());
         }
-        if (request.getAvatar() != null) {
-            user.setAvatar(request.getAvatar());
-        }
         userRepository.updateById(user);
         return convertToUserVO(user);
     }
@@ -305,7 +303,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            throw new BusinessException(ErrorCode.OLD_PASSWORD_INCORRECT);
         }
         // 密码复杂度校验
         if (!java.util.regex.Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")
@@ -314,6 +312,51 @@ public class AuthServiceImpl implements AuthService {
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.updateById(user);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public String uploadAvatar(MultipartFile file) {
+        Long userId = getCurrentUserId();
+        User user = userRepository.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        // 文件类型校验
+        String contentType = file.getContentType();
+        if (contentType == null || !java.util.Set.of("image/jpeg", "image/png", "image/webp").contains(contentType)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 JPEG、PNG、WebP 格式的图片");
+        }
+        // 文件大小校验（≤2MB）
+        if (file.getSize() > 2 * 1024 * 1024) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像文件大小不能超过 2MB");
+        }
+        try {
+            String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
+            java.io.File dir = new java.io.File(uploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            String ext = ".jpg";
+            if ("image/png".equals(contentType)) {
+                ext = ".png";
+            } else if ("image/webp".equals(contentType)) {
+                ext = ".webp";
+            }
+            String filename = userId + "_" + System.currentTimeMillis() + ext;
+            java.io.File dest = new java.io.File(uploadDir + filename);
+            file.transferTo(dest);
+
+            String avatarUrl = "/avatars/" + filename;
+            user.setAvatar(avatarUrl);
+            userRepository.updateById(user);
+            return avatarUrl;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("头像上传失败 userId={}", userId, e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像上传失败");
+        }
     }
 
     /** 本地登录失败条目,含过期时间 **/

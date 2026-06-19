@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -482,6 +483,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setDescription(course.getDescription());
         vo.setStudentCount(course.getStudentCount());
         vo.setAvgRating(course.getAvgRating());
+        vo.setRatingCount(0); // TODO: Phase 后续从评价表聚合
         vo.setPublishedAt(course.getPublishedAt());
         vo.setCreatedAt(course.getCreatedAt());
         vo.setUpdatedAt(course.getUpdatedAt());
@@ -534,6 +536,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setDescription(course.getDescription());
         vo.setStudentCount(course.getStudentCount());
         vo.setAvgRating(course.getAvgRating());
+        vo.setRatingCount(0); // TODO: Phase 后续从评价表聚合
         vo.setPublishedAt(course.getPublishedAt());
         vo.setCreatedAt(course.getCreatedAt());
         vo.setUpdatedAt(course.getUpdatedAt());
@@ -575,6 +578,15 @@ public class CourseServiceImpl implements CourseService {
         vo.setCreatedAt(chapter.getCreatedAt());
         vo.setUpdatedAt(chapter.getUpdatedAt());
         vo.setVersion(chapter.getVersion());
+        vo.setLearningObjectives(chapter.getLearningObjectives());
+        // 从 learningObjectives 提取 keyConcepts（按换行/逗号/分号分割）
+        if (chapter.getLearningObjectives() != null && !chapter.getLearningObjectives().isEmpty()) {
+            vo.setKeyConcepts(Arrays.stream(chapter.getLearningObjectives().split("[\\n,;]"))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList()));
+        }
+        // exercises 留空,等待 Phase 6 练习模块实现
         return vo;
     }
 }

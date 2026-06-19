@@ -82,12 +82,12 @@
                 class="avatar-uploader"
                 :show-file-list="false"
                 :auto-upload="false"
-                accept="image/jpeg,image/png,image/jpg"
+                accept="image/jpeg,image/png,image/webp"
                 :on-change="handleAvatarChange"
               >
                 <el-avatar :size="80" :src="avatarPreview || userStore.userInfo?.avatar" />
               </el-upload>
-              <div class="avatar-tip">支持 JPG、PNG 格式，建议 200×200 像素</div>
+              <div class="avatar-tip">支持 JPG、PNG、WebP 格式，建议 200×200 像素，≤2MB</div>
               <div class="avatar-actions">
                 <el-button
                   v-if="avatarPreview"
@@ -262,7 +262,7 @@
             class="avatar-uploader-mobile"
             :show-file-list="false"
             :auto-upload="false"
-            accept="image/jpeg,image/png,image/jpg"
+            accept="image/jpeg,image/png,image/webp"
             :on-change="handleAvatarChange"
           >
             <el-avatar :size="60" :src="avatarPreview || userStore.userInfo?.avatar" />
@@ -471,7 +471,7 @@ import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
-import { updateProfile, changePassword } from '../../api/auth'
+import { updateProfile, changePassword, uploadAvatar } from '../../api/auth'
 import { getMyEnrollments } from '../../api/enrollment'
 import { getMyBadges } from '../../api/badge'
 import { getMyWrongQuestions } from '../../api/wrong-question'
@@ -519,7 +519,8 @@ const passwordRules = {
   oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+    { min: 8, message: '密码长度不能少于8位', trigger: 'blur' },
+    { pattern: /^(?=.*[A-Za-z])(?=.*\d)/, message: '密码需包含字母和数字', trigger: 'blur' }
   ],
   confirmPassword: [
     { required: true, message: '请再次输入新密码', trigger: 'blur' },
@@ -533,19 +534,21 @@ const passwordLoading = ref(false)
 // 头像上传
 const avatarPreview = ref('')
 const avatarLoading = ref(false)
-const avatarMaxSize = 500 * 1024 // 500KB
+const avatarFile = ref(null)
+const avatarMaxSize = 2 * 1024 * 1024 // 2MB
 
 const handleAvatarChange = (uploadFile) => {
   const file = uploadFile?.raw
   if (!file) return
   if (file.size > avatarMaxSize) {
-    ElMessage.error('图片大小不能超过 500KB')
+    ElMessage.error('图片大小不能超过 2MB')
     return
   }
-  if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-    ElMessage.error('只支持 JPG、PNG 格式')
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    ElMessage.error('只支持 JPG、PNG、WebP 格式')
     return
   }
+  avatarFile.value = file
   const reader = new FileReader()
   reader.onload = (e) => {
     avatarPreview.value = e.target.result
@@ -553,19 +556,61 @@ const handleAvatarChange = (uploadFile) => {
   reader.readAsDataURL(file)
 }
 
+/**
+ * Canvas 压缩头像到 200×200 JPEG
+ */
+const compressAvatar = (file) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 200
+      canvas.height = 200
+      const ctx = canvas.getContext('2d')
+      // 居中裁剪
+      const size = Math.min(img.width, img.height)
+      const sx = (img.width - size) / 2
+      const sy = (img.height - size) / 2
+      ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200)
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }))
+          } else {
+            reject(new Error('图片压缩失败'))
+          }
+        },
+        'image/jpeg',
+        0.8
+      )
+    }
+    img.onerror = () => reject(new Error('图片加载失败'))
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 const handleSaveAvatar = async () => {
-  if (!avatarPreview.value) {
+  if (!avatarFile.value) {
     ElMessage.warning('请先选择头像')
     return
   }
   avatarLoading.value = true
   try {
-    await updateProfile({ avatar: avatarPreview.value })
+    const compressed = await compressAvatar(avatarFile.value)
+    await uploadAvatar(compressed)
     await userStore.getInfo()
     avatarPreview.value = ''
+    avatarFile.value = null
     ElMessage.success('头像更新成功')
   } catch (e) {
-    ElMessage.error('头像更新失败')
+    const msg = e?.message || '头像更新失败'
+    if (msg.includes('格式')) {
+      ElMessage.error('图片格式不支持，请使用 JPG/PNG/WebP')
+    } else if (msg.includes('大小') || msg.includes('2MB') || msg.includes('2 MB')) {
+      ElMessage.error('图片过大，请使用不超过 2MB 的图片')
+    } else {
+      // 拦截器已展示后端错误，避免重复
+    }
   } finally {
     avatarLoading.value = false
   }
@@ -573,6 +618,7 @@ const handleSaveAvatar = async () => {
 
 const handleCancelAvatar = () => {
   avatarPreview.value = ''
+  avatarFile.value = null
 }
 
 // 错题集
@@ -613,7 +659,8 @@ const fetchBadges = async () => {
   try {
     const res = await getMyBadges()
     earnedBadges.value = res.data || []
-  } catch {
+  } catch (e) {
+    console.warn('[Profile] 获取成就徽章失败:', e)
     earnedBadges.value = []
   } finally {
     badgeLoading.value = false
@@ -621,25 +668,31 @@ const fetchBadges = async () => {
 }
 
 const handleUpdateProfile = async () => {
+  try {
+    await profileFormRef.value.validate()
+  } catch {
+    return
+  }
   profileLoading.value = true
   try {
     await updateProfile(profileForm.value)
     ElMessage.success('资料更新成功')
     await userStore.getInfo()
   } catch {
-    ElMessage.error('资料更新失败')
+    // 拦截器已展示后端具体错误，此处不重复提示
   } finally {
     profileLoading.value = false
   }
 }
 
 const handleChangePassword = async () => {
+  passwordLoading.value = true
   try {
     await passwordFormRef.value.validate()
   } catch {
+    passwordLoading.value = false
     return
   }
-  passwordLoading.value = true
   try {
     await changePassword({
       oldPassword: passwordForm.value.oldPassword,
@@ -649,7 +702,7 @@ const handleChangePassword = async () => {
     passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
     passwordFormRef.value?.resetFields()
   } catch {
-    ElMessage.error('密码修改失败')
+    // 拦截器已展示后端具体错误（如"旧密码错误"），此处不重复提示
   } finally {
     passwordLoading.value = false
   }
@@ -672,7 +725,7 @@ const fetchWrongQuestions = async () => {
     const params = {}
     if (selectedCourseId.value) params.courseId = selectedCourseId.value
     const res = await getMyWrongQuestions(params)
-    wrongQuestions.value = res.data?.items || res.data || []
+    wrongQuestions.value = res.data || []
   } catch {
     ElMessage.error('获取错题记录失败')
   } finally {
@@ -750,13 +803,13 @@ onMounted(async () => {
       gender: info.gender || 'SECRET'
     }
   }
-  // 加载错题集
-  fetchWrongQuestions()
-  fetchMyEnrollments()
-  // 加载证书
-  fetchCertificates()
-  // 加载成就徽章
-  fetchBadges()
+  // 并行加载所有数据（P2 优化）
+  await Promise.all([
+    fetchWrongQuestions(),
+    fetchMyEnrollments(),
+    fetchCertificates(),
+    fetchBadges()
+  ])
 })
 
 onBeforeUnmount(() => {

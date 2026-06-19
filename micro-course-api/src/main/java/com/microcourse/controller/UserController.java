@@ -65,6 +65,24 @@ public class UserController {
         return R.ok(vo);
     }
 
+    /**
+     * GET /api/users/{id}/public-profile
+     * P0-3 修复：开放教师基本信息接口，返回 realName + avatar + bio，
+     * 任何已登录用户（含 STUDENT）均可访问，避免课程详情页 403。
+     */
+    @GetMapping("/{id}/public-profile")
+    @PreAuthorize("isAuthenticated()")
+    public R<UserVO> getPublicProfile(@PathVariable Long id) {
+        UserVO full = userService.getUserById(id);
+        UserVO publicVo = new UserVO();
+        publicVo.setId(full.getId());
+        publicVo.setRealName(full.getRealName());
+        publicVo.setAvatar(full.getAvatar());
+        publicVo.setBio(full.getBio());
+        publicVo.setRole(full.getRole());
+        return R.ok(publicVo);
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public R<UserVO> create(@Valid @RequestBody UserCreateRequest request) {

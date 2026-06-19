@@ -47,7 +47,8 @@ public class DiscussionCommentController {
     @PostMapping("/comments/{id}/like")
     @PreAuthorize("isAuthenticated()")
     public R<Void> like(@PathVariable Long id) {
-        commentService.like(id);
+        Long userId = getCurrentUserId();
+        commentService.like(id, userId);
         return R.ok();
     }
 

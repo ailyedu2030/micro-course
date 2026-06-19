@@ -118,7 +118,7 @@
         @row-click="handleRowClick"
       >
         <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="userName" label="学号" width="140" show-overflow-tooltip />
+        <el-table-column prop="username" label="学号" width="140" show-overflow-tooltip />
         <el-table-column prop="realName" label="姓名" width="120" show-overflow-tooltip />
         <el-table-column prop="className" label="班级" min-width="140" show-overflow-tooltip />
         <el-table-column prop="majorName" label="专业" min-width="140" show-overflow-tooltip />
@@ -139,18 +139,18 @@
             <span class="text-secondary">{{ formatDate(row.enrolledAt) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="lastActiveAt" label="最近活跃" width="170">
+        <el-table-column prop="lastWatchAt" label="最近活跃" width="170">
           <template #default="{ row }">
-            <span :class="isRecent(row.lastActiveAt) ? 'text-primary-color' : 'text-secondary'">
-              {{ formatDate(row.lastActiveAt) }}
+            <span :class="isRecent(row.lastWatchAt) ? 'text-primary-color' : 'text-secondary'">
+              {{ formatDate(row.lastWatchAt) }}
             </span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="140" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click.stop="handleViewDetail(row)" aria-label="编辑"><el-icon><View /></el-icon>详情
+            <el-button type="primary" link @click.stop="handleViewDetail(row)" aria-label="查看详情"><el-icon><View /></el-icon>详情
             </el-button>
-            <el-button type="primary" link @click.stop="handleSendMessage(row)" aria-label="编辑"><el-icon><Message /></el-icon>发消息
+            <el-button type="primary" link @click.stop="handleSendMessage(row)" aria-label="发送消息"><el-icon><Message /></el-icon>发消息
             </el-button>
           </template>
         </el-table-column>
@@ -187,7 +187,7 @@
         <el-descriptions-item label="学习进度" :span="2">
           <el-progress :percentage="currentStudent.progress || 0" :stroke-width="10" />
         </el-descriptions-item>
-        <el-descriptions-item label="最近活跃" :span="2">{{ formatDate(currentStudent.lastActiveAt) }}</el-descriptions-item>
+        <el-descriptions-item label="最近活跃" :span="2">{{ formatDate(currentStudent.lastWatchAt) }}</el-descriptions-item>
       </el-descriptions>
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
@@ -237,7 +237,7 @@ import {
   Search, RefreshRight, Download, View, Message
 } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
-import { getCourseEnrollments, getEnrollments } from '@/api/enrollment'
+import { getCourseEnrollments, getEnrollments, getStudentDetail } from '@/api/enrollment'
 import { sendNotification } from '@/api/notification'
 import { useUserStore } from '@/store/user'
 
@@ -303,12 +303,13 @@ function handleReset() {
 async function fetchCourses() {
   try {
     const teacherId = userStore.userInfo?.id
-    const { data } = await getCourses({ size: 1000, teacherId })
+    const { data } = await getCourses({ size: 9999, teacherId })
     courseOptions.value = data.items || []
     if (route.query.courseId) {
       searchForm.courseId = Number(route.query.courseId)
     }
-  } catch {
+  } catch (err) {
+    console.error('[StudentList] fetchCourses failed:', err)
     ElMessage.error('获取课程列表失败')
   }
 }
@@ -320,7 +321,7 @@ async function fetchData() {
   try {
     let result
     if (searchForm.courseId) {
-      // 按课程查询
+      // 按课程查询（P1-2: 分页）
       const params = {
         page: page.value - 1,
         size: size.value,
@@ -329,34 +330,22 @@ async function fetchData() {
       const { data } = await getCourseEnrollments(params)
       result = data
     } else {
-      // 查询教师所有课程的学生
+      // 查询教师所有课程的学生（P0-4/P1-4: 服务端过滤 className/majorName）
       const params = {
         page: page.value - 1,
         size: size.value,
         teacherId: userStore.userId,
-        studentName: searchForm.className || undefined,
+        className: searchForm.className || undefined,
+        majorName: searchForm.majorName || undefined,
         status: searchForm.status || undefined
       }
       const { data } = await getEnrollments(params)
       result = data
     }
-    if (Array.isArray(result)) {
-      tableData.value = result
-      totalElements.value = result.length
-    } else {
-      tableData.value = result.items || []
-      totalElements.value = result.totalElements || tableData.value.length
-    }
-    // 过滤本地关键字
-    if (searchForm.className || searchForm.majorName || searchForm.status) {
-      tableData.value = tableData.value.filter(item => {
-        if (searchForm.className && !(item.className || '').includes(searchForm.className)) return false
-        if (searchForm.majorName && !(item.majorName || '').includes(searchForm.majorName)) return false
-        if (searchForm.status && item.status !== searchForm.status) return false
-        return true
-      })
-    }
-  } catch {
+    tableData.value = result.items || []
+    totalElements.value = result.totalElements || tableData.value.length
+  } catch (err) {
+    console.error('[StudentList] fetchData failed:', err)
     error.value = true
     ElMessage.error('获取学员列表失败')
   } finally {
@@ -376,8 +365,7 @@ function handlePageChange() {
 
 // 行点击（AUD-教师-9:打开详情弹窗）
 function handleRowClick(row) {
-  currentStudent.value = row
-  detailVisible.value = true
+  handleViewDetail(row)
 }
 
 // a11y:el-table 行键盘支持(A11Y-018)
@@ -401,16 +389,23 @@ function bindTableKeyboard() {
   tbody.querySelectorAll('tr').forEach((tr, idx) => {
     tr.setAttribute('tabindex', '0')
     tr.setAttribute('role', 'button')
-    tr.setAttribute('aria-label', `选择学员 ${tableData.value?.[idx]?.name || tableData.value?.[idx]?.username || ''}`)
+    tr.setAttribute('aria-label', `选择学员 ${tableData.value?.[idx]?.realName || tableData.value?.[idx]?.username || ''}`)
   })
   _keydownBound = true
 }
 onMounted(() => nextTick(bindTableKeyboard))
 
-// 查看详情
-function handleViewDetail(row) {
-  currentStudent.value = row
+// 查看详情（P0-2: 调用后端 getStudentDetail 获取完整信息）
+async function handleViewDetail(row) {
   detailVisible.value = true
+  try {
+    const { data } = await getStudentDetail(row.userId)
+    currentStudent.value = { ...row, ...data }
+  } catch (err) {
+    console.error('[StudentList] getStudentDetail failed:', err)
+    // fallback: 使用表格行数据
+    currentStudent.value = row
+  }
 }
 
 // 发消息
@@ -420,7 +415,7 @@ function handleSendMessage(row) {
   messageVisible.value = true
 }
 
-// 确认发送消息
+// 确认发送消息（P0-1: 补充 type/title 字段）
 async function confirmSendMessage() {
   if (!messageForm.content.trim()) {
     ElMessage.warning('请输入消息内容')
@@ -429,12 +424,15 @@ async function confirmSendMessage() {
   sendingMessage.value = true
   try {
     await sendNotification({
-      userId: currentStudent.value.id,
+      userId: currentStudent.value.userId,
+      type: 'SYSTEM',
+      title: '教师通知',
       content: messageForm.content
     })
     ElMessage.success('消息已发送')
     messageVisible.value = false
-  } catch {
+  } catch (err) {
+    console.error('[StudentList] sendNotification failed:', err)
     ElMessage.error('发送失败，请稍后重试')
   } finally {
     sendingMessage.value = false
@@ -455,7 +453,7 @@ function handleExport() {
     专业: item.majorName || '',
     进度: `${item.progress || 0}%`,
     选课时间: formatDate(item.enrolledAt),
-    最近活跃: formatDate(item.lastActiveAt)
+    最近活跃: formatDate(item.lastWatchAt)
   }))
   const ws = XLSX.utils.json_to_sheet(exportData)
   const wb = XLSX.utils.book_new()

@@ -11,8 +11,12 @@
         <el-form-item label="选择课程">
           <el-select
             v-model="searchForm.courseId"
-            placeholder="请选择课程"
+            placeholder="请输入课程名搜索"
             clearable
+            filterable
+            remote
+            :remote-method="searchCourses"
+            :loading="courseLoading"
             class="course-select"
             @change="handleCourseChange"
           >
@@ -191,7 +195,7 @@
       </el-form>
       <template #footer>
         <el-button @click="gradeVisible = false">关闭</el-button>
-        <el-button v-if="!isGraded" type="primary" :loading="savingGrade" @click="confirmGrade">
+        <el-button v-if="!isGraded" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmGrade">
           提交成绩
         </el-button>
       </template>
@@ -222,6 +226,7 @@ const userStore = useUserStore()
 
 // 加载状态
 const loading = ref(false)
+const courseLoading = ref(false)
 
 // 表格数据
 const tableData = ref([])
@@ -260,17 +265,43 @@ const gradeForm = reactive({
 // 是否已批改
 const isGraded = computed(() => currentStudent.value?.score != null)
 
-// 获取课程列表
+// 获取课程列表（初始加载小批量）
 async function fetchCourses() {
   try {
     const teacherId = userStore.userInfo?.id
-    const { data } = await getCourses({ size: 1000, teacherId })
+    const { data } = await getCourses({ size: 20, teacherId })
     courseOptions.value = data.items || []
     if (route.query.courseId) {
       searchForm.courseId = Number(route.query.courseId)
+      // 确保路由指定的课程在选项中
+      const exists = courseOptions.value.some(c => c.id === searchForm.courseId)
+      if (!exists) {
+        const { data: extra } = await getCourses({ size: 1, teacherId, courseId: searchForm.courseId })
+        const extraItems = extra.items || []
+        courseOptions.value = [...courseOptions.value, ...extraItems]
+      }
     }
   } catch {
     ElMessage.error('获取课程列表失败')
+  }
+}
+
+// P1: 远程搜索课程（懒加载）
+async function searchCourses(keyword) {
+  if (!keyword) {
+    // 无关键词时恢复初始列表
+    fetchCourses()
+    return
+  }
+  courseLoading.value = true
+  try {
+    const teacherId = userStore.userInfo?.id
+    const { data } = await getCourses({ size: 20, teacherId, keyword })
+    courseOptions.value = data.items || []
+  } catch {
+    courseOptions.value = []
+  } finally {
+    courseLoading.value = false
   }
 }
 
@@ -449,6 +480,7 @@ async function confirmGrade() {
 function formatDate(isoString) {
   if (!isoString) return '-'
   const d = new Date(isoString)
+  if (isNaN(d.getTime())) return '-'
   const pad = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }

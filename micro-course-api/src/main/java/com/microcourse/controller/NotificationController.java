@@ -57,18 +57,30 @@ public class NotificationController {
         return R.ok(count);
     }
 
+    /** P0-1: 通知发送允许教师和管理员 */
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<NotificationVO> send(@Valid @RequestBody NotificationCreateRequest request) {
         Long userId = getCurrentUserId();
         NotificationVO vo = notificationService.send(request, userId);
         return R.ok(vo);
     }
 
+    /** P1: getCurrentUserId 类型安全 —— 兼容 Long / String / Number 类型 principal */
     private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof Long) {
             return (Long) principal;
+        }
+        if (principal instanceof Number) {
+            return ((Number) principal).longValue();
+        }
+        if (principal instanceof String str) {
+            try {
+                return Long.parseLong(str);
+            } catch (NumberFormatException ignored) {
+                // fall through
+            }
         }
         throw new com.microcourse.exception.BusinessException(com.microcourse.exception.ErrorCode.TOKEN_INVALID);
     }

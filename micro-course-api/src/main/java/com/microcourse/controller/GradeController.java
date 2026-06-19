@@ -53,6 +53,15 @@ public class GradeController {
         return R.ok(gradeService.create(request, getCurrentUserId()));
     }
 
+    /**
+     * 教师批改成绩 — 前端提交 enrollmentId + score + comment
+     */
+    @PostMapping("/teacher-grade")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<GradeVO> teacherGrade(@Valid @RequestBody GradeTeacherSubmitRequest request) {
+        return R.ok(gradeService.teacherGrade(request, getCurrentUserId()));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<GradeVO> update(@PathVariable Long id, @Valid @RequestBody GradeUpdateRequest request) {
@@ -67,7 +76,11 @@ public class GradeController {
     }
 
     private Long getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID, "未登录");
+        }
+        Object principal = auth.getPrincipal();
         if (principal instanceof Long) {
             return (Long) principal;
         }

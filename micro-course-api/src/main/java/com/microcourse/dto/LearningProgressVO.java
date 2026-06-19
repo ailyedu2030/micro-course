@@ -10,6 +10,7 @@ public class LearningProgressVO {
     private String courseTitle;
     private Long chapterId;
     private String chapterTitle;
+    private Long lessonId;
     private Integer videoProgress;
     private Integer videoPosition;
     private Boolean exerciseCompleted;
@@ -38,6 +39,8 @@ public class LearningProgressVO {
     public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public String getChapterTitle() { return chapterTitle; }
     public void setChapterTitle(String chapterTitle) { this.chapterTitle = chapterTitle; }
+    public Long getLessonId() { return lessonId; }
+    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
     public Integer getVideoProgress() { return videoProgress; }
     public void setVideoProgress(Integer videoProgress) { this.videoProgress = videoProgress; }
     public Integer getVideoPosition() { return videoPosition; }

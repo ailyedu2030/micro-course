@@ -5,6 +5,7 @@ import com.microcourse.dto.EnrollmentQueryRequest;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
+import com.microcourse.dto.StudentDetailVO;
 
 import com.microcourse.dto.EnrollmentRankingVO;
 
@@ -18,6 +19,10 @@ public interface EnrollmentService {
 
     PageResult<EnrollmentVO> getEnrollmentPage(EnrollmentQueryRequest query);
 
+    /** P1-2: 课程学员分页查询 */
+    PageResult<EnrollmentVO> getCourseEnrollmentPage(Long courseId, int page, int size);
+
+    /** 保留全量查询（供导出使用） */
     List<EnrollmentVO> getCourseEnrollments(Long courseId);
 
     List<EnrollmentRankingVO> getCourseRanking(Long courseId, int limit, Long currentUserId);
@@ -31,4 +36,7 @@ public interface EnrollmentService {
     long countCompletedByTeacherId(Long teacherId);
 
     double getAvgScoreByTeacherId(Long teacherId);
+
+    /** P0-2: 获取学员详情（关联 users + classes + majors） */
+    StudentDetailVO getStudentDetail(Long userId);
 }

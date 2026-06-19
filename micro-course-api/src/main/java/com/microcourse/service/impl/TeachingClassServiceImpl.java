@@ -18,6 +18,9 @@ import com.microcourse.repository.TeachingClassRepository;
 import com.microcourse.repository.TeachingClassStudentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.TeachingClassService;
+import com.microcourse.util.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,10 +28,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class TeachingClassServiceImpl implements TeachingClassService {
+
+    private static final Logger log = LoggerFactory.getLogger(TeachingClassServiceImpl.class);
+
+    /** P1-1: 学生状态白名单 */
+    private static final Set<String> VALID_STUDENT_STATUSES = Set.of("ACTIVE", "DISABLED", "SUSPENDED");
 
     private final TeachingClassRepository teachingClassRepository;
     private final TeachingClassStudentRepository teachingClassStudentRepository;
@@ -51,8 +60,8 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     @Override
     public PageResult<TeachingClassVO> page(int page, int size, Long teacherId, Long courseId,
                                            String semester, Integer status) {
-        Page<TeachingClass> ipage = new Page<>(page, size);
-        // MyBatis-Plus Page 是 1-based, Controller 传 0-based, 已在 Controller 层转换
+        // Controller 传入 0-based page, MyBatis-Plus Page 使用 1-based, 此处 +1 转换
+        Page<TeachingClass> ipage = new Page<>(page + 1, size);
         LambdaQueryWrapper<TeachingClass> wrapper = new LambdaQueryWrapper<>();
 
         if (teacherId != null) {
@@ -263,6 +272,18 @@ public class TeachingClassServiceImpl implements TeachingClassService {
             throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
         }
 
+        // P0-3: 越权校验 — 当前用户必须是该班级教师或管理员
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isAdmin() && !currentUserId.equals(tc.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        // P1-2: 容量上限检查
+        if (tc.getStudentCount() != null && tc.getMaxStudents() != null
+                && tc.getStudentCount() >= tc.getMaxStudents()) {
+            throw new BusinessException(ErrorCode.CLASS_FULL);
+        }
+
         User user = userRepository.selectById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
@@ -291,11 +312,23 @@ public class TeachingClassServiceImpl implements TeachingClassService {
                         .eq(TeachingClass::getId, classId)
                         .setSql("student_count = COALESCE(student_count, 0) + 1")
                         .set(TeachingClass::getUpdatedAt, LocalDateTime.now()));
+
+        log.info("添加学生: classId={}, userId={}, operator={}", classId, userId, currentUserId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void removeStudent(Long classId, Long userId) {
+        // P0-3: 越权校验
+        TeachingClass tc = teachingClassRepository.selectById(classId);
+        if (tc == null) {
+            throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
+        }
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isAdmin() && !currentUserId.equals(tc.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
         TeachingClassStudent record = teachingClassStudentRepository.selectList(
                 new LambdaQueryWrapper<TeachingClassStudent>()
                         .eq(TeachingClassStudent::getClassId, classId)
@@ -311,19 +344,39 @@ public class TeachingClassServiceImpl implements TeachingClassService {
                         .eq(TeachingClass::getId, classId)
                         .setSql("student_count = GREATEST(COALESCE(student_count, 0) - 1, 0)")
                         .set(TeachingClass::getUpdatedAt, LocalDateTime.now()));
+
+        log.info("移除学生: classId={}, userId={}, operator={}", classId, userId, currentUserId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateStudentStatus(Long classId, Long userId, String status) {
+        // P1-1: 状态白名单校验
+        if (status == null || !VALID_STUDENT_STATUSES.contains(status)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+        }
+
+        // P0-3: 越权校验
+        TeachingClass tc = teachingClassRepository.selectById(classId);
+        if (tc == null) {
+            throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
+        }
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isAdmin() && !currentUserId.equals(tc.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
         TeachingClassStudent record = teachingClassStudentRepository.selectList(
                 new LambdaQueryWrapper<TeachingClassStudent>()
                         .eq(TeachingClassStudent::getClassId, classId)
                         .eq(TeachingClassStudent::getUserId, userId)
         ).stream().findFirst().orElseThrow(() -> new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND));
 
+        String oldStatus = record.getStatus();
         record.setStatus(status);
         teachingClassStudentRepository.updateById(record);
+
+        log.info("修改学生状态: classId={}, userId={}, {} -> {}, operator={}", classId, userId, oldStatus, status, currentUserId);
     }
 
     private TeachingClassVO convertToVO(TeachingClass tc) {

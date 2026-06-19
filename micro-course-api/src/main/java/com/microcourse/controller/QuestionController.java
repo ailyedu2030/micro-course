@@ -40,7 +40,7 @@ public class QuestionController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("isAuthenticated()")
     public R<QuestionVO> getById(@PathVariable Long id) {
         QuestionVO vo = questionService.getById(id);
         return R.ok(vo);

@@ -126,6 +126,12 @@
       </el-col>
     </el-row>
 
+    <!-- 统计加载失败提示 -->
+    <div v-if="statsError" class="stats-error-tip">
+      <el-icon><WarningFilled /></el-icon>
+      <span>统计数据加载失败，请刷新重试</span>
+    </div>
+
     <!-- 中部主体区：左侧图表 + 右侧待办通知 -->
     <el-row :gutter="16" class="main-row">
       <!-- 左侧图表 -->
@@ -292,6 +298,7 @@ const greeting = computed(() => {
 
 // 统计数据
 const statsLoading = ref(true)
+const statsError = ref(false)
 const stats = ref({ courseCount: 0, studentCount: 0, pendingHomework: 0, pendingQuestions: 0, completionRate: 0, avgScore: 0 })
 
 // 学情图表
@@ -333,11 +340,12 @@ async function refreshAll() {
 // 加载统计数据
 async function loadStats() {
   statsLoading.value = true
+  statsError.value = false
   try {
     const res = await getStats()
     stats.value = res.data || {}
   } catch {
-    // 静默失败
+    statsError.value = true
   } finally {
     statsLoading.value = false
   }
@@ -489,6 +497,17 @@ function resizeCharts() {
   activeChart?.resize()
 }
 
+let resizeTimer = null
+function debouncedResizeCharts() {
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(resizeCharts, 200)
+}
+
+async function startRefresh() {
+  await refreshAll()
+  refreshTimer = setTimeout(startRefresh, refreshInterval.value)
+}
+
 onMounted(async () => {
   await Promise.all([
     loadStats(),
@@ -497,19 +516,21 @@ onMounted(async () => {
     loadNotifications(),
     loadCourses()
   ])
-  window.addEventListener('resize', resizeCharts)
-  refreshTimer = setInterval(() => {
-    refreshAll()
-  }, refreshInterval.value)
+  window.addEventListener('resize', debouncedResizeCharts)
+  refreshTimer = setTimeout(startRefresh, refreshInterval.value)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeCharts)
+  window.removeEventListener('resize', debouncedResizeCharts)
   studyChart?.dispose()
   activeChart?.dispose()
   if (refreshTimer) {
-    clearInterval(refreshTimer)
+    clearTimeout(refreshTimer)
     refreshTimer = null
+  }
+  if (resizeTimer) {
+    clearTimeout(resizeTimer)
+    resizeTimer = null
   }
 })
 </script>
@@ -569,6 +590,18 @@ onBeforeUnmount(() => {
 /* stat-row */
 .stats-row {
   margin-bottom: 24px;
+}
+
+.stats-error-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  background: #FEF2F2;
+  color: #DC2626;
+  border-radius: 8px;
+  font-size: 13px;
 }
 
 /* stat-card */

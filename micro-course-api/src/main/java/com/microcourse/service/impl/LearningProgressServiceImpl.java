@@ -3,17 +3,22 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.LearningProgressVO;
 import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.dto.ProgressUpdateRequest;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.LearningProgress;
+import com.microcourse.entity.Video;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.LearningProgressRepository;
+import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.LearningProgressService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,13 +36,16 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     private final LearningProgressRepository learningProgressRepository;
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
+    private final VideoRepository videoRepository;
 
     public LearningProgressServiceImpl(LearningProgressRepository learningProgressRepository,
                                        CourseRepository courseRepository,
-                                       CourseChapterRepository courseChapterRepository) {
+                                       CourseChapterRepository courseChapterRepository,
+                                       VideoRepository videoRepository) {
         this.learningProgressRepository = learningProgressRepository;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
+        this.videoRepository = videoRepository;
     }
 
     @Override
@@ -101,12 +109,15 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         if (request.getExercisePassed() != null) {
             wrapper.set(LearningProgress::getExercisePassed, request.getExercisePassed());
         }
+        if (request.getLessonId() != null) {
+            wrapper.set(LearningProgress::getLessonId, request.getLessonId());
+        }
         // 总观看时间:任何客户端上报都走原子累加,避免多设备并发覆盖丢失(CON-003 修复)
         if (request.getWatchDelta() != null && request.getWatchDelta() > 0) {
-            wrapper.setSql("total_watch_time = COALESCE(total_watch_time, 0) + " + request.getWatchDelta());
+            wrapper.setSql(true, "total_watch_time = COALESCE(total_watch_time, 0) + {0}", request.getWatchDelta());
         } else if (request.getTotalWatchTime() != null && request.getTotalWatchTime() > 0) {
             // 兼容旧客户端字段:也转为累加语义,而非覆盖
-            wrapper.setSql("total_watch_time = COALESCE(total_watch_time, 0) + " + request.getTotalWatchTime());
+            wrapper.setSql(true, "total_watch_time = COALESCE(total_watch_time, 0) + {0}", request.getTotalWatchTime());
         }
         if (request.getDeviceId() != null) {
             wrapper.set(LearningProgress::getDeviceId, request.getDeviceId());
@@ -144,6 +155,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         progress.setUserId(request.getUserId());
         progress.setCourseId(request.getCourseId());
         progress.setChapterId(request.getChapterId());
+        progress.setLessonId(request.getLessonId());
         progress.setVideoProgress(request.getVideoProgress());
         progress.setVideoPosition(request.getVideoPosition());
         progress.setExerciseCompleted(request.getExerciseCompleted());
@@ -158,7 +170,22 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         progress.setCreatedAt(LocalDateTime.now());
         progress.setUpdatedAt(LocalDateTime.now());
         learningProgressRepository.insert(progress);
-        return convertToVO(progress);
+        // N+1 修复:使用批量版 convertToVO,避免每次 create 触发 2 次 selectById
+        Map<Long, Course> courseMap = new HashMap<>();
+        Map<Long, CourseChapter> chapterMap = new HashMap<>();
+        if (progress.getCourseId() != null) {
+            Course course = courseRepository.selectById(progress.getCourseId());
+            if (course != null) {
+                courseMap.put(course.getId(), course);
+            }
+        }
+        if (progress.getChapterId() != null) {
+            CourseChapter ch = courseChapterRepository.selectById(progress.getChapterId());
+            if (ch != null) {
+                chapterMap.put(ch.getId(), ch);
+            }
+        }
+        return convertToVO(progress, courseMap, chapterMap);
     }
 
     @Override
@@ -170,15 +197,19 @@ public class LearningProgressServiceImpl implements LearningProgressService {
                .eq(LearningProgress::getCompleted, true);
         long completedCount = learningProgressRepository.selectCount(wrapper);
 
-        LambdaQueryWrapper<CourseChapter> chapterWrapper = new LambdaQueryWrapper<>();
-        chapterWrapper.eq(CourseChapter::getCourseId, courseId);
-        long totalChapters = courseChapterRepository.selectCount(chapterWrapper);
+        long totalVideos = videoRepository.selectCount(
+                new LambdaQueryWrapper<Video>().eq(Video::getCourseId, courseId));
+        long totalProgressItems = learningProgressRepository.selectCount(
+                new LambdaQueryWrapper<LearningProgress>()
+                        .eq(LearningProgress::getUserId, userId)
+                        .eq(LearningProgress::getCourseId, courseId));
 
-        double completion = totalChapters == 0 ? 0.0 : (double) completedCount / totalChapters;
+        double completion = totalVideos == 0 ? 0.0 : (double) completedCount / totalVideos;
         Map<String, Object> result = new HashMap<>();
         result.put("completedCount", completedCount);
-        result.put("totalChapters", totalChapters);
-        result.put("completion", completion);
+        result.put("totalLessons", totalVideos);
+        result.put("startedLessons", totalProgressItems);
+        result.put("completion", Math.min(completion, 1.0));
         return result;
     }
 
@@ -221,6 +252,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         vo.setUserId(progress.getUserId());
         vo.setCourseId(progress.getCourseId());
         vo.setChapterId(progress.getChapterId());
+        vo.setLessonId(progress.getLessonId());
         vo.setVideoProgress(progress.getVideoProgress());
         vo.setVideoPosition(progress.getVideoPosition());
         vo.setExerciseCompleted(progress.getExerciseCompleted());
@@ -257,6 +289,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         vo.setUserId(progress.getUserId());
         vo.setCourseId(progress.getCourseId());
         vo.setChapterId(progress.getChapterId());
+        vo.setLessonId(progress.getLessonId());
         vo.setVideoProgress(progress.getVideoProgress());
         vo.setVideoPosition(progress.getVideoPosition());
         vo.setExerciseCompleted(progress.getExerciseCompleted());

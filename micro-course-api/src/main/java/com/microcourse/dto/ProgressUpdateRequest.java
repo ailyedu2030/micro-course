@@ -28,6 +28,8 @@ public class ProgressUpdateRequest {
 
     private Boolean completed;
 
+    private Long lessonId;
+
     public ProgressUpdateRequest() {}
 
     public Integer getVideoProgress() { return videoProgress; }
@@ -52,4 +54,6 @@ public class ProgressUpdateRequest {
     public void setConfidence(Integer confidence) { this.confidence = confidence; }
     public Boolean getCompleted() { return completed; }
     public void setCompleted(Boolean completed) { this.completed = completed; }
+    public Long getLessonId() { return lessonId; }
+    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
 }

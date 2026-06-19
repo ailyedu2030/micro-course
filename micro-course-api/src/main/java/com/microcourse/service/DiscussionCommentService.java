@@ -14,7 +14,7 @@ public interface DiscussionCommentService {
 
     void delete(Long id, Long userId);
 
-    void like(Long id);
+    void like(Long id, Long userId);
 
     List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> flatList);
 }

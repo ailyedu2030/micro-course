@@ -35,6 +35,8 @@
           <el-table-column prop="likeCount" label="点赞" width="80" align="center" />
           <el-table-column prop="createdAt" label="发布时间" width="170" />
         </el-table>
+        <!-- P0-6: PC 端空状态 -->
+        <el-empty v-if="!loading && tableData.length === 0" description="暂无帖子" />
         <div class="pagination-wrap">
           <el-pagination
             v-model:current-page="page"
@@ -96,7 +98,7 @@
     <el-dialog v-model="postDialogVisible" title="发布帖子" width="500px" @close="resetPostForm" :close-on-press-escape="true">
       <el-form :model="postForm" :rules="postRules" ref="postFormRef" label-width="80px">
         <el-form-item label="标题" prop="title">
-          <el-input v-model="postForm.title" placeholder="请输入帖子标题" maxlength="100" show-word-limit />
+          <el-input v-model="postForm.title" placeholder="请输入帖子标题" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="内容" prop="content">
           <el-input
@@ -104,7 +106,7 @@
             type="textarea"
             :rows="5"
             placeholder="请输入帖子内容"
-            maxlength="2000"
+            maxlength="5000"
             show-word-limit
           />
         </el-form-item>
@@ -167,9 +169,9 @@
           </div>
         </div>
       </div>
-      <template #footer v-if="currentPost && !isMobile">
+      <template #footer v-if="currentPost">
         <div class="post-actions">
-          <el-button v-if="currentPost?.userId === userStore.userInfo?.id || userStore.userInfo?.role === 'ADMIN'" type="danger" link size="small" @click="handleDeletePost">删除帖子</el-button>
+          <el-button v-if="currentPost?.isOwner || userStore.userInfo?.role === 'ADMIN'" type="danger" link size="small" @click="handleDeletePost">删除帖子</el-button>
         </div>
       </template>
     </el-dialog>
@@ -234,8 +236,9 @@ const fetchData = async () => {
     const res = await getPosts(params)
     tableData.value = res.data?.items || []
     totalElements.value = res.data?.totalElements || 0
-  } catch {
-    ElMessage.error('获取帖子列表失败')
+  } catch (error) {
+    const msg = error?.response?.data?.message || '获取帖子列表失败'
+    ElMessage.error(msg)
   } finally {
     loading.value = false
   }
@@ -264,8 +267,9 @@ const handleSubmitPost = async () => {
     resetPostForm()
     page.value = 1
     fetchData()
-  } catch {
-    ElMessage.error('发布失败')
+  } catch (error) {
+    const msg = error?.response?.data?.message || '发布失败'
+    ElMessage.error(msg)
   } finally {
     submitting.value = false
   }
@@ -279,8 +283,9 @@ const viewDetail = async (row) => {
     const commentRes = await getComments(row.id)
     comments.value = commentRes.data || []
     detailDialogVisible.value = true
-  } catch {
-    ElMessage.error('加载帖子详情失败')
+  } catch (error) {
+    const msg = error?.response?.data?.message || '加载帖子详情失败'
+    ElMessage.error(msg)
   }
 }
 
@@ -297,8 +302,9 @@ const handleReply = async ({ parentId, content }) => {
     // 刷新评论
     const commentRes = await getComments(currentPost.value.id)
     comments.value = commentRes.data || []
-  } catch {
-    ElMessage.error('回复失败')
+  } catch (error) {
+    const msg = error?.response?.data?.message || '回复失败'
+    ElMessage.error(msg)
   }
 }
 
@@ -312,8 +318,9 @@ const handleSubmitReply = async () => {
     // 刷新评论
     const commentRes = await getComments(currentPost.value.id)
     comments.value = commentRes.data || []
-  } catch {
-    ElMessage.error('回复失败')
+  } catch (error) {
+    const msg = error?.response?.data?.message || '回复失败'
+    ElMessage.error(msg)
   } finally {
     replySubmitting.value = false
   }
@@ -326,8 +333,9 @@ const handleLikeComment = async (commentId) => {
     // 刷新评论
     const commentRes = await getComments(currentPost.value.id)
     comments.value = commentRes.data || []
-  } catch {
-    ElMessage.error('点赞失败')
+  } catch (error) {
+    const msg = error?.response?.data?.message || '点赞失败'
+    ElMessage.error(msg)
   }
 }
 
@@ -339,8 +347,11 @@ const handleDeletePost = async () => {
     detailDialogVisible.value = false
     page.value = 1
     fetchData()
-  } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+  } catch (error) {
+    if (error !== 'cancel') {
+      const msg = error?.response?.data?.message || '删除失败'
+      ElMessage.error(msg)
+    }
   }
 }
 

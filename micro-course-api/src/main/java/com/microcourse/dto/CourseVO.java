@@ -29,6 +29,7 @@ public class CourseVO {
     private String description;
     private Integer studentCount;
     private BigDecimal avgRating;
+    private Integer ratingCount;
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -81,6 +82,8 @@ public class CourseVO {
     public void setStudentCount(Integer studentCount) { this.studentCount = studentCount; }
     public BigDecimal getAvgRating() { return avgRating; }
     public void setAvgRating(BigDecimal avgRating) { this.avgRating = avgRating; }
+    public Integer getRatingCount() { return ratingCount; }
+    public void setRatingCount(Integer ratingCount) { this.ratingCount = ratingCount; }
     public LocalDateTime getPublishedAt() { return publishedAt; }
     public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }

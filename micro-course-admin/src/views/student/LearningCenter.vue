@@ -125,7 +125,7 @@
       </div>
 
       <!-- 继续学习 -->
-      <div class="continue-learning">
+      <div v-if="recentCourse.title" class="continue-learning">
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner">
             <div class="continue-info">
@@ -376,7 +376,7 @@
       </div>
 
       <!-- 继续学习 -->
-      <div class="continue-learning h5-continue">
+      <div v-if="recentCourse.title" class="continue-learning h5-continue">
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner h5-continue-inner">
             <div class="continue-info">
@@ -592,10 +592,10 @@ const recentRecords = ref([])
 // 最近课程
 // ---------------------------------------------------------------------------
 const recentCourse = ref({
-  title: 'Java 程序设计基础',
-  currentChapter: 3,
+  title: '',
+  currentChapter: 0,
   progress: 0,
-  cover: 'https://picsum.photos/seed/java/300/180'
+  cover: ''
 })
 
 // ---------------------------------------------------------------------------
@@ -628,30 +628,39 @@ async function loadHeatmap() {
     })
 
     const today = new Date()
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
-    const startDayOfWeek = firstDay.getDay() || 7
-    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - 29) // 近30天，包含今天
 
     const weeks = []
-    let dayIndex = 1
+    let currentWeek = []
+    const startDayOfWeek = startDate.getDay() || 7 // 1=周一 ... 7=周日
 
-    for (let w = 0; w < 6; w++) {
-      const week = []
-      for (let d = 0; d < 7; d++) {
-        if (w === 0 && d < startDayOfWeek - 1) {
-          week.push({ day: '', date: '', minutes: 0, level: 0 })
-        } else if (dayIndex > daysInMonth) {
-          week.push({ day: '', date: '', minutes: 0, level: 0 })
-        } else {
-          const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(dayIndex).padStart(2, '0')}`
-          const minutes = minutesMap[date] || 0
-          const level = minutes === 0 ? 0 : minutes < 30 ? 1 : minutes < 60 ? 2 : 3
-          week.push({ day: dayIndex, date, minutes, level })
-          dayIndex++
-        }
+    // 第一周前面的空白格
+    for (let i = 0; i < startDayOfWeek - 1; i++) {
+      currentWeek.push({ day: '', date: '', minutes: 0, level: 0 })
+    }
+
+    // 生成 30 天的数据
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(startDate)
+      date.setDate(startDate.getDate() + i)
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      const minutes = minutesMap[dateStr] || 0
+      const level = minutes === 0 ? 0 : minutes < 30 ? 1 : minutes < 60 ? 2 : 3
+      currentWeek.push({ day: date.getDate(), date: dateStr, minutes, level })
+
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek)
+        currentWeek = []
       }
-      weeks.push(week)
-      if (dayIndex > daysInMonth) break
+    }
+
+    // 最后一周不满 7 天时补空白格
+    if (currentWeek.length > 0) {
+      while (currentWeek.length < 7) {
+        currentWeek.push({ day: '', date: '', minutes: 0, level: 0 })
+      }
+      weeks.push(currentWeek)
     }
 
     heatmapData.value = weeks
@@ -667,57 +676,23 @@ function getHeatmapCellClass(level) {
 // ---------------------------------------------------------------------------
 // 推荐课程
 // ---------------------------------------------------------------------------
-const recommendations = ref([
-  {
-    id: 1,
-    title: 'Python 数据分析实战',
-    cover: 'https://picsum.photos/seed/python/300/180',
-    tag: '数据分析',
-    author: '李明教授',
-    students: 1234,
-    rating: 4.8
-  },
-  {
-    id: 2,
-    title: '机器学习入门与实践',
-    cover: 'https://picsum.photos/seed/ml/300/180',
-    tag: '人工智能',
-    author: '王强博士',
-    students: 2345,
-    rating: 4.9
-  },
-  {
-    id: 3,
-    title: 'Web 前端开发进阶',
-    cover: 'https://picsum.photos/seed/web/300/180',
-    tag: '前端开发',
-    author: '张老师',
-    students: 3456,
-    rating: 4.7
-  }
-])
+const recommendations = ref([])
 
 // ---------------------------------------------------------------------------
 // 徽章
 // ---------------------------------------------------------------------------
-const badges = ref([
-  { id: 1, name: '初露锋芒', earned: true },
-  { id: 2, name: '学习达人', earned: true },
-  { id: 3, name: '全勤徽章', earned: true },
-  { id: 4, name: '知识探索者', earned: false },
-  { id: 5, name: '优秀学员', earned: false }
-])
+const badges = ref([])
 
 // ---------------------------------------------------------------------------
 // API 获取函数
 // ---------------------------------------------------------------------------
-async function getStats() {
+async function getStats(sharedEnrollments) {
   try {
     const userId = userStore.userInfo?.id
     const [totalTimeData, enrollmentData, studyDaysData] = await Promise.all([
       getTotalTime().catch(() => ({ data: { totalSeconds: 0 } })),
-      getMyEnrollments(userId),
-      getStudyDays().catch(() => ({ data: { days: 0 } }))
+      sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments(userId),
+      getStudyDays().catch(() => ({ data: { totalDays: 0 } }))
     ])
 
     const enrollments = Array.isArray(enrollmentData?.data) ? enrollmentData.data : []
@@ -728,7 +703,7 @@ async function getStats() {
     const totalHours = totalSeconds > 0 ? `${Math.round(totalSeconds / 3600)}小时` : '0小时'
 
     // 学习天数
-    const studyDays = studyDaysData?.data?.days ?? studyDaysData?.data?.studyDays ?? 0
+    const studyDays = studyDaysData?.data?.totalDays ?? 0
 
     stats.value = {
       totalHours,
@@ -752,11 +727,16 @@ async function getStats() {
   }
 }
 
-async function getRecent() {
+async function getRecent(sharedEnrollments) {
   try {
-    const userId = userStore.userInfo?.id
-    const { data } = await getMyEnrollments(userId)
-    const enrollments = Array.isArray(data) ? data : []
+    let enrollments
+    if (sharedEnrollments) {
+      enrollments = sharedEnrollments
+    } else {
+      const userId = userStore.userInfo?.id
+      const { data } = await getMyEnrollments(userId)
+      enrollments = Array.isArray(data) ? data : []
+    }
 
     // 取第一个进行中的课程作为"继续学习"
     const inProgress = enrollments.find(e => !e.completed && e.progress > 0)
@@ -769,7 +749,7 @@ async function getRecent() {
       }
     }
   } catch {
-    // 保持默认 mock
+    recentCourse.value = { title: '', currentChapter: 0, progress: 0, cover: '' }
   }
 }
 
@@ -827,11 +807,16 @@ async function getChart() {
   }
 }
 
-async function getRecommendations() {
+async function getRecommendations(sharedEnrollments) {
   try {
-    const userId = userStore.userInfo?.id
-    const { data } = await getMyEnrollments(userId)
-    const enrollments = Array.isArray(data) ? data : []
+    let enrollments
+    if (sharedEnrollments) {
+      enrollments = sharedEnrollments
+    } else {
+      const userId = userStore.userInfo?.id
+      const { data } = await getMyEnrollments(userId)
+      enrollments = Array.isArray(data) ? data : []
+    }
 
     // 取进行中的课程作为推荐
     const inProgress = enrollments
@@ -851,7 +836,7 @@ async function getRecommendations() {
       recommendations.value = inProgress
     }
   } catch {
-    // 保持默认 mock
+    recommendations.value = []
   }
 }
 
@@ -866,15 +851,20 @@ async function getBadges() {
       earned: b.earned !== false
     }))
   } catch {
-    // 保持默认 mock
+    badges.value = []
   }
 }
 
-async function getRecentRecords() {
+async function getRecentRecords(sharedEnrollments) {
   try {
-    const userId = userStore.userInfo?.id
-    const { data } = await getMyEnrollments(userId)
-    const enrollments = Array.isArray(data) ? data : []
+    let enrollments
+    if (sharedEnrollments) {
+      enrollments = sharedEnrollments
+    } else {
+      const userId = userStore.userInfo?.id
+      const { data } = await getMyEnrollments(userId)
+      enrollments = Array.isArray(data) ? data : []
+    }
 
     // 按最近学习时间排序，取最近 5 条
     const sorted = enrollments
@@ -982,7 +972,25 @@ async function loadData() {
   loading.value = true
   chartLoading.value = true
   try {
-    await Promise.all([getStats(), getRecent(), getChart(), getRecommendations(), getBadges(), loadHeatmap(), getRecentRecords()])
+    // 统一获取一次选课数据，避免 4 次重复调用
+    const userId = userStore.userInfo?.id
+    let sharedEnrollments = []
+    try {
+      const { data: enrollmentData } = await getMyEnrollments(userId)
+      sharedEnrollments = Array.isArray(enrollmentData) ? enrollmentData : []
+    } catch {
+      sharedEnrollments = []
+    }
+
+    await Promise.all([
+      getStats(sharedEnrollments),
+      getRecent(sharedEnrollments),
+      getChart(),
+      getRecommendations(sharedEnrollments),
+      getBadges(),
+      loadHeatmap(),
+      getRecentRecords(sharedEnrollments)
+    ])
     // 检查今日是否已打卡
     await checkTodayStatus()
   } finally {
@@ -1054,12 +1062,6 @@ function handleResize() {
 
 onMounted(async () => {
   await loadData()
-  await nextTick()
-  if (!isMobile.value && chartRef.value) {
-    initChart(chartRef.value)
-  } else if (isMobile.value && chartRefH5.value) {
-    initChart(chartRefH5.value)
-  }
   window.addEventListener('resize', handleResize)
 })
 

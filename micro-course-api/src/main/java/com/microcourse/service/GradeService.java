@@ -15,4 +15,9 @@ public interface GradeService {
     GradeVO update(Long id, GradeUpdateRequest request, Long teacherId);
 
     void delete(Long id);
+
+    /**
+     * 教师通过 enrollmentId 批改成绩（前端直接提交 enrollmentId + score + comment）
+     */
+    GradeVO teacherGrade(GradeTeacherSubmitRequest request, Long teacherId);
 }

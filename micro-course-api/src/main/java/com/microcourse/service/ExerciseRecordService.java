@@ -35,4 +35,12 @@ public interface ExerciseRecordService {
      * @return [{date, accuracy, totalCount, correctCount}]
      */
     List<Map<String, Object>> getAccuracyTrend(Long userId, int days);
+
+    /**
+     * 获取当前用户在某练习的已完成答题次数（用于前端刷新后恢复 attemptNo）
+     * @param userId     用户ID
+     * @param exerciseId 练习ID
+     * @return 已完成答题次数
+     */
+    int getAttemptCount(Long userId, Long exerciseId);
 }
