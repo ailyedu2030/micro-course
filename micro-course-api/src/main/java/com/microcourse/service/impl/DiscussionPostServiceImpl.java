@@ -91,10 +91,14 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     public PageResult<DiscussionPostVO> pageAdmin(DiscussionPageQuery query) {
         LambdaQueryWrapper<DiscussionPost> wrapper = new LambdaQueryWrapper<>();
 
-        // keyword搜索：title或content模糊匹配
+        // keyword搜索：title或content模糊匹配(通配符转义,防 LIKE 注入 DF-002)
         if (query.getKeyword() != null && !query.getKeyword().isBlank()) {
-            wrapper.and(w -> w.like(DiscussionPost::getTitle, query.getKeyword())
-                    .or().like(DiscussionPost::getContent, query.getKeyword()));
+            String escaped = query.getKeyword()
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_");
+            wrapper.and(w -> w.like(DiscussionPost::getTitle, escaped)
+                    .or().like(DiscussionPost::getContent, escaped));
         }
 
         // 按courseId筛选
@@ -307,10 +311,8 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        // 软删：status=0
-        post.setStatus(0);
-        post.setUpdatedAt(LocalDateTime.now());
-        postRepository.updateById(post);
+        // 软删：使用 @TableLogic 的 deleteById 触发 deletedAt 填充,而非手动设 status=0
+        postRepository.deleteById(id);
     }
 
     @Override

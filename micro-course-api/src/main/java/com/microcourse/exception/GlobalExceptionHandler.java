@@ -15,6 +15,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.security.access.AccessDeniedException;
+import jakarta.validation.ConstraintViolationException;
 
 import java.nio.file.NoSuchFileException;
 
@@ -77,6 +78,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<R<Void>> handleAccessDenied(AccessDeniedException e) {
         return ResponseEntity.status(403).body(R.fail(403, "无权访问"));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<R<Void>> handleConstraintViolation(ConstraintViolationException e) {
+        String message = e.getConstraintViolations().stream()
+                .findFirst()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .orElse("参数校验失败");
+        return ResponseEntity.status(400).body(R.fail(400, message));
     }
 
     @ExceptionHandler(Exception.class)

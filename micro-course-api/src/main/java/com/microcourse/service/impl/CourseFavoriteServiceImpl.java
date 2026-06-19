@@ -65,8 +65,19 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     public List<CourseFavoriteVO> getMyFavorites(Long userId) {
         LambdaQueryWrapper<CourseFavorite> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseFavorite::getUserId, userId)
-               .orderByDesc(CourseFavorite::getCreatedAt);
+               .orderByDesc(CourseFavorite::getCreatedAt)
+               .last("LIMIT 200"); // 防止无界增长
         List<CourseFavorite> favorites = favoriteRepository.selectList(wrapper);
+
+        // 批量预加载课程,避免 N+1
+        java.util.Set<Long> courseIds = favorites.stream()
+                .map(CourseFavorite::getCourseId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, String> courseTitles = new java.util.HashMap<>();
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds).forEach(c -> courseTitles.put(c.getId(), c.getTitle()));
+        }
 
         return favorites.stream().map(fav -> {
             CourseFavoriteVO vo = new CourseFavoriteVO();
@@ -74,11 +85,7 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
             vo.setUserId(fav.getUserId());
             vo.setCourseId(fav.getCourseId());
             vo.setCreatedAt(fav.getCreatedAt());
-
-            Course course = courseRepository.selectById(fav.getCourseId());
-            if (course != null) {
-                vo.setCourseTitle(course.getTitle());
-            }
+            vo.setCourseTitle(courseTitles.get(fav.getCourseId()));
             return vo;
         }).collect(Collectors.toList());
     }
@@ -86,18 +93,27 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     @Override
     @Transactional(readOnly = true)
     public List<CourseFavoriteVO> listAll() {
-        List<CourseFavorite> favorites = favoriteRepository.selectList(null);
+        List<CourseFavorite> favorites = favoriteRepository.selectList(
+                new LambdaQueryWrapper<CourseFavorite>()
+                        .orderByDesc(CourseFavorite::getCreatedAt)
+                        .last("LIMIT 200")
+        );
+        // 批量预加载课程
+        java.util.Set<Long> courseIds = favorites.stream()
+                .map(CourseFavorite::getCourseId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, String> courseTitles = new java.util.HashMap<>();
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds).forEach(c -> courseTitles.put(c.getId(), c.getTitle()));
+        }
         return favorites.stream().map(fav -> {
             CourseFavoriteVO vo = new CourseFavoriteVO();
             vo.setId(fav.getId());
             vo.setUserId(fav.getUserId());
             vo.setCourseId(fav.getCourseId());
             vo.setCreatedAt(fav.getCreatedAt());
-
-            Course course = courseRepository.selectById(fav.getCourseId());
-            if (course != null) {
-                vo.setCourseTitle(course.getTitle());
-            }
+            vo.setCourseTitle(courseTitles.get(fav.getCourseId()));
             return vo;
         }).collect(Collectors.toList());
     }

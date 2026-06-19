@@ -103,6 +103,10 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         if (request.getTotalWatchTime() != null) {
             wrapper.set(LearningProgress::getTotalWatchTime, request.getTotalWatchTime());
         }
+        // 增量观看时间累加:多设备并发时用 watchDelta 做原子 SQL 累加,避免覆盖丢失
+        if (request.getWatchDelta() != null && request.getWatchDelta() > 0) {
+            wrapper.setSql("total_watch_time = COALESCE(total_watch_time, 0) + " + request.getWatchDelta());
+        }
         if (request.getDeviceId() != null) {
             wrapper.set(LearningProgress::getDeviceId, request.getDeviceId());
         }

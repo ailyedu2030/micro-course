@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { ElMessage } from 'element-plus'
 import { getUnreadCount, getNotifications, markAsRead, markAllAsRead } from '../api/notification'
 import { isAuthenticated } from '../utils/auth'
 
@@ -13,8 +14,8 @@ export const useNotificationStore = defineStore('notification', {
       try {
         const res = await getUnreadCount()
         this.unreadCount = res.data || 0
-      } catch {
-        /* silent */
+      } catch (e) {
+        console.warn('[notification] fetchUnreadCount failed', e)
       }
     },
     async fetchList(params = {}) {
@@ -22,8 +23,9 @@ export const useNotificationStore = defineStore('notification', {
         const res = await getNotifications(params)
         this.list = res.data?.items || []
         return res.data
-      } catch {
-        return { items: [], totalElements: 0 }
+      } catch (e) {
+        console.warn('[notification] fetchList failed', e)
+        return { items: [], totalElements: 0, error: true }
       }
     },
     async markRead(id) {
@@ -32,8 +34,9 @@ export const useNotificationStore = defineStore('notification', {
         this.unreadCount = Math.max(0, this.unreadCount - 1)
         const item = this.list.find(n => n.id === id)
         if (item) item.isRead = true
-      } catch {
-        /* silent */
+      } catch (e) {
+        console.warn('[notification] markRead failed id=', id, e)
+        ElMessage.warning('标记已读失败,请稍后重试')
       }
     },
     async markAllRead() {
@@ -41,20 +44,22 @@ export const useNotificationStore = defineStore('notification', {
         await markAllAsRead()
         this.unreadCount = 0
         this.list.forEach(n => { n.isRead = true })
-      } catch {
-        // silent
+      } catch (e) {
+        console.warn('[notification] markAllRead failed', e)
+        ElMessage.warning('全部标记已读失败,请稍后重试')
       }
+    },
+    async _pollLoop(intervalMs) {
+      await this.fetchUnreadCount()
+      this.pollingTimer = setTimeout(() => this._pollLoop(intervalMs), intervalMs)
     },
     startPolling(intervalMs = 30000) {
       if (!isAuthenticated()) return
-      this.fetchUnreadCount()
-      this.pollingTimer = setInterval(() => {
-        this.fetchUnreadCount()
-      }, intervalMs)
+      this._pollLoop(intervalMs)
     },
     stopPolling() {
       if (this.pollingTimer) {
-        clearInterval(this.pollingTimer)
+        clearTimeout(this.pollingTimer)
         this.pollingTimer = null
       }
     }

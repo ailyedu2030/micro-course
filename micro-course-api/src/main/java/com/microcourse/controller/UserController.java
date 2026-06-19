@@ -71,7 +71,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal")
     public R<UserVO> update(@PathVariable Long id,
                              @Valid @RequestBody UserUpdateRequest request) {
         UserVO vo = userService.updateUser(id, request);
@@ -127,7 +127,7 @@ public class UserController {
      * 上传用户头像
      */
     @PostMapping("/{id}/avatar")
-    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal")
     public R<String> uploadAvatar(@PathVariable Long id,
                                    @RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {

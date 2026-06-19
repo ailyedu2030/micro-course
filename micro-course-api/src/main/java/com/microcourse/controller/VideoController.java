@@ -30,23 +30,33 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/videos")
 public class VideoController {
+
+    private static final Logger log = LoggerFactory.getLogger(VideoController.class);
 
     private static final long MAX_FILE_SIZE = 2L * 1024 * 1024 * 1024; // 2GB
 
     private final VideoService videoService;
     private final VideoTranscodeService videoTranscodeService;
     private final VideoSignUtil videoSignUtil;
+    private final Executor videoUploadExecutor;
 
     public VideoController(VideoService videoService,
                           VideoTranscodeService videoTranscodeService,
-                          VideoSignUtil videoSignUtil) {
+                          VideoSignUtil videoSignUtil,
+                          @org.springframework.beans.factory.annotation.Qualifier("videoUploadExecutor")
+                          Executor videoUploadExecutor) {
         this.videoService = videoService;
         this.videoTranscodeService = videoTranscodeService;
         this.videoSignUtil = videoSignUtil;
+        this.videoUploadExecutor = videoUploadExecutor;
     }
 
     @GetMapping
@@ -150,9 +160,14 @@ public class VideoController {
                 uploadedFile.transferTo(destPath.toFile());
                 videoTranscodeService.transcode(videoId);
             } catch (IOException e) {
-                // 记录错误但不影响主流程
+                log.error("[VideoUpload] 异步文件传输/转码失败 videoId={} dest={}", videoId, destPath, e);
+                try {
+                    videoService.updateStatus(videoId, 3);
+                } catch (Exception ex) {
+                    log.error("[VideoUpload] 更新视频状态为 FAILED 也失败 videoId={}", videoId, ex);
+                }
             }
-        });
+        }, videoUploadExecutor);
 
         // 立即返回 Video 记录
         return R.ok(videoService.getById(video.getId()));

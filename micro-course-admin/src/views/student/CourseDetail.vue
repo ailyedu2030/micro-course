@@ -359,7 +359,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Star, User } from '@element-plus/icons-vue'
@@ -413,6 +413,7 @@ const handleResize = () => {
   isMobile.value = window.innerWidth <= 768
 }
 window.addEventListener('resize', handleResize)
+onBeforeUnmount(() => window.removeEventListener('resize', handleResize))
 
 // 格式化时长：分钟 → XhYm
 const formatDuration = (minutes) => {

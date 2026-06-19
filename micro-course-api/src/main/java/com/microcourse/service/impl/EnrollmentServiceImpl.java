@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.EnrollmentCreateRequest;
@@ -86,6 +87,26 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         enrollmentRepository.insert(enrollment);
         return convertToVO(enrollment);
+    }
+
+    /**
+     * 幂等重入兜底:并发场景下两个请求都通过 check-then-act 检查,DB UNIQUE 约束会拒绝后到者。
+     * 捕获 DuplicateKeyException 后回查 DB,返回已存在的 enrollment,实现幂等。
+     */
+    private EnrollmentVO insertIdempotent(Enrollment enrollment) {
+        try {
+            enrollmentRepository.insert(enrollment);
+            return convertToVO(enrollment);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            LambdaQueryWrapper<Enrollment> q = new LambdaQueryWrapper<>();
+            q.eq(Enrollment::getUserId, enrollment.getUserId())
+                    .eq(Enrollment::getCourseId, enrollment.getCourseId());
+            Enrollment existing = enrollmentRepository.selectOne(q);
+            if (existing == null) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "选课冲突且无法恢复");
+            }
+            return convertToVO(existing);
+        }
     }
 
     @Override

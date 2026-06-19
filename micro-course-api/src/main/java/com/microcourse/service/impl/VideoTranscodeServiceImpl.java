@@ -80,11 +80,19 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
             return;
         }
 
-        // 更新状态为 TRANSCODING
-        video.setStatus(TRANSCODING);
-        video.setProgress(0);
-        video.setUpdatedAt(LocalDateTime.now());
-        videoRepository.updateById(video);
+        // 更新状态为 TRANSCODING — 使用 CAS 条件更新防止并发双 ffmpeg
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Video> casWrapper =
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        casWrapper.eq(Video::getId, videoId)
+                .eq(Video::getStatus, UPLOADING)
+                .set(Video::getStatus, TRANSCODING)
+                .set(Video::getProgress, 0)
+                .set(Video::getUpdatedAt, LocalDateTime.now());
+        int affected = videoRepository.update(null, casWrapper);
+        if (affected == 0) {
+            log.warn("[VideoTranscode] videoId={} 已被其他转码任务接管,跳过本次", videoId);
+            return;
+        }
 
         Long courseId = video.getCourseId();
         String outputDir = "/data/videos/" + courseId + "/" + videoId;
@@ -166,10 +174,18 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
         try {
             ProcessBuilder pb = new ProcessBuilder("ffmpeg", "-version");
             Process p = pb.start();
+            // 消费 stdout/stderr 防进程挂起(RES-003)
+            try (java.io.InputStream stdout = p.getInputStream();
+                 java.io.InputStream stderr = p.getErrorStream()) {
+                byte[] buf = new byte[4096];
+                while (stdout.read(buf) != -1) { /* discard */ }
+                while (stderr.read(buf) != -1) { /* discard */ }
+            }
             boolean available = p.waitFor(5, TimeUnit.SECONDS) && p.exitValue() == 0;
             p.destroyForcibly();
             return available;
         } catch (Exception e) {
+            log.warn("[VideoTranscode] ffmpeg 检查失败", e);
             return false;
         }
     }

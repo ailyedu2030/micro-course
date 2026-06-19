@@ -171,6 +171,18 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
+    @Transactional
+    public void updateStatus(Long videoId, int status) {
+        Video video = videoRepository.selectById(videoId);
+        if (video == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        video.setStatus(status);
+        video.setUpdatedAt(LocalDateTime.now());
+        videoRepository.updateById(video);
+    }
+
+    @Override
     public String uploadCover(Long videoId, MultipartFile file) {
         Video video = videoRepository.selectById(videoId);
         if (video == null) {

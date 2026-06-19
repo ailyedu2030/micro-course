@@ -114,3 +114,4 @@ micro-course-api/src/main/resources/db/migration/V38__*.sql
 micro-course-api/src/main/resources/db/migration/V39__*.sql
 .gstack/
 page-state.yml
+.audit-cache/

@@ -42,6 +42,10 @@ public class AuthServiceImpl implements AuthService {
     private final OperationLogService operationLogService;
     private final HttpServletRequest httpServletRequest;
 
+    /** 登录失败次数本地缓存兜底(Redis 不可用时使用),带自动过期 SEC-006 **/
+    private final java.util.Map<String, LocalLoginFailureEntry> localLoginFailCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     public AuthServiceImpl(UserRepository userRepository, JwtUtil jwtUtil,
                            BCryptPasswordEncoder passwordEncoder, RedisUtil redisUtil,
                            OperationLogService operationLogService,
@@ -59,12 +63,7 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse login(LoginRequest request) {
         try {
             // Step 1: 检查登录失败次数
-            int failureCount = 0;
-            try {
-                failureCount = redisUtil.getLoginFailureCount(request.getUsername());
-            } catch (Exception ignored) {
-                // Redis 不可用时不做限流
-            }
+            int failureCount = getLoginFailureCount(request.getUsername());
             if (failureCount >= 5) {
                 throw new BusinessException(ErrorCode.LOGIN_LOCKED);
             }
@@ -72,13 +71,13 @@ public class AuthServiceImpl implements AuthService {
             // Step 2: 查询用户
             User user = userRepository.findByUsername(request.getUsername())
                     .orElseThrow(() -> {
-                        try { redisUtil.incrLoginFailure(request.getUsername()); } catch (Exception ignored) {}
+                        incrLoginFailureQuietly(request.getUsername());
                         return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
                     });
 
             // Step 3: 验证密码
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                try { redisUtil.incrLoginFailure(request.getUsername()); } catch (Exception ignored) {}
+                incrLoginFailureQuietly(request.getUsername());
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
 
@@ -94,7 +93,7 @@ public class AuthServiceImpl implements AuthService {
             }
 
             // Step 5: 登录成功，清除失败计数
-            try { redisUtil.clearLoginFailure(request.getUsername()); } catch (Exception ignored) {}
+            clearLoginFailureQuietly(request.getUsername());
 
             // Step 6: 生成 JWT
             String accessToken = jwtUtil.generateToken(
@@ -125,8 +124,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Login error for user: " + request.getUsername());
-            e.printStackTrace();
+            log.error("Login error for user: {}", request.getUsername(), e);
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
     }
@@ -153,8 +151,20 @@ public class AuthServiceImpl implements AuthService {
         if (!jwtUtil.validateRefreshToken(refreshToken)) {
             throw new BusinessException(ErrorCode.TOKEN_INVALID);
         }
-        // Step 2: 从 refreshToken 提取 userId
+        // Step 2: 从 refreshToken 提取 userId + jti
         Long userId = jwtUtil.getUserIdFromToken(refreshToken);
+        // Step 2.5: 检查旧 refreshToken 是否已被轮换(防重放)
+        try {
+            String jti = jwtUtil.getJtiFromToken(refreshToken);
+            if (jti != null && redisUtil.isTokenBlacklisted(jti)) {
+                log.warn("[Auth] 旧 refreshToken 被重复使用 userId={} jti={}, 疑似 token 被盗用", userId, jti);
+                throw new BusinessException(ErrorCode.TOKEN_INVALID);
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("[Auth] refresh token 黑名单检查失败 userId={}", userId, e);
+        }
         // Step 3: 查找用户
         User user = userRepository.selectById(userId);
         if (user == null || user.getStatus() != 1) {
@@ -164,6 +174,17 @@ public class AuthServiceImpl implements AuthService {
         String newAccessToken = jwtUtil.generateToken(
                 user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
         String newRefreshToken = jwtUtil.generateRefreshToken(user.getId());
+        // Step 4.5: 作废旧 refreshToken(旋转机制,防重放攻击)
+        try {
+            String oldJti = jwtUtil.getJtiFromToken(refreshToken);
+            long remainingTtl = jwtUtil.getExpirationRemainingSeconds(refreshToken);
+            if (oldJti != null && remainingTtl > 0) {
+                redisUtil.blacklistToken(oldJti, remainingTtl);
+                log.info("[Auth] refresh 轮换: 旧 jti={} 已加入黑名单 ttl={}", oldJti, remainingTtl);
+            }
+        } catch (Exception e) {
+            log.warn("[Auth] 旧 refreshToken 黑名单失败", e);
+        }
         // Step 5: 构建响应
         LoginResponse response = new LoginResponse();
         response.setAccessToken(newAccessToken);
@@ -278,8 +299,54 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
+        // 密码复杂度校验
+        if (!java.util.regex.Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")
+                .matcher(request.getNewPassword()).matches()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "密码需至少 8 位且包含字母和数字");
+        }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.updateById(user);
+    }
+
+    /** 本地登录失败条目,含过期时间 **/
+    private static class LocalLoginFailureEntry {
+        int count;
+        long expiresAtNanos;
+        LocalLoginFailureEntry() { this.count = 0; this.expiresAtNanos = System.nanoTime() + 30L * 60 * 1_000_000_000L; }
+        boolean isExpired() { return System.nanoTime() > expiresAtNanos; }
+    }
+
+    /** SEC-006: Redis 限流兜底 — 含本地缓存 + 日志可见 **/
+    private int getLoginFailureCount(String username) {
+        try {
+            return redisUtil.getLoginFailureCount(username);
+        } catch (Exception e) {
+            log.warn("[Auth] Redis 不可用,回退本地限流缓存 username={}", username);
+            LocalLoginFailureEntry entry = localLoginFailCache.get(username);
+            if (entry == null || entry.isExpired()) return 0;
+            return entry.count;
+        }
+    }
+
+    private void incrLoginFailureQuietly(String username) {
+        try {
+            redisUtil.incrLoginFailure(username);
+        } catch (Exception e) {
+            log.warn("[Auth] Redis incrLoginFailure 失败 username={}", username);
+            LocalLoginFailureEntry entry = localLoginFailCache.computeIfAbsent(username,
+                    k -> new LocalLoginFailureEntry());
+            if (entry.isExpired()) { localLoginFailCache.put(username, new LocalLoginFailureEntry()); entry = localLoginFailCache.get(username); }
+            if (entry != null) entry.count++;
+        }
+    }
+
+    private void clearLoginFailureQuietly(String username) {
+        try {
+            redisUtil.clearLoginFailure(username);
+        } catch (Exception e) {
+            log.warn("[Auth] Redis clearLoginFailure 失败 username={}", username);
+            localLoginFailCache.remove(username);
+        }
     }
 
     private Long getCurrentUserId() {

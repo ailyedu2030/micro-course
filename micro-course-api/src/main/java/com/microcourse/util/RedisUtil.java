@@ -2,11 +2,15 @@ package com.microcourse.util;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
 @Component
 public class RedisUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(RedisUtil.class);
 
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -38,12 +42,15 @@ public class RedisUtil {
         return redisTemplate.getExpire(key, TimeUnit.SECONDS);
     }
 
+    /** 原子 INCR+EXPIRE: 使用 Lua 脚本避免 INCR 后 EXPIRE 前崩溃导致 key 永不过期(CON-007) **/
     public Long incrementWithExpire(String key, long expireSeconds) {
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1L) {
-            redisTemplate.expire(key, expireSeconds, TimeUnit.SECONDS);
-        }
-        return count;
+        org.springframework.data.redis.core.script.DefaultRedisScript<Long> script =
+                new org.springframework.data.redis.core.script.DefaultRedisScript<>();
+        script.setScriptText("local c = redis.call('INCR', KEYS[1]) " +
+                             "if c == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end " +
+                             "return c");
+        script.setResultType(Long.class);
+        return redisTemplate.execute(script, java.util.Collections.singletonList(key), expireSeconds);
     }
 
     public Long incrLoginFailure(String username) {
@@ -72,6 +79,12 @@ public class RedisUtil {
      * @return "PONG" if Redis is reachable
      */
     public String ping() {
-        return "PONG";
+        try {
+            redisTemplate.getConnectionFactory().getConnection().ping();
+            return "PONG";
+        } catch (Exception e) {
+            log.warn("[RedisUtil] ping failed", e);
+            throw e;
+        }
     }
 }

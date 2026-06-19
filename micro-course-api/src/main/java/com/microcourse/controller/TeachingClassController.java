@@ -69,7 +69,9 @@ public class TeachingClassController {
 
     @PostMapping("/{id}/students")
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
-    public R<Void> addStudent(@PathVariable Long id, @RequestParam Long userId) {
+    public R<Void> addStudent(@PathVariable Long id,
+                              @RequestBody java.util.Map<String, Long> body) {
+        Long userId = body.get("userId");
         teachingClassService.addStudent(id, userId);
         return R.ok();
     }
@@ -85,7 +87,8 @@ public class TeachingClassController {
     @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
     public R<Void> updateStudentStatus(@PathVariable Long id,
                                       @PathVariable Long userId,
-                                      @RequestParam String status) {
+                                      @RequestBody java.util.Map<String, String> body) {
+        String status = body.get("status");
         teachingClassService.updateStudentStatus(id, userId, status);
         return R.ok();
     }

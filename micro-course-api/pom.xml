@@ -109,11 +109,8 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- CAS -->
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-cas</artifactId>
-        </dependency>
+        <!-- CAS (stub only, spring-security-cas 在 Spring Boot 3.x 已被移除,实际未使用) -->
+        
 
         <!-- Hutool -->
         <dependency>

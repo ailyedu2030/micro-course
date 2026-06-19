@@ -25,6 +25,8 @@ import com.microcourse.util.RedisUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.time.LocalDate;
@@ -41,6 +43,8 @@ import java.util.Map;
  */
 @Service
 public class AdminStatsServiceImpl implements AdminStatsService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminStatsServiceImpl.class);
 
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
@@ -122,28 +126,39 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         LocalDate today = LocalDate.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+        // 用 GROUP BY 替代 N 次查询,一次性获取 days 内每日新增用户数
+        LocalDateTime start = today.minusDays(days - 1).atStartOfDay();
+        List<java.util.Map<String, Object>> createdRows = userRepository.selectMaps(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<User>()
+                        .ge("created_at", start)
+                        .isNull("deleted_at")
+                        .select("DATE(created_at) as day, COUNT(*) as cnt")
+                        .groupBy("day")
+        );
+        java.util.Map<String, Long> createdMap = new java.util.HashMap<>();
+        for (java.util.Map<String, Object> row : createdRows) {
+            createdMap.put(String.valueOf(row.get("day")), ((Number) row.get("cnt")).longValue());
+        }
+
+        // 活跃用户
+        List<java.util.Map<String, Object>> activeRows = userRepository.selectMaps(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<User>()
+                        .ge("last_login_at", start)
+                        .isNull("deleted_at")
+                        .select("DATE(last_login_at) as day, COUNT(*) as cnt")
+                        .groupBy("day")
+        );
+        java.util.Map<String, Long> activeMap = new java.util.HashMap<>();
+        for (java.util.Map<String, Object> row : activeRows) {
+            activeMap.put(String.valueOf(row.get("day")), ((Number) row.get("cnt")).longValue());
+        }
+
         for (int i = days - 1; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
-            LocalDateTime startOfDay = date.atStartOfDay();
-            LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
-
-            // 当日新增用户
-            Long newUsers = userRepository.selectCount(
-                    new LambdaQueryWrapper<User>()
-                            .ge(User::getCreatedAt, startOfDay)
-                            .le(User::getCreatedAt, endOfDay)
-                            .isNull(User::getDeletedAt)
-            );
-
-            // 当日活跃用户（当日有 last_login 记录）
-            Long activeUsers = userRepository.selectCount(
-                    new LambdaQueryWrapper<User>()
-                            .ge(User::getLastLoginAt, startOfDay)
-                            .le(User::getLastLoginAt, endOfDay)
-                            .isNull(User::getDeletedAt)
-            );
-
-            result.add(new UserTrendVO(date.format(formatter), newUsers, activeUsers));
+            String key = date.format(formatter);
+            result.add(new UserTrendVO(key,
+                    createdMap.getOrDefault(key, 0L),
+                    activeMap.getOrDefault(key, 0L)));
         }
 
         return result;
@@ -156,26 +171,36 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         LocalDate today = LocalDate.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+        // 用 GROUP BY 替代 N 次查询
+        LocalDateTime start = today.minusDays(days - 1).atStartOfDay();
+        List<java.util.Map<String, Object>> courseRows = courseRepository.selectMaps(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Course>()
+                        .ge("created_at", start)
+                        .select("DATE(created_at) as day, COUNT(*) as cnt")
+                        .groupBy("day")
+        );
+        java.util.Map<String, Long> courseMap = new java.util.HashMap<>();
+        for (java.util.Map<String, Object> row : courseRows) {
+            courseMap.put(String.valueOf(row.get("day")), ((Number) row.get("cnt")).longValue());
+        }
+
+        List<java.util.Map<String, Object>> enrollRows = enrollmentRepository.selectMaps(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Enrollment>()
+                        .ge("enrolled_at", start)
+                        .select("DATE(enrolled_at) as day, COUNT(*) as cnt")
+                        .groupBy("day")
+        );
+        java.util.Map<String, Long> enrollMap = new java.util.HashMap<>();
+        for (java.util.Map<String, Object> row : enrollRows) {
+            enrollMap.put(String.valueOf(row.get("day")), ((Number) row.get("cnt")).longValue());
+        }
+
         for (int i = days - 1; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
-            LocalDateTime startOfDay = date.atStartOfDay();
-            LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
-
-            // 当日新增课程
-            Long newCourses = courseRepository.selectCount(
-                    new LambdaQueryWrapper<Course>()
-                            .ge(Course::getCreatedAt, startOfDay)
-                            .le(Course::getCreatedAt, endOfDay)
-            );
-
-            // 当日选课人数（enrolled_at 在当日）
-            Long enrollments = enrollmentRepository.selectCount(
-                    new LambdaQueryWrapper<Enrollment>()
-                            .ge(Enrollment::getEnrolledAt, startOfDay)
-                            .le(Enrollment::getEnrolledAt, endOfDay)
-            );
-
-            result.add(new CourseTrendVO(date.format(formatter), newCourses, enrollments));
+            String key = date.format(formatter);
+            result.add(new CourseTrendVO(key,
+                    courseMap.getOrDefault(key, 0L),
+                    enrollMap.getOrDefault(key, 0L)));
         }
 
         return result;
@@ -241,7 +266,8 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             boolean valid = conn.isValid(2);
             health.put("db", valid ? "OK" : "ERROR");
         } catch (Exception e) {
-            health.put("db", "ERROR: " + e.getMessage());
+            log.warn("[Health] DB check failed", e);
+            health.put("db", "ERROR");
         }
 
         // Redis check
@@ -249,7 +275,8 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             String pong = redisUtil.ping();
             health.put("redis", "PONG".equals(pong) ? "OK" : "ERROR");
         } catch (Exception e) {
-            health.put("redis", "ERROR: " + e.getMessage());
+            log.warn("[Health] Redis check failed", e);
+            health.put("redis", "ERROR");
         }
 
         // Disk check (runtime mxbean)

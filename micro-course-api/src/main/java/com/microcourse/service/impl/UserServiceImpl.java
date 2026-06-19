@@ -42,9 +42,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class UserServiceImpl implements UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
+
+    /** 密码复杂度: 至少 8 位,含字母和数字(SEC-009) */
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,}$");
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -163,6 +170,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserVO createUser(UserCreateRequest request) {
+        // 密码复杂度校验
+        if (!PASSWORD_PATTERN.matcher(request.getPassword()).matches()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "密码需至少 8 位且包含字母和数字");
+        }
         // 检查用户名唯一
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new BusinessException(ErrorCode.USERNAME_EXISTS);
@@ -295,16 +306,25 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.updateById(user);
 
-        // 记录操作日志
-        OperationLog log = new OperationLog();
-        log.setUserId(user.getId());
-        log.setAction("TEACHER_STATUS_CHANGE");
-        log.setTargetType("USER");
-        log.setTargetId(user.getId());
-        log.setDetail("{\"field\":\"teacherStatus\",\"old\":" + oldStatus + ",\"new\":" + newStatus + ",\"reason\":\"" + (request.getReason() != null ? request.getReason() : "") + "\"}");
-        log.setIp(IpUtil.getClientIp());
-        log.setSuccess(true);
-        operationLogService.log(log);
+        // 记录操作日志(使用 JSON 库构建,避免注入)
+        OperationLog logEntry = new OperationLog();
+        logEntry.setUserId(user.getId());
+        logEntry.setAction("TEACHER_STATUS_CHANGE");
+        logEntry.setTargetType("USER");
+        logEntry.setTargetId(user.getId());
+        try {
+            java.util.Map<String, Object> detailMap = new java.util.LinkedHashMap<>();
+            detailMap.put("field", "teacherStatus");
+            detailMap.put("old", oldStatus);
+            detailMap.put("new", newStatus);
+            detailMap.put("reason", request.getReason());
+            logEntry.setDetail(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(detailMap));
+        } catch (Exception e) {
+            logEntry.setDetail("{\"field\":\"teacherStatus\",\"old\":" + oldStatus + ",\"new\":" + newStatus + "}");
+        }
+        logEntry.setIp(IpUtil.getClientIp());
+        logEntry.setSuccess(true);
+        operationLogService.log(logEntry);
     }
 
     @Override
@@ -318,7 +338,9 @@ public class UserServiceImpl implements UserService {
         try {
             EasyExcel.read(file.getInputStream(), UserBatchImportDTO.class, listener).sheet().doRead();
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+            log.warn("[UserImport] Excel 解析失败", e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "Excel 解析失败: " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
         }
 
         errors.addAll(listener.getErrors());
@@ -417,12 +439,12 @@ public class UserServiceImpl implements UserService {
             java.io.File dir = new java.io.File(uploadDir);
             if (!dir.exists()) dir.mkdirs();
 
-            // 文件名: userId_timestamp.ext
-            String originalName = file.getOriginalFilename();
-            String ext = "";
-            if (originalName != null && originalName.contains(".")) {
-                ext = originalName.substring(originalName.lastIndexOf("."));
-            }
+            // 文件名: userId_timestamp.jpg(不信任用户提供的扩展名,用 MIME 类型映射)
+            String contentType = file.getContentType();
+            String ext = ".jpg";
+            if ("image/png".equals(contentType)) ext = ".png";
+            else if ("image/gif".equals(contentType)) ext = ".gif";
+            else if ("image/webp".equals(contentType)) ext = ".webp";
             String filename = userId + "_" + System.currentTimeMillis() + ext;
             java.io.File dest = new java.io.File(uploadDir + filename);
             file.transferTo(dest);

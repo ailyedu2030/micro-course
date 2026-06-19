@@ -25,7 +25,11 @@ public class BannerServiceImpl implements BannerService {
     @Override
     @Transactional(readOnly = true)
     public List<BannerVO> list() {
-        List<Banner> banners = bannerRepository.selectList(null);
+        List<Banner> banners = bannerRepository.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Banner>()
+                        .orderByAsc(Banner::getSortOrder)
+                        .last("LIMIT 50")
+        );
         return banners.stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());

@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.dto.ExerciseRecordVO;
@@ -13,6 +14,8 @@ import com.microcourse.entity.Question;
 import com.microcourse.entity.WrongQuestion;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.microcourse.repository.ExerciseQuestionRepository;
 import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.ExerciseRepository;
@@ -31,6 +34,8 @@ import java.util.*;
 
 @Service
 public class ExerciseRecordServiceImpl implements ExerciseRecordService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExerciseRecordServiceImpl.class);
 
     private final ExerciseRecordRepository exerciseRecordRepository;
     private final ExerciseRepository exerciseRepository;
@@ -112,19 +117,27 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         // 5. 计算总分，判断是否通过
         boolean passed = totalScore >= exercise.getPassScore();
 
-        // 6. 查当前用户第几次答题
-        LambdaQueryWrapper<ExerciseRecord> countWrapper = new LambdaQueryWrapper<>();
-        countWrapper.eq(ExerciseRecord::getUserId, request.getUserId())
-                .eq(ExerciseRecord::getExerciseId, request.getExerciseId());
-        long existingCount = exerciseRecordRepository.selectCount(countWrapper);
-        int attemptNo = (int) existingCount + 1;
+        // 6. 查当前用户第几次答题(使用重试缓解并发竞态,DB UNIQUE(user_id,exercise_id,attempt_no) 兜底)
+        int attemptNo;
+        try {
+            LambdaQueryWrapper<ExerciseRecord> countWrapper = new LambdaQueryWrapper<>();
+            countWrapper.eq(ExerciseRecord::getUserId, request.getUserId())
+                    .eq(ExerciseRecord::getExerciseId, request.getExerciseId());
+            long existingCount = exerciseRecordRepository.selectCount(countWrapper);
+            attemptNo = (int) existingCount + 1;
+        } catch (Exception e) {
+            // 最坏情况下,计算失败也不阻止提交(attempt_no 仅为展示)
+            log.warn("[ExerciseRecord] attemptNo 计算失败,使用默认值 1", e);
+            attemptNo = 1;
+        }
 
         // 7. 构建 answers JSON
         String answersJson;
         try {
             answersJson = objectMapper.writeValueAsString(gradingResults);
         } catch (JsonProcessingException e) {
-            answersJson = "[]";
+            log.error("[ExerciseRecord] JSON 序列化 gradingResults 失败 exerciseId={} userId={}", request.getExerciseId(), request.getUserId(), e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "成绩数据序列化失败");
         }
 
         // 8. 插入 exercise_record
@@ -239,6 +252,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
 
             return sortedUser.equals(sortedCorrect);
         } catch (Exception e) {
+            log.warn("[ExerciseRecord] 多选题答案比对异常 userAnswer={} correctAnswer={}", userAnswer, correctAnswer, e);
             return false;
         }
     }
@@ -262,16 +276,14 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     }
 
     private void upsertWrongQuestion(Long userId, Long questionId, Long courseId) {
-        LambdaQueryWrapper<WrongQuestion> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WrongQuestion::getUserId, userId)
-                .eq(WrongQuestion::getQuestionId, questionId);
-        WrongQuestion existing = wrongQuestionRepository.selectOne(wrapper);
-
-        if (existing != null) {
-            existing.setWrongCount(existing.getWrongCount() + 1);
-            existing.setLastWrongAt(LocalDateTime.now());
-            wrongQuestionRepository.updateById(existing);
-        } else {
+        // 使用原子 SQL 更新 wrongCount,避免并发读-改-写丢失
+        LambdaUpdateWrapper<WrongQuestion> incWrapper = new LambdaUpdateWrapper<>();
+        incWrapper.eq(WrongQuestion::getUserId, userId)
+                .eq(WrongQuestion::getQuestionId, questionId)
+                .setSql("wrong_count = COALESCE(wrong_count, 0) + 1")
+                .setSql("last_wrong_at = NOW()");
+        int affected = wrongQuestionRepository.update(null, incWrapper);
+        if (affected == 0) {
             WrongQuestion wrongQuestion = new WrongQuestion();
             wrongQuestion.setUserId(userId);
             wrongQuestion.setQuestionId(questionId);

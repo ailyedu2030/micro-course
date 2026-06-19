@@ -19,6 +19,8 @@ import java.util.stream.Collectors;
 @Service
 public class CheckInServiceImpl implements CheckInService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CheckInServiceImpl.class);
+
     private final CheckInRepository checkInRepository;
 
     public CheckInServiceImpl(CheckInRepository checkInRepository) {
@@ -40,32 +42,42 @@ public class CheckInServiceImpl implements CheckInService {
             return convertToVO(existing);
         }
 
-        // 计算 streak_days：从昨日往前逐日检查连续天数
-        LocalDate yesterday = today.minusDays(1);
-        int streak = 0;
-        LocalDate checkDate = yesterday;
+        // 计算 streak_days：查询今日之前最近的一条打卡记录
+        LambdaQueryWrapper<CheckIn> lastWrapper = new LambdaQueryWrapper<>();
+        lastWrapper.eq(CheckIn::getUserId, userId)
+                .lt(CheckIn::getCheckinDate, today)
+                .orderByDesc(CheckIn::getCheckinDate)
+                .last("LIMIT 1");
+        CheckIn lastRecord = checkInRepository.selectOne(lastWrapper);
 
-        while (true) {
-            CheckIn record = checkInRepository.selectOne(
-                    new LambdaQueryWrapper<CheckIn>()
-                            .eq(CheckIn::getUserId, userId)
-                            .eq(CheckIn::getCheckinDate, checkDate)
-            );
-            if (record == null) {
-                break;
+        int streak = 0;
+        if (lastRecord != null) {
+            LocalDate lastDate = lastRecord.getCheckinDate();
+            // 检查是否连续：昨天有打卡则基于 streakDays+1，否则重新开始
+            if (lastDate.equals(today.minusDays(1))) {
+                streak = lastRecord.getStreakDays();
             }
-            streak++;
-            checkDate = checkDate.minusDays(1);
         }
 
-        // 新增打卡记录
+        // 新增打卡记录(DB UNIQUE(user_id,checkin_date) 兜底防并发双条)
         CheckIn checkIn = new CheckIn();
         checkIn.setUserId(userId);
         checkIn.setCheckinDate(today);
         checkIn.setDuration(0);
         checkIn.setStreakDays(streak + 1);
         checkIn.setCreatedAt(LocalDateTime.now());
-        checkInRepository.insert(checkIn);
+        try {
+            checkInRepository.insert(checkIn);
+        } catch (DuplicateKeyException e) {
+            // 并发时后到者走幂等回查
+            CheckIn existingAfterRace = checkInRepository.selectOne(
+                    new LambdaQueryWrapper<CheckIn>()
+                            .eq(CheckIn::getUserId, userId)
+                            .eq(CheckIn::getCheckinDate, today)
+            );
+            if (existingAfterRace != null) return convertToVO(existingAfterRace);
+            throw e;
+        }
 
         return convertToVO(checkIn);
     }
@@ -114,15 +126,15 @@ public class CheckInServiceImpl implements CheckInService {
     public void updateDuration(Long userId, int duration) {
         LocalDate today = LocalDate.now();
 
-        CheckIn todayRecord = checkInRepository.selectOne(
-                new LambdaQueryWrapper<CheckIn>()
-                        .eq(CheckIn::getUserId, userId)
-                        .eq(CheckIn::getCheckinDate, today)
-        );
-
-        if (todayRecord != null) {
-            todayRecord.setDuration(duration);
-            checkInRepository.updateById(todayRecord);
+        // 使用增量 SQL 避免并发丢失更新
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<CheckIn> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        wrapper.eq(CheckIn::getUserId, userId)
+                .eq(CheckIn::getCheckinDate, today)
+                .setSql("duration = COALESCE(duration, 0) + " + duration);
+        int affected = checkInRepository.update(null, wrapper);
+        if (affected == 0) {
+            log.warn("[CheckIn] updateDuration 无匹配 userId={} date={}, 可能是今日未打卡", userId, today);
         }
     }
 

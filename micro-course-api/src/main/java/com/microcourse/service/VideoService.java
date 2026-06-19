@@ -24,4 +24,10 @@ public interface VideoService {
     void delete(Long id);
 
     String uploadCover(Long videoId, MultipartFile file);
+
+    /**
+     * 更新视频状态(0=UPLOADING,1=TRANSCODING,2=COMPLETED,3=FAILED)。
+     * 用于异步上传/转码失败时将卡住的状态推进,避免脏数据。
+     */
+    void updateStatus(Long videoId, int status);
 }

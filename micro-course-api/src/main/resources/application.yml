@@ -57,7 +57,7 @@ mybatis-plus:
     # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 jwt:
-  secret: ${JWT_SECRET:Astc99aEmrne5W8IBxHRWcnXSwRFtwFO_QNgrok0ZHdAb7LpWSOtTAvh-axBeArs}
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:7200000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 

@@ -32,8 +32,10 @@ request.interceptors.response.use(response => {
     }
   } else if (status === 403) {
     ElMessage.error('无权访问该资源')
+  } else if (status >= 500) {
+    ElMessage.error('服务器错误，请稍后重试')
   } else {
-    ElMessage.error(error.response?.data?.message || '网络错误')
+    ElMessage.error(error.response?.data?.message || '请求失败')
   }
   return Promise.reject(error)
 })

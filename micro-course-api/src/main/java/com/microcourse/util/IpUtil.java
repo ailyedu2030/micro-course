@@ -12,10 +12,13 @@ public class IpUtil {
 
     private static final String UNKNOWN = "0.0.0.0";
 
+    /** 反向代理后缀标识: 若 request 地址等于该值,则应用后有反向代理,可信任 proxy header **/
+    private static final String PROXY_SUFFIX = "/internal";
+
     /**
      * 获取当前请求的客户端真实 IP
-     * 优先从 X-Forwarded-For 头获取（反向代理场景），
-     * 其次 X-Real-IP，最后 fallback 到 request.getRemoteAddr()
+     * 安全策略: 优先可信来源(request.getRemoteAddr),避免伪造 X-Forwarded-For(SEC-008)
+     * 若有反向代理(Nginx/Envoy),代理负责过滤/清洗 X-Forwarded-For,应用仅信任来自代理的连接
      */
     public static String getClientIp() {
         ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
@@ -24,18 +27,13 @@ public class IpUtil {
         }
         HttpServletRequest request = attrs.getRequest();
 
-        String[] headers = {
-            "X-Forwarded-For",
-            "X-Real-IP",
-            "Proxy-Client-IP",
-            "WL-Proxy-Client-IP"
-        };
+        // 首先检查是否有可信代理(通过请求路径等标记);无代理时不信任 X-Forwarded-For
+        boolean behindProxy = request.getRequestURI() != null && request.getRequestURI().endsWith(PROXY_SUFFIX);
 
-        for (String header : headers) {
-            String ip = request.getHeader(header);
-            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-                // X-Forwarded-For 可能包含多个 IP，取第一个
-                return ip.split(",")[0].trim();
+        if (behindProxy) {
+            String forwardedFor = request.getHeader("X-Forwarded-For");
+            if (forwardedFor != null && !forwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(forwardedFor)) {
+                return forwardedFor.split(",")[0].trim();
             }
         }
 
