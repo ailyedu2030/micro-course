@@ -28,19 +28,31 @@
           @click="handleTypeChange(tab.value)"
         >{{ tab.label }}</el-button>
       </div>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
-        <template #empty>
-          <el-empty description="暂无通知" />
-        </template>
+
+      <!-- 骨架屏 -->
+      <el-skeleton v-if="loading" :rows="6" animated />
+
+      <!-- 空状态 -->
+      <el-empty
+        v-else-if="!loading && tableData.length === 0"
+        description="暂无通知消息"
+        :image-size="120"
+      />
+
+      <!-- 数据表格 -->
+      <el-table v-else :data="tableData" stripe border class="data-table" :row-class-name="rowClassName">
         <el-table-column prop="type" label="类型" width="140" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.type === 'ENROLLMENT'" type="success" size="small">选课通知</el-tag>
-            <el-tag v-else-if="row.type === 'GRADE'" type="warning" size="small">成绩通知</el-tag>
-            <el-tag v-else-if="row.type === 'DISCUSSION'" type="primary" size="small">讨论通知</el-tag>
-            <el-tag v-else type="info" size="small">系统通知</el-tag>
+            <el-tag :type="getNotifTagType(row.type)" size="small" effect="light">
+              {{ getNotifTagLabel(row.type) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span :class="{ 'title-unread': !row.isRead }">{{ row.title }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="content" label="内容" min-width="200">
           <template #default="{ row }">
             {{ truncate(row.content, 50) }}
@@ -49,8 +61,10 @@
         <el-table-column prop="createdAt" label="时间" width="170" />
         <el-table-column prop="isRead" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.isRead" type="info" size="small">已读</el-tag>
-            <el-tag v-else type="warning" size="small">未读</el-tag>
+            <el-badge v-if="!row.isRead" is-dot class="unread-dot">
+              <el-tag type="warning" size="small" effect="light">未读</el-tag>
+            </el-badge>
+            <el-tag v-else type="info" size="small" effect="light">已读</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right" align="center">
@@ -60,7 +74,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="pagination-wrap">
+      <div v-if="tableData.length > 0" class="pagination-wrap">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"
@@ -99,6 +113,28 @@ const typeTabs = [
 const truncate = (text, length) => {
   if (!text) return ''
   return text.length > length ? text.substring(0, length) + '…' : text
+}
+
+// 通知类型标签映射: 系统(blue), 课程/选课(green), 成绩/考试(orange)
+const notifTagMap = {
+  SYSTEM: { label: '系统通知', type: '' },          // 蓝色(默认)
+  ENROLLMENT: { label: '课程通知', type: 'success' }, // 绿色
+  GRADE: { label: '考试通知', type: 'warning' },      // 橙色
+  DISCUSSION: { label: '讨论通知', type: 'primary' },  // 蓝色
+  EXAM: { label: '考试通知', type: 'warning' }         // 橙色
+}
+
+function getNotifTagType(type) {
+  return notifTagMap[type]?.type ?? 'info'
+}
+
+function getNotifTagLabel(type) {
+  return notifTagMap[type]?.label ?? '系统通知'
+}
+
+// 未读行高亮
+function rowClassName({ row }) {
+  return row.isRead ? '' : 'row-unread'
 }
 
 const fetchUnreadCount = async () => {
@@ -230,6 +266,30 @@ onMounted(() => {
 
 .dash-placeholder {
   color: var(--color-text-placeholder);
+}
+
+/* 未读行高亮 */
+.data-table :deep(.row-unread) {
+  background-color: #EFF6FF !important;
+}
+
+.data-table :deep(.row-unread:hover > td) {
+  background-color: #DBEAFE !important;
+}
+
+.title-unread {
+  font-weight: 600;
+  color: var(--el-color-primary);
+}
+
+/* 未读圆点 */
+.unread-dot {
+  line-height: 1;
+}
+
+.unread-dot :deep(.el-badge__content.is-dot) {
+  top: 2px;
+  right: -2px;
 }
 
 @media (max-width: 768px) {

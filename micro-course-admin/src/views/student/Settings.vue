@@ -8,11 +8,31 @@
   <div class="settings-container">
     <!-- PC Layout -->
     <div v-if="!isMobile" class="settings-pc">
+      <!-- 面包屑导航 -->
+      <el-breadcrumb class="page-breadcrumb">
+        <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item>个人设置</el-breadcrumb-item>
+      </el-breadcrumb>
+
       <div class="page-header">
         <h2>偏好设置</h2>
       </div>
 
-      <div class="settings-groups">
+      <!-- 骨架屏加载 -->
+      <div v-if="loading" class="settings-groups">
+        <el-card v-for="n in 4" :key="n" class="settings-card" shadow="never">
+          <el-skeleton animated :rows="3" />
+        </el-card>
+      </div>
+
+      <!-- 加载失败 -->
+      <el-result v-else-if="error" icon="error" title="加载失败" sub-title="设置加载异常">
+        <template #extra>
+          <el-button type="primary" @click="loadSettings">重新加载</el-button>
+        </template>
+      </el-result>
+
+      <div v-else class="settings-groups">
         <!-- 播放设置 -->
         <el-card class="settings-card" shadow="never">
           <template #header>
@@ -128,18 +148,38 @@
         </el-card>
       </div>
 
-      <div class="save-button-wrap">
+      <div v-if="!loading && !error" class="save-button-wrap">
         <el-button type="primary" @click="handleSave" class="save-button">保存设置</el-button>
       </div>
     </div>
 
     <!-- H5 Layout -->
     <div v-else class="settings-h5">
+      <!-- 面包屑导航 -->
+      <el-breadcrumb class="h5-breadcrumb">
+        <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item>个人设置</el-breadcrumb-item>
+      </el-breadcrumb>
+
       <div class="page-header-h5">
         <h2>偏好设置</h2>
       </div>
 
-      <div class="settings-groups-h5">
+      <!-- 骨架屏加载 -->
+      <div v-if="loading" class="settings-groups-h5">
+        <div v-for="n in 3" :key="n" class="settings-group-h5">
+          <el-skeleton animated :rows="2" />
+        </div>
+      </div>
+
+      <!-- 加载失败 -->
+      <el-result v-else-if="error" icon="error" title="加载失败" sub-title="设置加载异常">
+        <template #extra>
+          <el-button type="primary" size="small" @click="loadSettings">重新加载</el-button>
+        </template>
+      </el-result>
+
+      <div v-else class="settings-groups-h5">
         <!-- 播放设置 -->
         <div class="settings-group-h5">
           <div class="group-header-h5">
@@ -223,7 +263,7 @@
         </div>
       </div>
 
-      <div class="save-button-wrap-h5">
+      <div v-if="!loading && !error" class="save-button-wrap-h5">
         <el-button type="primary" @click="handleSave" class="save-button-h5">保存设置</el-button>
       </div>
 
@@ -238,6 +278,9 @@ import { ElMessage } from 'element-plus'
 import { VideoPlay, Bell, Lock, Setting } from '@element-plus/icons-vue'
 
 const STORAGE_KEY = 'micro_course_settings'
+
+const loading = ref(false)
+const error = ref(false)
 
 const settings = ref({
   playbackSpeed: '1',
@@ -260,6 +303,8 @@ const handleResize = () => {
 }
 
 const loadSettings = () => {
+  loading.value = true
+  error.value = false
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
@@ -276,6 +321,8 @@ const loadSettings = () => {
       }
     }
   } catch {
+    error.value = true
+    ElMessage.error('加载设置失败')
     settings.value = {
       playbackSpeed: '1',
       autoPlayNext: true,
@@ -286,6 +333,8 @@ const loadSettings = () => {
       reducedMotion: false,
       highContrast: false
     }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -318,6 +367,10 @@ onUnmounted(() => {
 }
 
 /* PC Layout */
+.settings-pc .page-breadcrumb {
+  margin-bottom: var(--space-4);
+}
+
 .settings-pc .page-header {
   margin-bottom: var(--space-6);
 }
@@ -404,6 +457,10 @@ onUnmounted(() => {
 /* H5 Layout */
 .settings-h5 {
   padding: var(--space-3);
+}
+
+.settings-h5 .h5-breadcrumb {
+  margin-bottom: var(--space-3);
 }
 
 .settings-h5 .page-header-h5 {

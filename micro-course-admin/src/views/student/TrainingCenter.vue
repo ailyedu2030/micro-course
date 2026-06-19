@@ -1,17 +1,32 @@
 <template>
   <div class="training-center">
+    <!-- 面包屑导航 -->
+    <el-breadcrumb class="page-breadcrumb">
+      <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item>培训中心</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <h2 class="page-title">训练中心</h2>
     <p class="page-subtitle">选择课程章节进行随堂练习</p>
 
-    <!-- 我的课程练习入口 -->
+    <!-- 骨架屏加载 -->
     <div v-if="loading" class="loading-wrap">
       <el-skeleton :rows="4" animated />
     </div>
 
+    <!-- 加载失败 -->
+    <el-result v-else-if="error" icon="error" title="加载失败" sub-title="训练数据加载异常，请稍后重试">
+      <template #extra>
+        <el-button type="primary" @click="fetchData">重新加载</el-button>
+      </template>
+    </el-result>
+
+    <!-- 空状态 -->
     <el-empty v-else-if="enrollments.length === 0" description="你还没有报名任何课程">
       <el-button type="primary" @click="$router.push('/student/courses')">去选课</el-button>
     </el-empty>
 
+    <!-- 课程列表 -->
     <div v-else class="course-list">
       <el-card v-for="enr in enrollments" :key="enr.courseId" class="course-card" shadow="hover">
         <div class="course-header">
@@ -43,6 +58,7 @@ import { getExercises } from '@/api/exercise'
 
 const router = useRouter()
 const loading = ref(true)
+const error = ref(false)
 const enrollments = ref([])
 
 /**
@@ -51,7 +67,13 @@ const enrollments = ref([])
  * - 第一批：并行获取所有课程的章节（N 请求）
  * - 第二批：并行获取所有章节的练习（N×M 请求，但并行了）
  */
-onMounted(async () => {
+onMounted(() => {
+  fetchData()
+})
+
+async function fetchData() {
+  loading.value = true
+  error.value = false
   try {
     // Step 1: 获取我的课程列表（1 请求）
     const { data } = await getMyEnrollments({ completed: false })
@@ -94,11 +116,12 @@ onMounted(async () => {
     enrollments.value = items
   } catch (e) {
     console.error('训练中心加载失败', e)
+    error.value = true
     ElMessage.error('加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
-})
+}
 
 function goExercise(chapterId) {
   router.push(`/student/chapters/${chapterId}/exercises`)
@@ -107,6 +130,7 @@ function goExercise(chapterId) {
 
 <style scoped>
 .training-center { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.page-breadcrumb { margin-bottom: 16px; }
 .page-title { font-size: 24px; font-weight: 700; color: #1E293B; margin-bottom: 8px; }
 .page-subtitle { font-size: 14px; color: #64748B; margin-bottom: 24px; }
 .course-list { display: flex; flex-direction: column; gap: 16px; }

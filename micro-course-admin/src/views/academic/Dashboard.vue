@@ -2,12 +2,38 @@
   <div class="academic-dashboard">
     <!-- 顶部欢迎条 — 玻璃态 -->
     <div class="welcome-bar">
-      <div class="welcome-date">{{ welcomeDate }}</div>
-      <div class="welcome-greeting">
-        <span class="greeting-name">教务处</span>
-        <span class="greeting-suffix">{{ greeting }}</span>
+      <div class="welcome-left">
+        <div class="welcome-date">{{ welcomeDate }}</div>
+        <div class="welcome-greeting">
+          <span class="greeting-name">教务处</span>
+          <span class="greeting-suffix">{{ greeting }}</span>
+        </div>
+      </div>
+      <div class="welcome-right">
+        <span class="last-updated">最后更新: {{ lastUpdatedText }}</span>
+        <el-button
+          :icon="Refresh"
+          circle
+          :loading="isRefreshing"
+          class="refresh-btn"
+          @click="handleRefresh"
+        />
       </div>
     </div>
+
+    <!-- 快捷入口 -->
+    <el-row :gutter="16" class="quick-actions-row">
+      <el-col v-for="action in quickActions" :key="action.label" :xs="12" :sm="6">
+        <el-card class="quick-action-card" shadow="hover" @click="handleQuickAction(action)">
+          <div class="quick-action-inner">
+            <div class="quick-action-icon" :style="{ background: action.bg, color: action.color }">
+              <el-icon :size="22"><component :is="action.icon" /></el-icon>
+            </div>
+            <span class="quick-action-label">{{ action.label }}</span>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
 
     <!-- 4 个指标卡片 -->
     <el-row :gutter="16" class="stats-row">
@@ -20,7 +46,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.totalCourses ?? 0 }}</div>
+                <div class="stat-value">{{ displayStats.totalCourses }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">总课程数</div>
@@ -36,7 +62,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.totalEnrollments ?? 0 }}</div>
+                <div class="stat-value">{{ displayStats.totalEnrollments }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">总选课人次</div>
@@ -52,7 +78,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ formatPercent(stats.avgCompletionRate) }}</div>
+                <div class="stat-value">{{ displayStats.avgCompletionRate }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">平均完成率</div>
@@ -68,7 +94,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ formatPercent(stats.avgAccuracyRate) }}</div>
+                <div class="stat-value">{{ displayStats.avgAccuracyRate }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">平均正确率</div>
@@ -185,8 +211,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Reading, User, TrendCharts, Finished } from '@element-plus/icons-vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw } from 'vue'
+import { useRouter } from 'vue-router'
+import { Reading, User, TrendCharts, Finished, Refresh, DataAnalysis, Collection, Setting } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import {
   getAcademicOverview,
@@ -196,15 +223,63 @@ import {
   getCompletionTrend
 } from '@/api/academic-stats'
 
-const now = new Date()
-const welcomeDate = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`
+const router = useRouter()
+
+const now = ref(new Date())
+const welcomeDate = computed(() => {
+  const d = now.value
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
+})
 const greeting = computed(() => {
-  const h = now.getHours()
+  const h = now.value.getHours()
   if (h < 12) return '，上午好'
   if (h < 14) return '，中午好'
   if (h < 18) return '，下午好'
   return '，晚上好'
 })
+
+// ===== 最后更新时间 =====
+const lastUpdatedAt = ref(null)
+const lastUpdatedText = computed(() => {
+  if (!lastUpdatedAt.value) return '加载中...'
+  // 依赖 now.value 以便定时重算
+  const diff = now.value.getTime() - lastUpdatedAt.value
+  if (diff < 10000) return '刚刚'
+  if (diff < 60000) return `${Math.floor(diff / 1000)}秒前`
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+  return `${Math.floor(diff / 3600000)}小时前`
+})
+let lastUpdatedTimer = null
+
+function startLastUpdatedTimer() {
+  lastUpdatedTimer = setInterval(() => {
+    now.value = new Date()
+  }, 10000)
+}
+
+// ===== 手动刷新 =====
+const isRefreshing = ref(false)
+
+async function handleRefresh() {
+  isRefreshing.value = true
+  try {
+    await refreshAll()
+  } finally {
+    isRefreshing.value = false
+  }
+}
+
+// ===== 快捷入口 =====
+const quickActions = [
+  { label: '课程审核', icon: markRaw(Reading), route: '/academic/courses', bg: '#EEF2FF', color: '#4F46E5' },
+  { label: '选课管理', icon: markRaw(Collection), route: '/academic/enrollments', bg: '#ECFDF5', color: '#10B981' },
+  { label: '教学班管理', icon: markRaw(Setting), route: '/academic/teaching-classes', bg: '#FEF3C7', color: '#F59E0B' },
+  { label: '统计分析', icon: markRaw(DataAnalysis), route: '/academic/statistics', bg: '#FAF5FF', color: '#8B5CF6' }
+]
+
+function handleQuickAction(action) {
+  router.push(action.route)
+}
 
 // Debounce utility
 function debounce(fn, delay = 200) {
@@ -218,6 +293,41 @@ function debounce(fn, delay = 200) {
 // Stats
 const statsLoading = ref(true)
 const stats = ref({})
+
+// 统计卡片动画（仿 admin/Dashboard）
+const displayStats = reactive({
+  totalCourses: '0',
+  totalEnrollments: '0',
+  avgCompletionRate: '0%',
+  avgAccuracyRate: '0%'
+})
+
+const animationFrameIds = []
+
+function animateNumericValue(key, from, to, duration = 800, suffix = '') {
+  if (from === to) return
+  const startTime = performance.now()
+  function step(currentTime) {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    const eased = 1 - Math.pow(1 - progress, 4)
+    const current = from + (to - from) * eased
+    displayStats[key] = suffix ? `${current.toFixed(1)}${suffix}` : String(Math.round(current))
+    if (progress < 1) {
+      const id = requestAnimationFrame(step)
+      animationFrameIds.push(id)
+    }
+  }
+  const id = requestAnimationFrame(step)
+  animationFrameIds.push(id)
+}
+
+function animateAllStats(newStats) {
+  animateNumericValue('totalCourses', parseInt(displayStats.totalCourses) || 0, newStats.totalCourses ?? 0)
+  animateNumericValue('totalEnrollments', parseInt(displayStats.totalEnrollments) || 0, newStats.totalEnrollments ?? 0)
+  animateNumericValue('avgCompletionRate', parseFloat(displayStats.avgCompletionRate) || 0, newStats.avgCompletionRate ?? 0, 800, '%')
+  animateNumericValue('avgAccuracyRate', parseFloat(displayStats.avgAccuracyRate) || 0, newStats.avgAccuracyRate ?? 0, 800, '%')
+}
 
 // Department chart
 const deptLoading = ref(true)
@@ -253,6 +363,7 @@ async function refreshAll() {
     loadWarnings(),
     loadHotCourses()
   ])
+  lastUpdatedAt.value = Date.now()
 }
 
 // Load overview stats
@@ -267,6 +378,7 @@ async function loadStats() {
       avgCompletionRate: d.avgCompletionRate ?? 0,
       avgAccuracyRate: d.avgAccuracyRate ?? 0
     }
+    animateAllStats(stats.value)
   } catch {
     // silent
   } finally {
@@ -484,6 +596,8 @@ onMounted(async () => {
     loadHotCourses()
   ])
   window.addEventListener('resize', debouncedResizeCharts)
+  lastUpdatedAt.value = Date.now()
+  startLastUpdatedTimer()
   refreshTimer = setInterval(() => {
     refreshAll()
   }, refreshInterval.value)
@@ -497,6 +611,12 @@ onBeforeUnmount(() => {
     clearInterval(refreshTimer)
     refreshTimer = null
   }
+  if (lastUpdatedTimer) {
+    clearInterval(lastUpdatedTimer)
+    lastUpdatedTimer = null
+  }
+  animationFrameIds.forEach(id => cancelAnimationFrame(id))
+  animationFrameIds.length = 0
 })
 </script>
 
@@ -534,6 +654,12 @@ onBeforeUnmount(() => {
   color: white;
 }
 
+.welcome-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .welcome-date {
   font-size: 14px;
   opacity: 0.8;
@@ -552,6 +678,71 @@ onBeforeUnmount(() => {
 .greeting-suffix {
   font-weight: 400;
   opacity: 0.9;
+}
+
+.welcome-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.last-updated {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+}
+
+.refresh-btn {
+  --el-button-bg-color: rgba(255,255,255,0.2) !important;
+  --el-button-border-color: rgba(255,255,255,0.3) !important;
+  --el-button-text-color: #fff !important;
+  --el-button-hover-bg-color: rgba(255,255,255,0.35) !important;
+  --el-button-hover-border-color: rgba(255,255,255,0.5) !important;
+  --el-button-hover-text-color: #fff !important;
+  backdrop-filter: blur(4px);
+}
+
+/* =============================================
+   Quick Actions
+   ============================================= */
+.quick-actions-row {
+  margin-bottom: 24px;
+}
+
+.quick-action-card {
+  cursor: pointer;
+  border: none;
+  border-radius: 12px;
+  transition: all 200ms ease;
+}
+
+.quick-action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+.quick-action-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.quick-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick-action-label {
+  font-size: 13px;
+  color: #334155;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* =============================================
@@ -620,6 +811,7 @@ onBeforeUnmount(() => {
   font-weight: 700;
   color: var(--color-text);
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-label {
@@ -736,7 +928,8 @@ onBeforeUnmount(() => {
    Responsive
    ============================================= */
 @media (max-width: 1024px) {
-  .stats-row .el-col {
+  .stats-row .el-col,
+  .quick-actions-row .el-col {
     margin-bottom: 12px;
   }
 }
@@ -751,6 +944,24 @@ onBeforeUnmount(() => {
     align-items: flex-start;
     gap: 8px;
     padding: 20px 24px;
+  }
+
+  .welcome-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .quick-action-inner {
+    padding: 4px 0;
+  }
+
+  .quick-action-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .quick-action-label {
+    font-size: 12px;
   }
 }
 </style>

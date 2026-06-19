@@ -137,7 +137,22 @@
         stripe
         border
         class="data-table"
+        row-key="id"
       >
+        <!-- 可展开行：操作详情 -->
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div class="expand-detail">
+              <el-descriptions :column="2" border size="small">
+                <el-descriptions-item label="请求方法">{{ row.method || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="请求路径">{{ row.path || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="对象类型">{{ row.targetType || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="对象ID">{{ row.targetId || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="详情" :span="2">{{ row.detail || '-' }}</el-descriptions-item>
+              </el-descriptions>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="createdAt" label="时间" width="180">
           <template #default="{ row }">
@@ -164,9 +179,22 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="detail" label="详情" min-width="260" show-overflow-tooltip>
+        <el-table-column prop="status" label="状态" width="90" align="center">
           <template #default="{ row }">
-            <span class="text-secondary">{{ row.detail || '-' }}</span>
+            <el-tag
+              size="small"
+              :type="row.status === 'FAIL' || row.status === 'ERROR' ? 'danger' : 'success'"
+              effect="light"
+            >
+              {{ row.status === 'FAIL' || row.status === 'ERROR' ? '失败' : '成功' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="duration" label="耗时" width="100" align="center">
+          <template #default="{ row }">
+            <span :class="['duration-text', row.duration > 1000 ? 'duration-slow' : '']">
+              {{ row.duration != null ? `${row.duration}ms` : '-' }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="100" align="center" fixed="right">
@@ -499,6 +527,31 @@ onMounted(() => {
 .text-secondary {
   color: #64748B;
   font-size: 14px;
+}
+
+/* 展开行详情 */
+.expand-detail {
+  padding: 12px 24px;
+  background: #FAFBFC;
+}
+
+.expand-detail :deep(.el-descriptions__label) {
+  width: 90px;
+  background: #F1F5F9 !important;
+  color: #475569;
+  font-weight: 500;
+}
+
+/* 耗时文字 */
+.duration-text {
+  font-size: 13px;
+  color: #64748B;
+  font-variant-numeric: tabular-nums;
+}
+
+.duration-slow {
+  color: #EF4444;
+  font-weight: 600;
 }
 
 /* 弹窗 border-radius 12px */

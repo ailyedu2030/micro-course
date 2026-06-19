@@ -6,6 +6,12 @@
 -->
 <template>
   <div class="chapter-list-page">
+    <el-breadcrumb separator="→" style="margin-bottom:20px">
+      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
+      <el-breadcrumb-item>章节管理</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
@@ -29,10 +35,9 @@
           <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增章节</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
-        <template #empty>
-          <el-empty description="暂无章节数据" />
-        </template>
+      <el-skeleton v-if="loading" :rows="6" animated />
+      <el-empty v-else-if="tableData.length === 0" description="暂无章节数据" />
+      <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
         <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
@@ -57,7 +62,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="pagination-wrap">
+      <div class="pagination-wrap" v-if="!loading && tableData.length > 0">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"

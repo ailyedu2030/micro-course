@@ -5,6 +5,12 @@
 -->
 <template>
   <div class="teaching-class-list">
+    <!-- 面包屑导航 -->
+    <el-breadcrumb separator="/" class="breadcrumb-nav">
+      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item>教学班管理</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <!-- 搜索区 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
@@ -39,11 +45,26 @@
           <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增教学班</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+      <!-- 骨架屏 -->
+      <el-skeleton v-if="loading" :rows="6" animated />
+
+      <!-- 空状态 -->
+      <el-empty
+        v-else-if="!loading && tableData.length === 0"
+        description="暂无教学班数据"
+        :image-size="120"
+      />
+
+      <!-- 数据表格 -->
+      <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="教学班名称" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="courseName" label="课程名称" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="courseName" label="课程名称" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-tag type="primary" size="small" effect="plain">{{ row.courseName || '-' }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="teacherName" label="授课教师" width="120" show-overflow-tooltip />
         <el-table-column prop="semester" label="学期" width="100" />
         <el-table-column prop="maxStudents" label="容量" width="80" align="center" />
@@ -71,7 +92,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="pagination-wrap">
+      <div v-if="tableData.length > 0" class="pagination-wrap">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"
@@ -386,6 +407,11 @@ onMounted(() => {
 <style scoped>
 .teaching-class-list {
   padding: var(--space-4);
+}
+
+.breadcrumb-nav {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm, 14px);
 }
 
 .filter-card {

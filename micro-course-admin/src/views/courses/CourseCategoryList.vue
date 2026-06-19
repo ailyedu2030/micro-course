@@ -6,6 +6,12 @@
 -->
 <template>
   <div class="category-list-page">
+    <el-breadcrumb separator="→" style="margin-bottom:20px">
+      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
+      <el-breadcrumb-item>课程分类</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <!-- 顶栏 -->
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
@@ -16,10 +22,9 @@
 
     <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table" row-key="id" default-expand-all>
-        <template #empty>
-          <el-empty description="暂无分类数据" />
-        </template>
+      <el-skeleton v-if="loading" :rows="6" animated />
+      <el-empty v-else-if="tableData.length === 0" description="暂无分类数据" />
+      <el-table v-else :data="tableData" stripe border class="data-table" row-key="id" default-expand-all>
         <el-table-column prop="name" label="名称" min-width="180" />
         <el-table-column prop="code" label="编码" width="150" />
         <el-table-column prop="sortOrder" label="排序" width="100" align="center" />
@@ -32,7 +37,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="pagination-wrap">
+      <div class="pagination-wrap" v-if="!loading && tableData.length > 0">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"

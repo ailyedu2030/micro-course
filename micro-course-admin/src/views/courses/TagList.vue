@@ -6,6 +6,12 @@
 -->
 <template>
   <div class="tag-list-page">
+    <el-breadcrumb separator="→" style="margin-bottom:20px">
+      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
+      <el-breadcrumb-item>标签管理</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <!-- 顶栏 -->
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
@@ -16,10 +22,9 @@
 
     <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
-        <template #empty>
-          <el-empty description="暂无标签数据" />
-        </template>
+      <el-skeleton v-if="loading" :rows="6" animated />
+      <el-empty v-else-if="tableData.length === 0" description="暂无标签数据" />
+      <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="name" label="标签名" min-width="150" />
         <el-table-column prop="color" label="颜色" width="120" align="center">
@@ -41,7 +46,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="pagination-wrap">
+      <div class="pagination-wrap" v-if="!loading && tableData.length > 0">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"

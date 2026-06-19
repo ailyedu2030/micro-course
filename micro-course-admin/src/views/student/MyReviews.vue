@@ -8,6 +8,12 @@
   <div class="my-reviews-container">
     <!-- PC Layout -->
     <template v-if="!isMobile">
+      <!-- 面包屑导航 -->
+      <el-breadcrumb class="page-breadcrumb">
+        <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item>我的评价</el-breadcrumb-item>
+      </el-breadcrumb>
+
       <div class="page-header">
         <h2 class="page-title">我的评价</h2>
         <span v-if="pagination.total > 0" class="count-badge">{{ pagination.total }}</span>
@@ -102,6 +108,12 @@
 
     <!-- H5 Layout -->
     <template v-else>
+      <!-- 面包屑导航 -->
+      <el-breadcrumb class="h5-breadcrumb">
+        <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item>我的评价</el-breadcrumb-item>
+      </el-breadcrumb>
+
       <div class="h5-header">
         <h2 class="h5-title">我的评价</h2>
         <span v-if="pagination.total > 0" class="h5-count-badge">{{ pagination.total }}</span>
@@ -317,6 +329,10 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
+.page-breadcrumb {
+  margin-bottom: var(--space-4);
+}
+
 .page-header {
   display: flex;
   align-items: center;
@@ -403,6 +419,10 @@ onUnmounted(() => {
 @media (max-width: 767px) {
   .my-reviews-container {
     padding: var(--space-3);
+  }
+
+  .h5-breadcrumb {
+    margin-bottom: var(--space-3);
   }
 
   .h5-header {

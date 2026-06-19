@@ -1,5 +1,11 @@
 <template>
   <div class="achievement-wall">
+    <!-- 面包屑导航 -->
+    <el-breadcrumb class="page-breadcrumb">
+      <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item>成就墙</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <!-- 头部 -->
     <div class="achievement-wall-header">
       <h2>我的成就</h2>
@@ -8,12 +14,47 @@
       </span>
     </div>
 
-    <!-- 已获得徽章区 -->
-    <el-card class="earned-section" shadow="never">
-      <template #header>
-        <span>已获得</span>
-      </template>
-      <div v-loading="loading">
+    <!-- 骨架屏加载态 -->
+    <template v-if="loading">
+      <el-card class="earned-section" shadow="never">
+        <template #header><span>已获得</span></template>
+        <el-row :gutter="16">
+          <el-col v-for="n in 4" :key="n" :xs="12" :sm="8" :md="6">
+            <el-skeleton animated>
+              <template #template>
+                <div class="badge-card-skeleton">
+                  <el-skeleton-item variant="circle" style="width: 40px; height: 40px;" />
+                  <el-skeleton-item variant="text" style="width: 60%; margin-top: 12px;" />
+                  <el-skeleton-item variant="text" style="width: 40%; margin-top: 8px;" />
+                </div>
+              </template>
+            </el-skeleton>
+          </el-col>
+        </el-row>
+      </el-card>
+    </template>
+
+    <!-- 加载失败 -->
+    <template v-else-if="error">
+      <el-result icon="error" title="加载失败" sub-title="成就数据加载异常，请稍后重试">
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重新加载</el-button>
+        </template>
+      </el-result>
+    </template>
+
+    <!-- 全部为空 -->
+    <template v-else-if="allDefinitions.length === 0">
+      <el-empty description="暂无成就徽章数据" :image-size="100" />
+    </template>
+
+    <!-- 数据就绪 -->
+    <template v-else>
+      <!-- 已获得徽章区 -->
+      <el-card class="earned-section" shadow="never">
+        <template #header>
+          <span>已获得</span>
+        </template>
         <el-row :gutter="16">
           <el-col
             v-for="badge in earnedBadges"
@@ -30,19 +71,17 @@
           </el-col>
         </el-row>
         <el-empty
-          v-if="!loading && earnedBadges.length === 0"
+          v-if="earnedBadges.length === 0"
           description="暂无已获得徽章，继续加油！"
           :image-size="60"
         />
-      </div>
-    </el-card>
+      </el-card>
 
-    <!-- 未获得徽章区 -->
-    <el-card class="locked-section" shadow="never">
-      <template #header>
-        <span>未解锁</span>
-      </template>
-      <div v-loading="loading">
+      <!-- 未获得徽章区 -->
+      <el-card class="locked-section" shadow="never">
+        <template #header>
+          <span>未解锁</span>
+        </template>
         <el-row :gutter="16">
           <el-col
             v-for="badge in lockedBadges"
@@ -60,21 +99,23 @@
           </el-col>
         </el-row>
         <el-empty
-          v-if="!loading && lockedBadges.length === 0"
+          v-if="lockedBadges.length === 0"
           description="所有徽章已解锁！"
           :image-size="60"
         />
-      </div>
-    </el-card>
+      </el-card>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Star, Lock } from '@element-plus/icons-vue'
 import { getBadgeDefinitions, getMyAchievements } from '@/api/badge'
 
 const loading = ref(false)
+const error = ref(false)
 const allDefinitions = ref([])
 const myAchievements = ref([])
 
@@ -119,8 +160,13 @@ function formatCriteria(criteria) {
   }
 }
 
-onMounted(async () => {
+onMounted(() => {
+  fetchData()
+})
+
+async function fetchData() {
   loading.value = true
+  error.value = false
   try {
     const [defRes, achRes] = await Promise.all([
       getBadgeDefinitions(),
@@ -130,10 +176,12 @@ onMounted(async () => {
     myAchievements.value = achRes.data?.items || achRes.data || []
   } catch (e) {
     console.error('加载成就数据失败', e)
+    error.value = true
+    ElMessage.error('加载成就数据失败，请稍后重试')
   } finally {
     loading.value = false
   }
-})
+}
 </script>
 
 <style scoped>
@@ -141,6 +189,17 @@ onMounted(async () => {
   padding: var(--space-5);
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.page-breadcrumb {
+  margin-bottom: var(--space-4);
+}
+
+.badge-card-skeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-4) var(--space-2);
 }
 
 .achievement-wall-header {

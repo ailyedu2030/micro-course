@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.nio.file.NoSuchFileException;
 
@@ -85,6 +86,22 @@ public class GlobalExceptionHandler {
         String message = e.getConstraintViolations().stream()
                 .findFirst()
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .orElse("参数校验失败");
+        return ResponseEntity.status(400).body(R.fail(400, message));
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<R<Void>> handleHandlerMethodValidation(HandlerMethodValidationException e) {
+        String message = e.getAllValidationResults().stream()
+                .findFirst()
+                .map(r -> {
+                    String paramName = r.getMethodParameter().getParameterName();
+                    String errorMsg = r.getResolvableErrors().stream()
+                            .findFirst()
+                            .map(err -> err.getDefaultMessage())
+                            .orElse("参数校验失败");
+                    return (paramName != null ? paramName + ": " : "") + errorMsg;
+                })
                 .orElse("参数校验失败");
         return ResponseEntity.status(400).body(R.fail(400, message));
     }

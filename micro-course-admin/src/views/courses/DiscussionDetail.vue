@@ -6,6 +6,12 @@
 -->
 <template>
   <div class="discussion-detail-page">
+    <el-breadcrumb separator="→" style="margin-bottom:20px">
+      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/courses/discussions' }">讨论管理</el-breadcrumb-item>
+      <el-breadcrumb-item>讨论详情</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <!-- 帖子卡片 -->
     <el-card class="post-card" shadow="never">
       <template #header>
@@ -20,7 +26,8 @@
         </div>
       </template>
 
-      <div v-loading="loading">
+      <el-skeleton v-if="loading" :rows="6" animated />
+      <template v-else>
         <div class="post-header">
           <h2 class="post-title">{{ postData.title }}</h2>
           <div class="post-meta">
@@ -33,7 +40,7 @@
           </div>
         </div>
         <div class="post-content">{{ postData.content }}</div>
-      </div>
+      </template>
     </el-card>
 
     <!-- 回复列表 -->

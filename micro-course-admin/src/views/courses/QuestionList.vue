@@ -6,6 +6,12 @@
 -->
 <template>
   <div class="question-list-page">
+    <el-breadcrumb separator="→" style="margin-bottom:20px">
+      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
+      <el-breadcrumb-item>题目列表</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
@@ -62,10 +68,9 @@
           </div>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
-        <template #empty>
-          <el-empty description="暂无题目数据" />
-        </template>
+      <el-skeleton v-if="loading" :rows="6" animated />
+      <el-empty v-else-if="tableData.length === 0" description="暂无题目数据" />
+      <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="questionType" label="题型" width="120" align="center">
           <template #default="{ row }">
@@ -103,7 +108,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="pagination-wrap">
+      <div class="pagination-wrap" v-if="!loading && tableData.length > 0">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"

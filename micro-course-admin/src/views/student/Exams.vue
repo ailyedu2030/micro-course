@@ -8,6 +8,14 @@
   <div class="exams-page role-student fade-in">
     <!-- PC 布局 (≥769px) -->
     <div v-if="!isMobile" class="pc-layout">
+      <!-- 面包屑导航 -->
+      <div class="breadcrumb-wrap">
+        <el-breadcrumb>
+          <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+          <el-breadcrumb-item>考试中心</el-breadcrumb-item>
+        </el-breadcrumb>
+      </div>
+
       <!-- 页面 Header -->
       <div class="page-header">
         <div class="header-content">
@@ -35,7 +43,7 @@
 
         <!-- 空状态 -->
         <el-empty
-          v-else-if="examList.length === 0"
+          v-else-if="!errorState && examList.length === 0"
           class="empty-state"
         >
           <template #image>
@@ -48,6 +56,19 @@
             <p class="empty-tip">你还没有报名的考试</p>
           </template>
         </el-empty>
+
+        <!-- 错误状态 -->
+        <el-result
+          v-else-if="errorState"
+          icon="error"
+          title="加载失败"
+          sub-title="考试数据加载异常，请稍后重试"
+          class="error-state"
+        >
+          <template #extra>
+            <el-button type="primary" @click="fetchExams">重新加载</el-button>
+          </template>
+        </el-result>
 
         <!-- 考试列表 -->
         <div v-else class="exam-list">
@@ -84,6 +105,14 @@
 
     <!-- H5 布局 (≤768px) -->
     <div v-else class="h5-layout">
+      <!-- 面包屑导航 -->
+      <div class="h5-breadcrumb-wrap">
+        <el-breadcrumb>
+          <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+          <el-breadcrumb-item>考试中心</el-breadcrumb-item>
+        </el-breadcrumb>
+      </div>
+
       <div class="h5-header">
         <h1 class="h5-title">我的考试</h1>
       </div>
@@ -104,7 +133,7 @@
 
       <!-- 空状态 -->
       <el-empty
-        v-else-if="examList.length === 0"
+        v-else-if="!errorState && examList.length === 0"
         class="empty-state"
       >
         <template #image>
@@ -117,6 +146,19 @@
           <p class="empty-tip">你还没有报名的考试</p>
         </template>
       </el-empty>
+
+      <!-- 错误状态 -->
+      <el-result
+        v-else-if="errorState"
+        icon="error"
+        title="加载失败"
+        sub-title="请稍后重试"
+        class="error-state"
+      >
+        <template #extra>
+          <el-button type="primary" size="small" @click="fetchExams">重新加载</el-button>
+        </template>
+      </el-result>
 
       <!-- 考试列表 -->
       <div v-else class="h5-exam-list">
@@ -171,6 +213,7 @@ onUnmounted(() => {
 })
 
 const loading = ref(false)
+const errorState = ref(false)
 const examList = ref([])
 
 const formatTime = (timeStr) => {
@@ -189,6 +232,7 @@ const fetchExams = async () => {
     return
   }
   loading.value = true
+  errorState.value = false
   try {
     // 获取已报名的课程
     const res = await getMyEnrollments({ userId })
@@ -203,6 +247,7 @@ const fetchExams = async () => {
     //   .filter(e => e.exams && e.exams.length > 0)
     //   .flatMap(e => e.exams.map(exam => ({ ...exam, courseName: e.courseTitle })))
   } catch {
+    errorState.value = true
     ElMessage.error('加载考试信息失败')
   } finally {
     loading.value = false
@@ -222,6 +267,10 @@ const handleJoinExam = (exam) => {
 .pc-layout {
   min-height: 100vh;
   background: var(--el-bg-color);
+}
+
+.breadcrumb-wrap {
+  padding: var(--space-4) var(--space-5) 0;
 }
 
 /* 页面 Header */
@@ -313,6 +362,10 @@ const handleJoinExam = (exam) => {
   padding-bottom: 56px;
 }
 
+.h5-breadcrumb-wrap {
+  padding: var(--space-3) var(--space-4) 0;
+}
+
 .h5-header {
   height: 80px;
   background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 100%);
@@ -370,6 +423,10 @@ const handleJoinExam = (exam) => {
    Empty State
    ================================================ */
 .empty-state {
+  padding: var(--space-8) 0;
+}
+
+.error-state {
   padding: var(--space-8) 0;
 }
 
