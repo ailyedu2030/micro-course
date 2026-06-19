@@ -27,7 +27,7 @@ class EnrollmentP0ConcurrencyTest extends BaseIntegrationTest {
     @DisplayName("RED→GREEN: 并发两线程 enroll 同一 (userId, courseId) 必须都成功且返回相同 id")
     void concurrentEnrollIdempotent() throws Exception {
         String token = bearerAdmin();
-        String body = "{\"userId\":1001,\"courseId\":2001,\"sourceChannel\":\"WEB\"}";
+        String body = "{\"userId\":1,\"courseId\":1,\"sourceChannel\":\"WEB\"}";
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CountDownLatch start = new CountDownLatch(1);

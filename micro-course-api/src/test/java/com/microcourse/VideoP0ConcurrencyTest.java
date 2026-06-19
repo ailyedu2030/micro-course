@@ -66,7 +66,7 @@ class VideoP0ConcurrencyTest extends BaseIntegrationTest {
     private Long createTestVideo() {
         var svc = applicationContext.getBean(com.microcourse.service.VideoService.class);
         com.microcourse.entity.Video v = new com.microcourse.entity.Video();
-        v.setCourseId(9999L);
+        v.setCourseId(1L);
         v.setTitle("P0-CON-002-test");
         v.setStatus(0);
         v.setOriginalPath("/tmp/dummy.mp4");

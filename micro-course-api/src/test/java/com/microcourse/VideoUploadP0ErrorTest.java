@@ -64,7 +64,7 @@ class VideoUploadP0ErrorTest extends BaseIntegrationTest {
     private Long createTestVideo() {
         var svc = applicationContext.getBean(com.microcourse.service.VideoService.class);
         Video v = new Video();
-        v.setCourseId(9999L);
+        v.setCourseId(1L);
         v.setTitle("P0-ERR-001-test");
         v.setStatus(0);
         v.setOriginalPath("/tmp/dummy.mp4");
