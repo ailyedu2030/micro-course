@@ -67,11 +67,6 @@
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="categoryName" label="分类" width="120" />
         <el-table-column prop="teacherName" label="教师" width="100" />
-        <el-table-column prop="price" label="价格" width="90" align="center">
-          <template #default="{ row }">
-            {{ row.price != null ? `¥${row.price}` : '-' }}
-          </template>
-        </el-table-column>
         <el-table-column prop="studentCount" label="学员数" width="90" align="center" />
         <el-table-column prop="status" label="状态" width="120" align="center">
           <template #default="{ row }">

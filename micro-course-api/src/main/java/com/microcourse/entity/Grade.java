@@ -52,6 +52,8 @@ public class Grade {
     @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
+    private String comment;
+
     public Grade() {}
 
     public Long getId() { return id; }
@@ -84,4 +86,6 @@ public class Grade {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public String getComment() { return comment; }
+    public void setComment(String comment) { this.comment = comment; }
 }

@@ -46,7 +46,7 @@ public class MajorController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<MajorVO> update(@PathVariable Long id,
                              @Valid @RequestBody MajorUpdateRequest request) {
         MajorVO vo = majorService.update(id, request);
@@ -54,7 +54,7 @@ public class MajorController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         majorService.delete(id);
         return R.ok();

@@ -19,6 +19,8 @@ public class GradeVO {
     private Integer duration;
     private LocalDateTime submittedAt;
     private Long gradedBy;
+    private Long enrollmentId;
+    private String comment;
     private String gradedByName;
     private LocalDateTime gradedAt;
     private LocalDateTime createdAt;
@@ -53,6 +55,10 @@ public class GradeVO {
     public void setSubmittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; }
     public Long getGradedBy() { return gradedBy; }
     public void setGradedBy(Long gradedBy) { this.gradedBy = gradedBy; }
+    public Long getEnrollmentId() { return enrollmentId; }
+    public void setEnrollmentId(Long enrollmentId) { this.enrollmentId = enrollmentId; }
+    public String getComment() { return comment; }
+    public void setComment(String comment) { this.comment = comment; }
     public String getGradedByName() { return gradedByName; }
     public void setGradedByName(String gradedByName) { this.gradedByName = gradedByName; }
     public LocalDateTime getGradedAt() { return gradedAt; }
