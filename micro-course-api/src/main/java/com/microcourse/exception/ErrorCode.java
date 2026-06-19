@@ -54,7 +54,10 @@ public enum ErrorCode {
     BADGE_NOT_FOUND(13001, "徽章不存在", 404),
     CERTIFICATE_NOT_FOUND(13002, "证书不存在", 404),
     TAG_NOT_FOUND(14001, "标签不存在", 404),
-    BANNER_NOT_FOUND(15001, "Banner 不存在", 404);
+    BANNER_NOT_FOUND(15001, "Banner 不存在", 404),
+
+    CAS_NOT_CONFIGURED(1008, "CAS服务未配置", 500),
+    CAS_VALIDATION_FAILED(1009, "CAS票据验证失败", 401);
 
     private final int code;
     private final String message;

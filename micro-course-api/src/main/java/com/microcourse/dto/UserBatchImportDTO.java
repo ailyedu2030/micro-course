@@ -1,35 +1,35 @@
 package com.microcourse.dto;
 
 import com.alibaba.excel.annotation.ExcelProperty;
-import com.microcourse.enums.UserRole;
 
 /**
  * 用户批量导入 Excel 行模型
  * 必须列：username, realName
- * 可选列：email, role, departmentId, classId, majorId
+ * 可选列：password, role, departmentName, majorName, className
+ * P0-1 修复：改为按名称导入 department/major/class，后端根据名称查找 ID
  */
 public class UserBatchImportDTO {
 
-    @ExcelProperty("用户名")
+    @ExcelProperty("username")
     private String username;
 
-    @ExcelProperty("真实姓名")
+    @ExcelProperty("realName")
     private String realName;
 
-    @ExcelProperty("邮箱")
-    private String email;
+    @ExcelProperty("password")
+    private String password;
 
-    @ExcelProperty("角色")
+    @ExcelProperty("role")
     private String role;
 
-    @ExcelProperty("院系ID")
-    private Long departmentId;
+    @ExcelProperty("departmentName")
+    private String departmentName;
 
-    @ExcelProperty("专业ID")
-    private Long majorId;
+    @ExcelProperty("majorName")
+    private String majorName;
 
-    @ExcelProperty("班级ID")
-    private Long classId;
+    @ExcelProperty("className")
+    private String className;
 
     public UserBatchImportDTO() {}
 
@@ -37,14 +37,14 @@ public class UserBatchImportDTO {
     public void setUsername(String username) { this.username = username; }
     public String getRealName() { return realName; }
     public void setRealName(String realName) { this.realName = realName; }
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
-    public Long getDepartmentId() { return departmentId; }
-    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
-    public Long getMajorId() { return majorId; }
-    public void setMajorId(Long majorId) { this.majorId = majorId; }
-    public Long getClassId() { return classId; }
-    public void setClassId(Long classId) { this.classId = classId; }
+    public String getDepartmentName() { return departmentName; }
+    public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+    public String getMajorName() { return majorName; }
+    public void setMajorName(String majorName) { this.majorName = majorName; }
+    public String getClassName() { return className; }
+    public void setClassName(String className) { this.className = className; }
 }

@@ -174,7 +174,7 @@
       <div class="import-guide">
         <el-alert type="info" :closable="false" show-icon>
           <template #title>
-            请上传 .xlsx 格式的 Excel 文件，每次最多导入 500 条记录。
+            请上传 .xlsx/.xls 格式的 Excel 文件，每次最多导入 500 条记录。
           </template>
         </el-alert>
         <div class="import-template">
@@ -182,7 +182,7 @@
           <el-table :data="templateData" size="small" border class="template-table">
             <el-table-column prop="username" label="username (必填)" />
             <el-table-column prop="realName" label="realName (必填)" />
-            <el-table-column prop="password" label="password (必填)" />
+            <el-table-column prop="password" label="password (可选，留空自动生成)" />
             <el-table-column prop="role" label="role (STUDENT/TEACHER)" />
             <el-table-column prop="departmentName" label="departmentName" />
             <el-table-column prop="majorName" label="majorName" />
@@ -196,7 +196,7 @@
           class="import-upload"
           drag
           :limit="1"
-          accept=".xlsx"
+          accept=".xlsx,.xls"
           :auto-upload="false"
           :on-change="handleFileChange"
           :on-remove="handleFileRemove"
@@ -204,7 +204,7 @@
           <el-icon class="upload-icon"><UploadFilled /></el-icon>
           <div class="upload-text">将 Excel 文件拖到此处，或 <em>点击上传</em></div>
           <template #tip>
-            <div class="upload-tip">只能上传 xlsx 文件，单个文件不超过 5MB</div>
+            <div class="upload-tip">只能上传 xlsx/xls 文件，单个文件不超过 5MB</div>
           </template>
         </el-upload>
       </div>
@@ -225,9 +225,9 @@
      :close-on-press-escape="true">
       <div class="result-content">
         <el-result
-          :icon="importResult.success ? 'success' : 'warning'"
-          :title="importResult.success ? `成功导入 ${importResult.success} 条` : '部分导入失败'"
-          :sub-title="importResult.failed > 0 ? `失败 ${importResult.failed} 条，以下为失败条目` : ''"
+          :icon="importResult.successCount > 0 ? 'success' : 'warning'"
+          :title="importResult.successCount > 0 ? `成功导入 ${importResult.successCount} 条` : '导入失败'"
+          :sub-title="importResult.failCount > 0 ? `失败 ${importResult.failCount} 条，以下为失败条目` : ''"
         />
         <el-table
           v-if="importResult.errors && importResult.errors.length > 0"
@@ -294,6 +294,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, RefreshRight, View, Upload, Download, UploadFilled } from '@element-plus/icons-vue'
 import { getUsers, batchImportUsers } from '@/api/user'
+import * as XLSX from 'xlsx'
 
 // 加载状态
 const loading = ref(false)
@@ -320,13 +321,13 @@ const uploadRef = ref(null)
 const uploadFile = ref(null)
 
 const importResult = ref({
-  success: 0,
-  failed: 0,
+  successCount: 0,
+  failCount: 0,
   errors: []
 })
 
 const templateData = [
-  { username: 'zhangsan', realName: '张三', password: '123456', role: 'STUDENT', departmentName: '计算机学院', majorName: '软件工程', className: '软工 2023-1 班' }
+  { username: 'zhangsan', realName: '张三', password: '', role: 'STUDENT', departmentName: '计算机学院', majorName: '软件工程', className: '软工 2023-1 班' }
 ]
 
 // 详情弹窗
@@ -434,25 +435,25 @@ async function handleConfirmImport() {
     const formData = new FormData()
     formData.append('file', uploadFile.value)
     const res = await batchImportUsers(formData)
-    // 后端返回 { success: N, failed: M, errors: [...] }
+    // P1-1 修复：字段名对齐后端 successCount/failCount
     const result = res.data || {}
     importResult.value = {
-      success: result.success || 0,
-      failed: result.failed || 0,
+      successCount: result.successCount || 0,
+      failCount: result.failCount || 0,
       errors: result.errors || []
     }
     importDialogVisible.value = false
     resultDialogVisible.value = true
-    if (result.failed === 0) {
-      ElMessage.success(`成功导入 ${result.success} 条用户记录`)
+    if (result.failCount === 0) {
+      ElMessage.success(`成功导入 ${result.successCount} 条用户记录`)
     }
     fetchData()
   } catch (err) {
     ElMessage.error(err.message || '导入失败，请检查文件格式')
     importResult.value = {
-      success: 0,
-      failed: 0,
-      errors: [{ row: '-', username: '-', reason: err.message || '导入失败' }]
+      successCount: 0,
+      failCount: 0,
+      errors: [{ row: 0, username: '-', reason: err.message || '导入失败' }]
     }
     importDialogVisible.value = false
     resultDialogVisible.value = true
@@ -462,18 +463,21 @@ async function handleConfirmImport() {
 }
 
 function handleDownloadTemplate() {
-  // 生成一个简单的模板 Excel
+  // P0-3 修复：使用 xlsx 库生成真正的 .xlsx 文件
   const template = [
     ['username', 'realName', 'password', 'role', 'departmentName', 'majorName', 'className'],
-    ['zhangsan', '张三', '123456', 'STUDENT', '计算机学院', '软件工程', '软工 2023-1 班'],
-    ['lisi', '李四', '123456', 'STUDENT', '计算机学院', '软件工程', '软工 2023-2 班']
+    ['zhangsan', '张三', '', 'STUDENT', '计算机学院', '软件工程', '软工 2023-1 班'],
+    ['lisi', '李四', '', 'STUDENT', '计算机学院', '软件工程', '软工 2023-2 班']
   ]
-  const csvContent = template.map(row => row.join(',')).join('\n')
-  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet(template)
+  XLSX.utils.book_append_sheet(wb, ws, '用户导入模板')
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = 'user_import_template.csv'
+  link.download = 'user_import_template.xlsx'
   link.click()
   URL.revokeObjectURL(url)
 }

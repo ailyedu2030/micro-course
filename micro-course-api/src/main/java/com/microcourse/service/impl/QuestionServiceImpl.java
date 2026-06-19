@@ -184,7 +184,7 @@ public class QuestionServiceImpl implements QuestionService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        List<String> errors = new ArrayList<>();
+        List<BatchImportResultVO.ImportErrorItem> errors = new ArrayList<>();
         int successCount = 0;
         int failCount = 0;
 
@@ -201,7 +201,7 @@ public class QuestionServiceImpl implements QuestionService {
                     // 期望列：questionType, content, options, answer, partialScore, explanation, difficulty
                     // 列索引：0=questionType, 1=content, 2=options, 3=answer, 4=partialScore, 5=explanation, 6=difficulty
                     if (row.size() < 4) {
-                        errors.add("第 " + (i + 1) + " 行：数据列数不足，至少需要 4 列");
+                        errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", "数据列数不足，至少需要 4 列"));
                         failCount++;
                         continue;
                     }
@@ -216,17 +216,17 @@ public class QuestionServiceImpl implements QuestionService {
 
                     // 校验必填
                     if (questionType == null || questionType.trim().isEmpty()) {
-                        errors.add("第 " + (i + 1) + " 行：题目类型不能为空");
+                        errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", "题目类型不能为空"));
                         failCount++;
                         continue;
                     }
                     if (content == null || content.trim().isEmpty()) {
-                        errors.add("第 " + (i + 1) + " 行：题目内容不能为空");
+                        errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", "题目内容不能为空"));
                         failCount++;
                         continue;
                     }
                     if (answer == null || answer.trim().isEmpty()) {
-                        errors.add("第 " + (i + 1) + " 行：答案不能为空");
+                        errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", "答案不能为空"));
                         failCount++;
                         continue;
                     }
@@ -252,7 +252,7 @@ public class QuestionServiceImpl implements QuestionService {
                     // ERR-005 修复:记录真实异常原因,运维可溯源
                     log.warn("[Question] 批量导入第 {} 行失败", i + 1, e);
                     String cause = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-                    errors.add("第 " + (i + 1) + " 行：" + cause);
+                    errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", cause));
                     failCount++;
                 }
             }

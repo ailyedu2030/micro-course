@@ -37,8 +37,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
@@ -330,11 +332,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public BatchImportResultVO batchImportUsers(MultipartFile file) {
-        List<String> errors = new ArrayList<>();
-        int successCount = 0;
-        int failCount = 0;
+        List<BatchImportResultVO.ImportErrorItem> errors = new ArrayList<>();
 
-        UserBatchImportListener listener = new UserBatchImportListener(passwordEncoder);
+        // Step 1: 解析 Excel
+        UserBatchImportListener listener = new UserBatchImportListener();
         try {
             EasyExcel.read(file.getInputStream(), UserBatchImportDTO.class, listener).sheet().doRead();
         } catch (Exception e) {
@@ -347,83 +348,195 @@ public class UserServiceImpl implements UserService {
         List<UserBatchImportDTO> rows = listener.getRows();
 
         if (rows.isEmpty() && errors.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件中无有效数据行");
         }
 
-        // 检查 usernames 唯一性（在同一批次内）
+        // Step 2: P0-2 预加载院系/专业/班级 name→id 映射
+        Map<String, Long> deptNameMap = buildDepartmentNameMap();
+        Map<String, Long> majorNameMap = buildMajorNameMap();
+        Map<String, Long> classNameMap = buildClassNameMap();
+
+        // Step 3: 批次内用户名去重 + 数据库用户名预查
         Set<String> seenUsernames = new HashSet<>();
-        for (int i = 0; i < rows.size(); i++) {
-            UserBatchImportDTO row = rows.get(i);
-            if (seenUsernames.contains(row.getUsername())) {
-                errors.add("第 " + (listener.getRows().indexOf(row) + 1) + " 行：用户名 '" + row.getUsername() + "' 在批次中重复");
-            }
-            seenUsernames.add(row.getUsername());
-        }
+        Set<String> allUsernames = rows.stream()
+                .map(UserBatchImportDTO::getUsername)
+                .collect(Collectors.toSet());
+        Set<String> existingUsernames = findExistingUsernames(allUsernames);
 
-        // 逐条插入，收集错误
+        // Step 4: 逐行校验、构建 User 实体
         List<User> usersToInsert = new ArrayList<>();
+        int successCount = 0;
+
         for (int i = 0; i < rows.size(); i++) {
             UserBatchImportDTO row = rows.get(i);
-            try {
-                // 检查数据库中用户名是否已存在
-                if (userRepository.findByUsername(row.getUsername()).isPresent()) {
-                    errors.add("第 " + (i + 1) + " 行：用户名 '" + row.getUsername() + "' 已存在");
-                    failCount++;
-                    continue;
-                }
+            int rowNum = i + 2; // Excel 第 1 行是表头，数据从第 2 行开始
+            String username = row.getUsername();
 
-                User user = new User();
-                user.setUsername(row.getUsername());
-                user.setPassword(passwordEncoder.encode(listener.getDefaultPassword()));
-                user.setRealName(row.getRealName());
-                user.setEmail(row.getEmail());
-                user.setStatus(1);
+            // 批次内重复
+            if (!seenUsernames.add(username)) {
+                errors.add(new BatchImportResultVO.ImportErrorItem(
+                        rowNum, username, "用户名在批次中重复"));
+                continue;
+            }
 
-                // 解析 role，默认 STUDENT
-                if (row.getRole() != null && !row.getRole().trim().isEmpty()) {
-                    try {
-                        user.setRole(UserRole.valueOf(row.getRole().toUpperCase()));
-                    } catch (IllegalArgumentException e) {
-                        errors.add("第 " + (i + 1) + " 行：角色 '" + row.getRole() + "' 不合法，应为 STUDENT/TEACHER/ADMIN/ACADEMIC");
-                        failCount++;
-                        continue;
-                    }
-                } else {
-                    user.setRole(UserRole.STUDENT);
-                }
+            // 数据库中已存在
+            if (existingUsernames.contains(username)) {
+                errors.add(new BatchImportResultVO.ImportErrorItem(
+                        rowNum, username, "用户名已存在"));
+                continue;
+            }
 
-                user.setDepartmentId(row.getDepartmentId());
-                user.setMajorId(row.getMajorId());
-                user.setClassId(row.getClassId());
-                user.setCreatedAt(LocalDateTime.now());
-                user.setUpdatedAt(LocalDateTime.now());
-
+            // 构建 User 实体（含名称→ID 解析和校验）
+            User user = buildUserFromRow(row, rowNum, deptNameMap, majorNameMap, classNameMap, errors);
+            if (user != null) {
                 usersToInsert.add(user);
                 successCount++;
-            } catch (Exception e) {
-                errors.add("第 " + (i + 1) + " 行：处理失败，请检查数据格式");
-                failCount++;
             }
         }
 
-        // 批量插入
-        if (!usersToInsert.isEmpty()) {
-            for (User user : usersToInsert) {
-                userRepository.insert(user);
-            }
-        }
+        // Step 5: P1-3 批量插入
+        batchInsertUsers(usersToInsert);
 
-        // failCount = 总行数 - 成功数
-        failCount = (listener.getErrors().size() + rows.size()) - successCount;
-        if (failCount < 0) {
-            failCount = 0;
-        }
+        int failCount = errors.size();
 
         BatchImportResultVO result = new BatchImportResultVO();
         result.setSuccessCount(successCount);
         result.setFailCount(failCount);
         result.setErrors(errors);
         return result;
+    }
+
+    // ───── 批量导入辅助方法 ─────
+
+    /** P0-2: 预加载所有院系 name → id 映射 */
+    private Map<String, Long> buildDepartmentNameMap() {
+        List<Department> all = departmentRepository.selectList(null);
+        Map<String, Long> map = new HashMap<>();
+        for (Department d : all) {
+            map.put(d.getName(), d.getId());
+        }
+        return map;
+    }
+
+    /** P0-2: 预加载所有专业 name → id 映射 */
+    private Map<String, Long> buildMajorNameMap() {
+        List<Major> all = majorRepository.selectList(null);
+        Map<String, Long> map = new HashMap<>();
+        for (Major m : all) {
+            map.put(m.getName(), m.getId());
+        }
+        return map;
+    }
+
+    /** P0-2: 预加载所有班级 name → id 映射 */
+    private Map<String, Long> buildClassNameMap() {
+        List<Classes> all = classesRepository.selectList(null);
+        Map<String, Long> map = new HashMap<>();
+        for (Classes c : all) {
+            map.put(c.getName(), c.getId());
+        }
+        return map;
+    }
+
+    /** 批量查询已存在的用户名 */
+    private Set<String> findExistingUsernames(Set<String> usernames) {
+        if (usernames.isEmpty()) {
+            return Set.of();
+        }
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(User::getUsername, usernames)
+               .isNull(User::getDeletedAt)
+               .select(User::getUsername);
+        return userRepository.selectList(wrapper).stream()
+                .map(User::getUsername)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * P0-1 + P0-2: 从 DTO 构建 User 实体，解析名称为 ID 并校验存在性
+     * 返回 null 表示校验失败（错误已加入 errors 列表）
+     */
+    private User buildUserFromRow(UserBatchImportDTO row, int rowNum,
+                                   Map<String, Long> deptNameMap,
+                                   Map<String, Long> majorNameMap,
+                                   Map<String, Long> classNameMap,
+                                   List<BatchImportResultVO.ImportErrorItem> errors) {
+        String username = row.getUsername();
+        User user = new User();
+        user.setUsername(username);
+        user.setRealName(row.getRealName());
+        user.setStatus(1);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+
+        // P1-2: 密码处理（listener 已保证非空且符合复杂度/已生成随机密码）
+        user.setPassword(passwordEncoder.encode(row.getPassword()));
+
+        // 解析 role，默认 STUDENT
+        if (row.getRole() != null && !row.getRole().trim().isEmpty()) {
+            try {
+                user.setRole(UserRole.valueOf(row.getRole().trim().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                errors.add(new BatchImportResultVO.ImportErrorItem(
+                        rowNum, username,
+                        "角色 '" + row.getRole() + "' 不合法，应为 STUDENT/TEACHER/ADMIN/ACADEMIC"));
+                return null;
+            }
+        } else {
+            user.setRole(UserRole.STUDENT);
+        }
+
+        // P0-1 + P0-2: 院系名称 → ID
+        if (row.getDepartmentName() != null && !row.getDepartmentName().trim().isEmpty()) {
+            Long deptId = deptNameMap.get(row.getDepartmentName().trim());
+            if (deptId == null) {
+                errors.add(new BatchImportResultVO.ImportErrorItem(
+                        rowNum, username,
+                        "院系 '" + row.getDepartmentName().trim() + "' 不存在"));
+                return null;
+            }
+            user.setDepartmentId(deptId);
+        }
+
+        // P0-1 + P0-2: 专业名称 → ID
+        if (row.getMajorName() != null && !row.getMajorName().trim().isEmpty()) {
+            Long majorId = majorNameMap.get(row.getMajorName().trim());
+            if (majorId == null) {
+                errors.add(new BatchImportResultVO.ImportErrorItem(
+                        rowNum, username,
+                        "专业 '" + row.getMajorName().trim() + "' 不存在"));
+                return null;
+            }
+            user.setMajorId(majorId);
+        }
+
+        // P0-1 + P0-2: 班级名称 → ID
+        if (row.getClassName() != null && !row.getClassName().trim().isEmpty()) {
+            Long classId = classNameMap.get(row.getClassName().trim());
+            if (classId == null) {
+                errors.add(new BatchImportResultVO.ImportErrorItem(
+                        rowNum, username,
+                        "班级 '" + row.getClassName().trim() + "' 不存在"));
+                return null;
+            }
+            user.setClassId(classId);
+        }
+
+        return user;
+    }
+
+    /** P1-3: 批量插入用户（分批，每批 100 条） */
+    private void batchInsertUsers(List<User> users) {
+        if (users.isEmpty()) {
+            return;
+        }
+        int batchSize = 100;
+        for (int i = 0; i < users.size(); i += batchSize) {
+            List<User> batch = users.subList(i, Math.min(i + batchSize, users.size()));
+            for (User user : batch) {
+                userRepository.insert(user);
+            }
+        }
     }
 
     @Override
