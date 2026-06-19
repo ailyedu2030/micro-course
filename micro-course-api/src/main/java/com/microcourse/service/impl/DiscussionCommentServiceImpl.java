@@ -13,6 +13,7 @@ import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.DiscussionCommentService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -111,8 +112,12 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         if (comment == null || comment.getStatus() == 0) {
             throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
         }
-        // 所有权校验：仅作者本人可删除
-        if (!comment.getUserId().equals(userId)) {
+        // 所有权校验：仅作者本人或 ADMIN/TEACHER 可删除(DISC-NEW-5 修复)
+        User currentUser = userRepository.selectById(userId);
+        boolean isAdminOrTeacher = currentUser != null
+                && (currentUser.getRole() == com.microcourse.enums.UserRole.ADMIN
+                        || currentUser.getRole() == com.microcourse.enums.UserRole.TEACHER);
+        if (!comment.getUserId().equals(userId) && !isAdminOrTeacher) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         comment.setStatus(0);

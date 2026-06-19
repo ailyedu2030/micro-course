@@ -15,6 +15,7 @@ public class PostCreateRequest {
     private String title;
 
     @NotBlank(message = "内容不能为空")
+    @Size(max = 5000, message = "内容最多5000字符")
     private String content;
 
     private Boolean isAnonymous;

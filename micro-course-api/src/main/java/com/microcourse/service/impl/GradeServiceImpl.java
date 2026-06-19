@@ -9,6 +9,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
 import com.microcourse.service.GradeService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -112,7 +113,20 @@ public class GradeServiceImpl implements GradeService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "成绩记录不存在");
         }
 
+        // EXAM-NEW-4 修复:教师越权校验 — 只有课程教师或 ADMIN 可修改成绩
+        if (grade.getCourseId() != null) {
+            Course course = courseRepository.selectById(grade.getCourseId());
+            if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
+
         if (request.getScore() != null) {
+            // MISC-NEW-3 修复:校验 score <= totalScore
+            BigDecimal ts = request.getTotalScore() != null ? request.getTotalScore() : grade.getTotalScore();
+            if (ts != null && request.getScore().compareTo(ts) > 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "得分不能超过总分");
+            }
             grade.setScore(request.getScore());
         }
         if (request.getTotalScore() != null) {

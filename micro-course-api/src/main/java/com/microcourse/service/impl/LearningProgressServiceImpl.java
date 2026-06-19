@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.LearningProgressVO;
 import com.microcourse.dto.ProgressCreateRequest;
@@ -184,16 +185,14 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getStudyDays(Long userId) {
-        LambdaQueryWrapper<LearningProgress> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(LearningProgress::getUserId, userId)
-               .isNotNull(LearningProgress::getLastWatchAt);
-        List<LearningProgress> records = learningProgressRepository.selectList(wrapper);
-
-        long totalDays = records.stream()
-                .filter(p -> p.getLastWatchAt() != null)
-                .map(p -> p.getLastWatchAt().toLocalDate())
-                .distinct()
-                .count();
+        // MISC-NEW-6 修复:改用 SQL COUNT(DISTINCT),避免全量加载到 Java 内存
+        QueryWrapper<LearningProgress> qw = new QueryWrapper<>();
+        qw.select("COUNT(DISTINCT DATE(last_watch_at)) as days")
+                .eq("user_id", userId)
+                .isNotNull("last_watch_at");
+        List<Map<String, Object>> rows = learningProgressRepository.selectMaps(qw);
+        long totalDays = rows.isEmpty() ? 0L
+                : ((Number) rows.get(0).getOrDefault("days", 0L)).longValue();
 
         Map<String, Object> result = new HashMap<>();
         result.put("totalDays", totalDays);
@@ -203,14 +202,13 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getTotalTime(Long userId) {
-        LambdaQueryWrapper<LearningProgress> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(LearningProgress::getUserId, userId);
-        List<LearningProgress> records = learningProgressRepository.selectList(wrapper);
-
-        int totalSeconds = records.stream()
-                .filter(p -> p.getTotalWatchTime() != null)
-                .mapToInt(LearningProgress::getTotalWatchTime)
-                .sum();
+        // MISC-NEW-6 修复:改用 SQL SUM,避免全量加载到 Java 内存
+        QueryWrapper<LearningProgress> qw = new QueryWrapper<>();
+        qw.select("COALESCE(SUM(total_watch_time), 0) as total")
+                .eq("user_id", userId);
+        List<Map<String, Object>> rows = learningProgressRepository.selectMaps(qw);
+        int totalSeconds = rows.isEmpty() ? 0
+                : ((Number) rows.get(0).getOrDefault("total", 0)).intValue();
 
         Map<String, Object> result = new HashMap<>();
         result.put("totalSeconds", totalSeconds);

@@ -2,6 +2,7 @@ package com.microcourse.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class CommentCreateRequest {
 
@@ -10,7 +11,8 @@ public class CommentCreateRequest {
 
     private Long parentId;
 
-    @NotBlank(message = "内容不能为空")
+    @NotBlank(message = "评论内容不能为空")
+    @Size(max = 2000, message = "评论最多2000字符")
     private String content;
 
     public CommentCreateRequest() {}
