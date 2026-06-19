@@ -126,7 +126,7 @@ const spacingMap = {
   'width: 80px': 'width: 80px',
   'width: 60px': 'width: 60px',
   'width: 72px': 'width: 72px',
-  'width: 40px': 'height: 40px',
+  'width: 40px': 'width: 40px',
   'height: 40px': 'height: 40px',
   'top: 48px': 'top: 48px',
   'top: 80px': 'top: 80px',
