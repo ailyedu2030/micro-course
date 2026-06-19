@@ -286,12 +286,19 @@ function handleImageChange(file) {
   const raw = file.raw
   if (!raw) return
   // 客户端预览
+  if (form.imageUrl && form.imageUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(form.imageUrl)
+  }
   form.imageUrl = URL.createObjectURL(raw)
   form._rawFile = raw
 }
 
 // 移除图片
 function handleRemoveImage() {
+  if (form.imageUrl && form.imageUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(form.imageUrl)
+  }
+
   form.imageUrl = ''
   form._rawFile = null
 }

@@ -4,6 +4,8 @@ import com.microcourse.dto.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.TeacherService;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -47,7 +49,7 @@ public class TeacherController {
     @GetMapping("/courses")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<TeacherCourseVO>> getMyCourses(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "8") int size) {
         return R.ok(teacherService.getMyCourses(getCurrentUserId(), page, size));
     }

@@ -692,8 +692,8 @@ async function loadQuestion(id) {
       }
     }
     questions.value.push(data)
-  } catch {
-    // skip
+  } catch (e) {
+    console.warn('[ExerciseTake] loadQuestion failed id=', id, e)
   }
 }
 

@@ -171,7 +171,7 @@
       </div>
       <template #footer v-if="currentPost && !isMobile">
         <div class="post-actions">
-          <el-button type="danger" link size="small" @click="handleDeletePost">删除帖子</el-button>
+          <el-button v-if="currentPost?.userId === userStore.userInfo?.id || userStore.userInfo?.role === 'ADMIN'" type="danger" link size="small" @click="handleDeletePost">删除帖子</el-button>
         </div>
       </template>
     </el-dialog>
@@ -183,7 +183,10 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPosts, createPost, getPostById, getComments, createComment, likeComment, deletePost } from '@/api/discussion'
+import { useUserStore } from '@/store/user'
 import CommentNode from '@/components/CommentNode.vue'
+
+const userStore = useUserStore()
 
 const route = useRoute()
 

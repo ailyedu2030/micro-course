@@ -7,6 +7,8 @@ import com.microcourse.dto.PostUpdateRequest;
 import com.microcourse.dto.R;
 import com.microcourse.service.DiscussionPostService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -25,8 +27,8 @@ public class DiscussionPostController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<DiscussionPostVO>> page(
             @RequestParam(required = false) Long chapterId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
         PageResult<DiscussionPostVO> result = postService.page(chapterId, page, size);
         return R.ok(result);
     }

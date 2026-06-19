@@ -358,6 +358,14 @@ const handleCoverChange = (file) => {
   coverPreviewUrl.value = URL.createObjectURL(file.raw)
 }
 
+const handleRemoveCover = () => {
+  if (coverPreviewUrl.value) {
+    URL.revokeObjectURL(coverPreviewUrl.value)
+    coverPreviewUrl.value = ''
+    coverFile.value = null
+  }
+}
+
 const handleUploadCover = async () => {
   if (!coverFile.value) return true
   try {

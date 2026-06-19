@@ -336,8 +336,8 @@ async function loadHealth() {
   try {
     const res = await getHealth()
     health.value = res.data || {}
-  } catch {
-    // ignore - health is not critical
+  } catch (e) {
+    console.warn('[Dashboard] loadHealth failed', e)
   } finally {
     healthLoading.value = false
   }
