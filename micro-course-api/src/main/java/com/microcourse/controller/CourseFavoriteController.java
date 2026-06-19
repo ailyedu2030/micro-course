@@ -21,7 +21,8 @@ public class CourseFavoriteController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public R<Void> favorite(@RequestParam Long courseId) {
+    public R<Void> favorite(@RequestBody java.util.Map<String, Long> body) {
+        Long courseId = body.get("courseId");
         Long userId = getCurrentUserId();
         favoriteService.favorite(userId, courseId);
         return R.ok();

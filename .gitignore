@@ -59,6 +59,7 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+memories/
 
 # 数据库 / 临时
 *.db
