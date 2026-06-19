@@ -52,6 +52,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     public PageResult<TeachingClassVO> page(int page, int size, Long teacherId, Long courseId,
                                            String semester, Integer status) {
         Page<TeachingClass> ipage = new Page<>(page, size);
+        // MyBatis-Plus Page 是 1-based, Controller 传 0-based, 已在 Controller 层转换
         LambdaQueryWrapper<TeachingClass> wrapper = new LambdaQueryWrapper<>();
 
         if (teacherId != null) {

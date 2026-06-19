@@ -28,6 +28,7 @@ public class OperationLog {
 
     private String ip;
 
+    @TableField("is_success")
     private Boolean success;
 
     @TableField("trace_id")

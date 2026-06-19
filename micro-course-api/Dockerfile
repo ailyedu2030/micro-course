@@ -20,6 +20,6 @@ COPY --from=builder /build/target/*.jar app.jar
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -sf http://localhost:8080/api/auth/me > /dev/null || curl -sf -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"admin123"}' > /dev/null || exit 1
+  CMD curl -sf http://localhost:8080/api-docs/v3/api-docs > /dev/null || exit 1
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
