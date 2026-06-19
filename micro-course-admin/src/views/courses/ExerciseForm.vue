@@ -153,7 +153,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getExercises, createExercise, updateExercise } from '@/api/exercise'
+import { getExerciseById, createExercise, updateExercise } from '@/api/exercise'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 
@@ -290,7 +290,7 @@ const fetchCourseOptions = async () => {
 const fetchExercise = async () => {
   if (!exerciseId.value) return
   try {
-    const { data } = await getExercises({ id: exerciseId.value })
+    const { data } = await getExerciseById(exerciseId.value)
     if (data) {
       formData.title = data.title || ''
       formData.courseId = data.courseId

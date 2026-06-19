@@ -349,7 +349,7 @@ const handleSubmit = async () => {
     } catch {
       ElMessage.error('保存失败，请稍后重试')
     } finally {
-      setTimeout(() => { submitLoading.value = false }, 3000)
+      submitLoading.value = false
     }
   })
 }
@@ -504,7 +504,7 @@ const handleChapterSubmit = async () => {
     } catch {
       ElMessage.error(isChapterEdit.value ? '编辑失败，请稍后重试' : '创建失败，请稍后重试')
     } finally {
-      setTimeout(() => { chapterSubmitLoading.value = false }, 3000)
+      chapterSubmitLoading.value = false
     }
   })
 }

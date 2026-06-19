@@ -77,12 +77,12 @@
           <template #default="{ row }">
             <el-tag v-if="row.status === 0" type="info" size="small">草稿</el-tag>
             <el-tag v-else-if="row.status === 1" type="warning" size="small">待审核</el-tag>
-            <div v-if="row.status === 1" class="review-hint">审核中，预计48h</div>
             <el-tag v-else-if="row.status === 2" type="success" size="small">通过</el-tag>
             <el-tag v-else-if="row.status === 3" type="danger" size="small">驳回</el-tag>
             <el-tag v-else-if="row.status === 4" type="success" size="small">已发布</el-tag>
             <el-tag v-else-if="row.status === 5" type="warning" size="small">下架</el-tag>
             <el-tag v-else type="info" size="small">归档</el-tag>
+            <div v-if="row.status === 1" class="review-hint">审核中，预计48h</div>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right" align="center">
