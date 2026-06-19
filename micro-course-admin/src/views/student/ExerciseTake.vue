@@ -749,6 +749,7 @@ async function handleSubmit() {
 }
 
 async function doSubmit() {
+  if (submitting.value) return // 防重复提交
   clearTimer()
   submitting.value = true
   submitted.value = true

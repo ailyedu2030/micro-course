@@ -17,7 +17,7 @@ export function updateCourse(id, data) {
 }
 
 export function updateCourseStatus(id, status) {
-  return request({ method: 'PUT', url: `/courses/${id}/status`, data: { status } })
+  return request({ method: 'PUT', url: `/courses/${id}/status`, params: { status } })
 }
 
 export function submitCourseForReview(id) {

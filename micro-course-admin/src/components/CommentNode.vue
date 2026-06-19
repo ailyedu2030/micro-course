@@ -33,7 +33,7 @@
           size="small"
           :type="liked ? 'primary' : 'default'"
           class="action-btn"
-          @click="$emit('like', comment.id)"
+          @click="handleLike"
         >
           <el-icon class="action-icon"><Select /></el-icon>
           <span class="action-count">{{ comment.likeCount || 0 }}</span>
@@ -73,8 +73,8 @@
       </div>
     </div>
 
-    <!-- 子评论递归 -->
-    <template v-if="hasChildren && showChildren">
+    <!-- 子评论递归（受 MAX_DEPTH 限制防止栈溢出） -->
+    <template v-if="hasChildren && showChildren && depth < MAX_DEPTH">
       <CommentNode
         v-for="child in comment.children"
         :key="child.id"
@@ -92,6 +92,8 @@ import { ref, computed } from 'vue'
 import { User, Select, ChatLineRound, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 
 const UserIcon = User
+
+const MAX_DEPTH = 10
 
 const props = defineProps({
   comment: { type: Object, required: true },
@@ -120,6 +122,11 @@ const formatTime = (timeStr) => {
   if (!timeStr) return ''
   const d = new Date(timeStr)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const handleLike = () => {
+  liked.value = !liked.value
+  emit('like', props.comment.id)
 }
 
 const handleToggleReply = () => {

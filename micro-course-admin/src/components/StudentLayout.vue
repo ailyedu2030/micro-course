@@ -220,8 +220,9 @@ const pageTitle = computed(() => {
 })
 const showBackBtn = computed(() => {
   // 只有在子页面（非 4 个主 Tab）才显示返回按钮
+  // 使用精确匹配，确保 /student/courses/123 等子页面能显示返回按钮
   const mainPaths = ['/student/courses', '/student/my-courses', '/student/notifications', '/student/profile']
-  return !mainPaths.some(p => route.path.startsWith(p))
+  return !mainPaths.includes(route.path)
 })
 
 function handleBack() {
@@ -422,6 +423,8 @@ onUnmounted(() => notificationStore.stopPolling())
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
   color: var(--el-color-white);
   font-weight: var(--weight-semibold);
   font-size: var(--text-base);

@@ -12,6 +12,8 @@
 .role-staff {
   --role-primary: #409eff;
   --role-primary-dark: #337ecc;
+  --role-primary-darkest: #1d3557;
+  --role-primary-darker: #265d99;
   --role-primary-light: #ecf5ff;
   --role-primary-light-3: #79bbff;
   --role-primary-light-5: #a0cfff;
@@ -42,6 +44,8 @@
 .role-video {
   --role-primary: #ffffff;
   --role-primary-dark: #cccccc;
+  --role-primary-darkest: #666666;
+  --role-primary-darker: #999999;
   --role-primary-light: #1a1a1a;
   --role-primary-light-3: #2a2a2a;
   --role-primary-light-5: #333333;
@@ -166,6 +170,7 @@
   --radius-xl: 16px;
   --radius-2xl: 20px;
   --radius-pill: 999px;
+  --radius-circle: 50%;
 
   /* 阴影 */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);

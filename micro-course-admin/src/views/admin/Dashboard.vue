@@ -272,7 +272,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import {
-  User, UserFilled, Reading, Tickets, Timer, Medal
+  User, UserFilled, Reading, Tickets, Timer, Medal, Clock, ChatLineSquare
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getOverview, getUserTrend, getCourseTrend, getCourseDistribution, getLearningBehavior, getHealth } from '@/api/admin-stats'

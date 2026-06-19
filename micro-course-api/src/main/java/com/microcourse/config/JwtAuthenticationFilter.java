@@ -22,6 +22,7 @@ import java.util.Collections;
  * 依据：
  * - Phase 1 业务逻辑 §2.4：JWT 认证过滤器 doFilterInternal 流程
  * - v1.6.0 P0-2：未认证返回 401 而非 403
+ * - 深度审查：错误码对齐 ErrorCode 枚举（修复 11xxx 冲突）+ 响应补 timestamp 对齐 R<T> 契约
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -46,26 +47,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (!authHeader.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":11003,\"message\":\"token格式错误\"}");
+            writeErrorResponse(response, 1005, "token格式错误");
             return;
         }
 
         String token = authHeader.substring(7);
 
         if (!jwtUtil.validateToken(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":11002,\"message\":\"token无效或已过期\"}");
+            writeErrorResponse(response, 1004, "token无效或已过期");
             return;
         }
 
         String jti = jwtUtil.getJtiFromToken(token);
         if (jti != null && redisUtil.isTokenBlacklisted(jti)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":11001,\"message\":\"token已失效,请重新登录\"}");
+            writeErrorResponse(response, 1004, "token已失效,请重新登录");
             return;
         }
 
@@ -80,5 +75,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 写入符合 R<T> 契约格式的错误响应（含 timestamp）
+     */
+    private void writeErrorResponse(HttpServletResponse response, int code, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(
+                String.format("{\"code\":%d,\"message\":\"%s\",\"timestamp\":%d}", code, message, System.currentTimeMillis()));
     }
 }

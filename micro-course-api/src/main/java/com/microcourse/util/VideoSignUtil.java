@@ -3,6 +3,7 @@ package com.microcourse.util;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -16,12 +17,20 @@ import java.util.Date;
  * 依据：Phase 8 开发规范
  * 生成 JWT 格式的播放签名，payload: {"videoId":123, "exp":<epoch_seconds>}
  * 使用 HMAC-SHA256，密钥从 application.yml 的 jwt.secret 取
+ * 深度审查：密钥缓存优化，避免每次调用重建 SecretKey
  */
 @Component
 public class VideoSignUtil {
 
     @Value("${jwt.secret}")
     private String secret;
+
+    private SecretKey cachedKey;
+
+    @PostConstruct
+    void init() {
+        this.cachedKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
 
     /**
      * 生成视频播放签名
@@ -81,6 +90,6 @@ public class VideoSignUtil {
     }
 
     private SecretKey getKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        return cachedKey;
     }
 }

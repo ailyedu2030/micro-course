@@ -53,7 +53,7 @@
           </el-form-item>
         </el-form>
 
-        <div class="login-roles" aria-label="测试账号">
+        <div v-if="quickAccounts.length > 0" class="login-roles" aria-label="测试账号">
           <span class="role-tip">测试账号：</span>
           <el-tag
             v-for="r in quickAccounts"
@@ -96,12 +96,13 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
-const quickAccounts = [
+const isDev = import.meta.env.DEV
+const quickAccounts = isDev ? [
   { label: '管理员', type: 'danger', username: 'admin', password: 'admin123' },
   { label: '教务处', type: 'warning', username: 'academic', password: '123456' },
   { label: '教师', type: 'success', username: 'teacher', password: '123456' },
   { label: '学生', type: 'primary', username: 'student', password: '123456' }
-]
+] : []
 
 const fillAccount = (acc) => {
   form.username = acc.username

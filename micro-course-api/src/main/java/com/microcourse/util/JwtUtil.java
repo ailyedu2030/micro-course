@@ -4,6 +4,7 @@ import com.microcourse.enums.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
  * 依据：
  * - jjwt 0.12.3 API
  * - Phase 1 业务逻辑 §2.4：JWT Token 结构（accessToken 7 claims，refreshToken 3 claims）
+ * - 深度审查：密钥缓存 + 启动时长度校验（HMAC-SHA256 至少 32 字节）
  */
 @Component
 public class JwtUtil {
@@ -31,7 +33,19 @@ public class JwtUtil {
     @Value("${jwt.refresh-expiration}")
     private Long refreshExpiration;
 
+    private SecretKey cachedKey;
+
     public JwtUtil() {
+    }
+
+    @PostConstruct
+    void init() {
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                    "jwt.secret 长度不足: 需要至少 32 字节 (HMAC-SHA256), 当前 " + keyBytes.length + " 字节");
+        }
+        this.cachedKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     /**
@@ -180,7 +194,7 @@ public class JwtUtil {
     }
 
     private SecretKey getKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        return cachedKey;
     }
 
     private Claims getClaims(String token) {

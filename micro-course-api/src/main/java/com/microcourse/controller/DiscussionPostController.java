@@ -56,8 +56,13 @@ public class DiscussionPostController {
 
     @PutMapping("/{id}/pin")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<Void> pin(@PathVariable Long id) {
-        postService.pin(id);
+    public R<Void> pin(@PathVariable Long id,
+                       @RequestParam(required = false) Boolean pinned) {
+        if (pinned != null) {
+            postService.updatePin(id, pinned);
+        } else {
+            postService.pin(id);
+        }
         return R.ok();
     }
 

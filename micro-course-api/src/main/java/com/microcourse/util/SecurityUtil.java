@@ -25,7 +25,11 @@ public final class SecurityUtil {
      * @throws BusinessException TOKEN_INVALID 当未登录或 token 无效时
      */
     public static Long getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+        Object principal = auth.getPrincipal();
         if (principal instanceof Long) {
             return (Long) principal;
         }

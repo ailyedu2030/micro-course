@@ -244,12 +244,12 @@
             </div>
             <div
               class="h5-tab-item"
-              :class="{ active: activeTab === 'favorites' }"
-              @click="activeTab = 'favorites'"
+              :class="{ active: activeTab === 'favorited' }"
+              @click="activeTab = 'favorited'"
             >
               <el-icon><Star /></el-icon>
               收藏
-              <span v-if="favoriteCourses.length > 0" class="h5-tab-badge">{{ favoriteCourses.length }}</span>
+              <span v-if="favoritedCourses.length > 0" class="h5-tab-badge">{{ favoritedCourses.length }}</span>
             </div>
           </div>
         </div>

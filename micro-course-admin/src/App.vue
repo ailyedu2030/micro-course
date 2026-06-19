@@ -13,7 +13,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, watch } from 'vue'
+import { computed, onErrorCaptured, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from './store/user'
 import { isAuthenticated } from './utils/auth'
@@ -33,13 +33,20 @@ const appClass = computed(() => ({
   'role-video': isVideoPage.value
 }))
 
-watch(() => userStore.role, () => {
-  // design-tokens.css 已通过 .role-* 类切换变量
-}, { immediate: true })
+// 根组件错误边界——捕获子组件未处理的错误
+onErrorCaptured((err, instance, info) => {
+  console.error('[App ErrorBoundary]', info, err)
+  // 返回 false 继续向上传播给 app.config.errorHandler
+  return false
+})
 
-onMounted(() => {
+onMounted(async () => {
   if (isAuthenticated() && !userStore.userInfo) {
-    userStore.getInfo()
+    try {
+      await userStore.getInfo()
+    } catch (err) {
+      console.error('[App] 获取用户信息失败', err)
+    }
   }
 })
 </script>

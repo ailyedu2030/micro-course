@@ -48,7 +48,7 @@ public class GradeServiceImpl implements GradeService {
         }
         wrapper.isNull(Grade::getDeletedAt).orderByDesc(Grade::getCreatedAt);
 
-        IPage<Grade> gradePage = gradeRepository.selectPage(new Page<>(page, size), wrapper);
+        IPage<Grade> gradePage = gradeRepository.selectPage(new Page<>(page + 1, size), wrapper);
 
         List<GradeVO> vos = batchConvertToVO(gradePage.getRecords());
         return PageResult.of(vos, gradePage.getTotal(), page, size);
@@ -67,7 +67,7 @@ public class GradeServiceImpl implements GradeService {
         }
         wrapper.isNull(Grade::getDeletedAt).orderByDesc(Grade::getCreatedAt);
 
-        IPage<Grade> gradePage = gradeRepository.selectPage(new Page<>(page, size), wrapper);
+        IPage<Grade> gradePage = gradeRepository.selectPage(new Page<>(page + 1, size), wrapper);
 
         List<GradeVO> vos = batchConvertToVO(gradePage.getRecords());
         return PageResult.of(vos, gradePage.getTotal(), page, size);
