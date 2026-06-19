@@ -165,7 +165,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="chapterDialogVisible = false">取消</el-button>
+        <el-button @click="handleChapterCancel">取消</el-button>
         <el-button type="primary" :loading="chapterSubmitLoading" @click="handleChapterSubmit">确定</el-button>
       </template>
     </el-dialog>
@@ -207,9 +207,9 @@ const formData = reactive({
 })
 
 const formRules = {
-  title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  teacherId: [{ required: true, message: '请输入教师ID', trigger: 'blur' }]
+  title: [{ required: true, message: '请输入课程标题', trigger: ['blur', 'change'] }],
+  categoryId: [{ required: true, message: '请选择分类', trigger: ['blur', 'change'] }],
+  teacherId: [{ required: true, message: '请输入教师ID', trigger: ['blur', 'change'] }]
 }
 
 const coverUploadRef = ref(null)
@@ -234,8 +234,8 @@ const chapterFormData = reactive({
 })
 
 const chapterFormRules = {
-  title: [{ required: true, message: '请输入章节标题', trigger: 'blur' }],
-  chapterType: [{ required: true, message: '请选择类型', trigger: 'change' }]
+  title: [{ required: true, message: '请输入章节标题', trigger: ['blur', 'change'] }],
+  chapterType: [{ required: true, message: '请选择类型', trigger: ['blur', 'change'] }]
 }
 
 let sortableInstance = null
@@ -321,6 +321,7 @@ const switchToEdit = () => {
 }
 
 const switchToView = () => {
+  formRef.value?.resetFields()
   router.push(`/courses/${courseId.value}`)
 }
 
@@ -340,15 +341,15 @@ const handleSubmit = async () => {
         coverOk = await handleUploadCover()
       }
       if (coverOk) {
-        ElMessage.success('保存成功')
+        ElMessage.success('操作成功')
       } else {
         ElMessage.warning('课程信息已保存，但封面上传失败，请稍后重新上传')
       }
       router.push(`/courses/${courseId.value}`)
     } catch {
-      ElMessage.error('保存失败')
+      ElMessage.error('保存失败，请稍后重试')
     } finally {
-      submitLoading.value = false
+      setTimeout(() => { submitLoading.value = false }, 3000)
     }
   })
 }
@@ -493,23 +494,28 @@ const handleChapterSubmit = async () => {
       }
       if (isChapterEdit.value) {
         await updateChapter(currentChapterId.value, submitData)
-        ElMessage.success('编辑成功')
+        ElMessage.success('操作成功')
       } else {
         await createChapter(submitData)
-        ElMessage.success('创建成功')
+        ElMessage.success('操作成功')
       }
       chapterDialogVisible.value = false
       fetchChapters()
     } catch {
-      ElMessage.error(isChapterEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(isChapterEdit.value ? '编辑失败，请稍后重试' : '创建失败，请稍后重试')
     } finally {
-      chapterSubmitLoading.value = false
+      setTimeout(() => { chapterSubmitLoading.value = false }, 3000)
     }
   })
 }
 
 const handleChapterDialogClose = () => {
   chapterFormRef.value?.resetFields()
+}
+
+const handleChapterCancel = () => {
+  chapterFormRef.value?.resetFields()
+  chapterDialogVisible.value = false
 }
 
 onMounted(() => {

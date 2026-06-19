@@ -60,8 +60,8 @@
               </el-button>
             </div>
           </template>
-          <el-form :model="systemForm" label-width="140px" class="settings-form">
-            <el-form-item label="平台名称">
+          <el-form ref="systemFormRef" :model="systemForm" :rules="systemFormRules" label-width="140px" class="settings-form">
+            <el-form-item label="平台名称" prop="platformName">
               <el-input v-model="systemForm.platformName" placeholder="请输入平台名称" />
             </el-form-item>
             <el-form-item label="平台 Logo URL">
@@ -108,8 +108,8 @@
               </el-button>
             </div>
           </template>
-          <el-form :model="mailForm" label-width="140px" class="settings-form">
-            <el-form-item label="SMTP 服务器">
+          <el-form ref="mailFormRef" :model="mailForm" :rules="mailFormRules" label-width="140px" class="settings-form">
+            <el-form-item label="SMTP 服务器" prop="smtpHost">
               <el-input v-model="mailForm.smtpHost" placeholder="smtp.example.com" />
             </el-form-item>
             <el-form-item label="SMTP 端口">
@@ -156,7 +156,7 @@
               </el-button>
             </div>
           </template>
-          <el-form :model="securityForm" label-width="140px" class="settings-form">
+          <el-form ref="securityFormRef" :model="securityForm" :rules="securityFormRules" label-width="140px" class="settings-form">
             <el-form-item label="密码最小长度">
               <el-input-number
                 v-model="securityForm.minPasswordLength"
@@ -231,12 +231,12 @@
               CAS 配置用于对接学校统一身份认证系统。配置后将支持师生通过学校账号一键登录。
             </template>
           </el-alert>
-          <el-form :model="casForm" label-width="140px" class="settings-form">
+          <el-form ref="casFormRef" :model="casForm" :rules="casFormRules" label-width="140px" class="settings-form">
             <el-form-item label="启用 CAS">
               <el-switch v-model="casForm.enabled" />
               <span class="form-hint">开启后将启用 CAS 单点登录</span>
             </el-form-item>
-            <el-form-item label="CAS 服务器 URL">
+            <el-form-item label="CAS 服务器 URL" prop="serverUrl">
               <el-input v-model="casForm.serverUrl" placeholder="https://cas.example.edu.cn" />
               <span class="form-hint">学校 CAS 服务器地址</span>
             </el-form-item>
@@ -322,6 +322,12 @@ import { getSettings, updateSettings } from '@/api/admin-settings'
 const loading = ref(false)
 const saving = ref(false)
 
+// 表单 refs
+const systemFormRef = ref(null)
+const mailFormRef = ref(null)
+const securityFormRef = ref(null)
+const casFormRef = ref(null)
+
 // 当前激活菜单
 const activeMenu = ref('system')
 
@@ -371,6 +377,21 @@ const casForm = reactive({
   validateSsl: true
 })
 
+// 表单验证规则
+const systemFormRules = {
+  platformName: [{ required: true, message: '请输入平台名称', trigger: ['blur', 'change'] }]
+}
+
+const mailFormRules = {
+  smtpHost: [{ required: true, message: '请输入 SMTP 服务器地址', trigger: ['blur', 'change'] }]
+}
+
+const securityFormRules = {}
+
+const casFormRules = {
+  serverUrl: [{ required: true, message: '请输入 CAS 服务器 URL', trigger: ['blur', 'change'] }]
+}
+
 // 获取设置列表
 async function fetchSettings() {
   loading.value = true
@@ -411,6 +432,22 @@ function handleMenuSelect(index) {
 
 // 保存修改
 async function handleSave(menu) {
+  // 根据菜单获取对应表单 ref 并校验
+  const formRefMap = {
+    system: systemFormRef,
+    mail: mailFormRef,
+    security: securityFormRef,
+    cas: casFormRef
+  }
+  const currentFormRef = formRefMap[menu]
+  if (currentFormRef?.value) {
+    try {
+      await currentFormRef.value.validate()
+    } catch {
+      return
+    }
+  }
+
   saving.value = true
   try {
     if (menu === 'cas') {
@@ -418,7 +455,7 @@ async function handleSave(menu) {
       // 提示用户此为演示功能
       localStorage.setItem('cas_settings', JSON.stringify(casForm))
       ElMessage.warning('CAS 配置已本地保存（演示功能，正式环境请配置后端 API）')
-      saving.value = false
+      setTimeout(() => { saving.value = false }, 3000)
       return
     }
 
@@ -441,11 +478,11 @@ async function handleSave(menu) {
     }))
 
     await updateSettings(updates)
-    ElMessage.success('保存成功')
+    ElMessage.success('操作成功')
   } catch {
     ElMessage.error('保存失败，请稍后重试')
   } finally {
-    saving.value = false
+    setTimeout(() => { saving.value = false }, 3000)
   }
 }
 

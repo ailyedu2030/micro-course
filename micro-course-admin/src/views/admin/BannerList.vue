@@ -178,7 +178,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="formVisible = false">取消</el-button>
+        <el-button @click="handleFormCancel">取消</el-button>
         <el-button type="primary" :loading="saving" @click="handleConfirmSave">
           {{ isEdit ? '保存修改' : '确认添加' }}
         </el-button>
@@ -232,8 +232,8 @@ const form = reactive({
 
 // 表单验证
 const formRules = {
-  title: [{ required: true, message: '请输入轮播图标题', trigger: 'blur' }],
-  imageUrl: [{ required: true, message: '请上传轮播图图片', trigger: 'blur' }]
+  title: [{ required: true, message: '请输入轮播图标题', trigger: ['blur', 'change'] }],
+  imageUrl: [{ required: true, message: '请上传轮播图图片', trigger: ['blur', 'change'] }]
 }
 
 // 获取数据
@@ -281,6 +281,13 @@ function resetForm() {
   form.enabled = true
 }
 
+// 取消并重置校验
+function handleFormCancel() {
+  formRef.value?.resetFields()
+  resetForm()
+  formVisible.value = false
+}
+
 // 图片选择
 function handleImageChange(file) {
   const raw = file.raw
@@ -325,17 +332,17 @@ async function handleConfirmSave() {
 
     if (isEdit.value) {
       await updateBanner(currentBannerId.value, fd)
-      ElMessage.success('修改成功')
+      ElMessage.success('操作成功')
     } else {
       await createBanner(fd)
-      ElMessage.success('添加成功')
+      ElMessage.success('操作成功')
     }
     formVisible.value = false
     fetchData()
   } catch (err) {
-    ElMessage.error(err.message || (isEdit.value ? '修改失败' : '添加失败'))
+    ElMessage.error(err.message || (isEdit.value ? '修改失败，请稍后重试' : '添加失败，请稍后重试'))
   } finally {
-    saving.value = false
+    setTimeout(() => { saving.value = false }, 3000)
   }
 }
 

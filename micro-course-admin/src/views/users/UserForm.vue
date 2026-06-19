@@ -191,7 +191,7 @@
 
         <el-form-item class="form-actions">
           <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
-          <el-button @click="router.back()">取消</el-button>
+          <el-button @click="handleCancel">取消</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -248,18 +248,18 @@ const validateConfirmPassword = (rule, value, callback) => {
 
 const formRules = {
   username: [
-    { required: true, message: '请输入账号', trigger: 'blur' },
-    { min: 3, max: 50, message: '账号长度为3-50个字符', trigger: 'blur' }
+    { required: true, message: '请输入账号', trigger: ['blur', 'change'] },
+    { min: 3, max: 50, message: '账号长度为3-50个字符', trigger: ['blur', 'change'] }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 100, message: '密码长度为6-100个字符', trigger: 'blur' }
+    { required: true, message: '请输入密码', trigger: ['blur', 'change'] },
+    { min: 6, max: 100, message: '密码长度为6-100个字符', trigger: ['blur', 'change'] }
   ],
   confirmPassword: [
-    { required: true, validator: validateConfirmPassword, trigger: 'blur' }
+    { required: true, validator: validateConfirmPassword, trigger: ['blur', 'change'] }
   ],
-  realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  role: [{ required: true, message: '请选择角色', trigger: 'change' }]
+  realName: [{ required: true, message: '请输入姓名', trigger: ['blur', 'change'] }],
+  role: [{ required: true, message: '请选择角色', trigger: ['blur', 'change'] }]
 }
 
 const fetchDepartments = async () => {
@@ -326,19 +326,24 @@ const handleSubmit = async () => {
         delete submitData.confirmPassword
         delete submitData.role
         await updateUser(route.params.id, submitData)
-        ElMessage.success('编辑成功')
+        ElMessage.success('操作成功')
       } else {
         delete submitData.confirmPassword
         await createUser(submitData)
-        ElMessage.success('创建成功')
+        ElMessage.success('操作成功')
       }
       router.push('/users')
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(isEdit.value ? '编辑失败，请稍后重试' : '创建失败，请稍后重试')
     } finally {
-      submitLoading.value = false
+      setTimeout(() => { submitLoading.value = false }, 3000)
     }
   })
+}
+
+const handleCancel = () => {
+  formRef.value?.resetFields()
+  router.back()
 }
 
 const loadUserData = async (id) => {

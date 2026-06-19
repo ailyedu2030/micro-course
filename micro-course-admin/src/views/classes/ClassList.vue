@@ -6,6 +6,12 @@
 -->
 <template>
   <div class="class-list">
+    <!-- 面包屑导航 -->
+    <el-breadcrumb separator="/" class="page-breadcrumb">
+      <el-breadcrumb-item>组织管理</el-breadcrumb-item>
+      <el-breadcrumb-item>班级列表</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <!-- 搜索区 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
@@ -35,11 +41,10 @@
           <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增班级</el-button>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+      <el-skeleton v-if="loading" :rows="5" animated />
+      <el-empty v-else-if="tableData.length === 0" description="暂无班级数据" :image-size="120" />
+      <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
-        <template #empty>
-          <el-empty description="暂无班级数据" />
-        </template>
         <el-table-column prop="name" label="名称" min-width="150" />
         <el-table-column prop="majorName" label="所属专业" min-width="150" />
         <el-table-column prop="grade" label="年级" width="100" />
@@ -57,7 +62,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="pagination-wrap">
+      <div v-if="!loading && tableData.length > 0" class="pagination-wrap">
         <el-pagination
           v-model:current-page="page"
           v-model:page-size="size"
@@ -287,6 +292,10 @@ onMounted(() => {
   padding: 24px;
   background: #F5F6FA;
   min-height: 100vh;
+}
+
+.page-breadcrumb {
+  margin-bottom: 16px;
 }
 
 .filter-card {

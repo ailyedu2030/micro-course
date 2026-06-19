@@ -9,7 +9,35 @@
         <span class="greeting-name">管理员</span>
         <span class="greeting-suffix">{{ greeting }}</span>
       </div>
+      <div class="welcome-right">
+        <span class="last-updated">最后更新: {{ lastUpdatedText }}</span>
+        <el-button
+          :icon="Refresh"
+          circle
+          :loading="isRefreshing"
+          class="refresh-btn"
+          @click="handleRefresh"
+        />
+      </div>
     </div>
+
+    <!-- 快捷入口 -->
+    <el-row :gutter="16" class="quick-actions-row">
+      <el-col v-for="action in quickActions" :key="action.label" :xs="8" :sm="4">
+        <el-card
+          class="quick-action-card"
+          shadow="hover"
+          @click="handleQuickAction(action)"
+        >
+          <div class="quick-action-inner">
+            <div class="quick-action-icon" :style="{ background: action.bg, color: action.color }">
+              <el-icon :size="22"><component :is="action.icon" /></el-icon>
+            </div>
+            <span class="quick-action-label">{{ action.label }}</span>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
 
     <!-- 8 个 stat-card（4×2） -->
     <el-row :gutter="16" class="stats-row">
@@ -22,7 +50,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.totalUsers ?? 0 }}</div>
+                <div class="stat-value">{{ displayStats.totalUsers }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">总用户</div>
@@ -38,7 +66,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.totalCourses ?? 0 }}</div>
+                <div class="stat-value">{{ displayStats.totalCourses }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">总课程</div>
@@ -54,7 +82,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.totalStudents ?? 0 }}</div>
+                <div class="stat-value">{{ displayStats.totalStudents }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">总学员</div>
@@ -70,7 +98,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.activeUsers ?? 0 }}</div>
+                <div class="stat-value">{{ displayStats.activeUsers }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">活跃用户</div>
@@ -86,7 +114,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.videoPlayCount ?? 0 }}</div>
+                <div class="stat-value">{{ displayStats.videoPlayCount }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">视频播放次数</div>
@@ -102,7 +130,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.exerciseSubmitCount ?? 0 }}</div>
+                <div class="stat-value">{{ displayStats.exerciseSubmitCount }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">练习提交次数</div>
@@ -118,7 +146,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ formatDuration(stats.totalStudyMinutes) }}</div>
+                <div class="stat-value">{{ formatDuration(displayStats.totalStudyMinutes) }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">学习时长</div>
@@ -134,7 +162,7 @@
             <el-skeleton :loading="statsLoading" animated :rows="1">
               <template #template><el-skeleton-item class="skeleton-value" /></template>
               <template #default>
-                <div class="stat-value">{{ stats.certificatesIssued ?? 0 }}</div>
+                <div class="stat-value">{{ displayStats.certificatesIssued }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">证书发放</div>
@@ -270,27 +298,123 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, markRaw } from 'vue'
+import { useRouter } from 'vue-router'
 import {
-  User, UserFilled, Reading, Tickets, Timer, Medal, Clock, ChatLineSquare
+  User, UserFilled, Reading, Tickets, Timer, Medal, Clock, ChatLineSquare,
+  Plus, Setting, OfficeBuilding, Download, List, Refresh
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getOverview, getUserTrend, getCourseTrend, getCourseDistribution, getLearningBehavior, getHealth } from '@/api/admin-stats'
 import { getLogs } from '@/api/operation-log'
 
-const now = new Date()
-const welcomeDate = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`
+const router = useRouter()
+
+// ===== 时间问候 =====
+const now = ref(new Date())
+const welcomeDate = computed(() => {
+  const d = now.value
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
+})
 const greeting = computed(() => {
-  const h = now.getHours()
+  const h = now.value.getHours()
+  if (h < 6) return '，凌晨好'
   if (h < 12) return '，上午好'
   if (h < 14) return '，中午好'
   if (h < 18) return '，下午好'
   return '，晚上好'
 })
 
-// Stats
+// ===== 最后更新时间 =====
+const lastUpdatedAt = ref(null)
+const lastUpdatedText = computed(() => {
+  if (!lastUpdatedAt.value) return '加载中...'
+  const diff = Date.now() - lastUpdatedAt.value
+  if (diff < 10000) return '刚刚'
+  if (diff < 60000) return `${Math.floor(diff / 1000)}秒前`
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+  return `${Math.floor(diff / 3600000)}小时前`
+})
+let lastUpdatedTimer = null
+
+function startLastUpdatedTimer() {
+  lastUpdatedTimer = setInterval(() => {
+    // 触发 computed 重算（通过更新 now）
+    now.value = new Date()
+  }, 10000)
+}
+
+// ===== 手动刷新 =====
+const isRefreshing = ref(false)
+
+async function handleRefresh() {
+  isRefreshing.value = true
+  try {
+    await refreshAll()
+  } finally {
+    isRefreshing.value = false
+  }
+}
+
+// ===== 快捷入口 =====
+const quickActions = [
+  { label: '新增用户', icon: markRaw(Plus), route: '/admin/users', bg: '#EEF2FF', color: '#4F46E5' },
+  { label: '课程管理', icon: markRaw(Reading), route: '/admin/courses', bg: '#ECFDF5', color: '#10B981' },
+  { label: '部门管理', icon: markRaw(OfficeBuilding), route: '/admin/departments', bg: '#FEF3C7', color: '#F59E0B' },
+  { label: '数据导出', icon: markRaw(Download), route: '/admin/export', bg: '#EFF6FF', color: '#3B82F6' },
+  { label: '系统设置', icon: markRaw(Setting), route: '/admin/settings', bg: '#FAF5FF', color: '#8B5CF6' },
+  { label: '操作日志', icon: markRaw(List), route: '/admin/logs', bg: '#FEF2F2', color: '#EF4444' }
+]
+
+function handleQuickAction(action) {
+  router.push(action.route)
+}
+
+// ===== 统计卡片动画 =====
 const statsLoading = ref(true)
 const stats = ref({})
+const displayStats = reactive({
+  totalUsers: 0,
+  totalCourses: 0,
+  totalStudents: 0,
+  activeUsers: 0,
+  videoPlayCount: 0,
+  exerciseSubmitCount: 0,
+  totalStudyMinutes: 0,
+  certificatesIssued: 0
+})
+
+const animationFrameIds = []
+
+function animateValue(key, from, to, duration = 800) {
+  if (from === to) return
+  const startTime = performance.now()
+  function step(currentTime) {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    // easeOutQuart for smooth deceleration
+    const eased = 1 - Math.pow(1 - progress, 4)
+    displayStats[key] = Math.round(from + (to - from) * eased)
+    if (progress < 1) {
+      const id = requestAnimationFrame(step)
+      animationFrameIds.push(id)
+    }
+  }
+  const id = requestAnimationFrame(step)
+  animationFrameIds.push(id)
+}
+
+function animateAllStats(newStats) {
+  const keys = [
+    'totalUsers', 'totalCourses', 'totalStudents', 'activeUsers',
+    'videoPlayCount', 'exerciseSubmitCount', 'totalStudyMinutes', 'certificatesIssued'
+  ]
+  keys.forEach(key => {
+    const from = displayStats[key] || 0
+    const to = newStats[key] || 0
+    animateValue(key, from, to)
+  })
+}
 
 // Charts
 const trendsLoading = ref(true)
@@ -330,6 +454,7 @@ async function refreshAll() {
     loadLogs()
   ])
   loadHealth()
+  lastUpdatedAt.value = Date.now()
 }
 
 async function loadHealth() {
@@ -359,7 +484,7 @@ async function loadStats() {
     const videoPlayCount = items.reduce?.((sum, item) => sum + (item.videoPlayCount || 0), 0) || behaviorData.videoPlayCount || 0
     const exerciseSubmitCount = items.reduce?.((sum, item) => sum + (item.exerciseSubmitCount || 0), 0) || behaviorData.exerciseSubmitCount || 0
 
-    stats.value = {
+    const newStats = {
       totalUsers: d.totalUsers ?? 0,
       totalCourses: d.totalCourses ?? 0,
       totalStudents: d.totalEnrollments ?? 0,
@@ -369,6 +494,8 @@ async function loadStats() {
       totalStudyMinutes: Math.round((d.totalWatchTimeMinutes || 0)),
       certificatesIssued: d.certificatesIssued ?? 0
     }
+    stats.value = newStats
+    animateAllStats(newStats)
   } catch {
     // silent
   } finally {
@@ -581,6 +708,8 @@ onMounted(async () => {
   ])
   window.addEventListener('resize', resizeCharts)
   loadHealth()
+  lastUpdatedAt.value = Date.now()
+  startLastUpdatedTimer()
   refreshTimer = setInterval(() => {
     refreshAll()
   }, refreshInterval.value)
@@ -595,6 +724,13 @@ onBeforeUnmount(() => {
     clearInterval(refreshTimer)
     refreshTimer = null
   }
+  if (lastUpdatedTimer) {
+    clearInterval(lastUpdatedTimer)
+    lastUpdatedTimer = null
+  }
+  // 清理所有动画帧
+  animationFrameIds.forEach(id => cancelAnimationFrame(id))
+  animationFrameIds.length = 0
 })
 </script>
 
@@ -642,6 +778,69 @@ onBeforeUnmount(() => {
 .greeting-suffix {
   font-size: 16px;
   color: rgba(255,255,255,0.9);
+}
+
+.welcome-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.last-updated {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+}
+
+.refresh-btn {
+  --el-button-bg-color: rgba(255,255,255,0.2) !important;
+  --el-button-border-color: rgba(255,255,255,0.3) !important;
+  --el-button-text-color: #fff !important;
+  --el-button-hover-bg-color: rgba(255,255,255,0.35) !important;
+  --el-button-hover-border-color: rgba(255,255,255,0.5) !important;
+  --el-button-hover-text-color: #fff !important;
+  backdrop-filter: blur(4px);
+}
+
+/* ===== 快捷入口 ===== */
+.quick-actions-row {
+  margin-bottom: 24px;
+}
+
+.quick-action-card {
+  cursor: pointer;
+  border: none;
+  border-radius: 12px;
+  transition: all 200ms ease;
+}
+
+.quick-action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+.quick-action-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.quick-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick-action-label {
+  font-size: 13px;
+  color: #334155;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* ===== Stat Cards ===== */
@@ -697,6 +896,7 @@ onBeforeUnmount(() => {
   font-weight: 700;
   color: #1E293B;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-label {
@@ -871,7 +1071,8 @@ onBeforeUnmount(() => {
 
 /* ===== Responsive ===== */
 @media (max-width: 1024px) {
-  .stats-row .el-col {
+  .stats-row .el-col,
+  .quick-actions-row .el-col {
     margin-bottom: 16px;
   }
 }
@@ -887,6 +1088,24 @@ onBeforeUnmount(() => {
     gap: 8px;
     padding: 20px 24px;
     border-radius: 12px;
+  }
+
+  .welcome-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .quick-action-inner {
+    padding: 4px 0;
+  }
+
+  .quick-action-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .quick-action-label {
+    font-size: 12px;
   }
 }
 </style>

@@ -6,6 +6,12 @@
 -->
 <template>
   <div class="user-list-container">
+    <!-- 面包屑导航 -->
+    <el-breadcrumb separator="/" class="page-breadcrumb">
+      <el-breadcrumb-item>用户管理</el-breadcrumb-item>
+      <el-breadcrumb-item>用户列表</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <!-- 搜索筛选区 -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
@@ -499,6 +505,10 @@ onMounted(() => {
   padding: 24px;
   background: #F5F6FA;
   min-height: 100vh;
+}
+
+.page-breadcrumb {
+  margin-bottom: 16px;
 }
 
 .search-card {
