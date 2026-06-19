@@ -70,18 +70,18 @@ INSERT INTO classes (id, name, major_id, grade, counselor_id, sort_order, create
 
 -- 管理员 (role=ADMIN)
 INSERT INTO users (id, username, password, real_name, email, role, status, cas_bound, created_at, updated_at) VALUES
-(1, 'admin', '$2a$10$N.QWRIYSJFHedcsy4I8MYeXfJAZ63DM3pLik2HPGtv/EzkJ1s3CKW', '系统管理员', 'admin@microcourse.edu', 'ADMIN', 1, false, NOW(), NOW());
+(1, 'admin', '$2b$10$tkAGIqPlVfkNDiwyJy7RleZf1OkAYVYo74FtI8VmftvGrFDbDkAG2', '系统管理员', 'admin@microcourse.edu', 'ADMIN', 1, false, NOW(), NOW());
 
 -- 教务 (role=ACADEMIC)
 INSERT INTO users (id, username, password, real_name, email, role, status, cas_bound, created_at, updated_at) VALUES
-(2, 'academic', '$2a$10$N.QWRIYSJFHedcsy4I8MYeXfJAZ63DM3pLik2HPGtv/EzkJ1s3CKW', '张教务', 'academic@microcourse.edu', 'ACADEMIC', 1, false, NOW(), NOW());
+(2, 'academic', '$2b$10$CmQ9zgsCZ1cjMq4KCJ6JpeW05R1PTbh8GB.AwGi6.IXVt6x6PvFLy', '张教务', 'academic@microcourse.edu', 'ACADEMIC', 1, false, NOW(), NOW());
 
 -- 教师 (role=TEACHER, teacher_no)
 INSERT INTO users (id, username, password, real_name, email, role, teacher_no, department_id, status, cas_bound, created_at, updated_at) VALUES
-(3, 'teacher', '$2a$10$N.QWRIYSJFHedcsy4I8MYeXfJAZ63DM3pLik2HPGtv/EzkJ1s3CKW', '李教授', 'li@microcourse.edu', 'TEACHER', 'T001', 1, 1, false, NOW(), NOW()),
-(4, 'teacher2', '$2a$10$N.QWRIYSJFHedcsy4I8MYeXfJAZ63DM3pLik2HPGtv/EzkJ1s3CKW', '王讲师', 'wang@microcourse.edu', 'TEACHER', 'T002', 2, 1, false, NOW(), NOW()),
-(5, 'teacher3', '$2a$10$N.QWRIYSJFHedcsy4I8MYeXfJAZ63DM3pLik2HPGtv/EzkJ1s3CKW', '赵副教授', 'zhao@microcourse.edu', 'TEACHER', 'T003', 1, 1, false, NOW(), NOW()),
-(6, 'teacher4', '$2a$10$N.QWRIYSJFHedcsy4I8MYeXfJAZ63DM3pLik2HPGtv/EzkJ1s3CKW', '刘助理', 'liu@microcourse.edu', 'TEACHER', 'T004', 3, 1, false, NOW(), NOW());
+(3, 'teacher', '$2b$10$RBCcB6ZoAn2zJDfot9FUbulxQKw/3MliKK.v.8d/BICtFjfhuLnuu', '李教授', 'li@microcourse.edu', 'TEACHER', 'T001', 1, 1, false, NOW(), NOW()),
+(4, 'teacher2', '$2b$10$/KvkJ0WPmp5imoHt2yMByeQmAyG.R/8r5fVnj6XQgf6FpXocNsnyO', '王讲师', 'wang@microcourse.edu', 'TEACHER', 'T002', 2, 1, false, NOW(), NOW()),
+(5, 'teacher3', '$2b$10$RBCcB6ZoAn2zJDfot9FUbulxQKw/3MliKK.v.8d/BICtFjfhuLnuu', '赵副教授', 'zhao@microcourse.edu', 'TEACHER', 'T003', 1, 1, false, NOW(), NOW()),
+(6, 'teacher4', '$2b$10$/KvkJ0WPmp5imoHt2yMByeQmAyG.R/8r5fVnj6XQgf6FpXocNsnyO', '刘助理', 'liu@microcourse.edu', 'TEACHER', 'T004', 3, 1, false, NOW(), NOW());
 
 -- 学生 (role=STUDENT, student_no, class_id)
 -- 计算机2101班 (class_id=1): 7,8,9,10,11
@@ -90,21 +90,21 @@ INSERT INTO users (id, username, password, real_name, email, role, teacher_no, d
 -- 计算机2201班 (class_id=2): 18,19,20
 -- 软件2201班 (class_id=5): 21
 INSERT INTO users (id, username, password, real_name, email, role, student_no, class_id, major_id, department_id, grade, enrollment_year, status, cas_bound, created_at, updated_at) VALUES
-(7,  'student',     'student123', '陈小明', 'chen@microcourse.edu', 'STUDENT', 'S2101001', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
-(8,  'student2',    'student123', '林小红', 'lin@microcourse.edu', 'STUDENT', 'S2101002', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
-(9,  'student3',    'student123', '黄小华', 'huang@microcourse.edu', 'STUDENT', 'S2101003', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
-(10, 'student4',    'student123', '周小杰', 'zhou@microcourse.edu', 'STUDENT', 'S2101004', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
-(11, 'student5',    'student123', '吴小丽', 'wu@microcourse.edu',  'STUDENT', 'S2101005', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
-(12, 'student6',    'student123', '郑小强', 'zheng@microcourse.edu','STUDENT', 'S2102001', 4, 2, 2, '2021', '2021', 1, false, NOW(), NOW()),
-(13, 'student7',    'student123', '孙小丹', 'sun@microcourse.edu', 'STUDENT', 'S2102002', 4, 2, 2, '2021', '2021', 1, false, NOW(), NOW()),
-(14, 'student8',    'student123', '马小虎', 'ma@microcourse.edu',  'STUDENT', 'S2102003', 4, 2, 2, '2021', '2021', 1, false, NOW(), NOW()),
-(15, 'student9',    'student123', '朱小鹏', 'zhu@microcourse.edu', 'STUDENT', 'S2103001', 7, 4, 3, '2021', '2021', 1, false, NOW(), NOW()),
-(16, 'student10',   'student123', '胡小鸣', 'hu@microcourse.edu',  'STUDENT', 'S2103002', 7, 4, 3, '2021', '2021', 1, false, NOW(), NOW()),
-(17, 'student11',   'student123', '郭小涛', 'guo@microcourse.edu',  'STUDENT', 'S2103003', 7, 4, 3, '2021', '2021', 1, false, NOW(), NOW()),
-(18, 'student12',   'student123', '杨小欢', 'yang@microcourse.edu', 'STUDENT', 'S2201001', 2, 1, 1, '2022', '2022', 1, false, NOW(), NOW()),
-(19, 'student13',   'student123', '赵小燕', 'zhaoy@microcourse.edu','STUDENT', 'S2201002', 2, 1, 1, '2022', '2022', 1, false, NOW(), NOW()),
-(20, 'student14',   'student123', '吴小宇', 'wuy@microcourse.edu',  'STUDENT', 'S2201003', 2, 1, 1, '2022', '2022', 1, false, NOW(), NOW()),
-(21, 'student15',   'student123', '周小佳', 'zhouj@microcourse.edu', 'STUDENT', 'S2202001', 5, 2, 2, '2022', '2022', 1, false, NOW(), NOW());
+(7,  'student',     '$2b$10$TdY7auRUW6RLBf8lGevF7OKj5k9rMTGU8rhPVPfPFoTNtmBAGZyXa', '陈小明', 'chen@microcourse.edu', 'STUDENT', 'S2101001', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
+(8,  'student2',    '$2b$10$TdY7auRUW6RLBf8lGevF7OKj5k9rMTGU8rhPVPfPFoTNtmBAGZyXa', '林小红', 'lin@microcourse.edu', 'STUDENT', 'S2101002', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
+(9,  'student3',    '$2b$10$TdY7auRUW6RLBf8lGevF7OKj5k9rMTGU8rhPVPfPFoTNtmBAGZyXa', '黄小华', 'huang@microcourse.edu', 'STUDENT', 'S2101003', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
+(10, 'student4',    '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '周小杰', 'zhou@microcourse.edu', 'STUDENT', 'S2101004', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
+(11, 'student5',    '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '吴小丽', 'wu@microcourse.edu',  'STUDENT', 'S2101005', 1, 1, 1, '2021', '2021', 1, false, NOW(), NOW()),
+(12, 'student6',    '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '郑小强', 'zheng@microcourse.edu','STUDENT', 'S2102001', 4, 2, 2, '2021', '2021', 1, false, NOW(), NOW()),
+(13, 'student7',    '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '孙小丹', 'sun@microcourse.edu', 'STUDENT', 'S2102002', 4, 2, 2, '2021', '2021', 1, false, NOW(), NOW()),
+(14, 'student8',    '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '马小虎', 'ma@microcourse.edu',  'STUDENT', 'S2102003', 4, 2, 2, '2021', '2021', 1, false, NOW(), NOW()),
+(15, 'student9',    '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '朱小鹏', 'zhu@microcourse.edu', 'STUDENT', 'S2103001', 7, 4, 3, '2021', '2021', 1, false, NOW(), NOW()),
+(16, 'student10',   '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '胡小鸣', 'hu@microcourse.edu',  'STUDENT', 'S2103002', 7, 4, 3, '2021', '2021', 1, false, NOW(), NOW()),
+(17, 'student11',   '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '郭小涛', 'guo@microcourse.edu',  'STUDENT', 'S2103003', 7, 4, 3, '2021', '2021', 1, false, NOW(), NOW()),
+(18, 'student12',   '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '杨小欢', 'yang@microcourse.edu', 'STUDENT', 'S2201001', 2, 1, 1, '2022', '2022', 1, false, NOW(), NOW()),
+(19, 'student13',   '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '赵小燕', 'zhaoy@microcourse.edu','STUDENT', 'S2201002', 2, 1, 1, '2022', '2022', 1, false, NOW(), NOW()),
+(20, 'student14',   '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '吴小宇', 'wuy@microcourse.edu',  'STUDENT', 'S2201003', 2, 1, 1, '2022', '2022', 1, false, NOW(), NOW()),
+(21, 'student15',   '$2b$10$Nvfk6cbDilcpMrpWBpzdHO2Cnpkwy.ghUKkFnc5oFs9rVlNWQFa5.', '周小佳', 'zhouj@microcourse.edu', 'STUDENT', 'S2202001', 5, 2, 2, '2022', '2022', 1, false, NOW(), NOW());
 
 -- ============================================================
 -- 6. 课程 (5门, 由4位教师教授)
