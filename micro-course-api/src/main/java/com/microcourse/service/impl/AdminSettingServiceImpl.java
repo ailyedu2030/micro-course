@@ -33,7 +33,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
-    @Cacheable(value = "adminSettings", key = "'all'")
+    @Cacheable(value = "adminSettings", key = "'all'", sync = true)
     @Transactional(readOnly = true)
     public List<AdminSettingVO> getAll() {
         List<AdminSetting> settings = adminSettingRepository.selectList(null);
@@ -43,7 +43,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
-    @Cacheable(value = "adminSettings", key = "#key")
+    @Cacheable(value = "adminSettings", key = "#key", sync = true)
     @Transactional(readOnly = true)
     public String getByKey(String key) {
         LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();

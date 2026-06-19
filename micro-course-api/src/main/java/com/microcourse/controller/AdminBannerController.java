@@ -34,7 +34,8 @@ public class AdminBannerController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
     public R<List<BannerVO>> list() {
-        return R.ok(bannerService.list());
+        // R1-P1 修复:Admin 后台需要看全部(包括禁用),不走前台缓存的 list()
+        return R.ok(bannerService.listAll());
     }
 
     @PostMapping

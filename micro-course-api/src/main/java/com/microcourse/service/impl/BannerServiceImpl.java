@@ -25,7 +25,7 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
-    @Cacheable(value = "banners", key = "'list'")
+    @Cacheable(value = "banners", key = "'list'", sync = true)
     @Transactional(readOnly = true)
     public List<BannerVO> list() {
         List<Banner> banners = bannerRepository.selectList(
@@ -33,6 +33,20 @@ public class BannerServiceImpl implements BannerService {
                         .eq(Banner::getEnabled, true)
                         .orderByAsc(Banner::getSortOrder)
                         .last("LIMIT 50")
+        );
+        return banners.stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BannerVO> listAll() {
+        // R1-P1 修复:Admin 后台需要看全部 Banner(含禁用),不走缓存、不加 enabled 过滤
+        List<Banner> banners = bannerRepository.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Banner>()
+                        .orderByAsc(Banner::getSortOrder)
+                        .last("LIMIT 200")
         );
         return banners.stream()
                 .map(this::convertToVO)
