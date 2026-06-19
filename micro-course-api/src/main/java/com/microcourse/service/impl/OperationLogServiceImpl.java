@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 操作日志服务实现
@@ -36,16 +37,36 @@ public class OperationLogServiceImpl implements OperationLogService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<OperationLog> pageQuery(Long userId, String action,
+    public PageResult<OperationLog> pageQuery(Long userId, List<Long> userIds, String action,
+                                             String module, Long targetId,
                                              LocalDateTime startTime, LocalDateTime endTime,
                                              int page, int size) {
         Page<OperationLog> pg = new Page<>(page + 1, size); // MyBatis-Plus 1-based
         LambdaQueryWrapper<OperationLog> wrapper = new LambdaQueryWrapper<>();
+
+        // userId 精确匹配
         if (userId != null) {
             wrapper.eq(OperationLog::getUserId, userId);
         }
+        // userIds IN 匹配（username 模糊搜索转换后）
+        if (userIds != null && !userIds.isEmpty()) {
+            wrapper.in(OperationLog::getUserId, userIds);
+        }
+        // action 精确匹配
         if (action != null && !action.isBlank()) {
             wrapper.eq(OperationLog::getAction, action);
+        }
+        // module 筛选：AUTH → action IN ('LOGIN','LOGOUT')，其他 → targetType 精确匹配
+        if (module != null && !module.isBlank()) {
+            if ("AUTH".equals(module)) {
+                wrapper.in(OperationLog::getAction, List.of("LOGIN", "LOGOUT"));
+            } else {
+                wrapper.eq(OperationLog::getTargetType, module);
+            }
+        }
+        // targetId 精确匹配
+        if (targetId != null) {
+            wrapper.eq(OperationLog::getTargetId, targetId);
         }
         if (startTime != null) {
             wrapper.ge(OperationLog::getCreatedAt, startTime);

@@ -14,8 +14,7 @@
             placeholder="输入用户ID"
             clearable
             class="filter-input"
-            type="number"
-            @clear="handleSearch"
+            @clear="debouncedSearch"
             @keyup.enter="handleSearch"
           />
         </el-form-item>
@@ -25,7 +24,7 @@
             placeholder="输入用户名"
             clearable
             class="filter-input"
-            @clear="handleSearch"
+            @clear="debouncedSearch"
             @keyup.enter="handleSearch"
           />
         </el-form-item>
@@ -35,7 +34,7 @@
             placeholder="全部模块"
             clearable
             class="filter-select"
-            @change="handleSearch"
+            @change="debouncedSearch"
           >
             <el-option label="用户管理" value="USER" />
             <el-option label="课程管理" value="COURSE" />
@@ -51,7 +50,7 @@
             placeholder="全部动作"
             clearable
             class="filter-select"
-            @change="handleSearch"
+            @change="debouncedSearch"
           >
             <el-option label="登录" value="LOGIN" />
             <el-option label="登出" value="LOGOUT" />
@@ -63,14 +62,13 @@
             <el-option label="其他" value="OTHER" />
           </el-select>
         </el-form-item>
-        <el-form-item label="课程ID">
+        <el-form-item label="目标ID">
           <el-input
             v-model="searchForm.targetId"
-            placeholder="输入课程ID"
+            placeholder="输入目标ID"
             clearable
             class="filter-input"
-            type="number"
-            @clear="handleSearch"
+            @clear="debouncedSearch"
             @keyup.enter="handleSearch"
           />
         </el-form-item>
@@ -87,9 +85,9 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch" aria-label="重置"><el-icon><Search /></el-icon>搜索
+          <el-button type="primary" @click="handleSearch" aria-label="搜索"><el-icon><Search /></el-icon>搜索
           </el-button>
-          <el-button @click="handleReset" aria-label="查看"><el-icon><RefreshRight /></el-icon>重置
+          <el-button @click="handleReset" aria-label="重置"><el-icon><RefreshRight /></el-icon>重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -112,7 +110,7 @@
         v-else-if="error"
         icon="error"
         title="数据加载失败"
-        sub-title="请稍后重试"
+        :sub-title="errorMessage"
         class="error-result"
       >
         <template #extra>
@@ -181,10 +179,10 @@
           <template #default="{ row }">
             <el-tag
               size="small"
-              :type="row.status === 'FAIL' || row.status === 'ERROR' ? 'danger' : 'success'"
+              :type="row.status === 0 ? 'danger' : 'success'"
               effect="light"
             >
-              {{ row.status === 'FAIL' || row.status === 'ERROR' ? '失败' : '成功' }}
+              {{ row.status === 0 ? '失败' : '成功' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -197,7 +195,7 @@
         </el-table-column>
         <el-table-column label="操作" width="100" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleViewDetail(row)" aria-label="编辑"><el-icon><View /></el-icon>详情
+            <el-button type="primary" link @click="handleViewDetail(row)" aria-label="查看详情"><el-icon><View /></el-icon>详情
             </el-button>
           </template>
         </el-table-column>
@@ -238,11 +236,21 @@
             {{ getActionLabel(currentLog.action) }}
           </el-tag>
         </el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag
+            size="small"
+            :type="currentLog.status === 0 ? 'danger' : 'success'"
+            effect="light"
+          >
+            {{ currentLog.status === 0 ? '失败' : '成功' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="耗时">{{ currentLog.duration != null ? `${currentLog.duration}ms` : '-' }}</el-descriptions-item>
         <el-descriptions-item label="对象类型">{{ currentLog.targetType || '-' }}</el-descriptions-item>
         <el-descriptions-item label="对象ID">{{ currentLog.targetId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="详情" :span="2">{{ currentLog.detail || '-' }}</el-descriptions-item>
         <el-descriptions-item label="请求方法">{{ currentLog.method || '-' }}</el-descriptions-item>
         <el-descriptions-item label="请求路径">{{ currentLog.path || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="详情" :span="2">{{ currentLog.detail || '-' }}</el-descriptions-item>
       </el-descriptions>
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
@@ -256,7 +264,7 @@
  * 管理员 - 操作日志
  * Vue 3.4 Composition API + script setup
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, RefreshRight, View } from '@element-plus/icons-vue'
 import { getLogs } from '@/api/operation-log'
@@ -264,6 +272,7 @@ import { getLogs } from '@/api/operation-log'
 // 加载状态
 const loading = ref(false)
 const error = ref(false)
+const errorMessage = ref('请稍后重试')
 
 // 表格数据
 const tableData = ref([])
@@ -271,6 +280,12 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(20)
 const dateRange = ref(null)
+
+// P1-2: 请求序列号（竞态防护）
+let requestSeq = 0
+
+// P1-4: 搜索防抖定时器
+let searchTimer = null
 
 // 搜索表单
 const searchForm = reactive({
@@ -296,16 +311,28 @@ function handleDateChange(val) {
     searchForm.startTime = ''
     searchForm.endTime = ''
   }
+  debouncedSearch()
 }
 
-// 搜索
+// P1-4: 防抖搜索（300ms）
+function debouncedSearch() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    page.value = 1
+    fetchData()
+  }, 300)
+}
+
+// 立即搜索（搜索按钮点击）
 function handleSearch() {
+  if (searchTimer) clearTimeout(searchTimer)
   page.value = 1
   fetchData()
 }
 
 // 重置
 function handleReset() {
+  if (searchTimer) clearTimeout(searchTimer)
   searchForm.userId = ''
   searchForm.username = ''
   searchForm.module = ''
@@ -318,10 +345,12 @@ function handleReset() {
   fetchData()
 }
 
-// 获取数据
+// 获取数据（含 P1-2 竞态防护）
 async function fetchData() {
+  const seq = ++requestSeq
   loading.value = true
   error.value = false
+  errorMessage.value = '请稍后重试'
   try {
     const params = {
       page: page.value - 1,
@@ -335,13 +364,33 @@ async function fetchData() {
       targetId: searchForm.targetId ? Number(searchForm.targetId) : undefined
     }
     const { data } = await getLogs(params)
+    // P1-2: 过期响应丢弃
+    if (seq !== requestSeq) return
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch {
+  } catch (e) {
+    // P1-2: 过期请求的错误不处理
+    if (seq !== requestSeq) return
     error.value = true
-    ElMessage.error('获取操作日志失败')
+    // P2: 按状态码分类错误提示
+    const status = e?.response?.status
+    if (status === 401 || status === 403) {
+      errorMessage.value = '无权访问，请确认登录状态'
+      ElMessage.error('无权访问操作日志')
+    } else if (status === 400) {
+      errorMessage.value = '请求参数有误，请检查筛选条件'
+      ElMessage.warning('请求参数有误，请检查筛选条件')
+    } else if (status >= 500) {
+      errorMessage.value = '服务器异常，请稍后重试'
+      ElMessage.error('服务器异常，请稍后重试')
+    } else {
+      errorMessage.value = '网络异常，请检查网络连接'
+      ElMessage.error('获取操作日志失败')
+    }
   } finally {
-    loading.value = false
+    if (seq === requestSeq) {
+      loading.value = false
+    }
   }
 }
 
@@ -424,6 +473,11 @@ function getActionTagType(action) {
 
 onMounted(() => {
   fetchData()
+})
+
+// P1-4: 组件卸载时清理定时器
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer)
 })
 </script>
 

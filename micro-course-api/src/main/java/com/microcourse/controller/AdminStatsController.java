@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.CourseTrendVO;
+import com.microcourse.dto.DailyActivityVO;
 import com.microcourse.dto.DashboardOverviewVO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.UserTrendVO;
@@ -47,6 +48,9 @@ public class AdminStatsController {
         if (days <= 0) {
             days = 7;
         }
+        if (days > 365) {
+            days = 365;
+        }
         List<UserTrendVO> list = adminStatsService.getUserTrend(days);
         return R.ok(list);
     }
@@ -59,6 +63,9 @@ public class AdminStatsController {
     public R<List<CourseTrendVO>> getCourseTrend(@RequestParam(defaultValue = "7") int days) {
         if (days <= 0) {
             days = 7;
+        }
+        if (days > 365) {
+            days = 365;
         }
         List<CourseTrendVO> list = adminStatsService.getCourseTrend(days);
         return R.ok(list);
@@ -82,6 +89,22 @@ public class AdminStatsController {
     public R<List<Map<String, Object>>> getLearningBehavior() {
         List<Map<String, Object>> result = adminStatsService.getLearningBehavior();
         return R.ok(result);
+    }
+
+    /**
+     * GET /api/admin/stats/daily-activity?days=30
+     * 返回每日活跃用户数
+     */
+    @GetMapping("/daily-activity")
+    public R<List<DailyActivityVO>> getDailyActivity(@RequestParam(defaultValue = "30") int days) {
+        if (days <= 0) {
+            days = 30;
+        }
+        if (days > 365) {
+            days = 365;
+        }
+        List<DailyActivityVO> list = adminStatsService.getDailyActivity(days);
+        return R.ok(list);
     }
 
     /**

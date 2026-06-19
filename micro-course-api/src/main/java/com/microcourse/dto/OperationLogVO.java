@@ -23,6 +23,12 @@ public class OperationLogVO {
 
     private String action;
 
+    /**
+     * 功能模块（从 action/targetType 推断）
+     * AUTH / USER / COURSE / GRADE / SETTING / PERMISSION
+     */
+    private String module;
+
     @JsonProperty("targetType")
     private String targetType;
 
@@ -48,6 +54,21 @@ public class OperationLogVO {
     @JsonProperty("errorMessage")
     private String errorMessage;
 
+    /**
+     * 耗时（毫秒）
+     */
+    private Integer duration;
+
+    /**
+     * 请求方法（从 detail JSON 提取，如 GET/POST/PUT/DELETE）
+     */
+    private String method;
+
+    /**
+     * 请求路径（从 detail JSON 提取）
+     */
+    private String path;
+
     @JsonProperty("createdAt")
     private LocalDateTime createdAt;
 
@@ -64,6 +85,9 @@ public class OperationLogVO {
 
     public String getAction() { return action; }
     public void setAction(String action) { this.action = action; }
+
+    public String getModule() { return module; }
+    public void setModule(String module) { this.module = module; }
 
     public String getTargetType() { return targetType; }
     public void setTargetType(String targetType) { this.targetType = targetType; }
@@ -82,6 +106,15 @@ public class OperationLogVO {
 
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+
+    public Integer getDuration() { return duration; }
+    public void setDuration(Integer duration) { this.duration = duration; }
+
+    public String getMethod() { return method; }
+    public void setMethod(String method) { this.method = method; }
+
+    public String getPath() { return path; }
+    public void setPath(String path) { this.path = path; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

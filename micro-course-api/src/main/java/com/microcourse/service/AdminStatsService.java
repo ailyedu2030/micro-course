@@ -1,6 +1,7 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.CourseTrendVO;
+import com.microcourse.dto.DailyActivityVO;
 import com.microcourse.dto.DashboardOverviewVO;
 import com.microcourse.dto.UserTrendVO;
 
@@ -39,6 +40,13 @@ public interface AdminStatsService {
      * @return 各行为类型次数列表
      */
     List<java.util.Map<String, Object>> getLearningBehavior();
+
+    /**
+     * 获取每日活跃用户数
+     * @param days 统计天数
+     * @return 每日活跃用户数列表
+     */
+    List<DailyActivityVO> getDailyActivity(int days);
 
     /**
      * 获取系统健康状态

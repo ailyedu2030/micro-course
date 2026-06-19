@@ -1,9 +1,14 @@
 package com.microcourse.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * 系统配置更新请求 DTO
+ * <p>
+ * P0-1: 前端发 settingKey/settingValue，通过 @JsonProperty 映射到 key/value
+ * P2: value 改为 @NotNull（允许空字符串，如清空 logoUrl）
  *
  * @author Phase9-Development-Team
  * @since 2026-06-13
@@ -11,9 +16,11 @@ import jakarta.validation.constraints.NotBlank;
 public class SettingUpdateRequest {
 
     @NotBlank(message = "配置键不能为空")
+    @JsonProperty("settingKey")
     private String key;
 
-    @NotBlank(message = "配置值不能为空")
+    @NotNull(message = "配置值不能为 null")
+    @JsonProperty("settingValue")
     private String value;
 
     public SettingUpdateRequest() {}

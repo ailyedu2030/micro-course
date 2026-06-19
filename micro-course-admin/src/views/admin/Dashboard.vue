@@ -272,23 +272,27 @@
           <div v-else class="health-grid">
             <div class="health-item">
               <span class="health-label">DB</span>
-              <span class="health-value" :class="health.db === 'ok' ? 'status-ok' : 'status-warn'">
+              <span class="health-value" :class="health.db === 'OK' ? 'status-ok' : 'status-warn'">
                 {{ health.db }}
               </span>
             </div>
             <div class="health-item">
               <span class="health-label">Redis</span>
-              <span class="health-value" :class="health.redis === 'ok' ? 'status-ok' : 'status-warn'">
+              <span class="health-value" :class="health.redis === 'OK' ? 'status-ok' : 'status-warn'">
                 {{ health.redis }}
               </span>
             </div>
             <div class="health-item">
               <span class="health-label">磁盘</span>
-              <span class="health-value">{{ health.disk }}</span>
+              <span class="health-value" :class="health.disk === 'OK' ? 'status-ok' : 'status-warn'">
+                {{ health.disk }}
+              </span>
             </div>
             <div class="health-item">
               <span class="health-label">内存</span>
-              <span class="health-value">{{ health.memory }}</span>
+              <span class="health-value" :class="health.memory === 'OK' ? 'status-ok' : 'status-warn'">
+                {{ health.memory }}
+              </span>
             </div>
           </div>
         </el-card>
@@ -298,14 +302,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, markRaw } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import {
   User, UserFilled, Reading, Tickets, Timer, Medal, Clock, ChatLineSquare,
   Plus, Setting, OfficeBuilding, Download, List, Refresh
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { getOverview, getUserTrend, getCourseTrend, getCourseDistribution, getLearningBehavior, getHealth } from '@/api/admin-stats'
+import { getOverview, getUserTrend, getCourseTrend, getCourseDistribution, getLearningBehavior, getDailyActivity, getHealth } from '@/api/admin-stats'
 import { getLogs } from '@/api/operation-log'
 
 const router = useRouter()
@@ -405,6 +410,9 @@ function animateValue(key, from, to, duration = 800) {
 }
 
 function animateAllStats(newStats) {
+  // 先取消所有未完成的动画帧，避免泄漏
+  animationFrameIds.forEach(id => cancelAnimationFrame(id))
+  animationFrameIds.length = 0
   const keys = [
     'totalUsers', 'totalCourses', 'totalStudents', 'activeUsers',
     'videoPlayCount', 'exerciseSubmitCount', 'totalStudyMinutes', 'certificatesIssued'
@@ -453,7 +461,7 @@ async function refreshAll() {
     loadActivity(),
     loadLogs()
   ])
-  loadHealth()
+  await loadHealth()
   lastUpdatedAt.value = Date.now()
 }
 
@@ -477,12 +485,10 @@ async function loadStats() {
       getLearningBehavior()
     ])
     const d = overviewRes.data || {}
-    // 学习行为数据
-    const behaviorData = behaviorRes.data || {}
-    // 兼容不同的返回结构：可能是 { videoPlayCount, exerciseSubmitCount } 或 { items: [...] }
-    const items = Array.isArray(behaviorData) ? behaviorData : (behaviorData.items || [])
-    const videoPlayCount = items.reduce?.((sum, item) => sum + (item.videoPlayCount || 0), 0) || behaviorData.videoPlayCount || 0
-    const exerciseSubmitCount = items.reduce?.((sum, item) => sum + (item.exerciseSubmitCount || 0), 0) || behaviorData.exerciseSubmitCount || 0
+    // 学习行为数据：后端返回 [{type: "VIDEO_WATCH", count: N}, ...]
+    const behaviorData = Array.isArray(behaviorRes.data) ? behaviorRes.data : []
+    const videoPlayCount = (behaviorData.find(i => i.type === 'VIDEO_WATCH')?.count) || 0
+    const exerciseSubmitCount = (behaviorData.find(i => i.type === 'EXERCISE_SUBMIT')?.count) || 0
 
     const newStats = {
       totalUsers: d.totalUsers ?? 0,
@@ -624,9 +630,8 @@ async function loadActivity() {
   activityLoading.value = true
   activityError.value = false
   try {
-    const res = await getLearningBehavior(30)
-    const data = res.data || {}
-    const items = Object.entries(data).map(([key, value]) => ({ date: key, activeUsers: value }))
+    const res = await getDailyActivity(30)
+    const items = res.data || []
     renderActivityChart(items)
   } catch {
     activityError.value = true

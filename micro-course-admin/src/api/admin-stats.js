@@ -42,11 +42,20 @@ export function getCourseDistribution() {
 
 /**
  * 获取学习行为数据
- * GET /admin/stats/learning-behavior?days=30
- * 响应: { videoPlayCount, exerciseSubmitCount }
+ * GET /admin/stats/learning-behavior
+ * 响应: [{ type, count }]
  */
-export function getLearningBehavior(days = 30) {
-  return request({ method: 'GET', url: '/admin/stats/learning-behavior', params: { days } })
+export function getLearningBehavior() {
+  return request({ method: 'GET', url: '/admin/stats/learning-behavior' })
+}
+
+/**
+ * 获取每日活跃用户数
+ * GET /admin/stats/daily-activity?days=30
+ * 响应: [{ date, activeUsers }]
+ */
+export function getDailyActivity(days = 30) {
+  return request({ method: 'GET', url: '/admin/stats/daily-activity', params: { days } })
 }
 
 /**

@@ -3,8 +3,10 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.microcourse.dto.CourseTrendVO;
+import com.microcourse.dto.DailyActivityVO;
 import com.microcourse.dto.DashboardOverviewVO;
 import com.microcourse.dto.UserTrendVO;
+import com.microcourse.entity.Certificate;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.Enrollment;
@@ -14,6 +16,7 @@ import com.microcourse.entity.User;
 import com.microcourse.entity.Video;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.CertificateRepository;
 import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseRepository;
@@ -54,6 +57,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     private final ExerciseRepository exerciseRepository;
     private final DiscussionPostRepository discussionPostRepository;
     private final LearningProgressRepository learningProgressRepository;
+    private final CertificateRepository certificateRepository;
     private final RedisUtil redisUtil;
     private final DataSource dataSource;
 
@@ -64,6 +68,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
                                   ExerciseRepository exerciseRepository,
                                   DiscussionPostRepository discussionPostRepository,
                                   LearningProgressRepository learningProgressRepository,
+                                  CertificateRepository certificateRepository,
                                   RedisUtil redisUtil,
                                   DataSource dataSource) {
         this.userRepository = userRepository;
@@ -73,6 +78,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         this.exerciseRepository = exerciseRepository;
         this.discussionPostRepository = discussionPostRepository;
         this.learningProgressRepository = learningProgressRepository;
+        this.certificateRepository = certificateRepository;
         this.redisUtil = redisUtil;
         this.dataSource = dataSource;
     }
@@ -116,6 +122,9 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         // 总观看时长（分钟）从 learning_progress.total_watch_time 求和（SQL聚合，避免OOM）
         Long totalWatchTimeSeconds = learningProgressRepository.sumTotalWatchTime();
         vo.setTotalWatchTimeMinutes(totalWatchTimeSeconds / 60);
+
+        // 证书发放总数
+        vo.setCertificatesIssued(certificateRepository.selectCount(null));
 
         return vo;
     }
@@ -270,6 +279,35 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<DailyActivityVO> getDailyActivity(int days) {
+        List<DailyActivityVO> result = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        LocalDateTime start = today.minusDays(days - 1).atStartOfDay();
+        List<Map<String, Object>> rows = userRepository.selectMaps(
+                new QueryWrapper<User>()
+                        .ge("last_login_at", start)
+                        .isNull("deleted_at")
+                        .select("DATE(last_login_at) as day, COUNT(*) as cnt")
+                        .groupBy("day")
+        );
+        Map<String, Long> activeMap = new HashMap<>();
+        for (Map<String, Object> row : rows) {
+            activeMap.put(String.valueOf(row.get("day")), ((Number) row.get("cnt")).longValue());
+        }
+
+        for (int i = days - 1; i >= 0; i--) {
+            LocalDate date = today.minusDays(i);
+            String key = date.format(formatter);
+            result.add(new DailyActivityVO(key, activeMap.getOrDefault(key, 0L)));
+        }
+
+        return result;
+    }
+
+    @Override
     public Map<String, String> getHealth() {
         Map<String, String> health = new LinkedHashMap<>();
 
@@ -291,26 +329,26 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             health.put("redis", "ERROR");
         }
 
-        // Disk check (runtime mxbean)
+        // Disk check
         try {
             java.io.File root = new java.io.File("/");
             long total = root.getTotalSpace();
             long free = root.getFreeSpace();
             long used = total - free;
             double usedPercent = (used * 100.0) / total;
-            health.put("disk", String.format("%.1f%% used", usedPercent));
+            health.put("disk", usedPercent > 90 ? "WARN" : "OK");
         } catch (Exception e) {
             health.put("disk", "UNKNOWN");
         }
 
-        // Memory check (JVM)
+        // Memory check
         try {
             Runtime rt = Runtime.getRuntime();
             long totalMem = rt.totalMemory();
             long freeMem = rt.freeMemory();
             long usedMem = totalMem - freeMem;
             double usedPercent = (usedMem * 100.0) / totalMem;
-            health.put("memory", String.format("%.1f%% used", usedPercent));
+            health.put("memory", usedPercent > 90 ? "WARN" : "OK");
         } catch (Exception e) {
             health.put("memory", "UNKNOWN");
         }

@@ -58,7 +58,10 @@ public class AdminSettingsController {
     @PutMapping("/register")
     @PreAuthorize("hasRole('ADMIN')")
     public R<Void> toggleRegister(@RequestBody Map<String, Object> body) {
-        Boolean enabled = (Boolean) body.get("enabled");
+        // P1-5: null 安全 + getOrDefault
+        Boolean enabled = body != null
+                ? (Boolean) body.getOrDefault("enabled", false)
+                : false;
         adminSettingService.upsert("registration_enabled", String.valueOf(enabled));
         return R.ok();
     }
@@ -71,7 +74,9 @@ public class AdminSettingsController {
     @PutMapping("/upload")
     @PreAuthorize("hasRole('ADMIN')")
     public R<Void> updateUploadLimit(@RequestBody Map<String, Object> body) {
-        Integer maxVideoSizeMb = (Integer) body.get("maxVideoSizeMb");
+        // P1-6: null 安全 + getOrDefault
+        Object raw = body != null ? body.getOrDefault("maxVideoSizeMb", 100) : 100;
+        int maxVideoSizeMb = (raw instanceof Number) ? ((Number) raw).intValue() : 100;
         adminSettingService.upsert("max_video_size_mb", String.valueOf(maxVideoSizeMb));
         return R.ok();
     }

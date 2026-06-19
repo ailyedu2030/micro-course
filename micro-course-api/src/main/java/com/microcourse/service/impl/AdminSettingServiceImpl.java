@@ -10,6 +10,7 @@ import com.microcourse.repository.AdminSettingRepository;
 import com.microcourse.service.AdminSettingService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +34,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
-    @Cacheable(value = "adminSettings", key = "'all'", sync = true)
+    @Cacheable(value = "adminSettingsList", key = "'all'", sync = true)
     @Transactional(readOnly = true)
     public List<AdminSettingVO> getAll() {
         List<AdminSetting> settings = adminSettingRepository.selectList(null);
@@ -43,7 +44,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
-    @Cacheable(value = "adminSettings", key = "#key", sync = true)
+    @Cacheable(value = "adminSettingsByKey", key = "#key", sync = true)
     @Transactional(readOnly = true)
     public String getByKey(String key) {
         LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
@@ -53,7 +54,10 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
-    @CacheEvict(value = "adminSettings", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "adminSettingsList", allEntries = true),
+            @CacheEvict(value = "adminSettingsByKey", allEntries = true)
+    })
     @Transactional(rollbackFor = Exception.class)
     public void update(String key, String value) {
         LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
@@ -67,54 +71,36 @@ public class AdminSettingServiceImpl implements AdminSettingService {
         adminSettingRepository.updateById(setting);
     }
 
+    /**
+     * P1-4: 批量 upsert，委托给 doUpsert 消除 N+1 select 查询
+     * P2: 统一为 upsert 语义，与 update 行为一致
+     */
     @Override
-    @CacheEvict(value = "adminSettings", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "adminSettingsList", allEntries = true),
+            @CacheEvict(value = "adminSettingsByKey", allEntries = true)
+    })
     @Transactional(rollbackFor = Exception.class)
     public void updateBatch(List<SettingUpdateRequest> settings) {
         LocalDateTime now = LocalDateTime.now();
         for (SettingUpdateRequest req : settings) {
-            LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(AdminSetting::getSettingKey, req.getKey());
-            AdminSetting setting = adminSettingRepository.selectOne(wrapper);
-            if (setting != null) {
-                setting.setSettingValue(req.getValue());
-                setting.setUpdatedAt(now);
-                adminSettingRepository.updateById(setting);
-            } else {
-                // Upsert: key 不存在时插入新记录
-                AdminSetting newSetting = new AdminSetting();
-                newSetting.setSettingKey(req.getKey());
-                newSetting.setSettingValue(req.getValue());
-                newSetting.setUpdatedAt(now);
-                adminSettingRepository.insert(newSetting);
-            }
+            // P1-3: 使用 PostgreSQL ON CONFLICT 原子 upsert
+            adminSettingRepository.upsertByKey(req.getKey(), req.getValue(), now);
         }
     }
 
+    /**
+     * P1-3: 使用 PostgreSQL INSERT ... ON CONFLICT 原子 upsert
+     * 消除 check-then-insert 竞态
+     */
     @Override
-    @CacheEvict(value = "adminSettings", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "adminSettingsList", allEntries = true),
+            @CacheEvict(value = "adminSettingsByKey", allEntries = true)
+    })
     @Transactional(rollbackFor = Exception.class)
     public void upsert(String key, String value) {
-        LocalDateTime now = LocalDateTime.now();
-        // CON-NEW-2 修复:用 INSERT ON CONFLICT 原子 upsert,避免 check-then-insert 竞态
-        // MyBatis-Plus 没有原生 upsert,使用 wrapper.last() 附加 ON CONFLICT 子句
-        AdminSetting newSetting = new AdminSetting();
-        newSetting.setSettingKey(key);
-        newSetting.setSettingValue(value);
-        newSetting.setUpdatedAt(now);
-        try {
-            adminSettingRepository.insert(newSetting);
-        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
-            // 并发写入同一新 key,降级为 update
-            LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(AdminSetting::getSettingKey, key);
-            AdminSetting existing = adminSettingRepository.selectOne(wrapper);
-            if (existing != null) {
-                existing.setSettingValue(value);
-                existing.setUpdatedAt(now);
-                adminSettingRepository.updateById(existing);
-            }
-        }
+        adminSettingRepository.upsertByKey(key, value, LocalDateTime.now());
     }
 
     private AdminSettingVO convertToVO(AdminSetting setting) {

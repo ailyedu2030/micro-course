@@ -23,7 +23,8 @@ export function updateSettings(settings) {
  * @param {boolean} enabled
  */
 export function toggleRegister(enabled) {
-  return request({ method: 'PUT', url: '/admin/settings/register', params: { enabled } })
+  // P0-2: 后端用 @RequestBody，前端必须发 data 而非 params
+  return request({ method: 'PUT', url: '/admin/settings/register', data: { enabled } })
 }
 
 /**
@@ -32,7 +33,9 @@ export function toggleRegister(enabled) {
  * @param {Object} data - { maxVideoSizeMb }
  */
 export function updateUploadLimit(data) {
-  return request({ method: 'PUT', url: '/admin/settings/upload', params: { maxVideoSizeMb: data.maxVideoSizeMb ?? data.maxVideoSizeMB } })
+  // P0-3: 后端用 @RequestBody，前端必须发 data 而非 params
+  // P2: 统一使用 maxVideoSizeMb（小写 b）
+  return request({ method: 'PUT', url: '/admin/settings/upload', data: { maxVideoSizeMb: data.maxVideoSizeMb } })
 }
 
 /**
@@ -41,5 +44,6 @@ export function updateUploadLimit(data) {
  * @param {Object} data - { casServerUrl, casServiceUrl }
  */
 export function updateCasConfig(data) {
-  return request({ method: 'PUT', url: '/admin/settings/cas', params: { casServerUrl: data.casServerUrl, casServiceUrl: data.casServiceUrl } })
+  // P0-4: 后端用 @RequestBody，前端必须发 data 而非 params
+  return request({ method: 'PUT', url: '/admin/settings/cas', data: { casServerUrl: data.casServerUrl, casServiceUrl: data.casServiceUrl } })
 }

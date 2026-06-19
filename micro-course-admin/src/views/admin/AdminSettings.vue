@@ -390,29 +390,42 @@ const casFormRules = {
 
 // 获取设置列表
 async function fetchSettings() {
+  // P1-2: 后端存 String，前端需要类型转换
+  const BOOLEAN_KEYS = new Set([
+    'allowRegistration', 'maintenanceMode',
+    'useSsl', 'useTls',
+    'requireNumber', 'requireSpecialChar', 'lockOnFailure', 'require2FA'
+  ])
+  const NUMBER_KEYS = new Set([
+    'maxUploadSize', 'sessionTimeout',
+    'smtpPort',
+    'minPasswordLength', 'maxFailAttempts', 'lockDuration', 'tokenExpiry', 'refreshTokenExpiry'
+  ])
+  function castValue(key, raw) {
+    if (BOOLEAN_KEYS.has(key)) return raw === 'true'
+    if (NUMBER_KEYS.has(key)) { const n = Number(raw); return Number.isNaN(n) ? raw : n }
+    return raw
+  }
+
   loading.value = true
   try {
     const res = await getSettings()
     const items = res.data?.items || res.data || []
-    // 填充到各表单
+    // 填充到各表单（带类型转换）
     items.forEach(item => {
-      if (item.settingKey in systemForm) {
-        systemForm[item.settingKey] = item.settingValue
-      }
-      if (item.settingKey in mailForm) {
-        mailForm[item.settingKey] = item.settingValue
-      }
-      if (item.settingKey in securityForm) {
-        securityForm[item.settingKey] = item.settingValue
-      }
+      const val = castValue(item.settingKey, item.settingValue)
+      if (item.settingKey in systemForm) systemForm[item.settingKey] = val
+      if (item.settingKey in mailForm) mailForm[item.settingKey] = val
+      if (item.settingKey in securityForm) securityForm[item.settingKey] = val
     })
     // CAS 设置从 localStorage 加载 (mock)
+    // P1-1: 使用 btoa/atob 简单编码（过渡方案，正式环境应使用后端 API + 加密存储）
     const storedCas = localStorage.getItem('cas_settings')
     if (storedCas) {
       try {
-        const parsed = JSON.parse(storedCas)
+        const parsed = JSON.parse(atob(storedCas))
         Object.assign(casForm, parsed)
-      } catch (e) { console.warn('配置解析失败:', e); }
+      } catch { /* P1-8: 忽略解析失败，使用默认值 */ }
     }
   } catch {
     // 不报错，用默认值
@@ -428,6 +441,9 @@ function handleMenuSelect(index) {
 
 // 保存修改
 async function handleSave(menu) {
+  // P2: 防止重复提交
+  if (saving.value) return
+
   // 根据菜单获取对应表单 ref 并校验
   const formRefMap = {
     system: systemFormRef,
@@ -448,8 +464,8 @@ async function handleSave(menu) {
   try {
     if (menu === 'cas') {
       // TODO: 后端暂无 /admin/settings/cas 接口，先保留 localStorage mock
-      // 提示用户此为演示功能
-      localStorage.setItem('cas_settings', JSON.stringify(casForm))
+      // P1-1: 使用 btoa 简单编码（过渡方案，正式环境应使用后端 API + 加密存储）
+      localStorage.setItem('cas_settings', btoa(JSON.stringify(casForm)))
       ElMessage.warning('CAS 配置已本地保存（演示功能，正式环境请配置后端 API）')
       saving.value = false
       return
@@ -470,7 +486,7 @@ async function handleSave(menu) {
 
     const updates = keys.map(key => ({
       settingKey: key,
-      settingValue: formData[key]
+      settingValue: String(formData[key])
     }))
 
     await updateSettings(updates)
@@ -501,12 +517,11 @@ async function handleTestMail() {
     ElMessage.warning('请先填写完整的邮件配置')
     return
   }
-  try {
-    await updateSettings([{ settingKey: 'test_mail', settingValue: 'true' }])
-    ElMessage.success('测试邮件已发送，请检查收件箱')
-  } catch {
-    ElMessage.error('发送失败，请检查配置')
-  }
+  // P2: 测试邮件应调用独立端点，不污染 DB（当前后端暂无测试邮件端点，使用演示模式）
+  ElMessage.info('正在模拟发送测试邮件...')
+  setTimeout(() => {
+    ElMessage.success('模拟发送成功（实际需后端测试邮件端点支持）')
+  }, 1500)
 }
 
 onMounted(() => {

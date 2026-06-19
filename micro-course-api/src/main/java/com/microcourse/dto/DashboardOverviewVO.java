@@ -14,6 +14,7 @@ public class DashboardOverviewVO {
     private Long totalExercises;
     private Long totalDiscussions;
     private Long totalWatchTimeMinutes;
+    private Long certificatesIssued;
 
     public DashboardOverviewVO() {}
 
@@ -35,4 +36,6 @@ public class DashboardOverviewVO {
     public void setTotalDiscussions(Long totalDiscussions) { this.totalDiscussions = totalDiscussions; }
     public Long getTotalWatchTimeMinutes() { return totalWatchTimeMinutes; }
     public void setTotalWatchTimeMinutes(Long totalWatchTimeMinutes) { this.totalWatchTimeMinutes = totalWatchTimeMinutes; }
+    public Long getCertificatesIssued() { return certificatesIssued; }
+    public void setCertificatesIssued(Long certificatesIssued) { this.certificatesIssued = certificatesIssued; }
 }
