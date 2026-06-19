@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 系统配置控制器
@@ -56,7 +57,8 @@ public class AdminSettingsController {
      */
     @PutMapping("/register")
     @PreAuthorize("hasRole('ADMIN')")
-    public R<Void> toggleRegister(@RequestParam Boolean enabled) {
+    public R<Void> toggleRegister(@RequestBody Map<String, Object> body) {
+        Boolean enabled = (Boolean) body.get("enabled");
         adminSettingService.upsert("registration_enabled", String.valueOf(enabled));
         return R.ok();
     }
@@ -68,7 +70,8 @@ public class AdminSettingsController {
      */
     @PutMapping("/upload")
     @PreAuthorize("hasRole('ADMIN')")
-    public R<Void> updateUploadLimit(@RequestParam Integer maxVideoSizeMb) {
+    public R<Void> updateUploadLimit(@RequestBody Map<String, Object> body) {
+        Integer maxVideoSizeMb = (Integer) body.get("maxVideoSizeMb");
         adminSettingService.upsert("max_video_size_mb", String.valueOf(maxVideoSizeMb));
         return R.ok();
     }
@@ -80,7 +83,9 @@ public class AdminSettingsController {
      */
     @PutMapping("/cas")
     @PreAuthorize("hasRole('ADMIN')")
-    public R<Void> updateCasConfig(@RequestParam String casServerUrl, @RequestParam String casServiceUrl) {
+    public R<Void> updateCasConfig(@RequestBody Map<String, Object> body) {
+        String casServerUrl = (String) body.get("casServerUrl");
+        String casServiceUrl = (String) body.get("casServiceUrl");
         adminSettingService.upsert("cas_server_url", casServerUrl);
         adminSettingService.upsert("cas_service_url", casServiceUrl);
         return R.ok();

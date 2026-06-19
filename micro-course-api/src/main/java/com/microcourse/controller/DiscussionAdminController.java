@@ -5,6 +5,8 @@ import com.microcourse.dto.DiscussionPostVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.DiscussionPostService;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,8 +27,8 @@ public class DiscussionAdminController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<PageResult<DiscussionPostVO>> page(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 200) int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) String status) {

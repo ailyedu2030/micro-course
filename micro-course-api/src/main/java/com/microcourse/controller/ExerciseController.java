@@ -7,6 +7,8 @@ import com.microcourse.dto.R;
 import com.microcourse.dto.PageResult;
 import com.microcourse.service.ExerciseService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,8 +30,8 @@ public class ExerciseController {
     public R<PageResult<ExerciseVO>> page(
             @RequestParam(required = false) Integer courseId,
             @RequestParam(required = false) Integer chapterId,
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 200) Integer size) {
         PageResult<ExerciseVO> result = exerciseService.page(courseId, chapterId, page, size);
         return R.ok(result);
     }

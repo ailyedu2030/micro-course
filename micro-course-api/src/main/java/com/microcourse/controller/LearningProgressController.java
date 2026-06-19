@@ -62,7 +62,7 @@ public class LearningProgressController {
     @PutMapping("/progress/{id}")
     @PreAuthorize("isAuthenticated()")
     public R<Void> updateProgress(@PathVariable Long id,
-                                  @RequestBody ProgressUpdateRequest request) {
+                                  @Valid @RequestBody ProgressUpdateRequest request) {
         Long userId = getCurrentUserId();
         learningProgressService.updateProgress(id, userId, request);
         return R.ok();

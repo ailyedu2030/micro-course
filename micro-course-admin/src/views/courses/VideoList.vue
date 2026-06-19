@@ -192,6 +192,7 @@ import { useUserStore } from '@/store/user'
 import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo } from '@/api/video'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
+import { getToken } from '@/utils/auth'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
@@ -386,7 +387,7 @@ const handleBatchUpload = async ({ file }) => {
 
     const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
     xhr.open('POST', `${baseURL}/api/videos/upload`)
-    const token = localStorage.getItem('micro_course_token')
+    const token = getToken()
     if (token) {
       xhr.setRequestHeader('Authorization', `Bearer ${token}`)
     }

@@ -1,10 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isAuthenticated } from '../utils/auth'
+import { useUserStore } from '../store/user'
 
 const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/auth/Login.vue'), meta: { requiresAuth: false } },
   { path: '/', name: 'Home', redirect: '/admin/dashboard' },
-  { path: '/profile', redirect: (to) => { const role = localStorage.getItem('userRole') || ''; if (role === 'STUDENT') return '/student/profile'; return getRoleHomePage(role); } },
+  { path: '/profile', redirect: (to) => { const role = sessionStorage.getItem('userRole') || ''; if (role === 'STUDENT') return '/student/profile'; return getRoleHomePage(role); } },
   { path: '/departments', name: 'DepartmentList', component: () => import('../views/departments/DepartmentList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/majors', name: 'MajorList', component: () => import('../views/majors/MajorList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/classes', name: 'ClassList', component: () => import('../views/classes/ClassList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
@@ -103,9 +104,22 @@ function isStaffOnlyPath(path) {
 
 const router = createRouter({ history: createWebHistory(), routes })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth !== false && !isAuthenticated()) return next('/login')
-  const userRole = localStorage.getItem('userRole') || ''
+
+  // 优先从 store 获取角色，store 为空则调用 /api/auth/me
+  const userStore = useUserStore()
+  let userRole = userStore.role || ''
+  if (!userRole && isAuthenticated()) {
+    try {
+      await userStore.getInfo()
+      userRole = userStore.role || ''
+    } catch (e) {
+      console.warn('[router] 获取用户信息失败, 跳转登录', e)
+      return next('/login')
+    }
+  }
+
   if (to.path === '/login' && isAuthenticated()) {
     return next(getRoleHomePage(userRole))
   }

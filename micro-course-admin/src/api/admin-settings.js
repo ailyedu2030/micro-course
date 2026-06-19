@@ -23,23 +23,23 @@ export function updateSettings(settings) {
  * @param {boolean} enabled
  */
 export function toggleRegister(enabled) {
-  return request({ method: 'PUT', url: '/admin/settings/register', data: { enabled } })
+  return request({ method: 'PUT', url: '/admin/settings/register', params: { enabled } })
 }
 
 /**
  * 设置上传限制
  * PUT /api/admin/settings/upload
- * @param {Object} data - { maxVideoSizeMB, maxFileSizeMB }
+ * @param {Object} data - { maxVideoSizeMb }
  */
 export function updateUploadLimit(data) {
-  return request({ method: 'PUT', url: '/admin/settings/upload', data })
+  return request({ method: 'PUT', url: '/admin/settings/upload', params: { maxVideoSizeMb: data.maxVideoSizeMb ?? data.maxVideoSizeMB } })
 }
 
 /**
  * 保存 CAS 配置
  * PUT /api/admin/settings/cas
- * @param {Object} data - CAS config fields
+ * @param {Object} data - { casServerUrl, casServiceUrl }
  */
 export function updateCasConfig(data) {
-  return request({ method: 'PUT', url: '/admin/settings/cas', data })
+  return request({ method: 'PUT', url: '/admin/settings/cas', params: { casServerUrl: data.casServerUrl, casServiceUrl: data.casServiceUrl } })
 }

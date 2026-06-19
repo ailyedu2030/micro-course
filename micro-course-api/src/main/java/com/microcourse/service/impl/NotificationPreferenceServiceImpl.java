@@ -7,6 +7,7 @@ import com.microcourse.entity.NotificationPreference;
 import com.microcourse.repository.NotificationPreferenceRepository;
 import com.microcourse.service.NotificationPreferenceService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -20,6 +21,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
     }
 
     @Override
+    @Transactional
     public PreferenceVO getOrCreate(Long userId) {
         LambdaQueryWrapper<NotificationPreference> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(NotificationPreference::getUserId, userId);
@@ -39,6 +41,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
     }
 
     @Override
+    @Transactional
     public PreferenceVO update(Long userId, PreferenceUpdateRequest request) {
         LambdaQueryWrapper<NotificationPreference> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(NotificationPreference::getUserId, userId);

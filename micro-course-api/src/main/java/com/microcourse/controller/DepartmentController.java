@@ -7,6 +7,8 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.DepartmentService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,8 +25,8 @@ public class DepartmentController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<DepartmentVO>> page(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
         PageResult<DepartmentVO> result = departmentService.page(page, size);
         return R.ok(result);
     }

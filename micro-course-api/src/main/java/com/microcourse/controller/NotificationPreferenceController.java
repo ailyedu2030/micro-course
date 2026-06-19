@@ -4,6 +4,7 @@ import com.microcourse.dto.PreferenceUpdateRequest;
 import com.microcourse.dto.PreferenceVO;
 import com.microcourse.dto.R;
 import com.microcourse.service.NotificationPreferenceService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +29,7 @@ public class NotificationPreferenceController {
 
     @PutMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public R<PreferenceVO> updateMyPreference(@RequestBody PreferenceUpdateRequest request) {
+    public R<PreferenceVO> updateMyPreference(@Valid @RequestBody PreferenceUpdateRequest request) {
         Long userId = getCurrentUserId();
         PreferenceVO vo = preferenceService.update(userId, request);
         return R.ok(vo);

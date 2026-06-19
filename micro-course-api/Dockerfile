@@ -19,6 +19,9 @@ COPY --from=builder /build/target/*.jar app.jar
 
 EXPOSE 8080
 
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD curl -sf http://localhost:8080/api-docs/v3/api-docs > /dev/null || exit 1
 

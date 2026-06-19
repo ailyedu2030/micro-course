@@ -619,8 +619,7 @@ const showSeekIndicator = ref(false)
 const seekIndicatorDir = ref('')
 const seekIndicatorSeconds = ref(10)
 let seekIndicatorTimer = null
-
-// Learning objectives auto-show on mount
+let speedToastTimer = null
 const showObjectivesOverlay = () => {
   showObjectives.value = true
   if (objectivesTimer) clearTimeout(objectivesTimer)
@@ -669,7 +668,8 @@ const loadVideo = async () => {
     await Promise.all([loadChapters(), loadProgress(), loadDiscussions()])
     loadLocalPosition()
     showObjectivesOverlay()
-  } catch {
+  } catch (e) {
+    console.warn('[VideoPlayer] loadVideo 加载视频失败', e)
     errorMsg.value = '无法加载视频，请检查网络连接'
   } finally {
     loading.value = false
@@ -729,7 +729,8 @@ const loadChapters = async () => {
     // Mark current chapter
     const idx = chapters.value.findIndex(c => Number(c.id) === Number(chapterId.value))
     if (idx >= 0) currentChapterIndex.value = idx
-  } catch {
+  } catch (e) {
+    console.warn('[VideoPlayer] loadChapters 加载章节失败', e)
     chapters.value = []
   }
 }
@@ -752,8 +753,8 @@ const loadProgress = async () => {
     if (progressData?.videoPosition > 0) {
       lastPosition.value = progressData.videoPosition
     }
-  } catch {
-    // ignore
+  } catch (e) {
+    console.warn('[VideoPlayer] loadProgress 加载学习进度失败', e)
   }
 }
 
@@ -770,7 +771,8 @@ const ensureProgressRecord = async () => {
     })
     progressId.value = (res.data || res).id
     return !!progressId.value
-  } catch {
+  } catch (e) {
+    console.warn('[VideoPlayer] ensureProgressRecord 创建进度记录失败', e)
     return false
   }
 }
@@ -791,8 +793,8 @@ const reportProgress = async () => {
       videoProgress: Math.round(progressPercentVal)
     })
     saveLocalPosition(current)
-  } catch {
-    // ignore
+  } catch (e) {
+    console.warn('[VideoPlayer] reportProgress 上报进度失败', e)
   }
 }
 
@@ -820,8 +822,8 @@ const loadLocalPosition = () => {
         }
       }
     }
-  } catch {
-    // ignore
+  } catch (e) {
+    console.warn('[VideoPlayer] loadLocalPosition 恢复播放位置失败', e)
   }
 }
 
@@ -831,7 +833,8 @@ const loadDiscussions = async () => {
   try {
     const res = await getPosts({ chapterId: chapterId.value, page: 0, size: 20 })
     discussions.value = res.data?.items || res.data || []
-  } catch {
+  } catch (e) {
+    console.warn('[VideoPlayer] loadDiscussions 加载讨论失败', e)
     discussions.value = []
   }
 }
@@ -950,7 +953,8 @@ const changeSpeed = (speed) => {
     video.playbackRate = speed
   }
   speedToastVisible.value = true
-  setTimeout(() => {
+  if (speedToastTimer) clearTimeout(speedToastTimer)
+  speedToastTimer = setTimeout(() => {
     speedToastVisible.value = false
   }, 1500)
 }
@@ -970,7 +974,8 @@ const toggleFullscreen = async () => {
       await document.exitFullscreen?.()
       isFullscreen.value = false
     }
-  } catch {
+  } catch (e) {
+    console.warn('[VideoPlayer] toggleFullscreen 全屏切换失败', e)
     isFullscreen.value = false
   }
 }
@@ -1234,6 +1239,22 @@ onBeforeUnmount(() => {
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer)
     hideControlsTimer = null
+  }
+  if (seekIndicatorTimer) {
+    clearTimeout(seekIndicatorTimer)
+    seekIndicatorTimer = null
+  }
+  if (objectivesTimer) {
+    clearTimeout(objectivesTimer)
+    objectivesTimer = null
+  }
+  if (tapTimer) {
+    clearTimeout(tapTimer)
+    tapTimer = null
+  }
+  if (speedToastTimer) {
+    clearTimeout(speedToastTimer)
+    speedToastTimer = null
   }
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)

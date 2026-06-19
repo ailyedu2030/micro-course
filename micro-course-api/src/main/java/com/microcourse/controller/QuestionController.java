@@ -10,6 +10,8 @@ import com.microcourse.service.QuestionService;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -31,8 +33,8 @@ public class QuestionController {
             @RequestParam(required = false) Integer courseId,
             @RequestParam(required = false) String questionType,
             @RequestParam(required = false) Integer difficulty,
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 200) Integer size) {
         PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, page, size);
         return R.ok(result);
     }

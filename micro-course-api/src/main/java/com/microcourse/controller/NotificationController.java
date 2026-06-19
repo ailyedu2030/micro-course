@@ -6,6 +6,8 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.NotificationService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -24,8 +26,8 @@ public class NotificationController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<NotificationVO>> getMyNotifications(
             @RequestParam(required = false) String type,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
         Long userId = getCurrentUserId();
         PageResult<NotificationVO> result = notificationService.getMyNotifications(userId, type, page, size);
         return R.ok(result);

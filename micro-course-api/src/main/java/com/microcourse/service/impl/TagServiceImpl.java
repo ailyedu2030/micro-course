@@ -10,6 +10,7 @@ import com.microcourse.entity.Tag;
 import com.microcourse.repository.TagRepository;
 import com.microcourse.service.TagService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,6 +26,7 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<TagVO> page(int page, int size) {
         IPage<Tag> ipage = tagRepository.selectPage(
                 new Page<>(page + 1, size),
@@ -43,6 +45,7 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
+    @Transactional
     public TagVO create(TagCreateRequest request) {
         Tag tag = new Tag();
         tag.setName(request.getName());

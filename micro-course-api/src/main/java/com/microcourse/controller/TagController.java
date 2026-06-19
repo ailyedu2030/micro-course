@@ -10,6 +10,8 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.TagRepository;
 import com.microcourse.service.TagService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,8 +30,8 @@ public class TagController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<TagVO>> page(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
         PageResult<TagVO> result = tagService.page(page, size);
         return R.ok(result);
     }

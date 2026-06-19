@@ -53,7 +53,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     public CourseCategoryVO getById(Long id) {
         CourseCategory category = courseCategoryRepository.selectById(id);
         if (category == null) {
-            throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+            throw new BusinessException(ErrorCode.COURSE_CATEGORY_NOT_FOUND);
         }
         return convertToVO(category);
     }
@@ -77,7 +77,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     public CourseCategoryVO update(Long id, CourseCategoryUpdateRequest request) {
         CourseCategory category = courseCategoryRepository.selectById(id);
         if (category == null) {
-            throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+            throw new BusinessException(ErrorCode.COURSE_CATEGORY_NOT_FOUND);
         }
         if (request.getName() != null) {
             category.setName(request.getName());
@@ -101,7 +101,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     public void delete(Long id) {
         CourseCategory category = courseCategoryRepository.selectById(id);
         if (category == null) {
-            throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+            throw new BusinessException(ErrorCode.COURSE_CATEGORY_NOT_FOUND);
         }
         courseCategoryRepository.deleteById(id);
     }

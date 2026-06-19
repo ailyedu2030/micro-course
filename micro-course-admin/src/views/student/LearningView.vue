@@ -563,8 +563,8 @@ async function checkFavorite() {
     const res = await getMyFavorites()
     const favorites = res.data || []
     isFavorited.value = favorites.some(f => f.targetId === courseId.value && f.type === 'COURSE')
-  } catch {
-    // ignore
+  } catch (e) {
+    console.warn('[LearningView] checkFavorite 查询收藏状态失败', e)
   }
 }
 
@@ -713,8 +713,8 @@ async function saveVideoProgress() {
         progressMap.value[chapterId] = { id: newId }
       }
     }
-  } catch {
-    // 静默失败
+  } catch (e) {
+    console.warn('[LearningView] saveVideoProgress 保存进度失败', e)
   }
 }
 
@@ -739,8 +739,8 @@ async function markLessonComplete() {
     // 更新本地状态
     const lesson = allLessons.value.find(l => l.id === currentLessonId.value)
     if (lesson) lesson.status = 'COMPLETED'
-  } catch {
-    // 静默
+  } catch (e) {
+    console.warn('[LearningView] markLessonComplete 标记完成失败', e)
   }
 }
 

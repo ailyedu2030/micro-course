@@ -10,6 +10,8 @@ import com.microcourse.entity.OperationLog;
 import com.microcourse.dto.UserVO;
 import com.microcourse.service.UserService;
 import com.microcourse.service.OperationLogService;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -53,8 +55,8 @@ public class OperationLogController {
             @RequestParam(required = false) String action,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
         PageResult<OperationLog> result = operationLogService.pageQuery(userId, action, startTime, endTime, page, size);
         List<OperationLogVO> vos = result.getItems().stream()
                 .map(this::convertToVO)

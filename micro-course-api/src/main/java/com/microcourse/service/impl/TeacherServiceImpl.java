@@ -9,6 +9,7 @@ import com.microcourse.repository.*;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.TeacherService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,6 +58,7 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public TeacherStatsVO getStats(Long teacherId) {
         TeacherStatsVO stats = new TeacherStatsVO();
 
@@ -140,6 +142,7 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StudentActivityVO> getStudentActivity(Long teacherId, int days) {
         List<StudentActivityVO> result = new ArrayList<>();
         LocalDate today = LocalDate.now();
@@ -202,6 +205,7 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<PendingTaskVO> getPendingTasks(Long teacherId, int size) {
         List<PendingTaskVO> tasks = new ArrayList<>();
 
@@ -267,6 +271,7 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TeacherNotificationVO> getNotifications(Long teacherId, int size) {
         User user = userRepository.selectById(teacherId);
         Long userId = user != null ? user.getId() : teacherId;
@@ -288,6 +293,7 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<TeacherCourseVO> getMyCourses(Long teacherId, int page, int size) {
         IPage<Course> coursePage = courseRepository.selectPage(
             new Page<>(page, size),

@@ -8,6 +8,8 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.CourseReviewService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -52,8 +54,8 @@ public class CourseReviewController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseReviewVO>> list(@PathVariable Long id,
-                                              @RequestParam(defaultValue = "0") int page,
-                                              @RequestParam(defaultValue = "20") int size) {
+                                              @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+                                              @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
         return R.ok(courseReviewService.listByCourse(id, page, size));
     }
 
@@ -87,8 +89,8 @@ class MyReviewController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<PageResult<CourseReviewVO>> listAll(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size,
             @RequestParam(required = false) Long courseId) {
         PageResult<CourseReviewVO> result = courseReviewService.listAll(page, size, courseId);
         return R.ok(result);
@@ -101,8 +103,8 @@ class MyReviewController {
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseReviewVO>> getMyReviews(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
         Long userId = SecurityContextHolder.getContext().getAuthentication().getPrincipal() instanceof Long
                 ? (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal()
                 : 0L;

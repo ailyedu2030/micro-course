@@ -3,7 +3,7 @@ import { login as loginApi, getCurrentUser, logout as logoutApi } from '../api/a
 import { setToken, removeToken } from '../utils/auth'
 
 export const useUserStore = defineStore('user', {
-  state: () => ({ token: localStorage.getItem('micro_course_token') || '', userInfo: null }),
+  state: () => ({ token: sessionStorage.getItem('micro_course_token') || '', userInfo: null }),
   getters: {
     isLoggedIn: (state) => !!state.token,
     userId: (state) => state.userInfo?.id || null,
@@ -24,15 +24,15 @@ export const useUserStore = defineStore('user', {
       const res = await getCurrentUser()
       this.userInfo = res.data
       if (res.data?.role) {
-        localStorage.setItem('userRole', res.data.role)
+        sessionStorage.setItem('userRole', res.data.role)
       }
       return res.data
     },
     async logout() {
       try { await logoutApi() } catch (e) { console.warn(e); }
       removeToken()
-      // 清全部 micro_course_ 前缀 storage
-      Object.keys(localStorage).filter(k => k.startsWith('micro_course_')).forEach(k => localStorage.removeItem(k))
+      // 清全部 micro_course_ 前缀 storage + userRole
+      sessionStorage.removeItem('userRole')
       Object.keys(sessionStorage).filter(k => k.startsWith('micro_course_')).forEach(k => sessionStorage.removeItem(k))
       this.token = ''
       this.userInfo = null
