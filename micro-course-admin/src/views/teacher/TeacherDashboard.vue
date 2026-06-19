@@ -257,7 +257,7 @@
                     <el-icon><User /></el-icon>
                     {{ course.studentCount ?? 0 }} 学员
                   </span>
-                  <el-rate v-if="course.rating" :model-value="course.rating" disabled show-score size="small" />
+                  <el-rate v-if="course.rating != null" :model-value="course.rating" disabled show-score size="small" />
                 </div>
               </div>
             </div>

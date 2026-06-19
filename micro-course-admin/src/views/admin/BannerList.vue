@@ -13,7 +13,7 @@
           <span class="card-count">共 {{ totalElements }} 张</span>
         </div>
         <div class="toolbar-right">
-          <el-button type="primary" @click="handleAdd" aria-label="编辑"><el-icon><Plus /></el-icon>添加轮播图
+          <el-button type="primary" @click="handleAdd" aria-label="删除"><el-icon><Plus /></el-icon>添加轮播图
           </el-button>
         </div>
       </div>

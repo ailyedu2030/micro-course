@@ -52,9 +52,9 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch" aria-label="编辑"><el-icon><Search /></el-icon>搜索
+          <el-button type="primary" @click="handleSearch" aria-label="重置"><el-icon><Search /></el-icon>搜索
           </el-button>
-          <el-button @click="handleReset" aria-label="操作"><el-icon><RefreshRight /></el-icon>重置
+          <el-button @click="handleReset" aria-label="导出"><el-icon><RefreshRight /></el-icon>重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -69,7 +69,7 @@
         <div class="toolbar-right">
           <el-button type="success" @click="handleImport" aria-label="确认"><el-icon><Upload /></el-icon>Excel 导入
           </el-button>
-          <el-button type="primary" @click="handleExport" aria-label="编辑"><el-icon><Download /></el-icon>导出
+          <el-button type="primary" @click="handleExport" aria-label="下载"><el-icon><Download /></el-icon>导出
           </el-button>
         </div>
       </div>

@@ -85,7 +85,7 @@
                   <!-- 展开：学生管理 -->
                   <div v-if="expandedClassId === cls.id" class="class-detail">
                     <div class="detail-actions">
-                      <el-button type="primary" size="small" v-if="userRole !== 'ACADEMIC'" @click="handleAddStudent(cls)" aria-label="编辑"><el-icon><Plus /></el-icon>添加学生
+                      <el-button type="primary" size="small" v-if="userRole !== 'ACADEMIC'" @click="handleAddStudent(cls)" aria-label="刷新"><el-icon><Plus /></el-icon>添加学生
                       </el-button>
                       <el-button size="small" @click="handleRefreshStudents(cls)" aria-label="操作"><el-icon><RefreshRight /></el-icon>刷新
                       </el-button>

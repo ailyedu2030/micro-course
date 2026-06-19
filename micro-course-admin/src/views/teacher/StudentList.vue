@@ -58,9 +58,9 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch" aria-label="编辑"><el-icon><Search /></el-icon>搜索
+          <el-button type="primary" @click="handleSearch" aria-label="重置"><el-icon><Search /></el-icon>搜索
           </el-button>
-          <el-button @click="handleReset" aria-label="操作"><el-icon><RefreshRight /></el-icon>重置
+          <el-button @click="handleReset" aria-label="导出"><el-icon><RefreshRight /></el-icon>重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -374,9 +374,10 @@ function handlePageChange() {
   fetchData()
 }
 
-// 行点击
+// 行点击（AUD-教师-9:打开详情弹窗）
 function handleRowClick(row) {
-  // 可选：展开详情
+  currentStudent.value = row
+  detailVisible.value = true
 }
 
 // a11y:el-table 行键盘支持(A11Y-018)

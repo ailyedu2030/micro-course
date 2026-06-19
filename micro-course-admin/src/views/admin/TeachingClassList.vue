@@ -152,7 +152,7 @@
               <el-button type="danger" link @click="removeSchedule(index)" aria-label="删除"><el-icon><Delete /></el-icon>
               </el-button>
             </div>
-            <el-button type="primary" link @click="addSchedule" aria-label="编辑"><el-icon><Plus /></el-icon>添加时间段
+            <el-button type="primary" link @click="addSchedule" aria-label="提交"><el-icon><Plus /></el-icon>添加时间段
             </el-button>
           </div>
         </el-form-item>
