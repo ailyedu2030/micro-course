@@ -590,7 +590,7 @@ const badgeLoading = ref(false)
 const earnedBadges = ref([])
 
 // 响应式布局
-const isMobile = ref(false)
+const isMobile = ref(window.innerWidth <= 768)
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768

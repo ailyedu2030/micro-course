@@ -86,6 +86,8 @@ const routes = [
   { path: '/student/reviews', name: 'StudentMyReviews', component: () => import('../views/student/MyReviews.vue'), meta: { requiresAuth: true } },
   { path: '/student/settings', name: 'StudentSettings', component: () => import('../views/student/Settings.vue'), meta: { requiresAuth: true } },
   { path: '/student/achievements', name: 'StudentAchievements', component: () => import('../views/student/AchievementWall.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'ADMIN'] } },
+  // UX-NEW-2 修复:404 通配路由
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue') },
 ]
 
 function getRoleHomePage(role) {
@@ -110,7 +112,7 @@ const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach(async (to, from, next) => {
   NProgress.start()
-  if (to.meta.requiresAuth !== false && !isAuthenticated()) return next('/login')
+  if (to.meta.requiresAuth !== false && !isAuthenticated()) return next({ path: '/login', query: { redirect: to.fullPath } })
 
   // 优先从 store 获取角色，store 为空则调用 /api/auth/me
   const userStore = useUserStore()
@@ -121,7 +123,7 @@ router.beforeEach(async (to, from, next) => {
       userRole = userStore.role || ''
     } catch (e) {
       console.warn('[router] 获取用户信息失败, 跳转登录', e)
-      return next('/login')
+      return next({ path: '/login', query: { redirect: to.fullPath } })
     }
   }
 

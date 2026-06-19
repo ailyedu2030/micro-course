@@ -573,7 +573,7 @@ const notes = ref([])
 const discussions = ref([])
 const activeTab = ref('chapters')
 const showChapterList = ref(false)
-const isMobile = ref(false)
+const isMobile = ref(window.innerWidth <= 768)
 
 // Playback state
 const isPlaying = ref(false)

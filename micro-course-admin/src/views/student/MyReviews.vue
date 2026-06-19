@@ -213,7 +213,7 @@ const userStore = useUserStore()
 const loading = ref(false)
 const reviews = ref([])
 const errorState = ref(false)
-const isMobile = ref(false)
+const isMobile = ref(window.innerWidth <= 768)
 const filterCourseId = ref(null)
 
 const courseOptions = ref([])

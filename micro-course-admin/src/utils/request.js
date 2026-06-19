@@ -22,6 +22,15 @@ request.interceptors.response.use(response => {
   }
   return res
 }, error => {
+  // UX-NEW-6 修复:区分网络断连/超时与服务器错误
+  if (!error.response) {
+    if (error.code === 'ECONNABORTED') {
+      ElMessage.error('请求超时，请检查网络后重试')
+    } else {
+      ElMessage.error('网络连接异常，请检查网络后重试')
+    }
+    return Promise.reject(error)
+  }
   const status = error.response?.status
   if (status === 401) {
     removeToken()

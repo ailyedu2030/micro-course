@@ -293,7 +293,7 @@ const settings = ref({
   highContrast: false
 })
 
-const isMobile = ref(false)
+const isMobile = ref(window.innerWidth <= 768)
 let resizeTimer = null
 const handleResize = () => {
   if (resizeTimer) clearTimeout(resizeTimer)

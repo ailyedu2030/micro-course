@@ -17,8 +17,8 @@
         <h1 class="course-title">{{ course.title || '加载中...' }}</h1>
       </div>
       <div class="header-right">
-        <!-- 总体进度 -->
-        <div class="progress-indicator" role="button" tabindex="0" aria-label="查看课程进度" @click="activeTab = 'course'" @keydown.enter="activeTab = 'course'" title="查看课程进度">
+        <!-- 总体进度 (UX-NEW-5:加载完成前隐藏,防 0% 闪烁) -->
+        <div v-if="!loading" class="progress-indicator" role="button" tabindex="0" aria-label="查看课程进度" @click="activeTab = 'course'" @keydown.enter="activeTab = 'course'" title="查看课程进度">
           <span class="progress-dots">
             <span
               v-for="i in 10"

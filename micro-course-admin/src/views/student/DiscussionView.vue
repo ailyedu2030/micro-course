@@ -193,7 +193,7 @@ const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
-const isMobile = ref(false)
+const isMobile = ref(window.innerWidth <= 768)
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
