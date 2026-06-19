@@ -15,5 +15,17 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-element': ['element-plus', '@element-plus/icons-vue'],
+          'vendor-xlsx': ['xlsx'],
+          'vendor-video': ['./src/views/student/VideoPlayer.vue'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 400,
   }
 })
