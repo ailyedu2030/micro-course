@@ -5,7 +5,7 @@ import { getToken, removeToken } from './auth'
 
 const request = axios.create({
   baseURL: '/api',   // vite proxy 转发到 localhost:8080
-  timeout: 10000
+  timeout: 60000     // 60s: 兼容大练习提交/批量导入等耗时操作
 })
 
 request.interceptors.request.use(config => {

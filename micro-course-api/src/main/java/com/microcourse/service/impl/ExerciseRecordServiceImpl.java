@@ -93,18 +93,27 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             eqMap.put(eq.getQuestionId(), eq);
         }
 
-        // 4. 逐题批改
+        // 4. 批量预加载所有题目 -> 逐题批改(N+1→1+1)
         List<SubmitAnswerRequest.AnswerItem> answerList = request.getAnswers();
         int totalScore = 0;
         List<GradingResult> gradingResults = new ArrayList<>();
 
+        // 收集所有 questionId 批量查询
+        List<Long> allQuestionIds = answerList.stream()
+                .map(SubmitAnswerRequest.AnswerItem::getQuestionId)
+                .filter(eqMap::containsKey)
+                .collect(java.util.stream.Collectors.toList());
+        Map<Long, Question> questionMap = new HashMap<>();
+        if (!allQuestionIds.isEmpty()) {
+            questionRepository.selectBatchIds(allQuestionIds)
+                    .forEach(q -> questionMap.put(q.getId(), q));
+        }
+
         for (SubmitAnswerRequest.AnswerItem answerItem : answerList) {
             ExerciseQuestion eq = eqMap.get(answerItem.getQuestionId());
-            if (eq == null) {
-                continue;
-            }
+            if (eq == null) continue;
 
-            Question question = questionRepository.selectById(answerItem.getQuestionId());
+            Question question = questionMap.get(answerItem.getQuestionId());
             if (question == null) {
                 throw new BusinessException(ErrorCode.QUESTION_NOT_FOUND);
             }
@@ -169,12 +178,42 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         grade.setUpdatedAt(LocalDateTime.now());
         gradeRepository.insert(grade);
 
-        // 10. 错题入库
-        for (GradingResult result : gradingResults) {
-            if (!result.isCorrect && result.questionType != null &&
-                !result.questionType.equals("SHORT_ANSWER") && !result.questionType.equals("ESSAY")) {
-                upsertWrongQuestion(request.getUserId(), result.questionId, exercise.getCourseId());
+        // 10. 错题入库(批量预检查,减少单独查询)
+        Set<Long> wrongQuestionIds = gradingResults.stream()
+                .filter(r -> Boolean.FALSE.equals(r.isCorrect) && r.questionType != null
+                        && !r.questionType.equals("SHORT_ANSWER") && !r.questionType.equals("ESSAY"))
+                .map(r -> r.questionId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!wrongQuestionIds.isEmpty()) {
+            // 批量查询已存在的错题
+            LambdaQueryWrapper<WrongQuestion> existingWQ = new LambdaQueryWrapper<>();
+            existingWQ.eq(WrongQuestion::getUserId, request.getUserId())
+                    .in(WrongQuestion::getQuestionId, wrongQuestionIds);
+            Set<Long> existingIds = wrongQuestionRepository.selectList(existingWQ).stream()
+                    .map(WrongQuestion::getQuestionId)
+                    .collect(java.util.stream.Collectors.toSet());
+            // 增量更新已存在的
+            if (!existingIds.isEmpty()) {
+                wrongQuestionRepository.update(null,
+                        new LambdaUpdateWrapper<WrongQuestion>()
+                                .eq(WrongQuestion::getUserId, request.getUserId())
+                                .in(WrongQuestion::getQuestionId, existingIds)
+                                .setSql("wrong_count = wrong_count + 1")
+                                .setSql("last_wrong_at = NOW()"));
             }
+            // 插入不存在的
+            wrongQuestionIds.stream()
+                    .filter(qid -> !existingIds.contains(qid))
+                    .forEach(qid -> {
+                        WrongQuestion wq = new WrongQuestion();
+                        wq.setUserId(request.getUserId());
+                        wq.setQuestionId(qid);
+                        wq.setCourseId(exercise.getCourseId());
+                        wq.setWrongCount(1);
+                        wq.setLastWrongAt(LocalDateTime.now());
+                        wq.setCreatedAt(LocalDateTime.now());
+                        wrongQuestionRepository.insert(wq);
+                    });
         }
 
         return convertToVO(record, exercise);

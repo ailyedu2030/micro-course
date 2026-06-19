@@ -138,7 +138,7 @@
             <template #header>
               <div class="card-header-title">
                 <el-icon class="header-icon"><Key /></el-icon>
-                AI 学习建议
+                学习建议
               </div>
             </template>
             <el-skeleton :loading="loading" animated>
