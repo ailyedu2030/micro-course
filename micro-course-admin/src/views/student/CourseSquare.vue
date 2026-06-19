@@ -271,6 +271,15 @@
                     <el-icon :size="48"><VideoPlay /></el-icon>
                   </div>
                   <el-tag
+                    v-if="course.categoryName"
+                    class="category-chip"
+                    type="info"
+                    effect="plain"
+                    size="small"
+                  >
+                    {{ course.categoryName }}
+                  </el-tag>
+                  <el-tag
                     v-if="course.difficulty"
                     class="difficulty-chip"
                     :type="getDifficultyType(course.difficulty)"
@@ -416,7 +425,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -597,6 +606,21 @@ const handleCourseClick = (id) => {
   if (!id) return
   router.push(`/student/courses/${id}`)
 }
+
+// 防抖搜索 (300ms)
+let debounceTimer = null
+
+watch(() => searchForm.keyword, (newVal) => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    page.value = 1
+    fetchCourses()
+  }, 300)
+})
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+})
 
 onMounted(() => {
   fetchCategories()
@@ -945,6 +969,20 @@ onMounted(() => {
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-wide);
   box-shadow: var(--shadow-chip);
+}
+
+/* 分类 chip (浮在缩略图右下) */
+.category-chip {
+  position: absolute;
+  bottom: var(--space-3);
+  left: var(--space-3);
+  border-radius: var(--radius-pill) !important;
+  font-weight: var(--weight-medium);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  border: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  color: var(--el-text-color-primary);
 }
 
 /* 课程信息 */

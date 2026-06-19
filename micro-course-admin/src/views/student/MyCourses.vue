@@ -54,7 +54,7 @@
         <!-- Loading 状态 -->
         <div v-if="loading" class="course-grid">
           <el-row :gutter="24">
-            <el-col v-for="n in 6" :key="n" :span="8">
+            <el-col v-for="n in 8" :key="n" :xs="24" :sm="12" :md="8" :lg="6">
               <el-card class="course-card skeleton-card" shadow="never">
                 <el-skeleton animated>
                   <template #template>
@@ -90,7 +90,10 @@
             <el-col
               v-for="course in displayCourses"
               :key="course.courseId"
-              :span="8"
+              :xs="24"
+              :sm="12"
+              :md="8"
+              :lg="6"
             >
               <el-card
                 class="course-card"
@@ -109,12 +112,20 @@
                   </div>
                   <!-- 进度标签 -->
                   <el-tag
-                    v-if="activeTab === 'in-progress'"
+                    v-if="activeTab === 'in-progress' && (course.progress || 0) > 0"
                     class="progress-chip"
                     type="primary"
                     effect="dark"
                   >
                     {{ course.progress || 0 }}%
+                  </el-tag>
+                  <el-tag
+                    v-else-if="activeTab === 'in-progress' && (course.progress || 0) === 0"
+                    class="progress-chip"
+                    type="info"
+                    effect="dark"
+                  >
+                    未开始
                   </el-tag>
                   <el-tag
                     v-else-if="activeTab === 'completed'"
@@ -304,12 +315,20 @@
             </div>
             <!-- 进度标签 -->
             <el-tag
-              v-if="activeTab === 'in-progress'"
+              v-if="activeTab === 'in-progress' && (course.progress || 0) > 0"
               class="h5-progress-chip"
               type="primary"
               effect="dark"
             >
               {{ course.progress || 0 }}%
+            </el-tag>
+            <el-tag
+              v-else-if="activeTab === 'in-progress' && (course.progress || 0) === 0"
+              class="h5-progress-chip"
+              type="info"
+              effect="dark"
+            >
+              未开始
             </el-tag>
             <el-tag
               v-else-if="activeTab === 'completed'"

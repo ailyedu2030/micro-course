@@ -43,6 +43,52 @@
         </div>
       </div>
 
+      <!-- 3 个动画统计卡片 -->
+      <div class="highlight-stats-row">
+        <el-card class="highlight-stat-card hl-primary" shadow="hover">
+          <div class="hl-stat-icon-wrap hl-bg-primary">
+            <el-icon :size="28"><Reading /></el-icon>
+          </div>
+          <div class="hl-stat-body">
+            <div class="hl-stat-value">{{ animatedInProgress }}</div>
+            <div class="hl-stat-label">进行中课程</div>
+          </div>
+        </el-card>
+        <el-card class="highlight-stat-card hl-success" shadow="hover">
+          <div class="hl-stat-icon-wrap hl-bg-success">
+            <el-icon :size="28"><CircleCheck /></el-icon>
+          </div>
+          <div class="hl-stat-body">
+            <div class="hl-stat-value">{{ animatedCompleted }}</div>
+            <div class="hl-stat-label">已完成课程</div>
+          </div>
+        </el-card>
+        <el-card class="highlight-stat-card hl-warning" shadow="hover">
+          <div class="hl-stat-icon-wrap hl-bg-warning">
+            <el-icon :size="28"><Calendar /></el-icon>
+          </div>
+          <div class="hl-stat-body">
+            <div class="hl-stat-value">{{ animatedDays }}</div>
+            <div class="hl-stat-label">累计学习天数</div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 快捷入口 -->
+      <div class="quick-entry-row">
+        <div
+          v-for="entry in quickEntries"
+          :key="entry.path"
+          class="quick-entry-item"
+          @click="navigateTo(entry.path)"
+        >
+          <div class="quick-entry-icon" :style="{ backgroundColor: entry.color + '15', color: entry.color }">
+            <el-icon :size="24"><component :is="entry.icon" /></el-icon>
+          </div>
+          <span class="quick-entry-label">{{ entry.label }}</span>
+        </div>
+      </div>
+
       <!-- 骨架屏 -->
       <div v-if="loading" class="stats-row">
         <el-card v-for="i in 4" :key="i" class="stat-card" shadow="hover">
@@ -101,6 +147,41 @@
             </div>
           </div>
         </el-card>
+      </div>
+
+      <!-- 最近学习 -->
+      <div v-if="recentRecords.length > 0" class="recent-learning-section">
+        <div class="section-title">最近学习</div>
+        <div class="recent-learning-list">
+          <div
+            v-for="record in recentRecords"
+            :key="record.courseId"
+            class="recent-learning-item"
+            @click="navigateTo('/student/learning?courseId=' + record.courseId)"
+          >
+            <div class="recent-cover-wrap">
+              <img :src="record.cover" :alt="record.title" class="recent-cover-img" />
+              <el-tag
+                v-if="record.completed"
+                class="recent-status-tag"
+                type="success"
+                size="small"
+                effect="dark"
+              >已完成</el-tag>
+            </div>
+            <div class="recent-info">
+              <div class="recent-title">{{ record.title }}</div>
+              <el-progress
+                :percentage="record.progress"
+                :stroke-width="6"
+                :show-text="false"
+                :color="record.completed ? '#10b981' : '#6366f1'"
+                class="recent-progress"
+              />
+              <span class="recent-progress-text">{{ record.progress }}%</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 两栏：本周学习 + 学习日历 -->
@@ -213,6 +294,52 @@
         <span class="welcome-text">你好，{{ username }}</span>
       </div>
 
+      <!-- 3 个动画统计卡片 (H5) -->
+      <div class="highlight-stats-row h5-highlight-stats">
+        <el-card class="highlight-stat-card hl-primary" shadow="hover">
+          <div class="hl-stat-icon-wrap hl-bg-primary">
+            <el-icon :size="22"><Reading /></el-icon>
+          </div>
+          <div class="hl-stat-body">
+            <div class="hl-stat-value">{{ animatedInProgress }}</div>
+            <div class="hl-stat-label">进行中</div>
+          </div>
+        </el-card>
+        <el-card class="highlight-stat-card hl-success" shadow="hover">
+          <div class="hl-stat-icon-wrap hl-bg-success">
+            <el-icon :size="22"><CircleCheck /></el-icon>
+          </div>
+          <div class="hl-stat-body">
+            <div class="hl-stat-value">{{ animatedCompleted }}</div>
+            <div class="hl-stat-label">已完成</div>
+          </div>
+        </el-card>
+        <el-card class="highlight-stat-card hl-warning" shadow="hover">
+          <div class="hl-stat-icon-wrap hl-bg-warning">
+            <el-icon :size="22"><Calendar /></el-icon>
+          </div>
+          <div class="hl-stat-body">
+            <div class="hl-stat-value">{{ animatedDays }}</div>
+            <div class="hl-stat-label">学习天数</div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 快捷入口 (H5) -->
+      <div class="quick-entry-row h5-quick-entry">
+        <div
+          v-for="entry in quickEntries"
+          :key="entry.path"
+          class="quick-entry-item"
+          @click="navigateTo(entry.path)"
+        >
+          <div class="quick-entry-icon" :style="{ backgroundColor: entry.color + '15', color: entry.color }">
+            <el-icon :size="20"><component :is="entry.icon" /></el-icon>
+          </div>
+          <span class="quick-entry-label">{{ entry.label }}</span>
+        </div>
+      </div>
+
       <!-- 骨架屏 -->
       <div v-if="loading" class="stats-row h5-stats">
         <el-card v-for="i in 4" :key="i" class="stat-card" shadow="hover">
@@ -264,6 +391,34 @@
             </div>
           </div>
         </el-card>
+      </div>
+
+      <!-- 最近学习 (H5) -->
+      <div v-if="recentRecords.length > 0" class="recent-learning-section h5-recent-learning">
+        <div class="section-title">最近学习</div>
+        <div class="recent-learning-list h5-recent-list">
+          <div
+            v-for="record in recentRecords"
+            :key="record.courseId"
+            class="recent-learning-item"
+            @click="navigateTo('/student/learning?courseId=' + record.courseId)"
+          >
+            <div class="recent-cover-wrap">
+              <img :src="record.cover" :alt="record.title" class="recent-cover-img" />
+            </div>
+            <div class="recent-info">
+              <div class="recent-title">{{ record.title }}</div>
+              <el-progress
+                :percentage="record.progress"
+                :stroke-width="4"
+                :show-text="false"
+                :color="record.completed ? '#10b981' : '#6366f1'"
+                class="recent-progress"
+              />
+              <span class="recent-progress-text">{{ record.progress }}%</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 本周学习 -->
@@ -337,9 +492,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { Calendar, Sunny, Star, Medal, CircleCheck } from '@element-plus/icons-vue'
+import { Calendar, Sunny, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getStudyDays, getTotalTime } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
@@ -351,6 +507,21 @@ import { getAccuracyTrend } from '@/api/exercise-record'
 // Store & Router
 // ---------------------------------------------------------------------------
 const userStore = useUserStore()
+const router = useRouter()
+
+// ---------------------------------------------------------------------------
+// 快捷入口
+// ---------------------------------------------------------------------------
+const quickEntries = [
+  { label: '课程广场', icon: Grid, path: '/student/courses', color: '#6366f1' },
+  { label: '我的课程', icon: Reading, path: '/student/my-courses', color: '#10b981' },
+  { label: '考试中心', icon: Document, path: '/student/exams', color: '#f59e0b' },
+  { label: '学习报告', icon: DataLine, path: '/student/report', color: '#ef4444' }
+]
+
+function navigateTo(path) {
+  router.push(path)
+}
 
 // ---------------------------------------------------------------------------
 // 响应式
@@ -390,6 +561,32 @@ const stats = ref({
   certificates: 0,
   studyDays: 0
 })
+
+// ---------------------------------------------------------------------------
+// 动画统计数字
+// ---------------------------------------------------------------------------
+const animatedInProgress = ref(0)
+const animatedCompleted = ref(0)
+const animatedDays = ref(0)
+
+function animateNumber(target, setter, duration = 1200) {
+  const start = performance.now()
+  const from = 0
+  function step(now) {
+    const elapsed = now - start
+    const progress = Math.min(elapsed / duration, 1)
+    // easeOutCubic
+    const eased = 1 - Math.pow(1 - progress, 3)
+    setter(Math.round(from + (target - from) * eased))
+    if (progress < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
+
+// ---------------------------------------------------------------------------
+// 最近学习记录
+// ---------------------------------------------------------------------------
+const recentRecords = ref([])
 
 // ---------------------------------------------------------------------------
 // 最近课程
@@ -539,6 +736,12 @@ async function getStats() {
       certificates: 0,   // 后端暂无证书 API
       studyDays
     }
+
+    // 触发数字动画
+    const inProgressCount = enrollments.filter(e => !e.completed).length
+    animateNumber(inProgressCount, (v) => { animatedInProgress.value = v })
+    animateNumber(completedCourses, (v) => { animatedCompleted.value = v })
+    animateNumber(studyDays, (v) => { animatedDays.value = v })
   } catch {
     stats.value = {
       totalHours: '0小时',
@@ -667,6 +870,34 @@ async function getBadges() {
   }
 }
 
+async function getRecentRecords() {
+  try {
+    const userId = userStore.userInfo?.id
+    const { data } = await getMyEnrollments(userId)
+    const enrollments = Array.isArray(data) ? data : []
+
+    // 按最近学习时间排序，取最近 5 条
+    const sorted = enrollments
+      .filter(e => e.progress > 0 || e.completed)
+      .sort((a, b) => {
+        const ta = new Date(a.lastWatchAt || a.enrolledAt || 0).getTime()
+        const tb = new Date(b.lastWatchAt || b.enrolledAt || 0).getTime()
+        return tb - ta
+      })
+      .slice(0, 5)
+
+    recentRecords.value = sorted.map(e => ({
+      courseId: e.courseId,
+      title: e.courseTitle || e.title || '课程',
+      cover: e.courseCover || e.coverUrl || 'https://picsum.photos/seed/course' + e.courseId + '/120/80',
+      progress: e.progress || 0,
+      completed: !!e.completed
+    }))
+  } catch {
+    recentRecords.value = []
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 初始化图表
 // ---------------------------------------------------------------------------
@@ -751,7 +982,7 @@ async function loadData() {
   loading.value = true
   chartLoading.value = true
   try {
-    await Promise.all([getStats(), getRecent(), getChart(), getRecommendations(), getBadges(), loadHeatmap()])
+    await Promise.all([getStats(), getRecent(), getChart(), getRecommendations(), getBadges(), loadHeatmap(), getRecentRecords()])
     // 检查今日是否已打卡
     await checkTodayStatus()
   } finally {
@@ -906,6 +1137,276 @@ onUnmounted(() => {
   font-size: var(--text-sm);
   color: var(--el-color-success);
   font-weight: var(--weight-medium);
+}
+
+/* ---------------------------------------------------------------------------
+   动画统计卡片 (3 个)
+   --------------------------------------------------------------------------- */
+.highlight-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.highlight-stat-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.highlight-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.highlight-stat-card :deep(.el-card__body) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.hl-stat-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hl-bg-primary {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+
+.hl-bg-success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.hl-bg-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+}
+
+.hl-stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.hl-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--el-text-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hl-stat-label {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   快捷入口
+   --------------------------------------------------------------------------- */
+.quick-entry-row {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  justify-content: center;
+}
+
+.quick-entry-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
+  transition: background-color var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+}
+
+.quick-entry-item:hover {
+  background: var(--el-fill-color-lighter);
+  transform: translateY(-2px);
+}
+
+.quick-entry-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.quick-entry-item:hover .quick-entry-icon {
+  transform: scale(1.08);
+}
+
+.quick-entry-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
+}
+
+/* ---------------------------------------------------------------------------
+   最近学习
+   --------------------------------------------------------------------------- */
+.recent-learning-section {
+  margin-bottom: var(--space-5);
+}
+
+.recent-learning-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.recent-learning-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--el-bg-color-overlay);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: background-color var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+  box-shadow: var(--shadow-sm);
+}
+
+.recent-learning-item:hover {
+  background: var(--el-fill-color-lighter);
+  transform: translateX(4px);
+  box-shadow: var(--shadow-md);
+}
+
+.recent-cover-wrap {
+  position: relative;
+  width: 120px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.recent-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.recent-status-tag {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  font-size: 10px;
+}
+
+.recent-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.recent-title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-progress {
+  width: 100%;
+}
+
+.recent-progress-text {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  font-weight: var(--weight-medium);
+}
+
+/* ---------------------------------------------------------------------------
+   H5 动画统计 & 快捷入口 & 最近学习
+   --------------------------------------------------------------------------- */
+.h5-highlight-stats {
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: 0 var(--space-3) var(--space-3);
+}
+
+.h5-highlight-stats .highlight-stat-card :deep(.el-card__body) {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.h5-highlight-stats .hl-stat-icon-wrap {
+  width: 40px;
+  height: 40px;
+}
+
+.h5-highlight-stats .hl-stat-value {
+  font-size: 22px;
+  text-align: center;
+}
+
+.h5-highlight-stats .hl-stat-label {
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.h5-quick-entry {
+  gap: var(--space-2);
+  margin: 0 var(--space-3) var(--space-3);
+  justify-content: space-around;
+}
+
+.h5-quick-entry .quick-entry-item {
+  padding: var(--space-2) var(--space-3);
+}
+
+.h5-quick-entry .quick-entry-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.h5-quick-entry .quick-entry-label {
+  font-size: var(--text-xs);
+}
+
+.h5-recent-learning {
+  margin: 0 var(--space-3) var(--space-3);
+}
+
+.h5-recent-list .recent-learning-item {
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+
+.h5-recent-list .recent-cover-wrap {
+  width: 80px;
+  height: 52px;
+}
+
+.h5-recent-list .recent-title {
+  font-size: var(--text-sm);
 }
 
 /* ---------------------------------------------------------------------------

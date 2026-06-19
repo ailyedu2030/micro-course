@@ -308,6 +308,14 @@
                     </svg>
                   </button>
 
+                  <!-- Picture-in-Picture -->
+                  <button v-if="isPipSupported" class="ctrl-btn" :class="{ active: isPip }" @click="togglePictureInPicture" :aria-label="isPip ? '退出画中画' : '画中画'">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                      <rect x="12" y="9" width="8" height="6" rx="1" ry="1" :fill="isPip ? 'currentColor' : 'none'"/>
+                    </svg>
+                  </button>
+
                   <!-- Fullscreen -->
                   <button class="ctrl-btn" @click="toggleFullscreen" :aria-label="isFullscreen ? '退出全屏' : '全屏'">
                     <svg v-if="!isFullscreen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -383,6 +391,7 @@
                 <div
                   v-for="(chapter, index) in chapters"
                   :key="chapter.id"
+                  :ref="el => setChapterItemRef(el, index)"
                   class="chapter-item"
                   :class="{
                     'is-active': currentChapterIndex === index,
@@ -571,16 +580,35 @@ const isPlaying = ref(false)
 const isBuffering = ref(false)
 const isMuted = ref(false)
 const isFullscreen = ref(false)
+const isPip = ref(false)
+const isPipSupported = ref(false)
 const subtitlesEnabled = ref(false)
 const currentSubtitle = ref('')
 const playbackRate = ref(1)
 const volumePercent = ref(100)
+const volume = computed(() => volumePercent.value / 100)
 const currentTime = ref(0)
 const duration = ref(0)
 const bufferedPercent = ref(0)
 const lastPosition = ref(0)
 const currentChapterIndex = ref(0)
 const currentChapter = computed(() => chapters.value[currentChapterIndex.value])
+
+// Chapter item refs for smooth scroll
+const chapterItemRefs = ref({})
+const setChapterItemRef = (el, index) => {
+  if (el) {
+    chapterItemRefs.value[index] = el
+  }
+}
+const scrollToActiveChapter = () => {
+  nextTick(() => {
+    const el = chapterItemRefs.value[currentChapterIndex.value]
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  })
+}
 
 // Progress reporting
 let progressId = ref(null)
@@ -685,6 +713,12 @@ const initPlayer = () => {
     return
   }
 
+  // Register PiP event listeners
+  if (video && isPipSupported.value) {
+    video.addEventListener('enterpictureinpicture', handlePipEnter)
+    video.addEventListener('leavepictureinpicture', handlePipLeave)
+  }
+
   if (isHLS(url)) {
     if (Hls.isSupported()) {
       hlsInstance.value = new Hls()
@@ -729,6 +763,7 @@ const loadChapters = async () => {
     // Mark current chapter
     const idx = chapters.value.findIndex(c => Number(c.id) === Number(chapterId.value))
     if (idx >= 0) currentChapterIndex.value = idx
+    scrollToActiveChapter()
   } catch (e) {
     console.warn('[VideoPlayer] loadChapters 加载章节失败', e)
     chapters.value = []
@@ -889,6 +924,7 @@ const switchChapter = async (id) => {
   if (idx >= 0) {
     currentChapterIndex.value = idx
     chapters.value[idx].isCompleted = false
+    scrollToActiveChapter()
   }
   await loadVideo()
 }
@@ -980,6 +1016,23 @@ const toggleFullscreen = async () => {
   }
 }
 
+const togglePictureInPicture = async () => {
+  const video = videoRef.value
+  if (!video) return
+  try {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture()
+    } else {
+      await video.requestPictureInPicture()
+    }
+  } catch (e) {
+    console.warn('[VideoPlayer] togglePictureInPicture 画中画切换失败', e)
+  }
+}
+
+const handlePipEnter = () => { isPip.value = true }
+const handlePipLeave = () => { isPip.value = false }
+
 const seekVideo = (e) => {
   const video = videoRef.value
   const track = progressTrack.value
@@ -1048,6 +1101,7 @@ const onVideoError = () => {
 // Keyboard shortcuts
 const handleKeydown = (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+  const video = videoRef.value
   switch (e.code) {
     case 'Space':
       e.preventDefault()
@@ -1064,11 +1118,30 @@ const handleKeydown = (e) => {
       skipForward()
       showControls()
       break
+    case 'ArrowUp':
+      e.preventDefault()
+      if (video) {
+        const newVol = Math.min(100, volumePercent.value + 10)
+        changeVolume(newVol)
+        showControls()
+      }
+      break
+    case 'ArrowDown':
+      e.preventDefault()
+      if (video) {
+        const newVol = Math.max(0, volumePercent.value - 10)
+        changeVolume(newVol)
+        showControls()
+      }
+      break
     case 'KeyF':
+      e.preventDefault()
       toggleFullscreen()
       break
     case 'KeyM':
+      e.preventDefault()
       toggleMute()
+      showControls()
       break
   }
 }
@@ -1213,12 +1286,15 @@ const handleTouchEnd = (e) => {
 
 onMounted(async () => {
   isMobile.value = window.innerWidth <= 768
+  isPipSupported.value = document.pictureInPictureEnabled && typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
   await nextTick()
   loadVideo()
   startProgressReporting()
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   window.addEventListener('resize', handleResize)
+  // Scroll to initial active chapter
+  scrollToActiveChapter()
 })
 
 onBeforeUnmount(() => {
@@ -1227,6 +1303,9 @@ onBeforeUnmount(() => {
   if (video) {
     saveLocalPosition(video.currentTime)
     reportProgress()
+    // Remove PiP event listeners
+    video.removeEventListener('enterpictureinpicture', handlePipEnter)
+    video.removeEventListener('leavepictureinpicture', handlePipLeave)
   }
   if (hlsInstance.value) {
     hlsInstance.value.destroy()
@@ -1666,7 +1745,9 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   padding: var(--space-3) var(--space-4);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.4) 60%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -1678,15 +1759,16 @@ onBeforeUnmount(() => {
 /* Progress Track */
 .progress-track {
   position: relative;
-  height: 4px;
+  height: 6px;
   background: var(--vp-progress-bg);
   border-radius: var(--radius-sm);
   cursor: pointer;
   margin-bottom: var(--space-3);
+  transition: height 0.2s ease;
 }
 
 .progress-track:hover {
-  height: 6px;
+  height: 8px;
 }
 
 .progress-track:hover .progress-thumb {
@@ -1750,11 +1832,12 @@ onBeforeUnmount(() => {
   color: var(--vp-text);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.2s;
 }
 
 .ctrl-btn:hover {
   background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
 }
 
 .ctrl-btn.active {
@@ -2290,6 +2373,8 @@ onBeforeUnmount(() => {
 
 :deep(.el-dropdown-menu__item.active) {
   color: var(--vp-accent);
+  background: rgba(99, 102, 241, 0.15);
+  font-weight: 600;
 }
 
 /* Element Plus overrides */
