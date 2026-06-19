@@ -22,9 +22,8 @@ import org.springframework.beans.factory.annotation.Value;
 /**
  * Spring Security 配置
  *
- * 依据：
- * - Phase 1 业务逻辑 §2.4：JWT 认证过滤器链
- * - 穷举审查 E4 P0-1：SecurityConfig 必须配置路径放行规则
+ * P0-1: 放行 /api/videos/stream/** 以便 HLS 播放器直接访问
+ * P0-3: 放行 /api/files/** 以便 img 标签加载封面
  */
 @Configuration
 @EnableWebSecurity
@@ -56,7 +55,7 @@ public class SecurityConfig {
                         .frameOptions(frame -> frame.deny())
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // login/cas: 公开; refresh: refreshToken 在 body 中作为凭证, 不需要 Header Authorization
+                        // login/cas: 公开; refresh: refreshToken 在 body 中作为凭证
                         .requestMatchers("/api/auth/login", "/api/auth/cas", "/api/auth/refresh").permitAll()
                         .requestMatchers("GET", "/api/departments/**").authenticated()
                         .requestMatchers("GET", "/api/majors/**").authenticated()
@@ -64,6 +63,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
+                        // P0-1: HLS 流式端点（sign 验证在 play 端点完成，stream 本身公开）
+                        .requestMatchers("GET", "/api/videos/stream/**").permitAll()
+                        // P0-3: 封面/文件资源端点（封面非敏感数据，img 标签无法携带 Auth 头）
+                        .requestMatchers("GET", "/api/files/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

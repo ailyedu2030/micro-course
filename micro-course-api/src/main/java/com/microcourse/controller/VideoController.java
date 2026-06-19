@@ -1,31 +1,33 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.R;
 import com.microcourse.dto.VideoCreateRequest;
 import com.microcourse.dto.VideoUpdateRequest;
 import com.microcourse.dto.VideoVO;
 import com.microcourse.dto.PageResult;
-import com.microcourse.dto.R;
 import com.microcourse.entity.Video;
+import com.microcourse.entity.VideoStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-
 import com.microcourse.service.VideoService;
 import com.microcourse.service.VideoTranscodeService;
 import com.microcourse.util.VideoSignUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -48,6 +50,10 @@ public class VideoController {
     private final VideoTranscodeService videoTranscodeService;
     private final VideoSignUtil videoSignUtil;
     private final Executor videoUploadExecutor;
+
+    /** P1-1: 上传目录从配置注入 */
+    @Value("${video.upload-dir:uploads/videos}")
+    private String uploadDir;
 
     public VideoController(VideoService videoService,
                           VideoTranscodeService videoTranscodeService,
@@ -104,9 +110,11 @@ public class VideoController {
 
     /**
      * 视频文件上传
-     * 验证扩展名 mp4/mov/mkv，大小 ≤ 2GB
-     * 存储到 uploads/videos/{courseId}/{videoId}.mp4
-     * 立即返回 Video 记录，文件传输与转码异步进行
+     *
+     * P0-2 修复：校验课程 Owner 权限
+     * P1-4 修复：文件传输同步执行（避免 MultipartFile 临时文件被清理）
+     * P1-6 修复：chapterId 校验归属课程
+     * P2 修复：MD5 重复上传校验
      */
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -115,15 +123,22 @@ public class VideoController {
             @RequestParam("courseId") Long courseId,
             @RequestParam(value = "chapterId", required = false) Long chapterId) {
 
-        // 校验文件类型、大小
+        // P0-2: 校验课程 Owner 权限
+        videoService.assertCourseOwnership(courseId);
+
+        // P1-6: 校验 chapterId 归属课程
+        if (chapterId != null) {
+            videoService.assertChapterBelongsToCourse(chapterId, courseId);
+        }
+
+        // 校验文件类型、大小（魔数校验在此处完成）
         validateVideoFile(file);
 
-        // 生成唯一文件名
         String originalFilename = file.getOriginalFilename();
         String uuid = UUID.randomUUID().toString().replace("-", "");
 
-        // 存储路径：uploads/videos/{courseId}/{videoId}.mp4（先占位，videoId 需回写）
-        String baseDir = "uploads/videos/" + courseId;
+        // P1-1: 使用配置的上传目录
+        String baseDir = uploadDir + "/" + courseId;
         String tempFileName = uuid + ".mp4";
 
         try {
@@ -134,17 +149,35 @@ public class VideoController {
 
         Path targetPath = Paths.get(baseDir, tempFileName);
 
-        // 创建 Video 记录（状态：UPLOADING）
+        // P1-4 修复：同步执行文件传输（MultipartFile 的临时文件在请求结束后会被清理）
+        try {
+            file.transferTo(targetPath.toFile());
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件保存失败");
+        }
+
+        // P2: 计算 MD5 并检查重复
+        String md5 = computeFileMd5(targetPath);
+        Video duplicate = videoService.findByMd5(md5);
+        if (duplicate != null) {
+            log.info("[VideoUpload] 检测到 MD5 重复 md5={} existingVideoId={}", md5, duplicate.getId());
+            // 秒传：删除刚保存的文件，返回已有视频
+            try { Files.deleteIfExists(targetPath); } catch (IOException ignored) {}
+            return R.ok(videoService.getById(duplicate.getId()));
+        }
+
+        // 创建 Video 记录
         Video video = new Video();
         video.setChapterId(chapterId);
         video.setCourseId(courseId);
         video.setTitle(originalFilename != null ? originalFilename : "未命名视频");
         video.setFileName(originalFilename != null ? originalFilename : "video.mp4");
         video.setFileSize(file.getSize());
+        video.setFileMd5(md5);
         video.setMimeType(file.getContentType());
         video.setUrl(targetPath.toString());
         video.setOriginalPath(targetPath.toString());
-        video.setStatus(0); // UPLOADING
+        video.setStatus(VideoStatus.UPLOADING.getCode());
         video.setProgress(0);
         video.setCreatedAt(LocalDateTime.now());
         video.setUpdatedAt(LocalDateTime.now());
@@ -152,31 +185,27 @@ public class VideoController {
 
         videoService.createEntity(video);
 
-        // 异步执行文件传输与转码，不阻塞当前线程
+        // P1-4: 文件已同步保存，仅异步转码
         final Long videoId = video.getId();
-        final MultipartFile uploadedFile = file;
-        final Path destPath = targetPath;
         CompletableFuture.runAsync(() -> {
             try {
-                uploadedFile.transferTo(destPath.toFile());
                 videoTranscodeService.transcode(videoId);
             } catch (Exception e) {
-                // DF-NEW-3 修复:catch 扩大为 Exception,覆盖 RuntimeException (NPE/IllegalState)
-                log.error("[VideoUpload] 异步文件传输/转码失败 videoId={} dest={}", videoId, destPath, e);
+                log.error("[VideoUpload] 异步转码失败 videoId={}", videoId, e);
                 try {
-                    videoService.updateStatus(videoId, 3);
+                    videoService.updateStatus(videoId, VideoStatus.FAILED.getCode());
                 } catch (Exception ex) {
                     log.error("[VideoUpload] 更新视频状态为 FAILED 也失败 videoId={}", videoId, ex);
                 }
             }
         }, videoUploadExecutor);
 
-        // 立即返回 Video 记录
         return R.ok(videoService.getById(video.getId()));
     }
 
     /**
-     * 校验视频文件扩展名、MIME type 和大小(SEC-NEW-4 修复:仅校验扩展名可被绕过)
+     * 校验视频文件扩展名、MIME type、大小和魔数
+     * P1-4: 仅读取魔数字节（不消耗整个流），不影响后续 transferTo
      */
     private void validateVideoFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -190,51 +219,69 @@ public class VideoController {
         if (!Set.of("mp4", "mov", "mkv").contains(ext.toLowerCase())) {
             throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID);
         }
-        // MIME type 必须以 video/ 开头,防止重命名绕过
         String contentType = file.getContentType();
         if (contentType == null || !contentType.toLowerCase().startsWith("video/")) {
-            throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID, "MIME type 必须为 video/*,当前为 " + contentType);
+            throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID,
+                    "MIME type 必须为 video/*,当前为 " + contentType);
         }
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new BusinessException(ErrorCode.VIDEO_TOO_LARGE);
         }
-        // R3-SEC-006 修复:服务端文件魔数检测 — 客户端可伪造 MIME 与扩展名,验证文件头字节
-        try (java.io.InputStream is = file.getInputStream()) {
+        // 文件魔数检测
+        try (InputStream is = file.getInputStream()) {
             byte[] magic = new byte[12];
             int read = is.read(magic);
             if (read < 12) {
-                throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID, "文件过小,无法验证格式");
+                throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID, "文件过小，无法验证格式");
             }
-            boolean validMagic = isMp4Magic(magic) || isMovMagic(magic) || isMkvMagic(magic);
+            boolean validMagic = isMp4Magic(magic) || isMkvMagic(magic);
             if (!validMagic) {
-                throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID, "文件魔数校验失败,不是有效的 MP4/MOV/MKV 视频");
+                throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID,
+                        "文件魔数校验失败，不是有效的 MP4/MOV/MKV 视频");
             }
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
         }
     }
 
-    /** MP4 文件魔数:00 00 00 xx 66 74 79 70 (ftyp box),box size >= 8 */
+    /** MP4/MOV 文件魔数：ftyp box */
     private static boolean isMp4Magic(byte[] b) {
-        // R3-SEC-006 加强:验证 box size(大端 int) >= 8
         int boxSize = ((b[0] & 0xff) << 24) | ((b[1] & 0xff) << 16)
                 | ((b[2] & 0xff) << 8) | (b[3] & 0xff);
         return boxSize >= 8 && b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p';
     }
 
-    private static boolean isMovMagic(byte[] b) {
-        return isMp4Magic(b);
-    }
-
-    /** MKV/WebM (EBML) 文件魔数:1A 45 DF A3 */
+    /** MKV/WebM (EBML) 文件魔数：1A 45 DF A3 */
     private static boolean isMkvMagic(byte[] b) {
         return (b[0] & 0xff) == 0x1A && (b[1] & 0xff) == 0x45
                 && (b[2] & 0xff) == 0xDF && (b[3] & 0xff) == 0xA3;
     }
 
     /**
-     * 视频播放代理
-     * 验证 sign 有效后 302 重定向到 HLS 地址
+     * P2: 计算文件 MD5
+     */
+    private String computeFileMd5(Path filePath) {
+        try (InputStream is = Files.newInputStream(filePath)) {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = is.read(buf)) != -1) {
+                md.update(buf, 0, len);
+            }
+            byte[] digest = md.digest();
+            StringBuilder sb = new StringBuilder(32);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b & 0xff));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("[VideoUpload] MD5 计算失败 path={}", filePath, e);
+            return null;
+        }
+    }
+
+    /**
+     * 视频播放签名生成
      */
     @GetMapping("/{id}/sign")
     @PreAuthorize("isAuthenticated()")
@@ -243,6 +290,10 @@ public class VideoController {
         return R.ok(sign);
     }
 
+    /**
+     * P0-1 修复：play() 返回的 HLS URL 现在是 /api/videos/stream/ 格式
+     * 浏览器可直接访问该 API 端点获取 HLS 内容
+     */
     @GetMapping("/{id}/play")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> play(@PathVariable Long id,
@@ -252,26 +303,24 @@ public class VideoController {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
 
-        // 验证签名
         if (sign == null || !videoSignUtil.verifySign(id, sign)) {
             throw new BusinessException(ErrorCode.VIDEO_SIGN_INVALID);
         }
 
-        String hlsPath = video.getHlsUrl();
-        if (hlsPath == null || hlsPath.isBlank()) {
+        String hlsUrl = video.getHlsUrl();
+        if (hlsUrl == null || hlsUrl.isBlank()) {
             throw new BusinessException(ErrorCode.VIDEO_TRANSCODE_FAILED, "视频转码尚未完成");
         }
 
-        // 302 重定向到 HLS 路径
+        // P0-1: hlsUrl 已是 /api/videos/stream/... 格式，可直接重定向
         return ResponseEntity.status(HttpStatus.FOUND)
-                .header("Location", hlsPath)
+                .header("Location", hlsUrl)
                 .build();
     }
 
     /**
      * 视频封面上传
-     * 验证图片格式、大小 ≤ 5MB
-     * 存储到 uploads/covers/{videoId}/
+     * P1-8 修复：图片魔数校验在 VideoServiceImpl.uploadCover() 中执行
      */
     @PostMapping("/{id}/cover")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")

@@ -1,44 +1,60 @@
 package com.microcourse.service.impl;
 
 import com.microcourse.entity.Video;
-import com.microcourse.exception.ErrorCode;
+import com.microcourse.entity.VideoStatus;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.VideoTranscodeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
-import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * FFmpeg HLS 转码服务
  *
- * 依据：Phase 8 开发规范
  * 状态机：UPLOADING(0) → TRANSCODING(1) → COMPLETED(2)/FAILED(3)
+ *
+ * P1-1/P1-5: 路径从配置读取
+ * P1-2: 超时可配置
+ * P1-3: 按 FFmpeg Duration 时间比例估算进度
+ * P2: failTranscode 复用已有 Video 对象 + 转码失败清理 HLS 分片
+ * P3: 状态常量 → VideoStatus 枚举
  */
 @Service
 public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
     private static final Logger log = LoggerFactory.getLogger(VideoTranscodeServiceImpl.class);
 
-    private static final int UPLOADING = 0;
-    private static final int TRANSCODING = 1;
-    private static final int COMPLETED = 2;
-    private static final int FAILED = 3;
-
-    private static final Pattern TIME_PATTERN = Pattern.compile("time=(\\d{2}):(\\d{2}):(\\d{2})\\.(\\d{2})");
+    /** P1-3: 匹配 FFmpeg 输出中的 Duration 行 */
+    private static final Pattern DURATION_PATTERN = Pattern.compile(
+            "Duration:\\s*(\\d{2}):(\\d{2}):(\\d{2})\\.(\\d{2})");
+    private static final Pattern TIME_PATTERN = Pattern.compile(
+            "time=(\\d{2}):(\\d{2}):(\\d{2})\\.(\\d{2})");
 
     private final VideoRepository videoRepository;
+
+    /** P1-1/P1-5: 存储目录从配置注入 */
+    @Value("${video.storage-base-dir:/data/videos}")
+    private String storageBaseDir;
+
+    /** P1-2: FFmpeg 超时分钟数 */
+    @Value("${video.transcode.timeout-minutes:60}")
+    private int transcodeTimeoutMinutes;
 
     public VideoTranscodeServiceImpl(VideoRepository videoRepository) {
         this.videoRepository = videoRepository;
@@ -57,11 +73,10 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
         String originalPath = video.getOriginalPath();
         if (originalPath == null || originalPath.isBlank()) {
-            // 兼容：如果 originalPath 为空则尝试使用 url 字段
             originalPath = video.getUrl();
             if (originalPath == null || originalPath.isBlank()) {
                 log.error("[VideoTranscode] originalPath 为空 videoId={}", videoId);
-                failTranscode(videoId, "原始文件路径为空");
+                failTranscode(video, "原始文件路径为空");
                 return;
             }
         }
@@ -69,23 +84,22 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
         Path inputPath = Paths.get(originalPath);
         if (!Files.exists(inputPath)) {
             log.error("[VideoTranscode] 原始文件不存在 path={}", originalPath);
-            failTranscode(videoId, "原始文件不存在: " + originalPath);
+            failTranscode(video, "原始文件不存在: " + originalPath);
             return;
         }
 
-        // 检查 ffmpeg 是否可用
         if (!isFfmpegAvailable()) {
-            log.error("[VideoTranscode] FFmpeg 不可用，跳过转码 videoId={}", videoId);
-            failTranscode(videoId, "FFmpeg 未安装或不在 PATH 中");
+            log.error("[VideoTranscode] FFmpeg 不可用 videoId={}", videoId);
+            failTranscode(video, "FFmpeg 未安装或不在 PATH 中");
             return;
         }
 
-        // 更新状态为 TRANSCODING — 使用 CAS 条件更新防止并发双 ffmpeg
+        // CAS 条件更新防止并发双 ffmpeg
         com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Video> casWrapper =
                 new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
         casWrapper.eq(Video::getId, videoId)
-                .eq(Video::getStatus, UPLOADING)
-                .set(Video::getStatus, TRANSCODING)
+                .eq(Video::getStatus, VideoStatus.UPLOADING.getCode())
+                .set(Video::getStatus, VideoStatus.TRANSCODING.getCode())
                 .set(Video::getProgress, 0)
                 .set(Video::getUpdatedAt, LocalDateTime.now());
         int affected = videoRepository.update(null, casWrapper);
@@ -95,14 +109,13 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
         }
 
         Long courseId = video.getCourseId();
-        String outputDir = "/data/videos/" + courseId + "/" + videoId;
+        // P1-1/P1-5: 使用配置目录
+        String outputDir = storageBaseDir + "/" + courseId + "/" + videoId;
         String outputM3u8 = outputDir + "/index.m3u8";
 
         try {
-            // 确保输出目录存在
             Files.createDirectories(Paths.get(outputDir));
 
-            // 执行 FFmpeg 转码
             ProcessBuilder pb = new ProcessBuilder(
                     "ffmpeg", "-i", originalPath,
                     "-c:v", "copy", "-c:a", "copy",
@@ -115,58 +128,78 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
             Process process = pb.start();
 
-            // 读取输出并解析进度
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            // P1-3: 先解析总时长，再按时间比例估算进度
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()))) {
                 String line;
-                Integer lastDuration = null;
+                int totalDurationSeconds = 0;
                 while ((line = reader.readLine()) != null) {
-                    // 解析进度：time=00:00:10.00
-                    Matcher m = TIME_PATTERN.matcher(line);
-                    if (m.find()) {
-                        int hours = Integer.parseInt(m.group(1));
-                        int minutes = Integer.parseInt(m.group(2));
-                        int seconds = Integer.parseInt(m.group(3));
-                        int currentDuration = hours * 3600 + minutes * 60 + seconds;
-
-                        if (lastDuration != null && currentDuration > lastDuration) {
-                            // 估算进度（假设总时长未知，简单按 0-90% 估算，最后等待完成）
-                            // 更准确的方式需要解析 ffmpeg 输出获取总时长
-                            int estimatedProgress = Math.min(90, currentDuration * 10 / 60);
-                            video.setProgress(estimatedProgress);
-                            video.setUpdatedAt(LocalDateTime.now());
-                            videoRepository.updateById(video);
+                    // 解析总时长（只匹配第一次）
+                    if (totalDurationSeconds == 0) {
+                        Matcher dm = DURATION_PATTERN.matcher(line);
+                        if (dm.find()) {
+                            totalDurationSeconds = Integer.parseInt(dm.group(1)) * 3600
+                                    + Integer.parseInt(dm.group(2)) * 60
+                                    + Integer.parseInt(dm.group(3));
                         }
-                        lastDuration = currentDuration;
+                    }
+
+                    // 解析当前进度
+                    Matcher tm = TIME_PATTERN.matcher(line);
+                    if (tm.find()) {
+                        int currentSeconds = Integer.parseInt(tm.group(1)) * 3600
+                                + Integer.parseInt(tm.group(2)) * 60
+                                + Integer.parseInt(tm.group(3));
+
+                        int estimatedProgress;
+                        if (totalDurationSeconds > 0) {
+                            // P1-3: 按实际时长比例计算（0-95%，留 5% 给收尾）
+                            estimatedProgress = Math.min(95,
+                                    (int) ((long) currentSeconds * 95 / totalDurationSeconds));
+                        } else {
+                            // fallback: 未知总时长，保守估算
+                            estimatedProgress = Math.min(90, currentSeconds / 6);
+                        }
+
+                        video.setProgress(estimatedProgress);
+                        video.setUpdatedAt(LocalDateTime.now());
+                        videoRepository.updateById(video);
                     }
                 }
             }
 
-            boolean finished = process.waitFor(30, TimeUnit.MINUTES);
+            // P1-2: 使用可配置超时
+            boolean finished = process.waitFor(transcodeTimeoutMinutes, TimeUnit.MINUTES);
             if (!finished) {
-                log.error("[VideoTranscode] FFmpeg 超时 videoId={}", videoId);
+                log.error("[VideoTranscode] FFmpeg 超时 videoId={} timeout={}min",
+                        videoId, transcodeTimeoutMinutes);
                 process.destroyForcibly();
-                failTranscode(videoId, "转码超时（30分钟）");
+                failTranscode(video, "转码超时（" + transcodeTimeoutMinutes + "分钟）");
+                cleanupHlsFragments(outputDir);
                 return;
             }
 
             int exitCode = process.exitValue();
             if (exitCode != 0) {
                 log.error("[VideoTranscode] FFmpeg 转码失败 exitCode={} videoId={}", exitCode, videoId);
-                failTranscode(videoId, "FFmpeg 转码失败，exitCode=" + exitCode);
+                failTranscode(video, "FFmpeg 转码失败，exitCode=" + exitCode);
+                cleanupHlsFragments(outputDir);
                 return;
             }
 
-            // 转码成功
-            video.setHlsUrl(outputM3u8);
-            video.setStatus(COMPLETED);
+            // 转码成功 — P0-1: hlsUrl 存储为可访问的 API 路径
+            String hlsApiUrl = "/api/videos/stream/" + courseId + "/" + videoId + "/index.m3u8";
+            video.setHlsUrl(hlsApiUrl);
+            video.setStatus(VideoStatus.COMPLETED.getCode());
             video.setProgress(100);
             video.setUpdatedAt(LocalDateTime.now());
             videoRepository.updateById(video);
-            log.info("[VideoTranscode] 转码完成 videoId={} hlsPath={}", videoId, outputM3u8);
+            log.info("[VideoTranscode] 转码完成 videoId={} hlsUrl={}", videoId, hlsApiUrl);
 
         } catch (Exception e) {
             log.error("[VideoTranscode] 转码异常 videoId={}", videoId, e);
-            failTranscode(videoId, ErrorCode.VIDEO_TRANSCODE_FAILED.getMessage());
+            failTranscode(video, "转码异常: " + e.getMessage());
+            cleanupHlsFragments(outputDir);
         }
     }
 
@@ -174,9 +207,8 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
         try {
             ProcessBuilder pb = new ProcessBuilder("ffmpeg", "-version");
             Process p = pb.start();
-            // 消费 stdout/stderr 防进程挂起(RES-003)
-            try (java.io.InputStream stdout = p.getInputStream();
-                 java.io.InputStream stderr = p.getErrorStream()) {
+            try (InputStream stdout = p.getInputStream();
+                 InputStream stderr = p.getErrorStream()) {
                 byte[] buf = new byte[4096];
                 while (stdout.read(buf) != -1) { /* discard */ }
                 while (stderr.read(buf) != -1) { /* discard */ }
@@ -190,14 +222,37 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
         }
     }
 
-    private void failTranscode(Long videoId, String errorMessage) {
-        Video video = videoRepository.selectById(videoId);
-        if (video != null) {
-            video.setStatus(FAILED);
-            video.setErrorMessage(errorMessage);
-            video.setUpdatedAt(LocalDateTime.now());
-            videoRepository.updateById(video);
+    /**
+     * P2: failTranscode 复用已有 Video 对象，不再重复查询
+     */
+    private void failTranscode(Video video, String errorMessage) {
+        video.setStatus(VideoStatus.FAILED.getCode());
+        video.setErrorMessage(errorMessage);
+        video.setUpdatedAt(LocalDateTime.now());
+        videoRepository.updateById(video);
+        log.error("[VideoTranscode] 转码失败 videoId={} error={}", video.getId(), errorMessage);
+    }
+
+    /**
+     * P2: 转码失败时清理已生成的 HLS 分片
+     */
+    private void cleanupHlsFragments(String outputDir) {
+        Path dir = Paths.get(outputDir);
+        try {
+            if (Files.exists(dir)) {
+                try (Stream<Path> walk = Files.walk(dir)) {
+                    walk.sorted(Comparator.reverseOrder())
+                            .forEach(p -> {
+                                try {
+                                    Files.deleteIfExists(p);
+                                } catch (IOException e) {
+                                    log.warn("[VideoTranscode] 清理 HLS 分片失败: {}", p, e);
+                                }
+                            });
+                }
+            }
+        } catch (IOException e) {
+            log.warn("[VideoTranscode] 清理 HLS 目录失败: {}", outputDir, e);
         }
-        log.error("[VideoTranscode] 转码失败 videoId={} error={}", videoId, errorMessage);
     }
 }

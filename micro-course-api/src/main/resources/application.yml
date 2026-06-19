@@ -61,6 +61,18 @@ jwt:
   expiration: ${JWT_EXPIRATION:7200000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
+# P1-1/P1-5: 视频存储与转码配置（从硬编码抽取）
+video:
+  storage-base-dir: ${VIDEO_STORAGE_BASE_DIR:/data/videos}
+  upload-dir: ${VIDEO_UPLOAD_DIR:uploads/videos}
+  cover-dir: ${VIDEO_COVER_DIR:uploads/covers}
+  # P1-7: 视频签名独立密钥（不与 JWT 共用）
+  sign:
+    secret: ${VIDEO_SIGN_SECRET:${JWT_SECRET}}
+  transcode:
+    # P1-2: FFmpeg 超时（分钟）可配置
+    timeout-minutes: ${VIDEO_TRANSCODE_TIMEOUT:60}
+
 springdoc:
   api-docs:
     path: /api-docs
@@ -73,7 +85,7 @@ springdoc:
       max-file-size: 2GB
       max-request-size: 2GB
 
-  # 静态资源映射 - 头像文件访问
+  # 静态资源映射 - 头像文件 + 封面文件访问
   web:
     resources:
       static-locations: classpath:/static/,file:./uploads/

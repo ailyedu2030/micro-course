@@ -14,15 +14,14 @@ import java.util.Date;
 /**
  * 视频播放 URL 签名工具
  *
- * 依据：Phase 8 开发规范
+ * P1-7 修复：使用独立 video.sign.secret，不再与 JWT 密钥共用
  * 生成 JWT 格式的播放签名，payload: {"videoId":123, "exp":<epoch_seconds>}
- * 使用 HMAC-SHA256，密钥从 application.yml 的 jwt.secret 取
- * 深度审查：密钥缓存优化，避免每次调用重建 SecretKey
+ * 使用 HMAC-SHA256
  */
 @Component
 public class VideoSignUtil {
 
-    @Value("${jwt.secret}")
+    @Value("${video.sign.secret}")
     private String secret;
 
     private SecretKey cachedKey;

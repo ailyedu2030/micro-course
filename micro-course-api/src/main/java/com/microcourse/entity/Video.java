@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -62,6 +63,8 @@ public class Video {
 
     private LocalDateTime updatedAt;
 
+    /** P2: 乐观锁 */
+    @Version
     private Integer version;
 
     @TableLogic(value = "null", delval = "now()")

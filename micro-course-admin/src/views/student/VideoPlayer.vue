@@ -106,6 +106,7 @@
         <div class="player-main pc-main">
           <!-- Video Container -->
           <div
+            ref="videoContainerRef"
             class="video-container"
             :class="{ 'controls-visible': controlsVisible || !isPlaying }"
             @mousemove="showControls"
@@ -548,7 +549,6 @@ import { getVideoById } from '@/api/video'
 import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
 import { getPosts } from '@/api/discussion'
-import request from '@/utils/request'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -557,6 +557,7 @@ const userStore = useUserStore()
 
 // DOM refs
 const videoRef = ref(null)
+const videoContainerRef = ref(null)
 const progressTrack = ref(null)
 
 // Route params
@@ -616,6 +617,15 @@ let lastReportedProgress = 0
 let progressReportTimer = null
 let hideControlsTimer = null
 const controlsVisible = ref(true)
+let creatingProgress = false // P1-4: mutex for ensureProgressRecord
+let isComponentUnmounted = false // P1-2: prevent state updates after unmount
+
+// Notes storage key
+const NOTES_STORAGE_KEY = computed(() => {
+  const id = videoId.value
+  if (!id || typeof id !== 'string' && typeof id !== 'number') return null
+  return `video_notes_${id}`
+})
 
 // HLS
 let hlsInstance = ref(null)
@@ -656,8 +666,12 @@ const showObjectivesOverlay = () => {
   }, 3000)
 }
 
-// Local storage key
-const STORAGE_KEY = computed(() => `video_progress_${videoId.value}`)
+// Local storage key (P1-5: validated id)
+const STORAGE_KEY = computed(() => {
+  const id = videoId.value
+  if (!id || (typeof id !== 'string' && typeof id !== 'number')) return null
+  return `video_progress_${id}`
+})
 
 // Computed
 const progressPercent = computed(() => {
@@ -689,14 +703,17 @@ const loadVideo = async () => {
     loading.value = true
     errorMsg.value = ''
     const res = await getVideoById(videoId.value)
+    if (isComponentUnmounted) return
     videoData.value = res.data || res
 
     await nextTick()
     initPlayer()
     await Promise.all([loadChapters(), loadProgress(), loadDiscussions()])
     loadLocalPosition()
+    loadNotesFromStorage()
     showObjectivesOverlay()
   } catch (e) {
+    if (isComponentUnmounted) return
     console.warn('[VideoPlayer] loadVideo 加载视频失败', e)
     errorMsg.value = '无法加载视频，请检查网络连接'
   } finally {
@@ -713,8 +730,10 @@ const initPlayer = () => {
     return
   }
 
-  // Register PiP event listeners
+  // P0-6: Register PiP event listeners (remove first to prevent stacking)
   if (video && isPipSupported.value) {
+    video.removeEventListener('enterpictureinpicture', handlePipEnter)
+    video.removeEventListener('leavepictureinpicture', handlePipLeave)
     video.addEventListener('enterpictureinpicture', handlePipEnter)
     video.addEventListener('leavepictureinpicture', handlePipLeave)
   }
@@ -752,9 +771,11 @@ const retryLoad = () => {
 
 // Chapters
 const loadChapters = async () => {
+  if (isComponentUnmounted) return
   if (!courseId.value) return
   try {
     const res = await getChapters({ courseId: courseId.value })
+    if (isComponentUnmounted) return
     const list = res.data?.items || res.data || []
     chapters.value = list.map((c, i) => ({
       ...c,
@@ -772,16 +793,25 @@ const loadChapters = async () => {
 
 // Progress
 const loadProgress = async () => {
+  if (isComponentUnmounted) return
   if (!userStore.userInfo?.id || !courseId.value) return
   try {
     const res = await getLearningProgress({
       userId: userStore.userInfo.id,
       courseId: courseId.value
     })
-    const list = res.data || []
-    const progressData = Array.isArray(list)
-      ? list.find(p => Number(p.chapterId) === Number(chapterId.value))
-      : {}
+    if (isComponentUnmounted) return
+    const rawData = res.data || []
+    // P2: handle both array and single-object response shapes
+    let progressData = null
+    if (Array.isArray(rawData)) {
+      progressData = rawData.find(p => Number(p.chapterId) === Number(chapterId.value))
+    } else if (rawData && typeof rawData === 'object' && rawData.id) {
+      // Single object response - check if it matches current chapter
+      if (Number(rawData.chapterId) === Number(chapterId.value)) {
+        progressData = rawData
+      }
+    }
     if (progressData?.id) {
       progressId.value = progressData.id
     }
@@ -793,9 +823,12 @@ const loadProgress = async () => {
   }
 }
 
+// P1-4: mutex to prevent concurrent createLearningProgress calls
 const ensureProgressRecord = async () => {
   if (progressId.value) return true
+  if (creatingProgress) return false
   if (!userStore.userInfo?.id || !courseId.value) return false
+  creatingProgress = true
   try {
     const res = await createLearningProgress({
       userId: userStore.userInfo.id,
@@ -804,15 +837,21 @@ const ensureProgressRecord = async () => {
       videoPosition: 0,
       videoProgress: 0
     })
-    progressId.value = (res.data || res).id
+    const data = res.data || res
+    if (data && data.id) {
+      progressId.value = data.id
+    }
     return !!progressId.value
   } catch (e) {
     console.warn('[VideoPlayer] ensureProgressRecord 创建进度记录失败', e)
     return false
+  } finally {
+    creatingProgress = false
   }
 }
 
 const reportProgress = async () => {
+  if (isComponentUnmounted) return
   const video = videoRef.value
   if (!video || !video.duration || video.paused) return
   const current = video.currentTime
@@ -822,7 +861,7 @@ const reportProgress = async () => {
   lastReportedProgress = progressPercentVal
   try {
     const hasRecord = await ensureProgressRecord()
-    if (!hasRecord) return
+    if (!hasRecord || isComponentUnmounted) return
     await updateLearningProgress(progressId.value, {
       videoPosition: Math.floor(current),
       videoProgress: Math.round(progressPercentVal)
@@ -833,28 +872,36 @@ const reportProgress = async () => {
   }
 }
 
+// P1-1: Progress reporting only when playing
 const startProgressReporting = () => {
+  if (progressReportTimer) return // already running
   progressReportTimer = setInterval(() => {
     reportProgress()
   }, 10000) // 10 seconds
 }
 
+const stopProgressReporting = () => {
+  if (progressReportTimer) {
+    clearInterval(progressReportTimer)
+    progressReportTimer = null
+  }
+}
+
 // Local position
 const saveLocalPosition = (time) => {
+  if (!STORAGE_KEY.value) return
   localStorage.setItem(STORAGE_KEY.value, JSON.stringify({ time, updatedAt: Date.now() }))
 }
 
+// P0-1: loadLocalPosition - only load saved time, actual seek deferred to onCanPlay
 const loadLocalPosition = () => {
   try {
+    if (!STORAGE_KEY.value) return
     const saved = localStorage.getItem(STORAGE_KEY.value)
     if (saved) {
       const { time } = JSON.parse(saved)
-      if (time > 0 && time < duration.value - 10) {
+      if (time > 0) {
         lastPosition.value = time
-        const video = videoRef.value
-        if (video) {
-          video.currentTime = time
-        }
       }
     }
   } catch (e) {
@@ -864,9 +911,11 @@ const loadLocalPosition = () => {
 
 // Discussions
 const loadDiscussions = async () => {
+  if (isComponentUnmounted) return
   if (!chapterId.value) return
   try {
     const res = await getPosts({ chapterId: chapterId.value, page: 0, size: 20 })
+    if (isComponentUnmounted) return
     discussions.value = res.data?.items || res.data || []
   } catch (e) {
     console.warn('[VideoPlayer] loadDiscussions 加载讨论失败', e)
@@ -876,6 +925,31 @@ const loadDiscussions = async () => {
 
 // Notes
 const noteText = ref('')
+
+// P0-5: Persist notes to localStorage
+const saveNotesToStorage = () => {
+  if (!NOTES_STORAGE_KEY.value) return
+  try {
+    localStorage.setItem(NOTES_STORAGE_KEY.value, JSON.stringify(notes.value))
+  } catch (e) {
+    console.warn('[VideoPlayer] saveNotesToStorage 保存笔记失败', e)
+  }
+}
+
+const loadNotesFromStorage = () => {
+  if (!NOTES_STORAGE_KEY.value) return
+  try {
+    const saved = localStorage.getItem(NOTES_STORAGE_KEY.value)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed)) {
+        notes.value = parsed
+      }
+    }
+  } catch (e) {
+    console.warn('[VideoPlayer] loadNotesFromStorage 加载笔记失败', e)
+  }
+}
 
 const addNote = () => {
   if (!noteText.value.trim()) return
@@ -887,15 +961,18 @@ const addNote = () => {
   }
   notes.value.unshift(note)
   noteText.value = ''
+  saveNotesToStorage()
   ElMessage.success('笔记已添加')
 }
 
 const deleteNote = (id) => {
   notes.value = notes.value.filter(n => n.id !== id)
+  saveNotesToStorage()
 }
 
+// P1-3: Insert timestamp prefix at current time
 const insertNoteAtCurrentTime = () => {
-  noteText.value = ''
+  noteText.value = `[${formatTime(currentTime.value)}] ${noteText.value}`
 }
 
 const highlightTime = (time) => {
@@ -910,10 +987,11 @@ const seekToTime = (time) => {
 }
 
 // Chapter switching
+// P0-4: Chapter switching - await router.push, pass explicit chapterId
 const switchChapter = async (id) => {
   // Save current progress before switching
   await reportProgress()
-  router.push({
+  await router.push({
     query: {
       ...route.query,
       chapterId: id
@@ -926,6 +1004,9 @@ const switchChapter = async (id) => {
     chapters.value[idx].isCompleted = false
     scrollToActiveChapter()
   }
+  // Reset position for new chapter
+  lastPosition.value = 0
+  progressId.value = null
   await loadVideo()
 }
 
@@ -966,6 +1047,13 @@ const showSeekIndicatorHelper = (dir, seconds) => {
   }, 600)
 }
 
+// P0-3: seekRelative for keyboard arrow controls on progress bar
+const seekRelative = (delta) => {
+  if (videoRef.value) {
+    videoRef.value.currentTime = Math.max(0, Math.min(videoRef.value.duration || 0, videoRef.value.currentTime + delta))
+  }
+}
+
 const toggleMute = () => {
   const video = videoRef.value
   if (!video) return
@@ -999,12 +1087,13 @@ const toggleSubtitles = () => {
   subtitlesEnabled.value = !subtitlesEnabled.value
 }
 
+// P0-2: Fullscreen on container (not video element) so custom controls are visible
 const toggleFullscreen = async () => {
-  const video = videoRef.value
-  if (!video) return
+  const container = videoContainerRef.value
+  if (!container) return
   try {
     if (!document.fullscreenElement) {
-      await video.requestFullscreen?.()
+      await container.requestFullscreen?.()
       isFullscreen.value = true
     } else {
       await document.exitFullscreen?.()
@@ -1068,6 +1157,11 @@ const onCanPlay = () => {
     duration.value = video.duration
     video.playbackRate = playbackRate.value
     video.volume = volumePercent.value / 100
+
+    // P0-1: Restore saved position now that duration is known
+    if (lastPosition.value > 0 && lastPosition.value < video.duration - 10) {
+      video.currentTime = lastPosition.value
+    }
   }
 }
 
@@ -1289,7 +1383,7 @@ onMounted(async () => {
   isPipSupported.value = document.pictureInPictureEnabled && typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
   await nextTick()
   loadVideo()
-  startProgressReporting()
+  // P1-1: Progress reporting controlled by play state via watch (no immediate start)
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   window.addEventListener('resize', handleResize)
@@ -1297,7 +1391,19 @@ onMounted(async () => {
   scrollToActiveChapter()
 })
 
+// P1-1: Watch isPlaying to start/stop progress timer
+watch(isPlaying, (playing) => {
+  if (playing) {
+    startProgressReporting()
+  } else {
+    stopProgressReporting()
+  }
+})
+
 onBeforeUnmount(() => {
+  // P1-2: Mark unmounted to prevent async state updates
+  isComponentUnmounted = true
+
   // Save final position
   const video = videoRef.value
   if (video) {
@@ -1311,10 +1417,8 @@ onBeforeUnmount(() => {
     hlsInstance.value.destroy()
     hlsInstance.value = null
   }
-  if (progressReportTimer) {
-    clearInterval(progressReportTimer)
-    progressReportTimer = null
-  }
+  // P1-1: Stop progress reporting
+  stopProgressReporting()
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer)
     hideControlsTimer = null
