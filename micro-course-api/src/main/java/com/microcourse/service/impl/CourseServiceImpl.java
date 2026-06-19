@@ -286,11 +286,11 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void submitForReview(Long id) {
+        // R1-AUTH-002 修复:CAS 重构时需保留所有权校验,防止任何 TEACHER 提交他人课程
         Course course = courseRepository.selectById(id);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // Owner check: only course teacher or ADMIN can submit for review
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
@@ -310,6 +310,10 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void approve(Long id) {
+        // R1-API-004 修复:保留 COURSE_NOT_FOUND 错误码区分
+        if (courseRepository.selectById(id) == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
         // Admin check: only ADMIN can approve
         if (!SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
@@ -330,6 +334,10 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reject(Long id, String reason) {
+        // R1-API-004 修复:保留 COURSE_NOT_FOUND 错误码区分
+        if (courseRepository.selectById(id) == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
         // Admin check: only ADMIN can reject
         if (!SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
@@ -351,6 +359,10 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
+        // R1-API-004 修复:保留 COURSE_NOT_FOUND 错误码区分
+        if (courseRepository.selectById(id) == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
         // Admin check: only ADMIN can publish
         if (!SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);

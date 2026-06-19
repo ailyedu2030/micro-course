@@ -99,9 +99,10 @@ public class EnrollmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated() and (#id == authentication.principal or hasAnyRole('ADMIN', 'ACADEMIC'))")
+    @PreAuthorize("isAuthenticated()")
     public R<Void> cancelEnrollment(@PathVariable Long id) {
-        // Service 层校验 enrollment.userId == currentUserId 或当前用户是 ADMIN/ACADEMIC
+        // R1-SEC-001 修复:@PreAuthorize SpEL 不能用 #id(enrollment ID) == authentication.principal(user ID)
+        // 因 enrollment.id 不等于 user.id,会导致合法用户也无法取消。IDOR 校验全部下沉到 Service 层
         Long currentUserId = SecurityUtil.getCurrentUserId();
         enrollmentService.cancelEnrollment(id, currentUserId);
         return R.ok();
