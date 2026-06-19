@@ -522,7 +522,7 @@ const fetchEnrollments = async () => {
   }
   loading.value = true
   try {
-    const res = await getMyEnrollments(userId)
+    const res = await getMyEnrollments({ userId })
     const list = res.data || []
 
     // 并行获取整体完成度（用于修正进度条）

@@ -17,7 +17,7 @@
     </el-card>
 
     <!-- 主体：左侧菜单 + 右侧表单 -->
-    <div class="settings-layout">
+    <div class="settings-layout" v-loading="loading" element-loading-text="加载配置中...">
       <!-- 左侧菜单 -->
       <el-card class="menu-card" shadow="never">
         <el-menu
@@ -451,7 +451,7 @@ async function handleSave(menu) {
       // 提示用户此为演示功能
       localStorage.setItem('cas_settings', JSON.stringify(casForm))
       ElMessage.warning('CAS 配置已本地保存（演示功能，正式环境请配置后端 API）')
-      setTimeout(() => { saving.value = false }, 3000)
+      saving.value = false
       return
     }
 
@@ -478,7 +478,7 @@ async function handleSave(menu) {
   } catch {
     ElMessage.error('保存失败，请稍后重试')
   } finally {
-    setTimeout(() => { saving.value = false }, 3000)
+    saving.value = false
   }
 }
 

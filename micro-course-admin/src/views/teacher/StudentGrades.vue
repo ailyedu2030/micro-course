@@ -153,12 +153,12 @@
     />
 
     <!-- 批改/查看弹窗 -->
-    <el-dialog>
+    <el-dialog
       v-model="gradeVisible"
       :title="isGraded ? '查看成绩' : '批改成绩'"
       width="500px"
       destroy-on-close
-     :close-on-press-escape="true"
+     :close-on-press-escape="true">
       <el-form :model="gradeForm" label-width="80px">
         <el-form-item label="学生">
           <el-input :model-value="currentStudent?.realName || ''" disabled />

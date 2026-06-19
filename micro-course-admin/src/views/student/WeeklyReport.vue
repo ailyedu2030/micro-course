@@ -437,7 +437,7 @@ const getWeekRange = () => {
 
 const fetchEnrollments = async (userId) => {
   try {
-    const res = await getMyEnrollments(userId)
+    const res = await getMyEnrollments({ userId })
     enrollments.value = res.data || []
     calculateReport()
   } catch {

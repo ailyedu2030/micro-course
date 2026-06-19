@@ -170,12 +170,12 @@
     </el-card>
 
     <!-- 详情弹窗 -->
-    <el-dialog>
+    <el-dialog
       v-model="detailVisible"
       title="学员详情"
       width="600px"
       destroy-on-close
-     :close-on-press-escape="true"
+     :close-on-press-escape="true">
       <el-descriptions :column="2" border v-if="currentStudent">
         <el-descriptions-item label="学号">{{ currentStudent.username }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ currentStudent.realName }}</el-descriptions-item>
@@ -195,12 +195,12 @@
     </el-dialog>
 
     <!-- 发消息弹窗 -->
-    <el-dialog>
+    <el-dialog
       v-model="messageVisible"
       title="发送消息"
       width="500px"
       destroy-on-close
-     :close-on-press-escape="true"
+     :close-on-press-escape="true">
       <el-form :model="messageForm" label-width="80px">
         <el-form-item label="收件人">
           <el-input :model-value="currentStudent?.realName || ''" disabled />

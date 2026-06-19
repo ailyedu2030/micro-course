@@ -106,12 +106,12 @@
     </el-card>
 
     <!-- 添加/编辑弹窗 -->
-    <el-dialog>
+    <el-dialog
       v-model="formVisible"
       :title="isEdit ? '编辑轮播图' : '添加轮播图'"
       width="600px"
       destroy-on-close
-     :close-on-press-escape="true"
+     :close-on-press-escape="true">
       <el-form
         ref="formRef"
         :model="form"
@@ -337,7 +337,7 @@ async function handleConfirmSave() {
   } catch (err) {
     ElMessage.error(err.message || (isEdit.value ? '修改失败，请稍后重试' : '添加失败，请稍后重试'))
   } finally {
-    setTimeout(() => { saving.value = false }, 3000)
+    saving.value = false
   }
 }
 

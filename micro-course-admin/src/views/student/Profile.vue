@@ -659,7 +659,7 @@ const fetchMyEnrollments = async () => {
   try {
     const userId = userStore.userInfo?.id
     if (!userId) return
-    const res = await getMyEnrollments(userId)
+    const res = await getMyEnrollments({ userId })
     myCourses.value = res.data || []
   } catch {
     // silent

@@ -497,7 +497,7 @@ async function loadStats() {
     stats.value = newStats
     animateAllStats(newStats)
   } catch {
-    // silent
+    ElMessage.error('统计数据加载失败，请稍后重试')
   } finally {
     statsLoading.value = false
   }

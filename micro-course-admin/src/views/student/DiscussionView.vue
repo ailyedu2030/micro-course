@@ -119,12 +119,12 @@
     </el-dialog>
 
     <!-- 帖子详情弹窗 -->
-    <el-dialog>
+    <el-dialog
       v-model="detailDialogVisible"
       :title="isMobile ? '' : '帖子详情'"
       :width="isMobile ? '90vw' : '600px'"
       @close="resetDetail"
-     :close-on-press-escape="true"
+     :close-on-press-escape="true">
       <div v-if="currentPost" class="post-detail">
         <div class="post-header">
           <h3 class="post-title">{{ currentPost.title }}</h3>
