@@ -312,15 +312,15 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void cancelEnrollment(Long id) {
+    public void cancelEnrollment(Long id, Long currentUserId) {
         Enrollment enrollment = enrollmentRepository.selectById(id);
         if (enrollment == null) {
             throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
         }
-        // IDOR 校验：仅本人或 ADMIN 可取消
-        Long currentUserId = getCurrentUserId();
+        // IDOR 校验(SEC-NEW-2 修复):优先使用 Controller 传入的 currentUserId,fallback 用 SecurityUtil
+        Long effectiveUserId = currentUserId != null ? currentUserId : getCurrentUserId();
         boolean isAdmin = hasAdminRole();
-        if (!isAdmin && !enrollment.getUserId().equals(currentUserId)) {
+        if (!isAdmin && !enrollment.getUserId().equals(effectiveUserId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         enrollment.setEnrollmentStatus("CANCELLED");

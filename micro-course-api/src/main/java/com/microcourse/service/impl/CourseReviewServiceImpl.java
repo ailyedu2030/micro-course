@@ -78,7 +78,12 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         review.setCreatedAt(LocalDateTime.now());
         review.setUpdatedAt(LocalDateTime.now());
 
-        courseReviewRepository.insert(review);
+        try {
+            courseReviewRepository.insert(review);
+        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
+            // CON-NEW-7 修复:DB uk_course_reviews_user_course 兜底,降级为业务异常
+            throw new BusinessException(ErrorCode.COURSE_REVIEW_ALREADY_EXISTS);
+        }
         return convertToVO(review);
     }
 

@@ -34,7 +34,12 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
             preference.setAllowEmail(false);
             preference.setAllowWechat(false);
             preference.setUpdatedAt(LocalDateTime.now());
-            preferenceRepository.insert(preference);
+            try {
+                preferenceRepository.insert(preference);
+            } catch (org.springframework.dao.DuplicateKeyException dupEx) {
+                // CON-NEW-6 修复:DB UNIQUE(user_id) 兜底,降级为已存在记录
+                preference = preferenceRepository.selectOne(wrapper);
+            }
         }
 
         return convertToVO(preference);

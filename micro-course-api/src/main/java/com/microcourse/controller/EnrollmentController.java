@@ -10,6 +10,7 @@ import com.microcourse.dto.R;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.EnrollmentService;
+import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -98,9 +99,11 @@ public class EnrollmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN','ACADEMIC')")
+    @PreAuthorize("isAuthenticated() and (#id == authentication.principal or hasAnyRole('ADMIN', 'ACADEMIC'))")
     public R<Void> cancelEnrollment(@PathVariable Long id) {
-        enrollmentService.cancelEnrollment(id);
+        // Service 层校验 enrollment.userId == currentUserId 或当前用户是 ADMIN/ACADEMIC
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        enrollmentService.cancelEnrollment(id, currentUserId);
         return R.ok();
     }
 

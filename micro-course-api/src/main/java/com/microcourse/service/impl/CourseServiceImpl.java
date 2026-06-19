@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.*;
@@ -293,79 +294,79 @@ public class CourseServiceImpl implements CourseService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        // DRAFT(0) → PENDING_REVIEW(1)
-        if (course.getStatus() != CourseStatus.DRAFT.getCode()) {
+        // DRAFT(0) → PENDING_REVIEW(1) CAS 推进(CON-NEW-3 修复:防止并发双提交)
+        int affected = courseRepository.update(null,
+                new LambdaUpdateWrapper<Course>()
+                        .eq(Course::getId, id)
+                        .eq(Course::getStatus, CourseStatus.DRAFT.getCode())
+                        .set(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
+                        .set(Course::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = COALESCE(version, 0) + 1"));
+        if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
-        course.setStatus(CourseStatus.PENDING_REVIEW.getCode());
-        course.setUpdatedAt(LocalDateTime.now());
-        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
-        courseRepository.updateById(course);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void approve(Long id) {
-        Course course = courseRepository.selectById(id);
-        if (course == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        }
         // Admin check: only ADMIN can approve
         if (!SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        // PENDING_REVIEW(1) → APPROVED(2)
-        if (course.getStatus() != CourseStatus.PENDING_REVIEW.getCode()) {
+        // PENDING_REVIEW(1) → APPROVED(2) CAS
+        int affected = courseRepository.update(null,
+                new LambdaUpdateWrapper<Course>()
+                        .eq(Course::getId, id)
+                        .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
+                        .set(Course::getStatus, CourseStatus.APPROVED.getCode())
+                        .set(Course::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = COALESCE(version, 0) + 1"));
+        if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
-        course.setStatus(CourseStatus.APPROVED.getCode());
-        course.setUpdatedAt(LocalDateTime.now());
-        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
-        courseRepository.updateById(course);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reject(Long id, String reason) {
-        Course course = courseRepository.selectById(id);
-        if (course == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        }
         // Admin check: only ADMIN can reject
         if (!SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        // PENDING_REVIEW(1) → REJECTED(3)
-        if (course.getStatus() != CourseStatus.PENDING_REVIEW.getCode()) {
+        // PENDING_REVIEW(1) → REJECTED(3) CAS
+        int affected = courseRepository.update(null,
+                new LambdaUpdateWrapper<Course>()
+                        .eq(Course::getId, id)
+                        .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
+                        .set(Course::getStatus, CourseStatus.REJECTED.getCode())
+                        .set(Course::getRejectReason, reason)
+                        .set(Course::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = COALESCE(version, 0) + 1"));
+        if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
-        course.setStatus(CourseStatus.REJECTED.getCode());
-        course.setRejectReason(reason);
-        course.setUpdatedAt(LocalDateTime.now());
-        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
-        courseRepository.updateById(course);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
-        Course course = courseRepository.selectById(id);
-        if (course == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        }
         // Admin check: only ADMIN can publish
         if (!SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        // APPROVED(2) → PUBLISHED(4)
-        if (course.getStatus() != CourseStatus.APPROVED.getCode()) {
+        // APPROVED(2) → PUBLISHED(4) CAS
+        int affected = courseRepository.update(null,
+                new LambdaUpdateWrapper<Course>()
+                        .eq(Course::getId, id)
+                        .eq(Course::getStatus, CourseStatus.APPROVED.getCode())
+                        .set(Course::getStatus, CourseStatus.PUBLISHED.getCode())
+                        .set(Course::getPublishedAt, LocalDateTime.now())
+                        .set(Course::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = COALESCE(version, 0) + 1"));
+        if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
-        course.setStatus(CourseStatus.PUBLISHED.getCode());
-        course.setPublishedAt(LocalDateTime.now());
-        course.setUpdatedAt(LocalDateTime.now());
-        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
-        courseRepository.updateById(course);
     }
 
     @Override

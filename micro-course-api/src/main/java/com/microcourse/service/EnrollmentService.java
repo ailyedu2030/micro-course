@@ -24,7 +24,7 @@ public interface EnrollmentService {
 
     EnrollmentVO updateEnrollment(Long id, EnrollmentUpdateRequest request);
 
-    void cancelEnrollment(Long id);
+    void cancelEnrollment(Long id, Long currentUserId);
 
     long countByTeacherId(Long teacherId);
 

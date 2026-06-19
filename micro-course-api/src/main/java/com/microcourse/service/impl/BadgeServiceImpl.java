@@ -11,6 +11,8 @@ import com.microcourse.repository.BadgeDefinitionRepository;
 import com.microcourse.repository.CheckInRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.service.BadgeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class BadgeServiceImpl implements BadgeService {
+
+    private static final Logger log = LoggerFactory.getLogger(BadgeServiceImpl.class);
 
     private final AchievementRepository achievementRepository;
     private final BadgeDefinitionRepository badgeDefinitionRepository;
@@ -58,6 +62,7 @@ public class BadgeServiceImpl implements BadgeService {
     public void grantBadge(Long userId, String badgeCode) {
         BadgeDefinition definition = badgeDefinitionRepository.selectByCode(badgeCode);
         if (definition == null) {
+            log.warn("[Badge] definition not found for code: {}", badgeCode);
             return;
         }
         if (achievementRepository.existsByUserIdAndBadgeCode(userId, badgeCode)) {
@@ -68,7 +73,12 @@ public class BadgeServiceImpl implements BadgeService {
         achievement.setBadgeCode(badgeCode);
         achievement.setBadgeName(definition.getName());
         achievement.setEarnedAt(LocalDateTime.now());
-        achievementRepository.insert(achievement);
+        try {
+            achievementRepository.insert(achievement);
+        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
+            // CON-NEW-1 修复:并发授予同一徽章时,第二个 insert 抛唯一约束冲突,降级忽略(不污染整个事务)
+            log.debug("[Badge] 并发授予徽章 userId={} code={},DB UNIQUE 兜底", userId, badgeCode);
+        }
     }
 
     private void checkFirstCourseBadge(Long userId) {

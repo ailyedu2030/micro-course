@@ -160,7 +160,8 @@ public class VideoController {
             try {
                 uploadedFile.transferTo(destPath.toFile());
                 videoTranscodeService.transcode(videoId);
-            } catch (IOException e) {
+            } catch (Exception e) {
+                // DF-NEW-3 修复:catch 扩大为 Exception,覆盖 RuntimeException (NPE/IllegalState)
                 log.error("[VideoUpload] 异步文件传输/转码失败 videoId={} dest={}", videoId, destPath, e);
                 try {
                     videoService.updateStatus(videoId, 3);
@@ -175,7 +176,7 @@ public class VideoController {
     }
 
     /**
-     * 校验视频文件扩展名和大小
+     * 校验视频文件扩展名、MIME type 和大小(SEC-NEW-4 修复:仅校验扩展名可被绕过)
      */
     private void validateVideoFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -188,6 +189,11 @@ public class VideoController {
         }
         if (!Set.of("mp4", "mov", "mkv").contains(ext.toLowerCase())) {
             throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID);
+        }
+        // MIME type 必须以 video/ 开头,防止重命名绕过
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.toLowerCase().startsWith("video/")) {
+            throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID, "MIME type 必须为 video/*,当前为 " + contentType);
         }
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new BusinessException(ErrorCode.VIDEO_TOO_LARGE);

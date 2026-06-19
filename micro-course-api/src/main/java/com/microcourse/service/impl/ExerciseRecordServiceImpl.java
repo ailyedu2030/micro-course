@@ -164,7 +164,21 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         record.setDuration(request.getDuration());
         record.setAnswers(answersJson);
         record.setSubmittedAt(LocalDateTime.now());
-        exerciseRecordRepository.insert(record);
+        try {
+            exerciseRecordRepository.insert(record);
+        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
+            // DA-1 修复:V43 UNIQUE 约束兜底,并发 submit 时第二个 insert 抛唯一约束冲突
+            // 降级:重新查询已有记录并返回,避免整事务回滚导致用户答题记录丢失
+            log.warn("[ExerciseRecord] 并发 submit 命中 UNIQUE,降级返回已有记录 userId={} exerciseId={} attemptNo={}",
+                    request.getUserId(), request.getExerciseId(), attemptNo);
+            ExerciseRecord existing = exerciseRecordRepository.selectOne(
+                    new LambdaQueryWrapper<ExerciseRecord>()
+                            .eq(ExerciseRecord::getUserId, request.getUserId())
+                            .eq(ExerciseRecord::getExerciseId, request.getExerciseId())
+                            .eq(ExerciseRecord::getAttemptNo, attemptNo));
+            if (existing != null) return convertToVO(existing, exercise);
+            throw dupEx;
+        }
 
         // 9. 同步更新 grades 表
         Grade grade = new Grade();

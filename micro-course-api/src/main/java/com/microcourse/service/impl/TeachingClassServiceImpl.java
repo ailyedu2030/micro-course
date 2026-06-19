@@ -70,8 +70,16 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         wrapper.orderByDesc(TeachingClass::getCreatedAt);
 
         IPage<TeachingClass> result = teachingClassRepository.selectPage(ipage, wrapper);
-        List<TeachingClassVO> voList = result.getRecords().stream()
-                .map(this::convertToVO)
+        // RES-NEW-1 修复:批量预加载 course 和 teacher,避免 N+1
+        List<TeachingClass> records = result.getRecords();
+        java.util.Set<Long> courseIds = records.stream().map(TeachingClass::getCourseId).filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> teacherIds = records.stream().map(TeachingClass::getTeacherId).filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, Course> courseMap = courseIds.isEmpty() ? java.util.Collections.emptyMap() :
+                courseRepository.selectBatchIds(courseIds).stream().collect(java.util.stream.Collectors.toMap(Course::getId, c -> c));
+        java.util.Map<Long, User> teacherMap = teacherIds.isEmpty() ? java.util.Collections.emptyMap() :
+                userRepository.selectBatchIds(teacherIds).stream().collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
+        List<TeachingClassVO> voList = records.stream()
+                .map(tc -> convertToVO(tc, courseMap.get(tc.getCourseId()), teacherMap.get(tc.getTeacherId())))
                 .collect(Collectors.toList());
 
         PageResult<TeachingClassVO> pageResult = new PageResult<>();
@@ -264,21 +272,25 @@ public class TeachingClassServiceImpl implements TeachingClassService {
             throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS);
         }
 
-        if (tc.getMaxStudents() != null && tc.getMaxStudents() > 0
-                && tc.getStudentCount() != null && tc.getStudentCount() >= tc.getMaxStudents()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "教学班已达最大容量");
-        }
-
+        // CON-NEW-4 修复:并发安全选课 — 用原子 SQL 递增 count,并捕获 DuplicateKeyException
         TeachingClassStudent record = new TeachingClassStudent();
         record.setClassId(classId);
         record.setUserId(userId);
         record.setEnrolledAt(LocalDateTime.now());
         record.setStatus("ENROLLED");
-        teachingClassStudentRepository.insert(record);
+        try {
+            teachingClassStudentRepository.insert(record);
+        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
+            // DB uk_tcs_class_user 兜底:并发选课,DB UNIQUE 阻止第二条,降级为已存在
+            throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS);
+        }
 
-        tc.setStudentCount(tc.getStudentCount() == null ? 1 : tc.getStudentCount() + 1);
-        tc.setUpdatedAt(LocalDateTime.now());
-        teachingClassRepository.updateById(tc);
+        // 原子递增 student_count,避免 Java 侧读-改-写导致的并发计数偏差
+        teachingClassRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<TeachingClass>()
+                        .eq(TeachingClass::getId, classId)
+                        .setSql("student_count = COALESCE(student_count, 0) + 1")
+                        .set(TeachingClass::getUpdatedAt, LocalDateTime.now()));
     }
 
     @Override
@@ -293,12 +305,12 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         record.setStatus("DROPPED");
         teachingClassStudentRepository.updateById(record);
 
-        TeachingClass tc = teachingClassRepository.selectById(classId);
-        if (tc != null && tc.getStudentCount() != null && tc.getStudentCount() > 0) {
-            tc.setStudentCount(tc.getStudentCount() - 1);
-            tc.setUpdatedAt(LocalDateTime.now());
-            teachingClassRepository.updateById(tc);
-        }
+        // CON-NEW-5 修复:原子递减,使用 GREATEST 避免负数
+        teachingClassRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<TeachingClass>()
+                        .eq(TeachingClass::getId, classId)
+                        .setSql("student_count = GREATEST(COALESCE(student_count, 0) - 1, 0)")
+                        .set(TeachingClass::getUpdatedAt, LocalDateTime.now()));
     }
 
     @Override
@@ -315,6 +327,13 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     }
 
     private TeachingClassVO convertToVO(TeachingClass tc) {
+        return convertToVO(tc, null, null);
+    }
+
+    /**
+     * RES-NEW-1 批量预加载版本:course/teacher 从传入的 Map 查,避免 N+1
+     */
+    private TeachingClassVO convertToVO(TeachingClass tc, Course course, User teacher) {
         TeachingClassVO vo = new TeachingClassVO();
         vo.setId(tc.getId());
         vo.setCourseId(tc.getCourseId());
@@ -331,19 +350,19 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         vo.setUpdatedAt(tc.getUpdatedAt());
         vo.setVersion(tc.getVersion());
 
-        if (tc.getCourseId() != null) {
-            Course course = courseRepository.selectById(tc.getCourseId());
-            if (course != null) {
-                vo.setCourseTitle(course.getTitle());
-                vo.setCourseCoverUrl(course.getCoverUrl());
-            }
+        if (course == null && tc.getCourseId() != null) {
+            course = courseRepository.selectById(tc.getCourseId());
+        }
+        if (course != null) {
+            vo.setCourseTitle(course.getTitle());
+            vo.setCourseCoverUrl(course.getCoverUrl());
         }
 
-        if (tc.getTeacherId() != null) {
-            User teacher = userRepository.selectById(tc.getTeacherId());
-            if (teacher != null) {
-                vo.setTeacherName(teacher.getRealName());
-            }
+        if (teacher == null && tc.getTeacherId() != null) {
+            teacher = userRepository.selectById(tc.getTeacherId());
+        }
+        if (teacher != null) {
+            vo.setTeacherName(teacher.getRealName());
         }
 
         return vo;

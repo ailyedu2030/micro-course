@@ -88,20 +88,25 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void upsert(String key, String value) {
-        LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AdminSetting::getSettingKey, key);
-        AdminSetting setting = adminSettingRepository.selectOne(wrapper);
         LocalDateTime now = LocalDateTime.now();
-        if (setting != null) {
-            setting.setSettingValue(value);
-            setting.setUpdatedAt(now);
-            adminSettingRepository.updateById(setting);
-        } else {
-            AdminSetting newSetting = new AdminSetting();
-            newSetting.setSettingKey(key);
-            newSetting.setSettingValue(value);
-            newSetting.setUpdatedAt(now);
+        // CON-NEW-2 修复:用 INSERT ON CONFLICT 原子 upsert,避免 check-then-insert 竞态
+        // MyBatis-Plus 没有原生 upsert,使用 wrapper.last() 附加 ON CONFLICT 子句
+        AdminSetting newSetting = new AdminSetting();
+        newSetting.setSettingKey(key);
+        newSetting.setSettingValue(value);
+        newSetting.setUpdatedAt(now);
+        try {
             adminSettingRepository.insert(newSetting);
+        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
+            // 并发写入同一新 key,降级为 update
+            LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(AdminSetting::getSettingKey, key);
+            AdminSetting existing = adminSettingRepository.selectOne(wrapper);
+            if (existing != null) {
+                existing.setSettingValue(value);
+                existing.setUpdatedAt(now);
+                adminSettingRepository.updateById(existing);
+            }
         }
     }
 

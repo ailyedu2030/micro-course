@@ -50,7 +50,7 @@ public class CourseFavoriteController {
      * 权限：ADMIN / TEACHER / STUDENT（已认证用户）
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
     public R<List<CourseFavoriteVO>> listAll() {
         List<CourseFavoriteVO> favorites = favoriteService.listAll();
         return R.ok(favorites);

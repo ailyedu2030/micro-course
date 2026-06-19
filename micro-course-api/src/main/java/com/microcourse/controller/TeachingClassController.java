@@ -63,7 +63,7 @@ public class TeachingClassController {
     }
 
     @GetMapping("/{id}/students")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
     public R<List<TeachingClassStudentVO>> getClassStudents(@PathVariable Long id) {
         List<TeachingClassStudentVO> list = teachingClassService.getClassStudents(id);
         return R.ok(list);

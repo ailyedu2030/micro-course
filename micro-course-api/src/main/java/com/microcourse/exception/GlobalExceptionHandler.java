@@ -61,7 +61,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MultipartException.class)
     public ResponseEntity<R<Void>> handleMultipart(MultipartException e) {
-        return ResponseEntity.status(400).body(R.fail(400, "请求必须为 multipart/form-data 格式: " + e.getMessage()));
+        // DF-NEW-1 修复:不直接拼接 e.getMessage(),避免泄露内部路径/限制等敏感信息
+        log.warn("[MultipartException] {}", e.getMessage());
+        return ResponseEntity.status(400).body(R.fail(400, "上传请求格式错误,请检查文件大小和格式"));
     }
 
     @ExceptionHandler(NoSuchFileException.class)
