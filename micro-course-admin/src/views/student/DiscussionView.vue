@@ -20,7 +20,7 @@
 
       <!-- 帖子列表 -->
       <el-card class="table-card" shadow="never">
-        <el-table v-loading="loading" :data="tableData" stripe border>
+        <el-table v-loading="loading" :aria-busy="loading" :data="tableData" stripe border>
           <el-table-column prop="title" label="标题" min-width="180">
             <template #default="{ row }">
               <el-link type="primary" @click="viewDetail(row)">{{ row.title }}</el-link>

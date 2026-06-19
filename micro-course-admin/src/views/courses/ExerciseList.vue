@@ -161,7 +161,7 @@
         <!-- 题目列表 -->
         <el-table
           ref="questionTableRef"
-          v-loading="questionLoading"
+          v-loading="questionLoading" :aria-busy="questionLoading"
           :data="questionTableData"
           stripe
           border

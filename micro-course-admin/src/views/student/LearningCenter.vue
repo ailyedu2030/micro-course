@@ -192,7 +192,7 @@
             <template #header>
               <div class="card-header-title">本周学习时长</div>
             </template>
-            <div v-loading="chartLoading" class="chart-container">
+            <div v-loading="chartLoading" :aria-busy="chartLoading" class="chart-container">
               <div v-if="chartData.length === 0" class="empty-wrap">
                 <el-empty description="暂无学习数据" :image-size="80" />
               </div>
@@ -427,7 +427,7 @@
           <template #header>
             <div class="card-header-title">本周学习时长</div>
           </template>
-          <div v-loading="chartLoading" class="chart-container h5-chart-container">
+          <div v-loading="chartLoading" :aria-busy="chartLoading" class="chart-container h5-chart-container">
             <div v-if="chartData.length === 0" class="empty-wrap">
               <el-empty description="暂无学习数据" :image-size="60" />
             </div>

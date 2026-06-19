@@ -214,9 +214,12 @@ public class VideoController {
         }
     }
 
-    /** MP4 / MOV 文件魔数:00 00 00 ?? 66 74 79 70 (ftyp box) */
+    /** MP4 文件魔数:00 00 00 xx 66 74 79 70 (ftyp box),box size >= 8 */
     private static boolean isMp4Magic(byte[] b) {
-        return b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p';
+        // R3-SEC-006 加强:验证 box size(大端 int) >= 8
+        int boxSize = ((b[0] & 0xff) << 24) | ((b[1] & 0xff) << 16)
+                | ((b[2] & 0xff) << 8) | (b[3] & 0xff);
+        return boxSize >= 8 && b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p';
     }
 
     private static boolean isMovMagic(byte[] b) {

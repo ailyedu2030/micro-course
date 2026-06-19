@@ -14,6 +14,8 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.ExerciseRepository;
+import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseChapterService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
@@ -29,11 +31,17 @@ public class CourseChapterServiceImpl implements CourseChapterService {
 
     private final CourseChapterRepository chapterRepository;
     private final CourseRepository courseRepository;
+    private final VideoRepository videoRepository;
+    private final ExerciseRepository exerciseRepository;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
-                                     CourseRepository courseRepository) {
+                                     CourseRepository courseRepository,
+                                     VideoRepository videoRepository,
+                                     ExerciseRepository exerciseRepository) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
+        this.videoRepository = videoRepository;
+        this.exerciseRepository = exerciseRepository;
     }
 
     @Override
@@ -127,6 +135,11 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         }
         // Owner check: only course teacher or ADMIN can delete chapter
         assertCourseOwnerByCourseId(chapter.getCourseId());
+        // MISC-NEW-4 修复:级联删除章节下的视频和练习,避免孤儿记录
+        videoRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Video>()
+                .eq(com.microcourse.entity.Video::getChapterId, id));
+        exerciseRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Exercise>()
+                .eq(com.microcourse.entity.Exercise::getChapterId, id));
         chapterRepository.deleteById(id);
     }
 

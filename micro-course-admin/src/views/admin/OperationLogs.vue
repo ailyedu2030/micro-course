@@ -130,7 +130,7 @@
       <!-- 数据表格 -->
       <el-table
         v-else
-        v-loading="loading"
+        v-loading="loading" :aria-busy="loading"
         :data="tableData"
         stripe
         border

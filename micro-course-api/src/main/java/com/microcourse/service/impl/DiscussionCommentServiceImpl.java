@@ -45,7 +45,8 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         LambdaQueryWrapper<DiscussionComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DiscussionComment::getPostId, postId)
                .eq(DiscussionComment::getStatus, 1)
-               .orderByAsc(DiscussionComment::getCreatedAt);
+               .orderByAsc(DiscussionComment::getCreatedAt)
+               .last("LIMIT 500"); // DISC-NEW-3 修复:硬上限防 OOM
         List<DiscussionComment> flatList = commentRepository.selectList(wrapper);
         return buildCommentTreeWithUsers(flatList);
     }

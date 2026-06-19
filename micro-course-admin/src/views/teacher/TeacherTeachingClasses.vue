@@ -92,7 +92,7 @@
                     </div>
 
                     <el-table
-                      v-loading="studentLoading[cls.id]"
+                      v-loading="studentLoading[cls.id]" :aria-busy="studentLoading[cls.id]"
                       :data="studentData[cls.id] || []"
                       stripe
                       border

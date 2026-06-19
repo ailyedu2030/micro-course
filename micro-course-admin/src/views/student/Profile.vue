@@ -144,7 +144,7 @@
             </el-button>
           </div>
         </template>
-        <div v-loading="badgeLoading" class="badge-grid">
+        <div v-loading="badgeLoading" :aria-busy="badgeLoading" class="badge-grid">
           <div
             v-for="badge in allBadges"
             :key="badge.badgeType"
@@ -183,7 +183,7 @@
         </div>
 
         <div class="wrong-table-wrapper">
-          <el-table v-loading="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="wrong-questions-table">
+          <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="wrong-questions-table">
             <el-table-column prop="questionContent" label="错题内容" min-width="200">
               <template #default="{ row }">
                 <span>{{ row.questionContent || row.content }}</span>
@@ -224,7 +224,7 @@
           </div>
         </template>
 
-        <div v-loading="certLoading" class="cert-grid">
+        <div v-loading="certLoading" :aria-busy="certLoading" class="cert-grid">
           <div
             v-for="cert in certificates"
             :key="cert.id"
@@ -360,7 +360,7 @@
             <span>我的成就</span>
           </div>
         </template>
-        <div v-loading="badgeLoading" class="badge-grid badge-grid--mobile">
+        <div v-loading="badgeLoading" :aria-busy="badgeLoading" class="badge-grid badge-grid--mobile">
           <div
             v-for="badge in allBadges"
             :key="badge.badgeType"
@@ -399,7 +399,7 @@
         </div>
 
         <div class="wrong-table-wrapper">
-          <el-table v-loading="wrongLoading" :data="wrongQuestions" stripe border max-height="300" class="wrong-questions-table">
+          <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="300" class="wrong-questions-table">
             <el-table-column prop="questionContent" label="错题内容" min-width="150">
               <template #default="{ row }">
                 <span>{{ row.questionContent || row.content }}</span>
@@ -437,7 +437,7 @@
           </div>
         </template>
 
-        <div v-loading="certLoading" class="cert-list--mobile">
+        <div v-loading="certLoading" :aria-busy="certLoading" class="cert-list--mobile">
           <div
             v-for="cert in certificates"
             :key="cert.id"

@@ -71,7 +71,7 @@
         </div>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+      <el-table v-loading="loading" :aria-busy="loading" :data="tableData" stripe border class="data-table">
         <template #empty>
           <el-empty description="暂无视频数据" />
         </template>

@@ -244,6 +244,17 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DiscussionPostVO create(PostCreateRequest req, Long userId) {
+        // DISC-NEW-6 修复:发帖频率限制—30 秒内只能发一帖,防止刷帖
+        DiscussionPost lastPost = postRepository.selectOne(
+                new LambdaQueryWrapper<DiscussionPost>()
+                        .eq(DiscussionPost::getUserId, userId)
+                        .orderByDesc(DiscussionPost::getCreatedAt)
+                        .last("LIMIT 1"));
+        if (lastPost != null && lastPost.getCreatedAt() != null
+                && lastPost.getCreatedAt().plusSeconds(30).isAfter(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "发帖过于频繁,请 30 秒后再试");
+        }
+
         // Validate chapterId exists only when provided (FK constraint)
         if (req.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(req.getChapterId());

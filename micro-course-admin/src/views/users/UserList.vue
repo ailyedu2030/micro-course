@@ -60,7 +60,7 @@
           </div>
         </div>
       </template>
-      <el-table v-loading="loading" :data="tableData" stripe border class="data-table">
+      <el-table v-loading="loading" :aria-busy="loading" :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column label="头像" width="80" align="center">
           <template #default="{ row }">
@@ -194,7 +194,7 @@
           待审核教师列表。审核通过后，教师将获得创建课程的权限。
         </template>
       </el-alert>
-      <el-table v-loading="teacherLoading" :data="pendingTeachers" stripe border class="data-table">
+      <el-table v-loading="teacherLoading" :aria-busy="teacherLoading" :data="pendingTeachers" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="username" label="账号" min-width="120" />
         <el-table-column prop="realName" label="姓名" min-width="100" />

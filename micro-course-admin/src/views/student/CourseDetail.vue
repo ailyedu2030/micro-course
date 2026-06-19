@@ -45,7 +45,7 @@
               <span class="section-title">课程大纲</span>
             </template>
             <el-table highlight-current-row ref="chapterTableRef" @row-click="handleChapterClick"
-              v-loading="chapterLoading"
+              v-loading="chapterLoading" :aria-busy="chapterLoading"
               :data="chapters"
               stripe
               border
@@ -99,7 +99,7 @@
                 </el-button>
               </div>
             </template>
-            <div v-loading="reviewLoading" class="review-list">
+            <div v-loading="reviewLoading" :aria-busy="reviewLoading" class="review-list">
               <template v-if="reviews.length > 0">
                 <div v-for="r in reviews" :key="r.id" class="review-item">
                   <div class="review-user">
@@ -123,7 +123,7 @@
             <template #header>
               <span class="section-title">授课教师</span>
             </template>
-            <div v-loading="teacherLoading" class="teacher-info">
+            <div v-loading="teacherLoading" :aria-busy="teacherLoading" class="teacher-info">
               <template v-if="teacher.id">
                 <div class="teacher-avatar">
                   <el-avatar :size="72" :src="teacher.avatar">
@@ -150,7 +150,7 @@
             <template #header>
               <span class="section-title">学习排行</span>
             </template>
-            <div v-loading="rankingLoading" class="ranking-list">
+            <div v-loading="rankingLoading" :aria-busy="rankingLoading" class="ranking-list">
               <template v-if="rankingList.length > 0">
                 <div
                   v-for="item in rankingList"
@@ -210,7 +210,7 @@
             <template #header>
               <span class="section-title">授课教师</span>
             </template>
-            <div v-loading="teacherLoading" class="teacher-info">
+            <div v-loading="teacherLoading" :aria-busy="teacherLoading" class="teacher-info">
               <template v-if="teacher.id">
                 <div class="teacher-avatar">
                   <el-avatar :size="72" :src="teacher.avatar">
@@ -235,7 +235,7 @@
         <div v-show="h5ActiveTab === 'chapters'" class="h5-tab-content">
           <el-card class="chapter-card card-hover">
             <el-table highlight-current-row ref="chapterTableRef" @row-click="handleChapterClick"
-              v-loading="chapterLoading"
+              v-loading="chapterLoading" :aria-busy="chapterLoading"
               :data="chapters"
               stripe
               border
@@ -291,7 +291,7 @@
                 </el-button>
               </div>
             </template>
-            <div v-loading="reviewLoading" class="review-list">
+            <div v-loading="reviewLoading" :aria-busy="reviewLoading" class="review-list">
               <template v-if="reviews.length > 0">
                 <div v-for="r in reviews" :key="r.id" class="review-item">
                   <div class="review-user">

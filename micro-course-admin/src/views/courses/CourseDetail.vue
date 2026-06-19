@@ -112,7 +112,7 @@
           <el-button type="primary" size="small" v-if="userRole !== 'ACADEMIC'" @click="handleCreateChapter">新增章节</el-button>
         </div>
       </template>
-      <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe border class="data-table">
+      <el-table ref="chapterTableRef" v-loading="chapterLoading" :aria-busy="chapterLoading" :data="chapters" stripe border class="data-table">
         <template #empty>
           <el-empty description="暂无章节数据" />
         </template>
