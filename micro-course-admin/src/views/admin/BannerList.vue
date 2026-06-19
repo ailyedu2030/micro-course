@@ -158,7 +158,7 @@
         </el-form-item>
         <el-form-item label="跳转链接" prop="link">
           <el-input
-            v-model="form.link"
+            v-model="form.linkUrl"
             placeholder="https:// 或留空"
             type="url"
           />
@@ -225,7 +225,7 @@ const imageUploadRef = ref(null)
 const form = reactive({
   title: '',
   imageUrl: '',
-  link: '',
+  linkUrl: '',
   sortOrder: 0,
   enabled: true
 })
@@ -266,7 +266,7 @@ function handleEdit(row) {
   currentBannerId.value = row.id
   form.title = row.title || ''
   form.imageUrl = row.imageUrl || ''
-  form.link = row.linkUrl || ''
+  form.linkUrl = row.linkUrl || ''
   form.sortOrder = row.sortOrder || 0
   form.enabled = row.enabled
   formVisible.value = true
@@ -276,7 +276,7 @@ function handleEdit(row) {
 function resetForm() {
   form.title = ''
   form.imageUrl = ''
-  form.link = ''
+  form.linkUrl = ''
   form.sortOrder = 0
   form.enabled = true
 }
@@ -315,7 +315,8 @@ async function handleConfirmSave() {
   try {
     const fd = new FormData()
     fd.append('title', form.title)
-    fd.append('link', form.link || '')
+    fd.append('imageUrl', form.imageUrl || '')
+    fd.append('linkUrl', form.linkUrl || '')
     fd.append('sortOrder', String(form.sortOrder))
     fd.append('enabled', String(form.enabled))
     if (form._rawFile) {

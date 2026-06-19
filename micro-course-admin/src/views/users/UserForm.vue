@@ -170,8 +170,8 @@
           </el-row>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="头像" prop="avatarUrl">
-                <el-input v-model="formData.avatarUrl" placeholder="请输入头像URL" />
+              <el-form-item label="头像" prop="avatar">
+                <el-input v-model="formData.avatar" placeholder="请输入头像URL" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -233,7 +233,7 @@ const formData = reactive({
   classId: '',
   grade: '',
   enrollmentYear: '',
-  avatarUrl: ''
+  avatar: ''
 })
 
 const validateConfirmPassword = (rule, value, callback) => {
@@ -354,7 +354,7 @@ const loadUserData = async (id) => {
     formData.classId = data.classId || ''
     formData.grade = data.grade || ''
     formData.enrollmentYear = data.enrollmentYear || ''
-    formData.avatarUrl = data.avatarUrl || ''
+    formData.avatar = data.avatar || ''
     formData.role = data.role || ''
 
     if (data.departmentId) {

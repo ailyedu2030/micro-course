@@ -22,6 +22,8 @@ public class QuestionCreateRequest {
     @NotBlank(message = "答案不能为空")
     private String answer;
 
+    private Integer score;
+
     private String partialScore;
 
     private String explanation;
@@ -44,6 +46,8 @@ public class QuestionCreateRequest {
     public void setOptions(String options) { this.options = options; }
     public String getAnswer() { return answer; }
     public void setAnswer(String answer) { this.answer = answer; }
+    public Integer getScore() { return score; }
+    public void setScore(Integer score) { this.score = score; }
     public String getPartialScore() { return partialScore; }
     public void setPartialScore(String partialScore) { this.partialScore = partialScore; }
     public String getExplanation() { return explanation; }

@@ -1,6 +1,7 @@
 package com.microcourse.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class DepartmentCreateRequest {
 
@@ -12,6 +13,7 @@ public class DepartmentCreateRequest {
 
     private Long parentId;
 
+    @NotNull(message = "排序不能为空")
     private Integer sortOrder;
 
     public DepartmentCreateRequest() {}

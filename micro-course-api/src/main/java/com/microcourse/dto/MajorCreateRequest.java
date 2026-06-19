@@ -14,6 +14,7 @@ public class MajorCreateRequest {
     @NotNull(message = "院系ID不能为空")
     private Long departmentId;
 
+    @NotNull(message = "排序不能为空")
     private Integer sortOrder;
 
     public MajorCreateRequest() {}

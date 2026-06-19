@@ -1,12 +1,14 @@
 package com.microcourse.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class ClassCreateRequest {
 
     @NotBlank
     private String name;
 
+    @NotNull(message = "专业ID不能为空")
     private Long majorId;
 
     @NotBlank

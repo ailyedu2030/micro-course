@@ -33,6 +33,8 @@ public class UserCreateRequest {
 
     private Long classId;
 
+    private String gender;
+
     public UserCreateRequest() {}
 
     public String getUsername() { return username; }
@@ -53,4 +55,6 @@ public class UserCreateRequest {
     public void setMajorId(Long majorId) { this.majorId = majorId; }
     public Long getClassId() { return classId; }
     public void setClassId(Long classId) { this.classId = classId; }
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
 }

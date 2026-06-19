@@ -13,8 +13,10 @@ public class ChapterCreateRequest {
 
     private String description;
 
+    @NotNull(message = "排序不能为空")
     private Integer sortOrder;
 
+    @NotBlank(message = "章节类型不能为空")
     private String chapterType = "VIDEO";
 
     private Integer duration;
