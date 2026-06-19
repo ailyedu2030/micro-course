@@ -84,7 +84,7 @@ public class GradeServiceImpl implements GradeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public GradeVO create(GradeCreateRequest request, Long teacherId) {
         Grade grade = new Grade();
         grade.setCourseId(request.getCourseId());
@@ -105,7 +105,7 @@ public class GradeServiceImpl implements GradeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public GradeVO update(Long id, GradeUpdateRequest request, Long teacherId) {
         Grade grade = gradeRepository.selectById(id);
         if (grade == null) {
@@ -133,7 +133,7 @@ public class GradeServiceImpl implements GradeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Grade grade = gradeRepository.selectById(id);
         if (grade == null) {

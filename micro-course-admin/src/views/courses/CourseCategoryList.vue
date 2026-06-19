@@ -51,7 +51,7 @@
     </el-card>
 
     <!-- 弹窗表单 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
         <el-form-item label="上级分类" v-if="formData.parentId">
           <el-input :value="parentName" disabled />

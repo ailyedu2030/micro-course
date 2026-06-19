@@ -59,7 +59,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CourseCategoryVO create(CourseCategoryCreateRequest request) {
         CourseCategory category = new CourseCategory();
         category.setName(request.getName());
@@ -73,7 +73,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CourseCategoryVO update(Long id, CourseCategoryUpdateRequest request) {
         CourseCategory category = courseCategoryRepository.selectById(id);
         if (category == null) {
@@ -97,7 +97,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         CourseCategory category = courseCategoryRepository.selectById(id);
         if (category == null) {

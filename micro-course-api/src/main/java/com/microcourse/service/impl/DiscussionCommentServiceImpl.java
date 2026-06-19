@@ -65,7 +65,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DiscussionCommentVO create(CommentCreateRequest req, Long userId) {
         // 检测当前用户角色是否为教师或管理员
         boolean isTeacherOrAdmin = false;
@@ -104,7 +104,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id, Long userId) {
         DiscussionComment comment = commentRepository.selectById(id);
         if (comment == null || comment.getStatus() == 0) {
@@ -119,7 +119,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void like(Long id) {
         DiscussionComment comment = commentRepository.selectById(id);
         if (comment == null || comment.getStatus() == 0) {

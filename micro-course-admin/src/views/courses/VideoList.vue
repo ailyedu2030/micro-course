@@ -129,7 +129,7 @@
     </el-card>
 
     <!-- 弹窗表单 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入视频标题" />
@@ -156,7 +156,7 @@
     </el-dialog>
 
     <!-- 封面设置弹窗 -->
-    <el-dialog v-model="coverDialogVisible" title="设置视频封面" width="400px">
+    <el-dialog v-model="coverDialogVisible" title="设置视频封面" width="400px" :close-on-press-escape="true">
       <div class="cover-preview">
         <el-image v-if="currentCoverUrl" :src="currentCoverUrl" fit="contain" class="cover-img" />
         <span v-else class="no-cover">暂无封面</span>
@@ -177,7 +177,7 @@
     </el-dialog>
 
     <!-- 封面预览弹窗 -->
-    <el-dialog v-model="previewDialogVisible" title="封面预览" width="600px">
+    <el-dialog v-model="previewDialogVisible" title="封面预览" width="600px" :close-on-press-escape="true">
       <el-image v-if="previewCoverUrl" :src="previewCoverUrl" fit="contain" class="preview-img" />
       <span v-else class="no-cover">无封面</span>
     </el-dialog>

@@ -143,7 +143,7 @@
     </el-row>
 
     <!-- 添加学生弹窗 -->
-    <el-dialog v-model="addStudentVisible" title="添加学生" width="500px" destroy-on-close>
+    <el-dialog v-model="addStudentVisible" title="添加学生" width="500px" destroy-on-close :close-on-press-escape="true">
       <el-form :model="addStudentForm" label-width="80px">
         <el-form-item label="学生ID">
           <el-input v-model="addStudentForm.userId" placeholder="请输入学生ID" clearable />
@@ -159,7 +159,7 @@
     </el-dialog>
 
     <!-- 修改状态弹窗 -->
-    <el-dialog v-model="changeStatusVisible" title="修改学生状态" width="400px" destroy-on-close>
+    <el-dialog v-model="changeStatusVisible" title="修改学生状态" width="400px" destroy-on-close :close-on-press-escape="true">
       <el-form label-width="80px">
         <el-form-item label="当前学生">
           <el-input :model-value="currentStudentItem?.realName || ''" disabled />

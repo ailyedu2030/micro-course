@@ -242,7 +242,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DiscussionPostVO create(PostCreateRequest req, Long userId) {
         // Validate chapterId exists only when provided (FK constraint)
         if (req.getChapterId() != null) {
@@ -271,7 +271,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public DiscussionPostVO update(Long id, PostUpdateRequest request, Long userId) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -299,7 +299,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id, Long userId) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -317,7 +317,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void pin(Long id) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -330,7 +330,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updatePin(Long id, boolean pinned) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -342,7 +342,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateEssence(Long id, boolean essence) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
@@ -354,7 +354,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long id, String status) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null) {

@@ -221,12 +221,12 @@
     </el-card>
 
     <!-- 详情弹窗 -->
-    <el-dialog
+    <el-dialog>
       v-model="detailVisible"
       title="日志详情"
       width="560px"
       destroy-on-close
-    >
+     :close-on-press-escape="true"
       <el-descriptions :column="2" border v-if="currentLog">
         <el-descriptions-item label="时间" :span="2">{{ formatTime(currentLog.createdAt) }}</el-descriptions-item>
         <el-descriptions-item label="操作人">{{ currentLog.username || '-' }}</el-descriptions-item>

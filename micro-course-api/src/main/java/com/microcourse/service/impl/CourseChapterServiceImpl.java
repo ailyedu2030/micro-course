@@ -69,7 +69,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ChapterVO create(ChapterCreateRequest request) {
         // Validate course exists
         Course course = courseRepository.selectById(request.getCourseId());
@@ -95,7 +95,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ChapterVO update(Long id, ChapterUpdateRequest request) {
         CourseChapter chapter = chapterRepository.selectById(id);
         if (chapter == null) {
@@ -119,7 +119,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         CourseChapter chapter = chapterRepository.selectById(id);
         if (chapter == null) {
@@ -131,7 +131,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void sort(List<ChapterSortRequest> requests) {
         if (requests == null || requests.isEmpty()) {
             return;

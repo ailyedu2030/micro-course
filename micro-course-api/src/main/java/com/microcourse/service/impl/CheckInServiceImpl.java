@@ -28,7 +28,7 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CheckInVO checkIn(Long userId) {
         LocalDate today = LocalDate.now();
 
@@ -135,7 +135,7 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateDuration(Long userId, int duration) {
         LocalDate today = LocalDate.now();
 

@@ -49,7 +49,7 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ExerciseVO create(ExerciseCreateRequest request) {
         if (request.getQuestions() == null || request.getQuestions().isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "练习题目不能为空");
@@ -103,7 +103,7 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ExerciseVO update(Long id, ExerciseUpdateRequest request) {
         Exercise exercise = exerciseRepository.selectById(id);
         if (exercise == null) {
@@ -172,7 +172,7 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Exercise exercise = exerciseRepository.selectById(id);
         if (exercise == null) {
@@ -370,7 +370,7 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void addQuestions(Long exerciseId, List<Long> questionIds) {
         Exercise exercise = exerciseRepository.selectById(exerciseId);
         if (exercise == null) {
@@ -386,7 +386,7 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void removeQuestion(Long exerciseId, Long questionId) {
         Exercise exercise = exerciseRepository.selectById(exerciseId);
         if (exercise == null) {

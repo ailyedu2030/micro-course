@@ -171,12 +171,12 @@
     </el-card>
 
     <!-- Excel 导入弹窗 -->
-    <el-dialog
+    <el-dialog>
       v-model="importDialogVisible"
       title="Excel 批量导入用户"
       width="520px"
       destroy-on-close
-    >
+     :close-on-press-escape="true"
       <div class="import-guide">
         <el-alert type="info" :closable="false" show-icon>
           <template #title>
@@ -224,12 +224,12 @@
     </el-dialog>
 
     <!-- 导入结果弹窗 -->
-    <el-dialog
+    <el-dialog>
       v-model="resultDialogVisible"
       title="导入结果"
       width="600px"
       destroy-on-close
-    >
+     :close-on-press-escape="true"
       <div class="result-content">
         <el-result
           :icon="importResult.success ? 'success' : 'warning'"
@@ -255,12 +255,12 @@
     </el-dialog>
 
     <!-- 用户详情弹窗 -->
-    <el-dialog
+    <el-dialog>
       v-model="detailVisible"
       title="用户详情"
       width="560px"
       destroy-on-close
-    >
+     :close-on-press-escape="true"
       <el-descriptions :column="2" border v-if="currentUser">
         <el-descriptions-item label="ID">{{ currentUser.id || '-' }}</el-descriptions-item>
         <el-descriptions-item label="账号">{{ currentUser.username || '-' }}</el-descriptions-item>

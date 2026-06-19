@@ -97,7 +97,7 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public VideoVO create(VideoCreateRequest request) {
         // Validate chapter exists
         CourseChapter chapter = chapterRepository.selectById(request.getChapterId());
@@ -131,7 +131,7 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public VideoVO update(Long id, VideoUpdateRequest request) {
         Video video = videoRepository.selectById(id);
         if (video == null) {
@@ -159,7 +159,7 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Video video = videoRepository.selectById(id);
         if (video == null) {
@@ -171,7 +171,7 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long videoId, int status) {
         Video video = videoRepository.selectById(videoId);
         if (video == null) {

@@ -45,7 +45,7 @@ public class TagServiceImpl implements TagService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TagVO create(TagCreateRequest request) {
         Tag tag = new Tag();
         tag.setName(request.getName());

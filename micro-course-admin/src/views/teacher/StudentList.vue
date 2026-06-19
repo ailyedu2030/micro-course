@@ -116,6 +116,7 @@
         stripe
         border
         class="data-table"
+        ref="tableRef"
         @row-click="handleRowClick"
       >
         <el-table-column type="index" label="序号" width="70" align="center" />
@@ -174,12 +175,12 @@
     </el-card>
 
     <!-- 详情弹窗 -->
-    <el-dialog
+    <el-dialog>
       v-model="detailVisible"
       title="学员详情"
       width="600px"
       destroy-on-close
-    >
+     :close-on-press-escape="true"
       <el-descriptions :column="2" border v-if="currentStudent">
         <el-descriptions-item label="学号">{{ currentStudent.username }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ currentStudent.realName }}</el-descriptions-item>
@@ -199,12 +200,12 @@
     </el-dialog>
 
     <!-- 发消息弹窗 -->
-    <el-dialog
+    <el-dialog>
       v-model="messageVisible"
       title="发送消息"
       width="500px"
       destroy-on-close
-    >
+     :close-on-press-escape="true"
       <el-form :model="messageForm" label-width="80px">
         <el-form-item label="收件人">
           <el-input :model-value="currentStudent?.realName || ''" disabled />
@@ -233,7 +234,7 @@
  * 教师端 - 学员列表
  * Vue 3.4 Composition API + script setup
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as XLSX from 'xlsx'
@@ -382,6 +383,33 @@ function handlePageChange() {
 function handleRowClick(row) {
   // 可选：展开详情
 }
+
+// a11y:el-table 行键盘支持(A11Y-018)
+const tableRef = ref(null)
+let _keydownBound = false
+function bindTableKeyboard() {
+  if (_keydownBound) return
+  const tbody = tableRef.value?.$el?.querySelector('tbody')
+  if (!tbody) return
+  tbody.addEventListener('keydown', (e) => {
+    const tr = e.target.closest('tr')
+    if (!tr) return
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    const idx = Array.from(tbody.querySelectorAll('tr')).indexOf(tr)
+    const row = tableData.value?.[idx]
+    if (row) {
+      e.preventDefault()
+      handleRowClick(row)
+    }
+  })
+  tbody.querySelectorAll('tr').forEach((tr, idx) => {
+    tr.setAttribute('tabindex', '0')
+    tr.setAttribute('role', 'button')
+    tr.setAttribute('aria-label', `选择学员 ${tableData.value?.[idx]?.name || tableData.value?.[idx]?.username || ''}`)
+  })
+  _keydownBound = true
+}
+onMounted(() => nextTick(bindTableKeyboard))
 
 // 查看详情
 function handleViewDetail(row) {

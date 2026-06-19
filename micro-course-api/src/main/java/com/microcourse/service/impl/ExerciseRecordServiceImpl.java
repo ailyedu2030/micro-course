@@ -63,7 +63,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ExerciseRecordVO submitAnswer(SubmitAnswerRequest request) {
         // 1. 查 exercise 是否存在
         Exercise exercise = exerciseRepository.selectById(request.getExerciseId());

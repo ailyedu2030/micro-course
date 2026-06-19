@@ -80,7 +80,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateProgress(Long id, Long userId, ProgressUpdateRequest request) {
         LearningProgress progress = learningProgressRepository.selectById(id);
         if (progress == null || !progress.getUserId().equals(userId)) {
@@ -129,7 +129,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public LearningProgressVO create(ProgressCreateRequest request) {
         // Validate chapterId exists if provided (FK constraint)
         if (request.getChapterId() != null) {

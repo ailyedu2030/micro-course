@@ -59,7 +59,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public LoginResponse login(LoginRequest request) {
         try {
             // Step 1: 检查登录失败次数
@@ -199,7 +199,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void logout() {
         // Step 1: 从 SecurityContextHolder 获取当前 userId
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -270,7 +270,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public UserVO updateProfile(UpdateProfileRequest request) {
         Long userId = getCurrentUserId();
         User user = userRepository.selectById(userId);
@@ -297,7 +297,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void changePassword(ChangePasswordRequest request) {
         Long userId = getCurrentUserId();
         User user = userRepository.selectById(userId);

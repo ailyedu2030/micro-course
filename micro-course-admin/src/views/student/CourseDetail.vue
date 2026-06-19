@@ -44,7 +44,7 @@
             <template #header>
               <span class="section-title">课程大纲</span>
             </template>
-            <el-table highlight-current-row @row-click="handleChapterClick"
+            <el-table highlight-current-row ref="chapterTableRef" @row-click="handleChapterClick"
               v-loading="chapterLoading"
               :data="chapters"
               stripe
@@ -234,7 +234,7 @@
         <!-- 目录 -->
         <div v-show="h5ActiveTab === 'chapters'" class="h5-tab-content">
           <el-card class="chapter-card card-hover">
-            <el-table highlight-current-row @row-click="handleChapterClick"
+            <el-table highlight-current-row ref="chapterTableRef" @row-click="handleChapterClick"
               v-loading="chapterLoading"
               :data="chapters"
               stripe
@@ -311,7 +311,7 @@
     </div>
 
     <!-- 写评价弹窗 -->
-    <el-dialog v-model="reviewDialogVisible" title="写课程评价" class="review-dialog">
+    <el-dialog v-model="reviewDialogVisible" title="写课程评价" class="review-dialog" :close-on-press-escape="true">
       <el-form :model="reviewForm" :rules="reviewRules" label-width="80px">
         <el-form-item label="评分" prop="rating">
           <el-rate v-model="reviewForm.rating" />
@@ -359,7 +359,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Star, User } from '@element-plus/icons-vue'
@@ -515,6 +515,33 @@ const handleChapterClick = (row) => {
     router.push(`/student/courses/${courseId.value}?chapterId=${row.id}`)
   }
 }
+
+// a11y:章节表格键盘支持(A11Y-019/020)
+const chapterTableRef = ref(null)
+let _keydownBound = false
+function bindChapterTableKeyboard() {
+  if (_keydownBound) return
+  const tbody = chapterTableRef.value?.$el?.querySelector('tbody')
+  if (!tbody) return
+  tbody.addEventListener('keydown', (e) => {
+    const tr = e.target.closest('tr')
+    if (!tr) return
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    const idx = Array.from(tbody.querySelectorAll('tr')).indexOf(tr)
+    const row = chapters.value?.[idx]
+    if (row) {
+      e.preventDefault()
+      handleChapterClick(row)
+    }
+  })
+  tbody.querySelectorAll('tr').forEach((tr, idx) => {
+    tr.setAttribute('tabindex', '0')
+    tr.setAttribute('role', 'button')
+    tr.setAttribute('aria-label', `进入章节 ${chapters.value?.[idx]?.title || ''}`)
+  })
+  _keydownBound = true
+}
+onMounted(() => nextTick(bindChapterTableKeyboard))
 
 const goLogin = () => {
   router.push('/login')

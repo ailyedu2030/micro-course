@@ -106,7 +106,7 @@
     </el-card>
 
     <!-- 弹窗区 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="720px" @close="handleDialogClose" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="720px" @close="handleDialogClose" destroy-on-close :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-position="top">
         <el-form-item label="课程" prop="courseId">
           <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" filterable @change="handleCourseChange">

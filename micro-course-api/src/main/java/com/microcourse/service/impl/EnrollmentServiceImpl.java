@@ -52,7 +52,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public EnrollmentVO enroll(EnrollmentCreateRequest request) {
         // 幂等性优先检查：已选过则直接返回
         LambdaQueryWrapper<Enrollment> existingWrapper = new LambdaQueryWrapper<>();
@@ -279,7 +279,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public EnrollmentVO updateEnrollment(Long id, EnrollmentUpdateRequest request) {
         Enrollment enrollment = enrollmentRepository.selectById(id);
         if (enrollment == null) {
@@ -311,7 +311,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void cancelEnrollment(Long id) {
         Enrollment enrollment = enrollmentRepository.selectById(id);
         if (enrollment == null) {

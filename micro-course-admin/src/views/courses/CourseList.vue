@@ -54,7 +54,7 @@
       </template>
       <el-skeleton v-if="loading" :rows="5" animated />
       <el-empty v-else-if="tableData.length === 0" description="暂无课程数据" :image-size="120" />
-      <el-table v-else :data="tableData" stripe border class="data-table" @row-click="handleRowClick">
+      <el-table v-else :data="tableData" stripe border class="data-table" ref="tableRef" @row-click="handleRowClick">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column label="封面" width="80" align="center">
           <template #default="{ row }">
@@ -112,7 +112,7 @@
     </el-card>
 
     <!-- 弹窗表单 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item label="课程标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入课程标题" />
@@ -151,7 +151,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
@@ -256,6 +256,34 @@ const handlePageChange = () => {
 const handleRowClick = (row) => {
   // 预留：可点击行查看详情
 }
+
+// a11y:让 el-table 行可被键盘聚焦,Enter 触发 handleRowClick(A11Y-016)
+const tableRef = ref(null)
+let _keydownBound = false
+const bindTableKeyboard = () => {
+  // 在表格 tbody 上挂 keydown 监听,聚焦行后 Enter/Space 等价于点击
+  if (_keydownBound) return
+  const tbody = tableRef.value?.$el?.querySelector('tbody')
+  if (!tbody) return
+  tbody.addEventListener('keydown', (e) => {
+    const tr = e.target.closest('tr')
+    if (!tr) return
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    const idx = Array.from(tbody.querySelectorAll('tr')).indexOf(tr)
+    const row = tableData.value?.[idx]
+    if (row) {
+      e.preventDefault()
+      handleRowClick(row)
+    }
+  })
+  tbody.querySelectorAll('tr').forEach((tr, idx) => {
+    tr.setAttribute('tabindex', '0')
+    tr.setAttribute('role', 'button')
+    tr.setAttribute('aria-label', `选择课程 ${tableData.value?.[idx]?.title || ''}`)
+  })
+  _keydownBound = true
+}
+onMounted(() => nextTick(bindTableKeyboard))
 
 const handleCreate = () => {
   dialogTitle.value = '新增课程'

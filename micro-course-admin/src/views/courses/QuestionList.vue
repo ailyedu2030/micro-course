@@ -122,7 +122,7 @@
     </el-card>
 
     <!-- 弹窗表单 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
         <el-form-item label="题型" prop="questionType">
           <el-select v-model="formData.questionType" placeholder="请选择题型" class="full-width">

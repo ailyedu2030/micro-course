@@ -291,7 +291,7 @@ public class CertificateServiceImpl implements CertificateService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void autoIssueCertificate(Long userId, Long courseId) {
         // 检查是否已存在证书
         LambdaQueryWrapper<Certificate> existWrapper = new LambdaQueryWrapper<>();

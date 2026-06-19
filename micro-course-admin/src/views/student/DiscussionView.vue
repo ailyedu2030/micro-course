@@ -95,7 +95,7 @@
     </template>
 
     <!-- 发帖弹窗 -->
-    <el-dialog v-model="postDialogVisible" title="发布帖子" width="500px" @close="resetPostForm">
+    <el-dialog v-model="postDialogVisible" title="发布帖子" width="500px" @close="resetPostForm" :close-on-press-escape="true">
       <el-form :model="postForm" :rules="postRules" ref="postFormRef" label-width="80px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="postForm.title" placeholder="请输入帖子标题" maxlength="100" show-word-limit />
@@ -121,12 +121,12 @@
     </el-dialog>
 
     <!-- 帖子详情弹窗 -->
-    <el-dialog
+    <el-dialog>
       v-model="detailDialogVisible"
       :title="isMobile ? '' : '帖子详情'"
       :width="isMobile ? '90vw' : '600px'"
       @close="resetDetail"
-    >
+     :close-on-press-escape="true"
       <div v-if="currentPost" class="post-detail">
         <div class="post-header">
           <h3 class="post-title">{{ currentPost.title }}</h3>

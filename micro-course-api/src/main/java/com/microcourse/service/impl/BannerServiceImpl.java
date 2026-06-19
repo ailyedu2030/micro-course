@@ -36,7 +36,7 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BannerVO create(String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled) {
         Banner banner = new Banner();
         banner.setImageUrl(imageUrl);
@@ -50,7 +50,7 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BannerVO update(Long id, String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled) {
         Banner banner = bannerRepository.selectById(id);
         if (banner == null) {
@@ -74,7 +74,7 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Banner banner = bannerRepository.selectById(id);
         if (banner == null) {
@@ -84,7 +84,7 @@ public class BannerServiceImpl implements BannerService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void toggleStatus(Long id, Boolean enabled) {
         Banner banner = bannerRepository.selectById(id);
         if (banner == null) {

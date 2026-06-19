@@ -131,7 +131,7 @@
     </el-card>
 
     <!-- 编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" title="编辑用户" width="600px" @close="handleDialogClose">
+    <el-dialog v-model="dialogVisible" title="编辑用户" width="600px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
         <el-form-item label="账号" prop="username">
           <el-input v-model="formData.username" placeholder="请输入账号" />
@@ -155,7 +155,7 @@
     </el-dialog>
 
     <!-- 批量导入弹窗 -->
-    <el-dialog v-model="batchImportVisible" title="批量导入用户" width="500px">
+    <el-dialog v-model="batchImportVisible" title="批量导入用户" width="500px" :close-on-press-escape="true">
       <div class="batch-import-tip">
         <el-alert type="info" :closable="false" show-icon>
           <template #title>
@@ -189,7 +189,7 @@
     </el-dialog>
 
     <!-- 教师审核弹窗 -->
-    <el-dialog v-model="teacherApprovalVisible" title="教师入驻审核" width="700px" destroy-on-close>
+    <el-dialog v-model="teacherApprovalVisible" title="教师入驻审核" width="700px" destroy-on-close :close-on-press-escape="true">
       <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--space-4)">
         <template #title>
           待审核教师列表。审核通过后，教师将获得创建课程的权限。

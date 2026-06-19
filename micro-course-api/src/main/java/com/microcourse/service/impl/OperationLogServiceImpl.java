@@ -28,7 +28,7 @@ public class OperationLogServiceImpl implements OperationLogService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void log(OperationLog operationLog) {
         // Phase 6: 改为异步记录
         operationLogRepository.insert(operationLog);

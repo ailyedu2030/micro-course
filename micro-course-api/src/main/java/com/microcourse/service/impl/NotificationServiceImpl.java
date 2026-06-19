@@ -24,7 +24,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public NotificationVO send(NotificationCreateRequest request, Long senderId) {
         Notification notification = new Notification();
         notification.setUserId(request.getUserId());
@@ -66,7 +66,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void markAsRead(Long id, Long userId) {
         LambdaUpdateWrapper<Notification> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(Notification::getId, id)
@@ -86,7 +86,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void markAllAsRead(Long userId) {
         Notification notification = new Notification();
         notification.setIsRead(true);

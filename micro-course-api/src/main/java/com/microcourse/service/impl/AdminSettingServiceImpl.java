@@ -49,7 +49,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void update(String key, String value) {
         LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AdminSetting::getSettingKey, key);
@@ -63,7 +63,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateBatch(List<SettingUpdateRequest> settings) {
         LocalDateTime now = LocalDateTime.now();
         for (SettingUpdateRequest req : settings) {
@@ -86,7 +86,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void upsert(String key, String value) {
         LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AdminSetting::getSettingKey, key);

@@ -51,7 +51,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public QuestionVO create(QuestionCreateRequest request) {
         // Owner check: only course teacher or ADMIN can create question
         Course course = courseRepository.selectById(request.getCourseId());
@@ -82,7 +82,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public QuestionVO update(Long id, QuestionUpdateRequest request) {
         Question question = questionRepository.selectById(id);
         if (question == null) {
@@ -128,7 +128,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Question question = questionRepository.selectById(id);
         if (question == null) {
@@ -170,7 +170,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BatchImportResultVO batchImport(MultipartFile file, Long courseId) {
         // 验证课程存在
         Course course = courseRepository.selectById(courseId);

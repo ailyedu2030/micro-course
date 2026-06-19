@@ -145,7 +145,7 @@
     </el-card>
 
     <!-- 章节弹窗 -->
-    <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="500px" @close="handleChapterDialogClose">
+    <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="500px" @close="handleChapterDialogClose" :close-on-press-escape="true">
       <el-form ref="chapterFormRef" :model="chapterFormData" :rules="chapterFormRules" label-width="100px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="chapterFormData.title" placeholder="请输入章节标题" />

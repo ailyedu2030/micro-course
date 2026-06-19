@@ -93,7 +93,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TeachingClassVO create(TeachingClassCreateRequest req) {
         Course course = courseRepository.selectById(req.getCourseId());
         if (course == null) {
@@ -145,7 +145,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public TeachingClassVO update(Long id, TeachingClassUpdateRequest req) {
         TeachingClass tc = teachingClassRepository.selectById(id);
         if (tc == null) {
@@ -200,7 +200,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         TeachingClass tc = teachingClassRepository.selectById(id);
         if (tc == null) {
@@ -248,7 +248,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void addStudent(Long classId, Long userId) {
         TeachingClass tc = teachingClassRepository.selectById(classId);
         if (tc == null) {
@@ -282,7 +282,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void removeStudent(Long classId, Long userId) {
         TeachingClassStudent record = teachingClassStudentRepository.selectList(
                 new LambdaQueryWrapper<TeachingClassStudent>()
@@ -302,7 +302,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateStudentStatus(Long classId, Long userId, String status) {
         TeachingClassStudent record = teachingClassStudentRepository.selectList(
                 new LambdaQueryWrapper<TeachingClassStudent>()

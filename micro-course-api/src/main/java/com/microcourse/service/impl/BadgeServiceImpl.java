@@ -46,7 +46,7 @@ public class BadgeServiceImpl implements BadgeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void checkAndGrantBadges(Long userId) {
         checkFirstCourseBadge(userId);
         checkAllCoursesBadge(userId);
@@ -54,7 +54,7 @@ public class BadgeServiceImpl implements BadgeService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void grantBadge(Long userId, String badgeCode) {
         BadgeDefinition definition = badgeDefinitionRepository.selectByCode(badgeCode);
         if (definition == null) {

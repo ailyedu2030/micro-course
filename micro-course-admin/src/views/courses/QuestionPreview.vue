@@ -2,7 +2,7 @@
   题目预览弹窗组件
 -->
 <template>
-  <el-dialog v-model="visible" title="题目预览" width="600px">
+  <el-dialog v-model="visible" title="题目预览" width="600px" :close-on-press-escape="true">
     <div v-if="question" class="preview-question">
       <h3 class="question-title">{{ question.content }}</h3>
       <div class="question-meta">

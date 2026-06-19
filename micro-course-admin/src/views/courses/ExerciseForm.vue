@@ -73,7 +73,7 @@
     </el-card>
 
     <!-- 题目预览弹窗（逐题分步） -->
-    <el-dialog v-model="previewDialogVisible" title="题目预览" width="650px" @close="handlePreviewClose">
+    <el-dialog v-model="previewDialogVisible" title="题目预览" width="650px" @close="handlePreviewClose" :close-on-press-escape="true">
       <div v-if="currentPreviewQuestion" class="preview-content">
         <div class="preview-progress">
           第 {{ currentPreviewIndex + 1 }} / {{ exerciseQuestions.length }} 题

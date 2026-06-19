@@ -21,7 +21,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PreferenceVO getOrCreate(Long userId) {
         LambdaQueryWrapper<NotificationPreference> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(NotificationPreference::getUserId, userId);
@@ -41,7 +41,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PreferenceVO update(Long userId, PreferenceUpdateRequest request) {
         LambdaQueryWrapper<NotificationPreference> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(NotificationPreference::getUserId, userId);

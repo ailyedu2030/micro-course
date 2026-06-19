@@ -168,7 +168,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public UserVO createUser(UserCreateRequest request) {
         // 密码复杂度校验
         if (!PASSWORD_PATTERN.matcher(request.getPassword()).matches()) {
@@ -198,7 +198,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public UserVO updateUser(Long id, UserUpdateRequest request) {
         User user = userRepository.selectById(id);
         if (user == null || user.getDeletedAt() != null) {
@@ -233,7 +233,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long id, UserStatusRequest request) {
         User user = userRepository.selectById(id);
         if (user == null) {
@@ -282,7 +282,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateTeacherStatus(Long id, TeacherStatusRequest request) {
         User user = userRepository.selectById(id);
         if (user == null) {
@@ -328,7 +328,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public BatchImportResultVO batchImportUsers(MultipartFile file) {
         List<String> errors = new ArrayList<>();
         int successCount = 0;
@@ -427,7 +427,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public String uploadAvatar(Long userId, MultipartFile file) {
         User user = userRepository.selectById(userId);
         if (user == null) {

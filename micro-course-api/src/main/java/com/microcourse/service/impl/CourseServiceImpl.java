@@ -157,7 +157,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CourseVO create(CourseCreateRequest request) {
         // Validate category exists
         if (categoryRepository.selectById(request.getCategoryId()) == null) {
@@ -196,7 +196,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CourseVO update(Long id, CourseUpdateRequest request) {
         Course course = courseRepository.selectById(id);
         if (course == null) {
@@ -245,7 +245,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long id, Integer status) {
         Course course = courseRepository.selectById(id);
         if (course == null) {
@@ -283,7 +283,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void submitForReview(Long id) {
         Course course = courseRepository.selectById(id);
         if (course == null) {
@@ -304,7 +304,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void approve(Long id) {
         Course course = courseRepository.selectById(id);
         if (course == null) {
@@ -325,7 +325,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void reject(Long id, String reason) {
         Course course = courseRepository.selectById(id);
         if (course == null) {
@@ -347,7 +347,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         Course course = courseRepository.selectById(id);
         if (course == null) {
@@ -369,7 +369,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         // 软删除：使用 status=5 (CLOSED/下架) 代替物理删除
         updateStatus(id, CourseStatus.CLOSED.getCode());
@@ -380,7 +380,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CourseVO copy(Long id) {
         Course source = courseRepository.selectById(id);
         if (source == null) {

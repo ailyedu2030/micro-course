@@ -44,7 +44,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CourseReviewVO create(Long courseId, CourseReviewRequest request, Long userId) {
         // 验证用户已选修该课程
         LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
@@ -124,7 +124,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteReview(Long id) {
         CourseReview review = courseReviewRepository.selectById(id);
         if (review == null) {

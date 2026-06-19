@@ -110,12 +110,12 @@
     </el-card>
 
     <!-- 添加/编辑弹窗 -->
-    <el-dialog
+    <el-dialog>
       v-model="formVisible"
       :title="isEdit ? '编辑轮播图' : '添加轮播图'"
       width="600px"
       destroy-on-close
-    >
+     :close-on-press-escape="true"
       <el-form
         ref="formRef"
         :model="form"

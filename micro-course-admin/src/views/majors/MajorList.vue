@@ -72,7 +72,7 @@
     </el-card>
 
     <!-- 弹窗区 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="580px" @close="handleDialogClose">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="580px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-position="top">
         <el-form-item label="名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入专业名称" />

@@ -29,7 +29,7 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void favorite(Long userId, Long courseId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
@@ -52,7 +52,7 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void unfavorite(Long userId, Long courseId) {
         LambdaQueryWrapper<CourseFavorite> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseFavorite::getUserId, userId)
