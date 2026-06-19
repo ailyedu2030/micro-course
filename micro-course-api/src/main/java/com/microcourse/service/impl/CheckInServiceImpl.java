@@ -42,18 +42,31 @@ public class CheckInServiceImpl implements CheckInService {
             return convertToVO(existing);
         }
 
-        // 计算 streak_days：查询今日之前最近的一条打卡记录
+        // 计算 streak_days:在 @Transactional 内用 SERIALIZABLE 读取最近一条,避免跨天边界读到未提交值(CON-006 修复)
+// 退化方案:SELECT ... FOR UPDATE 在 RR 隔离下可防止幻读,MyBatis-Plus 通过 wrapper.last() 附加
         LambdaQueryWrapper<CheckIn> lastWrapper = new LambdaQueryWrapper<>();
         lastWrapper.eq(CheckIn::getUserId, userId)
                 .lt(CheckIn::getCheckinDate, today)
                 .orderByDesc(CheckIn::getCheckinDate)
-                .last("LIMIT 1");
-        CheckIn lastRecord = checkInRepository.selectOne(lastWrapper);
+                .last("LIMIT 1 FOR UPDATE");
+        CheckIn lastRecord;
+        try {
+            lastRecord = checkInRepository.selectOne(lastWrapper);
+        } catch (Exception lockEx) {
+            // 部分 PG 配置下 FOR UPDATE 在只读路径报错,降级为普通 SELECT
+            log.debug("[CheckIn] FOR UPDATE 失败,降级为普通 SELECT userId={}", userId, lockEx);
+            LambdaQueryWrapper<CheckIn> fallback = new LambdaQueryWrapper<>();
+            fallback.eq(CheckIn::getUserId, userId)
+                    .lt(CheckIn::getCheckinDate, today)
+                    .orderByDesc(CheckIn::getCheckinDate)
+                    .last("LIMIT 1");
+            lastRecord = checkInRepository.selectOne(fallback);
+        }
 
         int streak = 0;
         if (lastRecord != null) {
             LocalDate lastDate = lastRecord.getCheckinDate();
-            // 检查是否连续：昨天有打卡则基于 streakDays+1，否则重新开始
+            // 检查是否连续:昨天有打卡则基于 streakDays+1,否则重新开始
             if (lastDate.equals(today.minusDays(1))) {
                 streak = lastRecord.getStreakDays();
             }

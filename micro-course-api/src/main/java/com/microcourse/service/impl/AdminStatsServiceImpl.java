@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.microcourse.dto.CourseTrendVO;
 import com.microcourse.dto.DashboardOverviewVO;
 import com.microcourse.dto.UserTrendVO;
@@ -34,6 +35,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -209,14 +211,25 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getCourseDistribution() {
+        // RES-006 修复:用单次 GROUP BY 替代每状态一次 selectCount
+        List<Map<String, Object>> grouped = courseRepository.selectMaps(
+                new QueryWrapper<Course>()
+                        .select("status", "COUNT(*) AS cnt")
+                        .groupBy("status")
+        );
+        Map<Integer, Long> countByStatus = new HashMap<>();
+        for (Map<String, Object> row : grouped) {
+            Object statusVal = row.get("status");
+            Object cntVal = row.get("cnt");
+            Integer key = statusVal == null ? null : (statusVal instanceof Number n ? n.intValue() : Integer.parseInt(statusVal.toString()));
+            Long cnt = cntVal == null ? 0L : (cntVal instanceof Number n ? n.longValue() : Long.parseLong(cntVal.toString()));
+            if (key != null) countByStatus.put(key, cnt);
+        }
         List<Map<String, Object>> result = new ArrayList<>();
         for (CourseStatus status : CourseStatus.values()) {
-            Long count = courseRepository.selectCount(
-                    new LambdaQueryWrapper<Course>().eq(Course::getStatus, status.getCode())
-            );
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("status", status.name());
-            item.put("count", count);
+            item.put("count", countByStatus.getOrDefault(status.getCode(), 0L));
             result.add(item);
         }
         return result;

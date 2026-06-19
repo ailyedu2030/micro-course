@@ -214,9 +214,13 @@ public class AuthServiceImpl implements AuthService {
         // Step 2: 获取用户信息以清除登录失败计数
         User user = userRepository.selectById(userId);
         if (user != null) {
-            // Step 3: 清除登录失败计数
-            try { redisUtil.clearLoginFailure(user.getUsername()); } catch (Exception ignored) {}
-            log.info("Logout: cleared login failure count for user " + user.getUsername());
+            // Step 3: 清除登录失败计数(ERR-003 修复:即使 Redis 故障也不应静默,需记录便于排查)
+            try {
+                redisUtil.clearLoginFailure(user.getUsername());
+                log.info("Logout: cleared login failure count for user {}", user.getUsername());
+            } catch (Exception e) {
+                log.warn("[Auth] 登出时清除登录失败计数失败 userId={} username={}", userId, user.getUsername(), e);
+            }
 
             // Step 3.5: 记录操作日志
             OperationLog logEntry = new OperationLog();

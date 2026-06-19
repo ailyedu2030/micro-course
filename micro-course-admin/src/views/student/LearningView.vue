@@ -19,7 +19,7 @@
       </div>
       <div class="header-right">
         <!-- 总体进度 -->
-        <div class="progress-indicator" @click="activeTab = 'course'" title="查看课程进度">
+        <div class="progress-indicator" role="button" tabindex="0" aria-label="查看课程进度" @click="activeTab = 'course'" @keydown.enter="activeTab = 'course'" title="查看课程进度">
           <span class="progress-dots">
             <span
               v-for="i in 10"
@@ -96,7 +96,7 @@
             <!-- 自定义控制栏 -->
             <div v-if="currentVideo && !videoLoading" class="video-controls" :class="{ visible: showControls || !isPlaying }">
               <!-- 进度条 -->
-              <div class="progress-wrap" @click="seekVideo" @mousemove="onProgressHover" @mouseleave="hoverTime = null">
+              <div class="progress-wrap" role="slider" tabindex="0" :aria-label="`视频进度 当前 ${Math.round(playPercent)}%`" :aria-valuemin="0" :aria-valuemax="100" :aria-valuenow="Math.round(playPercent)" @click="seekVideo" @mousemove="onProgressHover" @mouseleave="hoverTime = null" @keydown.left.prevent="seekRelative(-5)" @keydown.right.prevent="seekRelative(5)">
                 <div class="progress-track">
                   <div class="progress-buffered" :style="{ width: bufferedPercent + '%' }" />
                   <div class="progress-filled" :style="{ width: playPercent + '%' }" />
@@ -320,14 +320,14 @@
     </div>
 
     <!-- 移动端：底部大纲抽屉触发按钮 -->
-    <div v-if="isMobile && !drawerOpen" class="mobile-drawer-trigger" @click="drawerOpen = true">
+    <div v-if="isMobile && !drawerOpen" class="mobile-drawer-trigger" role="button" tabindex="0" aria-label="打开课程大纲" @click="drawerOpen = true" @keydown.enter="drawerOpen = true">
       <el-icon><List /></el-icon>
       <span>课程大纲</span>
       <span class="trigger-progress">{{ totalProgress }}%</span>
     </div>
 
     <!-- 移动端遮罩层 -->
-    <div v-if="isMobile && drawerOpen" class="drawer-overlay" @click="drawerOpen = false" />
+    <div v-if="isMobile && drawerOpen" class="drawer-overlay" aria-hidden="true" @click="drawerOpen = false" />
   </div>
 </template>
 

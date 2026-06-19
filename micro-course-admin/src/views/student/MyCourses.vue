@@ -98,7 +98,12 @@
               <el-card
                 class="course-card"
                 shadow="hover"
+                role="button"
+                tabindex="0"
+                :aria-label="`继续学习 ${course.title || ''}`"
                 @click="handleContinue(course.courseId)"
+                @keydown.enter="handleContinue(course.courseId)"
+                @keydown.space.prevent="handleContinue(course.courseId)"
               >
                 <!-- 封面 -->
                 <div class="course-cover">
@@ -301,7 +306,12 @@
           :key="course.courseId"
           class="h5-course-card"
           shadow="hover"
+          role="button"
+          tabindex="0"
+          :aria-label="`继续学习 ${course.title || ''}`"
           @click="handleContinue(course.courseId)"
+          @keydown.enter="handleContinue(course.courseId)"
+          @keydown.space.prevent="handleContinue(course.courseId)"
         >
           <!-- 封面 16:9 -->
           <div class="h5-course-cover">

@@ -27,9 +27,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class QuestionServiceImpl implements QuestionService {
+
+    private static final Logger log = LoggerFactory.getLogger(QuestionServiceImpl.class);
 
     private final QuestionRepository questionRepository;
     private final CourseRepository courseRepository;
@@ -245,12 +249,17 @@ public class QuestionServiceImpl implements QuestionService {
                     questionRepository.insert(question);
                     successCount++;
                 } catch (Exception e) {
-                    errors.add("第 " + (i + 1) + " 行：处理失败，请检查数据格式");
+                    // ERR-005 修复:记录真实异常原因,运维可溯源
+                    log.warn("[Question] 批量导入第 {} 行失败", i + 1, e);
+                    String cause = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                    errors.add("第 " + (i + 1) + " 行：" + cause);
                     failCount++;
                 }
             }
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Excel 解析失败");
+            // 透传原始异常 cause 便于追踪
+            log.error("[Question] Excel 解析失败", e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Excel 解析失败: " + e.getMessage(), e);
         } finally {
             if (reader != null) {
                 reader.close();

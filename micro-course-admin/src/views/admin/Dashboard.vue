@@ -185,7 +185,7 @@
               <div v-if="trendsError" class="chart-error">
                 <span>加载失败</span>
               </div>
-              <div v-else ref="trendsChartRef" class="chart-container"></div>
+              <div v-else ref="trendsChartRef" class="chart-container" role="img" aria-label="核心指标趋势图表,展示用户与课程增长趋势"></div>
             </template>
           </el-skeleton>
         </el-card>
@@ -202,7 +202,7 @@
               <div v-if="categoryError" class="chart-error">
                 <span>加载失败</span>
               </div>
-              <div v-else ref="categoryChartRef" class="chart-container"></div>
+              <div v-else ref="categoryChartRef" class="chart-container" role="img" aria-label="课程分类分布饼图"></div>
             </template>
           </el-skeleton>
         </el-card>
@@ -223,7 +223,7 @@
               <div v-if="activityError" class="chart-error">
                 <span>加载失败</span>
               </div>
-              <div v-else ref="activityChartRef" class="chart-container"></div>
+              <div v-else ref="activityChartRef" class="chart-container" role="img" aria-label="最近30天活跃用户趋势图"></div>
             </template>
           </el-skeleton>
         </el-card>

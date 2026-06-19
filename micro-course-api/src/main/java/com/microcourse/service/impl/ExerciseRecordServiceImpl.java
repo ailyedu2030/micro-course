@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -126,16 +127,19 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         // 5. 计算总分，判断是否通过
         boolean passed = totalScore >= exercise.getPassScore();
 
-        // 6. 查当前用户第几次答题(使用重试缓解并发竞态,DB UNIQUE(user_id,exercise_id,attempt_no) 兜底)
+        // 6. 计算 attemptNo:用 MAX(attempt_no) 在事务内获取当前最大值 +1,并捕获 DuplicateKeyException 兜底(CON-004 修复)
         int attemptNo;
         try {
-            LambdaQueryWrapper<ExerciseRecord> countWrapper = new LambdaQueryWrapper<>();
-            countWrapper.eq(ExerciseRecord::getUserId, request.getUserId())
-                    .eq(ExerciseRecord::getExerciseId, request.getExerciseId());
-            long existingCount = exerciseRecordRepository.selectCount(countWrapper);
-            attemptNo = (int) existingCount + 1;
+            QueryWrapper<ExerciseRecord> maxWrapper = new QueryWrapper<>();
+            maxWrapper.eq("user_id", request.getUserId())
+                    .eq("exercise_id", request.getExerciseId())
+                    .select("COALESCE(MAX(attempt_no), 0) AS max_no");
+            Map<String, Object> maxRow = exerciseRecordRepository.selectMaps(maxWrapper).stream()
+                    .findFirst().orElse(java.util.Collections.singletonMap("max_no", 0));
+            Object maxVal = maxRow.get("max_no");
+            long currentMax = (maxVal instanceof Number n) ? n.longValue() : 0L;
+            attemptNo = (int) currentMax + 1;
         } catch (Exception e) {
-            // 最坏情况下,计算失败也不阻止提交(attempt_no 仅为展示)
             log.warn("[ExerciseRecord] attemptNo 计算失败,使用默认值 1", e);
             attemptNo = 1;
         }
@@ -201,7 +205,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                                 .setSql("wrong_count = wrong_count + 1")
                                 .setSql("last_wrong_at = NOW()"));
             }
-            // 插入不存在的
+            // 插入不存在的 — 捕获 DuplicateKeyException 避免并发时整事务回滚(CON-005 修复)
             wrongQuestionIds.stream()
                     .filter(qid -> !existingIds.contains(qid))
                     .forEach(qid -> {
@@ -212,7 +216,18 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                         wq.setWrongCount(1);
                         wq.setLastWrongAt(LocalDateTime.now());
                         wq.setCreatedAt(LocalDateTime.now());
-                        wrongQuestionRepository.insert(wq);
+                        try {
+                            wrongQuestionRepository.insert(wq);
+                        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
+                            // 并发插入:对端已先插入成功,转为原子 UPDATE +1 兜底
+                            log.debug("[WrongQuestion] 并发命中唯一约束,转为原子累加 userId={} qId={}", request.getUserId(), qid);
+                            wrongQuestionRepository.update(null,
+                                    new LambdaUpdateWrapper<WrongQuestion>()
+                                            .eq(WrongQuestion::getUserId, request.getUserId())
+                                            .eq(WrongQuestion::getQuestionId, qid)
+                                            .setSql("wrong_count = wrong_count + 1")
+                                            .setSql("last_wrong_at = NOW()"));
+                        }
                     });
         }
 
@@ -312,6 +327,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             try {
                 return objectMapper.readValue(trimmed, List.class);
             } catch (JsonProcessingException e) {
+                // ERR-006 修复:不再静默吞掉,记录日志便于排查数据异常
+                log.warn("[ExerciseRecord] 答案 JSON 解析失败,降级为空列表 answer={}", answer, e);
                 return Collections.emptyList();
             }
         }

@@ -83,6 +83,12 @@ public class CertificateServiceImpl implements CertificateService {
             ? cert.getIssuedAt().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日"))
             : "";
 
+        // SEC-001 修复:对所有 DB 来源字符串做 HTML 转义,防止教师/课程名中嵌入 <script> 注入
+        String safeCourseTitle = htmlEscape(cert.getCourseTitle());
+        String safeTeacherName = htmlEscape(cert.getTeacherName() != null ? cert.getTeacherName() : "教师");
+        String safeCertCode = htmlEscape(cert.getCertCode());
+        String safeIssuedDate = htmlEscape(issuedDateStr);
+
         return """
             <!DOCTYPE html>
             <html lang="zh-CN">
@@ -256,12 +262,32 @@ public class CertificateServiceImpl implements CertificateService {
             </body>
             </html>
             """.formatted(
-                cert.getCourseTitle(),
-                cert.getCourseTitle(),
-                cert.getTeacherName() != null ? cert.getTeacherName() : "教师",
-                issuedDateStr,
-                cert.getCertCode()
+                safeCourseTitle,
+                safeCourseTitle,
+                safeTeacherName,
+                safeIssuedDate,
+                safeCertCode
             );
+    }
+
+    /**
+     * SEC-001 HTML 转义工具:将 & < > " ' 替换为对应实体,防止证书 HTML 注入
+     */
+    private static String htmlEscape(String input) {
+        if (input == null) return "";
+        StringBuilder sb = new StringBuilder(input.length() + 16);
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            switch (c) {
+                case '&': sb.append("&amp;"); break;
+                case '<': sb.append("&lt;"); break;
+                case '>': sb.append("&gt;"); break;
+                case '"': sb.append("&quot;"); break;
+                case '\'': sb.append("&#39;"); break;
+                default: sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     @Override

@@ -176,12 +176,16 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public List<EnrollmentRankingVO> getCourseRanking(Long courseId, int limit, Long currentUserId) {
+        // DF-001 修复:用 MyBatis-Plus Page 参数化分页,避免字符串拼接造成注入风险
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Enrollment> page =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, Math.max(1, Math.min(limit, 100)));
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Enrollment::getCourseId, courseId)
                 .eq(Enrollment::getEnrollmentStatus, "ENROLLED")
-                .orderByDesc(Enrollment::getProgress)
-                .last("LIMIT " + limit);
-        List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
+                .orderByDesc(Enrollment::getProgress);
+        com.baomidou.mybatisplus.core.metadata.IPage<Enrollment> paged =
+                enrollmentRepository.selectPage(page, wrapper);
+        List<Enrollment> enrollments = paged.getRecords();
 
         java.util.Set<Long> userIds = enrollments.stream()
                 .map(Enrollment::getUserId)

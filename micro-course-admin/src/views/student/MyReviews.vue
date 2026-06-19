@@ -127,7 +127,13 @@
             :key="item.id"
             class="filter-chip"
             :class="{ active: filterCourseId === item.id }"
+            role="button"
+            tabindex="0"
+            :aria-pressed="filterCourseId === item.id"
+            :aria-label="`筛选课程 ${item.title}`"
             @click="handleChipClick(item.id)"
+            @keydown.enter="handleChipClick(item.id)"
+            @keydown.space.prevent="handleChipClick(item.id)"
           >
             {{ item.title }}
           </span>
@@ -201,6 +207,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getReviews, getMyReviews } from '@/api/course-review'
+import { deleteReview } from '@/api/review'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
@@ -282,10 +289,13 @@ const handleDelete = async (row) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
+    // R1 P0 修复:必须真实调用删除 API
+    await deleteReview(row.id)
     ElMessage.success('评价已删除')
     fetchMyReviews()
-  } catch {
-    // 用户取消
+  } catch (err) {
+    if (err === 'cancel') return
+    ElMessage.error('删除评价失败,请稍后重试')
   }
 }
 

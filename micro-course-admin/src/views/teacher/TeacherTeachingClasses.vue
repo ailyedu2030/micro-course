@@ -67,7 +67,7 @@
                   class="class-item"
                   :class="{ 'is-expanded': expandedClassId === cls.id }"
                 >
-                  <div class="class-summary" @click="handleExpandClass(cls)">
+                  <div class="class-summary" role="button" tabindex="0" :aria-label="`展开班级详情 ${cls.name}`" :aria-expanded="expandedClassId === cls.id" @click="handleExpandClass(cls)" @keydown.enter="handleExpandClass(cls)" @keydown.space.prevent="handleExpandClass(cls)">
                     <div class="class-info">
                       <span class="class-name">{{ cls.name }}</span>
                       <el-tag :type="getStatusType(cls.status)" size="small" class="status-tag">

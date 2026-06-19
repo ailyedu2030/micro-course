@@ -24,7 +24,7 @@
     <!-- 快捷入口 -->
     <el-row :gutter="16" class="quick-actions-row">
       <el-col v-for="action in quickActions" :key="action.label" :xs="12" :sm="6">
-        <el-card class="quick-action-card" shadow="hover" @click="handleQuickAction(action)">
+        <el-card class="quick-action-card" shadow="hover" role="button" tabindex="0" :aria-label="`快速操作 ${action.label}`" @click="handleQuickAction(action)" @keydown.enter="handleQuickAction(action)" @keydown.space.prevent="handleQuickAction(action)">
           <div class="quick-action-inner">
             <div class="quick-action-icon" :style="{ background: action.bg, color: action.color }">
               <el-icon :size="22"><component :is="action.icon" /></el-icon>

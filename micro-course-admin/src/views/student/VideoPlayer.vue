@@ -187,7 +187,7 @@
             </transition>
 
             <!-- Center Play Button (when paused) -->
-            <div v-if="!isPlaying && !isBuffering && !loading" class="center-play-btn" @click="togglePlay">
+            <div v-if="!isPlaying && !isBuffering && !loading" class="center-play-btn" role="button" tabindex="0" aria-label="播放视频" @click="togglePlay" @keydown.enter="togglePlay" @keydown.space.prevent="togglePlay">
               <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3"/>
               </svg>
@@ -218,7 +218,7 @@
             <!-- Custom Controls -->
             <div class="video-controls" :class="{ visible: controlsVisible || !isPlaying }">
               <!-- Progress Bar -->
-              <div class="progress-track" @click="seekVideo" ref="progressTrack">
+              <div class="progress-track" role="slider" tabindex="0" :aria-label="`视频进度条 当前 ${Math.round(progressPercent)}%`" :aria-valuemin="0" :aria-valuemax="100" :aria-valuenow="Math.round(progressPercent)" @click="seekVideo" ref="progressTrack" @keydown.left.prevent="seekRelative(-5)" @keydown.right.prevent="seekRelative(5)">
                 <div class="progress-buffer" :style="{ width: bufferedPercent + '%' }"></div>
                 <div class="progress-played" :style="{ width: progressPercent + '%' }">
                   <div class="progress-thumb"></div>
@@ -414,7 +414,7 @@
             <el-tab-pane label="笔记" name="notes">
               <div class="tab-content notes-tab">
                 <div class="note-input-row">
-                  <span class="note-time-btn" @click="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
+                  <span class="note-time-btn" role="button" tabindex="0" aria-label="在当前时间点插入笔记" @click="insertNoteAtCurrentTime" @keydown.enter="insertNoteAtCurrentTime" @keydown.space.prevent="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
                   <el-input
                     v-model="noteText"
                     placeholder="添加笔记..."
@@ -431,7 +431,7 @@
                   @mouseenter="highlightTime(note.time)"
                   @mouseleave="highlightTime(null)"
                 >
-                  <span class="note-time" @click="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-time" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
                   <span class="note-content">{{ note.content }}</span>
                   <el-button link size="small" @click="deleteNote(note.id)">删除</el-button>
                 </div>
@@ -489,7 +489,7 @@
             <el-tab-pane label="笔记" name="notes">
               <div class="tab-content notes-tab h5-notes">
                 <div class="note-input-row">
-                  <span class="note-time-btn" @click="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
+                  <span class="note-time-btn" role="button" tabindex="0" aria-label="在当前时间点插入笔记" @click="insertNoteAtCurrentTime" @keydown.enter="insertNoteAtCurrentTime" @keydown.space.prevent="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
                   <el-input
                     v-model="noteText"
                     placeholder="添加笔记..."
@@ -504,7 +504,7 @@
                   :key="note.id"
                   class="note-item h5-note-item"
                 >
-                  <span class="note-time" @click="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-time" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
                   <span class="note-content">{{ note.content }}</span>
                 </div>
               </div>
