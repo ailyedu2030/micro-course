@@ -15,7 +15,7 @@ public interface QuestionService {
 
     void delete(Long id);
 
-    PageResult<QuestionVO> page(Integer courseId, String questionType, Integer difficulty, Integer page, Integer size);
+    PageResult<QuestionVO> page(Long courseId, String questionType, Integer difficulty, Integer page, Integer size);
 
     QuestionVO getById(Long id);
 

@@ -64,11 +64,20 @@ public class VideoServiceImpl implements VideoService {
         if (!courseIds.isEmpty()) {
             courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
         }
+        // MISC-NEW-2 修复:批量预加载 chapter,避免 N+1
+        Map<Long, CourseChapter> chapterMap = new HashMap<>();
+        Set<Long> chapterIds = ipage.getRecords().stream()
+                .map(Video::getChapterId).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (!chapterIds.isEmpty()) {
+            chapterRepository.selectBatchIds(chapterIds).forEach(ch -> chapterMap.put(ch.getId(), ch));
+        }
         final Map<Long, Course> finalCourseMap = courseMap;
+        final Map<Long, CourseChapter> finalChapterMap = chapterMap;
 
         PageResult<VideoVO> result = new PageResult<>();
         result.setItems(ipage.getRecords().stream()
-                .map(v -> convertToVO(v, finalCourseMap)).toList());
+                .map(v -> convertToVO(v, finalCourseMap, finalChapterMap)).toList());
         result.setPage(page);
         result.setSize(size);
         result.setTotalElements(ipage.getTotal());
@@ -259,6 +268,10 @@ public class VideoServiceImpl implements VideoService {
     }
 
     private VideoVO convertToVO(Video video, Map<Long, Course> courseMap) {
+        return convertToVO(video, courseMap, null);
+    }
+
+    private VideoVO convertToVO(Video video, Map<Long, Course> courseMap, Map<Long, CourseChapter> chapterMap) {
         VideoVO vo = new VideoVO();
         vo.setId(video.getId());
         vo.setChapterId(video.getChapterId());
@@ -290,9 +303,12 @@ public class VideoServiceImpl implements VideoService {
             }
         }
 
-        // Load chapter name
+        // Load chapter name(MISC-NEW-2:优先用预加载 Map,fallback selectById)
         if (video.getChapterId() != null) {
-            CourseChapter chapter = chapterRepository.selectById(video.getChapterId());
+            CourseChapter chapter = chapterMap != null ? chapterMap.get(video.getChapterId()) : null;
+            if (chapter == null) {
+                chapter = chapterRepository.selectById(video.getChapterId());
+            }
             if (chapter != null) {
                 vo.setChapterName(chapter.getTitle());
             }

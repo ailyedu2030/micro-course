@@ -5,6 +5,7 @@ import com.microcourse.dto.DiscussionPostVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.DiscussionPostService;
+import com.microcourse.util.SecurityUtil;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -82,7 +83,8 @@ public class DiscussionAdminController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
-        postService.delete(id, null);
+        // DISC-NEW-1 修复:传入真实 userId,避免 Service 层 userId=null 导致权限校验失败
+        postService.delete(id, SecurityUtil.getCurrentUserId());
         return R.ok();
     }
 }

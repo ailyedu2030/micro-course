@@ -27,20 +27,20 @@ public class QuestionController {
         this.questionService = questionService;
     }
 
-    @GetMapping
-    @PreAuthorize("isAuthenticated()")
+@GetMapping
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<QuestionVO>> page(
-            @RequestParam(required = false) Integer courseId,
+            @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) String questionType,
             @RequestParam(required = false) Integer difficulty,
-            @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 200) Integer size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, page, size);
         return R.ok(result);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<QuestionVO> getById(@PathVariable Long id) {
         QuestionVO vo = questionService.getById(id);
         return R.ok(vo);

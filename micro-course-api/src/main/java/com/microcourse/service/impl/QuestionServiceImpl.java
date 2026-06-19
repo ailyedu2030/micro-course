@@ -140,7 +140,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    public PageResult<QuestionVO> page(Integer courseId, String questionType, Integer difficulty, Integer page, Integer size) {
+    public PageResult<QuestionVO> page(Long courseId, String questionType, Integer difficulty, Integer page, Integer size) {
         LambdaQueryWrapper<Question> wrapper = new LambdaQueryWrapper<>();
         if (courseId != null) {
             wrapper.eq(Question::getCourseId, courseId);

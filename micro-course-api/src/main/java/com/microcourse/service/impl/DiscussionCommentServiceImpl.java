@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.CommentCreateRequest;
 import com.microcourse.dto.DiscussionCommentVO;
 import com.microcourse.entity.DiscussionComment;
@@ -125,9 +126,12 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         if (comment == null || comment.getStatus() == 0) {
             throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
         }
-        comment.setLikeCount(comment.getLikeCount() != null ? comment.getLikeCount() + 1 : 1);
-        comment.setUpdatedAt(LocalDateTime.now());
-        commentRepository.updateById(comment);
+        // DISC-NEW-2 修复:原子 SQL 累加,避免并发丢失更新
+        commentRepository.update(null,
+                new LambdaUpdateWrapper<DiscussionComment>()
+                        .eq(DiscussionComment::getId, id)
+                        .setSql("like_count = COALESCE(like_count, 0) + 1")
+                        .set(DiscussionComment::getUpdatedAt, LocalDateTime.now()));
     }
 
     @Override
