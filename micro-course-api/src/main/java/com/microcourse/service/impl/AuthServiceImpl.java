@@ -132,7 +132,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserVO getCurrentUser() {
         // Phase 3.1: 从 SecurityContextHolder 获取当前 userId
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+        Object principal = authentication.getPrincipal();
         if (principal == null) {
             throw new BusinessException(ErrorCode.TOKEN_INVALID);
         }
@@ -350,7 +354,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private Long getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+        Object principal = authentication.getPrincipal();
         if (principal == null) {
             throw new BusinessException(ErrorCode.TOKEN_INVALID);
         }

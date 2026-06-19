@@ -170,8 +170,9 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         vo.setLikeCount(post.getLikeCount());
         vo.setCreatedAt(post.getCreatedAt());
 
-        // status: Integer → String
-        String statusStr = switch (post.getStatus()) {
+        // status: Integer → String (防御 null 值 NPE)
+        int statusCode = post.getStatus() != null ? post.getStatus() : 0;
+        String statusStr = switch (statusCode) {
             case 0 -> "PENDING";
             case 1 -> "PUBLISHED";
             case 2 -> "DELETED";

@@ -92,13 +92,13 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         comment.setUpdatedAt(LocalDateTime.now());
         commentRepository.insert(comment);
 
-        // increment comment_count on discussion_posts
-        DiscussionPost post = postRepository.selectById(req.getPostId());
-        if (post != null) {
-            post.setCommentCount(post.getCommentCount() != null ? post.getCommentCount() + 1 : 1);
-            post.setUpdatedAt(LocalDateTime.now());
-            postRepository.updateById(post);
-        }
+        // 原子 SQL 增量 comment_count，避免并发读-改-写丢失更新
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<DiscussionPost> postUpdateWrapper =
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        postUpdateWrapper.eq(DiscussionPost::getId, req.getPostId())
+                .setSql("comment_count = COALESCE(comment_count, 0) + 1")
+                .set(DiscussionPost::getUpdatedAt, LocalDateTime.now());
+        postRepository.update(null, postUpdateWrapper);
 
         return convertToVO(comment);
     }

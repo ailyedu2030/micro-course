@@ -206,6 +206,14 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         String correctAnswer = question.getAnswer();
         boolean isCorrect;
 
+        // P0 防御: correctAnswer 为 null 时视为未设置标准答案,标记为待人工批改
+        if (correctAnswer == null) {
+            result.score = 0;
+            result.isCorrect = null;
+            result.needsManualGrading = true;
+            return result;
+        }
+
         String qType = normalizeQuestionType(question.getQuestionType());
         switch (qType) {
             case "SINGLE":

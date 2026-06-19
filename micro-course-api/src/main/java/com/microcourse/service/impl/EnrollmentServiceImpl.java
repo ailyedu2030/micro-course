@@ -472,7 +472,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     private Long getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+        Object principal = authentication.getPrincipal();
         if (principal instanceof Long) return (Long) principal;
         throw new BusinessException(ErrorCode.TOKEN_INVALID);
     }

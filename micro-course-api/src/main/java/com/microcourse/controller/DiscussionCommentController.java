@@ -56,6 +56,6 @@ public class DiscussionCommentController {
         if (principal instanceof Long) {
             return (Long) principal;
         }
-        return null;
+        throw new com.microcourse.exception.BusinessException(com.microcourse.exception.ErrorCode.TOKEN_INVALID);
     }
 }
