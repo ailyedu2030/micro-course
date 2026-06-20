@@ -20,7 +20,7 @@
 
       <!-- 骨架屏加载 -->
       <div v-if="loading" class="settings-groups">
-        <el-card v-for="n in 4" :key="n" class="settings-card" shadow="never">
+        <el-card v-for="n in 4" :key="n" class="settings-card student-card-item" shadow="never">
           <el-skeleton animated :rows="3" />
         </el-card>
       </div>
@@ -34,7 +34,7 @@
 
       <div v-else class="settings-groups">
         <!-- 播放设置 -->
-        <el-card class="settings-card" shadow="never">
+        <el-card class="settings-card student-card-item" shadow="never">
           <template #header>
             <div class="card-header">
               <el-icon class="card-icon"><VideoPlay /></el-icon>
@@ -64,7 +64,7 @@
         </el-card>
 
         <!-- 通知设置 -->
-        <el-card class="settings-card" shadow="never">
+        <el-card class="settings-card student-card-item" shadow="never">
           <template #header>
             <div class="card-header">
               <el-icon class="card-icon"><Bell /></el-icon>
@@ -92,7 +92,7 @@
         </el-card>
 
         <!-- 隐私设置 -->
-        <el-card class="settings-card" shadow="never">
+        <el-card class="settings-card student-card-item" shadow="never">
           <template #header>
             <div class="card-header">
               <el-icon class="card-icon"><Lock /></el-icon>
@@ -120,7 +120,7 @@
         </el-card>
 
         <!-- 辅助功能 -->
-        <el-card class="settings-card" shadow="never">
+        <el-card class="settings-card student-card-item" shadow="never">
           <template #header>
             <div class="card-header">
               <el-icon class="card-icon"><Setting /></el-icon>

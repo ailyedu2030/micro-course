@@ -426,7 +426,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 .bc-current { color: #333; }
 
 /* ====== Hero Card ====== */
-.hero-card { margin-top: 16px; background: #fff; border-radius: 8px; display: flex; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.hero-card { margin-top: 20px; margin-bottom: 4px; background: #fff; border-radius: 12px; display: flex; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 .hero-left { width: 480px; flex-shrink: 0; }
 .hero-img-box { width: 100%; height: 270px; background: #f0f0f0; position: relative; cursor: pointer; }
 .hero-img-box:hover .hero-play-btn:not(.loading) { transform: translate(-50%,-50%) scale(1.1); background: rgba(0,0,0,.8); }
@@ -450,8 +450,8 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 .hero-close-player:hover { background: rgba(0,0,0,.85); }
 .loading-icon { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.hero-right { flex: 1; padding: 32px; display: flex; flex-direction: column; }
-.hero-title { font-size: 24px; font-weight: 600; color: #333; margin: 0 0 12px; line-height: 1.4; }
+.hero-right { flex: 1; padding: 36px 40px; display: flex; flex-direction: column; }
+.hero-title { font-size: 26px; font-weight: 700; color: #222; margin: 0 0 14px; line-height: 1.4; letter-spacing: 0.3px; }
 .hero-subtitle { font-size: 14px; color: #666; margin: 0 0 16px; line-height: 1.6; }
 .hero-tags { display: flex; gap: 8px; margin-bottom: 16px; }
 .hero-stats { display: flex; gap: 24px; align-items: center; font-size: 14px; color: #666; margin-bottom: 20px; }
@@ -474,7 +474,8 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 .detail-side { width: 300px; flex-shrink: 0; }
 
 /* ====== Section Card ====== */
-.section-card { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.section-card { background: #fff; border-radius: 10px; padding: 28px; margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.04); transition: transform .2s ease, box-shadow .2s ease; }
+.section-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.08); }
 .section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
 .section-title { font-size: 18px; font-weight: 600; color: #333; margin: 0; }
 .section-count { font-size: 13px; color: #999; margin-left: auto; }

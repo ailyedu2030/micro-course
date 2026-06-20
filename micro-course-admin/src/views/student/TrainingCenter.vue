@@ -28,10 +28,10 @@
 
     <!-- 课程列表 -->
     <div v-else class="course-list">
-      <el-card v-for="enr in enrollments" :key="enr.courseId" class="course-card" shadow="hover">
+        <el-card v-for="enr in enrollments" :key="enr.courseId" class="course-card student-card-item" shadow="hover">
         <div class="course-header">
           <h3>{{ enr.courseName }}</h3>
-          <el-progress :percentage="Math.round(enr.progress || 0)" :stroke-width="8" />
+          <el-progress :percentage="Math.round(enr.progress || 0)" :stroke-width="8" class="student-progress" />
         </div>
         <el-scrollbar class="chapter-scrollbar">
           <div class="chapter-list">

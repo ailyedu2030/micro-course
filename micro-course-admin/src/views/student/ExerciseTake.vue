@@ -27,7 +27,7 @@
         <el-card
           v-for="ex in exerciseList"
           :key="ex.id"
-          class="exercise-card"
+          class="exercise-card student-card-item"
           shadow="never"
         >
           <div class="card-body">
@@ -63,7 +63,7 @@
         <el-card
           v-for="ex in exerciseList"
           :key="ex.id"
-          class="exercise-card"
+          class="exercise-card student-card-item"
           shadow="never"
         >
           <div class="card-body">

@@ -9,7 +9,7 @@
     <!-- ========== PC 布局 (≥769px) ========== -->
     <div v-if="!isMobile" class="pc-layout">
       <!-- 欢迎栏 -->
-      <div class="welcome-bar">
+      <div class="welcome-bar student-welcome">
         <div class="welcome-left">
           <span class="welcome-text">你好，{{ username }}</span>
         </div>
@@ -45,30 +45,30 @@
 
       <!-- 3 个动画统计卡片 -->
       <div class="highlight-stats-row">
-        <el-card class="highlight-stat-card hl-primary" shadow="hover">
+        <el-card class="highlight-stat-card hl-primary student-stat-card" shadow="hover">
           <div class="hl-stat-icon-wrap hl-bg-primary">
             <el-icon :size="28"><Reading /></el-icon>
           </div>
           <div class="hl-stat-body">
-            <div class="hl-stat-value">{{ animatedInProgress }}</div>
+            <div class="hl-stat-value stat-number">{{ animatedInProgress }}</div>
             <div class="hl-stat-label">进行中课程</div>
           </div>
         </el-card>
-        <el-card class="highlight-stat-card hl-success" shadow="hover">
+        <el-card class="highlight-stat-card hl-success student-stat-card" shadow="hover">
           <div class="hl-stat-icon-wrap hl-bg-success">
             <el-icon :size="28"><CircleCheck /></el-icon>
           </div>
           <div class="hl-stat-body">
-            <div class="hl-stat-value">{{ animatedCompleted }}</div>
+            <div class="hl-stat-value stat-number">{{ animatedCompleted }}</div>
             <div class="hl-stat-label">已完成课程</div>
           </div>
         </el-card>
-        <el-card class="highlight-stat-card hl-warning" shadow="hover">
+        <el-card class="highlight-stat-card hl-warning student-stat-card" shadow="hover">
           <div class="hl-stat-icon-wrap hl-bg-warning">
             <el-icon :size="28"><Calendar /></el-icon>
           </div>
           <div class="hl-stat-body">
-            <div class="hl-stat-value">{{ animatedDays }}</div>
+            <div class="hl-stat-value stat-number">{{ animatedDays }}</div>
             <div class="hl-stat-label">累计学习天数</div>
           </div>
         </el-card>
@@ -79,7 +79,7 @@
         <div
           v-for="entry in quickEntries"
           :key="entry.path"
-          class="quick-entry-item"
+          class="quick-entry-item student-card-item"
           @click="navigateTo(entry.path)"
         >
           <div class="quick-entry-icon" :style="{ backgroundColor: entry.color + '15', color: entry.color }">
@@ -90,34 +90,34 @@
       </div>
 
       <!-- 骨架屏 -->
-      <div v-if="loading" class="stats-row">
-        <el-card v-for="i in 4" :key="i" class="stat-card" shadow="hover">
+      <div v-if="loading" class="stats-row student-stats-row">
+        <el-card v-for="i in 4" :key="i" class="stat-card student-stat-card" shadow="hover">
           <el-skeleton :rows="1" animated />
         </el-card>
       </div>
 
       <!-- 4 统计卡片 -->
-      <div v-else class="stats-row">
+      <div v-else class="stats-row student-stats-row">
         <div class="stat-card">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.totalHours }}</div>
             <div class="stat-card-label">累计学习时长</div>
           </el-card>
         </div>
         <div class="stat-card">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.completedCourses }}</div>
             <div class="stat-card-label">已完成课程</div>
           </el-card>
         </div>
         <div class="stat-card">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.certificates }}</div>
             <div class="stat-card-label">获得证书</div>
           </el-card>
         </div>
         <div class="stat-card">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.studyDays }}</div>
             <div class="stat-card-label">累计天数</div>
           </el-card>
@@ -188,7 +188,7 @@
       <div class="chart-calendar-row">
         <!-- 本周学习 -->
         <div class="chart-section">
-          <el-card shadow="hover" class="chart-card">
+          <el-card shadow="hover" class="chart-card student-card-item">
             <template #header>
               <div class="card-header-title">本周学习时长</div>
             </template>
@@ -203,7 +203,7 @@
 
         <!-- 学习日历 -->
         <div class="calendar-section">
-          <el-card shadow="hover" class="calendar-card">
+          <el-card shadow="hover" class="calendar-card student-card-item">
             <template #header>
               <div class="card-header-title">学习日历（近30天）</div>
             </template>
@@ -290,36 +290,36 @@
     <!-- ========== H5 布局 (≤768px) ========== -->
     <div v-else class="h5-layout">
       <!-- 欢迎栏 -->
-      <div class="welcome-bar h5-welcome">
+      <div class="welcome-bar h5-welcome student-welcome">
         <span class="welcome-text">你好，{{ username }}</span>
       </div>
 
       <!-- 3 个动画统计卡片 (H5) -->
       <div class="highlight-stats-row h5-highlight-stats">
-        <el-card class="highlight-stat-card hl-primary" shadow="hover">
+        <el-card class="highlight-stat-card hl-primary student-stat-card" shadow="hover">
           <div class="hl-stat-icon-wrap hl-bg-primary">
             <el-icon :size="22"><Reading /></el-icon>
           </div>
           <div class="hl-stat-body">
-            <div class="hl-stat-value">{{ animatedInProgress }}</div>
+            <div class="hl-stat-value stat-number">{{ animatedInProgress }}</div>
             <div class="hl-stat-label">进行中</div>
           </div>
         </el-card>
-        <el-card class="highlight-stat-card hl-success" shadow="hover">
+        <el-card class="highlight-stat-card hl-success student-stat-card" shadow="hover">
           <div class="hl-stat-icon-wrap hl-bg-success">
             <el-icon :size="22"><CircleCheck /></el-icon>
           </div>
           <div class="hl-stat-body">
-            <div class="hl-stat-value">{{ animatedCompleted }}</div>
+            <div class="hl-stat-value stat-number">{{ animatedCompleted }}</div>
             <div class="hl-stat-label">已完成</div>
           </div>
         </el-card>
-        <el-card class="highlight-stat-card hl-warning" shadow="hover">
+        <el-card class="highlight-stat-card hl-warning student-stat-card" shadow="hover">
           <div class="hl-stat-icon-wrap hl-bg-warning">
             <el-icon :size="22"><Calendar /></el-icon>
           </div>
           <div class="hl-stat-body">
-            <div class="hl-stat-value">{{ animatedDays }}</div>
+            <div class="hl-stat-value stat-number">{{ animatedDays }}</div>
             <div class="hl-stat-label">学习天数</div>
           </div>
         </el-card>
@@ -330,7 +330,7 @@
         <div
           v-for="entry in quickEntries"
           :key="entry.path"
-          class="quick-entry-item"
+          class="quick-entry-item student-card-item"
           @click="navigateTo(entry.path)"
         >
           <div class="quick-entry-icon" :style="{ backgroundColor: entry.color + '15', color: entry.color }">
@@ -341,34 +341,34 @@
       </div>
 
       <!-- 骨架屏 -->
-      <div v-if="loading" class="stats-row h5-stats">
-        <el-card v-for="i in 4" :key="i" class="stat-card" shadow="hover">
+      <div v-if="loading" class="stats-row h5-stats student-stats-row">
+        <el-card v-for="i in 4" :key="i" class="stat-card student-stat-card" shadow="hover">
           <el-skeleton :rows="1" animated />
         </el-card>
       </div>
 
       <!-- 4 统计卡片 (2×2) -->
-      <div v-else class="stats-row h5-stats">
+      <div v-else class="stats-row h5-stats student-stats-row">
         <div class="stat-card">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.totalHours }}</div>
             <div class="stat-card-label">累计学习时长</div>
           </el-card>
         </div>
         <div class="stat-card">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.completedCourses }}</div>
             <div class="stat-card-label">已完成课程</div>
           </el-card>
         </div>
         <div class="stat-card">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.certificates }}</div>
             <div class="stat-card-label">获得证书</div>
           </el-card>
         </div>
         <div class="stat-card">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.studyDays }}</div>
             <div class="stat-card-label">累计天数</div>
           </el-card>
@@ -423,7 +423,7 @@
 
       <!-- 本周学习 -->
       <div class="chart-section h5-chart">
-        <el-card shadow="hover" class="chart-card">
+        <el-card shadow="hover" class="chart-card student-card-item">
           <template #header>
             <div class="card-header-title">本周学习时长</div>
           </template>
@@ -1146,6 +1146,50 @@ onUnmounted(() => {
   font-weight: var(--weight-medium);
 }
 
+/* student-welcome 渐变欢迎栏覆盖（scoped 优先级高于全局，需重写） */
+.welcome-bar.student-welcome {
+  background: linear-gradient(135deg, var(--role-primary-darkest), var(--role-primary));
+  color: #fff;
+  border-radius: var(--radius-xl);
+  padding: var(--space-6) var(--space-7);
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-bar.student-welcome .welcome-text {
+  color: #fff;
+  font-size: var(--text-2xl);
+}
+
+.welcome-bar.student-welcome .badge-date,
+.welcome-bar.student-welcome .badge-weather,
+.welcome-bar.student-welcome .badge-motto {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.welcome-bar.student-welcome .badge-date .el-icon,
+.welcome-bar.student-welcome .badge-weather .el-icon,
+.welcome-bar.student-welcome .badge-motto .el-icon {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.welcome-bar.student-welcome .checked-in-badge {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.welcome-bar.student-welcome .check-in-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+.welcome-bar.student-welcome .check-in-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
 /* ---------------------------------------------------------------------------
    动画统计卡片 (3 个)
    --------------------------------------------------------------------------- */
@@ -1212,6 +1256,25 @@ onUnmounted(() => {
   line-height: 1.1;
   color: var(--el-text-color-primary);
   font-variant-numeric: tabular-nums;
+}
+
+/* stat-number 大数字覆盖（全局 class 优先级低于 scoped，需在此重写） */
+.hl-stat-value.stat-number {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.hl-primary .hl-stat-value.stat-number {
+  color: #6366f1;
+}
+
+.hl-success .hl-stat-value.stat-number {
+  color: #10b981;
+}
+
+.hl-warning .hl-stat-value.stat-number {
+  color: #f59e0b;
 }
 
 .hl-stat-label {
@@ -1371,6 +1434,11 @@ onUnmounted(() => {
 
 .h5-highlight-stats .hl-stat-value {
   font-size: 22px;
+  text-align: center;
+}
+
+.h5-highlight-stats .hl-stat-value.stat-number {
+  font-size: var(--text-2xl);
   text-align: center;
 }
 
@@ -1783,6 +1851,14 @@ onUnmounted(() => {
 .h5-welcome {
   margin-bottom: var(--space-4);
   padding: var(--space-3) var(--space-4);
+}
+
+.h5-welcome.student-welcome {
+  padding: var(--space-4) var(--space-5);
+}
+
+.h5-welcome.student-welcome .welcome-text {
+  font-size: var(--text-xl);
 }
 
 .h5-stats {

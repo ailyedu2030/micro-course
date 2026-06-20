@@ -8,7 +8,7 @@
     <div v-loading="loading" class="bundle-grid">
       <el-row :gutter="24">
         <el-col v-for="bundle in bundles" :key="bundle.id" :xs="24" :sm="12" :md="8" :lg="6">
-          <article class="bundle-card" @click="goBundle(bundle.id)">
+          <article class="bundle-card student-card-item" @click="goBundle(bundle.id)">
             <div class="bundle-cover">
               <img v-if="bundle.coverUrl" :src="bundle.coverUrl" class="cover-img" />
               <div v-else class="cover-placeholder">

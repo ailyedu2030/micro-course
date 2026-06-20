@@ -7,7 +7,7 @@
         <el-col :span="16">
           <el-card shadow="never">
             <template #header><span>套件子课（{{ items.length }} 门）</span></template>
-            <div v-for="item in items" :key="item.id" class="course-row"
+            <div v-for="item in items" :key="item.id" class="course-row student-card-item"
               tabindex="0" role="button"
               :aria-label="'课程：' + item.courseTitle"
               @click="goCourse(item.courseId)"

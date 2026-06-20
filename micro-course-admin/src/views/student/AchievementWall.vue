@@ -61,7 +61,7 @@
             :key="badge.code"
             :xs="12" :sm="8" :md="6"
           >
-            <el-card class="badge-card earned" shadow="hover">
+            <el-card class="badge-card earned student-card-item" shadow="hover">
               <div class="badge-icon">
                 <el-icon color="var(--role-primary)" :size="40"><Star /></el-icon>
               </div>
@@ -88,7 +88,7 @@
             :key="badge.code"
             :xs="12" :sm="8" :md="6"
           >
-            <el-card class="badge-card locked" shadow="never">
+            <el-card class="badge-card locked student-card-item" shadow="never">
               <div class="badge-icon">
                 <el-icon color="var(--el-text-color-placeholder)" :size="40"><Lock /></el-icon>
               </div>

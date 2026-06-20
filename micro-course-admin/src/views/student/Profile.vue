@@ -110,7 +110,7 @@
           </el-card>
 
           <!-- 账号信息 -->
-          <el-card class="profile-card" shadow="never">
+          <el-card class="profile-card student-stat-card" shadow="never">
             <template #header>
               <div class="card-header">
                 <span>账号信息</span>
@@ -148,7 +148,7 @@
           <div
             v-for="badge in allBadges"
             :key="badge.badgeType"
-            class="badge-item"
+            class="badge-item student-card-item"
             :class="{ 'badge-locked': !badge.earnedAt }"
           >
             <div class="badge-icon">
@@ -312,7 +312,7 @@
       </el-card>
 
       <!-- 账号信息 -->
-      <el-card class="profile-card" shadow="never">
+      <el-card class="profile-card student-stat-card" shadow="never">
         <template #header>
           <div class="card-header">
             <span>账号信息</span>
@@ -364,7 +364,7 @@
           <div
             v-for="badge in allBadges"
             :key="badge.badgeType"
-            class="badge-item"
+            class="badge-item student-card-item"
             :class="{ 'badge-locked': !badge.earnedAt }"
           >
             <div class="badge-icon">
@@ -925,6 +925,23 @@ onBeforeUnmount(() => {
   color: var(--el-text-color-primary);
 }
 
+/* === Student Stat Card === */
+.student-stat-card {
+  background: linear-gradient(135deg, #fafbff 0%, #f0f4ff 100%);
+  border: 1px solid rgba(99, 102, 241, 0.08);
+}
+
+.student-stat-card .info-item {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.7);
+  transition: background var(--duration-base) ease;
+}
+
+.student-stat-card .info-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
 /* === Badge Grid === */
 .badge-grid {
   display: grid;
@@ -951,6 +968,16 @@ onBeforeUnmount(() => {
 .badge-item:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
+}
+
+/* === Student Card Item (badge refinement) === */
+.student-card-item {
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  backdrop-filter: blur(4px);
+}
+
+.student-card-item:not(.badge-locked) {
+  background: linear-gradient(135deg, var(--role-primary-light) 0%, #f5f3ff 100%);
 }
 
 .badge-item.badge-locked {

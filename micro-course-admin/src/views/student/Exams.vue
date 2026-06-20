@@ -28,7 +28,7 @@
       <div class="main-content">
         <!-- Loading 状态 -->
         <div v-if="loading" class="exam-list">
-          <el-card v-for="n in 4" :key="n" class="exam-card skeleton-card" shadow="never">
+          <el-card v-for="n in 4" :key="n" class="exam-card skeleton-card student-card-item" shadow="never">
             <el-skeleton animated>
               <template #template>
                 <div class="skeleton-info">
@@ -75,7 +75,7 @@
           <el-card
             v-for="exam in examList"
             :key="exam.examId"
-            class="exam-card"
+            class="exam-card student-card-item"
             shadow="hover"
           >
             <div class="exam-info">
@@ -119,7 +119,7 @@
 
       <!-- Loading -->
       <div v-if="loading" class="h5-exam-list">
-        <el-card v-for="n in 3" :key="n" class="h5-exam-card" shadow="never">
+        <el-card v-for="n in 3" :key="n" class="h5-exam-card student-card-item" shadow="never">
           <el-skeleton animated>
             <template #template>
               <div class="skeleton-info">
@@ -165,7 +165,7 @@
         <el-card
           v-for="exam in examList"
           :key="exam.examId"
-          class="h5-exam-card"
+          class="h5-exam-card student-card-item"
           shadow="hover"
         >
           <h3 class="h5-exam-title">{{ exam.examTitle || exam.title }}</h3>

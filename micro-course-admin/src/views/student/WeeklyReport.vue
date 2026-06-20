@@ -16,7 +16,7 @@
       <!-- Stats Row -->
       <el-row :gutter="16" class="stats-row">
         <el-col :span="6">
-          <el-card class="stat-card" shadow="hover">
+          <el-card class="stat-card student-stat-card" shadow="hover">
             <el-skeleton :loading="loading" animated>
               <template #template>
                 <div class="skeleton-icon-wrap">
@@ -36,7 +36,7 @@
           </el-card>
         </el-col>
         <el-col :span="6">
-          <el-card class="stat-card" shadow="hover">
+          <el-card class="stat-card student-stat-card" shadow="hover">
             <el-skeleton :loading="loading" animated>
               <template #template>
                 <div class="skeleton-icon-wrap">
@@ -56,7 +56,7 @@
           </el-card>
         </el-col>
         <el-col :span="6">
-          <el-card class="stat-card" shadow="hover">
+          <el-card class="stat-card student-stat-card" shadow="hover">
             <el-skeleton :loading="loading" animated>
               <template #template>
                 <div class="skeleton-icon-wrap">
@@ -76,7 +76,7 @@
           </el-card>
         </el-col>
         <el-col :span="6">
-          <el-card class="stat-card" shadow="hover">
+          <el-card class="stat-card student-stat-card" shadow="hover">
             <el-skeleton :loading="loading" animated>
               <template #template>
                 <div class="skeleton-icon-wrap">
