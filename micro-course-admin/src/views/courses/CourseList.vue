@@ -12,8 +12,8 @@
       <el-breadcrumb-item>课程列表</el-breadcrumb-item>
     </el-breadcrumb>
 
-    <!-- 顶栏筛选卡 -->
-    <el-card class="search-card filter-card" shadow="never">
+    <!-- 筛选区 -->
+    <el-card class="filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
           <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable class="filter-input-w160" />
@@ -44,7 +44,7 @@
       </el-form>
     </el-card>
 
-    <!-- 表格卡 -->
+    <!-- 数据表 -->
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">

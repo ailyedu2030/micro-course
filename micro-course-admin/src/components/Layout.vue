@@ -452,33 +452,45 @@ onUnmounted(() => {
   width: 100%;
 }
 
-/* 子菜单激活态 */
-:deep(.el-sub-menu__title.is-active) {
-  color: var(--role-primary) !important;
-}
-
-:deep(.el-sub-menu__title.is-active .el-icon) {
-  color: var(--role-primary);
-}
-
 /* 菜单项 hover */
 :deep(.el-menu-item:hover) {
-  background-color: var(--sidebar-hover, #1f2d3d);
-  color: var(--role-primary);
+  background-color: var(--sidebar-hover, rgba(255,255,255,0.06));
+  color: #fff;
 }
 
-/* 激活项左侧指示条 */
+/* 激活项 — 毛玻璃霓虹指示条 */
 :deep(.el-menu-item.is-active) {
-  background-color: var(--role-primary-light-9);
+  background: linear-gradient(90deg, rgba(99,102,241,0.12) 0%, transparent 100%);
   color: var(--role-primary);
-  border-left: 3px solid var(--role-primary);
-  padding-left: calc(var(--el-menu-base-level-padding, 20px) - 3px);
+  font-weight: var(--weight-medium);
+  position: relative;
 }
 
-/* 折叠模式禁用指示条（避免挤偏图标） */
-.layout-aside.is-collapsed :deep(.el-menu-item.is-active) {
-  border-left: none;
-  padding-left: 0;
+:deep(.el-menu-item.is-active::before) {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: var(--role-primary);
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px rgba(99,102,241,0.4);
+}
+
+:deep(.el-menu-item.is-active .el-icon) {
+  color: var(--role-primary);
+}
+
+/* 子菜单 hover */
+:deep(.el-sub-menu__title:hover) {
+  background-color: rgba(255,255,255,0.04) !important;
+}
+
+/* 折叠模式隐藏指示条 */
+.layout-aside.is-collapsed :deep(.el-menu-item.is-active::before) {
+  display: none;
 }
 
 /* 折叠时隐藏文字 */

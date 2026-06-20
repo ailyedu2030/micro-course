@@ -318,8 +318,10 @@ onUnmounted(() => notificationStore.stopPolling())
   display: flex;
   align-items: center;
   height: 64px;
-  padding: 0 var(--space-5);
-  background: var(--el-bg-color-overlay);
+  padding: 0 var(--space-6);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
   box-shadow: var(--shadow-sm);
   position: sticky;
@@ -363,15 +365,15 @@ onUnmounted(() => notificationStore.stopPolling())
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-lg, 12px);
-  font-size: var(--text-base);
+  border-radius: var(--radius-2xl, 20px);
+  font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  color: var(--el-text-color-secondary, #909399);
+  color: var(--el-text-color-secondary, #64748b);
   text-decoration: none;
   cursor: pointer;
-  transition: color var(--duration-base) var(--ease-out),
-              background var(--duration-base) var(--ease-out);
+  transition: all var(--duration-base) var(--ease-out);
   white-space: nowrap;
+  position: relative;
 }
 
 .nav-tab:hover {
@@ -380,9 +382,14 @@ onUnmounted(() => notificationStore.stopPolling())
 }
 
 .nav-tab.is-active {
-  color: var(--role-primary, #6366f1);
-  background: var(--role-primary-light-9, #eef2ff);
+  color: #fff;
+  background: var(--role-primary, #6366f1);
   font-weight: var(--weight-semibold);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+.nav-tab.is-active:hover {
+  background: var(--role-primary-dark, #4f46e5);
 }
 
 .header-right {
