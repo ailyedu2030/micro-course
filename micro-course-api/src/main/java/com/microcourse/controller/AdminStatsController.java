@@ -112,6 +112,7 @@ public class AdminStatsController {
      * 返回系统健康状态
      */
     @GetMapping("/health")
+    @PreAuthorize("permitAll()")
     public R<Map<String, String>> getHealth() {
         Map<String, String> health = adminStatsService.getHealth();
         return R.ok(health);

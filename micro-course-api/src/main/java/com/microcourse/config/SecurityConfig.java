@@ -61,6 +61,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // login/cas: 公开; refresh: refreshToken 在 body 中作为凭证
                         .requestMatchers("/api/auth/login", "/api/auth/cas", "/api/auth/refresh").permitAll()
+                        .requestMatchers("GET", "/api/admin/stats/health").permitAll()
                         .requestMatchers("GET", "/api/departments/**").authenticated()
                         .requestMatchers("GET", "/api/majors/**").authenticated()
                         .requestMatchers("GET", "/api/classes/**").authenticated()
