@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/banners")
 public class AdminBannerController {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminBannerController.class);
 
     private final BannerService bannerService;
 
@@ -76,6 +80,7 @@ public class AdminBannerController {
             BannerVO banner = bannerService.create(imageUrl, linkUrl, sortOrder, enabled);
             return R.ok(banner);
         } catch (Exception e) {
+            log.error("[Banner] 创建Banner图片上传失败", e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片上传失败");
         }
     }
@@ -114,6 +119,7 @@ public class AdminBannerController {
 
                 imageUrl = "/banners/" + filename;
             } catch (Exception e) {
+                log.error("[Banner] 更新Banner图片上传失败 id={}", id, e);
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片上传失败");
             }
         }

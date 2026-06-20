@@ -766,21 +766,10 @@ const formatDate = (dateStr) => {
 const handleViewCertificate = async (cert) => {
   try {
     const res = await downloadCertificate(cert.id)
-    const html = res.data
-    const newWindow = window.open('', '_blank')
-    if (newWindow) {
-      // 使用 srcdoc + sandbox 避免 XSS(替代 document.write)
-      const iframe = newWindow.document.createElement('iframe')
-      iframe.setAttribute('sandbox', 'allow-same-origin')
-      iframe.style.width = '100%'
-      iframe.style.height = '100%'
-      iframe.style.border = 'none'
-      iframe.srcdoc = html
-      newWindow.document.body.innerHTML = ''
-      newWindow.document.body.appendChild(iframe)
-    } else {
-      ElMessage.error('弹出窗口被拦截，请允许弹出窗口')
-    }
+    const blob = new Blob([res.data], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
   } catch {
     ElMessage.error('查看证书失败')
   }

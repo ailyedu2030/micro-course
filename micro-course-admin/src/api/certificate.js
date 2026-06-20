@@ -5,5 +5,5 @@ export function getMyCertificates() {
 }
 
 export function downloadCertificate(certificateId) {
-  return request({ method: 'GET', url: `/certificates/${certificateId}/download` })
+  return request({ method: 'GET', url: `/certificates/${certificateId}/download`, responseType: 'blob' })
 }

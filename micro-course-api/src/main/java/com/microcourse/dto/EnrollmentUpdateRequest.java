@@ -1,13 +1,22 @@
 package com.microcourse.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+
 import java.math.BigDecimal;
 
 public class EnrollmentUpdateRequest {
 
+    @Min(value = 0, message = "进度不能小于0")
+    @Max(value = 100, message = "进度不能大于100")
     private Double progress;
 
     private Boolean completed;
 
+    @DecimalMin(value = "0.0", message = "分数不能小于0")
+    @DecimalMax(value = "100.0", message = "分数不能大于100")
     private BigDecimal finalScore;
 
     private String finalGrade;

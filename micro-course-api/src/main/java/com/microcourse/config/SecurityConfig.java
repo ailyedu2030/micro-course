@@ -53,6 +53,10 @@ public class SecurityConfig {
                         .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
                         .contentTypeOptions(Customizer.withDefaults())
                         .frameOptions(frame -> frame.deny())
+                        .referrerPolicy(referrer -> referrer.policy(
+                                org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .permissionsPolicy(perms -> perms.policy(
+                                "camera=(), microphone=(), geolocation=(), payment=()"))
                 )
                 .authorizeHttpRequests(auth -> auth
                         // login/cas: 公开; refresh: refreshToken 在 body 中作为凭证
@@ -63,8 +67,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
-                        // P0-1: HLS 流式端点（sign 验证在 play 端点完成，stream 本身公开）
-                        .requestMatchers("GET", "/api/videos/stream/**").permitAll()
+                        // P0-1: HLS 流式端点 — hls.js 通过 xhrSetup 携带 JWT，需认证
+                        .requestMatchers("GET", "/api/videos/stream/**").authenticated()
                         // P0-3: 封面/文件资源端点（封面非敏感数据，img 标签无法携带 Auth 头）
                         .requestMatchers("GET", "/api/files/**").permitAll()
                         .anyRequest().authenticated()

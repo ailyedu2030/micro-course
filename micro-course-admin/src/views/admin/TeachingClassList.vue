@@ -7,7 +7,7 @@
   <div class="teaching-class-list">
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="/" class="breadcrumb-nav">
-      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>教学班管理</el-breadcrumb-item>
     </el-breadcrumb>
 

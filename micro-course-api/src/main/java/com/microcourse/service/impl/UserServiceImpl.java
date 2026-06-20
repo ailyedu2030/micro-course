@@ -569,6 +569,7 @@ public class UserServiceImpl implements UserService {
 
             return avatarUrl;
         } catch (Exception e) {
+            log.error("[User] 头像上传失败 userId={}", user != null ? user.getId() : "null", e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像上传失败");
         }
     }

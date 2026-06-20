@@ -546,6 +546,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import Hls from 'hls.js'
 import { getVideoById } from '@/api/video'
+import { getToken } from '@/utils/auth'
 import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
 import { getPosts } from '@/api/discussion'
@@ -740,7 +741,14 @@ const initPlayer = () => {
 
   if (isHLS(url)) {
     if (Hls.isSupported()) {
-      hlsInstance.value = new Hls()
+      const token = getToken()
+      hlsInstance.value = new Hls({
+        xhrSetup: (xhr) => {
+          if (token) {
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token)
+          }
+        }
+      })
       hlsInstance.value.loadSource(url)
       hlsInstance.value.attachMedia(video)
       hlsInstance.value.on(Hls.Events.MANIFEST_PARSED, () => {

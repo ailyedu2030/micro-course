@@ -1,14 +1,14 @@
 <!--
   讨论详情
-  路由路径: /courses/discussions/:id
+  路由路径: /discussions/:id
   Phase 1
   Author: jackie
 -->
 <template>
   <div class="discussion-detail-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item :to="{ path: '/courses/discussions' }">讨论管理</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/discussions' }">讨论管理</el-breadcrumb-item>
       <el-breadcrumb-item>讨论详情</el-breadcrumb-item>
     </el-breadcrumb>
 
@@ -135,7 +135,7 @@ const handleDelete = async () => {
     await ElMessageBox.confirm('确定删除该讨论?', '提示', { type: 'warning' })
     await deleteDiscussion(route.params.id)
     ElMessage.success('删除成功')
-    router.push('/courses/discussions')
+    router.push('/discussions')
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -157,7 +157,7 @@ const handleDeleteReply = async (reply) => {
 }
 
 const handleBack = () => {
-  router.push('/courses/discussions')
+  router.push('/discussions')
 }
 
 onMounted(() => {

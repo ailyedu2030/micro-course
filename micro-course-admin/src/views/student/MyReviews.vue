@@ -10,7 +10,7 @@
     <template v-if="!isMobile">
       <!-- 面包屑导航 -->
       <el-breadcrumb class="page-breadcrumb">
-        <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>我的评价</el-breadcrumb-item>
       </el-breadcrumb>
 
@@ -109,7 +109,7 @@
     <template v-else>
       <!-- 面包屑导航 -->
       <el-breadcrumb class="h5-breadcrumb">
-        <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>我的评价</el-breadcrumb-item>
       </el-breadcrumb>
 

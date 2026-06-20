@@ -6,6 +6,8 @@ import com.microcourse.entity.CourseReview;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 
@@ -40,4 +42,10 @@ public interface CourseReviewRepository extends BaseMapper<CourseReview> {
                 .eq(CourseReview::getCourseId, courseId)
                 .isNull(CourseReview::getDeletedAt));
     }
+
+    /**
+     * 计算课程的平均评分（仅限未删除评价）
+     */
+    @Select("SELECT COALESCE(AVG(rating), 0) FROM course_reviews WHERE course_id = #{courseId} AND deleted_at IS NULL")
+    BigDecimal selectAvgRatingByCourseId(Long courseId);
 }

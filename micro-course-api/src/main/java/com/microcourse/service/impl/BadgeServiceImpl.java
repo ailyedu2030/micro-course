@@ -8,9 +8,12 @@ import com.microcourse.dto.BadgeDefinitionVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Achievement;
 import com.microcourse.entity.BadgeDefinition;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.AchievementRepository;
 import com.microcourse.repository.BadgeDefinitionRepository;
 import com.microcourse.service.BadgeService;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -100,7 +103,7 @@ public class BadgeServiceImpl implements BadgeService {
                 new LambdaQueryWrapper<BadgeDefinition>()
                         .eq(BadgeDefinition::getCode, badgeCode));
         if (definition == null) {
-            return null;
+            throw new BusinessException(ErrorCode.BADGE_NOT_FOUND);
         }
 
         Achievement achievement = new Achievement();
@@ -108,7 +111,18 @@ public class BadgeServiceImpl implements BadgeService {
         achievement.setBadgeCode(badgeCode);
         achievement.setBadgeName(definition.getName());
         achievement.setEarnedAt(LocalDateTime.now());
-        achievementRepository.insert(achievement);
+        try {
+            achievementRepository.insert(achievement);
+        } catch (DuplicateKeyException e) {
+            Achievement dup = achievementRepository.selectOne(
+                    new LambdaQueryWrapper<Achievement>()
+                            .eq(Achievement::getUserId, userId)
+                            .eq(Achievement::getBadgeCode, badgeCode));
+            if (dup != null) {
+                return convertAchievementToVO(dup);
+            }
+            throw e;
+        }
 
         return convertAchievementToVO(achievement);
     }

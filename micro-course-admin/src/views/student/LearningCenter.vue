@@ -500,6 +500,7 @@ import { useUserStore } from '@/store/user'
 import { getStudyDays, getTotalTime } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
+import { getMyCertificates } from '@/api/certificate'
 import { getMyCheckIns, createCheckIn } from '@/api/checkin'
 import { getAccuracyTrend } from '@/api/exercise-record'
 
@@ -689,10 +690,11 @@ const badges = ref([])
 async function getStats(sharedEnrollments) {
   try {
     const userId = userStore.userInfo?.id
-    const [totalTimeData, enrollmentData, studyDaysData] = await Promise.all([
+    const [totalTimeData, enrollmentData, studyDaysData, certData] = await Promise.all([
       getTotalTime().catch(() => ({ data: { totalSeconds: 0 } })),
       sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments(userId),
-      getStudyDays().catch(() => ({ data: { totalDays: 0 } }))
+      getStudyDays().catch(() => ({ data: { totalDays: 0 } })),
+      getMyCertificates().catch(() => ({ data: [] }))
     ])
 
     const enrollments = Array.isArray(enrollmentData?.data) ? enrollmentData.data : []
@@ -705,10 +707,13 @@ async function getStats(sharedEnrollments) {
     // 学习天数
     const studyDays = studyDaysData?.data?.totalDays ?? 0
 
+    // 证书数量
+    const certificates = Array.isArray(certData?.data) ? certData.data.length : 0
+
     stats.value = {
       totalHours,
       completedCourses,
-      certificates: 0,   // 后端暂无证书 API
+      certificates,
       studyDays
     }
 

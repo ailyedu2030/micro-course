@@ -54,8 +54,19 @@ public class CertificateServiceImpl implements CertificateService {
         wrapper.eq(Certificate::getUserId, userId)
                 .orderByDesc(Certificate::getIssuedAt);
         List<Certificate> certs = certificateRepository.selectList(wrapper);
+        if (certs.isEmpty()) {
+            return List.of();
+        }
+        java.util.Set<Long> courseIds = certs.stream()
+                .map(Certificate::getCourseId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, Course> courseMap = courseIds.isEmpty() ? java.util.Collections.emptyMap()
+                : courseRepository.selectBatchIds(courseIds).stream()
+                .collect(java.util.stream.Collectors.toMap(Course::getId, c -> c));
+        java.util.Map<Long, User> userMap = java.util.Collections.singletonMap(userId,
+                userRepository.selectById(userId));
         return certs.stream()
-                .map(this::convertToVO)
+                .map(cert -> convertToVO(cert, courseMap, userMap))
                 .collect(Collectors.toList());
     }
 
@@ -127,71 +138,73 @@ public class CertificateServiceImpl implements CertificateService {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document doc = new Document(PageSize.A4.rotate(), 60, 60, 60, 60);
         PdfWriter.getInstance(doc, out);
-        doc.open();
+        try {
+            doc.open();
 
-        Font titleFont = new Font(Font.HELVETICA, 28, Font.BOLD, new Color(51, 102, 153));
-        Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, Color.DARK_GRAY);
-        Font nameFont = new Font(Font.HELVETICA, 22, Font.BOLD, new Color(0, 0, 0));
-        Font bodyFont = new Font(Font.HELVETICA, 14, Font.NORMAL, Color.BLACK);
-        Font certCodeFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.GRAY);
+            Font titleFont = new Font(Font.HELVETICA, 28, Font.BOLD, new Color(51, 102, 153));
+            Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, Color.DARK_GRAY);
+            Font nameFont = new Font(Font.HELVETICA, 22, Font.BOLD, new Color(0, 0, 0));
+            Font bodyFont = new Font(Font.HELVETICA, 14, Font.NORMAL, Color.BLACK);
+            Font certCodeFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.GRAY);
 
-        Paragraph title = new Paragraph("微课平台学习证书", titleFont);
-        title.setAlignment(Element.ALIGN_CENTER);
-        doc.add(title);
+            Paragraph title = new Paragraph("微课平台学习证书", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            doc.add(title);
 
-        doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
 
-        Paragraph subtitle = new Paragraph("Certificate of Completion", subtitleFont);
-        subtitle.setAlignment(Element.ALIGN_CENTER);
-        doc.add(subtitle);
+            Paragraph subtitle = new Paragraph("Certificate of Completion", subtitleFont);
+            subtitle.setAlignment(Element.ALIGN_CENTER);
+            doc.add(subtitle);
 
-        doc.add(new Paragraph(" "));
-        doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
 
-        Paragraph certify = new Paragraph("This is to certify that", bodyFont);
-        certify.setAlignment(Element.ALIGN_CENTER);
-        doc.add(certify);
+            Paragraph certify = new Paragraph("This is to certify that", bodyFont);
+            certify.setAlignment(Element.ALIGN_CENTER);
+            doc.add(certify);
 
-        doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
 
-        String studentName = user != null && user.getRealName() != null
-                ? user.getRealName() : "Student";
-        Paragraph name = new Paragraph(studentName, nameFont);
-        name.setAlignment(Element.ALIGN_CENTER);
-        doc.add(name);
+            String studentName = user != null && user.getRealName() != null
+                    ? user.getRealName() : "Student";
+            Paragraph name = new Paragraph(studentName, nameFont);
+            name.setAlignment(Element.ALIGN_CENTER);
+            doc.add(name);
 
-        doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
 
-        Paragraph completed = new Paragraph("has successfully completed the course", bodyFont);
-        completed.setAlignment(Element.ALIGN_CENTER);
-        doc.add(completed);
+            Paragraph completed = new Paragraph("has successfully completed the course", bodyFont);
+            completed.setAlignment(Element.ALIGN_CENTER);
+            doc.add(completed);
 
-        doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
 
-        String courseName = courseEntity != null && courseEntity.getTitle() != null
-                ? courseEntity.getTitle() : "Unknown Course";
-        Font courseFont = new Font(Font.HELVETICA, 18, Font.BOLD, new Color(0, 102, 51));
-        Paragraph coursePara = new Paragraph(courseName, courseFont);
-        coursePara.setAlignment(Element.ALIGN_CENTER);
-        doc.add(coursePara);
+            String courseName = courseEntity != null && courseEntity.getTitle() != null
+                    ? courseEntity.getTitle() : "Unknown Course";
+            Font courseFont = new Font(Font.HELVETICA, 18, Font.BOLD, new Color(0, 102, 51));
+            Paragraph coursePara = new Paragraph(courseName, courseFont);
+            coursePara.setAlignment(Element.ALIGN_CENTER);
+            doc.add(coursePara);
 
-        doc.add(new Paragraph(" "));
-        doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        String issuedDate = cert.getIssuedAt() != null
-                ? cert.getIssuedAt().format(formatter) : LocalDateTime.now().format(formatter);
-        Paragraph date = new Paragraph("Issued on: " + issuedDate, bodyFont);
-        date.setAlignment(Element.ALIGN_CENTER);
-        doc.add(date);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            String issuedDate = cert.getIssuedAt() != null
+                    ? cert.getIssuedAt().format(formatter) : LocalDateTime.now().format(formatter);
+            Paragraph date = new Paragraph("Issued on: " + issuedDate, bodyFont);
+            date.setAlignment(Element.ALIGN_CENTER);
+            doc.add(date);
 
-        doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
 
-        Paragraph code = new Paragraph("Certificate No: " + cert.getCertCode(), certCodeFont);
-        code.setAlignment(Element.ALIGN_CENTER);
-        doc.add(code);
-
-        doc.close();
+            Paragraph code = new Paragraph("Certificate No: " + cert.getCertCode(), certCodeFont);
+            code.setAlignment(Element.ALIGN_CENTER);
+            doc.add(code);
+        } finally {
+            doc.close();
+        }
         return out.toByteArray();
     }
 
@@ -202,6 +215,20 @@ public class CertificateServiceImpl implements CertificateService {
     }
 
     private com.microcourse.dto.CertificateVO convertToVO(Certificate cert) {
+        Course course = cert.getCourseId() != null ? courseRepository.selectById(cert.getCourseId()) : null;
+        User user = cert.getUserId() != null ? userRepository.selectById(cert.getUserId()) : null;
+        return populateVO(cert, course, user);
+    }
+
+    private com.microcourse.dto.CertificateVO convertToVO(Certificate cert,
+                                                          java.util.Map<Long, Course> courseMap,
+                                                          java.util.Map<Long, User> userMap) {
+        Course course = courseMap.get(cert.getCourseId());
+        User user = userMap.get(cert.getUserId());
+        return populateVO(cert, course, user);
+    }
+
+    private com.microcourse.dto.CertificateVO populateVO(Certificate cert, Course course, User user) {
         com.microcourse.dto.CertificateVO vo = new com.microcourse.dto.CertificateVO();
         vo.setId(cert.getId());
         vo.setUserId(cert.getUserId());
@@ -209,17 +236,11 @@ public class CertificateServiceImpl implements CertificateService {
         vo.setCertCode(cert.getCertCode());
         vo.setIssuedAt(cert.getIssuedAt());
 
-        if (cert.getCourseId() != null) {
-            Course course = courseRepository.selectById(cert.getCourseId());
-            if (course != null) {
-                vo.setCourseName(course.getTitle());
-            }
+        if (course != null) {
+            vo.setCourseName(course.getTitle());
         }
-        if (cert.getUserId() != null) {
-            User user = userRepository.selectById(cert.getUserId());
-            if (user != null) {
-                vo.setStudentName(user.getRealName());
-            }
+        if (user != null) {
+            vo.setStudentName(user.getRealName());
         }
         return vo;
     }

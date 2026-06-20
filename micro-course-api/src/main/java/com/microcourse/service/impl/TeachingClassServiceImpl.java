@@ -93,7 +93,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
 
         PageResult<TeachingClassVO> pageResult = new PageResult<>();
         pageResult.setItems(voList);
-        pageResult.setPage((int) result.getCurrent());
+        pageResult.setPage((int) result.getCurrent() - 1);
         pageResult.setSize((int) result.getSize());
         pageResult.setTotalElements(result.getTotal());
         pageResult.setTotalPages(result.getPages());

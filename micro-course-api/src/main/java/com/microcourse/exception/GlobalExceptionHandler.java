@@ -17,6 +17,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.nio.file.NoSuchFileException;
 
@@ -106,6 +107,12 @@ public class GlobalExceptionHandler {
                 })
                 .orElse("参数校验失败");
         return ResponseEntity.status(400).body(R.fail(400, message));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<R<Void>> handleDataIntegrity(DataIntegrityViolationException e) {
+        log.warn("DataIntegrityViolation: {}", e.getMessage());
+        return ResponseEntity.status(409).body(R.fail(409, "数据冲突，请检查依赖数据"));
     }
 
     @ExceptionHandler(Exception.class)

@@ -2,7 +2,7 @@
   <div class="training-center">
     <!-- 面包屑导航 -->
     <el-breadcrumb class="page-breadcrumb">
-      <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>培训中心</el-breadcrumb-item>
     </el-breadcrumb>
 

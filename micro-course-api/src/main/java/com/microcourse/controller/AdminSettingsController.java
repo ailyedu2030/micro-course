@@ -59,10 +59,8 @@ public class AdminSettingsController {
     @PutMapping("/register")
     @PreAuthorize("hasRole('ADMIN')")
     public R<Void> toggleRegister(@RequestBody Map<String, Object> body) {
-        // P1-5: null 安全 + getOrDefault
-        Boolean enabled = body != null
-                ? (Boolean) body.getOrDefault("enabled", false)
-                : false;
+        Boolean enabled = body != null && body.containsKey("enabled") && body.get("enabled") instanceof Boolean
+                ? (Boolean) body.get("enabled") : false;
         adminSettingService.upsert("registration_enabled", String.valueOf(enabled));
         return R.ok();
     }

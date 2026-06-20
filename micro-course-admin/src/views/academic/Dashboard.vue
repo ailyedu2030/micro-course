@@ -271,10 +271,10 @@ async function handleRefresh() {
 
 // ===== 快捷入口 =====
 const quickActions = [
-  { label: '课程审核', icon: markRaw(Reading), route: '/academic/courses', bg: '#EEF2FF', color: '#4F46E5' },
-  { label: '选课管理', icon: markRaw(Collection), route: '/academic/enrollments', bg: '#ECFDF5', color: '#10B981' },
-  { label: '教学班管理', icon: markRaw(Setting), route: '/academic/teaching-classes', bg: '#FEF3C7', color: '#F59E0B' },
-  { label: '统计分析', icon: markRaw(DataAnalysis), route: '/academic/statistics', bg: '#FAF5FF', color: '#8B5CF6' }
+  { label: '课程审核', icon: markRaw(Reading), route: '/courses', bg: '#EEF2FF', color: '#4F46E5' },
+  { label: '选课管理', icon: markRaw(Collection), route: '/enrollments', bg: '#ECFDF5', color: '#10B981' },
+  { label: '教学班管理', icon: markRaw(Setting), route: '/admin/teaching-classes', bg: '#FEF3C7', color: '#F59E0B' },
+  { label: '统计分析', icon: markRaw(DataAnalysis), route: '/academic/dashboard', bg: '#FAF5FF', color: '#8B5CF6' }
 ]
 
 function handleQuickAction(action) {

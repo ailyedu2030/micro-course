@@ -6,11 +6,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.CourseReviewRequest;
 import com.microcourse.dto.CourseReviewVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseReview;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
@@ -18,6 +20,8 @@ import com.microcourse.service.CourseReviewService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,13 +38,16 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     private final CourseReviewRepository courseReviewRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
+    private final CourseRepository courseRepository;
 
     public CourseReviewServiceImpl(CourseReviewRepository courseReviewRepository,
                                    EnrollmentRepository enrollmentRepository,
-                                   UserRepository userRepository) {
+                                   UserRepository userRepository,
+                                   CourseRepository courseRepository) {
         this.courseReviewRepository = courseReviewRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
+        this.courseRepository = courseRepository;
     }
 
     @Override
@@ -84,19 +91,21 @@ public class CourseReviewServiceImpl implements CourseReviewService {
             // CON-NEW-7 修复:DB uk_course_reviews_user_course 兜底,降级为业务异常
             throw new BusinessException(ErrorCode.COURSE_REVIEW_ALREADY_EXISTS);
         }
+        updateCourseAvgRating(courseId);
         return convertToVO(review);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<CourseReviewVO> listByCourse(Long courseId, int page, int size) {
-        Page<CourseReview> pg = new Page<>(page + 1, size); // MyBatis-Plus 1-based
+        Page<CourseReview> pg = new Page<>(page + 1, size);
         LambdaQueryWrapper<CourseReview> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseReview::getCourseId, courseId)
                 .orderByDesc(CourseReview::getCreatedAt);
         IPage<CourseReview> result = courseReviewRepository.selectPage(pg, wrapper);
+        java.util.Map<Long, User> userMap = buildUserMap(result.getRecords());
         return PageResult.of(result.getRecords().stream()
-                .map(this::convertToVO)
+                .map(r -> convertToVO(r, userMap))
                 .collect(Collectors.toList()), result.getTotal(), page, size);
     }
 
@@ -108,8 +117,9 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         wrapper.eq(CourseReview::getUserId, userId)
                 .orderByDesc(CourseReview::getCreatedAt);
         IPage<CourseReview> result = courseReviewRepository.selectPage(pg, wrapper);
+        java.util.Map<Long, User> userMap = buildUserMap(result.getRecords());
         return PageResult.of(result.getRecords().stream()
-                .map(this::convertToVO)
+                .map(r -> convertToVO(r, userMap))
                 .collect(Collectors.toList()), result.getTotal(), page, size);
     }
 
@@ -123,8 +133,9 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         }
         wrapper.orderByDesc(CourseReview::getCreatedAt);
         IPage<CourseReview> result = courseReviewRepository.selectPage(pg, wrapper);
+        java.util.Map<Long, User> userMap = buildUserMap(result.getRecords());
         return PageResult.of(result.getRecords().stream()
-                .map(this::convertToVO)
+                .map(r -> convertToVO(r, userMap))
                 .collect(Collectors.toList()), result.getTotal(), page, size);
     }
 
@@ -135,10 +146,25 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         if (review == null) {
             throw new BusinessException(ErrorCode.COURSE_REVIEW_NOT_FOUND);
         }
+        Long courseId = review.getCourseId();
         courseReviewRepository.deleteById(id);
+        updateCourseAvgRating(courseId);
+    }
+
+    private void updateCourseAvgRating(Long courseId) {
+        BigDecimal avg = courseReviewRepository.selectAvgRatingByCourseId(courseId);
+        Course course = courseRepository.selectById(courseId);
+        if (course != null) {
+            course.setAvgRating(avg);
+            courseRepository.updateById(course);
+        }
     }
 
     private CourseReviewVO convertToVO(CourseReview review) {
+        return convertToVO(review, null);
+    }
+
+    private CourseReviewVO convertToVO(CourseReview review, java.util.Map<Long, User> userMap) {
         CourseReviewVO vo = new CourseReviewVO();
         vo.setId(review.getId());
         vo.setCourseId(review.getCourseId());
@@ -150,12 +176,26 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         vo.setUpdatedAt(review.getUpdatedAt());
 
         if (Boolean.FALSE.equals(review.getIsAnonymous())) {
-            User user = userRepository.selectById(review.getUserId());
+            User user = userMap != null ? userMap.get(review.getUserId())
+                    : (review.getUserId() != null ? userRepository.selectById(review.getUserId()) : null);
             if (user != null) {
                 vo.setUsername(user.getUsername());
                 vo.setRealName(user.getRealName());
             }
         }
         return vo;
+    }
+
+    private java.util.Map<Long, User> buildUserMap(List<CourseReview> reviews) {
+        java.util.Set<Long> userIds = reviews.stream()
+                .filter(r -> Boolean.FALSE.equals(r.getIsAnonymous()))
+                .map(CourseReview::getUserId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        if (userIds.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        return userRepository.selectBatchIds(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
     }
 }

@@ -7,7 +7,7 @@
 <template>
   <div class="favorite-list-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>课程管理</el-breadcrumb-item>
       <el-breadcrumb-item>收藏列表</el-breadcrumb-item>
     </el-breadcrumb>

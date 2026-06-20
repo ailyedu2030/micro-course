@@ -10,6 +10,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
@@ -38,6 +39,7 @@ public class VideoStreamController {
      * filename 可以是 index.m3u8 或 segment0.ts 等
      */
     @GetMapping("/{courseId}/{videoId}/{filename}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> stream(
             @PathVariable Long courseId,
             @PathVariable Long videoId,

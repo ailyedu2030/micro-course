@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.CertificateVO;
+import com.microcourse.dto.R;
 import com.microcourse.service.CertificateService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.http.HttpHeaders;
@@ -23,21 +24,28 @@ public class CertificateController {
 
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<CertificateVO>> getMyCertificates() {
+    public R<List<CertificateVO>> getMyCertificates() {
         Long userId = SecurityUtil.getCurrentUserId();
-        return ResponseEntity.ok(certificateService.getMyCertificates(userId));
+        return R.ok(certificateService.getMyCertificates(userId));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<CertificateVO> getById(@PathVariable Long id) {
+    public R<CertificateVO> getById(@PathVariable Long id) {
         CertificateVO cert = certificateService.getById(id);
-        return ResponseEntity.ok(cert);
+        if (!cert.getUserId().equals(SecurityUtil.getCurrentUserId())) {
+            return R.fail(403, "无权访问该证书");
+        }
+        return R.ok(cert);
     }
 
     @GetMapping("/{id}/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadCertificate(@PathVariable Long id) {
+        CertificateVO cert = certificateService.getById(id);
+        if (!cert.getUserId().equals(SecurityUtil.getCurrentUserId())) {
+            return ResponseEntity.status(403).build();
+        }
         byte[] pdfBytes = certificateService.generateCertificatePdf(id);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
@@ -47,9 +55,9 @@ public class CertificateController {
 
     @PostMapping("/issue")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<CertificateVO> issueCertificate(@RequestParam Long courseId) {
+    public R<CertificateVO> issueCertificate(@RequestParam Long courseId) {
         Long userId = SecurityUtil.getCurrentUserId();
         CertificateVO cert = certificateService.issueCertificate(userId, courseId);
-        return ResponseEntity.ok(cert);
+        return R.ok(cert);
     }
 }

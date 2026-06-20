@@ -16,6 +16,10 @@ request.interceptors.request.use(config => {
 
 request.interceptors.response.use(response => {
   const res = response.data
+  // blob/arraybuffer 跳过 R 包装检查
+  if (response.config.responseType === 'blob' || response.config.responseType === 'arraybuffer') {
+    return response
+  }
   if (res.code !== 200) {
     ElMessage.error(res.message || '请求失败')
     return Promise.reject(new Error(res.message))

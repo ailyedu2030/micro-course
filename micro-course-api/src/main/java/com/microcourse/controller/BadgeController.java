@@ -3,9 +3,9 @@ package com.microcourse.controller;
 import com.microcourse.dto.AchievementVO;
 import com.microcourse.dto.BadgeDefinitionVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.R;
 import com.microcourse.service.BadgeService;
 import com.microcourse.util.SecurityUtil;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,25 +23,25 @@ public class BadgeController {
 
     @GetMapping("/definitions")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PageResult<BadgeDefinitionVO>> getDefinitions(
+    public R<PageResult<BadgeDefinitionVO>> getDefinitions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(badgeService.getDefinitionsPage(page, size));
+        return R.ok(badgeService.getDefinitionsPage(page, size));
     }
 
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<AchievementVO>> getMyBadges() {
+    public R<List<AchievementVO>> getMyBadges() {
         Long userId = SecurityUtil.getCurrentUserId();
-        return ResponseEntity.ok(badgeService.getMyAchievements(userId));
+        return R.ok(badgeService.getMyAchievements(userId));
     }
 
     @GetMapping("/achievements")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PageResult<AchievementVO>> getMyAchievements(
+    public R<PageResult<AchievementVO>> getMyAchievements(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Long userId = SecurityUtil.getCurrentUserId();
-        return ResponseEntity.ok(badgeService.getMyAchievementsPage(userId, page, size));
+        return R.ok(badgeService.getMyAchievementsPage(userId, page, size));
     }
 }

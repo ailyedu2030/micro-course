@@ -144,6 +144,7 @@ public class VideoController {
         try {
             Files.createDirectories(Paths.get(baseDir));
         } catch (IOException e) {
+            log.error("[VideoUpload] 无法创建存储目录 baseDir={}", baseDir, e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法创建存储目录");
         }
 
@@ -153,6 +154,7 @@ public class VideoController {
         try {
             file.transferTo(targetPath.toFile());
         } catch (IOException e) {
+            log.error("[VideoUpload] 文件保存失败 courseId={}, filename={}", courseId, originalFilename, e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件保存失败");
         }
 
@@ -162,7 +164,9 @@ public class VideoController {
         if (duplicate != null) {
             log.info("[VideoUpload] 检测到 MD5 重复 md5={} existingVideoId={}", md5, duplicate.getId());
             // 秒传：删除刚保存的文件，返回已有视频
-            try { Files.deleteIfExists(targetPath); } catch (IOException ignored) {}
+            try { Files.deleteIfExists(targetPath); } catch (IOException e) {
+                log.warn("[VideoUpload] 临时文件删除失败 path={}", targetPath, e);
+            }
             return R.ok(videoService.getById(duplicate.getId()));
         }
 

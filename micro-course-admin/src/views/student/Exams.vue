@@ -11,7 +11,7 @@
       <!-- 面包屑导航 -->
       <div class="breadcrumb-wrap">
         <el-breadcrumb>
-          <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+          <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
           <el-breadcrumb-item>考试中心</el-breadcrumb-item>
         </el-breadcrumb>
       </div>
@@ -108,7 +108,7 @@
       <!-- 面包屑导航 -->
       <div class="h5-breadcrumb-wrap">
         <el-breadcrumb>
-          <el-breadcrumb-item :to="{ path: '/student' }">首页</el-breadcrumb-item>
+          <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
           <el-breadcrumb-item>考试中心</el-breadcrumb-item>
         </el-breadcrumb>
       </div>

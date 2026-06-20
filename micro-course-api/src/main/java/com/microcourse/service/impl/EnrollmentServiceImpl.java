@@ -30,6 +30,8 @@ import com.microcourse.service.BadgeService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class EnrollmentServiceImpl implements EnrollmentService {
+
+    private static final Logger log = LoggerFactory.getLogger(EnrollmentServiceImpl.class);
 
     private final EnrollmentRepository enrollmentRepository;
     private final CourseRepository courseRepository;
@@ -387,7 +391,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 enrollment.setCompletedAt(LocalDateTime.now());
                 try {
                     certificateService.issueCertificate(enrollment.getUserId(), enrollment.getCourseId());
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    log.warn("[Enrollment] 证书自动颁发失败 userId={}, courseId={}", enrollment.getUserId(), enrollment.getCourseId(), e);
                 }
                 try {
                     badgeService.checkAndAwardCourseCompletion(
@@ -399,7 +404,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                     new LambdaQueryWrapper<Enrollment>()
                                             .eq(Enrollment::getUserId, enrollment.getUserId())
                                             .eq(Enrollment::getCompleted, true)));
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    log.warn("[Enrollment] 徽章自动颁发失败 userId={}, courseId={}", enrollment.getUserId(), enrollment.getCourseId(), e);
                 }
             }
         }

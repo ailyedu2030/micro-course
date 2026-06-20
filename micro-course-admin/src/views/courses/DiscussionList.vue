@@ -1,13 +1,13 @@
 <!--
   讨论列表
-  路由路径: /courses/discussions
+  路由路径: /discussions
   Phase 1
   Author: jackie
 -->
 <template>
   <div class="discussion-list-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>课程管理</el-breadcrumb-item>
       <el-breadcrumb-item>讨论管理</el-breadcrumb-item>
     </el-breadcrumb>
@@ -162,7 +162,7 @@ const handlePageChange = () => {
 }
 
 const handleView = (row) => {
-  router.push(`/courses/discussions/${row.id}`)
+  router.push(`/discussions/${row.id}`)
 }
 
 const handleApprove = async (row) => {
