@@ -265,7 +265,7 @@ const handleJoinExam = (exam) => {
    PC 布局
    ================================================ */
 .pc-layout {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--el-bg-color);
 }
 
@@ -357,7 +357,7 @@ const handleJoinExam = (exam) => {
    H5 布局
    ================================================ */
 .h5-layout {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--el-bg-color);
   padding-bottom: 56px;
 }

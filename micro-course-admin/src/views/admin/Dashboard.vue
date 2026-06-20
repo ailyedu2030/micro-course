@@ -743,7 +743,7 @@ onBeforeUnmount(() => {
 .admin-dashboard {
   padding: var(--space-6);
   background: var(--el-bg-color-page);
-  min-height: 100vh;
+  min-height: 100dvh;
   max-width: 1440px;
   margin: 0 auto;
 }

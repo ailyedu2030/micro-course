@@ -52,14 +52,14 @@
             <span v-else>{{ courseData.courseType || '视频课程' }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="价格">
-            <span v-if="courseData.price" style="color:#f56c6c;font-weight:600">¥{{ courseData.price }}</span>
-            <span v-else style="color:#67c23a">免费</span>
+            <span v-if="courseData.price" class="price-amount">¥{{ courseData.price }}</span>
+            <span v-else class="price-free">免费</span>
           </el-descriptions-item>
           <el-descriptions-item label="评分">{{ courseData.rating ? courseData.rating.toFixed(1) : '-' }}</el-descriptions-item>
           <el-descriptions-item label="学生数">{{ courseData.studentCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="课程描述" :span="2">{{ courseData.description || '-' }}</el-descriptions-item>
           <el-descriptions-item label="封面">
-            <el-image v-if="courseData.coverUrl" :src="courseData.coverUrl" style="width:120px;height:80px;border-radius:4px" fit="cover" />
+            <el-image v-if="courseData.coverUrl" :src="courseData.coverUrl" class="cover-preview" fit="cover" />
             <span v-else>-</span>
           </el-descriptions-item>
         </el-descriptions>
@@ -574,6 +574,8 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
 }
+.price-amount { color: var(--el-color-danger); font-weight: var(--weight-semibold); }
+.price-free { color: var(--el-color-success); }
 
 .card-title {
   font-size: var(--text-md);
@@ -585,6 +587,7 @@ onUnmounted(() => {
   display: flex;
   gap: var(--space-2);
 }
+.cover-preview { width: 120px; height: 80px; border-radius: var(--radius-sm); }
 
 .drag-hint {
   font-size: var(--text-xs);

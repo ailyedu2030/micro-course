@@ -24,7 +24,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--el-bg-color-page, #f0f2f5);
   padding: var(--space-5);
 }

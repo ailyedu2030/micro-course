@@ -269,7 +269,7 @@ onUnmounted(() => {
   --player-danger: #ef4444;
   --radius: 10px;
   --radius-sm: 6px;
-  display: flex; flex-direction: column; height: 100vh; width: 100vw;
+  display: flex; flex-direction: column; height: 100dvh; width: 100dvw;
   background: var(--player-bg); color: var(--player-text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow: hidden; outline: none; user-select: none;
@@ -313,7 +313,7 @@ onUnmounted(() => {
 .slide-frame { position: relative; max-width: 100%; max-height: 100%; display: flex; align-items: center; justify-content: center; }
 .slide-wrapper { position: relative; }
 .slide-image {
-  max-width: 92vw; max-height: calc(100vh - 120px); object-fit: contain;
+  max-width: 92vw; max-height: calc(100dvh - 120px); object-fit: contain;
   border-radius: 4px; box-shadow: 0 8px 40px rgba(0,0,0,.5);
 }
 .slide-gradient {

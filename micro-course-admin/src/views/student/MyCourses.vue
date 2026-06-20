@@ -76,7 +76,7 @@
         <div v-else-if="loadError" class="error-state">
           <el-empty class="empty-state">
             <template #image>
-              <el-icon class="empty-icon" style="color: var(--el-color-danger)"><Warning /></el-icon>
+              <el-icon class="empty-icon danger-icon"><Warning /></el-icon>
             </template>
             <template #description>
               <p>{{ loadErrorMessage }}</p>
@@ -307,7 +307,7 @@
       <div v-else-if="loadError" class="error-state">
         <el-empty class="empty-state">
           <template #image>
-            <el-icon class="empty-icon" style="color: var(--el-color-danger)"><Warning /></el-icon>
+            <el-icon class="empty-icon danger-icon"><Warning /></el-icon>
           </template>
           <template #description>
             <p>{{ loadErrorMessage }}</p>
@@ -762,7 +762,7 @@ const handleContinue = (courseId) => {
    PC 布局
    ================================================ */
 .pc-layout {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--el-bg-color);
 }
 
@@ -1016,7 +1016,7 @@ const handleContinue = (courseId) => {
    H5 布局
    ================================================ */
 .h5-layout {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--el-bg-color);
   padding-bottom: 56px;
 }
@@ -1269,4 +1269,5 @@ const handleContinue = (courseId) => {
   font-size: 48px;
   color: var(--el-text-color-placeholder);
 }
+.danger-icon { color: var(--el-color-danger); }
 </style>

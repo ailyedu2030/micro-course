@@ -362,7 +362,7 @@ onUnmounted(() => {
 
 <style scoped>
 .layout-container {
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 

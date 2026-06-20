@@ -411,7 +411,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 /* ====== 全局 ====== */
 .course-detail-page {
   background: var(--el-bg-color);
-  min-height: 100vh;
+  min-height: 100dvh;
   padding-bottom: var(--space-8);
 }
 .not-found-page {

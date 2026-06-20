@@ -884,7 +884,7 @@ onUnmounted(() => {
   --color-primary-100: #E0E7FF;
 
   background: var(--el-bg-color-page);
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -1325,7 +1325,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   position: sticky;
   top: 140px;
-  max-height: calc(100vh - 160px);
+  max-height: calc(100dvh - 160px);
   overflow-y: auto;
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-md);

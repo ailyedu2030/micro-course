@@ -514,7 +514,7 @@ onUnmounted(() => {
 .student-grades-container {
   padding: var(--space-6);
   background: var(--el-bg-color-page);
-  min-height: calc(100vh - 120px);
+  min-height: calc(100dvh - 120px);
   max-width: 1440px;
   margin: 0 auto;
 }

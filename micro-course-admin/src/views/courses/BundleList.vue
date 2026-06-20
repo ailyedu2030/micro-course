@@ -16,8 +16,8 @@
         <el-table-column prop="creatorName" label="创建者" width="120" />
         <el-table-column label="价格" width="120" align="center">
           <template #default="{ row }">
-            <span v-if="row.price" style="color:#f56c6c">¥{{ row.price }}</span>
-            <span v-else style="color:#67c23a">免费</span>
+            <span v-if="row.price" class="price-amount">¥{{ row.price }}</span>
+            <span v-else class="price-free">免费</span>
           </template>
         </el-table-column>
         <el-table-column prop="studentCount" label="学习人数" width="100" align="center" />
@@ -208,4 +208,6 @@ onMounted(() => fetchBundles())
 .sort-input { width: 80px; }
 .req-check { margin: 0 var(--space-2); }
 .pagination { display: flex; justify-content: flex-end; }
+.price-amount { color: var(--el-color-danger); }
+.price-free { color: var(--el-color-success); }
 </style>

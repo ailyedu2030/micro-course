@@ -1507,7 +1507,7 @@ onBeforeUnmount(() => {
 
   background: var(--vp-bg);
   color: var(--vp-text);
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

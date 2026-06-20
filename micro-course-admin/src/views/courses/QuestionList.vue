@@ -60,7 +60,7 @@
               :show-file-list="false"
               :before-upload="handleImportExcel"
               accept=".xlsx,.xls"
-              style="display: inline-block; margin-right: 8px">
+              class="upload-inline">
               <el-button type="success" size="small">导入Excel</el-button>
             </el-upload>
             <el-button type="warning" size="small" @click="handleExportExcel">导出Excel</el-button>
@@ -689,4 +689,4 @@ onMounted(() => {
     justify-content: center;
   }
 }
-</style>
+.upload-inline { display: inline-block; margin-right: var(--space-2); }</style>

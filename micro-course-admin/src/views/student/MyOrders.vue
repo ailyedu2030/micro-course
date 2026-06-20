@@ -10,8 +10,8 @@
         <el-table-column prop="courseTitle" label="课程" min-width="200" show-overflow-tooltip />
         <el-table-column prop="amount" label="金额" width="120" align="center">
           <template #default="{ row }">
-            <span v-if="row.amount" style="color:#f56c6c;font-weight:600">¥{{ row.amount }}</span>
-            <span v-else style="color:#67c23a">免费</span>
+            <span v-if="row.amount" class="price-paid">¥{{ row.amount }}</span>
+            <span v-else class="price-free">免费</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
@@ -101,4 +101,6 @@ onMounted(() => fetchOrders())
 .my-orders { padding: var(--space-4); max-width: 1200px; margin: 0 auto; }
 .page-breadcrumb { margin-bottom: var(--space-4); font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--el-border-color-lighter); }
+.price-paid { color: var(--el-color-danger); font-weight: var(--weight-semibold); }
+.price-free { color: var(--el-color-success); }
 </style>

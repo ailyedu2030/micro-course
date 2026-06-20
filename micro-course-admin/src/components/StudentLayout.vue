@@ -305,7 +305,7 @@ onUnmounted(() => notificationStore.stopPolling())
    2. 布局容器
    --------------------------------------------------------------------------- */
 .student-layout {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--el-bg-color-page, #f0f2f5);
   display: flex;
   flex-direction: column;

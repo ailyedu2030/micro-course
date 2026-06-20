@@ -722,7 +722,7 @@ onMounted(async () => {
    Root
    ================================================ */
 .course-square {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--el-bg-color);
   padding-bottom: var(--space-8);
 }
