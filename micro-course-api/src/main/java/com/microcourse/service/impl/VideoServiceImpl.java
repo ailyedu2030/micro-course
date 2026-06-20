@@ -293,6 +293,9 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
 
+        // SECURITY: 只有课程教师或 ADMIN 可上传封面
+        assertCourseOwnership(video.getCourseId());
+
         // P1-8: 图片魔数校验
         validateImageMagic(file);
 

@@ -218,6 +218,13 @@ public class CourseServiceImpl implements CourseService {
         if (categoryRepository.selectById(request.getCategoryId()) == null) {
             throw new BusinessException(ErrorCode.COURSE_CATEGORY_NOT_FOUND);
         }
+
+        // SECURITY: TEACHER 只能为自己创建课程，ADMIN 可指定任意教师
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isAdmin()) {
+            request.setTeacherId(currentUserId);
+        }
+
         // Validate teacher exists and has TEACHER role
         User teacher = userRepository.selectById(request.getTeacherId());
         if (teacher == null) {

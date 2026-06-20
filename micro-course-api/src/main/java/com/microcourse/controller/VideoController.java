@@ -96,7 +96,7 @@ public class VideoController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<VideoVO> update(@PathVariable Long id,
                              @Valid @RequestBody VideoUpdateRequest request) {
         VideoVO vo = videoService.update(id, request);
@@ -104,7 +104,7 @@ public class VideoController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         videoService.delete(id);
         return R.ok();
@@ -329,7 +329,7 @@ public class VideoController {
      * P1-8 修复：图片魔数校验在 VideoServiceImpl.uploadCover() 中执行
      */
     @PostMapping("/{id}/cover")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<String> uploadCover(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件不能为空");

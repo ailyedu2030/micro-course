@@ -60,6 +60,12 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     @Override
     public PageResult<TeachingClassVO> page(int page, int size, Long teacherId, Long courseId,
                                            String semester, Integer status) {
+        // SECURITY: TEACHER 只能看到自己的教学班
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC")) {
+            teacherId = currentUserId;
+        }
+
         // Controller 传入 0-based page, MyBatis-Plus Page 使用 1-based, 此处 +1 转换
         Page<TeachingClass> ipage = new Page<>(page + 1, size);
         LambdaQueryWrapper<TeachingClass> wrapper = new LambdaQueryWrapper<>();
@@ -169,6 +175,12 @@ public class TeachingClassServiceImpl implements TeachingClassService {
             throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
         }
 
+        // SECURITY: 只有班级教师或 ADMIN 可修改教学班
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isAdmin() && !currentUserId.equals(tc.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权修改该教学班");
+        }
+
         if (req.getCourseId() != null) {
             tc.setCourseId(req.getCourseId());
         }
@@ -232,6 +244,12 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         TeachingClass tc = teachingClassRepository.selectById(classId);
         if (tc == null) {
             throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
+        }
+
+        // SECURITY: 只有班级教师或 ADMIN/ACADEMIC 可查看学生名单
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC") && !currentUserId.equals(tc.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权查看该教学班学生名单");
         }
 
         List<TeachingClassStudent> students = teachingClassStudentRepository.selectActiveByClassId(classId);

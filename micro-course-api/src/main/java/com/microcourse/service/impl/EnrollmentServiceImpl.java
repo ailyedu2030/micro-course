@@ -670,6 +670,20 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         return false;
     }
 
+    @Override
+    public void assertCourseOwnership(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        Long currentUserId = getCurrentUserId();
+        boolean isAdmin = hasAdminRole();
+        // TEACHER 必须为课程 owner；ADMIN 跳过校验
+        if (!isAdmin && !course.getTeacherId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+    }
+
     /** LIKE 通配符转义,防 DF-002 LIKE 注入 */
     private static String escapeLike(String input) {
         if (input == null) return null;

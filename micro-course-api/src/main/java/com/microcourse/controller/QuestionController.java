@@ -42,7 +42,7 @@ public class QuestionController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<QuestionVO> getById(@PathVariable Long id) {
         QuestionVO vo = questionService.getById(id);
         return R.ok(vo);
@@ -56,7 +56,7 @@ public class QuestionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<QuestionVO> update(@PathVariable Long id,
                                 @Valid @RequestBody QuestionUpdateRequest request) {
         QuestionVO vo = questionService.update(id, request);
@@ -64,7 +64,7 @@ public class QuestionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         questionService.delete(id);
         return R.ok();

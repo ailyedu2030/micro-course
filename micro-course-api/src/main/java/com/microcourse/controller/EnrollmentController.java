@@ -69,6 +69,10 @@ public class EnrollmentController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String className,
             @RequestParam(required = false) String majorName) {
+        // SECURITY: TEACHER 只能查自己课程的学员，强制覆写 teacherId
+        if (hasRole("TEACHER")) {
+            teacherId = getCurrentUserId();
+        }
         EnrollmentQueryRequest query = new EnrollmentQueryRequest();
         query.setPage(page);
         query.setSize(size);
@@ -89,6 +93,10 @@ public class EnrollmentController {
             @PathVariable Long courseId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) int size) {
+        // SECURITY: TEACHER 必须为课程 owner
+        if (hasRole("TEACHER")) {
+            enrollmentService.assertCourseOwnership(courseId);
+        }
         PageResult<EnrollmentVO> result = enrollmentService.getCourseEnrollmentPage(courseId, page, size);
         return R.ok(result);
     }
@@ -175,5 +183,13 @@ public class EnrollmentController {
             try { return Long.parseLong(str); } catch (NumberFormatException ignored) { /* fall through */ }
         }
         throw new BusinessException(ErrorCode.TOKEN_INVALID);
+    }
+
+    /** 检查当前用户是否拥有指定角色 */
+    private boolean hasRole(String role) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
+        return auth.getAuthorities().stream()
+                .anyMatch(g -> g.getAuthority().equals("ROLE_" + role));
     }
 }

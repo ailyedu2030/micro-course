@@ -39,4 +39,7 @@ public interface EnrollmentService {
 
     /** P0-2: 获取学员详情（关联 users + classes + majors） */
     StudentDetailVO getStudentDetail(Long userId);
+
+    /** 校验当前教师是否为课程 Owner（TEACHER 角色专用） */
+    void assertCourseOwnership(Long courseId);
 }

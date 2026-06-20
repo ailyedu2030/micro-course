@@ -6,26 +6,62 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.NotificationCreateRequest;
 import com.microcourse.dto.NotificationVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.entity.Course;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Notification;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.NotificationRepository;
 import com.microcourse.service.NotificationService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
-    public NotificationServiceImpl(NotificationRepository notificationRepository) {
+    public NotificationServiceImpl(NotificationRepository notificationRepository,
+                                   CourseRepository courseRepository,
+                                   EnrollmentRepository enrollmentRepository) {
         this.notificationRepository = notificationRepository;
+        this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public NotificationVO send(NotificationCreateRequest request, Long senderId) {
+        // SECURITY: TEACHER 只能向自己课程中的学生发送通知
+        if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC")) {
+            // 查询教师所有课程
+            LambdaQueryWrapper<Course> courseWrapper = new LambdaQueryWrapper<>();
+            courseWrapper.eq(Course::getTeacherId, senderId).isNull(Course::getDeletedAt);
+            List<Course> teacherCourses = courseRepository.selectList(courseWrapper);
+            if (teacherCourses.isEmpty()) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "没有可授课的课程，无法发送通知");
+            }
+            Set<Long> courseIds = teacherCourses.stream().map(Course::getId).collect(Collectors.toSet());
+            // 查询收件人是否在这些课程中已选课
+            LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
+            enrollWrapper.eq(Enrollment::getUserId, request.getUserId())
+                         .in(Enrollment::getCourseId, courseIds)
+                         .ne(Enrollment::getEnrollmentStatus, "CANCELLED");
+            if (enrollmentRepository.selectCount(enrollWrapper) == 0) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "只能向自己课程中的学生发送通知");
+            }
+        }
+
         Notification notification = new Notification();
         notification.setUserId(request.getUserId());
         notification.setType(request.getType());

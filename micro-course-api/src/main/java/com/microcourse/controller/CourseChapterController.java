@@ -45,7 +45,7 @@ public class CourseChapterController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<ChapterVO> update(@PathVariable Long id,
                                @Valid @RequestBody ChapterUpdateRequest request) {
         ChapterVO vo = chapterService.update(id, request);
@@ -53,14 +53,14 @@ public class CourseChapterController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         chapterService.delete(id);
         return R.ok();
     }
 
     @PutMapping("/sort")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> sort(@Valid @RequestBody List<ChapterSortRequest> requests) {
         chapterService.sort(requests);
         return R.ok();

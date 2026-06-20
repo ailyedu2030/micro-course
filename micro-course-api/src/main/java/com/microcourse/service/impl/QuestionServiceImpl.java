@@ -62,6 +62,11 @@ public class QuestionServiceImpl implements QuestionService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
+        // SECURITY: TEACHER 只能为自己创建题目，ADMIN 可指定
+        if (!SecurityUtil.isAdmin()) {
+            request.setTeacherId(SecurityUtil.getCurrentUserId());
+        }
+
         Question question = new Question();
         question.setCourseId(request.getCourseId());
         question.setTeacherId(request.getTeacherId());
@@ -176,6 +181,11 @@ public class QuestionServiceImpl implements QuestionService {
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+
+        // SECURITY: 只有课程教师或 ADMIN 可批量导入题目
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权向该课程导入题目");
         }
 
         // 获取当前教师 ID

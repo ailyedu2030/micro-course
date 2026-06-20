@@ -66,7 +66,7 @@ public class ExerciseController {
     }
 
     @PostMapping("/{id}/questions")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> addQuestions(@PathVariable Long id, @RequestBody Map<String, List<Long>> body) {
         List<Long> questionIds = body.get("questionIds");
         if (questionIds == null || questionIds.isEmpty()) {
@@ -78,7 +78,7 @@ public class ExerciseController {
     }
 
     @DeleteMapping("/{exerciseId}/questions/{questionId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> removeQuestion(@PathVariable Long exerciseId, @PathVariable Long questionId) {
         exerciseService.removeQuestion(exerciseId, questionId);
         return R.ok();

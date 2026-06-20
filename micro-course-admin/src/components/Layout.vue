@@ -14,7 +14,7 @@
         <span v-show="collapsed" class="logo-text-short">微课</span>
       </div>
 
-      <!-- 菜单 -->
+      <!-- 菜单（配置驱动） -->
       <el-menu
         :default-active="activeMenu"
         :collapse="collapsed"
@@ -22,150 +22,18 @@
         router
         class="layout-menu"
       >
-        <!-- 基础数据 -->
-        <el-sub-menu index="base" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
-          <template #title>
-            <el-icon><Grid /></el-icon>
-            <span v-show="!collapsed">基础数据</span>
-          </template>
-          <el-menu-item index="/departments">
-            <el-icon><OfficeBuilding /></el-icon>
-            <template #title>院系管理</template>
-          </el-menu-item>
-          <el-menu-item index="/majors">
-            <el-icon><Reading /></el-icon>
-            <template #title>专业管理</template>
-          </el-menu-item>
-          <el-menu-item index="/classes">
-            <el-icon><School /></el-icon>
-            <template #title>班级管理</template>
-          </el-menu-item>
-          <el-menu-item index="/users">
-            <el-icon><User /></el-icon>
-            <template #title>用户管理</template>
-          </el-menu-item>
-        </el-sub-menu>
-
-        <!-- 课程管理 - 仅 ADMIN -->
-        <el-sub-menu index="course" v-if="userStore.role === 'ADMIN'">
-          <template #title>
-            <el-icon><Notebook /></el-icon>
-            <span v-show="!collapsed">课程管理</span>
-          </template>
-          <el-menu-item index="/courses">
-            <el-icon><VideoCamera /></el-icon>
-            <template #title>课程列表</template>
-          </el-menu-item>
-          <el-menu-item index="/courses/review">
-            <el-icon><Film /></el-icon>
-            <template #title>课程审核</template>
-          </el-menu-item>
-          <el-menu-item index="/course-categories">
-            <el-icon><FolderOpened /></el-icon>
-            <template #title>分类管理</template>
-          </el-menu-item>
-          <el-menu-item index="/chapters">
-            <el-icon><List /></el-icon>
-            <template #title>章节管理</template>
-          </el-menu-item>
-          <el-menu-item index="/videos">
-            <el-icon><VideoPlay /></el-icon>
-            <template #title>视频管理</template>
-          </el-menu-item>
-          <el-menu-item index="/enrollments">
-            <el-icon><Tickets /></el-icon>
-            <template #title>选课管理</template>
-          </el-menu-item>
-          <el-menu-item index="/questions">
-            <el-icon><Document /></el-icon>
-            <template #title>题库管理</template>
-          </el-menu-item>
-          <el-menu-item index="/exercises">
-            <el-icon><Edit /></el-icon>
-            <template #title>练习管理</template>
-          </el-menu-item>
-        </el-sub-menu>
-
-        <!-- 教学管理 -->
-        <el-sub-menu index="teaching" v-if="userStore.role === 'TEACHER' || userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
-          <template #title>
-            <el-icon><UserFilled /></el-icon>
-            <span v-show="!collapsed">教学管理</span>
-          </template>
-          <el-menu-item index="/teacher/dashboard">
-            <el-icon><DataAnalysis /></el-icon>
-            <template #title>教师看板</template>
-          </el-menu-item>
-          <el-menu-item index="/teacher/students">
-            <el-icon><School /></el-icon>
-            <template #title>学员管理</template>
-          </el-menu-item>
-          <el-menu-item index="/teacher/grades">
-            <el-icon><Finished /></el-icon>
-            <template #title>成绩明细</template>
-          </el-menu-item>
-          <el-menu-item index="/teacher/teaching-classes">
-            <el-icon><Reading /></el-icon>
-            <template #title>我的教学班</template>
-          </el-menu-item>
-          <!-- 教师课程管理（仅在教师角色时可见） -->
-          <el-menu-item index="/teacher/courses" v-if="userStore.role === 'TEACHER'">
-            <el-icon><Notebook /></el-icon>
-            <template #title>课程管理</template>
-          </el-menu-item>
-          <el-menu-item index="/teacher/videos" v-if="userStore.role === 'TEACHER'">
-            <el-icon><VideoPlay /></el-icon>
-            <template #title>视频管理</template>
-          </el-menu-item>
-          <el-menu-item index="/teacher/exercises" v-if="userStore.role === 'TEACHER'">
-            <el-icon><Edit /></el-icon>
-            <template #title>练习管理</template>
-          </el-menu-item>
-          <el-menu-item index="/bundles" v-if="userStore.role === 'TEACHER'">
-            <el-icon><FolderOpened /></el-icon>
-            <template #title>套件管理</template>
-          </el-menu-item>
-          <el-menu-item index="/teacher/discussions" v-if="userStore.role === 'TEACHER'">
-            <el-icon><ChatLineSquare /></el-icon>
-            <template #title>讨论区</template>
-          </el-menu-item>
-          <el-menu-item index="/teacher/questions">
-            <el-icon><Document /></el-icon>
-            <template #title>题库管理</template>
-          </el-menu-item>
-          <el-menu-item index="/teacher/favorites" v-if="userStore.role === 'TEACHER'">
-            <el-icon><Star /></el-icon>
-            <template #title>收藏管理</template>
-          </el-menu-item>
-        </el-sub-menu>
-
-        <!-- 系统管理 -->
-        <el-sub-menu index="system" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
-          <template #title>
-            <el-icon><Setting /></el-icon>
-            <span v-show="!collapsed">系统管理</span>
-          </template>
-          <el-menu-item index="/academic/dashboard" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
-            <el-icon><DataAnalysis /></el-icon>
-            <template #title>教务驾驶舱</template>
-          </el-menu-item>
-          <el-menu-item index="/admin/dashboard" v-if="userStore.role === 'ADMIN'">
-            <el-icon><Odometer /></el-icon>
-            <template #title>数据看板</template>
-          </el-menu-item>
-          <el-menu-item index="/admin/logs" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
-            <el-icon><Clock /></el-icon>
-            <template #title>操作日志</template>
-          </el-menu-item>
-          <el-menu-item index="/admin/settings" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
-            <el-icon><Tools /></el-icon>
-            <template #title>系统设置</template>
-          </el-menu-item>
-          <el-menu-item index="/admin/teaching-classes" v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'">
-            <el-icon><Reading /></el-icon>
-            <template #title>教学班管理</template>
-          </el-menu-item>
-        </el-sub-menu>
+        <template v-for="group in currentMenu" :key="group.group">
+          <el-sub-menu :index="group.group">
+            <template #title>
+              <el-icon><component :is="iconMap[group.icon]" /></el-icon>
+              <span v-show="!collapsed">{{ group.group }}</span>
+            </template>
+            <el-menu-item v-for="item in group.children" :key="item.path" :index="item.path">
+              <el-icon><component :is="iconMap[item.icon]" /></el-icon>
+              <template #title>{{ item.label }}</template>
+            </el-menu-item>
+          </el-sub-menu>
+        </template>
       </el-menu>
     </el-aside>
 
@@ -252,14 +120,29 @@ import {
   Fold, Expand, Bell, ArrowDown, Microphone, Grid, OfficeBuilding, Reading,
   School, User, Notebook, VideoCamera, Film, FolderOpened, List, VideoPlay,
   Tickets, Document, Edit, UserFilled, DataAnalysis, Finished, ChatLineSquare,
-  Star, Setting, Odometer, Clock, Tools, SwitchButton, Sunny, Moon
+  Star, Setting, Odometer, Clock, Tools, SwitchButton, Sunny, Moon,
+  TrendCharts, PictureFilled
 } from '@element-plus/icons-vue'
+import { menuConfig } from '@/config/menuConfig'
 import { ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
+
+// 图标名称到组件的映射（用于配置驱动菜单的动态渲染）
+const iconMap = {
+  Grid, OfficeBuilding, Reading, School, User, Notebook, VideoCamera, Film,
+  FolderOpened, List, VideoPlay, Tickets, Document, Edit, UserFilled,
+  DataAnalysis, Finished, ChatLineSquare, Star, Setting, Odometer, Clock,
+  Tools, Bell, TrendCharts, PictureFilled, Microphone,
+}
+
+// 当前角色菜单（从配置中读取）
+const currentMenu = computed(() => {
+  return menuConfig[userStore.role] || menuConfig.ADMIN
+})
 
 // 深色模式状态
 const isDark = ref(false)

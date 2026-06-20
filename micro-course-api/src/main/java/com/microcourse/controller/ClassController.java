@@ -39,14 +39,14 @@ public class ClassController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<ClassVO> create(@Valid @RequestBody ClassCreateRequest request) {
         ClassVO vo = classService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<ClassVO> update(@PathVariable Long id,
                              @Valid @RequestBody ClassUpdateRequest request) {
         ClassVO vo = classService.update(id, request);
@@ -54,7 +54,7 @@ public class ClassController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
         classService.delete(id);
         return R.ok();

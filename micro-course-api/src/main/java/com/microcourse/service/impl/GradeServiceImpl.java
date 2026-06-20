@@ -98,12 +98,29 @@ public class GradeServiceImpl implements GradeService {
         if (grade == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "成绩记录不存在");
         }
+        // SECURITY: 只有课程教师、学生本人或 ADMIN 可查看成绩
+        if (grade.getCourseId() != null) {
+            Course course = courseRepository.selectById(grade.getCourseId());
+            if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())
+                    && !SecurityUtil.getCurrentUserId().equals(grade.getStudentId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
         return convertToVO(grade);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public GradeVO create(GradeCreateRequest request, Long teacherId) {
+        // SECURITY: 校验当前用户是否为该课程的授课教师
+        Course course = courseRepository.selectById(request.getCourseId());
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权为该课程创建成绩");
+        }
+
         // P1: 重复提交防护 — 同一课程+学生+练习只允许一条成绩
         LambdaQueryWrapper<Grade> dupWrapper = new LambdaQueryWrapper<>();
         dupWrapper.eq(Grade::getCourseId, request.getCourseId())
