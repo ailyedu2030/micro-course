@@ -434,6 +434,10 @@ onMounted(() => loadCourse())
   background: var(--role-primary-light-9);
 }
 
+.upload-icon {
+  color: var(--role-primary);
+}
+
 .upload-text {
   font-size: var(--text-base);
   color: var(--el-text-color-regular);
