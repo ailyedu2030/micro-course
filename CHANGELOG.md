@@ -2,6 +2,25 @@
 
 All notable changes to the 微课管理平台 (Micro-Course Management Platform) are documented here.
 
+## [v1.12.2] — 2026-06-20
+
+> Phase 13 · Badge 后端完整实现
+
+### Badge 后端完整实现
+
+- `V37__badge_definitions.sql`：badge_definitions 表 + 3 个内置徽章种子数据（FIRST_COURSE / ALL_COURSES / SEVEN_DAY_STREAK）
+- `V38__achievements.sql`：achievements 表（替代 V18 单表 badges）
+- `BadgeDefinition.java` + `BadgeDefinitionRepository.java`：徽章定义实体
+- `Achievement.java` + `AchievementRepository.java`：用户成就实体
+- `BadgeDefinitionVO.java` + `AchievementVO.java`：API 响应 DTO
+- `BadgeServiceImpl`：颁发/列表/定义查询；防重复颁发（UNIQUE 兜底）
+- `BadgeController`：`GET /api/badges/definitions` + `GET /api/badges/my` + `GET /api/badges/achievements`
+- **自动颁发**：EnrollmentServiceImpl 课程完成时 → FIRST_COURSE / ALL_COURSES 徽章
+- **自动颁发**：CheckInServiceImpl 打卡成功时 → SEVEN_DAY_STREAK 徽章（连续 ≥ 7 天）
+- **防循环依赖**：checkAndAwardCourseCompletion(counts) 接受外部计算的 enrollments count
+
+---
+
 ## [v1.12.1] — 2026-06-20
 
 > Phase 11–12 · Certificate 后端完整实现
