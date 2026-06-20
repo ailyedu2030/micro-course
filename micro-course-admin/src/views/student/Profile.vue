@@ -807,27 +807,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* === CSS Variables (Design Tokens) === */
+/* === Profile View === */
 .profile-view {
-  --role-primary: #6366f1;
-  --role-primary-dark: #4f46e5;
-  --role-primary-light: #eef2ff;
-  --radius-lg: 12px;
-  --radius-md: 8px;
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.1);
-  --text-xl: 20px;
-  --text-lg: 18px;
-  --text-base: 14px;
-  --text-sm: 13px;
-  --text-xs: 12px;
-  --weight-semibold: 600;
-  --weight-medium: 500;
-  --space-4: 16px;
-  --space-5: 20px;
-  --duration-base: 200ms;
-
   padding: var(--space-5);
-
 }
 
 /* === Page Title === */
@@ -927,7 +909,7 @@ onBeforeUnmount(() => {
 
 /* === Student Stat Card === */
 .student-stat-card {
-  background: linear-gradient(135deg, #fafbff 0%, #f0f4ff 100%);
+  background: linear-gradient(135deg, var(--role-primary-light-9) 0%, var(--role-primary-light-7) 100%);
   border: 1px solid rgba(99, 102, 241, 0.08);
 }
 
@@ -977,7 +959,7 @@ onBeforeUnmount(() => {
 }
 
 .student-card-item:not(.badge-locked) {
-  background: linear-gradient(135deg, var(--role-primary-light) 0%, #f5f3ff 100%);
+  background: linear-gradient(135deg, var(--role-primary-light) 0%, var(--role-primary-light-9) 100%);
 }
 
 .badge-item.badge-locked {

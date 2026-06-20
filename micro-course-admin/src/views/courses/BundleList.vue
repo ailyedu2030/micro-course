@@ -198,14 +198,14 @@ onMounted(() => fetchBundles())
 </script>
 
 <style scoped>
-.bundle-list { padding: 16px; max-width: 1400px; margin: 0 auto; }
-.mg-top-16 { margin-top: 16px; }
-.mg-top-12 { margin-top: 12px; }
+.bundle-list { padding: var(--space-4); max-width: 1440px; margin: 0 auto; }
+.mg-top-16 { margin-top: var(--space-4); }
+.mg-top-12 { margin-top: var(--space-3); }
 .card-header { display: flex; align-items: center; justify-content: space-between; }
 .full-width { width: 100%; }
-.add-course-section { display: flex; align-items: center; gap: 8px; padding: 12px; background: #f5f7fa; border-radius: 4px; }
+.add-course-section { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3); background: var(--el-fill-color-light); border-radius: var(--radius-md); }
 .course-select { flex: 1; }
 .sort-input { width: 80px; }
-.req-check { margin: 0 8px; }
+.req-check { margin: 0 var(--space-2); }
 .pagination { display: flex; justify-content: flex-end; }
 </style>

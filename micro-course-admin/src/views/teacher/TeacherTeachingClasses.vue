@@ -7,7 +7,7 @@
   <div class="teacher-teaching-classes">
     <el-row :gutter="16">
       <!-- 左侧：课程列表 -->
-      <el-col :span="8">
+      <el-col :xs="24" :sm="24" :md="8">
         <el-card class="course-card" shadow="never">
           <template #header>
             <div class="card-header">
@@ -34,7 +34,7 @@
       </el-col>
 
       <!-- 右侧：教学班列表 -->
-      <el-col :span="16">
+      <el-col :xs="24" :sm="24" :md="16">
         <el-card class="class-card" shadow="never">
           <template #header>
             <div class="card-header">
@@ -489,11 +489,7 @@ onMounted(() => {
 })
 
 function handleResize() {
-  // 通知子组件重算高度（el-card 高度自适应）
-  const cards = document.querySelectorAll('.course-card, .class-card')
-  cards.forEach(card => {
-    card.style.height = 'calc(100vh - 120px)'
-  })
+  // CSS handles responsive layout via calc(100dvh - 168px)
 }
 
 onBeforeUnmount(() => {
@@ -503,32 +499,36 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .teacher-teaching-classes {
-  padding: 24px;
-  background: #F5F6FA;
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
   min-height: calc(100vh - 120px);
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 /* 课程卡片 & 教学班卡片 */
 .course-card,
 .class-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  transition: box-shadow 200ms ease, transform 200ms ease;
-  height: calc(100vh - 168px);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+  height: calc(100dvh - 168px);
   overflow-y: auto;
 }
 
 .course-card:hover,
 .class-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .course-card :deep(.el-card__header),
 .class-card :deep(.el-card__header) {
-  padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .card-header {
@@ -538,78 +538,81 @@ onBeforeUnmount(() => {
 }
 
 .card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 /* 课程列表 */
 .course-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .course-item {
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid #F1F5F9;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--el-border-color-lighter);
   border-left: 3px solid transparent;
   cursor: pointer;
-  transition: all 200ms ease;
+  transition: all var(--duration-base) var(--ease-out);
 }
 
 .course-item:hover {
-  background: #F8FAFC;
-  border-left-color: #4F46E5;
+  background: var(--el-fill-color-light);
+  border-left-color: var(--role-primary);
 }
 
 .course-item.is-active {
-  background: #EEF2FF;
-  border-left-color: #4F46E5;
+  background: var(--role-primary-light-9);
+  border-left-color: var(--role-primary);
+  border-color: var(--role-primary-light-7);
 }
 
 .course-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1E293B;
-  margin-bottom: 4px;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
+  margin-bottom: var(--space-1);
+  letter-spacing: var(--tracking-tight);
 }
 
 .course-info {
-  font-size: 13px;
-  color: #475569;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
 }
 
 /* 教学班列表 */
 .empty-tip {
-  padding: 24px 0;
+  padding: var(--space-6) 0;
 }
 
 .class-groups {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .class-group {
-  border: 1px solid #F1F5F9;
-  border-radius: 8px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .group-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background-color: #F8FAFC;
-  border-bottom: 1px solid #F1F5F9;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--el-fill-color-light);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .group-count {
-  font-size: 13px;
-  color: #475569;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
   margin-left: auto;
 }
 
@@ -619,7 +622,7 @@ onBeforeUnmount(() => {
 }
 
 .class-item {
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .class-item:last-child {
@@ -630,25 +633,26 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
-  transition: background-color 200ms ease;
+  transition: background-color var(--duration-base) var(--ease-out);
 }
 
 .class-summary:hover {
-  background-color: #F1F5F9;
+  background-color: var(--role-primary-light-9);
 }
 
 .class-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .class-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1E293B;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-tight);
 }
 
 .status-tag {
@@ -658,9 +662,10 @@ onBeforeUnmount(() => {
 .class-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  color: #475569;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .expand-icon {
@@ -670,19 +675,19 @@ onBeforeUnmount(() => {
 
 /* 展开详情 */
 .class-detail {
-  padding: 16px;
-  background-color: #F8FAFC;
-  border-top: 1px solid #F1F5F9;
+  padding: var(--space-4);
+  background-color: var(--el-fill-color-light);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .detail-actions {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .detail-actions :deep(.el-button) {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .student-table {
@@ -690,21 +695,21 @@ onBeforeUnmount(() => {
 }
 
 .student-table :deep(.el-table__header-wrapper th) {
-  background: #F8FAFC;
+  background: var(--el-fill-color-light);
 }
 
 .student-table :deep(.el-table__row:hover > td) {
-  background: #F1F5F9;
+  background: var(--role-primary-light-9);
 }
 
 .no-students {
-  padding: 16px;
+  padding: var(--space-4);
   text-align: center;
-  color: #475569;
+  color: var(--el-text-color-secondary);
 }
 
 .loading-wrap {
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .full-width {
@@ -712,26 +717,39 @@ onBeforeUnmount(() => {
 }
 
 .text-secondary {
-  color: #475569;
-  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
 }
 
 /* 弹窗样式 */
 .teacher-teaching-classes :deep(.el-dialog) {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 
 .teacher-teaching-classes :deep(.el-button) {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .teacher-teaching-classes :deep(.el-button--primary) {
-  border-radius: 8px;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  border-radius: var(--radius-md);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
 }
 
 .teacher-teaching-classes :deep(.el-button--primary:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-primary);
+}
+
+@media (max-width: 768px) {
+  .teacher-teaching-classes {
+    padding: var(--space-4);
+  }
+
+  .course-card,
+  .class-card {
+    height: auto;
+    min-height: 400px;
+  }
 }
 </style>

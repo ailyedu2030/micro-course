@@ -131,41 +131,41 @@ watch(() => props.question, () => {
 
 <style scoped>
 .preview-question {
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 
 .question-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
-  margin: 0 0 16px 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  margin: 0 0 var(--space-4) 0;
   line-height: 1.6;
 }
 
 .question-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 
 .score-tag {
-  font-size: 13px;
-  color: #64748B;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
 }
 
 .options-area {
-  margin-bottom: 24px;
-  padding: 16px;
-  background: #F8FAFC;
-  border-radius: 8px;
+  margin-bottom: var(--space-6);
+  padding: var(--space-4);
+  background: var(--el-fill-color-light);
+  border-radius: var(--radius-md);
 }
 
 .option-item {
   display: flex;
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: #334155;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-base);
+  color: var(--el-text-color-primary);
   line-height: 1.5;
 }
 
@@ -174,42 +174,42 @@ watch(() => props.question, () => {
 }
 
 .fill-input {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .correct-answer {
-  margin-top: 16px;
-  padding: 12px 16px;
-  background: #F0FDF4;
-  border: 1px solid #BBF7D0;
-  border-radius: 8px;
-  font-size: 14px;
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
 }
 
 .answer-label {
-  font-weight: 600;
-  color: #166534;
-  margin-right: 8px;
+  font-weight: var(--weight-semibold);
+  color: var(--el-color-success);
+  margin-right: var(--space-2);
 }
 
 .answer-value {
-  color: #15803D;
+  color: var(--el-color-success);
 }
 
 .answer-analysis {
-  margin-top: 12px;
-  padding: 12px 16px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 14px;
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
 }
 
 .answer-analysis .answer-label {
-  color: #475569;
+  color: var(--el-text-color-primary);
 }
 
 .answer-analysis .answer-value {
-  color: #64748B;
+  color: var(--el-text-color-secondary);
 }
 </style>

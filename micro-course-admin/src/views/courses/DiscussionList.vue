@@ -213,19 +213,35 @@ onMounted(() => {
 <style scoped>
 .discussion-list-page {
   padding: var(--space-5);
+  background: var(--el-bg-color-page);
+  min-height: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .filter-card {
   margin-bottom: var(--space-4);
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .table-card {
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+
+.table-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
 }
 
 .table-card :deep(.el-card__header) {
   padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .card-header {
@@ -236,28 +252,38 @@ onMounted(() => {
 
 .card-title {
   font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .pagination-wrap {
   margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .data-table {
   width: 100%;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
+.data-table :deep(.el-table__header) th {
+  background: var(--el-fill-color-light);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
+}
+
 .data-table :deep(.el-table__row) {
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
-  background-color: var(--color-bg-page);
+  background-color: var(--role-primary-light-9);
 }
 
 .filter-input-w160 {

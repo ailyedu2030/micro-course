@@ -1231,17 +1231,17 @@ onUnmounted(() => {
 
 .hl-bg-primary {
   background: rgba(99, 102, 241, 0.12);
-  color: #6366f1;
+  color: var(--role-primary);
 }
 
 .hl-bg-success {
   background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
+  color: var(--el-color-success);
 }
 
 .hl-bg-warning {
   background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
+  color: var(--el-color-warning);
 }
 
 .hl-stat-body {
@@ -1266,15 +1266,15 @@ onUnmounted(() => {
 }
 
 .hl-primary .hl-stat-value.stat-number {
-  color: #6366f1;
+  color: var(--role-primary);
 }
 
 .hl-success .hl-stat-value.stat-number {
-  color: #10b981;
+  color: var(--el-color-success);
 }
 
 .hl-warning .hl-stat-value.stat-number {
-  color: #f59e0b;
+  color: var(--el-color-warning);
 }
 
 .hl-stat-label {

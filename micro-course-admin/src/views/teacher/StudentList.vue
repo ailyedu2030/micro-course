@@ -474,10 +474,10 @@ function formatDate(isoString) {
 }
 
 function getProgressColor(progress) {
-  if (progress >= 80) return '#67c23a'
-  if (progress >= 50) return '#409eff'
-  if (progress >= 30) return '#e6a23c'
-  return '#909399'
+  if (progress >= 80) return 'var(--el-color-success)'
+  if (progress >= 50) return 'var(--el-color-primary)'
+  if (progress >= 30) return 'var(--el-color-warning)'
+  return 'var(--el-color-info)'
 }
 
 function isRecent(isoString) {
@@ -495,17 +495,20 @@ onMounted(() => {
 
 <style scoped>
 .student-list-container {
-  padding: 24px;
-  background: #F5F6FA;
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
   min-height: calc(100vh - 120px);
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 /* 搜索区 */
 .search-card {
-  margin-bottom: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-bottom: var(--space-6);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .course-select {
@@ -522,16 +525,18 @@ onMounted(() => {
 
 /* 表格卡片 */
 .table-card {
-  margin-bottom: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  transition: box-shadow 200ms ease, transform 200ms ease;
+  margin-bottom: var(--space-6);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
 }
 
 .table-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .card-header {
@@ -541,28 +546,31 @@ onMounted(() => {
 }
 
 .card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .card-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .card-actions :deep(.el-button) {
-  border-radius: 8px;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  border-radius: var(--radius-md);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
 }
 
 .card-actions :deep(.el-button--primary) {
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
 }
 
 .card-actions :deep(.el-button--primary:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-primary);
 }
 
 /* 表格 */
@@ -572,25 +580,26 @@ onMounted(() => {
 }
 
 .data-table :deep(.el-table__header-wrapper th) {
-  background: #F8FAFC;
-  color: #1E293B;
-  font-weight: 600;
-  font-size: 14px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-wide);
 }
 
 .data-table :deep(.el-table__row) {
-  transition: background-color 200ms ease;
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
-  background: #F1F5F9;
+  background: var(--role-primary-light-9);
 }
 
 /* 进度条单元格 */
 .progress-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .progress-cell .el-progress {
@@ -598,51 +607,55 @@ onMounted(() => {
 }
 
 .progress-text {
-  font-size: 12px;
-  color: #475569;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
   min-width: 36px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 错误态 */
 .error-result {
-  padding: 48px 0;
+  padding: var(--space-9) 0;
 }
 
 /* 分页 */
 .pagination-wrap {
-  margin-top: 24px;
+  margin-top: var(--space-6);
   display: flex;
   justify-content: center;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 /* 文字辅助类 */
 .text-secondary {
-  color: #475569;
-  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
 }
 
 .text-primary-color {
-  color: #4F46E5;
-  font-size: 13px;
+  color: var(--role-primary);
+  font-size: var(--text-sm);
 }
 
 /* 弹窗样式 */
 .student-list-container :deep(.el-dialog) {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 
 .student-list-container :deep(.el-button) {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .student-list-container :deep(.el-button--primary) {
-  border-radius: 8px;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  border-radius: var(--radius-md);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
 }
 
 .student-list-container :deep(.el-button--primary:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-primary);
 }
 </style>

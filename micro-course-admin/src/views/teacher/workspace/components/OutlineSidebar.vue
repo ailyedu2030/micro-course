@@ -45,20 +45,20 @@ defineEmits(['selectChapter', 'selectLesson', 'addChapter', 'addLesson'])
 </script>
 
 <style scoped>
-.panel-sidebar { width: 280px; background: #fff; border-right: 1px solid #eee; display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
-.panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #f5f5f5; font-size: 13px; font-weight: 600; color: #333; flex-shrink: 0; }
-.outline-tree { flex: 1; padding: 8px 0; overflow-y: auto; }
-.chapter-group { margin-bottom: 4px; }
-.chapter-row, .lesson-row { display: flex; align-items: center; gap: 6px; padding: 8px 14px; cursor: pointer; font-size: 13px; transition: background .15s; }
-.chapter-row:hover, .lesson-row:hover { background: #f5f7fa; }
-.chapter-row.active, .lesson-row.active { background: #eef2ff; color: #00cc7e; }
-.chapter-row { font-weight: 500; }
-.lesson-row { padding-left: 34px; font-size: 12px; color: #555; }
-.drag-handle { cursor: grab; color: #ccc; flex-shrink: 0; }
+.panel-sidebar { width: 280px; background: var(--el-fill-color-blank); border-right: 1px solid var(--el-border-color-lighter); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+.panel-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--el-border-color-lighter); font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); flex-shrink: 0; }
+.outline-tree { flex: 1; padding: var(--space-2) 0; overflow-y: auto; }
+.chapter-group { margin-bottom: var(--space-1); }
+.chapter-row, .lesson-row { display: flex; align-items: center; gap: var(--space-1-5); padding: var(--space-2) var(--space-4); cursor: pointer; font-size: var(--text-sm); transition: background var(--duration-fast) var(--ease-out); }
+.chapter-row:hover, .lesson-row:hover { background: var(--el-fill-color-light); }
+.chapter-row.active, .lesson-row.active { background: var(--role-primary-light-9); color: var(--role-primary); }
+.chapter-row { font-weight: var(--weight-medium); }
+.lesson-row { padding-left: 34px; font-size: var(--text-xs); color: var(--el-text-color-secondary); }
+.drag-handle { cursor: grab; color: var(--el-text-color-placeholder); flex-shrink: 0; }
 .node-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lesson-status { font-size: 11px; font-weight: 600; color: #67c23a; flex-shrink: 0; }
-.lesson-status.empty { color: #d1d5db; }
+.lesson-status { font-size: 11px; font-weight: var(--weight-semibold); color: var(--el-color-success); flex-shrink: 0; }
+.lesson-status.empty { color: var(--el-text-color-placeholder); }
 .add-lesson-btn { margin-left: 34px; font-size: 11px; }
-.sidebar-footer { padding: 10px 14px; border-top: 1px solid #f5f5f5; flex-shrink: 0; }
-.progress-text { font-size: 11px; color: #999; display: block; margin-top: 4px; }
+.sidebar-footer { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--el-border-color-lighter); flex-shrink: 0; }
+.progress-text { font-size: 11px; color: var(--el-text-color-secondary); display: block; margin-top: var(--space-1); }
 </style>

@@ -398,21 +398,21 @@ function renderChart(items) {
     xAxis: {
       type: 'category',
       data: ranges.map(r => r.label),
-      axisLabel: { color: 'var(--el-text-color-regular)' },
-      axisLine: { lineStyle: { color: 'var(--el-border-color)' } }
+      axisLabel: { color: '#606266' },
+      axisLine: { lineStyle: { color: '#e4e7ed' } }
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: 'var(--el-text-color-regular)' },
-      axisLine: { lineStyle: { color: 'var(--el-border-color)' } },
-      splitLine: { lineStyle: { color: 'var(--el-border-color-lighter)' } }
+      axisLabel: { color: '#606266' },
+      axisLine: { lineStyle: { color: '#e4e7ed' } },
+      splitLine: { lineStyle: { color: '#f2f6fc' } }
     },
     series: [{
       type: 'bar',
       data: ranges.map(r => ({
         value: r.count,
         itemStyle: {
-          color: r.min < 60 ? 'var(--el-color-danger)' : 'var(--role-primary)',
+          color: r.min < 60 ? '#f56c6c' : '#409eff',
           borderRadius: [4, 4, 0, 0]
         }
       })),
@@ -420,7 +420,7 @@ function renderChart(items) {
       label: {
         show: true,
         position: 'top',
-        color: 'var(--el-text-color-regular)',
+        color: '#606266',
         fontSize: 12
       }
     }]
@@ -512,17 +512,20 @@ onUnmounted(() => {
 
 <style scoped>
 .student-grades-container {
-  padding: 24px;
-  background: #F5F6FA;
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
   min-height: calc(100vh - 120px);
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 /* 搜索区 */
 .search-card {
-  margin-bottom: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-bottom: var(--space-6);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .course-select {
@@ -533,94 +536,105 @@ onUnmounted(() => {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-  margin-bottom: 24px;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .stat-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
   text-align: center;
-  transition: box-shadow 200ms ease, transform 200ms ease;
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
 }
 
 .stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-3px);
+  border-color: var(--role-primary-light-7);
 }
 
 .stat-item {
-  padding: 16px 0;
+  padding: var(--space-5) var(--space-4);
 }
 
 .stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #1E293B;
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-label {
-  font-size: 14px;
-  color: #475569;
-  margin-top: 8px;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  margin-top: var(--space-2);
 }
 
 /* 图表 + 表格网格 */
 .content-grid {
   display: grid;
   grid-template-columns: 320px 1fr;
-  gap: 24px;
+  gap: var(--space-6);
   align-items: start;
 }
 
 /* 图表卡片 */
 .chart-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
   position: sticky;
-  top: 24px;
-  transition: box-shadow 200ms ease, transform 200ms ease;
+  top: var(--space-6);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
 }
 
 .chart-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .chart-container {
   width: 100%;
   height: 280px;
+  padding: var(--space-4);
 }
 
 /* 表格卡片 */
 .table-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  margin-bottom: 24px;
-  transition: box-shadow 200ms ease, transform 200ms ease;
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  margin-bottom: var(--space-6);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
 }
 
 .table-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 /* 表格 */
@@ -629,37 +643,40 @@ onUnmounted(() => {
 }
 
 .data-table :deep(.el-table__header-wrapper th) {
-  background: #F8FAFC;
-  color: #1E293B;
-  font-weight: 600;
-  font-size: 14px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-wide);
 }
 
 .data-table :deep(.el-table__row) {
-  transition: background-color 200ms ease;
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
-  background: #F1F5F9;
+  background: var(--role-primary-light-9);
 }
 
 /* 分数颜色 */
-.score-excellent { color: #67c23a; font-weight: 600; }
-.score-good { color: #4F46E5; font-weight: 600; }
-.score-pass { color: #e6a23c; font-weight: 600; }
-.score-fail { color: #f56c6c; font-weight: 600; }
+.score-excellent { color: var(--el-color-success); font-weight: var(--weight-semibold); }
+.score-good { color: var(--role-primary); font-weight: var(--weight-semibold); }
+.score-pass { color: var(--el-color-warning); font-weight: var(--weight-semibold); }
+.score-fail { color: var(--el-color-danger); font-weight: var(--weight-semibold); }
 
 /* 文字辅助 */
-.text-secondary { color: #475569; font-size: 13px; }
-.text-primary-color { color: #4F46E5; }
-.text-success { color: #67c23a; }
-.text-danger { color: #f56c6c; }
+.text-secondary { color: var(--el-text-color-secondary); font-size: var(--text-sm); }
+.text-primary-color { color: var(--role-primary); }
+.text-success { color: var(--el-color-success); }
+.text-danger { color: var(--el-color-danger); }
 
 /* 分页 */
 .pagination-wrap {
-  margin-top: 24px;
+  margin-top: var(--space-6);
   display: flex;
   justify-content: center;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 /* 批改弹窗 */
@@ -669,26 +686,27 @@ onUnmounted(() => {
 
 /* 弹窗样式 */
 .student-grades-container :deep(.el-dialog) {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 
 .student-grades-container :deep(.el-button) {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .student-grades-container :deep(.el-button--primary) {
-  border-radius: 8px;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  border-radius: var(--radius-md);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
 }
 
 .student-grades-container :deep(.el-button--primary:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-primary);
 }
 
 /* 空提示 */
 .empty-hint {
-  margin-top: 48px;
+  margin-top: var(--space-9);
 }
 
 @media (max-width: 1279px) {
@@ -702,6 +720,16 @@ onUnmounted(() => {
 
   .chart-card {
     position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .student-grades-container {
+    padding: var(--space-4);
+  }
+
+  .stat-value {
+    font-size: var(--text-2xl);
   }
 }
 </style>

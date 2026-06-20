@@ -373,11 +373,11 @@ onMounted(() => {
 
 /* 未读行高亮 */
 .data-table :deep(.row-unread) {
-  background-color: #EFF6FF !important;
+  background-color: var(--role-primary-light-9) !important;
 }
 
 .data-table :deep(.row-unread:hover > td) {
-  background-color: #DBEAFE !important;
+  background-color: var(--role-primary-light-7) !important;
 }
 
 .title-unread {
@@ -416,7 +416,7 @@ onMounted(() => {
 }
 
 .notification-card.card-unread {
-  background-color: #EFF6FF;
+  background-color: var(--role-primary-light-9);
   border-left: 3px solid var(--el-color-primary);
 }
 

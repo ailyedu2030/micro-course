@@ -329,16 +329,18 @@ onMounted(() => {
 
 <style scoped>
 .exercise-form-page {
-  padding: 24px;
-  background: #F5F6FA;
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
   min-height: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .form-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: none;
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .card-header {
@@ -348,9 +350,10 @@ onMounted(() => {
 }
 
 .card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .exercise-form {
@@ -362,68 +365,68 @@ onMounted(() => {
 }
 
 .field-hint {
-  margin-left: 12px;
-  font-size: 12px;
-  color: #909399;
+  margin-left: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
 }
 
 .form-footer {
-  padding: 16px 0;
-  border-top: 1px solid #F1F5F9;
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--el-border-color-lighter);
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 /* 预览弹窗样式 */
 .preview-content {
-  padding: 8px 0;
+  padding: var(--space-2) 0;
 }
 
 .preview-progress {
-  font-size: 13px;
-  color: #64748B;
-  margin-bottom: 12px;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  margin-bottom: var(--space-3);
 }
 
 .preview-question-type {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .preview-difficulty {
-  margin-left: 8px;
+  margin-left: var(--space-2);
 }
 
 .preview-score {
-  font-size: 13px;
-  color: #64748B;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
 }
 
 .preview-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
-  margin: 0 0 20px 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  margin: 0 0 var(--space-5) 0;
   line-height: 1.6;
 }
 
 .preview-options {
-  margin-bottom: 20px;
-  padding: 16px;
-  background: #F8FAFC;
-  border-radius: 8px;
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  background: var(--el-fill-color-light);
+  border-radius: var(--radius-md);
 }
 
 .preview-option-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: #334155;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-base);
+  color: var(--el-text-color-regular);
   line-height: 1.5;
 }
 
@@ -432,8 +435,8 @@ onMounted(() => {
 }
 
 .option-label {
-  font-weight: 600;
-  color: #1E293B;
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
   flex-shrink: 0;
 }
 
@@ -442,48 +445,48 @@ onMounted(() => {
 }
 
 .preview-answer {
-  margin-top: 16px;
-  padding: 12px 16px;
-  background: #F0FDF4;
-  border: 1px solid #BBF7D0;
-  border-radius: 8px;
-  font-size: 14px;
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--el-color-success-light-9);
+  border: 1px solid var(--el-color-success-light-7);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
 }
 
 .answer-label {
-  font-weight: 600;
-  color: #166534;
-  margin-right: 8px;
+  font-weight: var(--weight-semibold);
+  color: var(--el-color-success);
+  margin-right: var(--space-2);
 }
 
 .answer-value {
-  color: #15803D;
+  color: var(--el-color-success-dark-2);
 }
 
 .preview-analysis {
-  margin-top: 12px;
-  padding: 12px 16px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 14px;
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
 }
 
 .analysis-label {
-  font-weight: 600;
-  color: #475569;
-  margin-right: 8px;
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-secondary);
+  margin-right: var(--space-2);
 }
 
 .analysis-value {
-  color: #64748B;
+  color: var(--el-text-color-secondary);
 }
 
 :deep(.el-button) {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 :deep(.el-dialog) {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 </style>

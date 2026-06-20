@@ -877,26 +877,13 @@ onUnmounted(() => {
 <style scoped>
 /* ===== 设计 Token 引用 ===== */
 .learning-view {
-  --indigo-50: #EEF2FF;
-  --indigo-100: #E0E7FF;
-  --indigo-500: #6366F1;
-  --indigo-600: #4F46E5;
-  --indigo-700: #4338CA;
-  --indigo-900: #312E81;
-  --bg-page: #F5F6FA;
-  --bg-card: #FFFFFF;
-  --text-primary: #1E293B;
-  --text-secondary: #64748B;
-  --text-muted: #94A3B8;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
-  --shadow-indigo: 0 4px 20px rgba(79,70,229,0.15);
-  --transition: 200ms ease;
+  --color-primary: #6366F1;
+  --color-primary-dark: #4F46E5;
+  --color-primary-darker: #4338CA;
+  --color-primary-light: #EEF2FF;
+  --color-primary-100: #E0E7FF;
 
-  background: var(--bg-page);
+  background: var(--el-bg-color-page);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -906,31 +893,31 @@ onUnmounted(() => {
 .learning-header {
   display: flex;
   align-items: center;
-  padding: 14px 24px;
-  background: linear-gradient(135deg, var(--indigo-600) 0%, var(--indigo-500) 100%);
+  padding: var(--space-4) var(--space-6);
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
   color: white;
-  gap: 16px;
+  gap: var(--space-4);
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: var(--shadow-indigo);
+  box-shadow: 0 4px 20px rgba(79,70,229,0.15);
 }
 
 .header-left,
 .header-right { flex: 1; display: flex; align-items: center; }
-.header-right { gap: 8px; justify-content: flex-end; }
+.header-right { gap: var(--space-2); justify-content: flex-end; }
 .header-center { flex: 2; text-align: center; }
 
 .back-btn,
 .header-btn {
   color: rgba(255,255,255,0.9) !important;
-  font-size: 14px;
+  font-size: var(--text-base);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: var(--space-1);
+  padding: var(--space-1-5) var(--space-2-5);
   border-radius: var(--radius-sm);
-  transition: background var(--transition);
+  transition: background var(--duration-base) var(--ease-out);
 }
 .back-btn:hover,
 .header-btn:hover { background: rgba(255,255,255,0.15) !important; }
@@ -939,8 +926,8 @@ onUnmounted(() => {
 .header-btn.is-favorited { color: #FCD34D !important; }
 
 .course-title {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
   margin: 0;
   color: white;
   overflow: hidden;
@@ -952,12 +939,12 @@ onUnmounted(() => {
 .progress-indicator {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   cursor: pointer;
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2-5);
   border-radius: 20px;
   background: rgba(255,255,255,0.15);
-  transition: background var(--transition);
+  transition: background var(--duration-base) var(--ease-out);
 }
 .progress-indicator:hover { background: rgba(255,255,255,0.25); }
 .progress-dots { display: flex; gap: 3px; }
@@ -965,15 +952,15 @@ onUnmounted(() => {
   width: 6px; height: 6px;
   border-radius: 50%;
   background: rgba(255,255,255,0.35);
-  transition: background var(--transition);
+  transition: background var(--duration-base) var(--ease-out);
 }
 .dot.filled { background: white; }
-.progress-text { font-size: 13px; font-weight: 600; }
+.progress-text { font-size: var(--text-sm); font-weight: var(--weight-semibold); }
 
 /* ==================== 2. 顶部 Tab ==================== */
 .learning-tabs {
-  background: white;
-  border-bottom: 1px solid #E4E7ED;
+  background: var(--el-fill-color-blank);
+  border-bottom: 1px solid var(--el-border-color);
   position: sticky;
   top: 56px;
   z-index: 99;
@@ -983,7 +970,7 @@ onUnmounted(() => {
   display: flex;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 var(--space-6);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -992,25 +979,25 @@ onUnmounted(() => {
 .tab-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 14px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
+  gap: var(--space-1-5);
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-secondary);
   background: none;
   border: none;
   border-bottom: 2.5px solid transparent;
   cursor: pointer;
   white-space: nowrap;
-  transition: all var(--transition);
+  transition: all var(--duration-base) var(--ease-out);
   margin-bottom: -1px;
 }
 .tab-item .el-icon { font-size: 16px; }
-.tab-item:hover { color: var(--indigo-600); }
+.tab-item:hover { color: var(--color-primary-dark); }
 .tab-item.active {
-  color: var(--indigo-600);
-  border-bottom-color: var(--indigo-600);
-  font-weight: 600;
+  color: var(--color-primary-dark);
+  border-bottom-color: var(--color-primary-dark);
+  font-weight: var(--weight-semibold);
 }
 
 /* ==================== 3. 主体布局 ==================== */
@@ -1020,8 +1007,8 @@ onUnmounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
-  padding: 24px;
-  gap: 24px;
+  padding: var(--space-6);
+  gap: var(--space-6);
   align-items: flex-start;
 }
 
@@ -1031,11 +1018,11 @@ onUnmounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 /* 视频区 */
-.video-section { display: flex; flex-direction: column; gap: 16px; }
+.video-section { display: flex; flex-direction: column; gap: var(--space-4); }
 
 .video-container {
   position: relative;
@@ -1061,7 +1048,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1E293B;
+  background: var(--el-text-color-primary);
   position: relative;
   overflow: hidden;
 }
@@ -1085,9 +1072,9 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  background: linear-gradient(145deg, #1E293B, #0F172A);
-  color: #64748B;
+  gap: var(--space-3);
+  background: linear-gradient(145deg, var(--el-text-color-primary), #0F172A);
+  color: var(--el-text-color-secondary);
 }
 
 /* P0-6: 视频加载失败状态 */
@@ -1098,14 +1085,14 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  background: linear-gradient(145deg, #1E293B, #0F172A);
-  color: #EF4444;
+  gap: var(--space-3);
+  background: linear-gradient(145deg, var(--el-text-color-primary), #0F172A);
+  color: var(--el-color-danger);
 }
 .video-error p {
-  font-size: 14px;
-  color: #94A3B8;
-  margin: 4px 0 8px;
+  font-size: var(--text-base);
+  color: var(--el-text-color-secondary);
+  margin: var(--space-1) 0 var(--space-2);
 }
 
 /* P2-2: 缓冲提示 */
@@ -1117,9 +1104,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: rgba(255,255,255,0.7);
-  font-size: 13px;
+  font-size: var(--text-sm);
   pointer-events: none;
   z-index: 10;
 }
@@ -1133,17 +1120,17 @@ onUnmounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 12px 16px 10px;
+  padding: var(--space-3) var(--space-4) var(--space-2-5);
   background: linear-gradient(transparent, rgba(0,0,0,0.8));
   opacity: 0;
-  transition: opacity var(--transition);
+  transition: opacity var(--duration-base) var(--ease-out);
 }
 .video-controls.visible,
 .video-container:hover .video-controls { opacity: 1; }
 
 .progress-wrap {
   position: relative;
-  padding: 8px 0;
+  padding: var(--space-2) 0;
   cursor: pointer;
 }
 .progress-track {
@@ -1163,7 +1150,7 @@ onUnmounted(() => {
 .progress-filled {
   position: absolute;
   height: 100%;
-  background: var(--indigo-500);
+  background: var(--color-primary);
   border-radius: 2px;
   transition: width 0.1s;
 }
@@ -1184,9 +1171,9 @@ onUnmounted(() => {
   transform: translateX(-50%);
   background: rgba(0,0,0,0.8);
   color: white;
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-size: var(--text-xs);
+  padding: 2px var(--space-1-5);
+  border-radius: var(--radius-sm);
   pointer-events: none;
   white-space: nowrap;
 }
@@ -1195,34 +1182,34 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 .controls-left,
-.controls-right { display: flex; align-items: center; gap: 10px; }
+.controls-right { display: flex; align-items: center; gap: var(--space-2-5); }
 
 .ctrl-btn {
   background: none;
   border: none;
   color: white;
   cursor: pointer;
-  padding: 4px;
+  padding: var(--space-1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: opacity var(--transition);
+  border-radius: var(--radius-sm);
+  transition: opacity var(--duration-base) var(--ease-out);
 }
 .ctrl-btn:hover { opacity: 0.8; }
-.play-btn { padding: 4px 8px; }
+.play-btn { padding: var(--space-1) var(--space-2); }
 .speed-btn {
-  font-size: 13px;
-  font-weight: 600;
-  padding: 4px 8px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  padding: var(--space-1) var(--space-2);
   background: rgba(255,255,255,0.15);
   border-radius: var(--radius-sm);
 }
 .time-display {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: rgba(255,255,255,0.9);
   font-variant-numeric: tabular-nums;
 }
@@ -1232,13 +1219,13 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .nav-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: var(--space-1-5);
+  font-size: var(--text-sm);
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1252,37 +1239,38 @@ onUnmounted(() => {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 .course-content-card {
-  background: white;
+  background: var(--el-fill-color-blank);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
   overflow: hidden;
 }
 .content-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
   margin: 0;
 }
-.content-body { padding: 20px; }
+.content-body { padding: var(--space-5); }
 .chapter-desc {
-  font-size: 14px;
-  color: var(--text-secondary);
+  font-size: var(--text-base);
+  color: var(--el-text-color-secondary);
   line-height: 1.7;
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
 }
-.chapter-desc.muted { color: var(--text-muted); font-style: italic; }
+.chapter-desc.muted { color: var(--el-text-color-secondary); font-style: italic; }
 
-.key-concepts { margin-top: 16px; }
+.key-concepts { margin-top: var(--space-4); }
 .concepts-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 10px;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  margin: 0 0 var(--space-2-5);
 }
 .concepts-list {
   list-style: none;
@@ -1290,44 +1278,46 @@ onUnmounted(() => {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .concept-item {
-  font-size: 14px;
-  color: var(--text-secondary);
-  padding: 8px 12px;
-  background: var(--indigo-50);
+  font-size: var(--text-base);
+  color: var(--el-text-color-secondary);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-primary-light);
   border-radius: var(--radius-sm);
-  border-left: 3px solid var(--indigo-600);
+  border-left: 3px solid var(--color-primary-dark);
 }
 
 .empty-state-card {
-  background: white;
+  background: var(--el-fill-color-blank);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  padding: 64px 32px;
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  padding: 64px var(--space-8);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   text-align: center;
 }
-.empty-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0; }
-.empty-desc { font-size: 14px; color: var(--text-muted); margin: 0; }
+.empty-title { font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); margin: 0; }
+.empty-desc { font-size: var(--text-base); color: var(--el-text-color-secondary); margin: 0; }
 
 .exam-entry-card {
-  background: white;
+  background: var(--el-fill-color-blank);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  padding: 24px;
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  padding: var(--space-6);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
 }
-.exam-header { display: flex; align-items: center; gap: 14px; }
-.exam-info h3 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
-.exam-info p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+.exam-header { display: flex; align-items: center; gap: var(--space-3-5); }
+.exam-info h3 { font-size: var(--text-md); font-weight: var(--weight-semibold); margin: 0 0 var(--space-1); }
+.exam-info p { font-size: var(--text-sm); color: var(--el-text-color-secondary); margin: 0; }
 
 /* ==================== 5. 右侧课程大纲 ==================== */
 .content-sidebar {
@@ -1337,141 +1327,142 @@ onUnmounted(() => {
   top: 140px;
   max-height: calc(100vh - 160px);
   overflow-y: auto;
-  background: white;
+  background: var(--el-fill-color-blank);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
   display: flex;
   flex-direction: column;
 }
 
 .sidebar-inner {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   flex: 1;
 }
 
 .sidebar-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--el-text-color-primary);
   margin: 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #F1F5F9;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 /* Collapse */
 .chapter-collapse { border: none !important; }
 .chapter-collapse :deep(.el-collapse-item__header) {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  background: #F8FAFC;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color-light);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  margin-bottom: 4px;
+  padding: var(--space-2-5) var(--space-3);
+  margin-bottom: var(--space-1);
   border: none;
 }
 .chapter-collapse :deep(.el-collapse-item__wrap) {
   border: none;
   background: transparent;
 }
-.chapter-collapse :deep(.el-collapse-item__content) { padding: 0 0 8px; }
-.chapter-collapse :deep(.el-icon) { font-size: 14px; }
+.chapter-collapse :deep(.el-collapse-item__content) { padding: 0 0 var(--space-2); }
+.chapter-collapse :deep(.el-icon) { font-size: var(--text-base); }
 
 .chapter-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   width: 100%;
 }
 .chapter-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chapter-progress-bar {
   width: 60px;
   height: 4px;
-  background: #E2E8F0;
+  background: var(--el-border-color);
   border-radius: 2px;
   overflow: hidden;
 }
 .chapter-progress-fill {
   height: 100%;
-  background: var(--indigo-500);
+  background: var(--color-primary);
   border-radius: 2px;
   transition: width 0.3s;
 }
-.chapter-progress-text { font-size: 12px; color: var(--text-muted); min-width: 30px; text-align: right; }
+.chapter-progress-text { font-size: var(--text-xs); color: var(--el-text-color-secondary); min-width: 30px; text-align: right; }
 
-.lesson-list { padding: 4px 0 4px 8px; }
+.lesson-list { padding: var(--space-1) 0 var(--space-1) var(--space-2); }
 .lesson-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 10px;
+  gap: var(--space-2);
+  padding: var(--space-2-5) var(--space-2-5);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all var(--transition);
+  transition: all var(--duration-base) var(--ease-out);
   border-left: 3px solid transparent;
 }
-.lesson-item:hover { background: #F1F5F9; }
+.lesson-item:hover { background: var(--role-primary-light-9); }
 .lesson-item.active {
-  background: var(--indigo-50);
-  border-left-color: var(--indigo-600);
+  background: var(--color-primary-light);
+  border-left-color: var(--color-primary-dark);
 }
-.lesson-item.completed .lesson-title { color: var(--text-muted); }
+.lesson-item.completed .lesson-title { color: var(--el-text-color-secondary); }
 
-.lesson-status-icon { display: flex; align-items: center; font-size: 14px; }
-.lesson-title { flex: 1; font-size: 13px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lesson-item.active .lesson-title { color: var(--indigo-600); font-weight: 500; }
-.lesson-duration { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.lesson-status-icon { display: flex; align-items: center; font-size: var(--text-base); }
+.lesson-title { flex: 1; font-size: var(--text-sm); color: var(--el-text-color-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lesson-item.active .lesson-title { color: var(--color-primary-dark); font-weight: var(--weight-medium); }
+.lesson-duration { font-size: var(--text-xs); color: var(--el-text-color-secondary); white-space: nowrap; }
 
 /* 统计卡片 */
 .stats-card {
-  background: linear-gradient(135deg, var(--indigo-50), #E0E7FF);
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-100));
   border-radius: var(--radius-md);
-  padding: 16px;
-  border: 1px solid var(--indigo-100);
+  padding: var(--space-4);
+  border: 1px solid var(--color-primary-100);
 }
 .stats-title {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--indigo-700);
-  margin: 0 0 12px;
+  gap: var(--space-1-5);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary-darker);
+  margin: 0 0 var(--space-3);
 }
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 .stat-item { display: flex; flex-direction: column; gap: 2px; }
-.stat-value { font-size: 18px; font-weight: 700; color: var(--indigo-700); }
-.stat-label { font-size: 12px; color: var(--indigo-500); }
-.stats-actions { display: flex; gap: 8px; }
+.stat-value { font-size: var(--text-lg); font-weight: var(--weight-bold); color: var(--color-primary-darker); }
+.stat-label { font-size: var(--text-xs); color: var(--color-primary); }
+.stats-actions { display: flex; gap: var(--space-2); }
 .stats-actions .el-button { flex: 1; }
 
 /* ==================== 6. 移动端响应式 ==================== */
 @media (max-width: 768px) {
   .learning-header {
-    padding: 10px 16px;
-    gap: 8px;
+    padding: var(--space-2-5) var(--space-4);
+    gap: var(--space-2);
   }
-  .course-title { font-size: 15px; }
+  .course-title { font-size: var(--text-md); }
   .progress-text { display: none; }
   .header-btn span { display: none; }
-  .header-btn { padding: 6px; }
+  .header-btn { padding: var(--space-1-5); }
 
-  .tab-bar { padding: 0 16px; }
-  .tab-item { padding: 12px 14px; font-size: 13px; }
+  .tab-bar { padding: 0 var(--space-4); }
+  .tab-item { padding: var(--space-3) var(--space-3-5); font-size: var(--text-sm); }
 
   .learning-body {
-    padding: 16px;
+    padding: var(--space-4);
     flex-direction: column;
     gap: 0;
   }
@@ -1490,21 +1481,21 @@ onUnmounted(() => {
     z-index: 200;
     transform: translateY(100%);
     transition: transform 0.3s ease;
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+    box-shadow: var(--shadow-lg);
   }
   .content-sidebar.drawer-open { transform: translateY(0); }
 
   .drawer-close-btn {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: var(--space-3);
+    right: var(--space-3);
     background: none;
     border: none;
-    font-size: 20px;
-    color: var(--text-muted);
+    font-size: var(--text-xl);
+    color: var(--el-text-color-secondary);
     cursor: pointer;
     z-index: 1;
-    padding: 4px;
+    padding: var(--space-1);
   }
 
   .drawer-overlay {
@@ -1518,29 +1509,29 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 12px;
-    background: white;
-    border-top: 1px solid #E4E7ED;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: var(--el-fill-color-blank);
+    border-top: 1px solid var(--el-border-color);
+    font-size: var(--text-base);
+    font-weight: var(--weight-medium);
+    color: var(--el-text-color-primary);
     cursor: pointer;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     z-index: 99;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+    box-shadow: var(--shadow-sm);
   }
   .trigger-progress {
     margin-left: auto;
-    font-size: 13px;
-    color: var(--indigo-600);
-    font-weight: 700;
+    font-size: var(--text-sm);
+    color: var(--color-primary-dark);
+    font-weight: var(--weight-bold);
   }
 
-  .lesson-nav .nav-btn { font-size: 12px; }
+  .lesson-nav .nav-btn { font-size: var(--text-xs); }
   .exam-entry-card { flex-direction: column; align-items: flex-start; }
 }
 </style>

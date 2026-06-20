@@ -39,10 +39,10 @@ async function handleUpload(file) {
 }
 </script>
 <style scoped>
-.video-editor { padding: 20px; }
-.upload-area { margin-bottom: 20px; }
+.video-editor { padding: var(--space-5); }
+.upload-area { margin-bottom: var(--space-5); }
 .upload-icon { color: var(--el-color-primary); }
-.upload-text { font-size: 14px; color: #606266; }
-.upload-hint { font-size: 12px; color: #909399; margin-top: 6px; }
-.video-info { margin-top: 16px; }
+.upload-text { font-size: var(--text-base); color: var(--el-text-color-regular); }
+.upload-hint { font-size: var(--text-xs); color: var(--el-text-color-secondary); margin-top: var(--space-1-5); }
+.video-info { margin-top: var(--space-4); }
 </style>

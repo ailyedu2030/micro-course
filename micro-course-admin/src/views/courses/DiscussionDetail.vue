@@ -169,15 +169,25 @@ onMounted(() => {
 <style scoped>
 .discussion-detail-page {
   padding: var(--space-5);
+  background: var(--el-bg-color-page);
+  min-height: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .post-card {
   margin-bottom: var(--space-4);
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .reply-card {
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .card-header {
@@ -188,8 +198,9 @@ onMounted(() => {
 
 .card-title {
   font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .header-actions {
@@ -203,8 +214,8 @@ onMounted(() => {
 
 .post-title {
   font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
   margin: 0 0 var(--space-2) 0;
 }
 
@@ -217,19 +228,19 @@ onMounted(() => {
 
 .meta-item {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--el-text-color-secondary);
 }
 
 .post-content {
   font-size: var(--text-base);
-  color: var(--color-text-regular);
+  color: var(--el-text-color-regular);
   line-height: 1.6;
   white-space: pre-wrap;
 }
 
 .reply-count {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--el-text-color-secondary);
 }
 
 .empty-replies {
@@ -244,13 +255,13 @@ onMounted(() => {
 
 .reply-item {
   padding: var(--space-3);
-  background: var(--color-bg-page);
-  border-radius: var(--radius-sm);
-  transition: background-color 0.2s ease;
+  background: var(--el-fill-color-light);
+  border-radius: var(--radius-md);
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .reply-item:hover {
-  background-color: var(--color-bg-page);
+  background-color: var(--el-fill-color);
 }
 
 .reply-header {
@@ -262,19 +273,19 @@ onMounted(() => {
 
 .reply-author {
   font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
 }
 
 .reply-time {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+  color: var(--el-text-color-secondary);
   flex: 1;
 }
 
 .reply-content {
   font-size: var(--text-sm);
-  color: var(--color-text-regular);
+  color: var(--el-text-color-regular);
   line-height: 1.5;
 }
 

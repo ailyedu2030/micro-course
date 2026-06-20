@@ -124,23 +124,23 @@ const handleBuy = async () => {
 </script>
 
 <style scoped>
-.bundle-detail { padding: 16px; max-width: 1400px; margin: 0 auto; }
-.mg-bottom-16 { margin-bottom: 16px; }
+.bundle-detail { padding: var(--space-4); max-width: 1400px; margin: 0 auto; }
+.mg-bottom-16 { margin-bottom: var(--space-4); }
 .detail-body { min-height: 300px; }
 
-.course-row { display: flex; align-items: center; gap: 12px; padding: 12px 8px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background .2s; }
-.course-row:hover { background: #fafafa; }
-.course-order { width: 32px; text-align: center; color: #c0c4cc; font-size: 16px; font-weight: 600; }
+.course-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-2); border-bottom: 1px solid var(--el-border-color-lighter); cursor: pointer; transition: background var(--duration-base) var(--ease-out); }
+.course-row:hover { background: var(--el-fill-color-light); }
+.course-order { width: 32px; text-align: center; color: var(--el-text-color-secondary); font-size: var(--text-md); font-weight: var(--weight-semibold); }
 .course-info { flex: 1; }
-.course-title { font-size: 15px; color: #303133; font-weight: 500; }
-.course-meta { display: block; font-size: 12px; color: #909399; margin-top: 2px; }
-.go-icon { color: #c0c4cc; font-size: 18px; }
+.course-title { font-size: var(--text-md); color: var(--el-text-color-primary); font-weight: var(--weight-medium); }
+.course-meta { display: block; font-size: var(--text-xs); color: var(--el-text-color-secondary); margin-top: 2px; }
+.go-icon { color: var(--el-text-color-secondary); font-size: var(--text-lg); }
 
-.purchase-card { position: sticky; top: 16px; text-align: center; }
-.price-display { font-size: 36px; font-weight: 700; margin: 16px 0 8px; }
-.free-text { color: #67c23a; }
-.paid-text { color: #f56c6c; }
-.student-count { font-size: 13px; color: #c0c4cc; margin: 0 0 12px; }
-.desc-text { font-size: 13px; color: #909399; margin: 4px 0; }
-.buy-btn { width: 100%; margin-top: 16px; height: 46px; font-size: 16px; }
+.purchase-card { position: sticky; top: var(--space-4); text-align: center; }
+.price-display { font-size: 36px; font-weight: var(--weight-bold); margin: var(--space-4) 0 var(--space-2); }
+.free-text { color: var(--el-color-success); }
+.paid-text { color: var(--el-color-danger); }
+.student-count { font-size: var(--text-sm); color: var(--el-text-color-secondary); margin: 0 0 var(--space-3); }
+.desc-text { font-size: var(--text-sm); color: var(--el-text-color-secondary); margin: var(--space-1) 0; }
+.buy-btn { width: 100%; margin-top: var(--space-4); height: 46px; font-size: var(--text-md); }
 </style>

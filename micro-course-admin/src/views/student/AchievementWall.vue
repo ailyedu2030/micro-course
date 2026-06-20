@@ -240,8 +240,8 @@ async function fetchData() {
 }
 
 .badge-card.earned {
-  background: linear-gradient(135deg, #f0f3ff 0%, #e8edff 100%);
-  border: 1px solid var(--role-primary-light-5, #c7d2fe);
+  background: linear-gradient(135deg, var(--role-primary-light-9) 0%, var(--role-primary-light-7) 100%);
+  border: 1px solid var(--role-primary-light-5);
 }
 
 .badge-card.locked {

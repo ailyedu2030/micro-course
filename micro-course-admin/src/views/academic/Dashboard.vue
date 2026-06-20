@@ -626,17 +626,11 @@ onBeforeUnmount(() => {
    ============================================= */
 
 .academic-dashboard {
-  --color-primary: #4F46E5;
-  --color-secondary: #818CF8;
-  --color-surface: #ffffff;
-  --color-bg: #F5F6FA;
-  --color-text: #1E293B;
-  --color-muted: #64748B;
-  --color-border: #F1F5F9;
-
-  padding: 24px;
-  background: var(--color-bg);
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
   min-height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 /* =============================================
@@ -646,8 +640,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
-  padding: 24px 32px;
+  margin-bottom: var(--space-6);
+  padding: var(--space-6) var(--space-8);
   background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(79, 70, 229, 0.15);
@@ -657,17 +651,17 @@ onBeforeUnmount(() => {
 .welcome-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .welcome-date {
-  font-size: 14px;
+  font-size: var(--text-base);
   opacity: 0.8;
 }
 
 .welcome-greeting {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
   color: white;
 }
 
@@ -676,18 +670,18 @@ onBeforeUnmount(() => {
 }
 
 .greeting-suffix {
-  font-weight: 400;
+  font-weight: var(--weight-regular);
   opacity: 0.9;
 }
 
 .welcome-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .last-updated {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: rgba(255,255,255,0.7);
   white-space: nowrap;
 }
@@ -706,42 +700,42 @@ onBeforeUnmount(() => {
    Quick Actions
    ============================================= */
 .quick-actions-row {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
 }
 
 .quick-action-card {
   cursor: pointer;
   border: none;
-  border-radius: 12px;
-  transition: all 200ms ease;
+  border-radius: var(--radius-lg);
+  transition: all var(--duration-base) var(--ease-out);
 }
 
 .quick-action-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
 }
 
 .quick-action-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
 }
 
 .quick-action-icon {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .quick-action-label {
-  font-size: 13px;
-  color: #334155;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-primary);
+  font-weight: var(--weight-medium);
   white-space: nowrap;
 }
 
@@ -749,24 +743,25 @@ onBeforeUnmount(() => {
    2. 4 个 Stat Cards
    ============================================= */
 .stats-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .stat-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px;
-  background: var(--color-surface);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
   cursor: default;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out);
 }
 
 .stat-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
 }
 
 /* 左侧 52×52 圆角方形图标区 */
@@ -782,22 +777,22 @@ onBeforeUnmount(() => {
 }
 
 .stat-icon-zone--primary {
-  background: #EEF2FF;
+  background: rgba(79,70,229,0.1);
   color: #4F46E5;
 }
 
 .stat-icon-zone--success {
-  background: #ECFDF5;
+  background: rgba(16,185,129,0.1);
   color: #10B981;
 }
 
 .stat-icon-zone--warning {
-  background: #FEF3C7;
+  background: rgba(245,158,11,0.1);
   color: #F59E0B;
 }
 
 .stat-icon-zone--purple {
-  background: #FAF5FF;
+  background: rgba(139,92,246,0.1);
   color: #8B5CF6;
 }
 
@@ -808,41 +803,43 @@ onBeforeUnmount(() => {
 
 .stat-value {
   font-size: 28px;
-  font-weight: 700;
-  color: var(--color-text);
+  font-weight: var(--weight-bold);
+  color: var(--el-text-color-primary);
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 
 .stat-label {
-  font-size: 13px;
-  color: var(--color-muted);
-  margin-top: 4px;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  margin-top: var(--space-1);
 }
 
 /* =============================================
    3. 图表面板
    ============================================= */
 .charts-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .chart-card {
-  background: var(--color-surface);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  margin-bottom: 16px;
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  margin-bottom: var(--space-4);
 }
 
 .card-header {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  letter-spacing: var(--tracking-wide);
 }
 
 .header-tag {
@@ -860,49 +857,50 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-muted);
-  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
 }
 
 /* =============================================
    5. 预警表格 + 热门表格
    ============================================= */
 .bottom-row {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .table-card {
-  background: var(--color-surface);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  margin-bottom: 16px;
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  margin-bottom: var(--space-4);
 }
 
 .warning-table,
 .hot-table {
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .warning-table .el-table__header th,
 .hot-table .el-table__header th {
-  background: #F8FAFC;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-muted);
+  background: var(--el-fill-color-light);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-secondary);
 }
 
 .warning-table .el-table__row:hover td,
 .hot-table .el-table__row:hover td {
-  background: #F1F5F9 !important;
+  background: var(--role-primary-light-9) !important;
 }
 
 .rate-danger {
-  color: #EF4444;
-  font-weight: 700;
+  color: var(--el-color-danger);
+  font-weight: var(--weight-bold);
 }
 
 .rate-success {
-  color: #10B981;
+  color: var(--el-color-success);
 }
 
 /* =============================================
@@ -915,13 +913,13 @@ onBeforeUnmount(() => {
 
 .skeleton-chart {
   height: 300px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .skeleton-item {
   height: 40px;
-  margin-bottom: 8px;
-  border-radius: 6px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-md);
 }
 
 /* =============================================
@@ -930,20 +928,20 @@ onBeforeUnmount(() => {
 @media (max-width: 1024px) {
   .stats-row .el-col,
   .quick-actions-row .el-col {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-3);
   }
 }
 
 @media (max-width: 768px) {
   .academic-dashboard {
-    padding: 16px;
+    padding: var(--space-4);
   }
 
   .welcome-bar {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
-    padding: 20px 24px;
+    gap: var(--space-2);
+    padding: var(--space-5) var(--space-6);
   }
 
   .welcome-right {
@@ -952,7 +950,7 @@ onBeforeUnmount(() => {
   }
 
   .quick-action-inner {
-    padding: 4px 0;
+    padding: var(--space-1) 0;
   }
 
   .quick-action-icon {
@@ -961,7 +959,7 @@ onBeforeUnmount(() => {
   }
 
   .quick-action-label {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
 }
 </style>

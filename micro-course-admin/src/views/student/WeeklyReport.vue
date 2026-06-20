@@ -523,14 +523,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ===== CSS Design Tokens ===== */
+/* ===== Weekly Report ===== */
 .weekly-report {
-  --role-primary: #6366f1;
-  --role-primary-dark: #4f46e5;
-  --role-primary-light: #eef2ff;
-  --radius-lg: 12px;
-  --shadow-lg: 0 4px 16px rgba(0,0,0,0.1);
-  --duration-base: 200ms;
+  /* Uses design tokens from design-tokens.css */
 }
 
 /* ===== PC Layout ===== */
@@ -582,7 +577,8 @@ onUnmounted(() => {
   width: 48px;
   height: 48px;
   border-radius: var(--radius-circle);
-  background-color: var(--role-primary);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--role-primary);
   margin-bottom: var(--space-3);
 }
 
@@ -764,7 +760,8 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border-radius: var(--radius-circle);
-  background-color: var(--role-primary);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--role-primary);
   flex-shrink: 0;
 }
 

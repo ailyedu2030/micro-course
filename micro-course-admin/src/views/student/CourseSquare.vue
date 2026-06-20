@@ -994,20 +994,20 @@ onMounted(async () => {
   line-height: 1.4;
 }
 
-.bundle-strip { margin: 0 auto 32px; max-width: var(--max-content-width, 1400px); padding: 0 20px; }
-.bundle-strip-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.bundle-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; }
+.bundle-strip { margin: 0 auto var(--space-8); max-width: var(--max-content-width, 1400px); padding: 0 var(--space-5); }
+.bundle-strip-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.bundle-scroll { display: flex; gap: var(--space-4); overflow-x: auto; padding-bottom: var(--space-2); }
 .bundle-chip {
-  flex: 0 0 240px; display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-  background: #fff; border: 1px solid #ebeef5; border-radius: 12px; cursor: pointer;
-  transition: all .2s;
+  flex: 0 0 240px; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4);
+  background: var(--el-fill-color-blank); border: 1px solid var(--el-border-color-lighter); border-radius: var(--radius-lg); cursor: pointer;
+  transition: all var(--duration-base) var(--ease-out);
 }
-.bundle-chip:hover { border-color: var(--el-color-primary-light-3); box-shadow: 0 2px 12px rgba(0,0,0,.06); transform: translateY(-1px); }
-.b-chip-icon { width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #e6f4ff 0%, #d4edff 100%); display: flex; align-items: center; justify-content: center; color: var(--el-color-primary); flex-shrink: 0; }
+.bundle-chip:hover { border-color: var(--el-color-primary-light-3); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.b-chip-icon { width: 40px; height: 40px; border-radius: var(--radius-md); background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(99,102,241,0.05) 100%); display: flex; align-items: center; justify-content: center; color: var(--el-color-primary); flex-shrink: 0; }
 .b-chip-info { min-width: 0; }
-.b-chip-title { display: block; font-size: 14px; font-weight: 500; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.b-chip-price { font-size: 12px; color: #f56c6c; font-weight: 600; }
-.b-chip-price.free { color: #67c23a; }
+.b-chip-title { display: block; font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--el-text-color-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.b-chip-price { font-size: var(--text-xs); color: var(--el-color-danger); font-weight: var(--weight-semibold); }
+.b-chip-price.free { color: var(--el-color-success); }
 
 /* ================================================
    Course Grid & Card
