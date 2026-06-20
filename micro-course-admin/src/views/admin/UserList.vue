@@ -133,8 +133,8 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.status === 1 ? 'success' : 'danger'">
-              {{ row.status === 1 ? '启用' : '禁用' }}
+            <el-tag size="small" :type="getStatusTagType(row.status)">
+              {{ getStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -401,6 +401,16 @@ function getRoleTagType(role) {
     ACADEMIC: ''
   }
   return map[role] || 'info'
+}
+
+function getStatusLabel(status) {
+  const map = { 0: '未激活', 1: '启用', 2: '禁用', 3: '已删除' }
+  return map[status] || '未知'
+}
+
+function getStatusTagType(status) {
+  const map = { 0: 'info', 1: 'success', 2: 'danger', 3: 'info' }
+  return map[status] || 'info'
 }
 
 function formatTime(isoString) {

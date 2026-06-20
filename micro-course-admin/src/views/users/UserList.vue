@@ -95,10 +95,10 @@
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
-              :model-value="row.status === 1"
+              :model-value="row.status"
               :active-value="1"
               :inactive-value="2"
-              @change="handleToggleStatus(row)"
+              @change="(val) => handleToggleStatus(row, val)"
             />
           </template>
         </el-table-column>
@@ -228,7 +228,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { getUsers, updateUser, updateUserStatus, batchImportUsers, uploadAvatar } from '@/api/user'
+import { getUsers, updateUser, updateUserStatus, updateTeacherStatus, batchImportUsers, uploadAvatar } from '@/api/user'
 import { getDepartments } from '@/api/department'
 import { getMajors } from '@/api/major'
 import { getClasses } from '@/api/class'
@@ -426,8 +426,7 @@ const handleDialogSave = async () => {
   }
 }
 
-const handleToggleStatus = async (row) => {
-  const newStatus = row.status === 1 ? 2 : 1
+const handleToggleStatus = async (row, newStatus) => {
   const actionText = newStatus === 1 ? '启用' : '禁用'
   try {
     await updateUserStatus(row.id, { status: newStatus })
@@ -485,12 +484,12 @@ const loadPendingTeachers = async () => {
   try {
     const { data } = await getUsers({
       role: 'TEACHER',
-      status: 2, // 待审核教师使用 status=2（禁用状态）
+      teacherStatus: 0,
       size: 100
     })
     const items = data.items || []
     pendingTeachers.value = items
-      .filter(t => t.status === 2)
+      .filter(t => t.teacherStatus === 0)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 20)
     if (pendingTeachers.value.length === 0) {
@@ -515,8 +514,7 @@ watch(teacherApprovalVisible, (val) => {
 // 通过教师
 const handleApproveTeacher = async (row) => {
   try {
-    // Mock - 后端暂无教师审核 API
-    await updateUserStatus(row.id, { status: 1 })
+    await updateTeacherStatus(row.id, { teacherStatus: 1 })
     ElMessage.success(`教师 ${row.realName} 审核通过`)
     loadPendingTeachers()
   } catch {
@@ -527,8 +525,7 @@ const handleApproveTeacher = async (row) => {
 // 驳回教师
 const handleRejectTeacher = async (row) => {
   try {
-    // Mock - 后端暂无教师审核 API
-    await updateUserStatus(row.id, { status: 2 })
+    await updateTeacherStatus(row.id, { teacherStatus: 2 })
     ElMessage.success(`教师 ${row.realName} 已驳回`)
     loadPendingTeachers()
   } catch {

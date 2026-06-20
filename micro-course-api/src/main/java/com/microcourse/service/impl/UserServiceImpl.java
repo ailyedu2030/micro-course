@@ -95,6 +95,7 @@ public class UserServiceImpl implements UserService {
                 .like(escapedKw != null, User::getEmail, escapedKw);
         wrapper.eq(query.getRole() != null, User::getRole, query.getRole());
         wrapper.eq(query.getStatus() != null, User::getStatus, query.getStatus());
+        wrapper.eq(query.getTeacherStatus() != null, User::getTeacherStatus, query.getTeacherStatus());
         wrapper.eq(query.getDepartmentId() != null, User::getDepartmentId, query.getDepartmentId());
         wrapper.eq(query.getMajorId() != null, User::getMajorId, query.getMajorId());
         wrapper.eq(query.getClassId() != null, User::getClassId, query.getClassId());

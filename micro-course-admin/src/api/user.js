@@ -6,6 +6,7 @@ export function getPublicProfile(id) { return request({ method: 'GET', url: `/us
 export function createUser(data) { return request({ method: 'POST', url: '/users', data }) }
 export function updateUser(id, data) { return request({ method: 'PUT', url: `/users/${id}`, data }) }
 export function updateUserStatus(id, data) { return request({ method: 'PUT', url: `/users/${id}/status`, data }) }
+export function updateTeacherStatus(id, data) { return request({ method: 'PUT', url: `/users/${id}/teacher-status`, data }) }
 
 /**
  * 批量导入用户

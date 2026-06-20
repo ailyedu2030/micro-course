@@ -44,7 +44,8 @@ public class UserController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) Integer status) {
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Integer teacherStatus) {
         UserPageQuery query = new UserPageQuery();
         query.setPage(page);
         query.setSize(size);
@@ -54,6 +55,7 @@ public class UserController {
         }
         query.setDepartmentId(departmentId);
         query.setStatus(status);
+        query.setTeacherStatus(teacherStatus);
         PageResult<UserVO> result = userService.pageUsers(query);
         return R.ok(result);
     }
