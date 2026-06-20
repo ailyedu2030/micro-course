@@ -27,6 +27,7 @@ public class Certificate {
     private LocalDateTime issuedAt;
 
     @TableLogic(value = "null", delval = "now()")
+    @TableField("deleted_at")
     private LocalDateTime deletedAt;
 
     public Certificate() {}

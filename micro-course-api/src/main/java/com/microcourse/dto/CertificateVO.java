@@ -7,8 +7,8 @@ public class CertificateVO {
     private Long id;
     private Long userId;
     private Long courseId;
-    private String courseTitle;
-    private String teacherName;
+    private String courseName;
+    private String studentName;
     private String certCode;
     private LocalDateTime issuedAt;
 
@@ -20,10 +20,10 @@ public class CertificateVO {
     public void setUserId(Long userId) { this.userId = userId; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
-    public String getCourseTitle() { return courseTitle; }
-    public void setCourseTitle(String courseTitle) { this.courseTitle = courseTitle; }
-    public String getTeacherName() { return teacherName; }
-    public void setTeacherName(String teacherName) { this.teacherName = teacherName; }
+    public String getCourseName() { return courseName; }
+    public void setCourseName(String courseName) { this.courseName = courseName; }
+    public String getStudentName() { return studentName; }
+    public void setStudentName(String studentName) { this.studentName = studentName; }
     public String getCertCode() { return certCode; }
     public void setCertCode(String certCode) { this.certCode = certCode; }
     public LocalDateTime getIssuedAt() { return issuedAt; }

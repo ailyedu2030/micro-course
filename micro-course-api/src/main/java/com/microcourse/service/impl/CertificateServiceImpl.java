@@ -1,373 +1,226 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.microcourse.dto.CertificateVO;
 import com.microcourse.entity.Certificate;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
-import com.microcourse.entity.Exercise;
-import com.microcourse.entity.ExerciseRecord;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CertificateRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
-import com.microcourse.repository.ExerciseRecordRepository;
-import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CertificateService;
+import com.lowagie.text.Document;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.awt.Color;
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class CertificateServiceImpl implements CertificateService {
 
     private final CertificateRepository certificateRepository;
-    private final EnrollmentRepository enrollmentRepository;
-    private final ExerciseRecordRepository exerciseRecordRepository;
-    private final ExerciseRepository exerciseRepository;
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
 
     public CertificateServiceImpl(CertificateRepository certificateRepository,
-                                  EnrollmentRepository enrollmentRepository,
-                                  ExerciseRecordRepository exerciseRecordRepository,
-                                  ExerciseRepository exerciseRepository,
                                   CourseRepository courseRepository,
+                                  EnrollmentRepository enrollmentRepository,
                                   UserRepository userRepository) {
         this.certificateRepository = certificateRepository;
-        this.enrollmentRepository = enrollmentRepository;
-        this.exerciseRecordRepository = exerciseRecordRepository;
-        this.exerciseRepository = exerciseRepository;
         this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<CertificateVO> getMyCertificates(Long userId) {
+    public List<com.microcourse.dto.CertificateVO> getMyCertificates(Long userId) {
         LambdaQueryWrapper<Certificate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Certificate::getUserId, userId)
-               .orderByDesc(Certificate::getIssuedAt);
-        List<Certificate> certificates = certificateRepository.selectList(wrapper);
-
-        return certificates.stream()
+                .orderByDesc(Certificate::getIssuedAt);
+        List<Certificate> certs = certificateRepository.selectList(wrapper);
+        return certs.stream()
                 .map(this::convertToVO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public CertificateVO getCertificateById(Long id, Long userId) {
-        Certificate certificate = certificateRepository.selectById(id);
-        if (certificate == null) {
+    public com.microcourse.dto.CertificateVO getById(Long id) {
+        Certificate cert = certificateRepository.selectById(id);
+        if (cert == null) {
             throw new BusinessException(ErrorCode.CERTIFICATE_NOT_FOUND);
         }
-        if (!certificate.getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
-        return convertToVO(certificate);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public String generateCertificateHtml(Long certificateId, Long userId) {
-        CertificateVO cert = getCertificateById(certificateId, userId);
-
-        String issuedDateStr = cert.getIssuedAt() != null
-            ? cert.getIssuedAt().format(DateTimeFormatter.ofPattern("yyyy年MM月dd日"))
-            : "";
-
-        // SEC-001 修复:对所有 DB 来源字符串做 HTML 转义,防止教师/课程名中嵌入 <script> 注入
-        String safeCourseTitle = htmlEscape(cert.getCourseTitle());
-        String safeTeacherName = htmlEscape(cert.getTeacherName() != null ? cert.getTeacherName() : "教师");
-        String safeCertCode = htmlEscape(cert.getCertCode());
-        String safeIssuedDate = htmlEscape(issuedDateStr);
-
-        return """
-            <!DOCTYPE html>
-            <html lang="zh-CN">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>课程证书 - %s</title>
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body {
-                        font-family: "Microsoft YaHei", "SimHei", "Noto Serif SC", serif;
-                        background: linear-gradient(135deg, #f5f7fa 0%%, #e4e8ec 100%%);
-                        min-height: 100vh;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 20px;
-                    }
-                    .certificate {
-                        width: 800px;
-                        background: linear-gradient(180deg, #ffffff 0%%, #f9fafb 100%%);
-                        border: 3px solid #1a1a2e;
-                        border-radius: 12px;
-                        padding: 60px 80px;
-                        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-                        position: relative;
-                    }
-                    .certificate::before {
-                        content: "";
-                        position: absolute;
-                        top: 15px; left: 15px; right: 15px; bottom: 15px;
-                        border: 1px solid #c9a227;
-                        border-radius: 8px;
-                        pointer-events: none;
-                    }
-                    .header {
-                        text-align: center;
-                        margin-bottom: 40px;
-                    }
-                    .logo {
-                        font-size: 14px;
-                        color: #666;
-                        margin-bottom: 10px;
-                    }
-                    .title {
-                        font-size: 42px;
-                        font-weight: 700;
-                        color: #1a1a2e;
-                        letter-spacing: 8px;
-                        margin-bottom: 8px;
-                    }
-                    .subtitle {
-                        font-size: 16px;
-                        color: #888;
-                        letter-spacing: 2px;
-                    }
-                    .content {
-                        text-align: center;
-                        margin: 50px 0;
-                    }
-                    .certify-text {
-                        font-size: 18px;
-                        color: #555;
-                        margin-bottom: 30px;
-                    }
-                    .student-name {
-                        font-size: 36px;
-                        font-weight: 700;
-                        color: #1a1a2e;
-                        border-bottom: 3px solid #c9a227;
-                        display: inline-block;
-                        padding: 0 20px 10px;
-                        margin-bottom: 30px;
-                    }
-                    .course-info {
-                        font-size: 20px;
-                        color: #333;
-                        margin-bottom: 40px;
-                        line-height: 1.8;
-                    }
-                    .course-title {
-                        font-size: 26px;
-                        font-weight: 600;
-                        color: #1a1a2e;
-                    }
-                    .footer {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: flex-end;
-                        margin-top: 60px;
-                        padding-top: 30px;
-                        border-top: 1px dashed #ccc;
-                    }
-                    .footer-left {
-                        text-align: left;
-                    }
-                    .teacher-info {
-                        font-size: 16px;
-                        color: #666;
-                        margin-bottom: 5px;
-                    }
-                    .teacher-name {
-                        font-size: 18px;
-                        color: #333;
-                        font-weight: 600;
-                    }
-                    .footer-center {
-                        text-align: center;
-                    }
-                    .date {
-                        font-size: 16px;
-                        color: #666;
-                    }
-                    .footer-right {
-                        text-align: right;
-                    }
-                    .cert-code {
-                        font-size: 14px;
-                        color: #999;
-                        font-family: "Courier New", monospace;
-                    }
-                    .seal {
-                        width: 80px;
-                        height: 80px;
-                        border: 2px solid #c9a227;
-                        border-radius: 50%%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin-top: 10px;
-                        margin-left: auto;
-                        color: #c9a227;
-                        font-size: 12px;
-                        font-weight: 600;
-                    }
-                    @media print {
-                        body { background: white; padding: 0; }
-                        .certificate { box-shadow: none; border: 2px solid #1a1a2e; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="certificate">
-                    <div class="header">
-                        <div class="logo">微课管理平台</div>
-                        <h1 class="title">结业证书</h1>
-                        <p class="subtitle">CERTIFICATE OF COMPLETION</p>
-                    </div>
-                    <div class="content">
-                        <p class="certify-text">兹证明以下学员已完成课程学习</p>
-                        <div class="student-name">学员</div>
-                        <div class="course-info">
-                            已完成《<span class="course-title">%s</span>》<br/>
-                            课程学习并通过考核，特此颁发此证。
-                        </div>
-                    </div>
-                    <div class="footer">
-                        <div class="footer-left">
-                            <div class="teacher-info">授课教师</div>
-                            <div class="teacher-name">%s</div>
-                        </div>
-                        <div class="footer-center">
-                            <div class="date">%s</div>
-                        </div>
-                        <div class="footer-right">
-                            <div class="cert-code">%s</div>
-                            <div class="seal">官方认证</div>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """.formatted(
-                safeCourseTitle,
-                safeCourseTitle,
-                safeTeacherName,
-                safeIssuedDate,
-                safeCertCode
-            );
-    }
-
-    /**
-     * SEC-001 HTML 转义工具:将 & < > " ' 替换为对应实体,防止证书 HTML 注入
-     */
-    private static String htmlEscape(String input) {
-        if (input == null) return "";
-        StringBuilder sb = new StringBuilder(input.length() + 16);
-        for (int i = 0; i < input.length(); i++) {
-            char c = input.charAt(i);
-            switch (c) {
-                case '&': sb.append("&amp;"); break;
-                case '<': sb.append("&lt;"); break;
-                case '>': sb.append("&gt;"); break;
-                case '"': sb.append("&quot;"); break;
-                case '\'': sb.append("&#39;"); break;
-                default: sb.append(c);
-            }
-        }
-        return sb.toString();
+        return convertToVO(cert);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void autoIssueCertificate(Long userId, Long courseId) {
-        // 检查是否已存在证书
-        LambdaQueryWrapper<Certificate> existWrapper = new LambdaQueryWrapper<>();
-        existWrapper.eq(Certificate::getUserId, userId)
-                    .eq(Certificate::getCourseId, courseId);
-        long count = certificateRepository.selectCount(existWrapper);
-        if (count > 0) {
-            return;
+    public com.microcourse.dto.CertificateVO issueCertificate(Long userId, Long courseId) {
+        LambdaQueryWrapper<Certificate> existingWrapper = new LambdaQueryWrapper<>();
+        existingWrapper.eq(Certificate::getUserId, userId)
+                .eq(Certificate::getCourseId, courseId);
+        Certificate existing = certificateRepository.selectOne(existingWrapper);
+        if (existing != null) {
+            return convertToVO(existing);
         }
 
-        // 检查 enrollment.progress >= 100
-        LambdaQueryWrapper<Enrollment> enrollmentWrapper = new LambdaQueryWrapper<>();
-        enrollmentWrapper.eq(Enrollment::getUserId, userId)
-                         .eq(Enrollment::getCourseId, courseId);
-        Enrollment enrollment = enrollmentRepository.selectOne(enrollmentWrapper);
-        if (enrollment == null || enrollment.getProgress() == null || enrollment.getProgress() < 100) {
-            return;
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        // 检查 exercisePassed = true (该课程下所有练习都通过)
-        boolean exercisePassed = checkExercisePassed(userId, courseId);
-        if (!exercisePassed) {
-            return;
+        Enrollment enrollment = enrollmentRepository.selectOne(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getUserId, userId)
+                        .eq(Enrollment::getCourseId, courseId)
+        );
+        if (enrollment == null || !Boolean.TRUE.equals(enrollment.getCompleted())) {
+            throw new BusinessException(ErrorCode.CERTIFICATE_NOT_ELIGIBLE);
         }
 
-        // 生成证书
-        String certCode = String.format("CERT-%d-%d-%d", userId, courseId, System.currentTimeMillis());
-        Certificate certificate = new Certificate();
-        certificate.setUserId(userId);
-        certificate.setCourseId(courseId);
-        certificate.setCertCode(certCode);
-        certificate.setIssuedAt(LocalDateTime.now());
-        certificateRepository.insert(certificate);
+        Certificate cert = new Certificate();
+        cert.setUserId(userId);
+        cert.setCourseId(courseId);
+        cert.setCertCode(generateCertCode(userId, courseId));
+        cert.setIssuedAt(LocalDateTime.now());
+        certificateRepository.insert(cert);
+
+        return convertToVO(cert);
     }
 
-    private boolean checkExercisePassed(Long userId, Long courseId) {
-        // 获取该课程下所有练习
-        LambdaQueryWrapper<Exercise> exerciseWrapper = new LambdaQueryWrapper<>();
-        exerciseWrapper.eq(Exercise::getCourseId, courseId);
-        List<Exercise> exercises = exerciseRepository.selectList(exerciseWrapper);
-
-        if (exercises.isEmpty()) {
-            return true;
-        }
-
-        // 每个练习都需要有 passed=true 的记录
-        for (Exercise exercise : exercises) {
-            LambdaQueryWrapper<ExerciseRecord> recordWrapper = new LambdaQueryWrapper<>();
-            recordWrapper.eq(ExerciseRecord::getUserId, userId)
-                         .eq(ExerciseRecord::getExerciseId, exercise.getId())
-                         .eq(ExerciseRecord::getPassed, true);
-            long passedCount = exerciseRecordRepository.selectCount(recordWrapper);
-            if (passedCount == 0) {
-                return false;
-            }
-        }
-        return true;
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasCertificate(Long userId, Long courseId) {
+        LambdaQueryWrapper<Certificate> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Certificate::getUserId, userId)
+                .eq(Certificate::getCourseId, courseId);
+        return certificateRepository.selectCount(wrapper) > 0;
     }
 
-    private CertificateVO convertToVO(Certificate certificate) {
-        CertificateVO vo = new CertificateVO();
-        vo.setId(certificate.getId());
-        vo.setUserId(certificate.getUserId());
-        vo.setCourseId(certificate.getCourseId());
-        vo.setCertCode(certificate.getCertCode());
-        vo.setIssuedAt(certificate.getIssuedAt());
-
-        Course course = courseRepository.selectById(certificate.getCourseId());
-        if (course != null) {
-            vo.setCourseTitle(course.getTitle());
-            User teacher = userRepository.selectById(course.getTeacherId());
-            if (teacher != null) {
-                vo.setTeacherName(teacher.getRealName());
-            }
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generateCertificatePdf(Long certificateId) {
+        Certificate cert = certificateRepository.selectById(certificateId);
+        if (cert == null) {
+            throw new BusinessException(ErrorCode.CERTIFICATE_NOT_FOUND);
         }
 
+        Course courseEntity = courseRepository.selectById(cert.getCourseId());
+        User user = userRepository.selectById(cert.getUserId());
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document doc = new Document(PageSize.A4.rotate(), 60, 60, 60, 60);
+        PdfWriter.getInstance(doc, out);
+        doc.open();
+
+        Font titleFont = new Font(Font.HELVETICA, 28, Font.BOLD, new Color(51, 102, 153));
+        Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, Color.DARK_GRAY);
+        Font nameFont = new Font(Font.HELVETICA, 22, Font.BOLD, new Color(0, 0, 0));
+        Font bodyFont = new Font(Font.HELVETICA, 14, Font.NORMAL, Color.BLACK);
+        Font certCodeFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.GRAY);
+
+        Paragraph title = new Paragraph("微课平台学习证书", titleFont);
+        title.setAlignment(Element.ALIGN_CENTER);
+        doc.add(title);
+
+        doc.add(new Paragraph(" "));
+
+        Paragraph subtitle = new Paragraph("Certificate of Completion", subtitleFont);
+        subtitle.setAlignment(Element.ALIGN_CENTER);
+        doc.add(subtitle);
+
+        doc.add(new Paragraph(" "));
+        doc.add(new Paragraph(" "));
+
+        Paragraph certify = new Paragraph("This is to certify that", bodyFont);
+        certify.setAlignment(Element.ALIGN_CENTER);
+        doc.add(certify);
+
+        doc.add(new Paragraph(" "));
+
+        String studentName = user != null && user.getRealName() != null
+                ? user.getRealName() : "Student";
+        Paragraph name = new Paragraph(studentName, nameFont);
+        name.setAlignment(Element.ALIGN_CENTER);
+        doc.add(name);
+
+        doc.add(new Paragraph(" "));
+
+        Paragraph completed = new Paragraph("has successfully completed the course", bodyFont);
+        completed.setAlignment(Element.ALIGN_CENTER);
+        doc.add(completed);
+
+        doc.add(new Paragraph(" "));
+
+        String courseName = courseEntity != null && courseEntity.getTitle() != null
+                ? courseEntity.getTitle() : "Unknown Course";
+        Font courseFont = new Font(Font.HELVETICA, 18, Font.BOLD, new Color(0, 102, 51));
+        Paragraph coursePara = new Paragraph(courseName, courseFont);
+        coursePara.setAlignment(Element.ALIGN_CENTER);
+        doc.add(coursePara);
+
+        doc.add(new Paragraph(" "));
+        doc.add(new Paragraph(" "));
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        String issuedDate = cert.getIssuedAt() != null
+                ? cert.getIssuedAt().format(formatter) : LocalDateTime.now().format(formatter);
+        Paragraph date = new Paragraph("Issued on: " + issuedDate, bodyFont);
+        date.setAlignment(Element.ALIGN_CENTER);
+        doc.add(date);
+
+        doc.add(new Paragraph(" "));
+
+        Paragraph code = new Paragraph("Certificate No: " + cert.getCertCode(), certCodeFont);
+        code.setAlignment(Element.ALIGN_CENTER);
+        doc.add(code);
+
+        doc.close();
+        return out.toByteArray();
+    }
+
+    private String generateCertCode(Long userId, Long courseId) {
+        return String.format("MC-%d-%d-%s",
+                userId, courseId,
+                UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+    }
+
+    private com.microcourse.dto.CertificateVO convertToVO(Certificate cert) {
+        com.microcourse.dto.CertificateVO vo = new com.microcourse.dto.CertificateVO();
+        vo.setId(cert.getId());
+        vo.setUserId(cert.getUserId());
+        vo.setCourseId(cert.getCourseId());
+        vo.setCertCode(cert.getCertCode());
+        vo.setIssuedAt(cert.getIssuedAt());
+
+        if (cert.getCourseId() != null) {
+            Course course = courseRepository.selectById(cert.getCourseId());
+            if (course != null) {
+                vo.setCourseName(course.getTitle());
+            }
+        }
+        if (cert.getUserId() != null) {
+            User user = userRepository.selectById(cert.getUserId());
+            if (user != null) {
+                vo.setStudentName(user.getRealName());
+            }
+        }
         return vo;
     }
 }

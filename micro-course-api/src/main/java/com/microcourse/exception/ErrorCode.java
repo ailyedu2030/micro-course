@@ -53,6 +53,7 @@ public enum ErrorCode {
     ADMIN_SETTING_NOT_FOUND(12008, "系统配置不存在", 404),
     BADGE_NOT_FOUND(13001, "徽章不存在", 404),
     CERTIFICATE_NOT_FOUND(13002, "证书不存在", 404),
+    CERTIFICATE_NOT_ELIGIBLE(13003, "未满足证书颁发条件", 400),
     TAG_NOT_FOUND(14001, "标签不存在", 404),
     BANNER_NOT_FOUND(15001, "Banner 不存在", 404),
 
