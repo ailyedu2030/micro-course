@@ -25,6 +25,7 @@ import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.EnrollmentService;
+import com.microcourse.service.CertificateService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -47,16 +48,19 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final LearningProgressRepository learningProgressRepository;
     private final ClassesRepository classesRepository;
     private final MajorRepository majorRepository;
+    private final CertificateService certificateService;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
                                  CourseRepository courseRepository,
                                  UserRepository userRepository,
                                  LearningProgressRepository learningProgressRepository,
                                  ClassesRepository classesRepository,
-                                 MajorRepository majorRepository) {
+                                 MajorRepository majorRepository,
+                                 CertificateService certificateService) {
         this.enrollmentRepository = enrollmentRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
+        this.certificateService = certificateService;
         this.learningProgressRepository = learningProgressRepository;
         this.classesRepository = classesRepository;
         this.majorRepository = majorRepository;
@@ -377,6 +381,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             enrollment.setCompleted(request.getCompleted());
             if (request.getCompleted()) {
                 enrollment.setCompletedAt(LocalDateTime.now());
+                try {
+                    certificateService.issueCertificate(enrollment.getUserId(), enrollment.getCourseId());
+                } catch (Exception ignored) {
+                }
             }
         }
         if (request.getFinalScore() != null) {
