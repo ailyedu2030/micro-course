@@ -1,18 +1,16 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.AchievementVO;
+import com.microcourse.dto.BadgeDefinitionVO;
+import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Achievement;
 import com.microcourse.entity.BadgeDefinition;
-import com.microcourse.entity.CheckIn;
-import com.microcourse.entity.Enrollment;
 import com.microcourse.repository.AchievementRepository;
 import com.microcourse.repository.BadgeDefinitionRepository;
-import com.microcourse.repository.CheckInRepository;
-import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.service.BadgeService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,113 +21,149 @@ import java.util.stream.Collectors;
 @Service
 public class BadgeServiceImpl implements BadgeService {
 
-    private static final Logger log = LoggerFactory.getLogger(BadgeServiceImpl.class);
-
-    private final AchievementRepository achievementRepository;
     private final BadgeDefinitionRepository badgeDefinitionRepository;
-    private final EnrollmentRepository enrollmentRepository;
-    private final CheckInRepository checkInRepository;
+    private final AchievementRepository achievementRepository;
 
-    public BadgeServiceImpl(AchievementRepository achievementRepository,
-                            BadgeDefinitionRepository badgeDefinitionRepository,
-                            EnrollmentRepository enrollmentRepository,
-                            CheckInRepository checkInRepository) {
-        this.achievementRepository = achievementRepository;
+    public BadgeServiceImpl(BadgeDefinitionRepository badgeDefinitionRepository,
+                           AchievementRepository achievementRepository) {
         this.badgeDefinitionRepository = badgeDefinitionRepository;
-        this.enrollmentRepository = enrollmentRepository;
-        this.checkInRepository = checkInRepository;
+        this.achievementRepository = achievementRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AchievementVO> getMyBadges(Long userId) {
-        List<Achievement> achievements = achievementRepository.selectByUserId(userId);
-        return achievements.stream()
-                .map(this::convertToAchievementVO)
+    public List<BadgeDefinitionVO> getAllDefinitions() {
+        List<BadgeDefinition> definitions = badgeDefinitionRepository.selectList(null);
+        return definitions.stream()
+                .map(this::convertDefinitionToVO)
                 .collect(Collectors.toList());
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void checkAndGrantBadges(Long userId) {
-        checkFirstCourseBadge(userId);
-        checkAllCoursesBadge(userId);
-        checkSevenDayStreakBadge(userId);
+    @Transactional(readOnly = true)
+    public PageResult<BadgeDefinitionVO> getDefinitionsPage(int page, int size) {
+        Page<BadgeDefinition> pg = new Page<>(page + 1, size);
+        IPage<BadgeDefinition> result = badgeDefinitionRepository.selectPage(pg, null);
+        PageResult<BadgeDefinitionVO> pageResult = new PageResult<>();
+        pageResult.setItems(result.getRecords().stream()
+                .map(this::convertDefinitionToVO)
+                .collect(Collectors.toList()));
+        pageResult.setPage(page);
+        pageResult.setSize(size);
+        pageResult.setTotalElements(result.getTotal());
+        pageResult.setTotalPages(result.getPages());
+        return pageResult;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AchievementVO> getMyAchievements(Long userId) {
+        LambdaQueryWrapper<Achievement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Achievement::getUserId, userId)
+                .orderByDesc(Achievement::getEarnedAt);
+        return achievementRepository.selectList(wrapper).stream()
+                .map(this::convertAchievementToVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AchievementVO> getMyAchievementsPage(Long userId, int page, int size) {
+        Page<Achievement> pg = new Page<>(page + 1, size);
+        LambdaQueryWrapper<Achievement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Achievement::getUserId, userId)
+                .orderByDesc(Achievement::getEarnedAt);
+        IPage<Achievement> result = achievementRepository.selectPage(pg, wrapper);
+        PageResult<AchievementVO> pageResult = new PageResult<>();
+        pageResult.setItems(result.getRecords().stream()
+                .map(this::convertAchievementToVO)
+                .collect(Collectors.toList()));
+        pageResult.setPage(page);
+        pageResult.setSize(size);
+        pageResult.setTotalElements(result.getTotal());
+        pageResult.setTotalPages(result.getPages());
+        return pageResult;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void grantBadge(Long userId, String badgeCode) {
-        BadgeDefinition definition = badgeDefinitionRepository.selectByCode(badgeCode);
+    public AchievementVO awardBadge(Long userId, String badgeCode) {
+        LambdaQueryWrapper<Achievement> existingWrapper = new LambdaQueryWrapper<>();
+        existingWrapper.eq(Achievement::getUserId, userId)
+                .eq(Achievement::getBadgeCode, badgeCode);
+        Achievement existing = achievementRepository.selectOne(existingWrapper);
+        if (existing != null) {
+            return convertAchievementToVO(existing);
+        }
+
+        BadgeDefinition definition = badgeDefinitionRepository.selectOne(
+                new LambdaQueryWrapper<BadgeDefinition>()
+                        .eq(BadgeDefinition::getCode, badgeCode));
         if (definition == null) {
-            log.warn("[Badge] definition not found for code: {}", badgeCode);
-            return;
+            return null;
         }
-        if (achievementRepository.existsByUserIdAndBadgeCode(userId, badgeCode)) {
-            return;
-        }
+
         Achievement achievement = new Achievement();
         achievement.setUserId(userId);
         achievement.setBadgeCode(badgeCode);
         achievement.setBadgeName(definition.getName());
         achievement.setEarnedAt(LocalDateTime.now());
-        try {
-            achievementRepository.insert(achievement);
-        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
-            // CON-NEW-1 修复:并发授予同一徽章时,第二个 insert 抛唯一约束冲突,降级忽略(不污染整个事务)
-            log.debug("[Badge] 并发授予徽章 userId={} code={},DB UNIQUE 兜底", userId, badgeCode);
+        achievementRepository.insert(achievement);
+
+        return convertAchievementToVO(achievement);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasBadge(Long userId, String badgeCode) {
+        LambdaQueryWrapper<Achievement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Achievement::getUserId, userId)
+                .eq(Achievement::getBadgeCode, badgeCode);
+        return achievementRepository.selectCount(wrapper) > 0;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void checkAndAwardCourseCompletion(Long userId, Long courseId,
+                                             long totalEnrollments, long completedCount) {
+        if (!hasBadge(userId, "FIRST_COURSE") && completedCount >= 1) {
+            awardBadge(userId, "FIRST_COURSE");
+        }
+
+        if (totalEnrollments > 0 && !hasBadge(userId, "ALL_COURSES")
+                && completedCount >= totalEnrollments) {
+            awardBadge(userId, "ALL_COURSES");
         }
     }
 
-    private void checkFirstCourseBadge(Long userId) {
-        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Enrollment::getUserId, userId)
-                .eq(Enrollment::getCompleted, true);
-        long completedCount = enrollmentRepository.selectCount(wrapper);
-        if (completedCount >= 1) {
-            grantBadge(userId, "FIRST_COURSE");
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void checkAndAwardStreak(Long userId, int consecutiveDays) {
+        if (consecutiveDays >= 7 && !hasBadge(userId, "SEVEN_DAY_STREAK")) {
+            awardBadge(userId, "SEVEN_DAY_STREAK");
         }
     }
 
-    private void checkAllCoursesBadge(Long userId) {
-        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Enrollment::getUserId, userId)
-                .eq(Enrollment::getEnrollmentStatus, "ENROLLED");
-        long totalEnrollments = enrollmentRepository.selectCount(wrapper);
-
-        wrapper.eq(Enrollment::getCompleted, true);
-        long completedCount = enrollmentRepository.selectCount(wrapper);
-
-        if (totalEnrollments > 0 && completedCount >= totalEnrollments) {
-            grantBadge(userId, "ALL_COURSES");
-        }
+    private BadgeDefinitionVO convertDefinitionToVO(BadgeDefinition def) {
+        BadgeDefinitionVO vo = new BadgeDefinitionVO();
+        vo.setId(def.getId());
+        vo.setCode(def.getCode());
+        vo.setName(def.getName());
+        vo.setDescription(def.getDescription());
+        vo.setIconUrl(def.getIconUrl());
+        vo.setCategory(def.getCategory());
+        vo.setCriteria(def.getCriteria());
+        vo.setCreatedAt(def.getCreatedAt());
+        return vo;
     }
 
-    private void checkSevenDayStreakBadge(Long userId) {
-        LambdaQueryWrapper<CheckIn> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CheckIn::getUserId, userId)
-                .ge(CheckIn::getStreakDays, 7);
-        CheckIn record = checkInRepository.selectOne(wrapper);
-        if (record != null) {
-            grantBadge(userId, "SEVEN_DAY_STREAK");
-        }
-    }
-
-    private AchievementVO convertToAchievementVO(Achievement achievement) {
+    private AchievementVO convertAchievementToVO(Achievement ach) {
         AchievementVO vo = new AchievementVO();
-        vo.setId(achievement.getId());
-        vo.setUserId(achievement.getUserId());
-        vo.setBadgeCode(achievement.getBadgeCode());
-        vo.setBadgeName(achievement.getBadgeName());
-        vo.setEarnedAt(achievement.getEarnedAt());
-
-        BadgeDefinition definition = badgeDefinitionRepository.selectByCode(achievement.getBadgeCode());
-        if (definition != null) {
-            vo.setIconUrl(definition.getIconUrl());
-            vo.setCategory(definition.getCategory());
-            vo.setDescription(definition.getDescription());
-            vo.setCriteria(definition.getCriteria());
-        }
+        vo.setId(ach.getId());
+        vo.setUserId(ach.getUserId());
+        vo.setBadgeCode(ach.getBadgeCode());
+        vo.setBadgeName(ach.getBadgeName());
+        vo.setEarnedAt(ach.getEarnedAt());
         return vo;
     }
 }

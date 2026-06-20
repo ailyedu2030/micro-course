@@ -6,6 +6,7 @@ import com.microcourse.entity.CheckIn;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CheckInRepository;
+import com.microcourse.service.BadgeService;
 import com.microcourse.service.CheckInService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -22,9 +23,11 @@ public class CheckInServiceImpl implements CheckInService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CheckInServiceImpl.class);
 
     private final CheckInRepository checkInRepository;
+    private final BadgeService badgeService;
 
-    public CheckInServiceImpl(CheckInRepository checkInRepository) {
+    public CheckInServiceImpl(CheckInRepository checkInRepository, BadgeService badgeService) {
         this.checkInRepository = checkInRepository;
+        this.badgeService = badgeService;
     }
 
     @Override
@@ -90,6 +93,12 @@ public class CheckInServiceImpl implements CheckInService {
             );
             if (existingAfterRace != null) return convertToVO(existingAfterRace);
             throw e;
+        }
+
+        try {
+            badgeService.checkAndAwardStreak(userId, streak + 1);
+        } catch (Exception badgeEx) {
+            log.warn("[CheckIn] 徽章颁发失败 userId={}", userId, badgeEx);
         }
 
         return convertToVO(checkIn);

@@ -26,6 +26,7 @@ import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.CertificateService;
+import com.microcourse.service.BadgeService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -49,6 +50,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final ClassesRepository classesRepository;
     private final MajorRepository majorRepository;
     private final CertificateService certificateService;
+    private final BadgeService badgeService;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
                                  CourseRepository courseRepository,
@@ -56,11 +58,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                  LearningProgressRepository learningProgressRepository,
                                  ClassesRepository classesRepository,
                                  MajorRepository majorRepository,
-                                 CertificateService certificateService) {
+                                 CertificateService certificateService,
+                                 BadgeService badgeService) {
         this.enrollmentRepository = enrollmentRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.certificateService = certificateService;
+        this.badgeService = badgeService;
         this.learningProgressRepository = learningProgressRepository;
         this.classesRepository = classesRepository;
         this.majorRepository = majorRepository;
@@ -383,6 +387,18 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 enrollment.setCompletedAt(LocalDateTime.now());
                 try {
                     certificateService.issueCertificate(enrollment.getUserId(), enrollment.getCourseId());
+                } catch (Exception ignored) {
+                }
+                try {
+                    badgeService.checkAndAwardCourseCompletion(
+                            enrollment.getUserId(), enrollment.getCourseId(),
+                            enrollmentRepository.selectCount(
+                                    new LambdaQueryWrapper<Enrollment>()
+                                            .eq(Enrollment::getUserId, enrollment.getUserId())),
+                            enrollmentRepository.selectCount(
+                                    new LambdaQueryWrapper<Enrollment>()
+                                            .eq(Enrollment::getUserId, enrollment.getUserId())
+                                            .eq(Enrollment::getCompleted, true)));
                 } catch (Exception ignored) {
                 }
             }
