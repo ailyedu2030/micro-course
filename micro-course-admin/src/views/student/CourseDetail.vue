@@ -93,10 +93,10 @@
         <div class="detail-main">
           <!-- 课程介绍 -->
           <div class="section-card">
-            <div class="section-head">
-              <el-icon :size="20" color="#00cc7e"><Notebook /></el-icon>
-              <h2 class="section-title">课程介绍</h2>
-            </div>
+          <div class="section-head">
+            <el-icon :size="20" class="section-head-icon"><Notebook /></el-icon>
+            <h2 class="section-title">课程介绍</h2>
+          </div>
             <div class="section-body">
               <p v-if="course.description" class="desc-text">{{ course.description }}</p>
               <p v-else class="desc-text desc-text--empty">暂无课程介绍</p>
@@ -105,11 +105,11 @@
 
           <!-- 课程大纲 / 幻灯片 -->
           <div class="section-card">
-            <div class="section-head">
-              <el-icon :size="20" color="#00cc7e">
-                <List v-if="!isInteractive" /><Present v-else />
-              </el-icon>
-              <h2 class="section-title">{{ isInteractive ? '幻灯片' : '课程大纲' }}</h2>
+          <div class="section-head">
+            <el-icon :size="20" class="section-head-icon">
+              <List v-if="!isInteractive" /><Present v-else />
+            </el-icon>
+            <h2 class="section-title">{{ isInteractive ? '幻灯片' : '课程大纲' }}</h2>
               <span class="section-count">共 {{ isInteractive ? slides.length : courseChapters.length }} {{ isInteractive ? '页' : '章节' }}</span>
             </div>
             <div class="section-body">
@@ -185,7 +185,7 @@
         <div class="detail-main">
           <div class="section-card">
             <div class="section-head">
-              <el-icon :size="20" color="#00cc7e"><Star /></el-icon>
+              <el-icon :size="20" class="section-head-icon"><Star /></el-icon>
               <h2 class="section-title">课程评价</h2>
               <el-button size="small" text type="primary" @click="openReviewDialog">写评价</el-button>
             </div>
@@ -410,8 +410,11 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 <style scoped>
 /* ====== 全局 ====== */
 .course-detail-page {
-  background: var(--el-bg-color);
+  padding: var(--space-6);
   min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--el-bg-color-page);
   padding-bottom: var(--space-8);
 }
 .not-found-page {
@@ -451,12 +454,12 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   margin-top: var(--space-5);
   margin-bottom: var(--space-1);
   background: var(--el-bg-color-overlay);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   display: flex;
   overflow: hidden;
-  box-shadow: var(--shadow-tinted-md), var(--shadow-md);
+  box-shadow: var(--shadow-tinted-lg);
 }
-.hero-left { width: 480px; flex-shrink: 0; }
+.hero-left { width: 520px; flex-shrink: 0; }
 .hero-img-box {
   width: 100%;
   height: 270px;
@@ -478,12 +481,22 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 .hero-video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
 .hero-play-btn {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  width: 64px; height: 64px; border-radius: 50%;
-  background: rgba(99, 102, 241, 0.85);
+  width: 72px; height: 72px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--role-primary), var(--role-primary-dark));
   display: flex; align-items: center; justify-content: center;
   transition: all var(--duration-base) var(--ease-out);
   pointer-events: none;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--role-primary) 35%, transparent);
+  animation: hero-pulse 3s ease-in-out infinite;
+}
+
+@keyframes hero-pulse {
+  0%, 100% { box-shadow: 0 4px 24px color-mix(in srgb, var(--role-primary) 35%, transparent); }
+  50% { box-shadow: 0 4px 40px color-mix(in srgb, var(--role-primary) 50%, transparent), 0 0 0 8px color-mix(in srgb, var(--role-primary) 10%, transparent); }
+}
+
+.hero-img-box:hover .hero-play-btn:not(.loading) {
+  transform: translate(-50%,-50%) scale(1.08);
 }
 .hero-play-btn.loading { pointer-events: none; }
 .hero-close-player {
@@ -501,12 +514,13 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   display: flex; flex-direction: column;
 }
 .hero-title {
-  font-size: 26px;
+  font-size: 32px;
   font-weight: var(--weight-bold);
   color: var(--el-text-color-primary);
   margin: 0 0 var(--space-3);
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
 }
 .hero-subtitle {
   font-size: var(--text-base);
@@ -526,8 +540,9 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 .hero-price {
   margin-left: auto; font-size: 28px;
   font-weight: var(--weight-bold); color: var(--role-primary);
+  font-variant-numeric: tabular-nums;
 }
-.hero-price--free { color: var(--el-color-success); }
+.hero-price--free { color: var(--el-color-success); font-weight: var(--weight-medium); font-size: 22px; }
 .hero-actions { margin-top: auto; }
 .hero-actions .el-button--primary {
   background: linear-gradient(135deg, var(--role-primary), var(--role-primary-dark));
@@ -546,9 +561,20 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 .tab-nav {
   background: var(--el-bg-color-overlay);
   display: flex;
-  border-bottom: 1px solid var(--el-border-color-light);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   box-shadow: var(--shadow-tinted-sm);
+  padding: 0 var(--space-2);
+  position: relative;
+}
+
+.tab-nav::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--space-6);
+  right: var(--space-6);
+  height: 1px;
+  background: var(--el-border-color-lighter);
 }
 .tab-nav button {
   padding: var(--space-4) var(--space-6);
@@ -558,14 +584,28 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   font-weight: var(--weight-medium);
   color: var(--el-text-color-secondary);
   cursor: pointer;
-  border-bottom: 3px solid transparent;
+  position: relative;
   transition: all var(--duration-base) var(--ease-out);
+}
+.tab-nav button::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--space-6);
+  right: var(--space-6);
+  height: 3px;
+  background: var(--role-primary);
+  border-radius: var(--radius-pill);
+  transform: scaleX(0);
+  transition: transform var(--duration-base) var(--ease-out);
 }
 .tab-nav button:hover { color: var(--role-primary); }
 .tab-nav button.active {
   color: var(--role-primary);
-  border-bottom-color: var(--role-primary);
   font-weight: var(--weight-semibold);
+}
+.tab-nav button.active::after {
+  transform: scaleX(1);
 }
 
 /* ====== Main Body ====== */
@@ -578,31 +618,37 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 .detail-main { flex: 1; min-width: 0; }
 .detail-side { width: 300px; flex-shrink: 0; }
 
+:deep(html) {
+  scroll-behavior: smooth;
+}
+
 /* ====== Section Card ====== */
 .section-card {
   background: var(--el-bg-color-overlay);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   margin-bottom: var(--space-4);
-  box-shadow: var(--shadow-tinted-sm), var(--shadow-xs);
+  box-shadow: var(--shadow-tinted-sm);
   transition: transform var(--duration-base) var(--ease-out),
               box-shadow var(--duration-base) var(--ease-out);
-  border: 1px solid var(--card-border-tinted);
 }
 .section-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-tinted-lg), var(--shadow-md);
-  border-color: var(--role-primary-light-5);
 }
 .section-head {
   display: flex; align-items: center;
   gap: var(--space-2); margin-bottom: var(--space-4);
+}
+.section-head-icon {
+  color: var(--role-primary);
 }
 .section-title {
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   color: var(--el-text-color-primary);
   margin: 0;
+  letter-spacing: var(--tracking-tight);
 }
 .section-count {
   font-size: var(--text-sm);
@@ -615,6 +661,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   color: var(--el-text-color-primary);
   line-height: var(--leading-relaxed);
   margin: 0;
+  text-wrap: pretty;
 }
 .desc-text--empty { color: var(--el-text-color-placeholder); }
 
@@ -628,6 +675,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   font-weight: var(--weight-semibold);
   margin-right: var(--space-3);
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 .outline-title {
   font-size: var(--text-md);
@@ -664,8 +712,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   margin-bottom: var(--space-4);
-  box-shadow: var(--shadow-tinted-sm), var(--shadow-xs);
-  border: 1px solid var(--card-border-tinted);
+  box-shadow: var(--shadow-tinted-sm);
 }
 .side-card-title {
   font-size: var(--text-md);
@@ -674,6 +721,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   margin: 0 0 var(--space-4);
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--el-border-color-lighter);
+  letter-spacing: var(--tracking-tight);
 }
 .teacher-block { display: flex; align-items: center; gap: var(--space-3); }
 .teacher-name {

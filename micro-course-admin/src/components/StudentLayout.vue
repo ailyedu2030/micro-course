@@ -6,6 +6,8 @@
 -->
 <template>
   <div class="student-layout role-student">
+    <!-- 全局噪点纹理覆盖 -->
+    <div class="student-noise-overlay" aria-hidden="true" />
     <!-- ====== PC 端顶部导航 (> 768px) ====== -->
     <header class="layout-header layout-header--pc">
       <div class="header-left">
@@ -319,11 +321,11 @@ onUnmounted(() => notificationStore.stopPolling())
   align-items: center;
   height: 64px;
   padding: 0 var(--space-6);
-  background: rgba(255,255,255,0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.06);
-  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.04);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--card-border-tinted);
+  box-shadow: var(--shadow-tinted-sm);
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
@@ -343,7 +345,7 @@ onUnmounted(() => notificationStore.stopPolling())
 
 .logo-icon {
   color: var(--role-primary, #6366f1);
-  filter: drop-shadow(0 1px 2px rgba(99, 102, 241, 0.2));
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--role-primary) 20%, transparent));
 }
 
 .logo-text {
@@ -351,6 +353,7 @@ onUnmounted(() => notificationStore.stopPolling())
   font-weight: var(--weight-semibold);
   color: var(--el-text-color-primary, #303133);
   white-space: nowrap;
+  letter-spacing: var(--tracking-tight);
 }
 
 .header-nav {
@@ -386,12 +389,12 @@ onUnmounted(() => notificationStore.stopPolling())
   color: #fff;
   background: linear-gradient(135deg, var(--role-primary, #6366f1), var(--role-primary-dark, #4f46e5));
   font-weight: var(--weight-semibold);
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--role-primary) 30%, transparent);
 }
 
 .nav-tab.is-active:hover {
   background: linear-gradient(135deg, var(--role-primary-dark, #4f46e5), var(--role-primary-darker, #3730a3));
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--role-primary) 35%, transparent);
 }
 
 .header-right {
@@ -407,18 +410,18 @@ onUnmounted(() => notificationStore.stopPolling())
 
 .header-search :deep(.el-input__wrapper) {
   border-radius: var(--radius-xl, 16px);
-  background: rgba(99, 102, 241, 0.04);
+  background: var(--role-primary-light-9);
   box-shadow: none;
   transition: all var(--duration-base) var(--ease-out);
 }
 
 .header-search :deep(.el-input__wrapper:hover) {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--role-primary-light-8);
 }
 
 .header-search :deep(.el-input__wrapper.is-focus) {
   background: var(--el-bg-color-overlay);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--role-primary) 12%, transparent);
 }
 
 .icon-btn {
@@ -578,11 +581,11 @@ onUnmounted(() => notificationStore.stopPolling())
   left: 0;
   right: 0;
   height: 56px;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(99, 102, 241, 0.06);
-  box-shadow: 0 -2px 8px rgba(99, 102, 241, 0.04);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--card-border-tinted);
+  box-shadow: 0 -2px 8px color-mix(in srgb, var(--role-primary) 4%, transparent);
   z-index: var(--z-fixed);
   justify-content: space-around;
   align-items: center;
