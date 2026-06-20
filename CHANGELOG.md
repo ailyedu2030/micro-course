@@ -2,6 +2,30 @@
 
 All notable changes to the 微课管理平台 (Micro-Course Management Platform) are documented here.
 
+## [v1.12.1] — 2026-06-20
+
+> Phase 11–12 · Certificate 后端完整实现
+
+### Phase 11 — 遗留 backlog 修复
+
+- `CourseServiceImpl`：ratingCount 批量预加载（`CourseReviewRepository.countByCourseIds`）消除 N+1
+- `AdminSettingsController`：扩展 `PUT /api/admin/settings/cas` + 新增 `GET /api/admin/settings/cas`
+- `CasSettingsDTO`：完整字段 DTO（enabled/serverUrl/serviceUrl/version/adminUsername/superAdmins/validateSsl）
+- `AdminSettings.vue`：`localStorage` mock → 真实 API 调用
+
+### Phase 12 — 证书后端完整实现
+
+- `Certificate.java`：`@TableName("certificates")` Entity（含 `certCode` 唯一索引）
+- `CertificateRepository.java`：MyBatis-Plus BaseMapper
+- `CertificateServiceImpl`：颁发/查询/下载 PDF（含 OpenPDF 生成精美证书）
+- `CertificateController`：`GET /api/certificates/my` + `GET /api/certificates/{id}/download` + `POST /api/certificates/issue`
+- `CertificateVO`：课程名 + 学生姓名 + 证书编号 + 颁发时间
+- `ErrorCode`：新增 `CERTIFICATE_NOT_ELIGIBLE(13003)`
+- **自动颁发**：EnrollmentServiceImpl 完成课程时自动颁发证书（try/catch 静默处理）
+- `pom.xml`：新增 OpenPDF 1.3.35（证书 PDF 生成）
+
+---
+
 ## [v1.12.0] — 2026-06-20
 
 > Phase 5–10 Super-Fix 完整交付 · 282 issues resolved
