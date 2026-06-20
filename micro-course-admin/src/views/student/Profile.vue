@@ -134,7 +134,8 @@
         </el-col>
       </el-row>
 
-      <template v-if="isStudent">
+      <template v-if="userStore.role === 'STUDENT'"
+>
         <!-- 成就 -->
         <el-card class="profile-card achievement-card" shadow="never">
           <template #header>
@@ -355,7 +356,8 @@
         </el-form>
       </el-card>
 
-      <template v-if="isStudent">
+      <template v-if="userStore.role === 'STUDENT'"
+>
         <!-- 成就 -->
         <el-card class="profile-card achievement-card" shadow="never">
           <template #header>
@@ -485,7 +487,6 @@ import { ArrowRight } from '@element-plus/icons-vue'
 const router = useRouter()
 
 const userStore = useUserStore()
-const isStudent = computed(() => userStore.role === 'STUDENT')
 
 const profileFormRef = ref(null)
 const passwordFormRef = ref(null)
