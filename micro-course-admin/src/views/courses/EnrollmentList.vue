@@ -38,7 +38,7 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">报名列表</span>
+          <span class="card-title">选课列表</span>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
@@ -110,7 +110,7 @@ const fetchData = async () => {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取报名列表失败')
+    ElMessage.error('获取选课列表失败')
   } finally {
     loading.value = false
   }

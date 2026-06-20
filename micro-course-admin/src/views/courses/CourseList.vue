@@ -48,7 +48,7 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">课程列表</span>
+          <span class="card-title">{{ userRole === 'TEACHER' ? '我的课程' : '课程列表' }}</span>
           <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增课程</el-button>
         </div>
       </template>

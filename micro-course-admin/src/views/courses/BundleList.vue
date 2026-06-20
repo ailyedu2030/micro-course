@@ -1,6 +1,6 @@
 <template>
   <div class="bundle-list">
-    <el-page-header @back="$router.push('/courses')" content="课程套件管理" />
+    <el-page-header @back="$router.push('/courses')" content="课程套餐管理" />
 
     <el-card shadow="never" class="mg-top-16">
       <template #header>
