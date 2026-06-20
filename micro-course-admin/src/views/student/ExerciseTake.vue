@@ -1,6 +1,6 @@
 <!--
   章节练习
-  路由路径: /student/exercise/:chapterId
+  路由路径: /student/chapters/:chapterId/exercises
   Phase 2
   Author: jackie
 -->
