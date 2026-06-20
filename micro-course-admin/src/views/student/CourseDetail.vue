@@ -77,6 +77,9 @@
               <el-button type="primary" size="large" :loading="enrollLoading" @click="handleEnroll">
                 {{ course.price && !course.isFree ? '立即购买' : '立即参加' }}
               </el-button>
+              <el-button v-if="course.price && !course.isFree" size="large" @click="handleAddCart">
+                <el-icon><ShoppingCart /></el-icon>加入购物车
+              </el-button>
             </template>
           </div>
         </div>
@@ -230,11 +233,12 @@
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading } from '@element-plus/icons-vue'
+import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading, ShoppingCart } from '@element-plus/icons-vue'
 import { getCourseById } from '@/api/course'
 import { getPublicProfile } from '@/api/user'
 import { getVideos } from '@/api/video'
 import { enroll as enrollApi, getMyEnrollments, getCourseRanking } from '@/api/enrollment'
+import { useCartStore } from '@/store/cart'
 import { createOrder, payOrder } from '@/api/order'
 import { createReview, getReviews } from '@/api/course-review'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
@@ -245,6 +249,7 @@ import Hls from 'hls.js'
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const cartStore = useCartStore()
 
 const courseId = computed(() => route.params.id)
 const course = ref({})
@@ -372,6 +377,21 @@ const handleEnroll = async () => {
   } catch (e) {
     if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
   } finally { enrollLoading.value = false }
+}
+
+function handleAddCart() {
+  const c = course.value
+  if (!c) return
+  const added = cartStore.addItem({
+    id: Number(courseId.value),
+    title: c.title,
+    coverUrl: c.coverUrl,
+    price: c.price,
+    isFree: c.isFree,
+    teacherName: c.teacherName,
+  })
+  if (added) ElMessage.success('已加入购物车')
+  else ElMessage.info('该课程已在购物车中')
 }
 
 const handleChapterClick = (row) => {

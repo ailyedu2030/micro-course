@@ -40,6 +40,10 @@
           @keyup.enter="handleSearch"
         />
 
+        <el-badge :value="cartStore.count" :hidden="!cartStore.count" :max="99" class="cart-badge">
+          <el-button :icon="ShoppingCart" circle class="icon-btn" @click="openCart" aria-label="购物车" />
+        </el-badge>
+
         <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" class="notification-badge">
           <el-button :icon="Bell" circle class="icon-btn" @click="goNotifications" aria-label="通知中心" />
         </el-badge>
@@ -116,6 +120,9 @@
       </router-link>
     </nav>
   </div>
+
+  <!-- 购物车抽屉 -->
+  <CartDrawer ref="cartDrawer" />
 </template>
 
 <script setup>
@@ -123,17 +130,22 @@ import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Grid, VideoPlay, DataLine, Bell, User, Star, Setting, Reading,
-  Microphone, Search, ArrowDown, ArrowLeft, SwitchButton
+  Microphone, Search, ArrowDown, ArrowLeft, SwitchButton, ShoppingCart
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useUserStore } from '../store/user'
 import { useNotificationStore } from '../store/notification'
+import { useCartStore } from '../store/cart'
+import CartDrawer from '../components/CartDrawer.vue'
 
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
+const cartStore = useCartStore()
+const cartDrawer = ref(null)
+function openCart() { cartDrawer.value?.open() }
 
 // ---------------------------------------------------------------------------
 // Router
