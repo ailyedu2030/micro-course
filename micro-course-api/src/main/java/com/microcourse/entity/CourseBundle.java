@@ -1,0 +1,47 @@
+package com.microcourse.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@TableName("course_bundles")
+public class CourseBundle {
+    @TableId(type = IdType.AUTO)
+    private Long id;
+    private String title;
+    private String description;
+    private String coverUrl;
+    private Long creatorId;
+    private BigDecimal price;
+    private Boolean isFree;
+    private Integer studentCount;
+    private Integer status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    public CourseBundle() {}
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public String getCoverUrl() { return coverUrl; }
+    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
+    public Long getCreatorId() { return creatorId; }
+    public void setCreatorId(Long creatorId) { this.creatorId = creatorId; }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
+    public Boolean getIsFree() { return isFree; }
+    public void setIsFree(Boolean isFree) { this.isFree = isFree; }
+    public Integer getStudentCount() { return studentCount; }
+    public void setStudentCount(Integer studentCount) { this.studentCount = studentCount; }
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+}

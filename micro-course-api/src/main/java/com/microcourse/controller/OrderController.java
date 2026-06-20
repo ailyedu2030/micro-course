@@ -1,0 +1,60 @@
+package com.microcourse.controller;
+
+import com.microcourse.dto.PageResult;
+import com.microcourse.dto.R;
+import com.microcourse.dto.order.OrderVO;
+import com.microcourse.service.OrderService;
+import com.microcourse.util.SecurityUtil;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/orders")
+@Validated
+public class OrderController {
+
+    private final OrderService orderService;
+
+    public OrderController(OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('STUDENT')")
+    public R<OrderVO> createOrder(@RequestBody Map<String, Long> body) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        return R.ok(orderService.createOrder(userId, body.get("courseId"), body.get("bundleId")));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public R<OrderVO> getOrder(@PathVariable Long id) {
+        return R.ok(orderService.getOrder(id));
+    }
+
+    @GetMapping("/my")
+    @PreAuthorize("hasAnyRole('STUDENT')")
+    public R<PageResult<OrderVO>> getMyOrders(
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+        return R.ok(orderService.getMyOrders(SecurityUtil.getCurrentUserId(), page, size));
+    }
+
+    @PostMapping("/{id}/pay")
+    @PreAuthorize("hasAnyRole('STUDENT')")
+    public R<OrderVO> pay(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return R.ok(orderService.pay(id, body.getOrDefault("paymentMethod", "BALANCE")));
+    }
+
+    @PostMapping("/callback")
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    public R<Void> paymentCallback(@RequestBody Map<String, String> params) {
+        orderService.paymentCallback(params);
+        return R.ok();
+    }
+}
