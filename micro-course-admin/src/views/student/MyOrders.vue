@@ -5,7 +5,7 @@
     </nav>
 
     <el-card shadow="never">
-      <el-table v-loading="loading" :data="orders" stripe border>
+      <el-table v-loading="loading" :data="orders" class="data-table" stripe border>
         <el-table-column prop="orderNo" label="订单号" min-width="200" show-overflow-tooltip />
         <el-table-column prop="courseTitle" label="课程" min-width="200" show-overflow-tooltip />
         <el-table-column prop="amount" label="金额" width="120" align="center">

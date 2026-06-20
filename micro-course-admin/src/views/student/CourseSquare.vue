@@ -109,7 +109,7 @@
                 :lg="6"
               >
                 <article
-                  class="course-card"
+                  :class="['course-card', 'student-card-item', { 'is-recommended': true }]"
                   role="button"
                   tabindex="0"
                   :aria-label="`推荐课程 ${course.title}`"
@@ -209,7 +209,9 @@
         <div v-if="loading" class="course-grid" aria-label="加载中">
           <el-row :gutter="24">
             <el-col v-for="n in 8" :key="n" :xs="24" :sm="12" :md="8" :lg="8">
-              <el-card class="course-card skeleton-card" shadow="never">
+              <el-card class="course-card skeleton-card student-card-item" shadow="never"
+                :style="{ animationDelay: `${(n - 1) * 0.08}s` }"
+              >
                 <el-skeleton animated>
                   <template #template>
                     <div class="skeleton-cover" />
@@ -287,7 +289,7 @@
               :lg="8"
             >
               <article
-                class="course-card"
+                :class="['course-card', 'student-card-item']"
                 role="button"
                 tabindex="0"
                 :aria-label="`课程 ${course.title}，教师 ${course.teacherName || '未知'}，${course.studentCount || 0} 人学习`"
@@ -838,7 +840,7 @@ onMounted(async () => {
 }
 
 .filter-card :deep(.el-card__body) {
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-4) var(--space-6);
 }
 
 .filter-row {
@@ -1187,7 +1189,7 @@ onMounted(async () => {
 
 .price {
   font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
   color: var(--role-primary);
   letter-spacing: var(--tracking-tight);
   transition: transform var(--duration-base) var(--ease-out);
@@ -1392,6 +1394,21 @@ onMounted(async () => {
 .skeleton-card {
   background: var(--el-bg-color-overlay);
   box-shadow: var(--shadow-sm) !important;
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+  animation: skeleton-fade-in 0.6s var(--ease-out) both;
+}
+
+@keyframes skeleton-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .skeleton-cover {

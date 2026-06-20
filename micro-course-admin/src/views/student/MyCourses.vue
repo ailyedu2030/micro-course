@@ -9,7 +9,7 @@
     <!-- PC 布局 (≥769px) -->
     <div v-if="!isMobile" class="pc-layout">
       <!-- 页面 Header -->
-      <div class="page-header">
+      <div class="page-header student-welcome">
         <div class="header-content">
           <!-- P2-7: 欢迎文案——当前硬编码，后续可从后端配置接口获取 welcomeText 替换 -->
           <h1 class="page-title">欢迎学习，{{ userStore.realName || '同学' }}</h1>
@@ -112,7 +112,7 @@
               :lg="6"
             >
               <el-card
-                class="course-card"
+                class="course-card student-card-item"
                 shadow="hover"
                 role="button"
                 tabindex="0"
@@ -176,7 +176,7 @@
                   </p>
 
                   <!-- 进度条 (进行中) -->
-                  <div v-if="activeTab === 'in-progress'" class="progress-wrap">
+                  <div v-if="activeTab === 'in-progress'" class="progress-wrap student-progress">
                     <el-progress
                       :percentage="course.progress || 0"
                       :stroke-width="6"
@@ -248,7 +248,7 @@
     <!-- H5 布局 (≤768px) -->
     <div v-else class="h5-layout">
       <!-- 紧凑 Header -->
-      <div class="h5-header">
+      <div class="h5-header student-welcome">
         <!-- P2-7: 欢迎文案——当前硬编码，后续可从后端配置接口获取 welcomeText 替换 -->
         <h1 class="h5-title">欢迎学习，{{ userStore.realName || '同学' }}</h1>
       </div>
@@ -336,7 +336,7 @@
         <el-card
           v-for="course in displayCourses"
           :key="course.courseId"
-          class="h5-course-card"
+          class="h5-course-card student-card-item"
           shadow="hover"
           role="button"
           tabindex="0"
@@ -400,7 +400,7 @@
             </p>
 
             <!-- 进度条 -->
-            <div v-if="activeTab === 'in-progress'" class="h5-progress-wrap">
+            <div v-if="activeTab === 'in-progress'" class="h5-progress-wrap student-progress">
               <el-progress
                 :percentage="course.progress || 0"
                 :stroke-width="4"
@@ -769,7 +769,6 @@ const handleContinue = (courseId) => {
 /* 页面 Header */
 .page-header {
   height: 120px;
-  background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1025,7 +1024,6 @@ const handleContinue = (courseId) => {
 /* 紧凑 Header */
 .h5-header {
   height: 80px;
-  background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 100%);
   display: flex;
   align-items: center;
   justify-content: center;

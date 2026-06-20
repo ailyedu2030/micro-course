@@ -183,7 +183,7 @@
         </div>
 
         <div class="wrong-table-wrapper">
-          <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="wrong-questions-table">
+          <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="data-table wrong-questions-table">
             <el-table-column prop="questionContent" label="错题内容" min-width="200">
               <template #default="{ row }">
                 <span>{{ row.questionContent || row.content }}</span>
@@ -399,7 +399,7 @@
         </div>
 
         <div class="wrong-table-wrapper">
-          <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="300" class="wrong-questions-table">
+          <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="300" class="data-table wrong-questions-table">
             <el-table-column prop="questionContent" label="错题内容" min-width="150">
               <template #default="{ row }">
                 <span>{{ row.questionContent || row.content }}</span>
