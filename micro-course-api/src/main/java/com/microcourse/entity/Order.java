@@ -1,15 +1,17 @@
 package com.microcourse.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @TableName("orders")
 public class Order {
+
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    @Version
+    private Integer version;
     private String orderNo;
     private Long userId;
     private Long courseId;
@@ -32,6 +34,9 @@ public class Order {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Long getBundleId() { return bundleId; }
     public void setBundleId(Long bundleId) { this.bundleId = bundleId; }
+
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public String getStatus() { return status; }

@@ -85,6 +85,12 @@ onMounted(() => {
 
 async function handleSubmit() {
   if (!store.hasItems) return
+  try {
+    await ElMessageBox.confirm(`确认支付 ¥${store.totalPrice}？`, '确认支付', {
+      confirmButtonText: '支付', cancelButtonText: '取消', type: 'info'
+    })
+  } catch { return }
+
   submitting.value = true
   try {
     const items = [...store.items]
@@ -96,12 +102,8 @@ async function handleSubmit() {
         }
         store.removeItem(item.courseId)
       } catch (e) {
-        if (e?.response?.data?.code === 8002) {
-          ElMessage.success(`「${item.title}」已拥有，跳过`)
-          store.removeItem(item.courseId)
-        } else {
-          ElMessage.error(`「${item.title}」支付失败`)
-        }
+        const msg = e?.response?.data?.message || e?.response?.data?.code || e.message || '支付失败'
+        ElMessage.error(`「${item.title}」${msg}`)
       }
     }
     if (store.count === 0) {

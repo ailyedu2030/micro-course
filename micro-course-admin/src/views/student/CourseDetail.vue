@@ -367,7 +367,7 @@ const handleEnroll = async () => {
   enrollLoading.value = true
   try {
     if (course.value.price && !course.value.isFree) {
-      const { data: order } = await createOrder({ userId: uid, courseId: courseId.value })
+      const { data: order } = await createOrder({ courseId: courseId.value })
       if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); return }
       await ElMessageBox.confirm(`确认支付 ¥${course.value.price}？`, '确认支付', { confirmButtonText: '支付', cancelButtonText: '取消', type: 'info' })
       await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功')

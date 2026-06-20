@@ -83,7 +83,7 @@ const routes = [
   { path: '/student/profile', name: 'StudentProfile', component: () => import('../views/student/Profile.vue'), meta: { requiresAuth: true, menuTab: true, menuLabel: '我的', menuIcon: 'User', menuOrder: 4 } },
   { path: '/student/report', name: 'StudentWeeklyReport', component: () => import('../views/student/WeeklyReport.vue'), meta: { requiresAuth: true } },
   { path: '/student/orders', name: 'StudentOrders', component: () => import('../views/student/MyOrders.vue'), meta: { requiresAuth: true, menuTab: true, menuLabel: '订单', menuIcon: 'Wallet', menuOrder: 5 } },
-  { path: '/student/checkout', name: 'StudentCheckout', component: () => import('../views/student/Checkout.vue'), meta: { requiresAuth: true } },
+  { path: '/student/checkout', name: 'StudentCheckout', component: () => import('../views/student/Checkout.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/bundles', name: 'StudentBundles', component: () => import('../views/student/BundleSquare.vue'), meta: { requiresAuth: true } },
   { path: '/student/bundles/:id', name: 'StudentBundleDetail', component: () => import('../views/student/BundleDetail.vue'), meta: { requiresAuth: true } },
   { path: '/student/redirect', redirect: '/student/courses', meta: { requiresAuth: false } },

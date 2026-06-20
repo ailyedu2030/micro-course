@@ -60,6 +60,10 @@ public class OrderServiceImpl implements OrderService {
     public OrderVO createOrder(Long userId, Long courseId, Long bundleId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        // SECURITY: 只有已发布的课程才能被购买
+        if (course.getStatus() == null || course.getStatus() != com.microcourse.enums.CourseStatus.PUBLISHED.getCode()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程未发布，无法购买");
+        }
 
         BigDecimal price = course.getPrice();
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
@@ -122,13 +126,29 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
         }
 
-        String transactionId = "TXN" + UUID.randomUUID().toString().replace("-", "").substring(0, 24).toUpperCase();
+        // SECURITY: 先选课再标记支付——防止支付成功但选课失败导致钱课两空
+        autoEnroll(order.getUserId(), order.getCourseId());
+        if (order.getBundleId() != null) {
+            enrollBundleCourses(order.getUserId(), order.getBundleId());
+        }
 
+        // SECURITY: CAS 乐观锁更新状态——防止并发重复支付
+        String transactionId = "TXN" + UUID.randomUUID().toString().replace("-", "").substring(0, 24).toUpperCase();
         order.setStatus("PAID");
         order.setPaymentMethod(paymentMethod);
         order.setPaidAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.updateById(order);
+        int affected = orderRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                        .eq(Order::getId, orderId)
+                        .eq(Order::getStatus, "PENDING")
+                        .set(Order::getStatus, "PAID")
+                        .set(Order::getPaymentMethod, paymentMethod)
+                        .set(Order::getPaidAt, LocalDateTime.now())
+                        .set(Order::getUpdatedAt, LocalDateTime.now()));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更，请刷新后重试");
+        }
 
         Payment payment = new Payment();
         payment.setOrderId(orderId);
@@ -139,13 +159,7 @@ public class OrderServiceImpl implements OrderService {
         payment.setCreatedAt(LocalDateTime.now());
         paymentRepository.insert(payment);
 
-        autoEnroll(order.getUserId(), order.getCourseId());
-
-        if (order.getBundleId() != null) {
-            enrollBundleCourses(order.getUserId(), order.getBundleId());
-        }
-
-        return toVO(order);
+        return toVO(orderRepository.selectById(orderId));
     }
 
     @Override
