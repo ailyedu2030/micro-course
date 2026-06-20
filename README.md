@@ -100,3 +100,28 @@ docker-compose.yml        # 生产部署编排
 | `VIDEO_SIGN_SECRET` | ✅ | 视频签名密钥（必须不同于 JWT_SECRET） |
 | `REDIS_PASSWORD` | ❌ | Redis 密码（生产环境建议设置） |
 | `CORS_ALLOWED_ORIGINS` | ❌ | 跨域来源（默认 localhost:80） |
+
+## 生产部署
+
+```bash
+# 1. 配置环境变量
+cp .env.example .env
+# 编辑 .env 填入真实密钥
+
+# 2. 启动
+docker compose up -d
+
+# 3. 验证健康检查
+curl http://localhost/health
+
+# 4. 查看日志
+docker compose logs -f
+```
+
+### Nginx 安全配置
+
+- API 限流: 30 请求/秒 (burst 50)
+- Body 上限: 2GB（视频上传）
+- 安全头: X-Content-Type-Options / X-Frame-Options / X-XSS-Protection / Referrer-Policy
+- gzip 压缩: text/css/js/json + HLS mpegurl/mp2t
+- 静态资源: 1 年强缓存，关闭 access_log |
