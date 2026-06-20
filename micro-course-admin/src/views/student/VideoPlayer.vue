@@ -7,8 +7,31 @@
   <div class="video-player-root role-video">
     <!-- Loading State -->
     <div v-if="loading" class="player-loading">
-      <div class="loading-spinner"></div>
-      <span class="loading-text">视频加载中...</span>
+      <div class="skeleton-video">
+        <div class="skeleton-video-placeholder">
+          <div class="skeleton-icon">▶</div>
+        </div>
+        <div class="skeleton-controls">
+          <div class="skeleton-bar skeleton-bar-wide"></div>
+          <div class="skeleton-controls-row">
+            <div class="skeleton-btn"></div>
+            <div class="skeleton-btn"></div>
+            <div class="skeleton-btn"></div>
+            <div class="skeleton-spacer"></div>
+            <div class="skeleton-btn"></div>
+            <div class="skeleton-btn"></div>
+          </div>
+        </div>
+      </div>
+      <div class="skeleton-sidebar">
+        <div class="skeleton-chapter" v-for="i in 5" :key="i">
+          <div class="skeleton-chapter-icon"></div>
+          <div class="skeleton-chapter-text">
+            <div class="skeleton-bar"></div>
+            <div class="skeleton-bar skeleton-bar-short"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Error State -->
@@ -543,7 +566,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import Hls from 'hls.js'
 import { getVideoById } from '@/api/video'
 import { getToken } from '@/utils/auth'
@@ -1193,7 +1216,18 @@ const onEnded = async () => {
     chapters.value[currentChapterIndex.value].isCompleted = true
   }
   await reportProgress()
-  ElMessage.success('视频播放完成')
+  const chapter = chapters.value[currentChapterIndex.value]
+  if (chapter && chapter.exerciseCount > 0) {
+    ElMessageBox.confirm(
+      `「${chapter.title}」的视频已看完，是否开始本节练习？`,
+      '视频播放完成',
+      { confirmButtonText: '开始练习', cancelButtonText: '继续看下一节', type: 'success' }
+    ).then(() => {
+      router.push(`/student/chapters/${chapter.id}/exercises`)
+    }).catch(() => {})
+  } else {
+    ElMessage.success('视频播放完成')
+  }
 }
 
 const onVideoError = () => {
@@ -1479,32 +1513,71 @@ onBeforeUnmount(() => {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Loading */
+/* Loading — Skeleton Screen */
 .player-loading {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
+  gap: 12px;
+  padding: 12px;
 }
 
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 3px solid var(--vp-border);
-  border-top-color: var(--vp-accent);
-  border-radius: var(--radius-circle);
-  animation: spin 1s linear infinite;
+.skeleton-video { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+.skeleton-video-placeholder {
+  flex: 1; background: var(--vp-surface); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; min-height: 400px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+.skeleton-icon { font-size: 48px; color: var(--vp-border); opacity: 0.5; }
 
-.loading-text {
-  color: var(--vp-text-secondary);
-  font-size: var(--text-base);
+.skeleton-controls { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+
+.skeleton-controls-row { display: flex; gap: 12px; align-items: center; }
+
+.skeleton-bar {
+  height: 12px; background: var(--vp-surface); border-radius: 6px;
+  position: relative; overflow: hidden;
+}
+.skeleton-bar::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  animation: skeleton-shimmer 1.5s infinite;
+}
+.skeleton-bar-wide { width: 100%; }
+.skeleton-bar-short { width: 60%; }
+
+.skeleton-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--vp-surface); position: relative; overflow: hidden;
+}
+.skeleton-btn::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  animation: skeleton-shimmer 1.5s infinite;
+}
+.skeleton-spacer { flex: 1; }
+
+.skeleton-sidebar { width: 280px; display: flex; flex-direction: column; gap: 8px; }
+
+.skeleton-chapter {
+  display: flex; gap: 10px; padding: 10px;
+  background: var(--vp-surface); border-radius: 6px;
+}
+.skeleton-chapter-icon {
+  width: 40px; height: 40px; border-radius: 4px;
+  background: var(--vp-border); flex-shrink: 0; position: relative; overflow: hidden;
+}
+.skeleton-chapter-icon::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  animation: skeleton-shimmer 1.5s infinite;
+}
+.skeleton-chapter-text { flex: 1; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+.skeleton-chapter-text .skeleton-bar { height: 10px; }
+
+@keyframes skeleton-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* Error */

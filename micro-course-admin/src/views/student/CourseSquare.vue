@@ -1,5 +1,5 @@
 <!--
-  课程广场 (PC 端，不做 H5)
+  课程广场 (H5 响应式)
   路由: /student/courses
   规范: .playwright-mcp/course-square-spec/{01-IA,02-VISUAL,03-COMPONENTS,04-CHECKLIST}.md
   设计: ui-ux-pro-max 技能 + DESIGN.md v1.1
