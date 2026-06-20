@@ -32,8 +32,8 @@ import java.util.stream.Stream;
  * P1-1/P1-5: 路径从配置读取
  * P1-2: 超时可配置
  * P1-3: 按 FFmpeg Duration 时间比例估算进度
- * P2: failTranscode 复用已有 Video 对象 + 转码失败清理 HLS 分片
- * P3: 状态常量 → VideoStatus 枚举
+  * P2: failTranscode 复用已有 Video 对象 + 转码失败清理 HLS 分片
+  * [DONE] P3: 状态常量 → VideoStatus 枚举 (Phase 8)
  */
 @Service
 public class VideoTranscodeServiceImpl implements VideoTranscodeService {

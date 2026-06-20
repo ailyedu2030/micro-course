@@ -381,7 +381,7 @@ public class VideoServiceImpl implements VideoService {
     }
 
     /**
-     * P3: convertToVO 公共字段复制（消除两个重载方法中的重复代码）
+     * Phase 11 重构目标：extract 公共字段复制，消除两个重载方法中的重复代码
      */
     private VideoVO populateBasicFields(Video video) {
         VideoVO vo = new VideoVO();
@@ -410,7 +410,7 @@ public class VideoServiceImpl implements VideoService {
     }
 
     /**
-     * P2/P3: 统一使用 Map 版本的 convertToVO，消除单条查询的 N+1
+     * Phase 11 重构目标：统一使用 Map 版本的 convertToVO，消除单条查询的 N+1
      */
     private VideoVO convertToVO(Video video, Map<Long, Course> courseMap,
                                 Map<Long, CourseChapter> chapterMap) {

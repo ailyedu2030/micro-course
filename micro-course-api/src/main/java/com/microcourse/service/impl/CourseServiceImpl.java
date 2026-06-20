@@ -483,7 +483,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setDescription(course.getDescription());
         vo.setStudentCount(course.getStudentCount());
         vo.setAvgRating(course.getAvgRating());
-        vo.setRatingCount(0); // TODO: Phase 后续从评价表聚合
+        vo.setRatingCount(0); // TODO: Phase 11 — 评价表聚合
         vo.setPublishedAt(course.getPublishedAt());
         vo.setCreatedAt(course.getCreatedAt());
         vo.setUpdatedAt(course.getUpdatedAt());
@@ -536,7 +536,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setDescription(course.getDescription());
         vo.setStudentCount(course.getStudentCount());
         vo.setAvgRating(course.getAvgRating());
-        vo.setRatingCount(0); // TODO: Phase 后续从评价表聚合
+        vo.setRatingCount(0); // TODO: Phase 11 — 评价表聚合
         vo.setPublishedAt(course.getPublishedAt());
         vo.setCreatedAt(course.getCreatedAt());
         vo.setUpdatedAt(course.getUpdatedAt());

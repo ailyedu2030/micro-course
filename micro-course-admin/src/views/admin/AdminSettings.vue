@@ -463,7 +463,7 @@ async function handleSave(menu) {
   saving.value = true
   try {
     if (menu === 'cas') {
-      // TODO: 后端暂无 /admin/settings/cas 接口，先保留 localStorage mock
+      // Phase 11: 后端暂无 /admin/settings/cas 接口，localStorage mock
       // P1-1: 使用 btoa 简单编码（过渡方案，正式环境应使用后端 API + 加密存储）
       localStorage.setItem('cas_settings', btoa(JSON.stringify(casForm)))
       ElMessage.warning('CAS 配置已本地保存（演示功能，正式环境请配置后端 API）')
