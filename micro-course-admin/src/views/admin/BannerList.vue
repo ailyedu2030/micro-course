@@ -10,7 +10,6 @@
       <div class="toolbar">
         <div class="toolbar-left">
           <span class="card-title">轮播图管理</span>
-          <span class="card-count">共 {{ totalElements }} 张</span>
         </div>
         <div class="toolbar-right">
           <el-button type="primary" @click="handleAdd" aria-label="删除"><el-icon><Plus /></el-icon>添加轮播图
@@ -57,7 +56,6 @@
             />
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="标题" min-width="160" show-overflow-tooltip />
         <el-table-column prop="linkUrl" label="跳转链接" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
             <a v-if="row.linkUrl" :href="row.linkUrl" target="_blank" class="banner-link">
@@ -92,16 +90,8 @@
         </el-table-column>
       </el-table>
 
-      <!-- 分页 -->
-      <div v-if="tableData.length > 0" class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="size"
-          :total="totalElements"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next"
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航" />
+      <div v-if="tableData.length > 0" class="count-wrap">
+        <span class="text-secondary">共 {{ tableData.length }} 张轮播图</span>
       </div>
     </el-card>
 
@@ -119,9 +109,6 @@
         label-width="100px"
         class="banner-form"
       >
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入轮播图标题" maxlength="64" show-word-limit />
-        </el-form-item>
         <el-form-item label="图片" prop="imageUrl">
           <div class="image-upload-wrap">
             <el-upload
@@ -205,9 +192,6 @@ const saving = ref(false)
 
 // 表格数据
 const tableData = ref([])
-const totalElements = ref(0)
-const page = ref(1)
-const size = ref(20)
 
 // 弹窗状态
 const formVisible = ref(false)
@@ -218,7 +202,6 @@ const imageUploadRef = ref(null)
 
 // 表单数据
 const form = reactive({
-  title: '',
   imageUrl: '',
   linkUrl: '',
   sortOrder: 0,
@@ -227,7 +210,6 @@ const form = reactive({
 
 // 表单验证
 const formRules = {
-  title: [{ required: true, message: '请输入轮播图标题', trigger: ['blur', 'change'] }],
   imageUrl: [{ required: true, message: '请上传轮播图图片', trigger: ['blur', 'change'] }]
 }
 
@@ -237,8 +219,7 @@ async function fetchData() {
   error.value = false
   try {
     const res = await getBanners()
-    tableData.value = res.data?.items || res.data || []
-    totalElements.value = res.data?.total || 0
+    tableData.value = Array.isArray(res.data) ? res.data : []
   } catch {
     error.value = true
     ElMessage.error('获取轮播图列表失败')
@@ -259,7 +240,6 @@ function handleAdd() {
 function handleEdit(row) {
   isEdit.value = true
   currentBannerId.value = row.id
-  form.title = row.title || ''
   form.imageUrl = row.imageUrl || ''
   form.linkUrl = row.linkUrl || ''
   form.sortOrder = row.sortOrder || 0
@@ -269,7 +249,6 @@ function handleEdit(row) {
 
 // 重置表单
 function resetForm() {
-  form.title = ''
   form.imageUrl = ''
   form.linkUrl = ''
   form.sortOrder = 0
@@ -316,8 +295,6 @@ async function handleConfirmSave() {
   saving.value = true
   try {
     const fd = new FormData()
-    fd.append('title', form.title)
-    fd.append('imageUrl', form.imageUrl || '')
     fd.append('linkUrl', form.linkUrl || '')
     fd.append('sortOrder', String(form.sortOrder))
     fd.append('enabled', String(form.enabled))
@@ -371,16 +348,6 @@ async function handleToggleStatus(row) {
   }
 }
 
-// 翻页
-function handleSizeChange() {
-  page.value = 1
-  fetchData()
-}
-
-function handlePageChange() {
-  fetchData()
-}
-
 // 工具方法
 function formatTime(isoString) {
   if (!isoString) return '-'
@@ -397,16 +364,19 @@ onMounted(() => {
 
 <style scoped>
 .banner-list-container {
-  padding: 24px;
-  background: #F5F6FA;
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
   min-height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .toolbar-card {
-  margin-bottom: 16px;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-bottom: var(--space-4);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .toolbar {
@@ -418,43 +388,50 @@ onMounted(() => {
 .toolbar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .toolbar-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .card-count {
-  font-size: 14px;
-  color: #64748B;
+  font-size: var(--text-base);
+  color: var(--el-text-color-secondary);
 }
 
 .table-card {
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+
+.table-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
 }
 
 .banner-image {
   width: 160px;
   height: 80px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   object-fit: cover;
 }
 
 .banner-link {
-  color: #4F46E5;
+  color: var(--role-primary);
   text-decoration: none;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .banner-link:hover {
@@ -463,30 +440,33 @@ onMounted(() => {
 
 .data-table {
   width: 100%;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
 .data-table :deep(.el-table__header th) {
-  background: #F8FAFC !important;
-  color: #1E293B;
-  font-weight: 600;
-  font-size: 14px;
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-text-color-primary);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-wide);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
-  background: #F1F5F9 !important;
+  background: var(--role-primary-light-9) !important;
 }
 
 .pagination-wrap {
-  margin-top: 24px;
+  margin-top: var(--space-6);
   display: flex;
   justify-content: flex-end;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .text-secondary {
-  color: #64748B;
-  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-base);
 }
 
 /* 表单 */
@@ -498,21 +478,21 @@ onMounted(() => {
 .image-upload-wrap {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .image-uploader {
   width: 240px;
   height: 120px;
-  border: 2px dashed #E2E8F0;
-  border-radius: 12px;
+  border: 2px dashed var(--el-border-color);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 200ms;
+  transition: border-color var(--duration-base) var(--ease-out);
 }
 
 .image-uploader:hover {
-  border-color: #4F46E5;
+  border-color: var(--role-primary);
 }
 
 .preview-image {
@@ -529,57 +509,57 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  background: #F8FAFC;
+  gap: var(--space-2);
+  background: var(--el-fill-color-light);
 }
 
 .upload-icon {
   font-size: 28px;
-  color: #94A3B8;
+  color: var(--el-text-color-placeholder);
 }
 
 .upload-text {
-  font-size: 13px;
-  color: #94A3B8;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-placeholder);
 }
 
 .image-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .form-tip {
-  font-size: 12px;
-  color: #94A3B8;
-  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-placeholder);
+  margin-top: var(--space-1);
   line-height: 1.4;
 }
 
 .form-tip-inline {
-  margin-left: 12px;
-  font-size: 12px;
-  color: #94A3B8;
+  margin-left: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--el-text-color-placeholder);
 }
 
 .form-hint {
-  margin-left: 12px;
-  font-size: 13px;
-  color: #64748B;
+  margin-left: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
 }
 
-/* 弹窗 border-radius 12px */
+/* 弹窗 border-radius */
 :deep(.el-dialog) {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 :deep(.el-dialog__header) {
-  padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 :deep(.el-dialog__body) {
-  padding: 20px;
+  padding: var(--space-5);
 }
 :deep(.el-dialog__footer) {
-  padding: 16px 20px;
-  border-top: 1px solid #F1F5F9;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 </style>

@@ -428,12 +428,12 @@ async function fetchSettings() {
         casForm.serviceUrl = casData.serviceUrl
         casForm.version = casData.version
         casForm.adminUsername = casData.adminUsername
-        casForm.superAdmins = casData.superAdmins || []
+        casForm.superAdmins = Array.isArray(casData.superAdmins) ? casData.superAdmins.join(', ') : (casData.superAdmins || '')
         casForm.validateSsl = casData.validateSsl
       }
     } catch { /* P1-8: 忽略加载失败，使用默认值 */ }
-  } catch {
-    // 不报错，用默认值
+  } catch (e) {
+    console.warn('[AdminSettings] fetchSettings failed', e)
   } finally {
     loading.value = false
   }
@@ -468,7 +468,11 @@ async function handleSave(menu) {
   saving.value = true
   try {
     if (menu === 'cas') {
-      await updateCasConfig(casForm)
+      const casPayload = {
+        ...casForm,
+        superAdmins: casForm.superAdmins ? casForm.superAdmins.split(',').map(s => s.trim()).filter(Boolean) : []
+      }
+      await updateCasConfig(casPayload)
       ElMessage.success('CAS 配置已保存')
       saving.value = false
       return
@@ -494,7 +498,8 @@ async function handleSave(menu) {
 
     await updateSettings(updates)
     ElMessage.success('操作成功')
-  } catch {
+  } catch (e) {
+    console.warn('[AdminSettings] save failed', e)
     ElMessage.error('保存失败，请稍后重试')
   } finally {
     saving.value = false
@@ -534,58 +539,62 @@ onMounted(() => {
 
 <style scoped>
 .admin-settings-container {
-  padding: 24px;
-  background: #F5F6FA;
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
   min-height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .info-card {
-  margin-bottom: 24px;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-bottom: var(--space-6);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .info-content {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .info-icon {
-  color: #4F46E5;
+  color: var(--role-primary);
   flex-shrink: 0;
   margin-top: 2px;
 }
 
 .info-title {
-  margin: 0 0 4px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
 }
 
 .info-desc {
   margin: 0;
-  font-size: 14px;
-  color: #64748B;
+  font-size: var(--text-base);
+  color: var(--el-text-color-secondary);
 }
 
 .settings-layout {
   display: grid;
   grid-template-columns: 200px 1fr;
-  gap: 24px;
+  gap: var(--space-6);
   align-items: start;
 }
 
 .menu-card {
   position: sticky;
-  top: 24px;
+  top: var(--space-6);
   padding: 0;
   overflow: hidden;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .settings-menu {
@@ -598,17 +607,17 @@ onMounted(() => {
   width: 100%;
 }
 
-/* 高亮项左边框 #4F46E5 */
+/* 高亮项左边框 */
 .settings-menu :deep(.el-menu-item.is-active) {
   background: rgba(79, 70, 229, 0.05);
-  border-left: 3px solid #4F46E5;
+  border-left: 3px solid var(--role-primary);
   padding-left: 17px;
 }
 
 .settings-menu :deep(.el-menu-item) {
   border-left: 3px solid transparent;
   padding-left: 20px;
-  transition: all 200ms ease;
+  transition: all var(--duration-base) var(--ease-out);
 }
 
 .settings-menu :deep(.el-menu-item:hover) {
@@ -618,52 +627,54 @@ onMounted(() => {
 .settings-content {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .settings-card {
   margin-bottom: 0;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .settings-form {
   max-width: 640px;
-  padding: 20px 0;
+  padding: var(--space-5) 0;
 }
 
 .settings-form :deep(.el-input),
 .settings-form :deep(.el-select),
 .settings-form :deep(.el-input-number) {
   width: 280px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .form-unit {
-  margin-left: 8px;
-  color: #64748B;
-  font-size: 14px;
+  margin-left: var(--space-2);
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-base);
 }
 
 .form-hint {
-  margin-left: 12px;
-  color: #64748B;
-  font-size: 12px;
+  margin-left: var(--space-3);
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-xs);
 }
 
 .about-descriptions {
@@ -671,7 +682,7 @@ onMounted(() => {
 }
 
 .about-link {
-  color: #4F46E5;
+  color: var(--role-primary);
   text-decoration: none;
 }
 
@@ -679,20 +690,20 @@ onMounted(() => {
   text-decoration: underline;
 }
 
-/* 弹窗 border-radius 12px */
+/* 弹窗 border-radius */
 :deep(.el-dialog) {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 :deep(.el-dialog__header) {
-  padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 :deep(.el-dialog__body) {
-  padding: 20px;
+  padding: var(--space-5);
 }
 :deep(.el-dialog__footer) {
-  padding: 16px 20px;
-  border-top: 1px solid #F1F5F9;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 @media (max-width: 1023px) {
