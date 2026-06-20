@@ -319,11 +319,11 @@ onUnmounted(() => notificationStore.stopPolling())
   align-items: center;
   height: 64px;
   padding: 0 var(--space-6);
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
-  box-shadow: var(--shadow-sm);
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.06);
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.04);
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
@@ -343,6 +343,7 @@ onUnmounted(() => notificationStore.stopPolling())
 
 .logo-icon {
   color: var(--role-primary, #6366f1);
+  filter: drop-shadow(0 1px 2px rgba(99, 102, 241, 0.2));
 }
 
 .logo-text {
@@ -383,13 +384,14 @@ onUnmounted(() => notificationStore.stopPolling())
 
 .nav-tab.is-active {
   color: #fff;
-  background: var(--role-primary, #6366f1);
+  background: linear-gradient(135deg, var(--role-primary, #6366f1), var(--role-primary-dark, #4f46e5));
   font-weight: var(--weight-semibold);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
 }
 
 .nav-tab.is-active:hover {
-  background: var(--role-primary-dark, #4f46e5);
+  background: linear-gradient(135deg, var(--role-primary-dark, #4f46e5), var(--role-primary-darker, #3730a3));
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
 }
 
 .header-right {
@@ -405,8 +407,18 @@ onUnmounted(() => notificationStore.stopPolling())
 
 .header-search :deep(.el-input__wrapper) {
   border-radius: var(--radius-xl, 16px);
-  background: var(--el-fill-color-light, #f5f7fa);
+  background: rgba(99, 102, 241, 0.04);
   box-shadow: none;
+  transition: all var(--duration-base) var(--ease-out);
+}
+
+.header-search :deep(.el-input__wrapper:hover) {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.header-search :deep(.el-input__wrapper.is-focus) {
+  background: var(--el-bg-color-overlay);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
 }
 
 .icon-btn {
@@ -566,13 +578,16 @@ onUnmounted(() => notificationStore.stopPolling())
   left: 0;
   right: 0;
   height: 56px;
-  background: var(--el-bg-color-overlay);
-  border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
-  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(99, 102, 241, 0.06);
+  box-shadow: 0 -2px 8px rgba(99, 102, 241, 0.04);
   z-index: var(--z-fixed);
   justify-content: space-around;
   align-items: center;
   padding: 0 var(--space-1);
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 .tab-item {

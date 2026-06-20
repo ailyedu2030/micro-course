@@ -1,7 +1,10 @@
 /* ==========================================================================
-   微课管理平台 · 设计 Token v1.1
-   依据: docs/DESIGN.md v1.1 / ui-ux-pro-max / WCAG 2.1 AA
+   微课管理平台 · 设计 Token v1.2
+   依据: docs/DESIGN.md v1.1 / ui-ux-pro-max / WCAG 2.1 AA / redesign-existing-projects
+   Font: Outfit (替换 Inter) — 更个性、更现代的几何人文体
    ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300..700&display=swap');
 
 /* --------------------------------------------------------------------------
    1. 角色色 (主色 + 深 + 浅)
@@ -22,7 +25,7 @@
   --role-primary-light-9: #ecf5ff;
 }
 
-/* 学生 = 现代学习感 (#6366f1 学习靛蓝) */
+/* 学生 = 现代学习感 (#6366f1 学习靛蓝 → 稍降饱和度更耐看) */
 .role-student {
   --role-primary: #6366f1;
   --role-primary-dark: #4f46e5;
@@ -34,10 +37,23 @@
   --role-primary-light-7: #e0e7ff;
   --role-primary-light-8: #e0e7ff;
   --role-primary-light-9: #eef2ff;
+  --role-primary-desat: #7c7ef0;
+
+  --role-accent: #10b981;
+  --role-accent-soft: rgba(16, 185, 129, 0.08);
 
   /* 学生端用更大圆角 */
   --el-border-radius-base: 8px;
   --el-border-radius-small: 6px;
+
+  /* 着色阴影 — 用紫调替代纯黑阴影 */
+  --shadow-tinted-sm: 0 1px 3px rgba(99, 102, 241, 0.06);
+  --shadow-tinted-md: 0 2px 8px rgba(99, 102, 241, 0.08);
+  --shadow-tinted-lg: 0 4px 16px rgba(99, 102, 241, 0.1);
+  --shadow-tinted-xl: 0 8px 24px rgba(99, 102, 241, 0.12);
+
+  /* 卡片边框色 — 微紫调 */
+  --card-border-tinted: rgba(99, 102, 241, 0.08);
 }
 
 /* 视频 = 沉浸式深色 */
@@ -172,7 +188,7 @@
   --radius-pill: 999px;
   --radius-circle: 50%;
 
-  /* 阴影 */
+    /* 阴影 (基础 — 中性) */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -184,6 +200,15 @@
   --shadow-primary: 0 4px 12px rgba(99, 102, 241, 0.3);
   --shadow-primary-soft: 0 4px 16px rgba(99, 102, 241, 0.08);
   --shadow-focus-blue: 0 0 0 3px rgba(64, 158, 255, 0.16);
+
+  /* 着色阴影 (学生端角色覆盖) */
+  --shadow-tinted-sm: 0 1px 3px rgba(99, 102, 241, 0.06);
+  --shadow-tinted-md: 0 2px 8px rgba(99, 102, 241, 0.08);
+  --shadow-tinted-lg: 0 4px 16px rgba(99, 102, 241, 0.1);
+  --shadow-tinted-xl: 0 8px 24px rgba(99, 102, 241, 0.12);
+
+  /* 卡片着色边框 */
+  --card-border-tinted: rgba(99, 102, 241, 0.08);
 
   /* 字间距 */
   --tracking-tight: -0.3px;
@@ -879,8 +904,223 @@
 }
 
 /* --------------------------------------------------------------------------
-    6.5 页面加载骨架动画
+   6.5 噪点纹理覆盖层 (学生端专用)
+   -------------------------------------------------------------------------- */
+.student-noise-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-toast);
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* --------------------------------------------------------------------------
+    6.55 教师端专属样式
     -------------------------------------------------------------------------- */
+
+/* 教师欢迎条 */
+.teacher-welcome {
+  background: linear-gradient(135deg, var(--role-primary-darkest), var(--role-primary));
+  border-radius: var(--radius-xl);
+  padding: var(--space-6) var(--space-7);
+  color: #fff;
+  margin-bottom: var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-tinted-lg), 0 12px 40px rgba(64, 158, 255, 0.2);
+}
+
+.teacher-welcome::before {
+  content: '';
+  position: absolute;
+  right: -80px;
+  top: -80px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.teacher-welcome::after {
+  content: '';
+  position: absolute;
+  right: 60px;
+  bottom: -60px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+/* 教师统计卡片 */
+.teacher-stat-card {
+  border-radius: var(--radius-lg);
+  transition: all var(--duration-base) var(--ease-out);
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.teacher-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  border-color: var(--role-primary-light-7);
+}
+
+.teacher-stat-card .stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.teacher-stat-card:hover .stat-icon {
+  transform: scale(1.05);
+}
+
+.teacher-stat-card .stat-value {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 教师课程卡片 */
+.teacher-course-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--el-fill-color-light);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+  cursor: default;
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.teacher-course-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+  border-color: var(--role-primary-light-7);
+}
+
+/* 教师课程封面 */
+.teacher-course-cover {
+  height: 120px;
+  background: linear-gradient(135deg, var(--role-primary-light-9) 0%, var(--role-primary-light-7) 100%);
+  overflow: hidden;
+  position: relative;
+}
+
+.teacher-course-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 60%, rgba(0, 0, 0, 0.05) 100%);
+  pointer-events: none;
+}
+
+/* 教师工作台步骤卡片 */
+.teacher-step-card {
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+
+.teacher-step-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+}
+
+/* 教师上传区域 */
+.teacher-upload-zone {
+  text-align: center;
+  padding: var(--space-6);
+  border: 2px dashed var(--el-border-color);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--duration-base) var(--ease-out),
+              background var(--duration-base) var(--ease-out);
+  cursor: pointer;
+}
+
+.teacher-upload-zone:hover {
+  border-color: var(--role-primary);
+  background: var(--role-primary-light-9);
+}
+
+/* --------------------------------------------------------------------------
+    6.6 学生卡片重写 — 用着色阴影替换纯黑阴影
+    -------------------------------------------------------------------------- */
+.role-student .el-card {
+  --el-card-border-color: var(--card-border-tinted, rgba(99, 102, 241, 0.08));
+  box-shadow: var(--shadow-tinted-sm), var(--shadow-xs) !important;
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out);
+}
+
+.role-student .el-card:hover {
+  border-color: var(--role-primary-light-5) !important;
+  box-shadow: var(--shadow-tinted-md), var(--shadow-lg) !important;
+}
+
+.role-student .el-card.shadow-hover:hover {
+  box-shadow: var(--shadow-tinted-lg), var(--shadow-lg) !important;
+}
+
+.role-student .el-card.is-never-shadow {
+  box-shadow: var(--shadow-tinted-sm) !important;
+}
+
+/* 学生统计卡片着色阴影 */
+.role-student .student-stat-card {
+  border: 1px solid var(--card-border-tinted) !important;
+  box-shadow: var(--shadow-tinted-sm) !important;
+}
+
+.role-student .student-stat-card:hover {
+  box-shadow: var(--shadow-tinted-lg) !important;
+  border-color: var(--role-primary-light-5) !important;
+}
+
+/* 学生卡片项着色阴影 */
+.role-student .student-card-item {
+  border: 1px solid var(--card-border-tinted) !important;
+  box-shadow: var(--shadow-tinted-sm) !important;
+}
+
+.role-student .student-card-item:hover {
+  box-shadow: var(--shadow-tinted-lg) !important;
+  border-color: var(--role-primary-light-5) !important;
+}
+
+/* --------------------------------------------------------------------------
+   6.7 学生快捷入口着色
+   -------------------------------------------------------------------------- */
+.role-student .quick-entry-icon {
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.role-student .quick-entry-item:hover .quick-entry-icon {
+  box-shadow: var(--shadow-tinted-md);
+}
+
+/* --------------------------------------------------------------------------
+   6.8 页面加载骨架动画
+   -------------------------------------------------------------------------- */
 
 @keyframes shimmer {
   0% { background-position: -200% 0; }

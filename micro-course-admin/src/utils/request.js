@@ -42,6 +42,10 @@ request.interceptors.response.use(response => {
       const currentPath = router.currentRoute.value.fullPath
       router.push({ path: '/login', query: { redirect: currentPath } })
       ElMessage.warning('登录已过期，请重新登录')
+    } else {
+      // 已经在登录页 → 显示具体错误（如"用户名或密码错误"）
+      const msg = error.response?.data?.message || '用户名或密码错误'
+      ElMessage.error(msg)
     }
   } else if (status === 403) {
     ElMessage.error('无权访问该资源')

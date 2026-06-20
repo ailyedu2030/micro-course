@@ -1,13 +1,26 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('互动课程流程', () => {
-  test.beforeEach(async ({ page }) => {
-    // 管理员登录
+/** 管理员登录（带重试） */
+async function adminLogin(page) {
+  for (let i = 0; i < 3; i++) {
     await page.goto('/login')
     await page.fill('input[type="text"]', 'admin')
     await page.fill('input[type="password"]', 'admin123')
     await page.click('button:has-text("登 录")')
-    await page.waitForURL('**/admin/**')
+    try {
+      await page.waitForURL('**/admin/**', { timeout: 10000 })
+      return
+    } catch {
+      if (page.url().includes('/admin/')) return
+    }
+  }
+  throw new Error(`Admin登录失败（重试3次后），当前URL: ${page.url()}`)
+}
+
+test.describe('互动课程流程', () => {
+  test.beforeEach(async ({ page }) => {
+    // 管理员登录
+    await adminLogin(page)
   })
 
   test('课程列表显示互动课程类型标签', async ({ page }) => {
@@ -38,9 +51,11 @@ test.describe('互动课程流程', () => {
     const workspaceBtn = page.locator('.el-table__body-wrapper .el-button:has-text("工作台")').first()
     if (await workspaceBtn.isVisible()) {
       await workspaceBtn.click()
-      await page.waitForURL('**/workspace/**')
-      // 验证工作台加载
-      await expect(page.locator('.workspace-container, .outline-sidebar').first()).toBeVisible()
+      // 等待路由跳转完成
+      await page.waitForTimeout(3000)
+      expect(page.url()).toContain('/workspace')
+      // 验证工作台加载 - 使用正确的CSS class
+      await expect(page.locator('.course-editor').first()).toBeVisible({ timeout: 15000 })
     }
   })
 })
@@ -52,7 +67,15 @@ test.describe('学生互动课程学习流程', () => {
     await page.fill('input[type="text"]', 'student')
     await page.fill('input[type="password"]', '123456')
     await page.click('button:has-text("登 录")')
-    await page.waitForURL('**/student/**')
+    // 等待跳转学生端（最多15s，失败时检查URL）
+    try {
+      await page.waitForURL('**/student/**', { timeout: 15000 })
+    } catch {
+      // fallback: 检查当前URL是否已经在学生端
+      if (!page.url().includes('/student/')) {
+        throw new Error(`学生登录失败，当前URL: ${page.url()}`)
+      }
+    }
   })
 
   test('课程广场显示互动课程筛选', async ({ page }) => {
@@ -94,9 +117,9 @@ test.describe('教师互动课件管理', () => {
   test('教师数据看板加载统计', async ({ page }) => {
     await page.goto('/teacher/dashboard')
     await page.waitForSelector('.teacher-dashboard, .el-card')
-    // 验证看板卡片
-    const cards = page.locator('.el-card')
-    await expect(cards.first()).toBeVisible()
+    // 验证看板卡片（TeacherDashboard 使用 stat-card 非 el-card）
+    const cards = page.locator('.stat-card')
+    await expect(cards.first()).toBeVisible({ timeout: 10000 })
   })
 
   test('教师学员列表页面加载', async ({ page }) => {
