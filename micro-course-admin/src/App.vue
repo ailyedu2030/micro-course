@@ -56,8 +56,34 @@ onMounted(async () => {
 </script>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap');
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #app { height: 100%; font-family: 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif; }
+html, body, #app {
+  height: 100%;
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  line-height: 1.6;
+  color: var(--el-text-color-primary);
+  background: var(--el-bg-color-page);
+}
+
+::selection {
+  background: var(--role-primary-light-7);
+  color: var(--role-primary-darkest);
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--el-border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--el-text-color-placeholder); }
+
 @media (max-width: 768px) {
   .el-table { font-size: 12px; overflow-x: auto; display: block; }
   .el-form--inline .el-form-item { display: block; margin-right: 0; }

@@ -368,14 +368,15 @@ onUnmounted(() => {
 
 /* ==================== 侧边栏 ==================== */
 .layout-aside {
-  width: 220px;
-  background: var(--sidebar-bg, #304156);
+  width: 240px;
+  background: var(--sidebar-bg, #1e293b);
   transition: width var(--duration-slow) var(--ease-in-out);
   overflow-y: auto;
   overflow-x: hidden;
   flex-shrink: 0;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.15) transparent;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+  border-right: 1px solid rgba(255,255,255,0.04);
 }
 
 .layout-aside::-webkit-scrollbar {
@@ -387,7 +388,7 @@ onUnmounted(() => {
 }
 
 .layout-aside::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.12);
   border-radius: 2px;
 }
 
@@ -397,18 +398,18 @@ onUnmounted(() => {
 
 /* Logo */
 .layout-logo {
-  height: 60px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  background: var(--sidebar-logo-bg, #1f2d3d);
-  color: #f5f5f5;
+  background: var(--sidebar-logo-bg, #0f172a);
+  color: #f1f5f9;
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
   overflow: hidden;
-  white-space: nowrap;
-  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 .logo-icon {

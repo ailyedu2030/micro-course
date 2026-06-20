@@ -91,8 +91,8 @@
   --el-border-color-hover: var(--role-primary-light-5);
 
   /* 圆角 */
-  --el-border-radius-base: 4px;
-  --el-border-radius-small: 2px;
+  --el-border-radius-base: 6px;
+  --el-border-radius-small: 4px;
   --el-border-radius-round: 20px;
   --el-border-radius-circle: 50%;
 
@@ -213,28 +213,42 @@
 }
 
 /* --------------------------------------------------------------------------
-   4. 全局组件覆盖
-   -------------------------------------------------------------------------- */
+    4. 全局组件覆盖
+    -------------------------------------------------------------------------- */
 
-/* 卡片 */
+/* 卡片 — 更干净、更轻 */
 .el-card {
   --el-card-border-color: var(--el-border-color-light);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md) !important;
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm) !important;
   transition: box-shadow var(--duration-base) var(--ease-out),
-              transform var(--duration-base) var(--ease-out);
+              transform var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out);
+  overflow: hidden;
 }
 
 .el-card.shadow-hover:hover {
-  box-shadow: var(--shadow-lg) !important;
+  box-shadow: var(--shadow-md), var(--shadow-lg) !important;
   transform: translateY(-2px);
 }
 
+.el-card:hover {
+  border-color: var(--el-border-color-hover);
+}
+
 .el-card__header {
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid var(--el-border-color-lighter);
   font-size: var(--text-md);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color-blank);
+}
+
+.el-card__body {
+  padding: var(--space-5) var(--space-6);
 }
 
 /* 统计卡片 */
@@ -260,15 +274,35 @@
   margin-top: var(--space-1);
 }
 
-/* 表格 */
+/* 表格 — 更清晰的分隔，更轻的视觉重量 */
 .el-table {
   border-radius: var(--radius-md);
   overflow: hidden;
-  --el-table-header-bg-color: #f5f7fa;
-  --el-table-header-text-color: var(--el-text-color-primary);
+  --el-table-header-bg-color: var(--el-fill-color-light);
+  --el-table-header-text-color: var(--el-text-color-regular);
   --el-table-row-hover-bg-color: var(--role-primary-light-9);
   --el-table-border-color: var(--el-border-color-lighter);
   --el-table-header-font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.el-table thead th {
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+
+.el-table tbody tr {
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.el-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td {
+  background: var(--el-fill-color-lighter);
 }
 
 /* 按钮 */
@@ -524,8 +558,44 @@
 }
 
 /* --------------------------------------------------------------------------
-   7. 深色模式 (data-theme="dark")
-   -------------------------------------------------------------------------- */
+    6.5 页面加载骨架动画
+    -------------------------------------------------------------------------- */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-loading {
+  background: linear-gradient(90deg, var(--el-fill-color) 25%, var(--el-fill-color-light) 50%, var(--el-fill-color) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-row {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+}
+
+.skeleton-row + .skeleton-row {
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+/* 统计卡片数字强调动画 */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stat-card-value {
+  animation: countUp 0.5s var(--ease-out);
+}
+
+/* --------------------------------------------------------------------------
+    7. 深色模式 (data-theme="dark")
+    -------------------------------------------------------------------------- */
 [data-theme="dark"] {
   /* 背景色 */
   --el-bg-color: #1a1a2e;

@@ -277,23 +277,39 @@ onUnmounted(() => {
 
 .login-btn {
   width: 100%;
-  height: 44px;
+  height: 46px;
   font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  letter-spacing: 2px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 3px;
   background: linear-gradient(135deg, var(--role-primary), var(--role-primary-dark));
   border: none;
   cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--duration-base) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+  opacity: 0;
+  transition: opacity var(--duration-base);
 }
 
 .login-btn:hover {
-  background: linear-gradient(135deg, var(--role-primary-dark), var(--role-primary-dark));
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+}
+
+.login-btn:hover::after {
+  opacity: 1;
 }
 
 .login-btn:active {
-  transform: translateY(0) scale(0.99);
+  transform: translateY(0) scale(0.98);
 }
 
 .login-roles {
