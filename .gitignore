@@ -94,6 +94,9 @@ log/
 *.png
 .playwright-mcp/
 
+# 运行时上传目录（用户数据，不入仓）
+micro-course-api/uploads/
+
 # 测试/调试临时目录（本地开发用，不入仓）
 login-form-detail/
 login-inputs/

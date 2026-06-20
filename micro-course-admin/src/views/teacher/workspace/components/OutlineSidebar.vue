@@ -19,8 +19,8 @@
             :class="{ active: selected?.type === 'lesson' && selected?.id === lesson.id }"
             @click="$emit('selectLesson', lesson, ch)">
             <span class="drag-handle"><el-icon><Rank /></el-icon></span>
-            <el-icon :size="16" v-if="lesson.lessonType === 'INTERACTIVE'" color="#67c23a"><Present /></el-icon>
-            <el-icon :size="16" v-else color="#409eff"><VideoPlay /></el-icon>
+            <el-icon :size="16" v-if="lesson.lessonType === 'INTERACTIVE'" class="lesson-icon-interactive"><Present /></el-icon>
+            <el-icon :size="16" v-else class="lesson-icon-video"><VideoPlay /></el-icon>
             <span class="node-title">{{ lesson.title }}</span>
             <span class="lesson-status" v-if="lesson.videoUrl || lesson.slideCount">✓</span>
             <span class="lesson-status empty" v-else>◌</span>
@@ -45,20 +45,126 @@ defineEmits(['selectChapter', 'selectLesson', 'addChapter', 'addLesson'])
 </script>
 
 <style scoped>
-.panel-sidebar { width: 280px; background: var(--el-fill-color-blank); border-right: 1px solid var(--el-border-color-lighter); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
-.panel-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--el-border-color-lighter); font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); flex-shrink: 0; }
-.outline-tree { flex: 1; padding: var(--space-2) 0; overflow-y: auto; }
-.chapter-group { margin-bottom: var(--space-1); }
-.chapter-row, .lesson-row { display: flex; align-items: center; gap: var(--space-1-5); padding: var(--space-2) var(--space-4); cursor: pointer; font-size: var(--text-sm); transition: background var(--duration-fast) var(--ease-out); }
-.chapter-row:hover, .lesson-row:hover { background: var(--el-fill-color-light); }
-.chapter-row.active, .lesson-row.active { background: var(--role-primary-light-9); color: var(--role-primary); }
-.chapter-row { font-weight: var(--weight-medium); }
-.lesson-row { padding-left: 34px; font-size: var(--text-xs); color: var(--el-text-color-secondary); }
-.drag-handle { cursor: grab; color: var(--el-text-color-placeholder); flex-shrink: 0; }
-.node-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lesson-status { font-size: 11px; font-weight: var(--weight-semibold); color: var(--el-color-success); flex-shrink: 0; }
-.lesson-status.empty { color: var(--el-text-color-placeholder); }
-.add-lesson-btn { margin-left: 34px; font-size: 11px; }
-.sidebar-footer { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--el-border-color-lighter); flex-shrink: 0; }
-.progress-text { font-size: 11px; color: var(--el-text-color-secondary); display: block; margin-top: var(--space-1); }
+.panel-sidebar {
+  width: 280px;
+  background: var(--el-fill-color-blank);
+  border-right: 1px solid var(--el-border-color-lighter);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  flex-shrink: 0;
+}
+
+.outline-tree {
+  flex: 1;
+  padding: var(--space-2) 0;
+  overflow-y: auto;
+}
+
+.chapter-group {
+  margin-bottom: var(--space-1);
+}
+
+.chapter-row,
+.lesson-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: background var(--duration-fast) var(--ease-out);
+  border-left: 3px solid transparent;
+}
+
+.chapter-row:hover,
+.lesson-row:hover {
+  background: var(--el-fill-color-light);
+}
+
+.chapter-row:focus-visible,
+.lesson-row:focus-visible {
+  outline: 2px solid var(--role-primary);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.chapter-row.active,
+.lesson-row.active {
+  background: var(--role-primary-light-9);
+  color: var(--role-primary);
+  border-left-color: var(--role-primary);
+}
+
+.chapter-row {
+  font-weight: var(--weight-medium);
+}
+
+.lesson-row {
+  padding-left: var(--space-8);
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--el-text-color-placeholder);
+  flex-shrink: 0;
+}
+
+.node-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lesson-status {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--el-color-success);
+  flex-shrink: 0;
+}
+
+.lesson-status.empty {
+  color: var(--el-text-color-placeholder);
+}
+
+.lesson-icon-interactive {
+  color: var(--el-color-success);
+}
+
+.lesson-icon-video {
+  color: var(--role-primary);
+}
+
+.add-lesson-btn {
+  margin-left: var(--space-8);
+  font-size: var(--text-xs);
+}
+
+.sidebar-footer {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--el-border-color-lighter);
+  flex-shrink: 0;
+}
+
+.progress-text {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  display: block;
+  margin-top: var(--space-1);
+}
 </style>
