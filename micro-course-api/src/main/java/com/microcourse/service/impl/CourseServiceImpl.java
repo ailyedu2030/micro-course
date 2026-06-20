@@ -16,6 +16,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseCategoryRepository;
+import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseService;
 import com.microcourse.util.SecurityUtil;
@@ -37,15 +38,18 @@ public class CourseServiceImpl implements CourseService {
     private final CourseCategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final CourseChapterRepository chapterRepository;
+    private final CourseReviewRepository reviewRepository;
 
     public CourseServiceImpl(CourseRepository courseRepository,
                              CourseCategoryRepository categoryRepository,
                              UserRepository userRepository,
-                             CourseChapterRepository chapterRepository) {
+                             CourseChapterRepository chapterRepository,
+                             CourseReviewRepository reviewRepository) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.chapterRepository = chapterRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     @Override
@@ -127,8 +131,26 @@ public class CourseServiceImpl implements CourseService {
         final java.util.Map<Long, CourseCategory> finalCategoryMap = categoryMap;
         final java.util.Map<Long, User> finalTeacherMap = teacherMap;
 
+        // Phase 11: 批量预加载评价数量，避免 N+1
+        java.util.Map<Long, Long> ratingCountMap = new java.util.HashMap<>();
+        if (!ipage.getRecords().isEmpty()) {
+            List<Long> courseIds = ipage.getRecords().stream()
+                    .map(Course::getId).collect(Collectors.toList());
+            List<java.util.Map<String, Object>> countRows = reviewRepository.countByCourseIds(courseIds);
+            for (java.util.Map<String, Object> row : countRows) {
+                Object courseIdObj = row.get("course_id");
+                Object cntObj = row.get("cnt");
+                if (courseIdObj != null && cntObj != null) {
+                    Long courseId = ((Number) courseIdObj).longValue();
+                    Long cnt = ((Number) cntObj).longValue();
+                    ratingCountMap.put(courseId, cnt);
+                }
+            }
+        }
+        final java.util.Map<Long, Long> finalRatingCountMap = ratingCountMap;
+
         List<CourseVO> vos = ipage.getRecords().stream()
-                .map(course -> convertToVOFromMaps(course, finalCategoryMap, finalTeacherMap))
+                .map(course -> convertToVOFromMaps(course, finalCategoryMap, finalTeacherMap, finalRatingCountMap))
                 .collect(Collectors.toList());
 
         PageResult<CourseVO> result = new PageResult<>();
@@ -151,7 +173,7 @@ public class CourseServiceImpl implements CourseService {
                 ? categoryRepository.selectById(course.getCategoryId()) : null;
         User teacher = course.getTeacherId() != null
                 ? userRepository.selectById(course.getTeacherId()) : null;
-        CourseVO vo = convertToVO(course, category, teacher);
+        CourseVO vo = convertToVO(course, category, teacher, reviewRepository.countByCourseId(course.getId()));
 
         // RES-NEW-3 修复:章节列表限制 200 条,防止超大课程返回数 MB payload
         LambdaQueryWrapper<CourseChapter> chapterWrapper = new LambdaQueryWrapper<>();
@@ -200,7 +222,7 @@ public class CourseServiceImpl implements CourseService {
         course.setVersion(0);
 
         courseRepository.insert(course);
-        return convertToVO(course);
+        return convertToVO(course, null, null, 0L);
     }
 
     @Override
@@ -249,7 +271,7 @@ public class CourseServiceImpl implements CourseService {
         course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
 
         courseRepository.updateById(course);
-        return convertToVO(course);
+        return convertToVO(course, null, null, reviewRepository.countByCourseId(course.getId()));
     }
 
     @Override
@@ -457,13 +479,14 @@ public class CourseServiceImpl implements CourseService {
     }
 
     private CourseVO convertToVO(Course course) {
-        return convertToVO(course, null, null);
+        return convertToVO(course, null, null, 0L);
     }
 
     /**
      * RES-NEW-2 修复:接受预加载的 category/teacher,避免 N+1
      */
-    private CourseVO convertToVO(Course course, CourseCategory preloadedCategory, User preloadedTeacher) {
+    private CourseVO convertToVO(Course course, CourseCategory preloadedCategory, User preloadedTeacher,
+                                Long ratingCount) {
         CourseVO vo = new CourseVO();
         vo.setId(course.getId());
         vo.setTitle(course.getTitle());
@@ -483,7 +506,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setDescription(course.getDescription());
         vo.setStudentCount(course.getStudentCount());
         vo.setAvgRating(course.getAvgRating());
-        vo.setRatingCount(0); // TODO: Phase 11 — 评价表聚合
+        vo.setRatingCount(ratingCount != null ? ratingCount.intValue() : 0);
         vo.setPublishedAt(course.getPublishedAt());
         vo.setCreatedAt(course.getCreatedAt());
         vo.setUpdatedAt(course.getUpdatedAt());
@@ -516,7 +539,8 @@ public class CourseServiceImpl implements CourseService {
     }
 
     private CourseVO convertToVOFromMaps(Course course, java.util.Map<Long, CourseCategory> categoryMap,
-                                        java.util.Map<Long, User> teacherMap) {
+                                        java.util.Map<Long, User> teacherMap,
+                                        java.util.Map<Long, Long> ratingCountMap) {
         CourseVO vo = new CourseVO();
         vo.setId(course.getId());
         vo.setTitle(course.getTitle());
@@ -536,7 +560,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setDescription(course.getDescription());
         vo.setStudentCount(course.getStudentCount());
         vo.setAvgRating(course.getAvgRating());
-        vo.setRatingCount(0); // TODO: Phase 11 — 评价表聚合
+        vo.setRatingCount(ratingCountMap.getOrDefault(course.getId(), 0L).intValue());
         vo.setPublishedAt(course.getPublishedAt());
         vo.setCreatedAt(course.getCreatedAt());
         vo.setUpdatedAt(course.getUpdatedAt());
