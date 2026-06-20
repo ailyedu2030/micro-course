@@ -14,7 +14,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { getChapters, updateChapter } from '@/api/chapter'
 import { ElMessage } from 'element-plus'
 
@@ -35,3 +35,13 @@ async function handleSave() {
   catch { ElMessage.error('保存失败') }
 }
 </script>
+
+<style scoped>
+.chapter-editor {
+  padding: var(--space-5);
+}
+
+.editor-form {
+  max-width: 600px;
+}
+</style>
