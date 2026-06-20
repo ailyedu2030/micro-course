@@ -312,7 +312,7 @@ import { ElMessage } from 'element-plus'
 import {
   InfoFilled, Setting, Message, Lock, Check, Key
 } from '@element-plus/icons-vue'
-import { getSettings, updateSettings } from '@/api/admin-settings'
+import { getSettings, updateSettings, getCasConfig, updateCasConfig } from '@/api/admin-settings'
 
 // 加载状态
 const loading = ref(false)
@@ -418,15 +418,20 @@ async function fetchSettings() {
       if (item.settingKey in mailForm) mailForm[item.settingKey] = val
       if (item.settingKey in securityForm) securityForm[item.settingKey] = val
     })
-    // CAS 设置从 localStorage 加载 (mock)
-    // P1-1: 使用 btoa/atob 简单编码（过渡方案，正式环境应使用后端 API + 加密存储）
-    const storedCas = localStorage.getItem('cas_settings')
-    if (storedCas) {
-      try {
-        const parsed = JSON.parse(atob(storedCas))
-        Object.assign(casForm, parsed)
-      } catch { /* P1-8: 忽略解析失败，使用默认值 */ }
-    }
+    // CAS 设置从后端 API 加载
+    try {
+      const casRes = await getCasConfig()
+      const casData = casRes.data
+      if (casData) {
+        casForm.enabled = casData.enabled
+        casForm.serverUrl = casData.serverUrl
+        casForm.serviceUrl = casData.serviceUrl
+        casForm.version = casData.version
+        casForm.adminUsername = casData.adminUsername
+        casForm.superAdmins = casData.superAdmins || []
+        casForm.validateSsl = casData.validateSsl
+      }
+    } catch { /* P1-8: 忽略加载失败，使用默认值 */ }
   } catch {
     // 不报错，用默认值
   } finally {
@@ -463,10 +468,8 @@ async function handleSave(menu) {
   saving.value = true
   try {
     if (menu === 'cas') {
-      // Phase 11: 后端暂无 /admin/settings/cas 接口，localStorage mock
-      // P1-1: 使用 btoa 简单编码（过渡方案，正式环境应使用后端 API + 加密存储）
-      localStorage.setItem('cas_settings', btoa(JSON.stringify(casForm)))
-      ElMessage.warning('CAS 配置已本地保存（演示功能，正式环境请配置后端 API）')
+      await updateCasConfig(casForm)
+      ElMessage.success('CAS 配置已保存')
       saving.value = false
       return
     }

@@ -39,11 +39,19 @@ export function updateUploadLimit(data) {
 }
 
 /**
+ * 获取 CAS 配置
+ * GET /api/admin/settings/cas
+ */
+export function getCasConfig() {
+  return request({ method: 'GET', url: '/admin/settings/cas' })
+}
+
+/**
  * 保存 CAS 配置
  * PUT /api/admin/settings/cas
- * @param {Object} data - { casServerUrl, casServiceUrl }
+ * @param {Object} data - full CasSettingsDTO
  */
 export function updateCasConfig(data) {
-  // P0-4: 后端用 @RequestBody，前端必须发 data 而非 params
-  return request({ method: 'PUT', url: '/admin/settings/cas', data: { casServerUrl: data.casServerUrl, casServiceUrl: data.casServiceUrl } })
+  // Phase 11: 后端接受完整 CasSettingsDTO
+  return request({ method: 'PUT', url: '/admin/settings/cas', data })
 }

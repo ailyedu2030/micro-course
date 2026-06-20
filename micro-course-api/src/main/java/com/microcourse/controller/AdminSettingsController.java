@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.AdminSettingVO;
+import com.microcourse.dto.CasSettingsDTO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.SettingUpdateRequest;
 import com.microcourse.service.AdminSettingService;
@@ -88,11 +89,40 @@ public class AdminSettingsController {
      */
     @PutMapping("/cas")
     @PreAuthorize("hasRole('ADMIN')")
-    public R<Void> updateCasConfig(@RequestBody Map<String, Object> body) {
-        String casServerUrl = (String) body.get("casServerUrl");
-        String casServiceUrl = (String) body.get("casServiceUrl");
-        adminSettingService.upsert("cas_server_url", casServerUrl);
-        adminSettingService.upsert("cas_service_url", casServiceUrl);
+    public R<Void> updateCasConfig(@Valid @RequestBody CasSettingsDTO cas) {
+        adminSettingService.upsert("cas_enabled", String.valueOf(cas.getEnabled()));
+        adminSettingService.upsert("cas_server_url", cas.getServerUrl());
+        adminSettingService.upsert("cas_service_url", cas.getServiceUrl());
+        adminSettingService.upsert("cas_version", cas.getVersion());
+        adminSettingService.upsert("cas_admin_username", cas.getAdminUsername());
+        adminSettingService.upsert("cas_super_admins", cas.getSuperAdmins() != null
+                ? String.join(",", cas.getSuperAdmins()) : "");
+        adminSettingService.upsert("cas_validate_ssl", String.valueOf(cas.getValidateSsl()));
         return R.ok();
+    }
+
+    /**
+     * 获取 CAS 配置
+     * GET /api/admin/settings/cas
+     * 权限: ADMIN
+     */
+    @GetMapping("/cas")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<CasSettingsDTO> getCasConfig() {
+        CasSettingsDTO dto = new CasSettingsDTO();
+        dto.setEnabled(Boolean.parseBoolean(
+                adminSettingService.getByKey("cas_enabled") != null
+                        ? adminSettingService.getByKey("cas_enabled") : "false"));
+        dto.setServerUrl(adminSettingService.getByKey("cas_server_url"));
+        dto.setServiceUrl(adminSettingService.getByKey("cas_service_url"));
+        dto.setVersion(adminSettingService.getByKey("cas_version"));
+        dto.setAdminUsername(adminSettingService.getByKey("cas_admin_username"));
+        String superAdmins = adminSettingService.getByKey("cas_super_admins");
+        dto.setSuperAdmins(superAdmins != null && !superAdmins.isEmpty()
+                ? List.of(superAdmins.split(",")) : List.of());
+        dto.setValidateSsl(Boolean.parseBoolean(
+                adminSettingService.getByKey("cas_validate_ssl") != null
+                        ? adminSettingService.getByKey("cas_validate_ssl") : "true"));
+        return R.ok(dto);
     }
 }
