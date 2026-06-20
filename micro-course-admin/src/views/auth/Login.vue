@@ -157,7 +157,10 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   position: relative;
-  background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 50%, var(--role-primary-dark) 100%);
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(64,158,255,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(99,102,241,0.1) 0%, transparent 50%),
+    linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 50%, var(--role-primary-darkest) 100%);
   overflow: hidden;
   padding: var(--space-5);
 }
@@ -172,7 +175,6 @@ onUnmounted(() => {
 .deco-circle {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
   animation: float 20s infinite ease-in-out;
 }
 
@@ -182,6 +184,7 @@ onUnmounted(() => {
   top: -100px;
   left: -100px;
   animation-delay: 0s;
+  background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
 }
 
 .deco-2 {
@@ -190,6 +193,7 @@ onUnmounted(() => {
   bottom: -80px;
   right: -80px;
   animation-delay: -7s;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
 }
 
 .deco-3 {
@@ -198,6 +202,7 @@ onUnmounted(() => {
   top: 40%;
   right: 20%;
   animation-delay: -14s;
+  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
 }
 
 @keyframes float {

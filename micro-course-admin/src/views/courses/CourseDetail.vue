@@ -557,16 +557,24 @@ onUnmounted(() => {
 
 <style scoped>
 .course-detail-page {
-  padding: var(--space-5);
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .info-card {
   margin-bottom: var(--space-4);
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
 }
 
 .chapter-card {
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  background: var(--el-fill-color-blank);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
 }
 
 .card-header {
@@ -579,8 +587,9 @@ onUnmounted(() => {
 
 .card-title {
   font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .header-actions {
@@ -591,7 +600,7 @@ onUnmounted(() => {
 
 .drag-hint {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+  color: var(--el-text-color-secondary);
   font-weight: normal;
 }
 
@@ -611,16 +620,20 @@ onUnmounted(() => {
 
 .data-table {
   width: 100%;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
+.data-table :deep(.el-table__header th) {
+  color: var(--el-text-color-primary);
+}
+
 .data-table :deep(.el-table__row) {
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
-  background-color: var(--color-bg-page);
+  background-color: var(--role-primary-light-9) !important;
 }
 
 .full-width {
@@ -631,7 +644,7 @@ onUnmounted(() => {
   margin-top: 8px;
   width: 120px;
   height: 80px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
 }
 

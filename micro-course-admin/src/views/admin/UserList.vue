@@ -525,7 +525,6 @@ onMounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .toolbar-card {
@@ -533,7 +532,6 @@ onMounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .toolbar {
@@ -565,14 +563,13 @@ onMounted(() => {
 }
 
 .filter-select {
-  width: 140px;
+  width: 160px;
 }
 
 .table-card {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out);
 }
 

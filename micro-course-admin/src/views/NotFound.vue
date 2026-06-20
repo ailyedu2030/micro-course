@@ -56,7 +56,7 @@
 
 .nf-code {
   font-size: 64px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--role-primary);
   line-height: 1;
   margin-bottom: var(--space-2);

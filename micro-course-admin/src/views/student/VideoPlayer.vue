@@ -2559,7 +2559,7 @@ onBeforeUnmount(() => {
 :deep(.el-dropdown-menu__item.active) {
   color: var(--vp-accent);
   background: rgba(99, 102, 241, 0.15);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 /* Element Plus overrides */

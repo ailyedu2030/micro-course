@@ -1084,7 +1084,11 @@ onUnmounted(() => {
    基础容器
    --------------------------------------------------------------------------- */
 .learning-center {
-  padding: var(--space-5);
+  padding: var(--space-6);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--el-bg-color-page);
   animation: fadeIn var(--duration-slow) var(--ease-out);
 }
 
@@ -1252,7 +1256,7 @@ onUnmounted(() => {
 
 .hl-stat-value {
   font-size: 28px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   line-height: 1.1;
   color: var(--el-text-color-primary);
   font-variant-numeric: tabular-nums;

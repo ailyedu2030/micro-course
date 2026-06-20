@@ -565,17 +565,20 @@ onMounted(() => {
 
 .filter-card {
   margin-bottom: var(--space-6);
+  padding: var(--space-4) var(--space-5);
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
+}
+
+.search-card .el-form-item {
+  margin-bottom: 0;
 }
 
 .table-card {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out);
 }
 
@@ -604,7 +607,7 @@ onMounted(() => {
 }
 
 .filter-select {
-  width: 140px;
+  width: 160px;
   border-radius: var(--radius-md);
 }
 
@@ -615,11 +618,7 @@ onMounted(() => {
 }
 
 .data-table :deep(.el-table__header th) {
-  background: var(--el-fill-color-light) !important;
   color: var(--el-text-color-primary);
-  font-weight: var(--weight-semibold);
-  font-size: var(--text-base);
-  letter-spacing: var(--tracking-wide);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
@@ -652,6 +651,7 @@ onMounted(() => {
 
 .header-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-2);
 }
 

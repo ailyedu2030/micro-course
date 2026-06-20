@@ -809,7 +809,11 @@ onBeforeUnmount(() => {
 <style scoped>
 /* === Profile View === */
 .profile-view {
-  padding: var(--space-5);
+  padding: var(--space-6);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--el-bg-color-page);
 }
 
 /* === Page Title === */

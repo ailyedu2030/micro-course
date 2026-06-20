@@ -551,7 +551,6 @@ onMounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .info-content {
@@ -594,7 +593,6 @@ onMounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .settings-menu {
@@ -609,7 +607,7 @@ onMounted(() => {
 
 /* 高亮项左边框 */
 .settings-menu :deep(.el-menu-item.is-active) {
-  background: rgba(79, 70, 229, 0.05);
+  background: var(--role-primary-light-9);
   border-left: 3px solid var(--role-primary);
   padding-left: 17px;
 }
@@ -621,7 +619,7 @@ onMounted(() => {
 }
 
 .settings-menu :deep(.el-menu-item:hover) {
-  background: rgba(79, 70, 229, 0.05);
+  background: var(--role-primary-light-9);
 }
 
 .settings-content {
@@ -635,7 +633,6 @@ onMounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .card-header {
@@ -666,6 +663,8 @@ onMounted(() => {
 }
 
 .form-unit {
+  display: inline-flex;
+  align-items: center;
   margin-left: var(--space-2);
   color: var(--el-text-color-secondary);
   font-size: var(--text-base);

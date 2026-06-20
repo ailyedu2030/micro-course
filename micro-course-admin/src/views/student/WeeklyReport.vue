@@ -525,7 +525,11 @@ onUnmounted(() => {
 <style scoped>
 /* ===== Weekly Report ===== */
 .weekly-report {
-  /* Uses design tokens from design-tokens.css */
+  padding: var(--space-6);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--el-bg-color-page);
 }
 
 /* ===== PC Layout ===== */

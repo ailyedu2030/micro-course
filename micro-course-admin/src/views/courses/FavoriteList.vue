@@ -152,20 +152,33 @@ onMounted(() => {
 
 <style scoped>
 .favorite-list-page {
-  padding: var(--space-5);
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .filter-card {
   margin-bottom: var(--space-4);
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
 }
 
 .table-card {
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+
+.table-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-4) var(--space-5);
 }
 
 .card-header {
@@ -176,28 +189,35 @@ onMounted(() => {
 
 .card-title {
   font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .pagination-wrap {
   margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .data-table {
   width: 100%;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
+.data-table :deep(.el-table__header th) {
+  color: var(--el-text-color-primary);
+}
+
 .data-table :deep(.el-table__row) {
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
-  background-color: var(--color-bg-page);
+  background-color: var(--role-primary-light-9) !important;
 }
 
 .table-thumb {
@@ -208,7 +228,7 @@ onMounted(() => {
 }
 
 .no-thumb {
-  color: var(--color-text-placeholder);
+  color: var(--el-text-color-placeholder);
 }
 
 .filter-input-w140 {

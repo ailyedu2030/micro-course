@@ -393,7 +393,6 @@ onMounted(async () => {
 .user-form :deep(.el-card) {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out);
 }
 

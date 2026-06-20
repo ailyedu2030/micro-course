@@ -332,9 +332,11 @@ onUnmounted(() => {
 <style scoped>
 /* ==================== PC Layout ==================== */
 .my-reviews-container {
-  padding: var(--space-4);
+  padding: var(--space-6);
+  min-height: 100dvh;
   max-width: 960px;
   margin: 0 auto;
+  background: var(--el-bg-color-page);
 }
 
 .page-breadcrumb {

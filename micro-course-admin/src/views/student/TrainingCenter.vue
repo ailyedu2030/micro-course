@@ -133,6 +133,8 @@ function goExercise(chapterId) {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-6);
+  min-height: 100dvh;
+  background: var(--el-bg-color-page);
   animation: fadeIn var(--duration-slow) var(--ease-out);
 }
 .page-breadcrumb { margin-bottom: var(--space-4); }

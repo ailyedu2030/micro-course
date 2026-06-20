@@ -284,12 +284,12 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--player-border); z-index: 100;
 }
 .header-center { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.page-counter { font-size: 13px; font-weight: 600; color: var(--player-text); letter-spacing: 0.5px; }
+.page-counter { font-size: 13px; font-weight: var(--weight-semibold); color: var(--player-text); letter-spacing: 0.5px; }
 .counter-divider { color: var(--player-text-secondary); margin: 0 1px; }
 .page-thumb-strip { display: flex; gap: 5px; align-items: center; }
 .thumb-dot {
   width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.15);
-  border: none; cursor: pointer; transition: all 200ms ease; padding: 0;
+  border: none; cursor: pointer; transition: all var(--duration-base) ease; padding: 0;
 }
 .thumb-dot.active { background: var(--player-accent); box-shadow: 0 0 6px var(--player-accent-glow); width: 18px; border-radius: 10px; }
 .thumb-dot.has-audio { background: rgba(99,102,241,.35); }
@@ -344,7 +344,7 @@ onUnmounted(() => {
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: 50%;
   background: var(--player-accent); color: #fff;
-  font-size: 15px; font-weight: 700; box-shadow: 0 2px 12px var(--player-accent-glow);
+  font-size: 15px; font-weight: var(--weight-bold); box-shadow: 0 2px 12px var(--player-accent-glow);
 }
 .countdown-fade-enter-active { transition: all .2s ease; }
 .countdown-fade-leave-active { transition: all .3s ease; }
@@ -376,7 +376,7 @@ onUnmounted(() => {
 .narration-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding-left: 32px; }
 .narration-label {
   display: flex; align-items: center; gap: 6px; padding: 14px 16px 8px;
-  font-size: 12px; font-weight: 600; color: var(--player-text-secondary);
+  font-size: 12px; font-weight: var(--weight-semibold); color: var(--player-text-secondary);
   text-transform: uppercase; letter-spacing: 1px;
 }
 .narration-scroll { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
@@ -428,8 +428,8 @@ onUnmounted(() => {
 .speed-group { display: flex; gap: 2px; background: rgba(255,255,255,.05); border-radius: var(--radius-sm); padding: 2px; }
 .speed-chip {
   padding: 3px 8px; border: none; background: transparent; color: var(--player-text-secondary);
-  font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;
-  transition: all 200ms ease;
+  font-size: 12px; font-weight: var(--weight-semibold); border-radius: 4px; cursor: pointer;
+  transition: all var(--duration-base) ease;
 }
 .speed-chip.active { background: var(--player-accent); color: #fff; }
 .speed-chip:hover:not(.active) { color: var(--player-text); }

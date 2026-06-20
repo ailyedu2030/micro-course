@@ -309,12 +309,18 @@ onMounted(() => {
 
 <style scoped>
 .notification-list-page {
-  padding: var(--space-5);
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .toolbar-card {
   margin-bottom: var(--space-4);
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
 }
 
 .toolbar {
@@ -330,14 +336,21 @@ onMounted(() => {
 
 .unread-tip {
   font-size: var(--text-base);
-  color: var(--color-text-regular);
+  color: var(--el-text-color-regular);
   display: flex;
   align-items: center;
   gap: var(--space-1);
 }
 
 .table-card {
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+
+.table-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
 }
 
 .type-filter-bar {
@@ -351,24 +364,30 @@ onMounted(() => {
   margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .data-table {
   width: 100%;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
+.data-table :deep(.el-table__header th) {
+  color: var(--el-text-color-primary);
+}
+
 .data-table :deep(.el-table__row) {
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
-  background-color: var(--color-bg-page);
+  background-color: var(--role-primary-light-9) !important;
 }
 
 .dash-placeholder {
-  color: var(--color-text-placeholder);
+  color: var(--el-text-color-placeholder);
 }
 
 /* 未读行高亮 */
@@ -381,8 +400,8 @@ onMounted(() => {
 }
 
 .title-unread {
-  font-weight: 600;
-  color: var(--el-color-primary);
+  font-weight: var(--weight-semibold);
+  color: var(--role-primary);
 }
 
 /* 未读圆点 */

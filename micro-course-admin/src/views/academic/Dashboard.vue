@@ -26,7 +26,7 @@
       <el-col v-for="action in quickActions" :key="action.label" :xs="12" :sm="6">
         <el-card class="quick-action-card" shadow="hover" role="button" tabindex="0" :aria-label="`快速操作 ${action.label}`" @click="handleQuickAction(action)" @keydown.enter="handleQuickAction(action)" @keydown.space.prevent="handleQuickAction(action)">
           <div class="quick-action-inner">
-            <div class="quick-action-icon" :style="{ background: action.bg, color: action.color }">
+            <div class="quick-action-icon">
               <el-icon :size="22"><component :is="action.icon" /></el-icon>
             </div>
             <span class="quick-action-label">{{ action.label }}</span>
@@ -271,10 +271,10 @@ async function handleRefresh() {
 
 // ===== 快捷入口 =====
 const quickActions = [
-  { label: '课程审核', icon: markRaw(Reading), route: '/courses', bg: '#EEF2FF', color: '#4F46E5' },
-  { label: '选课管理', icon: markRaw(Collection), route: '/enrollments', bg: '#ECFDF5', color: '#10B981' },
-  { label: '教学班管理', icon: markRaw(Setting), route: '/admin/teaching-classes', bg: '#FEF3C7', color: '#F59E0B' },
-  { label: '统计分析', icon: markRaw(DataAnalysis), route: '/academic/dashboard', bg: '#FAF5FF', color: '#8B5CF6' }
+  { label: '课程审核', icon: markRaw(Reading), route: '/courses' },
+  { label: '选课管理', icon: markRaw(Collection), route: '/enrollments' },
+  { label: '教学班管理', icon: markRaw(Setting), route: '/admin/teaching-classes' },
+  { label: '统计分析', icon: markRaw(DataAnalysis), route: '/academic/dashboard' }
 ]
 
 function handleQuickAction(action) {
@@ -642,21 +642,49 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   margin-bottom: var(--space-6);
   padding: var(--space-6) var(--space-8);
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
-  border-radius: 16px;
+  background: linear-gradient(135deg, var(--role-primary-darkest, #1d3557) 0%, var(--role-primary, #409eff) 100%);
+  border-radius: var(--radius-xl);
   box-shadow: 0 8px 32px rgba(79, 70, 229, 0.15);
   color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-bar::before {
+  content: '';
+  position: absolute;
+  right: -80px;
+  top: -80px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.welcome-bar::after {
+  content: '';
+  position: absolute;
+  right: 60px;
+  bottom: -60px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  pointer-events: none;
 }
 
 .welcome-left {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  position: relative;
+  z-index: 1;
 }
 
 .welcome-date {
-  font-size: var(--text-base);
-  opacity: 0.8;
+  font-size: var(--text-sm);
+  color: rgba(255,255,255,0.75);
 }
 
 .welcome-greeting {
@@ -678,6 +706,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  position: relative;
+  z-index: 1;
 }
 
 .last-updated {
@@ -754,7 +784,6 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   cursor: default;
   transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out);
 }
@@ -768,32 +797,25 @@ onBeforeUnmount(() => {
 .stat-icon-zone {
   width: 52px;
   height: 52px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   font-size: 22px;
+  transition: transform var(--duration-base) var(--ease-out);
 }
 
-.stat-icon-zone--primary {
-  background: rgba(79,70,229,0.1);
-  color: #4F46E5;
+.stat-card:hover .stat-icon-zone {
+  transform: scale(1.05);
 }
 
-.stat-icon-zone--success {
-  background: rgba(16,185,129,0.1);
-  color: #10B981;
-}
-
-.stat-icon-zone--warning {
-  background: rgba(245,158,11,0.1);
-  color: #F59E0B;
-}
-
+.stat-icon-zone--primary,
+.stat-icon-zone--success,
+.stat-icon-zone--warning,
 .stat-icon-zone--purple {
-  background: rgba(139,92,246,0.1);
-  color: #8B5CF6;
+  background: var(--role-primary-light-9);
+  color: var(--role-primary);
 }
 
 .stat-body {
@@ -826,8 +848,13 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
-  margin-bottom: var(--space-4);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+}
+
+.chart-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .card-header {
@@ -872,8 +899,13 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
-  margin-bottom: var(--space-4);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+}
+
+.table-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .warning-table,

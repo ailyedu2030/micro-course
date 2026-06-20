@@ -212,26 +212,24 @@ onMounted(() => {
 
 <style scoped>
 .discussion-list-page {
-  padding: var(--space-5);
+  padding: var(--space-6);
   background: var(--el-bg-color-page);
-  min-height: 100%;
+  min-height: 100dvh;
   max-width: 1440px;
   margin: 0 auto;
 }
 
 .filter-card {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .table-card {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out);
 }
 
@@ -240,7 +238,7 @@ onMounted(() => {
 }
 
 .table-card :deep(.el-card__header) {
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
@@ -260,8 +258,8 @@ onMounted(() => {
 .pagination-wrap {
   margin-top: var(--space-4);
   display: flex;
-  justify-content: flex-end;
-  padding: var(--space-3) var(--space-5);
+  justify-content: center;
+  padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--el-border-color-lighter);
 }
 
@@ -272,10 +270,7 @@ onMounted(() => {
 }
 
 .data-table :deep(.el-table__header) th {
-  background: var(--el-fill-color-light);
-  font-weight: var(--weight-semibold);
   color: var(--el-text-color-primary);
-  letter-spacing: var(--tracking-wide);
 }
 
 .data-table :deep(.el-table__row) {
@@ -294,17 +289,28 @@ onMounted(() => {
   width: 180px;
 }
 
+.search-input,
+.filter-input {
+  width: 160px;
+  border-radius: var(--radius-md);
+}
+
+.search-select,
+.filter-select {
+  width: 160px;
+}
+
 .filter-input-w120 {
   width: 120px;
 }
 
 @media (max-width: 768px) {
   .discussion-list-page {
-    padding: var(--space-3);
+    padding: var(--space-4);
   }
 
   .filter-card {
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-4);
   }
 
   .filter-input-w160,

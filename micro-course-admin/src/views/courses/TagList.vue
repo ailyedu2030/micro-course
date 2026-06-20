@@ -205,12 +205,18 @@ onMounted(() => {
 
 <style scoped>
 .tag-list-page {
-  padding: var(--space-5);
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .toolbar-card {
   margin-bottom: var(--space-4);
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
 }
 
 .toolbar {
@@ -221,32 +227,46 @@ onMounted(() => {
 
 .toolbar-title {
   font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .table-card {
-  border-radius: var(--radius-md);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+
+.table-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
 }
 
 .pagination-wrap {
   margin-top: var(--space-4);
   display: flex;
   justify-content: flex-end;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .data-table {
   width: 100%;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
+.data-table :deep(.el-table__header th) {
+  color: var(--el-text-color-primary);
+}
+
 .data-table :deep(.el-table__row) {
-  transition: background-color 0.2s ease;
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
-  background-color: var(--color-bg-page);
+  background-color: var(--role-primary-light-9) !important;
 }
 
 .color-swatch {
@@ -260,7 +280,7 @@ onMounted(() => {
 
 .color-value {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--el-text-color-secondary);
   font-family: monospace;
 }
 

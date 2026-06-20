@@ -372,6 +372,7 @@ onUnmounted(() => {
 .layout-aside {
   width: 240px;
   background: var(--sidebar-bg, #1e293b);
+  background-image: linear-gradient(180deg, rgba(64,158,255,0.03) 0%, transparent 30%);
   transition: width var(--duration-slow) var(--ease-in-out);
   overflow-y: auto;
   overflow-x: hidden;
@@ -400,7 +401,7 @@ onUnmounted(() => {
 
 /* Logo */
 .layout-logo {
-  height: 64px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -446,12 +447,17 @@ onUnmounted(() => {
   --el-menu-hover-bg-color: var(--sidebar-hover, #1f2d3d);
   --el-menu-hover-text-color: var(--role-primary);
   --el-menu-bg-color: transparent;
-  --el-menu-item-height: 48px;
-  --el-menu-sub-menu-title-height: 48px;
+  --el-menu-item-height: 42px;
+  --el-menu-sub-menu-title-height: 42px;
 }
 
 .layout-menu:not(.el-menu--collapse) {
   width: 100%;
+}
+
+/* 菜单项 */
+:deep(.el-menu-item) {
+  padding-left: 20px !important;
 }
 
 /* 菜单项 hover */
@@ -474,15 +480,20 @@ onUnmounted(() => {
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 3px;
+  width: 2px;
   height: 20px;
   background: var(--role-primary);
-  border-radius: 0 3px 3px 0;
-  box-shadow: 0 0 8px rgba(99,102,241,0.4);
+  border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px rgba(99,102,241,0.25);
 }
 
 :deep(.el-menu-item.is-active .el-icon) {
   color: var(--role-primary);
+}
+
+/* 子菜单 */
+:deep(.el-sub-menu__title) {
+  padding-left: 20px !important;
 }
 
 /* 子菜单 hover */

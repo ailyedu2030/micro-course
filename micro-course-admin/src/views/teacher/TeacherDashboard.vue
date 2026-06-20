@@ -654,7 +654,6 @@ onBeforeUnmount(() => {
   cursor: default;
   transition: transform var(--duration-base) var(--ease-out),
               box-shadow var(--duration-base) var(--ease-out);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .stat-card:hover {
@@ -671,11 +670,13 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform var(--duration-base) var(--ease-out);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
 }
 
 .stat-card:hover .stat-icon-wrap {
-  transform: scale(1.05);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-tinted-sm);
 }
 
 .stat-icon-course { background: var(--role-primary-light-9); }
@@ -731,7 +732,6 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
   margin-bottom: var(--space-6);
-  border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out);
 }
 
@@ -773,7 +773,6 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
   margin-bottom: var(--space-6);
-  border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out);
 }
 
@@ -840,7 +839,6 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out);
 }
 
@@ -862,7 +860,7 @@ onBeforeUnmount(() => {
   transition: box-shadow var(--duration-base) var(--ease-out),
               transform var(--duration-base) var(--ease-out);
   cursor: default;
-  border: 1px solid var(--el-border-color-lighter);
+  border: none;
 }
 
 .course-card-item:hover {

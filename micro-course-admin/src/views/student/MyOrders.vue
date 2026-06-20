@@ -98,7 +98,7 @@ onMounted(() => fetchOrders())
 </script>
 
 <style scoped>
-.my-orders { padding: var(--space-4); max-width: 1200px; margin: 0 auto; }
+.my-orders { padding: var(--space-6); min-height: 100dvh; max-width: 1200px; margin: 0 auto; background: var(--el-bg-color-page); }
 .page-breadcrumb { margin-bottom: var(--space-4); font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--el-border-color-lighter); }
 .price-paid { color: var(--el-color-danger); font-weight: var(--weight-semibold); }

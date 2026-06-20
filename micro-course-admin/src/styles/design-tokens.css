@@ -23,6 +23,15 @@
   --role-primary-light-7: #c6e2ff;
   --role-primary-light-8: #d9ecff;
   --role-primary-light-9: #ecf5ff;
+
+  /* 教职工着色阴影 — 以角色蓝为基调 */
+  --shadow-tinted-sm: 0 1px 3px rgba(64, 158, 255, 0.06);
+  --shadow-tinted-md: 0 2px 8px rgba(64, 158, 255, 0.08);
+  --shadow-tinted-lg: 0 4px 16px rgba(64, 158, 255, 0.1);
+  --shadow-tinted-xl: 0 8px 24px rgba(64, 158, 255, 0.12);
+
+  /* 卡片边框色 — 微蓝调 */
+  --card-border-tinted: rgba(64, 158, 255, 0.08);
 }
 
 /* 学生 = 现代学习感 (#6366f1 学习靛蓝 → 稍降饱和度更耐看) */
@@ -243,13 +252,12 @@
 
 /* 卡片 — 更干净、更轻 */
 .el-card {
-  --el-card-border-color: var(--el-border-color-light);
+  --el-card-border-color: transparent;
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-xs), var(--shadow-sm) !important;
   transition: box-shadow var(--duration-base) var(--ease-out),
-              transform var(--duration-base) var(--ease-out),
-              border-color var(--duration-base) var(--ease-out);
+              transform var(--duration-base) var(--ease-out);
   overflow: hidden;
 }
 
@@ -258,22 +266,18 @@
   transform: translateY(-2px);
 }
 
-.el-card:hover {
-  border-color: var(--el-border-color-hover);
-}
-
 .el-card__header {
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--el-border-color-lighter);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-wide);
+  letter-spacing: var(--tracking-tight);
   color: var(--el-text-color-primary);
   background: var(--el-fill-color-blank);
 }
 
 .el-card__body {
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-4) var(--space-5);
 }
 
 /* 统计卡片 */
@@ -299,23 +303,57 @@
   margin-top: var(--space-1);
 }
 
-/* 表格 — 更清晰的分隔，更轻的视觉重量 */
+/* 表格 — 极简水平线设计，无纵向边框，无斑马纹 */
 .el-table {
   border-radius: var(--radius-md);
   overflow: hidden;
-  --el-table-header-bg-color: var(--el-fill-color-light);
-  --el-table-header-text-color: var(--el-text-color-regular);
+  --el-table-header-bg-color: transparent;
+  --el-table-header-text-color: var(--el-text-color-secondary);
   --el-table-row-hover-bg-color: var(--role-primary-light-9);
-  --el-table-border-color: var(--el-border-color-lighter);
-  --el-table-header-font-weight: 600;
+  --el-table-border-color: transparent;
+  --el-table-header-font-weight: 500;
   font-size: var(--text-sm);
 }
 
+.el-table::before {
+  display: none;
+}
+
 .el-table thead th {
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
+  font-weight: var(--weight-medium);
   font-size: var(--text-xs);
   color: var(--el-text-color-secondary);
+  letter-spacing: var(--tracking-normal);
+  background: transparent !important;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.el-table thead th .cell {
+  letter-spacing: var(--tracking-normal);
+  padding: var(--space-3) var(--space-3);
+}
+
+.el-table thead th:not(.is-leaf) {
+  border-bottom: none;
+}
+
+.el-table tbody td {
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-right: none !important;
+}
+
+.el-table--border td,
+.el-table--border th {
+  border-right: none !important;
+}
+
+.el-table__cell {
+  border-right: none !important;
+}
+
+.el-table--border .el-table__cell {
+  border-right: none !important;
 }
 
 .el-table tbody tr {
@@ -327,7 +365,18 @@
 }
 
 .el-table--striped .el-table__body tr.el-table__row--striped td {
-  background: var(--el-fill-color-lighter);
+  background: transparent;
+}
+
+.el-table__body tr.el-table__row--striped:hover > td {
+  background: var(--role-primary-light-9) !important;
+}
+
+/* 移除表格外层边框 */
+.el-table--border::after,
+.el-table--border::before,
+.el-table__inner-wrapper::before {
+  display: none;
 }
 
 /* 按钮 */
@@ -357,22 +406,21 @@
 /* 弹窗 */
 .el-dialog {
   border-radius: var(--radius-md);
-  --el-dialog-padding-primary: var(--space-5);
+  --el-dialog-padding-primary: var(--space-4);
 }
 
 .el-dialog__header {
-  padding: var(--space-5) var(--space-5) 0;
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--el-border-color-lighter);
   margin-right: 0;
-  padding-bottom: var(--space-3);
 }
 
 .el-dialog__body {
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5);
 }
 
 .el-dialog__footer {
-  padding: 0 var(--space-5) var(--space-5);
+  padding: var(--space-3) var(--space-5);
 }
 
 /* 表单 */
@@ -492,11 +540,12 @@
 .filter-card {
   margin-bottom: var(--space-4);
   border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-xs) !important;
 }
 
 .search-card .el-card__body,
 .filter-card .el-card__body {
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-3) var(--space-5);
 }
 
 .search-card .el-form--inline,
@@ -511,6 +560,14 @@
   margin-right: var(--space-4);
 }
 
+.search-card .el-form-item__label,
+.filter-card .el-form-item__label {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  font-weight: var(--weight-regular);
+  padding-bottom: 0;
+}
+
 /* 筛选区统一输入框宽度 */
 .filter-input-w160 { width: 160px; }
 .filter-input-w120 { width: 120px; }
@@ -521,7 +578,7 @@
 /* 表格卡片 — 统一所有列表页的表格区 */
 .table-card {
   margin-bottom: var(--space-4);
-  border-radius: var(--radius-lg) !important;
+  border-radius: var(--radius-md) !important;
 }
 
 .table-card .el-card__body {
@@ -696,6 +753,11 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .el-table__body tr,
+  .stat-card-value {
+    animation: none !important;
   }
 }
 
@@ -1079,6 +1141,30 @@
 }
 
 /* --------------------------------------------------------------------------
+    6.55 教职工卡片着色阴影 — 以角色蓝替代纯黑
+    -------------------------------------------------------------------------- */
+.role-staff .el-card {
+  --el-card-border-color: var(--card-border-tinted, rgba(64, 158, 255, 0.08));
+  box-shadow: var(--shadow-tinted-sm), var(--shadow-xs) !important;
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out);
+}
+
+.role-staff .el-card:hover {
+  border-color: var(--role-primary-light-5) !important;
+  box-shadow: var(--shadow-tinted-md), var(--shadow-lg) !important;
+}
+
+.role-staff .el-card.shadow-hover:hover {
+  box-shadow: var(--shadow-tinted-lg), var(--shadow-lg) !important;
+}
+
+.role-staff .el-card.is-never-shadow {
+  box-shadow: var(--shadow-tinted-sm) !important;
+}
+
+/* --------------------------------------------------------------------------
     6.6 学生卡片重写 — 用着色阴影替换纯黑阴影
     -------------------------------------------------------------------------- */
 .role-student .el-card {
@@ -1166,6 +1252,14 @@
 @keyframes countUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* --------------------------------------------------------------------------
+    6.9 按钮按下反馈
+    -------------------------------------------------------------------------- */
+.el-button:active {
+  transform: scale(0.97);
+  transition-duration: 0.05s;
 }
 
 .stat-card-value {
@@ -1313,10 +1407,15 @@
    9. NProgress 自定义样式覆盖
    -------------------------------------------------------------------------- */
 #nprogress .bar {
-  background: var(--role-primary, #409eff) !important;
+  background: linear-gradient(90deg, var(--role-primary, #409eff), var(--role-primary-light-3, #79bbff)) !important;
   height: 3px !important;
 }
 
 #nprogress .peg {
   box-shadow: 0 0 10px var(--role-primary, #409eff), 0 0 5px var(--role-primary, #409eff) !important;
+}
+
+#nprogress .spinner-icon {
+  border-top-color: var(--role-primary, #409eff) !important;
+  border-left-color: var(--role-primary, #409eff) !important;
 }

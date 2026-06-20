@@ -71,12 +71,12 @@ onMounted(() => fetchBundles())
 </script>
 
 <style scoped>
-.bundle-square { padding: var(--space-4); max-width: 1400px; margin: 0 auto; }
+.bundle-square { padding: var(--space-6); min-height: 100dvh; max-width: 1400px; margin: 0 auto; background: var(--el-bg-color-page); }
 .page-breadcrumb { margin-bottom: var(--space-5); font-size: var(--text-xl); font-weight: var(--weight-bold); color: var(--el-text-color-primary); }
 .sub-hint { font-size: var(--text-sm); font-weight: var(--weight-regular); color: var(--el-text-color-secondary); margin-left: var(--space-3); }
 .bundle-grid { min-height: 200px; }
 
-.bundle-card { border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; transition: all var(--duration-base) var(--ease-out); border: 1px solid var(--el-border-color-lighter); background: var(--el-fill-color-blank); margin-bottom: var(--space-6); }
+.bundle-card { border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; transition: all var(--duration-base) var(--ease-out); background: var(--el-fill-color-blank); box-shadow: var(--shadow-xs), var(--shadow-sm); margin-bottom: var(--space-6); }
 .bundle-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md), var(--shadow-lg); border-color: var(--el-color-primary-light-3); }
 
 .bundle-cover { position: relative; height: 160px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; }

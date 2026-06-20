@@ -30,7 +30,7 @@
           @click="handleQuickAction(action)"
         >
           <div class="quick-action-inner">
-            <div class="quick-action-icon" :style="{ background: action.bg, color: action.color }">
+            <div class="quick-action-icon">
               <el-icon :size="22"><component :is="action.icon" /></el-icon>
             </div>
             <span class="quick-action-label">{{ action.label }}</span>
@@ -363,12 +363,12 @@ async function handleRefresh() {
 
 // ===== 快捷入口 =====
 const quickActions = [
-  { label: '新增用户', icon: markRaw(Plus), route: '/admin/users', bg: '#EEF2FF', color: '#4F46E5' },
-  { label: '课程管理', icon: markRaw(Reading), route: '/courses', bg: '#ECFDF5', color: '#10B981' },
-  { label: '部门管理', icon: markRaw(OfficeBuilding), route: '/departments', bg: '#FEF3C7', color: '#F59E0B' },
-  { label: '教学班管理', icon: markRaw(Tickets), route: '/admin/teaching-classes', bg: '#EFF6FF', color: '#3B82F6' },
-  { label: '系统设置', icon: markRaw(Setting), route: '/admin/settings', bg: '#FAF5FF', color: '#8B5CF6' },
-  { label: '操作日志', icon: markRaw(List), route: '/admin/logs', bg: '#FEF2F2', color: '#EF4444' }
+  { label: '新增用户', icon: markRaw(Plus), route: '/admin/users' },
+  { label: '课程管理', icon: markRaw(Reading), route: '/courses' },
+  { label: '部门管理', icon: markRaw(OfficeBuilding), route: '/departments' },
+  { label: '教学班管理', icon: markRaw(Tickets), route: '/admin/teaching-classes' },
+  { label: '系统设置', icon: markRaw(Setting), route: '/admin/settings' },
+  { label: '操作日志', icon: markRaw(List), route: '/admin/logs' }
 ]
 
 function handleQuickAction(action) {
@@ -755,8 +755,8 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   margin-bottom: var(--space-6);
   padding: var(--space-6) var(--space-8);
-  background: linear-gradient(135deg, #4F46E5 0%, #818CF8 100%);
-  border-radius: 16px;
+  background: linear-gradient(135deg, var(--role-primary-darkest, #1d3557) 0%, var(--role-primary, #409eff) 100%);
+  border-radius: var(--radius-xl);
   box-shadow: 0 8px 32px rgba(79,70,229,0.15);
   color: white;
   position: relative;
@@ -896,7 +896,6 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   transition: all var(--duration-base) var(--ease-out);
 }
 
@@ -908,22 +907,30 @@ onBeforeUnmount(() => {
 .stat-icon-wrap {
   width: 52px;
   height: 52px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   font-size: 24px;
+  transition: transform var(--duration-base) var(--ease-out);
 }
 
-.icon-indigo  { background: rgba(79,70,229,0.1); color: #4F46E5; }
-.icon-green   { background: rgba(16,185,129,0.1); color: #10B981; }
-.icon-amber   { background: rgba(245,158,11,0.1); color: #F59E0B; }
-.icon-blue    { background: rgba(59,130,246,0.1); color: #3B82F6; }
-.icon-red     { background: rgba(239,68,68,0.1); color: #EF4444; }
-.icon-purple  { background: rgba(139,92,246,0.1); color: #8B5CF6; }
-.icon-orange  { background: rgba(249,115,22,0.1); color: #F97316; }
-.icon-pink    { background: rgba(236,72,153,0.1); color: #EC4899; }
+.stat-card:hover .stat-icon-wrap {
+  transform: scale(1.05);
+}
+
+.icon-indigo,
+.icon-green,
+.icon-amber,
+.icon-blue,
+.icon-red,
+.icon-purple,
+.icon-orange,
+.icon-pink {
+  background: var(--role-primary-light-9);
+  color: var(--role-primary);
+}
 
 .stat-body {
   flex: 1;
@@ -953,8 +960,13 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
-  margin-bottom: var(--space-6);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+}
+
+.chart-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .card-header {
@@ -988,8 +1000,13 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
-  margin-bottom: var(--space-6);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+}
+
+.list-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .list-ul {
@@ -1054,8 +1071,13 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
-  margin-bottom: var(--space-6);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+}
+
+.health-card:hover {
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .health-grid {

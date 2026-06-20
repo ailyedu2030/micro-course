@@ -762,8 +762,11 @@ const handleContinue = (courseId) => {
    PC 布局
    ================================================ */
 .pc-layout {
+  padding: var(--space-6);
   min-height: 100dvh;
-  background: var(--el-bg-color);
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--el-bg-color-page);
 }
 
 /* 页面 Header */

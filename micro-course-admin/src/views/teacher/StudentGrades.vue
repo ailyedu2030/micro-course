@@ -525,7 +525,6 @@ onUnmounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .course-select {
@@ -544,7 +543,6 @@ onUnmounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   text-align: center;
   transition: box-shadow var(--duration-base) var(--ease-out),
               transform var(--duration-base) var(--ease-out);
@@ -588,7 +586,6 @@ onUnmounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   position: sticky;
   top: var(--space-6);
   transition: box-shadow var(--duration-base) var(--ease-out),
@@ -611,7 +608,6 @@ onUnmounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   margin-bottom: var(--space-6);
   transition: box-shadow var(--duration-base) var(--ease-out),
               transform var(--duration-base) var(--ease-out);
@@ -643,11 +639,7 @@ onUnmounted(() => {
 }
 
 .data-table :deep(.el-table__header-wrapper th) {
-  background: var(--el-fill-color-light);
   color: var(--el-text-color-primary);
-  font-weight: var(--weight-semibold);
-  font-size: var(--text-base);
-  letter-spacing: var(--tracking-wide);
 }
 
 .data-table :deep(.el-table__row) {

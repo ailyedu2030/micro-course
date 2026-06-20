@@ -512,7 +512,6 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out),
               transform var(--duration-base) var(--ease-out);
   height: calc(100dvh - 180px);
@@ -695,9 +694,7 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-.student-table :deep(.el-table__header-wrapper th) {
-  background: var(--el-fill-color-light);
-}
+
 
 .student-table :deep(.el-table__row:hover > td) {
   background: var(--role-primary-light-9);

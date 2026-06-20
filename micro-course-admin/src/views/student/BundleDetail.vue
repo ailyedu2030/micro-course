@@ -124,7 +124,7 @@ const handleBuy = async () => {
 </script>
 
 <style scoped>
-.bundle-detail { padding: var(--space-4); max-width: 1400px; margin: 0 auto; }
+.bundle-detail { padding: var(--space-6); min-height: 100dvh; max-width: 1400px; margin: 0 auto; background: var(--el-bg-color-page); }
 .mg-bottom-16 { margin-bottom: var(--space-4); }
 .detail-body { min-height: 300px; }
 

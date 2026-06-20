@@ -361,9 +361,11 @@ onUnmounted(() => {
 
 <style scoped>
 .settings-container {
-  padding: var(--space-5);
+  padding: var(--space-6);
+  min-height: 100dvh;
   max-width: 800px;
   margin: 0 auto;
+  background: var(--el-bg-color-page);
 }
 
 /* PC Layout */

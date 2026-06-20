@@ -168,9 +168,9 @@ onMounted(() => {
 
 <style scoped>
 .discussion-detail-page {
-  padding: var(--space-5);
+  padding: var(--space-6);
   background: var(--el-bg-color-page);
-  min-height: 100%;
+  min-height: 100dvh;
   max-width: 1440px;
   margin: 0 auto;
 }
@@ -180,14 +180,12 @@ onMounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .reply-card {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .card-header {

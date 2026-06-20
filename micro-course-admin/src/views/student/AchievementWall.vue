@@ -186,9 +186,11 @@ async function fetchData() {
 
 <style scoped>
 .achievement-wall {
-  padding: var(--space-5);
+  padding: var(--space-6);
+  min-height: 100dvh;
   max-width: 1200px;
   margin: 0 auto;
+  background: var(--el-bg-color-page);
 }
 
 .page-breadcrumb {

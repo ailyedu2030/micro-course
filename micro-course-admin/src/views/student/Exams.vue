@@ -302,7 +302,11 @@ const handleJoinExam = (exam) => {
 
 /* 主内容区 */
 .main-content {
-  padding: var(--space-5);
+  padding: var(--space-6);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--el-bg-color-page);
 }
 
 /* 考试卡片列表 */

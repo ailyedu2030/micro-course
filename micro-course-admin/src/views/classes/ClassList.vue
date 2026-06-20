@@ -304,14 +304,12 @@ onMounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
 }
 
 .table-card {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
-  border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out);
 }
 
@@ -367,11 +365,7 @@ onMounted(() => {
 }
 
 .data-table :deep(.el-table__header th) {
-  background: var(--el-fill-color-light) !important;
   color: var(--el-text-color-primary);
-  font-weight: var(--weight-semibold);
-  font-size: var(--text-base);
-  letter-spacing: var(--tracking-wide);
 }
 
 .data-table :deep(.el-table__row:hover > td) {
