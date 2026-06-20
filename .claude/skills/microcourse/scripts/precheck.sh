@@ -121,7 +121,7 @@ check_business_code() {
         FAIL=1
     fi
     # Entity（BaseMapper 实体类是预期）
-    local entity_whitelist="User\|Department\|Major\|Classes\|CourseCategory\|Course\|CourseTagRelation\|CourseChapter\|OperationLog\|Tag\|Enrollment\|CourseFavorite\|Video\|VideoStatus\|Question\|Exercise\|ExerciseQuestion\|ExerciseRecord\|WrongQuestion\|DiscussionPost\|DiscussionComment\|LearningProgress\|CheckIn\|Notification\|NotificationPreference\|CourseReview\|AdminSetting\|Badge\|Certificate\|Grade\|TeachingClass\|TeachingClassStudent\|ClassSchedule\|Achievement\|BadgeDefinition\|Banner\|VideoBookmark"
+    local entity_whitelist="User\|Department\|Major\|Classes\|CourseCategory\|Course\|CourseTagRelation\|CourseChapter\|OperationLog\|Tag\|Enrollment\|CourseFavorite\|Video\|VideoStatus\|Question\|Exercise\|ExerciseQuestion\|ExerciseRecord\|WrongQuestion\|DiscussionPost\|DiscussionComment\|LearningProgress\|CheckIn\|Notification\|NotificationPreference\|CourseReview\|AdminSetting\|Badge\|Certificate\|Grade\|TeachingClass\|TeachingClassStudent\|ClassSchedule\|Achievement\|BadgeDefinition\|Banner\|VideoBookmark\|Attachment\|ScoreHistory\|CourseNote\|CoursePrerequisite\|CourseReviewLog\|EnrollmentHistory\|GradeComponent\|QuestionTagRelation\|UserFollow"
     hits=$(grep -rln "public class.*Entity\|@TableName" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$entity_whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Entity 出现（$hits 个文件）")
