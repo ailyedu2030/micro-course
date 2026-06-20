@@ -37,6 +37,7 @@ services:
       context: ./micro-course-api
       dockerfile: Dockerfile
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/micro_course
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
