@@ -568,7 +568,7 @@ public class UserServiceImpl implements UserService {
             file.transferTo(dest);
 
             // 更新数据库
-            String avatarUrl = "/avatars/" + filename;
+            String avatarUrl = "/api/files/avatars/" + filename;
             user.setAvatar(avatarUrl);
             userRepository.updateById(user);
 

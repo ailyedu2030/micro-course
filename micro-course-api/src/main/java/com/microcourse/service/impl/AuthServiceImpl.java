@@ -521,7 +521,7 @@ public class AuthServiceImpl implements AuthService {
             java.io.File dest = new java.io.File(uploadDir + filename);
             file.transferTo(dest);
 
-            String avatarUrl = "/avatars/" + filename;
+            String avatarUrl = "/api/files/avatars/" + filename;
             user.setAvatar(avatarUrl);
             userRepository.updateById(user);
             return avatarUrl;
