@@ -2,6 +2,59 @@
 
 All notable changes to the 微课管理平台 (Micro-Course Management Platform) are documented here.
 
+## [v1.13.0] — 2026-06-20
+
+> Super-Fix 全量审计修复 · 59 个 P0-P2 问题归零 · 43 文件 / +302 -142
+
+### Security (6)
+- **HLS 视频流认证修复**：SecurityConfig `permitAll()` → `authenticated()`；hls.js 注入 `xhrSetup` 带 JWT Token 请求每个 `.ts` 分片
+- **IDOR 防护**：CertificateController `getById`/`download` 添加用户归属检查
+- **响应安全头**：Referrer-Policy (`strict-origin-when-cross-origin`) + Permissions-Policy (`camera=(), microphone=(), geolocation=(), payment=()`) + 已有 CSP/XSS/Frame/ContentType
+- **启动告警**：`VIDEO_SIGN_SECRET` 未设置或等于 `JWT_SECRET` 时 `log.warn`
+
+### Concurrency (8)
+- **Course 实体**：`@Version` 乐观锁（`OptimisticLockerInnerInterceptor` 已注册）
+- **证书表唯一索引**：`V47__certificates_unique_index.sql` — `UNIQUE(user_id, course_id)` 防并发双发
+- **BadgeServiceImpl**：`awardBadge()` 添加 `DuplicateKeyException` 兜底（并发颁发防重复）
+- **avgRating**：`updateCourseAvgRating()` 在 `@Transactional` 内通过 SQL `COALESCE(AVG(rating), 0)` 原子计算
+
+### Dataflow / Performance (9)
+- **Certificate N+1 消除**：`getMyCertificates()` 改为批量预加载 courseMap + userMap
+- **CourseReview N+1 消除**：`listByCourse`/`getMyReviews`/`listAll` 通过 `buildUserMap()` 批量加载用户
+- **TeachingClass 分页**：`setPage()` MyBatis-Plus 1-based → 0-based（`getCurrent() - 1`）
+- **响应契约统一**：CertificateController/BadgeController `ResponseEntity<T>` → `R<T>`（修复前端 Axios 拦截器 `res.code !== 200` 误判）
+- **AchievementVO**：`getName()` → `@JsonProperty("name") getBadgeName()` 显式序列化名
+- **EnrollmentUpdateRequest**：`@Min(0) @Max(100) progress` + `@DecimalMin(0) @DecimalMax(100) finalScore`
+
+### Error Handling (12)
+- **PDF 资源泄漏**：`CertificateServiceImpl` PDF Document `.close()` 移至 `finally` 块
+- **静默异常**：EnrollmentServiceImpl 证书/徽章自动颁发 `catch (Exception ignored)` → `log.warn()`
+- **GlobalExceptionHandler**：新增 `DataIntegrityViolationException` 专用处理器（409）
+- **类型转换安全**：AdminSettingsController `(Boolean) body.get("enabled")` → `instanceof Boolean` 校验
+- **BadgeServiceImpl**：徽章定义不存在 `return null` → `throw new BusinessException(BADGE_NOT_FOUND)`
+- **6 处 catch 日志补全**：UserServiceImpl 头像上传 / VideoController 存储目录/文件保存 / AdminBannerController 创建/更新图片上传
+
+### Frontend Fixed (24)
+- **19 处路由断裂修复**：`/courses/discussions` → `/discussions`；12 处 `/admin` → `/admin/dashboard`；8 处 `/student` → `/student/courses`；Academic Dashboard 4 个快捷入口 → 正确路由；`/admin` + `/student` 兜底重定向
+- **axios 拦截器**：`responseType: 'blob'` 跳过 `res.code` 检测（修复证书 PDF 下载）
+- **LearningCenter**：证书统计硬编码 `0` → `getMyCertificates()` API 真实数据
+- **TrainingCenter**：`chapter-item` 添加 `role/tabindex/keydown.enter/space` 键盘支持
+- **Profile**：证书查看 `const html = res.data` HTML iframe → `URL.createObjectURL(blob)` PDF 直出
+- **Profile**：SEC-001 DOM XSS 已修复（此前审计）
+
+### Deployment (7 new files)
+- `Dockerfile`（后端 multi-stage Maven + JRE17-alpine + HEALTHCHECK）
+- `Dockerfile`（前端 multi-stage Node + nginx-alpine + gzip + API 代理）
+- `nginx.conf`（SPA fallback + `/api/` 反向代理 + 静态资源 1y 缓存）
+- `docker-compose.yml`（PostgreSQL 17 + Redis 7 + API + Admin，健康检查依赖链）
+- `.github/workflows/ci.yml`（precheck → mvn compile → npm build → docker push）
+- `.env.example`（DB/JWT/VideoSign/Redis/CORS 模板）
+- `.dockerignore` ×2（排除 `target/node_modules/.git`）
+
+交叉验证通过(R1-R4)
+
+---
+
 ## [v1.12.2] — 2026-06-20
 
 > Phase 13 · Badge 后端完整实现
