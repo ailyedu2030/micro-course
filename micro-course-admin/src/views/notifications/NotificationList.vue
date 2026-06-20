@@ -182,7 +182,7 @@ const truncate = (text, length) => {
 
 // 通知类型标签映射: 系统(blue), 课程/选课(green), 成绩/考试(orange)
 const notifTagMap = {
-  SYSTEM: { label: '系统通知', type: '' },          // 蓝色(默认)
+  SYSTEM: { label: '系统通知', type: 'primary' },     // 蓝色
   ENROLLMENT: { label: '课程通知', type: 'success' }, // 绿色
   GRADE: { label: '考试通知', type: 'warning' },      // 橙色
   DISCUSSION: { label: '讨论通知', type: 'primary' },  // 蓝色
@@ -190,7 +190,7 @@ const notifTagMap = {
 }
 
 function getNotifTagType(type) {
-  return notifTagMap[type]?.type ?? 'info'
+  return notifTagMap[type]?.type || 'info'
 }
 
 function getNotifTagLabel(type) {
