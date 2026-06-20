@@ -747,7 +747,7 @@ const loadVideo = async () => {
 
 const initPlayer = () => {
   const video = videoRef.value
-  const url = videoData.value.hls_url || videoData.value.url
+  const url = videoData.value.hlsUrl || videoData.value.url
 
   if (!url) {
     errorMsg.value = '视频地址无效'

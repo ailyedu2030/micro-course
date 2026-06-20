@@ -291,7 +291,7 @@ const handlePlayPreview = async () => {
     const items = res.data?.items || []
     if (items.length > 0) {
       const v = items[0]
-      previewVideoUrl.value = v.hls_url || v.url || ''
+      previewVideoUrl.value = v.hlsUrl || v.url || ''
     }
     if (previewVideoUrl.value) {
       showPlayer.value = true
