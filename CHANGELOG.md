@@ -51,6 +51,11 @@ All notable changes to the 微课管理平台 (Micro-Course Management Platform)
 - `.env.example`（DB/JWT/VideoSign/Redis/CORS 模板）
 - `.dockerignore` ×2（排除 `target/node_modules/.git`）
 
+### UX P0 修复 (额外轮次)
+- **练习入口弹窗**：视频播放完 `ElMessageBox.confirm` 弹窗提示"开始练习"
+- **骨架屏**：`VideoPlayer.vue` 旋转加载器 → 视频占位+进度条+侧栏章节完整骨架屏
+- **CourseSquare**：注释修正 "PC端" → "H5响应式"
+
 交叉验证通过(R1-R4)
 
 ---
