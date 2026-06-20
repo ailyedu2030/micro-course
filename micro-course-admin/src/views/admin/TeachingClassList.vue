@@ -403,41 +403,51 @@ onMounted(() => {
 
 <style scoped>
 .teaching-class-list {
-  padding: var(--space-4);
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .breadcrumb-nav {
   margin-bottom: var(--space-4);
-  font-size: var(--text-sm, 14px);
 }
 
 .filter-card {
   margin-bottom: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--color-white, #ffffff);
-  transition: box-shadow 200ms ease;
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--duration-base) var(--ease-out);
 }
 
 .filter-card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
 }
 
 .table-card {
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  transition: box-shadow 200ms ease;
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
 }
 
 .table-card:hover {
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .table-card :deep(.el-card__header) {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .table-card :deep(.el-table) {
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
@@ -449,8 +459,9 @@ onMounted(() => {
 
 .card-title {
   font-size: var(--text-md);
-  font-weight: 500;
-  color: var(--color-text-primary, #303133);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .search-input {
@@ -465,10 +476,28 @@ onMounted(() => {
   margin-top: var(--space-4);
   display: flex;
   justify-content: center;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .data-table {
   width: 100%;
+}
+
+.data-table :deep(.el-table__header th) {
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-text-color-primary);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-wide);
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background: var(--role-primary-light-9) !important;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .full-width {
@@ -515,5 +544,21 @@ onMounted(() => {
 
 .text-danger {
   color: var(--el-color-danger);
+}
+
+/* 弹窗 border-radius */
+:deep(.el-dialog) {
+  border-radius: var(--radius-lg);
+}
+:deep(.el-dialog__header) {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+:deep(.el-dialog__body) {
+  padding: var(--space-5);
+}
+:deep(.el-dialog__footer) {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 </style>

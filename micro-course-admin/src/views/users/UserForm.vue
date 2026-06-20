@@ -383,26 +383,37 @@ onMounted(async () => {
 
 <style scoped>
 .user-form {
-  padding: var(--space-xl);
+  padding: var(--space-6);
+  background: var(--el-bg-color-page);
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .user-form :deep(.el-card) {
-  border-radius: var(--radius-md);
-  transition: box-shadow 200ms ease;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--duration-base) var(--ease-out);
 }
 
 .user-form :deep(.el-card:hover) {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md), var(--shadow-lg);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  letter-spacing: var(--tracking-wide);
 }
 
 .user-form-body {
   max-width: 600px;
+  padding: var(--space-5) 0;
 }
 
 .form-section {
@@ -411,11 +422,12 @@ onMounted(async () => {
 
 .form-section-title {
   font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  letter-spacing: var(--tracking-tight);
 }
 
 .full-width {
@@ -425,11 +437,12 @@ onMounted(async () => {
 .form-actions {
   margin-top: var(--space-6);
   padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border-light);
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .user-form :deep(.el-form-item__label) {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-regular);
 }
 
 .user-form :deep(.el-input__wrapper),

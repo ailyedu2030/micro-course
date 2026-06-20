@@ -3,11 +3,11 @@
     <!-- 顶部欢迎条 -->
     <div class="welcome-bar">
       <div class="welcome-left">
-        <span class="welcome-date">{{ welcomeDate }}</span>
-      </div>
-      <div class="welcome-greeting">
-        <span class="greeting-name">管理员</span>
-        <span class="greeting-suffix">{{ greeting }}</span>
+        <div class="welcome-date">{{ welcomeDate }}</div>
+        <div class="welcome-greeting">
+          <span class="greeting-name">管理员</span>
+          <span class="greeting-suffix">{{ greeting }}</span>
+        </div>
       </div>
       <div class="welcome-right">
         <span class="last-updated">最后更新: {{ lastUpdatedText }}</span>
@@ -758,16 +758,46 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #4F46E5 0%, #818CF8 100%);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(79,70,229,0.15);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-bar::before {
+  content: '';
+  position: absolute;
+  right: -80px;
+  top: -80px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.welcome-bar::after {
+  content: '';
+  position: absolute;
+  right: 60px;
+  bottom: -60px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  pointer-events: none;
 }
 
 .welcome-left {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-1);
+  position: relative;
+  z-index: 1;
 }
 
 .welcome-date {
-  font-size: var(--text-base);
-  color: rgba(255,255,255,0.8);
+  font-size: var(--text-sm);
+  color: rgba(255,255,255,0.75);
 }
 
 .welcome-greeting {
@@ -791,6 +821,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  position: relative;
+  z-index: 1;
 }
 
 .last-updated {
