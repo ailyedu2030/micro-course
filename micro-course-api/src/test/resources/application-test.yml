@@ -1,4 +1,8 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
   datasource:
     url: ${TEST_DB_URL:jdbc:postgresql://localhost:5433/micro_course_test}
     username: postgres
@@ -17,6 +21,10 @@ jwt:
   secret: test-secret-key-for-integration-tests-must-be-at-least-32-chars
   expiration: 7200000
   refresh-expiration: 604800000
+
+video:
+  sign:
+    secret: test-secret-key-for-integration-tests-must-be-at-least-32-chars
 
 logging:
   level:
