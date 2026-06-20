@@ -67,7 +67,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCartStore } from '@/store/cart'
 import { useUserStore } from '@/store/user'
 import { createOrder, payOrder } from '@/api/order'
-import { enroll } from '@/api/enrollment'
 import { Wallet } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -88,22 +87,27 @@ async function handleSubmit() {
   if (!store.hasItems) return
   submitting.value = true
   try {
-    for (const item of store.items) {
-      const { data: order } = await createOrder({ courseId: item.courseId })
-      if (order.status !== 'PAID') {
-        await payOrder(order.id, paymentMethod.value)
+    const items = [...store.items]
+    for (const item of items) {
+      try {
+        const { data: order } = await createOrder({ courseId: item.courseId })
+        if (order.status !== 'PAID') {
+          await payOrder(order.id, paymentMethod.value)
+        }
+        store.removeItem(item.courseId)
+      } catch (e) {
+        if (e?.response?.data?.code === 8002) {
+          ElMessage.success(`「${item.title}」已拥有，跳过`)
+          store.removeItem(item.courseId)
+        } else {
+          ElMessage.error(`「${item.title}」支付失败`)
+        }
       }
     }
-    paid.value = true
-    store.clear()
-    ElMessage.success('支付成功！所有课程已开通')
-    setTimeout(() => router.push('/student/my-courses'), 1500)
-  } catch (e) {
-    if (e?.response?.data?.code === 8002) {
-      ElMessage.success('课程已拥有，跳过')
-      store.removeItem(item?.courseId)
-    } else {
-      ElMessage.error('支付失败，请重试')
+    if (store.count === 0) {
+      paid.value = true
+      ElMessage.success('全部处理完成！')
+      setTimeout(() => router.push('/student/my-courses'), 1500)
     }
   } finally {
     submitting.value = false
