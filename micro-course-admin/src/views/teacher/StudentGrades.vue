@@ -223,6 +223,7 @@ echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
 const route = useRoute()
 const userStore = useUserStore()
+const isTeacher = computed(() => userStore.role === 'TEACHER')
 
 // 加载状态
 const loading = ref(false)
@@ -268,15 +269,18 @@ const isGraded = computed(() => currentStudent.value?.score != null)
 // 获取课程列表（初始加载小批量）
 async function fetchCourses() {
   try {
-    const teacherId = userStore.userInfo?.id
-    const { data } = await getCourses({ size: 20, teacherId })
+    const params = { size: 20 }
+    if (isTeacher.value) params.teacherId = userStore.userInfo?.id
+    const { data } = await getCourses(params)
     courseOptions.value = data.items || []
     if (route.query.courseId) {
       searchForm.courseId = Number(route.query.courseId)
       // 确保路由指定的课程在选项中
       const exists = courseOptions.value.some(c => c.id === searchForm.courseId)
       if (!exists) {
-        const { data: extra } = await getCourses({ size: 1, teacherId, courseId: searchForm.courseId })
+        const p2 = { size: 1, courseId: searchForm.courseId }
+        if (isTeacher.value) p2.teacherId = userStore.userInfo?.id
+        const { data: extra } = await getCourses(p2)
         const extraItems = extra.items || []
         courseOptions.value = [...courseOptions.value, ...extraItems]
       }
@@ -295,8 +299,9 @@ async function searchCourses(keyword) {
   }
   courseLoading.value = true
   try {
-    const teacherId = userStore.userInfo?.id
-    const { data } = await getCourses({ size: 20, teacherId, keyword })
+    const params = { size: 20, keyword }
+    if (isTeacher.value) params.teacherId = userStore.userInfo?.id
+    const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
     courseOptions.value = []
