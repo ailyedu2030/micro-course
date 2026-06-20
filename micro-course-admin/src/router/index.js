@@ -35,7 +35,7 @@ const routes = [
   { path: '/reviews', name: 'ReviewManagement', component: () => import('../views/admin/ReviewsManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/discussions/:id', name: 'DiscussionDetail', component: () => import('../views/courses/DiscussionDetail.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/notifications', name: 'NotificationList', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true } },
-  { path: '/courses/review', name: 'CourseReview', component: () => import('../views/courses/CourseReviewList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
+  { path: '/courses/review', name: 'CourseApproval', component: () => import('../views/courses/CourseApproval.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/bundles', name: 'BundleList', component: () => import('../views/courses/BundleList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
 
   { path: '/admin', redirect: '/admin/dashboard' },
