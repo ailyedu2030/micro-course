@@ -1,28 +1,17 @@
-# =============================================================================
-# Dockerfile · 微课管理平台后端 API
-# 多阶段构建: 编译 → 运行
-# =============================================================================
-
-# ---- Stage 1: 编译 ----
-FROM maven:3.9-eclipse-temurin-17 AS builder
-WORKDIR /build
-COPY pom.xml .
-RUN mvn dependency:go-offline -q
-
-COPY src/ src/
-RUN mvn package -DskipTests -q
-
-# ---- Stage 2: 运行 ----
-FROM eclipse-temurin:17-jre
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
-COPY --from=builder /build/target/*.jar app.jar
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY src ./src
+RUN mvn package -DskipTests -B
 
+FROM eclipse-temurin:17-jre-alpine
+RUN addgroup -S microcourse && adduser -S microcourse -G microcourse
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+RUN mkdir -p /data/videos /app/uploads && chown -R microcourse:microcourse /app /data
+USER microcourse
 EXPOSE 8080
-
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -sf http://localhost:8080/api-docs/v3/api-docs > /dev/null || exit 1
-
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -qO- http://localhost:8080/api/admin/stats/health || exit 1
+ENTRYPOINT ["java", "-jar", "app.jar"]
