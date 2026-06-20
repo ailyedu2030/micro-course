@@ -65,6 +65,14 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程未发布，无法购买");
         }
 
+        // 幂等性: 存在同一课程的 PENDING 订单时直接返回已有订单
+        LambdaQueryWrapper<Order> pendingWrapper = new LambdaQueryWrapper<>();
+        pendingWrapper.eq(Order::getUserId, userId)
+                .eq(Order::getCourseId, courseId)
+                .eq(Order::getStatus, "PENDING");
+        Order existing = orderRepository.selectOne(pendingWrapper);
+        if (existing != null) return toVO(existing);
+
         BigDecimal price = course.getPrice();
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
             autoEnroll(userId, courseId);
