@@ -1046,7 +1046,7 @@ const togglePlay = () => {
   const video = videoRef.value
   if (!video) return
   if (video.paused) {
-    video.play()
+    video.play().catch(() => {})
     isPlaying.value = true
   } else {
     video.pause()
