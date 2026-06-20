@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -98,6 +97,9 @@ public class CourseBundleServiceImpl implements CourseBundleService {
     @Override
     public PageResult<BundleVO> page(int page, int size) {
         LambdaQueryWrapper<CourseBundle> wrapper = new LambdaQueryWrapper<>();
+        if (!SecurityUtil.isAdmin()) {
+            wrapper.eq(CourseBundle::getCreatorId, SecurityUtil.getCurrentUserId());
+        }
         wrapper.orderByDesc(CourseBundle::getCreatedAt);
         IPage<CourseBundle> ipage = bundleRepository.selectPage(new Page<>(page + 1, size), wrapper);
 

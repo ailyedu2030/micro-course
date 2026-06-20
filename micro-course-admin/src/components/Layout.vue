@@ -121,7 +121,7 @@
             <el-icon><Edit /></el-icon>
             <template #title>练习管理</template>
           </el-menu-item>
-          <el-menu-item index="/teacher/bundles" v-if="userStore.role === 'TEACHER'">
+          <el-menu-item index="/bundles" v-if="userStore.role === 'TEACHER'">
             <el-icon><FolderOpened /></el-icon>
             <template #title>套件管理</template>
           </el-menu-item>

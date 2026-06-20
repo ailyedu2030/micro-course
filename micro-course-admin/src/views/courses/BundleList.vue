@@ -99,6 +99,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import { getBundles, getBundleById, createBundle, addBundleCourse, removeBundleCourse, deleteBundle } from '@/api/bundle'
 import { getCourses } from '@/api/course'
 
@@ -168,7 +169,10 @@ const openDetail = async (row) => {
   try {
     const { data } = await getBundleById(row.id)
     bundleItems.value = data.items || []
-    const { data: coursesData } = await getCourses({ size: 200 })
+    const userStore = useUserStore()
+    const params = { size: 200 }
+    if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
+    const { data: coursesData } = await getCourses(params)
     const existingIds = new Set(bundleItems.value.map(i => i.courseId))
     availableCourses.value = (coursesData.items || []).filter(c => !existingIds.has(c.id))
     itemDialog.value = true

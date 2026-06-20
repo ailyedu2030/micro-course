@@ -9,46 +9,64 @@
     <el-breadcrumb separator="→" style="margin-bottom:20px">
       <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>题目列表</el-breadcrumb-item>
+      <el-breadcrumb-item>题库管理</el-breadcrumb-item>
     </el-breadcrumb>
 
-    <!-- 顶栏筛选卡 -->
-    <el-card class="search-card filter-card" shadow="never">
-      <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200">
-            <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="题型">
-          <el-select v-model="searchForm.questionType" placeholder="请选择题型" clearable class="filter-input-w140">
-            <el-option label="单选题" value="SINGLE_CHOICE" />
-            <el-option label="多选题" value="MULTIPLE_CHOICE" />
-            <el-option label="判断题" value="TRUE_FALSE" />
-            <el-option label="简答题" value="SHORT_ANSWER" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="难度">
-          <el-select v-model="searchForm.difficulty" placeholder="请选择难度" clearable class="filter-input-w120">
-            <el-option label="简单" value="EASY" />
-            <el-option label="中等" value="MEDIUM" />
-            <el-option label="困难" value="HARD" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="filter-input-w160">
-            <el-option v-for="cat in categoryOptions" :key="cat.id" :label="cat.name" :value="cat.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="题目内容" clearable class="filter-input-w160" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
+    <!-- 课程选择卡 -->
+    <el-card class="course-select-card" shadow="never">
+      <div class="course-select-header">
+        <span class="course-select-label">选择课程</span>
+        <el-select v-model="selectedCourseId" placeholder="请先选择课程" size="large" clearable filterable class="course-select-input" @change="onCourseChange">
+          <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
+        </el-select>
+      </div>
     </el-card>
+
+    <!-- 未选课程时的提示 -->
+    <el-card v-if="!selectedCourse" class="empty-card" shadow="never">
+      <el-empty description="请先在上方选择一个课程" />
+    </el-card>
+
+    <!-- 已选课程：筛选 + 题目列表 -->
+    <template v-if="selectedCourse">
+      <!-- 当前课程信息 -->
+      <div class="course-info-bar">
+        <el-tag type="primary" size="large" effect="plain" class="course-tag">{{ selectedCourse.title }}</el-tag>
+        <span class="course-info-hint">题库管理</span>
+      </div>
+
+      <!-- 搜索筛选卡 -->
+      <el-card class="search-card filter-card" shadow="never">
+        <el-form :inline="true" :model="searchForm" @submit.prevent>
+          <el-form-item label="题型">
+            <el-select v-model="searchForm.questionType" placeholder="请选择题型" clearable class="filter-input-w140">
+              <el-option label="单选题" value="SINGLE_CHOICE" />
+              <el-option label="多选题" value="MULTIPLE_CHOICE" />
+              <el-option label="判断题" value="TRUE_FALSE" />
+              <el-option label="简答题" value="SHORT_ANSWER" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="难度">
+            <el-select v-model="searchForm.difficulty" placeholder="请选择难度" clearable class="filter-input-w120">
+              <el-option label="简单" value="EASY" />
+              <el-option label="中等" value="MEDIUM" />
+              <el-option label="困难" value="HARD" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="分类">
+            <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="filter-input-w160">
+              <el-option v-for="cat in categoryOptions" :key="cat.id" :label="cat.name" :value="cat.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键字">
+            <el-input v-model="searchForm.keyword" placeholder="题目内容" clearable class="filter-input-w160" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
 
     <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
@@ -61,15 +79,15 @@
               :before-upload="handleImportExcel"
               accept=".xlsx,.xls"
               class="upload-inline">
-              <el-button type="success" size="small">导入Excel</el-button>
+              <el-button type="success" size="small" :disabled="!selectedCourse">导入Excel</el-button>
             </el-upload>
             <el-button type="warning" size="small" @click="handleExportExcel">导出Excel</el-button>
-            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增题目</el-button>
+            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" :disabled="!selectedCourse" @click="handleCreate">新增题目</el-button>
           </div>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无题目数据" />
+      <el-empty v-else-if="tableData.length === 0" description="当前课程暂无题目" />
       <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="questionType" label="题型" width="120" align="center">
@@ -119,10 +137,17 @@
           @current-change="handlePageChange" aria-label="分页导航" />
       </div>
     </el-card>
+    </template>
 
     <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
+        <el-form-item label="所属课程">
+          <el-tag type="primary" effect="plain">{{ selectedCourse?.title }}</el-tag>
+        </el-form-item>
+        <el-form-item v-if="selectedCourse?.categoryName" label="课程分类">
+          <el-tag type="info" effect="plain">{{ selectedCourse.categoryName }}</el-tag>
+        </el-form-item>
         <el-form-item label="题型" prop="questionType">
           <el-select v-model="formData.questionType" placeholder="请选择题型" class="full-width">
             <el-option label="单选题" value="SINGLE_CHOICE" />
@@ -136,11 +161,6 @@
             <el-option label="简单" value="EASY" />
             <el-option label="中等" value="MEDIUM" />
             <el-option label="困难" value="HARD" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="分类" prop="categoryId">
-          <el-select v-model="formData.categoryId" placeholder="请选择分类" class="full-width">
-            <el-option v-for="cat in categoryOptions" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="题目内容" prop="content">
@@ -172,8 +192,8 @@
         <!-- 判断题答案 -->
         <el-form-item v-if="formData.questionType === 'TRUE_FALSE'" label="正确答案" prop="answer">
           <el-radio-group v-model="formData.answer">
-            <el-radio label="true">正确</el-radio>
-            <el-radio label="false">错误</el-radio>
+            <el-radio value="true">正确</el-radio>
+            <el-radio value="false">错误</el-radio>
           </el-radio-group>
         </el-form-item>
         <!-- 填空题答案 -->
@@ -221,13 +241,33 @@ const size = ref(10)
 const categoryOptions = ref([])
 const courseOptions = ref([])
 
+const selectedCourseId = ref('')
+const selectedCourse = computed(() => {
+  if (!selectedCourseId.value) return null
+  return courseOptions.value.find(c => c.id === selectedCourseId.value) || null
+})
+
 const searchForm = reactive({
-  courseId: '',
   questionType: '',
   difficulty: '',
   categoryId: '',
   keyword: ''
 })
+
+function onCourseChange(val) {
+  if (!val) {
+    selectedCourseId.value = ''
+    tableData.value = []
+    totalElements.value = 0
+    return
+  }
+  searchForm.questionType = ''
+  searchForm.difficulty = ''
+  searchForm.categoryId = ''
+  searchForm.keyword = ''
+  page.value = 1
+  fetchData()
+}
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增题目')
@@ -270,7 +310,9 @@ const fetchCategoryOptions = async () => {
 
 const fetchCourseOptions = async () => {
   try {
-    const { data } = await getCourses({ size: 1000 })
+    const params = { size: 1000 }
+    if (userRole.value === 'TEACHER') params.teacherId = userStore.userId
+    const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
     ElMessage.error('获取课程列表失败')
@@ -278,12 +320,12 @@ const fetchCourseOptions = async () => {
 }
 
 const handleImportExcel = async (file) => {
-  if (!searchForm.courseId) {
+  if (!selectedCourse.value) {
     ElMessage.warning('请先选择课程再导入题目')
     return false
   }
   try {
-    const { data } = await batchImportQuestion(file, searchForm.courseId)
+    const { data } = await batchImportQuestion(file, selectedCourse.value.id)
     if (data.successCount > 0) {
       ElMessage.success(`导入成功 ${data.successCount} 条${data.failCount > 0 ? `，失败 ${data.failCount} 条` : ''}`)
     } else {
@@ -309,7 +351,7 @@ const handleExportExcel = async () => {
     // Fetch ALL filtered data (remove pagination limits by using a large size)
     const params = {
       size: 10000,
-      courseId: searchForm.courseId || undefined,
+      courseId: selectedCourseId.value || undefined,
       questionType: searchForm.questionType || undefined,
       difficulty: searchForm.difficulty || undefined,
       categoryId: searchForm.categoryId || undefined,
@@ -361,12 +403,13 @@ const handlePreview = (row) => {
 }
 
 const fetchData = async () => {
+  if (!selectedCourseId.value) return
   loading.value = true
   try {
     const params = {
       page: page.value - 1,
       size: size.value,
-      courseId: searchForm.courseId || undefined,
+      courseId: selectedCourseId.value,
       questionType: searchForm.questionType || undefined,
       difficulty: searchForm.difficulty || undefined,
       categoryId: searchForm.categoryId || undefined,
@@ -388,7 +431,6 @@ const handleSearch = () => {
 }
 
 const handleReset = () => {
-  searchForm.courseId = ''
   searchForm.questionType = ''
   searchForm.difficulty = ''
   searchForm.categoryId = ''
@@ -407,6 +449,7 @@ const handlePageChange = () => {
 }
 
 const handleCreate = () => {
+  if (!selectedCourse.value) return
   dialogTitle.value = '新增题目'
   isEdit.value = false
   currentId.value = null
@@ -477,7 +520,7 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
-  if (!formRef.value) return
+  if (!formRef.value || !selectedCourse.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return
     submitLoading.value = true
@@ -487,7 +530,12 @@ const handleSubmit = async () => {
         const correctOptions = optionList.value.filter(o => o.correct).map(o => o.label)
         formData.answer = correctOptions.join(',')
       }
-      const payload = { ...formData }
+      const payload = {
+        ...formData,
+        courseId: selectedCourse.value.id,
+        categoryId: selectedCourse.value.categoryId || null,
+        teacherId: userStore.userId
+      }
       if (formData.questionType === 'MULTIPLE_CHOICE' && formData.partialScore) {
         payload.partialScore = formData.partialScoreRule
       } else {
@@ -517,7 +565,6 @@ const handleDialogClose = () => {
 onMounted(() => {
   fetchCategoryOptions()
   fetchCourseOptions()
-  fetchData()
 })
 </script>
 
@@ -530,8 +577,60 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.filter-card {
+.course-select-card {
+  margin-bottom: var(--space-4);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+}
+
+.course-select-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.course-select-label {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+}
+
+.course-select-input {
+  flex: 1;
+  max-width: 420px;
+}
+
+.empty-card {
   margin-bottom: var(--space-6);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+}
+
+.course-info-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.course-tag {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.course-info-hint {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+.filter-card {
+  margin-bottom: var(--space-4);
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
