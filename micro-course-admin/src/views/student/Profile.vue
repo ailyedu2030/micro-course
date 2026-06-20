@@ -134,121 +134,123 @@
         </el-col>
       </el-row>
 
-      <!-- 成就 -->
-      <el-card class="profile-card achievement-card" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>我的成就</span>
-            <el-button type="primary" link @click="$router.push('/student/achievements')">
-              查看全部 <el-icon><ArrowRight /></el-icon>
-            </el-button>
-          </div>
-        </template>
-        <div v-loading="badgeLoading" :aria-busy="badgeLoading" class="badge-grid">
-          <div
-            v-for="badge in allBadges"
-            :key="badge.badgeType"
-            class="badge-item student-card-item"
-            :class="{ 'badge-locked': !badge.earnedAt }"
-          >
-            <div class="badge-icon">
-              <el-icon v-if="badge.earnedAt" color="var(--role-primary)" :size="32"><Star /></el-icon>
-              <el-icon v-else color="var(--el-text-color-placeholder)" :size="32"><Lock /></el-icon>
-            </div>
-            <div class="badge-name">{{ badge.badgeName }}</div>
-            <div v-if="badge.earnedAt" class="badge-date">{{ badge.earnedAt }}</div>
-            <div v-else class="badge-tip">未解锁</div>
-          </div>
-        </div>
-        <el-empty v-if="!badgeLoading && allBadges.length === 0" description="暂无成就数据" :image-size="60" />
-      </el-card>
-
-      <!-- 错题集 -->
-      <el-card class="profile-card wrong-questions-card" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>我的错题</span>
-          </div>
-        </template>
-
-        <div class="wrong-toolbar">
-          <el-select v-model="selectedCourseId" placeholder="选择课程筛选" clearable @change="fetchWrongQuestions">
-            <el-option
-              v-for="course in myCourses"
-              :key="course.courseId"
-              :label="course.courseTitle"
-              :value="course.courseId"
-            />
-          </el-select>
-        </div>
-
-        <div class="wrong-table-wrapper">
-          <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="data-table wrong-questions-table">
-            <el-table-column prop="questionContent" label="错题内容" min-width="200">
-              <template #default="{ row }">
-                <span>{{ row.questionContent || row.content }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="courseTitle" label="所属课程" width="150" />
-            <el-table-column prop="chapterTitle" label="所属章节" width="150" />
-            <el-table-column prop="wrongCount" label="错误次数" width="100" align="center" />
-            <el-table-column prop="correctAnswer" label="正确答案" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag type="success" size="small">{{ row.correctAnswer }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="createdAt" label="入库时间" width="170" />
-            <el-table-column label="操作" width="100" align="center">
-              <template #default="{ row }">
-                <el-button
-                  v-if="row.chapterId"
-                  type="primary"
-                  size="small"
-                  text
-                  @click="handleReviewVideo(row)"
-                >
-                  重温视频
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-        <el-empty v-if="!wrongLoading && wrongQuestions.length === 0" description="暂无错题记录，继续保持！" />
-      </el-card>
-
-      <!-- 我的证书 -->
-      <el-card class="profile-card certificate-card" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>我的证书</span>
-          </div>
-        </template>
-
-        <div v-loading="certLoading" :aria-busy="certLoading" class="cert-grid">
-          <div
-            v-for="cert in certificates"
-            :key="cert.id"
-            class="cert-item"
-          >
-            <div class="cert-icon">
-              <el-icon color="var(--role-primary)" :size="40"><Medal /></el-icon>
-            </div>
-            <div class="cert-info">
-              <div class="cert-title">{{ cert.courseTitle }}</div>
-              <div class="cert-meta">
-                <span class="cert-date">颁发于 {{ formatDate(cert.issuedAt) }}</span>
-                <span class="cert-code">{{ cert.certCode }}</span>
-              </div>
-            </div>
-            <div class="cert-actions">
-              <el-button type="primary" size="small" @click="handleViewCertificate(cert)">
-                查看证书
+      <template v-if="isStudent">
+        <!-- 成就 -->
+        <el-card class="profile-card achievement-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>我的成就</span>
+              <el-button type="primary" link @click="$router.push('/student/achievements')">
+                查看全部 <el-icon><ArrowRight /></el-icon>
               </el-button>
             </div>
+          </template>
+          <div v-loading="badgeLoading" :aria-busy="badgeLoading" class="badge-grid">
+            <div
+              v-for="badge in allBadges"
+              :key="badge.badgeType"
+              class="badge-item student-card-item"
+              :class="{ 'badge-locked': !badge.earnedAt }"
+            >
+              <div class="badge-icon">
+                <el-icon v-if="badge.earnedAt" color="var(--role-primary)" :size="32"><Star /></el-icon>
+                <el-icon v-else color="var(--el-text-color-placeholder)" :size="32"><Lock /></el-icon>
+              </div>
+              <div class="badge-name">{{ badge.badgeName }}</div>
+              <div v-if="badge.earnedAt" class="badge-date">{{ badge.earnedAt }}</div>
+              <div v-else class="badge-tip">未解锁</div>
+            </div>
           </div>
-        </div>
-        <el-empty v-if="!certLoading && certificates.length === 0" description="暂无证书记录，完成课程学习后可获得" :image-size="60" />
-      </el-card>
+          <el-empty v-if="!badgeLoading && allBadges.length === 0" description="暂无成就数据" :image-size="60" />
+        </el-card>
+
+        <!-- 错题集 -->
+        <el-card class="profile-card wrong-questions-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>我的错题</span>
+            </div>
+          </template>
+
+          <div class="wrong-toolbar">
+            <el-select v-model="selectedCourseId" placeholder="选择课程筛选" clearable @change="fetchWrongQuestions">
+              <el-option
+                v-for="course in myCourses"
+                :key="course.courseId"
+                :label="course.courseTitle"
+                :value="course.courseId"
+              />
+            </el-select>
+          </div>
+
+          <div class="wrong-table-wrapper">
+            <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="data-table wrong-questions-table">
+              <el-table-column prop="questionContent" label="错题内容" min-width="200">
+                <template #default="{ row }">
+                  <span>{{ row.questionContent || row.content }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="courseTitle" label="所属课程" width="150" />
+              <el-table-column prop="chapterTitle" label="所属章节" width="150" />
+              <el-table-column prop="wrongCount" label="错误次数" width="100" align="center" />
+              <el-table-column prop="correctAnswer" label="正确答案" width="100" align="center">
+                <template #default="{ row }">
+                  <el-tag type="success" size="small">{{ row.correctAnswer }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createdAt" label="入库时间" width="170" />
+              <el-table-column label="操作" width="100" align="center">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.chapterId"
+                    type="primary"
+                    size="small"
+                    text
+                    @click="handleReviewVideo(row)"
+                  >
+                    重温视频
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+          <el-empty v-if="!wrongLoading && wrongQuestions.length === 0" description="暂无错题记录，继续保持！" />
+        </el-card>
+
+        <!-- 我的证书 -->
+        <el-card class="profile-card certificate-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>我的证书</span>
+            </div>
+          </template>
+
+          <div v-loading="certLoading" :aria-busy="certLoading" class="cert-grid">
+            <div
+              v-for="cert in certificates"
+              :key="cert.id"
+              class="cert-item"
+            >
+              <div class="cert-icon">
+                <el-icon color="var(--role-primary)" :size="40"><Medal /></el-icon>
+              </div>
+              <div class="cert-info">
+                <div class="cert-title">{{ cert.courseTitle }}</div>
+                <div class="cert-meta">
+                  <span class="cert-date">颁发于 {{ formatDate(cert.issuedAt) }}</span>
+                  <span class="cert-code">{{ cert.certCode }}</span>
+                </div>
+              </div>
+              <div class="cert-actions">
+                <el-button type="primary" size="small" @click="handleViewCertificate(cert)">
+                  查看证书
+                </el-button>
+              </div>
+            </div>
+          </div>
+          <el-empty v-if="!certLoading && certificates.length === 0" description="暂无证书记录，完成课程学习后可获得" :image-size="60" />
+        </el-card>
+      </template>
     </template>
 
     <!-- 移动端布局 -->
@@ -353,115 +355,117 @@
         </el-form>
       </el-card>
 
-      <!-- 成就 -->
-      <el-card class="profile-card achievement-card" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>我的成就</span>
-          </div>
-        </template>
-        <div v-loading="badgeLoading" :aria-busy="badgeLoading" class="badge-grid badge-grid--mobile">
-          <div
-            v-for="badge in allBadges"
-            :key="badge.badgeType"
-            class="badge-item student-card-item"
-            :class="{ 'badge-locked': !badge.earnedAt }"
-          >
-            <div class="badge-icon">
-              <el-icon v-if="badge.earnedAt" color="var(--role-primary)" :size="28"><Star /></el-icon>
-              <el-icon v-else color="var(--el-text-color-placeholder)" :size="28"><Lock /></el-icon>
+      <template v-if="isStudent">
+        <!-- 成就 -->
+        <el-card class="profile-card achievement-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>我的成就</span>
             </div>
-            <div class="badge-name">{{ badge.badgeName }}</div>
-            <div v-if="badge.earnedAt" class="badge-date">{{ badge.earnedAt }}</div>
-            <div v-else class="badge-tip">未解锁</div>
+          </template>
+          <div v-loading="badgeLoading" :aria-busy="badgeLoading" class="badge-grid badge-grid--mobile">
+            <div
+              v-for="badge in allBadges"
+              :key="badge.badgeType"
+              class="badge-item student-card-item"
+              :class="{ 'badge-locked': !badge.earnedAt }"
+            >
+              <div class="badge-icon">
+                <el-icon v-if="badge.earnedAt" color="var(--role-primary)" :size="28"><Star /></el-icon>
+                <el-icon v-else color="var(--el-text-color-placeholder)" :size="28"><Lock /></el-icon>
+              </div>
+              <div class="badge-name">{{ badge.badgeName }}</div>
+              <div v-if="badge.earnedAt" class="badge-date">{{ badge.earnedAt }}</div>
+              <div v-else class="badge-tip">未解锁</div>
+            </div>
           </div>
-        </div>
-        <el-empty v-if="!badgeLoading && allBadges.length === 0" description="暂无成就数据" :image-size="60" />
-      </el-card>
+          <el-empty v-if="!badgeLoading && allBadges.length === 0" description="暂无成就数据" :image-size="60" />
+        </el-card>
 
-      <!-- 错题集 -->
-      <el-card class="profile-card wrong-questions-card" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>我的错题</span>
+        <!-- 错题集 -->
+        <el-card class="profile-card wrong-questions-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>我的错题</span>
+            </div>
+          </template>
+
+          <div class="wrong-toolbar">
+            <el-select v-model="selectedCourseId" placeholder="选择课程筛选" clearable @change="fetchWrongQuestions" class="course-select">
+              <el-option
+                v-for="course in myCourses"
+                :key="course.courseId"
+                :label="course.courseTitle"
+                :value="course.courseId"
+              />
+            </el-select>
           </div>
-        </template>
 
-        <div class="wrong-toolbar">
-          <el-select v-model="selectedCourseId" placeholder="选择课程筛选" clearable @change="fetchWrongQuestions" class="course-select">
-            <el-option
-              v-for="course in myCourses"
-              :key="course.courseId"
-              :label="course.courseTitle"
-              :value="course.courseId"
-            />
-          </el-select>
-        </div>
+          <div class="wrong-table-wrapper">
+            <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="300" class="data-table wrong-questions-table">
+              <el-table-column prop="questionContent" label="错题内容" min-width="150">
+                <template #default="{ row }">
+                  <span>{{ row.questionContent || row.content }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="courseTitle" label="课程" width="100" show-overflow-tooltip />
+              <el-table-column prop="correctAnswer" label="答案" width="70" align="center">
+                <template #default="{ row }">
+                  <el-tag type="success" size="small">{{ row.correctAnswer }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="80" align="center">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.chapterId"
+                    type="primary"
+                    size="small"
+                    text
+                    @click="handleReviewVideo(row)"
+                  >
+                    重温
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+          <el-empty v-if="!wrongLoading && wrongQuestions.length === 0" description="暂无错题记录，继续保持！" />
+        </el-card>
 
-        <div class="wrong-table-wrapper">
-          <el-table v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="300" class="data-table wrong-questions-table">
-            <el-table-column prop="questionContent" label="错题内容" min-width="150">
-              <template #default="{ row }">
-                <span>{{ row.questionContent || row.content }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="courseTitle" label="课程" width="100" show-overflow-tooltip />
-            <el-table-column prop="correctAnswer" label="答案" width="70" align="center">
-              <template #default="{ row }">
-                <el-tag type="success" size="small">{{ row.correctAnswer }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="80" align="center">
-              <template #default="{ row }">
-                <el-button
-                  v-if="row.chapterId"
-                  type="primary"
-                  size="small"
-                  text
-                  @click="handleReviewVideo(row)"
-                >
-                  重温
+        <!-- 我的证书 -->
+        <el-card class="profile-card certificate-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>我的证书</span>
+            </div>
+          </template>
+
+          <div v-loading="certLoading" :aria-busy="certLoading" class="cert-list--mobile">
+            <div
+              v-for="cert in certificates"
+              :key="cert.id"
+              class="cert-item cert-item--mobile"
+            >
+              <div class="cert-icon">
+                <el-icon color="var(--role-primary)" :size="32"><Medal /></el-icon>
+              </div>
+              <div class="cert-info">
+                <div class="cert-title">{{ cert.courseTitle }}</div>
+                <div class="cert-meta">
+                  <span class="cert-date">颁发于 {{ formatDate(cert.issuedAt) }}</span>
+                  <span class="cert-code">{{ cert.certCode }}</span>
+                </div>
+              </div>
+              <div class="cert-actions">
+                <el-button type="primary" size="small" @click="handleViewCertificate(cert)">
+                  查看
                 </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-        <el-empty v-if="!wrongLoading && wrongQuestions.length === 0" description="暂无错题记录，继续保持！" />
-      </el-card>
-
-      <!-- 我的证书 -->
-      <el-card class="profile-card certificate-card" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>我的证书</span>
-          </div>
-        </template>
-
-        <div v-loading="certLoading" :aria-busy="certLoading" class="cert-list--mobile">
-          <div
-            v-for="cert in certificates"
-            :key="cert.id"
-            class="cert-item cert-item--mobile"
-          >
-            <div class="cert-icon">
-              <el-icon color="var(--role-primary)" :size="32"><Medal /></el-icon>
-            </div>
-            <div class="cert-info">
-              <div class="cert-title">{{ cert.courseTitle }}</div>
-              <div class="cert-meta">
-                <span class="cert-date">颁发于 {{ formatDate(cert.issuedAt) }}</span>
-                <span class="cert-code">{{ cert.certCode }}</span>
               </div>
             </div>
-            <div class="cert-actions">
-              <el-button type="primary" size="small" @click="handleViewCertificate(cert)">
-                查看
-              </el-button>
-            </div>
           </div>
-        </div>
-        <el-empty v-if="!certLoading && certificates.length === 0" description="暂无证书记录，完成课程学习后可获得" :image-size="60" />
-      </el-card>
+          <el-empty v-if="!certLoading && certificates.length === 0" description="暂无证书记录，完成课程学习后可获得" :image-size="60" />
+        </el-card>
+      </template>
     </template>
   </div>
 </template>
@@ -481,6 +485,7 @@ import { ArrowRight } from '@element-plus/icons-vue'
 const router = useRouter()
 
 const userStore = useUserStore()
+const isStudent = computed(() => userStore.role === 'STUDENT')
 
 const profileFormRef = ref(null)
 const passwordFormRef = ref(null)

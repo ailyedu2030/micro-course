@@ -11,7 +11,7 @@ const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/auth/Login.vue'), meta: { requiresAuth: false } },
   { path: '/', name: 'Home', redirect: '/admin/dashboard' },
   // P0-2: 从 userStore 读取角色（beforeEach 中已填充），避免与 sessionStorage 双源不一致
-  { path: '/profile', redirect: () => { const role = useUserStore().role || ''; if (role === 'STUDENT') return '/student/profile'; return getRoleHomePage(role); } },
+  { path: '/profile', name: 'Profile', component: () => import('../views/student/Profile.vue'), meta: { requiresAuth: true } },
   { path: '/departments', name: 'DepartmentList', component: () => import('../views/departments/DepartmentList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/majors', name: 'MajorList', component: () => import('../views/majors/MajorList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/classes', name: 'ClassList', component: () => import('../views/classes/ClassList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
