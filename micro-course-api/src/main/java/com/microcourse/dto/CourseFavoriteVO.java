@@ -8,6 +8,8 @@ public class CourseFavoriteVO {
     private Long userId;
     private Long courseId;
     private String courseTitle;
+    private String courseName;
+    private String studentName;
     /** 课程封面 URL（P0-2: 支持前端"已收藏"Tab 直接展示未选课的收藏课程封面） */
     private String coverUrl;
     /** 教师姓名（P0-2: 支持前端"已收藏"Tab 直接展示未选课的收藏课程教师） */
@@ -24,6 +26,10 @@ public class CourseFavoriteVO {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public String getCourseTitle() { return courseTitle; }
     public void setCourseTitle(String courseTitle) { this.courseTitle = courseTitle; }
+    public String getCourseName() { return courseName; }
+    public void setCourseName(String courseName) { this.courseName = courseName; }
+    public String getStudentName() { return studentName; }
+    public void setStudentName(String studentName) { this.studentName = studentName; }
     public String getCoverUrl() { return coverUrl; }
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
     public String getTeacherName() { return teacherName; }

@@ -44,7 +44,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     }
 
     @Override
-    @Cacheable(value = "adminSettingsByKey", key = "#key", sync = true)
+    @Cacheable(value = "adminSettingsByKey", key = "#key", unless = "#result == null")
     @Transactional(readOnly = true)
     public String getByKey(String key) {
         LambdaQueryWrapper<AdminSetting> wrapper = new LambdaQueryWrapper<>();

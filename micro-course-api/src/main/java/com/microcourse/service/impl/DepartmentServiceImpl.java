@@ -15,6 +15,7 @@ import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.repository.MajorRepository;
 import com.microcourse.service.DepartmentService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -60,6 +61,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public DepartmentVO create(DepartmentCreateRequest request) {
         Department department = new Department();
         department.setName(request.getName());
@@ -73,6 +75,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public DepartmentVO update(Long id, DepartmentUpdateRequest request) {
         Department department = departmentRepository.selectById(id);
         if (department == null) {
@@ -96,6 +99,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Department department = departmentRepository.selectById(id);
         if (department == null) {

@@ -84,11 +84,15 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public PageResult<UserVO> pageUsers(UserPageQuery query) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.like(query.getKeyword() != null, User::getUsername, query.getKeyword())
+        // LIKE 通配符转义,防 DF-002 LIKE 注入
+        String escapedKw = query.getKeyword() != null
+                ? query.getKeyword().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                : null;
+        wrapper.like(escapedKw != null, User::getUsername, escapedKw)
                 .or()
-                .like(query.getKeyword() != null, User::getRealName, query.getKeyword())
+                .like(escapedKw != null, User::getRealName, escapedKw)
                 .or()
-                .like(query.getKeyword() != null, User::getEmail, query.getKeyword());
+                .like(escapedKw != null, User::getEmail, escapedKw);
         wrapper.eq(query.getRole() != null, User::getRole, query.getRole());
         wrapper.eq(query.getStatus() != null, User::getStatus, query.getStatus());
         wrapper.eq(query.getDepartmentId() != null, User::getDepartmentId, query.getDepartmentId());
@@ -575,61 +579,31 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserVO convertToVO(User user) {
-        UserVO vo = new UserVO();
-        vo.setId(user.getId());
-        vo.setUsername(user.getUsername());
-        vo.setRealName(user.getRealName());
-        vo.setEmail(user.getEmail());
-        vo.setPhone(user.getPhone());
-        vo.setGender(user.getGender());
-        vo.setAvatar(user.getAvatar());
-        vo.setRole(user.getRole());
-        vo.setDepartmentId(user.getDepartmentId());
-        vo.setMajorId(user.getMajorId());
-        vo.setClassId(user.getClassId());
-        vo.setGrade(user.getGrade());
-        vo.setEnrollmentYear(user.getEnrollmentYear());
-        vo.setGraduationYear(user.getGraduationYear());
-        vo.setCasBound(user.getCasBound());
-        vo.setStudentNo(user.getStudentNo());
-        vo.setTeacherNo(user.getTeacherNo());
-        vo.setStatus(user.getStatus());
-        vo.setTeacherStatus(user.getTeacherStatus());
-        vo.setLastLoginAt(user.getLastLoginAt());
-        vo.setCreatedAt(user.getCreatedAt());
+        // N+1 修复：收集单用户的关联 ID 后批量查询，委托给 Map 版 convertToVO
+        Map<Long, Department> deptMap = new HashMap<>();
+        Map<Long, Major> majorMap = new HashMap<>();
+        Map<Long, Classes> classMap = new HashMap<>();
 
-        // 关联名称
         if (user.getDepartmentId() != null) {
             Department dept = departmentRepository.selectById(user.getDepartmentId());
             if (dept != null) {
-                vo.setDepartmentName(dept.getName());
+                deptMap.put(dept.getId(), dept);
             }
         }
         if (user.getMajorId() != null) {
             Major major = majorRepository.selectById(user.getMajorId());
             if (major != null) {
-                vo.setMajorName(major.getName());
+                majorMap.put(major.getId(), major);
             }
         }
         if (user.getClassId() != null) {
             Classes cls = classesRepository.selectById(user.getClassId());
             if (cls != null) {
-                vo.setClassName(cls.getName());
+                classMap.put(cls.getId(), cls);
             }
         }
 
-        // statusText
-        if (user.getStatus() != null) {
-            switch (user.getStatus()) {
-                case 0: vo.setStatusText("未激活"); break;
-                case 1: vo.setStatusText("正常"); break;
-                case 2: vo.setStatusText("禁用"); break;
-                case 3: vo.setStatusText("已删除"); break;
-                default: vo.setStatusText("未知");
-            }
-        }
-
-        return vo;
+        return convertToVO(user, deptMap, majorMap, classMap);
     }
 
     private UserVO convertToVO(User user, java.util.Map<Long, Department> deptMap,

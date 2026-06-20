@@ -18,6 +18,7 @@ import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.ClassService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -62,6 +63,7 @@ public class ClassServiceImpl implements ClassService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ClassVO create(ClassCreateRequest request) {
         Major major = majorRepository.selectById(request.getMajorId());
         if (major == null) {
@@ -89,6 +91,7 @@ public class ClassServiceImpl implements ClassService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ClassVO update(Long id, ClassUpdateRequest request) {
         Classes classes = classesRepository.selectById(id);
         if (classes == null) {
@@ -115,6 +118,7 @@ public class ClassServiceImpl implements ClassService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Classes classes = classesRepository.selectById(id);
         if (classes == null) {

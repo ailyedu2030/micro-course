@@ -90,4 +90,8 @@ public final class SecurityUtil {
             return false;
         }
     }
+
+    public static boolean isAdminOrAcademic() {
+        return isAdmin() || hasRole("ACADEMIC");
+    }
 }

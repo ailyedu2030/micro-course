@@ -272,7 +272,11 @@
                   :key="lesson.id"
                   class="lesson-item"
                   :class="{ active: currentLessonId === lesson.id, completed: lesson.status === 'COMPLETED' }"
+                  role="button"
+                  tabindex="0"
                   @click="goToLesson(lesson)"
+                  @keydown.enter="goToLesson(lesson)"
+                  @keydown.space.prevent="goToLesson(lesson)"
                 >
                   <!-- 状态图标 -->
                   <span class="lesson-status-icon">

@@ -40,7 +40,7 @@ public class UserController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
     public R<PageResult<UserVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) Long departmentId,

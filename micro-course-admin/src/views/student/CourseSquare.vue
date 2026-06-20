@@ -129,6 +129,11 @@
                       @error="handleImgError"
                     />
                     <el-tag type="warning" size="small" class="recommend-badge">推荐</el-tag>
+                    <span
+                      v-if="getCardTypeConfig(course.courseType)"
+                      class="course-type-badge"
+                      :style="{ background: getCardTypeConfig(course.courseType).typeColor }"
+                    >{{ getCardTypeConfig(course.courseType).typeLabel }}</span>
                     <el-tag
                       v-if="course.difficulty"
                       class="difficulty-chip"
@@ -138,6 +143,11 @@
                     >
                       {{ getDifficultyLabel(course.difficulty) }}
                     </el-tag>
+                    <span
+                      v-if="getCardTypeConfig(course.courseType)"
+                      class="course-type-badge"
+                      :style="{ background: getCardTypeConfig(course.courseType).typeColor }"
+                    >{{ getCardTypeConfig(course.courseType).typeLabel }}</span>
                   </div>
                   <div class="course-info">
                     <h3 class="course-title" :title="course.title">{{ course.title }}</h3>
@@ -165,7 +175,33 @@
       </div>
     </section>
 
-    <!-- ============ Main Content (75% / 25%) ============ -->
+    <!-- ============ 课程套件快捷入口 ============ -->
+    <section v-if="bundles.length > 0" class="bundle-strip">
+      <div class="bundle-strip-header">
+        <h3 class="section-title">课程套件</h3>
+        <el-button text type="primary" @click="goBundles">查看全部 →</el-button>
+      </div>
+      <div class="bundle-scroll">
+        <div v-for="b in bundles" :key="b.id" class="bundle-chip"
+          tabindex="0" role="button"
+          :aria-label="'课程套件：' + b.title"
+          @click="goBundle(b.id)"
+          @keydown.enter="goBundle(b.id)"
+          @keydown.space.prevent="goBundle(b.id)">
+          <div class="b-chip-icon">
+            <el-icon :size="20"><FolderOpened /></el-icon>
+          </div>
+          <div class="b-chip-info">
+            <span class="b-chip-title">{{ b.title }}</span>
+            <span class="b-chip-price" :class="{ free: b.isFree || !b.price }">
+              {{ b.isFree || !b.price ? '免费' : '¥' + b.price }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Main Content ============ -->
     <div class="main-content">
       <!-- 课程区 -->
       <main class="course-area" aria-busy="loading">
@@ -446,8 +482,11 @@ import {
 } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
 import { getCategories } from '@/api/course-category'
+import { getBundles } from '@/api/bundle'
+import { usePluginStore } from '@/store/plugins'
 
 const router = useRouter()
+const pluginStore = usePluginStore()
 
 // 状态
 const loading = ref(false)
@@ -459,6 +498,7 @@ const categoryList = ref([])
 const hotCourses = ref([])
 const newestCourses = ref([])
 const recommendedCourses = ref([])
+const bundles = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(12)
@@ -482,6 +522,11 @@ const DIFFICULTY_MAP = {
 }
 const getDifficultyLabel = (d) => DIFFICULTY_MAP[d]?.label || '全部'
 const getDifficultyType = (d) => DIFFICULTY_MAP[d]?.type || 'info'
+
+const getCardTypeConfig = (courseType) => {
+  if (!courseType || courseType === 'VIDEO') return null
+  return pluginStore.getCourseCardConfig(courseType)
+}
 
 // 学员数格式化（>1000 显示 k）
 const formatStudentCount = (n) => {
@@ -624,6 +669,16 @@ const handleCourseClick = (id) => {
   router.push(`/student/courses/${id}`)
 }
 
+const goBundle = (id) => router.push(`/student/bundles/${id}`)
+const goBundles = () => router.push('/student/bundles')
+
+const loadBundles = async () => {
+  try {
+    const { data } = await getBundles({ size: 6 })
+    bundles.value = data.items || []
+  } catch {}
+}
+
 // 封面图加载失败兜底：隐藏 img，露出底层占位符
 const handleImgError = (e) => {
   e.target.style.display = 'none'
@@ -653,11 +708,10 @@ onUnmounted(() => {
 })
 
 onMounted(async () => {
-  // 首屏优先：分类 + 课程列表并行
   await Promise.all([fetchCategories(), fetchCourses()])
-  // 次要内容延迟加载：侧栏 + 推荐并行
   fetchSideCourses()
   loadRecommended()
+  loadBundles()
 })
 </script>
 
@@ -925,6 +979,33 @@ onMounted(async () => {
   box-shadow: var(--shadow-chip);
   z-index: 2;
 }
+
+.course-type-badge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #fff;
+  z-index: 2;
+  line-height: 1.4;
+}
+
+.bundle-strip { margin: 0 auto 32px; max-width: var(--max-content-width, 1400px); padding: 0 20px; }
+.bundle-strip-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.bundle-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; }
+.bundle-chip {
+  flex: 0 0 240px; display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  background: #fff; border: 1px solid #ebeef5; border-radius: 12px; cursor: pointer;
+  transition: all .2s;
+}
+.bundle-chip:hover { border-color: var(--el-color-primary-light-3); box-shadow: 0 2px 12px rgba(0,0,0,.06); transform: translateY(-1px); }
+.b-chip-icon { width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #e6f4ff 0%, #d4edff 100%); display: flex; align-items: center; justify-content: center; color: var(--el-color-primary); flex-shrink: 0; }
+.b-chip-info { min-width: 0; }
+.b-chip-title { display: block; font-size: 14px; font-weight: 500; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.b-chip-price { font-size: 12px; color: #f56c6c; font-weight: 600; }
+.b-chip-price.free { color: #67c23a; }
 
 /* ================================================
    Course Grid & Card

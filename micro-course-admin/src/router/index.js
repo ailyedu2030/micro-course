@@ -35,6 +35,7 @@ const routes = [
   { path: '/discussions/:id', name: 'DiscussionDetail', component: () => import('../views/courses/DiscussionDetail.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/notifications', name: 'NotificationList', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true } },
   { path: '/courses/review', name: 'CourseReview', component: () => import('../views/courses/CourseReviewList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
+  { path: '/bundles', name: 'BundleList', component: () => import('../views/courses/BundleList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
 
   { path: '/admin', redirect: '/admin/dashboard' },
   // 管理后台路由
@@ -53,6 +54,7 @@ const routes = [
   // 教师端路由
   { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('../views/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/courses', name: 'TeacherCourseList', component: () => import('../views/courses/CourseList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/courses/:id/workspace', name: 'TeacherWorkspace', component: () => import('../views/teacher/workspace/TeacherWorkspace.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/videos', name: 'TeacherVideoList', component: () => import('../views/courses/VideoList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/exercises', name: 'TeacherExerciseList', component: () => import('../views/courses/ExerciseList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/discussions', name: 'TeacherDiscussions', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
@@ -78,6 +80,9 @@ const routes = [
   { path: '/student/exams', name: 'StudentExams', component: () => import('../views/student/Exams.vue'), meta: { requiresAuth: true } },
   { path: '/student/profile', name: 'StudentProfile', component: () => import('../views/student/Profile.vue'), meta: { requiresAuth: true, menuTab: true, menuLabel: '我的', menuIcon: 'User', menuOrder: 4 } },
   { path: '/student/report', name: 'StudentWeeklyReport', component: () => import('../views/student/WeeklyReport.vue'), meta: { requiresAuth: true } },
+  { path: '/student/orders', name: 'StudentOrders', component: () => import('../views/student/MyOrders.vue'), meta: { requiresAuth: true, menuTab: true, menuLabel: '订单', menuIcon: 'Wallet', menuOrder: 5 } },
+  { path: '/student/bundles', name: 'StudentBundles', component: () => import('../views/student/BundleSquare.vue'), meta: { requiresAuth: true } },
+  { path: '/student/bundles/:id', name: 'StudentBundleDetail', component: () => import('../views/student/BundleDetail.vue'), meta: { requiresAuth: true } },
   { path: '/student/redirect', redirect: '/student/courses', meta: { requiresAuth: false } },
   { path: '/student/chapters/:chapterId/exercises', name: 'StudentExerciseTake', component: () => import('../views/student/ExerciseTake.vue'), meta: { requiresAuth: true } },
   { path: '/student/discussions', name: 'StudentDiscussion', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true } },

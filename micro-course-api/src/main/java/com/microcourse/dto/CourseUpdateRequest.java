@@ -5,32 +5,22 @@ import java.math.BigDecimal;
 public class CourseUpdateRequest {
 
     private String title;
-
     private Long categoryId;
-
     private Long teacherId;
-
     private String subtitle;
-
     private String summary;
-
     private String coverUrl;
-
     private Long offerDepartmentId;
-
     private String semester;
-
     private BigDecimal creditHours;
-
     private String courseNature;
-
     private Integer maxStudents;
-
     private Integer difficulty;
-
     private String description;
-
     private String tags;
+    private String courseType;
+    private BigDecimal price;
+    private Boolean isFree;
 
     public CourseUpdateRequest() {}
 
@@ -62,4 +52,10 @@ public class CourseUpdateRequest {
     public void setDescription(String description) { this.description = description; }
     public String getTags() { return tags; }
     public void setTags(String tags) { this.tags = tags; }
+    public String getCourseType() { return courseType; }
+    public void setCourseType(String courseType) { this.courseType = courseType; }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
+    public Boolean getIsFree() { return isFree; }
+    public void setIsFree(Boolean isFree) { this.isFree = isFree; }
 }

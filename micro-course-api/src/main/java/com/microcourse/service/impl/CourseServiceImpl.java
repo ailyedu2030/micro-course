@@ -13,11 +13,18 @@ import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.entity.PluginGrant;
+import com.microcourse.plugin.PluginRegistry;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseReviewRepository;
+import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
+import com.microcourse.plugin.interactive.entity.CourseSlide;
+import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.service.CourseService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
@@ -39,17 +46,29 @@ public class CourseServiceImpl implements CourseService {
     private final UserRepository userRepository;
     private final CourseChapterRepository chapterRepository;
     private final CourseReviewRepository reviewRepository;
+    private final PluginGrantRepository pluginGrantRepository;
+    private final PluginRegistry pluginRegistry;
+    private final CourseSlideMapper courseSlideMapper;
+    private final SlidePageMapper slidePageMapper;
 
     public CourseServiceImpl(CourseRepository courseRepository,
                              CourseCategoryRepository categoryRepository,
                              UserRepository userRepository,
                              CourseChapterRepository chapterRepository,
-                             CourseReviewRepository reviewRepository) {
+                             CourseReviewRepository reviewRepository,
+                             PluginGrantRepository pluginGrantRepository,
+                             PluginRegistry pluginRegistry,
+                             CourseSlideMapper courseSlideMapper,
+                             SlidePageMapper slidePageMapper) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.chapterRepository = chapterRepository;
         this.reviewRepository = reviewRepository;
+        this.pluginGrantRepository = pluginGrantRepository;
+        this.pluginRegistry = pluginRegistry;
+        this.courseSlideMapper = courseSlideMapper;
+        this.slidePageMapper = slidePageMapper;
     }
 
     @Override
@@ -57,7 +76,10 @@ public class CourseServiceImpl implements CourseService {
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
         // keyword: 模糊匹配 title 或教师名（通过 teacherId 关联查询 teacher.real_name）
         if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
-            String kw = query.getKeyword();
+            String kw = query.getKeyword()
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_");
             // 先找出匹配教师名的 teacher IDs
             LambdaQueryWrapper<User> teacherWrapper = new LambdaQueryWrapper<>();
             teacherWrapper.like(User::getRealName, kw);
@@ -89,6 +111,9 @@ public class CourseServiceImpl implements CourseService {
         }
         if (query.getDifficulty() != null) {
             wrapper.eq(Course::getDifficulty, query.getDifficulty());
+        }
+        if (query.getCourseType() != null && !query.getCourseType().isEmpty()) {
+            wrapper.eq(Course::getCourseType, query.getCourseType());
         }
         // 排序
         String sortBy = query.getSortBy();
@@ -202,8 +227,21 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException(ErrorCode.COURSE_TEACHER_NOT_FOUND);
         }
 
+        String courseType = request.getCourseType() != null ? request.getCourseType() : "VIDEO";
+        if (!"VIDEO".equals(courseType)) {
+            if (!pluginRegistry.isEnabled(courseType)) {
+                throw new BusinessException(ErrorCode.PLUGIN_NOT_ENABLED);
+            }
+            if (!hasPluginGrant(courseType, request.getTeacherId())) {
+                throw new BusinessException(ErrorCode.PLUGIN_NO_GRANT);
+            }
+        }
+
         Course course = new Course();
         course.setTitle(request.getTitle());
+        course.setCourseType(courseType);
+        course.setPrice(request.getPrice());
+        course.setIsFree(request.getPrice() == null || request.getPrice().compareTo(java.math.BigDecimal.ZERO) == 0);
         course.setCategoryId(request.getCategoryId());
         course.setTeacherId(request.getTeacherId());
         course.setSubtitle(request.getSubtitle());
@@ -216,6 +254,7 @@ public class CourseServiceImpl implements CourseService {
         course.setMaxStudents(request.getMaxStudents());
         course.setDifficulty(request.getDifficulty());
         course.setDescription(request.getDescription());
+        course.setTags(request.getTags());
         course.setStatus(CourseStatus.DRAFT.getCode());
         course.setCreatedAt(LocalDateTime.now());
         course.setUpdatedAt(LocalDateTime.now());
@@ -266,9 +305,23 @@ public class CourseServiceImpl implements CourseService {
         if (request.getMaxStudents() != null) course.setMaxStudents(request.getMaxStudents());
         if (request.getDifficulty() != null) course.setDifficulty(request.getDifficulty());
         if (request.getDescription() != null) course.setDescription(request.getDescription());
+        if (request.getTags() != null) course.setTags(request.getTags());
+        if (request.getCourseType() != null) {
+            // courseType 变更时校验插件授权
+            if (!request.getCourseType().equals(course.getCourseType()) && !"VIDEO".equals(request.getCourseType())) {
+                if (!pluginRegistry.isEnabled(request.getCourseType())) {
+                    throw new BusinessException(ErrorCode.PLUGIN_NOT_ENABLED);
+                }
+                if (!hasPluginGrant(request.getCourseType(), course.getTeacherId())) {
+                    throw new BusinessException(ErrorCode.PLUGIN_NO_GRANT);
+                }
+            }
+            course.setCourseType(request.getCourseType());
+        }
+        if (request.getPrice() != null) { course.setPrice(request.getPrice()); course.setIsFree(request.getPrice().compareTo(java.math.BigDecimal.ZERO) == 0); }
+        if (request.getIsFree() != null) course.setIsFree(request.getIsFree());
 
         course.setUpdatedAt(LocalDateTime.now());
-        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
 
         courseRepository.updateById(course);
         return convertToVO(course, null, null, reviewRepository.countByCourseId(course.getId()));
@@ -289,15 +342,7 @@ public class CourseServiceImpl implements CourseService {
 
         Integer currentStatus = course.getStatus();
 
-        // Status transition validation
-        // DRAFT(0) -> PENDING_REVIEW(1)
-        // PENDING_REVIEW(1) -> APPROVED(2) by ADMIN
-        // APPROVED(2) -> PUBLISHED(4)
-        // PUBLISHED(4) -> CLOSED(5)
-        // CLOSED(5) -> ARCHIVED(6) or DRAFT(0)
-        // REJECTED(3) -> DRAFT(0)
-
-        if (currentStatus == CourseStatus.PUBLISHED.getCode()) {
+        if (!isValidTransition(currentStatus, status)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
 
@@ -323,11 +368,13 @@ public class CourseServiceImpl implements CourseService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        // DRAFT(0) → PENDING_REVIEW(1) CAS 推进(CON-NEW-3 修复:防止并发双提交)
+        // DRAFT(0) / REJECTED(3) → PENDING_REVIEW(1) CAS 推进(CON-NEW-3 修复:防止并发双提交)
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
-                        .eq(Course::getStatus, CourseStatus.DRAFT.getCode())
+                        .and(w -> w.eq(Course::getStatus, CourseStatus.DRAFT.getCode())
+                                .or()
+                                .eq(Course::getStatus, CourseStatus.REJECTED.getCode()))
                         .set(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
                         .set(Course::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = COALESCE(version, 0) + 1"));
@@ -343,8 +390,8 @@ public class CourseServiceImpl implements CourseService {
         if (courseRepository.selectById(id) == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // Admin check: only ADMIN can approve
-        if (!SecurityUtil.isAdmin()) {
+        // Admin or Academic check
+        if (!SecurityUtil.isAdminOrAcademic()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // PENDING_REVIEW(1) → APPROVED(2) CAS
@@ -367,8 +414,7 @@ public class CourseServiceImpl implements CourseService {
         if (courseRepository.selectById(id) == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // Admin check: only ADMIN can reject
-        if (!SecurityUtil.isAdmin()) {
+        if (!SecurityUtil.isAdminOrAcademic()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // PENDING_REVIEW(1) → REJECTED(3) CAS
@@ -392,8 +438,7 @@ public class CourseServiceImpl implements CourseService {
         if (courseRepository.selectById(id) == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // Admin check: only ADMIN can publish
-        if (!SecurityUtil.isAdmin()) {
+        if (!SecurityUtil.isAdminOrAcademic()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // APPROVED(2) → PUBLISHED(4) CAS
@@ -413,12 +458,45 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        // 软删除：使用 status=5 (CLOSED/下架) 代替物理删除
-        updateStatus(id, CourseStatus.CLOSED.getCode());
-        // 级联软删除章节（使用 @TableLogic，delete 变为 UPDATE SET deleted_at = NOW()）
+        Course course = courseRepository.selectById(id);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+
+        Integer currentStatus = course.getStatus() != null ? course.getStatus() : CourseStatus.DRAFT.getCode();
+
+        // DRAFT / REJECTED / ARCHIVED → CLOSED: 直接标记,不经 isValidTransition 校验
+        if (currentStatus == CourseStatus.DRAFT.getCode()
+                || currentStatus == CourseStatus.REJECTED.getCode()
+                || currentStatus == CourseStatus.ARCHIVED.getCode()) {
+            int affected = courseRepository.update(null,
+                    new LambdaUpdateWrapper<Course>()
+                            .eq(Course::getId, id)
+                            .eq(Course::getStatus, currentStatus)
+                            .set(Course::getStatus, CourseStatus.CLOSED.getCode())
+                            .set(Course::getUpdatedAt, LocalDateTime.now())
+                            .setSql("version = COALESCE(version, 0) + 1"));
+            if (affected == 0) {
+                throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+            }
+        } else {
+            // PUBLISHED → CLOSED 等合法转换走 updateStatus
+            updateStatus(id, CourseStatus.CLOSED.getCode());
+        }
+
         LambdaQueryWrapper<CourseChapter> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseChapter::getCourseId, id);
         chapterRepository.delete(wrapper);
+
+        LambdaQueryWrapper<CourseSlide> slideWrapper = new LambdaQueryWrapper<>();
+        slideWrapper.eq(CourseSlide::getCourseId, id);
+        CourseSlide slide = courseSlideMapper.selectOne(slideWrapper);
+        if (slide != null) {
+            LambdaQueryWrapper<SlidePage> pageWrapper = new LambdaQueryWrapper<>();
+            pageWrapper.eq(SlidePage::getSlideId, slide.getId());
+            slidePageMapper.delete(pageWrapper);
+            courseSlideMapper.deleteById(slide.getId());
+        }
     }
 
     @Override
@@ -448,6 +526,10 @@ public class CourseServiceImpl implements CourseService {
         newCourse.setMaxStudents(source.getMaxStudents());
         newCourse.setDifficulty(source.getDifficulty());
         newCourse.setDescription(source.getDescription());
+        newCourse.setTags(source.getTags());
+        newCourse.setCourseType(source.getCourseType());
+        newCourse.setPrice(source.getPrice());
+        newCourse.setIsFree(source.getIsFree());
         newCourse.setStatus(CourseStatus.DRAFT.getCode());
         newCourse.setCreatedAt(LocalDateTime.now());
         newCourse.setUpdatedAt(LocalDateTime.now());
@@ -512,6 +594,9 @@ public class CourseServiceImpl implements CourseService {
         vo.setUpdatedAt(course.getUpdatedAt());
         vo.setVersion(course.getVersion());
         vo.setIsRecommended(course.getIsRecommended());
+        vo.setCourseType(course.getCourseType());
+        vo.setPrice(course.getPrice());
+        vo.setIsFree(course.getIsFree());
 
         if (course.getStatus() != null) {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
@@ -566,6 +651,9 @@ public class CourseServiceImpl implements CourseService {
         vo.setUpdatedAt(course.getUpdatedAt());
         vo.setVersion(course.getVersion());
         vo.setIsRecommended(course.getIsRecommended());
+        vo.setCourseType(course.getCourseType());
+        vo.setPrice(course.getPrice());
+        vo.setIsFree(course.getIsFree());
 
         if (course.getStatus() != null) {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
@@ -588,6 +676,47 @@ public class CourseServiceImpl implements CourseService {
         }
 
         return vo;
+    }
+
+    private boolean isValidTransition(Integer from, Integer to) {
+        int f = from != null ? from : CourseStatus.DRAFT.getCode();
+        // DRAFT → PENDING_REVIEW
+        if (f == CourseStatus.DRAFT.getCode() && to == CourseStatus.PENDING_REVIEW.getCode()) return true;
+        // PENDING_REVIEW → APPROVED or REJECTED
+        if (f == CourseStatus.PENDING_REVIEW.getCode() && (to == CourseStatus.APPROVED.getCode() || to == CourseStatus.REJECTED.getCode())) return true;
+        // APPROVED → PUBLISHED
+        if (f == CourseStatus.APPROVED.getCode() && to == CourseStatus.PUBLISHED.getCode()) return true;
+        // PUBLISHED → CLOSED
+        if (f == CourseStatus.PUBLISHED.getCode() && to == CourseStatus.CLOSED.getCode()) return true;
+        // CLOSED → ARCHIVED or DRAFT
+        if (f == CourseStatus.CLOSED.getCode() && (to == CourseStatus.ARCHIVED.getCode() || to == CourseStatus.DRAFT.getCode())) return true;
+        // REJECTED → DRAFT
+        if (f == CourseStatus.REJECTED.getCode() && to == CourseStatus.DRAFT.getCode()) return true;
+        return false;
+    }
+
+    private boolean hasPluginGrant(String pluginId, Long teacherId) {
+        if (SecurityUtil.isAdmin()) {
+            return true;
+        }
+        LambdaQueryWrapper<PluginGrant> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PluginGrant::getPluginId, pluginId)
+                .eq(PluginGrant::getGrantType, "TEACHER")
+                .eq(PluginGrant::getGranteeId, teacherId);
+        if (pluginGrantRepository.selectCount(wrapper) > 0) {
+            return true;
+        }
+        User teacher = userRepository.selectById(teacherId);
+        if (teacher != null && teacher.getDepartmentId() != null) {
+            LambdaQueryWrapper<PluginGrant> deptWrapper = new LambdaQueryWrapper<>();
+            deptWrapper.eq(PluginGrant::getPluginId, pluginId)
+                    .eq(PluginGrant::getGrantType, "DEPARTMENT")
+                    .eq(PluginGrant::getGranteeId, teacher.getDepartmentId());
+            if (pluginGrantRepository.selectCount(deptWrapper) > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ChapterVO convertChapterToVO(CourseChapter chapter) {

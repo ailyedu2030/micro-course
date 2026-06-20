@@ -9,7 +9,7 @@ FROM eclipse-temurin:17-jre-alpine
 RUN addgroup -S microcourse && adduser -S microcourse -G microcourse
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-RUN mkdir -p /data/videos /app/uploads && chown -R microcourse:microcourse /app /data
+RUN mkdir -p /data/videos /data/slides /app/uploads && chown -R microcourse:microcourse /app /data
 USER microcourse
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \

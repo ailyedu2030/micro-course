@@ -11,8 +11,9 @@ public class CoursePageQuery {
     private Integer difficulty;
     private int page;
     private int size;
-    private String sortBy;   // createdAt, updatedAt, studentCount, avgRating
-    private String sortOrder; // asc, desc
+    private String sortBy;
+    private String sortOrder;
+    private String courseType;
 
     public CoursePageQuery() {}
 
@@ -38,4 +39,6 @@ public class CoursePageQuery {
     public void setSortBy(String sortBy) { this.sortBy = sortBy; }
     public String getSortOrder() { return sortOrder; }
     public void setSortOrder(String sortOrder) { this.sortOrder = sortOrder; }
+    public String getCourseType() { return courseType; }
+    public void setCourseType(String courseType) { this.courseType = courseType; }
 }

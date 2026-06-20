@@ -37,6 +37,9 @@ public class CourseVO {
     private Boolean isRecommended;
     private String tags;
     private List<ChapterVO> chapters;
+    private String courseType;
+    private java.math.BigDecimal price;
+    private Boolean isFree;
 
     public CourseVO() {}
 
@@ -98,4 +101,10 @@ public class CourseVO {
     public void setTags(String tags) { this.tags = tags; }
     public List<ChapterVO> getChapters() { return chapters; }
     public void setChapters(List<ChapterVO> chapters) { this.chapters = chapters; }
+    public String getCourseType() { return courseType; }
+    public void setCourseType(String courseType) { this.courseType = courseType; }
+    public java.math.BigDecimal getPrice() { return price; }
+    public void setPrice(java.math.BigDecimal price) { this.price = price; }
+    public Boolean getIsFree() { return isFree; }
+    public void setIsFree(Boolean isFree) { this.isFree = isFree; }
 }

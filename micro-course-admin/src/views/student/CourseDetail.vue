@@ -1,12 +1,11 @@
 <!--
-  课程详情
-  路由路径: /student/course/:id
-  Phase 2
-  Author: jackie
+  课程详情 · MOOC 风格重构
+  设计参考: icourse163.org / study.163.com
+  1200px 双栏布局 · 白色Hero · 绿色Tab · 左侧内容+右侧边栏
 -->
 <template>
   <div class="course-detail-page">
-    <!-- P0-5: 课程不存在全屏 404 -->
+    <!-- 404 -->
     <div v-if="courseNotFound" class="not-found-page">
       <el-empty description="课程不存在或已下架" :image-size="160">
         <el-button type="primary" @click="router.push('/student/courses')">返回课程广场</el-button>
@@ -14,417 +13,248 @@
     </div>
 
     <template v-else>
-      <!-- Banner 区 -->
-      <div class="course-banner">
-        <!-- P2-2: 骨架屏 -->
-        <template v-if="courseLoading">
-          <div class="banner-content">
-            <el-skeleton :rows="3" animated style="--el-skeleton-color: rgba(255,255,255,0.15); --el-skeleton-to-color: rgba(255,255,255,0.25);" />
-          </div>
-        </template>
-        <template v-else>
-          <div class="banner-content">
-            <h1 class="course-title">{{ course.title }}</h1>
-            <p class="course-subtitle">{{ course.subtitle }}</p>
-            <div class="course-meta">
-              <!-- P1-3: 显示难度和分类 -->
-              <el-tag v-if="course.difficulty" size="small" effect="dark" class="meta-tag">
-                {{ difficultyText }}
-              </el-tag>
-              <el-tag v-if="course.categoryName" size="small" effect="dark" type="info" class="meta-tag">
-                {{ course.categoryName }}
-              </el-tag>
-              <span v-if="course.avgRating">
-                <el-icon><Star /></el-icon> {{ course.avgRating.toFixed(1) }}
-              </span>
-              <span v-if="course.studentCount">
-                <el-icon><User /></el-icon> {{ course.studentCount }} 名学生
-              </span>
+      <!-- ====== 面包屑 ====== -->
+      <div class="detail-breadcrumb">
+        <router-link to="/student/courses">课程广场</router-link>
+        <span class="bc-sep">/</span>
+        <span>{{ course.categoryName || '课程详情' }}</span>
+        <span class="bc-sep">/</span>
+        <span class="bc-current">{{ course.title }}</span>
+      </div>
+
+      <!-- ====== Hero Card ====== -->
+      <div class="hero-card">
+        <div class="hero-left">
+          <!-- 互动课程: 幻灯片预览 → 播放器 -->
+          <div v-if="course.courseType === 'INTERACTIVE'" class="hero-img-box" @click="handlePlayPreview">
+            <div class="hero-img-placeholder">
+              <el-icon :size="56" color="#ccc"><Present /></el-icon>
+            </div>
+            <div class="hero-play-btn">
+              <el-icon :size="28" color="#fff"><VideoPlay /></el-icon>
             </div>
           </div>
-          <div v-if="course.coverUrl && !isMobile" class="banner-cover">
-            <!-- P2-1: 封面图 @error 兜底 -->
-            <img :src="course.coverUrl" :alt="course.title" @error="handleCoverError" />
+          <!-- 视频课程: 封面图 或 内嵌播放器 -->
+          <div v-else-if="showPlayer" class="hero-img-box hero-player-active">
+            <video ref="videoRef" class="hero-video" controls autoplay @click.stop />
+            <button class="hero-close-player" @click.stop="stopPreview">
+              <el-icon :size="18"><Close /></el-icon>
+            </button>
           </div>
-        </template>
-      </div>
-
-      <!-- PC 布局 -->
-      <div v-if="!isMobile" class="pc-layout">
-        <!-- 内容区 -->
-        <div class="course-content">
-          <!-- 左侧：课程信息 + 大纲 -->
-          <div class="main-column">
-            <!-- 课程描述 -->
-            <el-card class="desc-card card-hover">
-              <template #header>
-                <span class="section-title">课程介绍</span>
-              </template>
-              <!-- P2-2: 骨架屏 -->
-              <el-skeleton v-if="courseLoading" :rows="4" animated />
-              <p v-else class="course-description">{{ course.description || '暂无课程介绍' }}</p>
-            </el-card>
-
-            <!-- P2-4: 大纲折叠/分组（使用 el-collapse 替代 el-table） -->
-            <el-card class="chapter-card card-hover">
-              <template #header>
-                <div class="chapter-header">
-                  <span class="section-title">课程大纲</span>
-                  <span v-if="courseChapters.length" class="chapter-count">共 {{ courseChapters.length }} 章节</span>
-                </div>
-              </template>
-              <el-skeleton v-if="courseLoading" :rows="5" animated />
-              <template v-else>
-                <el-collapse v-if="courseChapters.length > 0" v-model="activeChapters">
-                  <el-collapse-item
-                    v-for="(ch, idx) in courseChapters"
-                    :key="ch.id"
-                    :name="ch.id"
-                  >
-                    <template #title>
-                      <div class="chapter-collapse-title">
-                        <span class="chapter-index">{{ idx + 1 }}</span>
-                        <span class="chapter-title-text">{{ ch.title }}</span>
-                        <el-tag
-                          v-if="ch.chapterType === 'VIDEO'"
-                          type="primary" size="small" effect="plain"
-                        >视频</el-tag>
-                        <el-tag
-                          v-else-if="ch.chapterType === 'EXERCISE'"
-                          type="success" size="small" effect="plain"
-                        >练习</el-tag>
-                        <el-tag v-else type="info" size="small" effect="plain">
-                          {{ ch.chapterType }}
-                        </el-tag>
-                        <span class="chapter-duration">{{ formatDuration(ch.duration) }}</span>
-                      </div>
-                    </template>
-                    <div class="chapter-collapse-body">
-                      <p v-if="ch.description" class="chapter-desc">{{ ch.description }}</p>
-                      <p v-else class="chapter-desc chapter-desc-empty">暂无章节描述</p>
-                      <el-button
-                        type="primary" size="small" text
-                        @click.stop="handleChapterClick(ch)"
-                      >
-                        {{ ch.chapterType === 'EXERCISE' ? '开始练习' : '开始学习' }}
-                      </el-button>
-                    </div>
-                  </el-collapse-item>
-                </el-collapse>
-                <el-empty v-else description="暂无章节" :image-size="60" />
-              </template>
-            </el-card>
-
-            <!-- 评价区 -->
-            <el-card class="review-card card-hover">
-              <template #header>
-                <div class="review-header">
-                  <span class="section-title">课程评价</span>
-                  <el-button type="primary" size="small" text @click="openReviewDialog">
-                    写评价
-                  </el-button>
-                </div>
-              </template>
-              <div v-loading="reviewLoading" :aria-busy="reviewLoading" class="review-list">
-                <template v-if="reviews.length > 0">
-                  <div v-for="r in reviews" :key="r.id" class="review-item">
-                    <div class="review-user">
-                      <el-avatar :size="32" :src="r.userAvatar">{{ r.userRealName?.charAt(0) }}</el-avatar>
-                      <span class="review-username">{{ r.userRealName || '匿名用户' }}</span>
-                    </div>
-                    <el-rate v-model="r.rating" disabled size="small" class="review-rating" />
-                    <p class="review-content">{{ r.content }}</p>
-                    <span class="review-time">{{ formatTime(r.createdAt) }}</span>
-                  </div>
-                </template>
-                <el-empty v-else description="暂无评价，来说第一条吧！" />
-              </div>
-            </el-card>
-          </div>
-
-          <!-- 右侧：教师信息 -->
-          <div class="side-column">
-            <!-- 教师卡片 -->
-            <el-card class="teacher-card card-hover">
-              <template #header>
-                <span class="section-title">授课教师</span>
-              </template>
-              <div v-loading="teacherLoading" :aria-busy="teacherLoading" class="teacher-info">
-                <template v-if="teacher.id">
-                  <div class="teacher-avatar">
-                    <el-avatar :size="72" :src="teacher.avatar">
-                      {{ teacher.realName?.charAt(0) }}
-                    </el-avatar>
-                  </div>
-                  <div class="teacher-name">{{ teacher.realName }}</div>
-                  <div class="teacher-bio">{{ teacher.bio || teacher.introduction || '暂无教师简介' }}</div>
-                </template>
-                <!-- P1-2: 教师加载失败兜底显示 course.teacherName -->
-                <template v-else-if="course.teacherName">
-                  <div class="teacher-avatar">
-                    <el-avatar :size="72">{{ course.teacherName?.charAt(0) }}</el-avatar>
-                  </div>
-                  <div class="teacher-name">{{ course.teacherName }}</div>
-                  <div class="teacher-bio">暂无教师简介</div>
-                </template>
-                <el-empty v-else description="暂无教师信息" :image-size="60" />
-              </div>
-            </el-card>
-
-            <!-- 学习同伴 -->
-            <el-card class="companions-card card-hover">
-              <div class="companions-tip">
-                <el-icon><User /></el-icon>
-                <span>当前 <strong>{{ studentCount }}</strong> 名同学在学习</span>
-              </div>
-            </el-card>
-
-            <!-- 活跃排行 -->
-            <el-card class="ranking-card card-hover">
-              <template #header>
-                <span class="section-title">学习排行</span>
-              </template>
-              <div v-loading="rankingLoading" :aria-busy="rankingLoading" class="ranking-list">
-                <template v-if="rankingList.length > 0">
-                  <div
-                    v-for="item in rankingList"
-                    :key="item.rank"
-                    class="ranking-item"
-                    :class="{ 'ranking-current': item.isCurrentUser }"
-                  >
-                    <span class="rank-num" :class="{ 'rank-top': item.rank <= 3 }">
-                      {{ item.rank }}
-                    </span>
-                    <span class="rank-name">{{ item.userName }}</span>
-                    <span class="rank-progress">{{ (item.progress * 100).toFixed(0) }}%</span>
-                  </div>
-                </template>
-                <el-empty v-else description="暂无排行数据" :image-size="60" />
-              </div>
-            </el-card>
+          <div v-else class="hero-img-box" @click="handlePlayPreview">
+            <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" @error="handleCoverError" class="hero-img" />
+            <div v-else class="hero-img-placeholder">
+              <el-icon :size="56" color="#ccc"><VideoPlay /></el-icon>
+            </div>
+            <div class="hero-play-btn" :class="{ loading: videoLoading }">
+              <el-icon v-if="!videoLoading" :size="28" color="#fff"><VideoPlay /></el-icon>
+              <el-icon v-else :size="28" color="#fff" class="loading-icon"><Loading /></el-icon>
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- H5 布局 -->
-      <div v-else class="h5-layout">
-        <!-- Tab 栏 -->
-        <div class="h5-tabs">
-          <div
-            class="h5-tab"
-            :class="{ active: h5ActiveTab === 'intro' }"
-            @click="h5ActiveTab = 'intro'"
-          >
-            介绍
+        <div class="hero-right">
+          <h1 class="hero-title">{{ course.title }}</h1>
+          <p v-if="course.subtitle" class="hero-subtitle">{{ course.subtitle }}</p>
+          <div class="hero-tags">
+            <el-tag v-if="course.courseType === 'INTERACTIVE'" size="small" effect="plain" type="success">互动课程</el-tag>
+            <el-tag v-if="course.difficulty" size="small" effect="plain">{{ difficultyText }}</el-tag>
+            <el-tag v-if="course.categoryName" size="small" effect="plain" type="info">{{ course.categoryName }}</el-tag>
           </div>
-          <div
-            class="h5-tab"
-            :class="{ active: h5ActiveTab === 'chapters' }"
-            @click="h5ActiveTab = 'chapters'"
-          >
-            目录
+          <div class="hero-stats">
+            <span v-if="course.avgRating" class="hero-stat"><el-icon><Star /></el-icon> <strong>{{ course.avgRating.toFixed(1) }}</strong> 分</span>
+            <span v-if="course.studentCount" class="hero-stat"><el-icon><User /></el-icon> <strong>{{ course.studentCount }}</strong> 人学习</span>
+            <span v-if="course.price && !course.isFree" class="hero-price">¥{{ course.price }}</span>
+            <span v-else class="hero-price hero-price--free">免费</span>
           </div>
-          <div
-            class="h5-tab"
-            :class="{ active: h5ActiveTab === 'reviews' }"
-            @click="h5ActiveTab = 'reviews'"
-          >
-            评价
-          </div>
-        </div>
-
-        <!-- Tab 内容 -->
-        <div class="h5-content">
-          <!-- 介绍 -->
-          <div v-show="h5ActiveTab === 'intro'" class="h5-tab-content">
-            <el-card class="desc-card card-hover">
-              <el-skeleton v-if="courseLoading" :rows="4" animated />
-              <p v-else class="course-description">{{ course.description || '暂无课程介绍' }}</p>
-            </el-card>
-            <el-card class="teacher-card card-hover">
-              <template #header>
-                <span class="section-title">授课教师</span>
-              </template>
-              <div v-loading="teacherLoading" :aria-busy="teacherLoading" class="teacher-info">
-                <template v-if="teacher.id">
-                  <div class="teacher-avatar">
-                    <el-avatar :size="72" :src="teacher.avatar">
-                      {{ teacher.realName?.charAt(0) }}
-                    </el-avatar>
-                  </div>
-                  <div class="teacher-name">{{ teacher.realName }}</div>
-                  <div class="teacher-bio">{{ teacher.bio || teacher.introduction || '暂无教师简介' }}</div>
-                </template>
-                <!-- P1-2: 教师加载失败兜底显示 -->
-                <template v-else-if="course.teacherName">
-                  <div class="teacher-avatar">
-                    <el-avatar :size="72">{{ course.teacherName?.charAt(0) }}</el-avatar>
-                  </div>
-                  <div class="teacher-name">{{ course.teacherName }}</div>
-                  <div class="teacher-bio">暂无教师简介</div>
-                </template>
-                <el-empty v-else description="暂无教师信息" :image-size="60" />
-              </div>
-            </el-card>
-            <el-card class="companions-card card-hover">
-              <div class="companions-tip">
-                <el-icon><User /></el-icon>
-                <span>当前 <strong>{{ studentCount }}</strong> 名同学在学习</span>
-              </div>
-            </el-card>
-          </div>
-
-          <!-- 目录 (P2-4: el-collapse 替代 el-table) -->
-          <div v-show="h5ActiveTab === 'chapters'" class="h5-tab-content">
-            <el-card class="chapter-card card-hover">
-              <el-skeleton v-if="courseLoading" :rows="5" animated />
-              <template v-else>
-                <el-collapse v-if="courseChapters.length > 0" v-model="activeChapters">
-                  <el-collapse-item
-                    v-for="(ch, idx) in courseChapters"
-                    :key="ch.id"
-                    :name="ch.id"
-                  >
-                    <template #title>
-                      <div class="chapter-collapse-title">
-                        <span class="chapter-index">{{ idx + 1 }}</span>
-                        <span class="chapter-title-text">{{ ch.title }}</span>
-                        <el-tag
-                          v-if="ch.chapterType === 'VIDEO'"
-                          type="primary" size="small" effect="plain"
-                        >视频</el-tag>
-                        <el-tag
-                          v-else-if="ch.chapterType === 'EXERCISE'"
-                          type="success" size="small" effect="plain"
-                        >练习</el-tag>
-                        <el-tag v-else type="info" size="small" effect="plain">
-                          {{ ch.chapterType }}
-                        </el-tag>
-                        <span class="chapter-duration">{{ formatDuration(ch.duration) }}</span>
-                      </div>
-                    </template>
-                    <div class="chapter-collapse-body">
-                      <p v-if="ch.description" class="chapter-desc">{{ ch.description }}</p>
-                      <p v-else class="chapter-desc chapter-desc-empty">暂无章节描述</p>
-                      <el-button
-                        type="primary" size="small" text
-                        @click.stop="handleChapterClick(ch)"
-                      >
-                        {{ ch.chapterType === 'EXERCISE' ? '开始练习' : '开始学习' }}
-                      </el-button>
-                    </div>
-                  </el-collapse-item>
-                </el-collapse>
-                <el-empty v-else description="暂无章节" :image-size="60" />
-              </template>
-            </el-card>
-          </div>
-
-          <!-- 评价 -->
-          <div v-show="h5ActiveTab === 'reviews'" class="h5-tab-content">
-            <el-card class="review-card card-hover">
-              <template #header>
-                <div class="review-header">
-                  <span class="section-title">课程评价</span>
-                  <el-button type="primary" size="small" text @click="openReviewDialog">
-                    写评价
-                  </el-button>
-                </div>
-              </template>
-              <div v-loading="reviewLoading" :aria-busy="reviewLoading" class="review-list">
-                <template v-if="reviews.length > 0">
-                  <div v-for="r in reviews" :key="r.id" class="review-item">
-                    <div class="review-user">
-                      <el-avatar :size="32" :src="r.userAvatar">{{ r.userRealName?.charAt(0) }}</el-avatar>
-                      <span class="review-username">{{ r.userRealName || '匿名用户' }}</span>
-                    </div>
-                    <el-rate v-model="r.rating" disabled size="small" class="review-rating" />
-                    <p class="review-content">{{ r.content }}</p>
-                    <span class="review-time">{{ formatTime(r.createdAt) }}</span>
-                  </div>
-                </template>
-                <el-empty v-else description="暂无评价，来说第一条吧！" />
-              </div>
-            </el-card>
-          </div>
-        </div>
-      </div>
-
-      <!-- 写评价弹窗 -->
-      <el-dialog v-model="reviewDialogVisible" title="写课程评价" class="review-dialog" :close-on-press-escape="true">
-        <el-form :model="reviewForm" :rules="reviewRules" label-width="80px">
-          <el-form-item label="评分" prop="rating">
-            <el-rate v-model="reviewForm.rating" />
-          </el-form-item>
-          <el-form-item label="评价内容" prop="content">
-            <el-input
-              v-model="reviewForm.content"
-              type="textarea"
-              :rows="4"
-              maxlength="500"
-              show-word-limit
-              placeholder="分享你的学习心得..."
-            />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="reviewDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="reviewSubmitting" @click="handleSubmitReview">
-            提交评价
-          </el-button>
-        </template>
-      </el-dialog>
-
-      <!-- 底部固定操作栏 -->
-      <div class="fixed-bottom-bar">
-        <div class="bar-inner">
-          <span v-if="isLoggedIn" class="user-greeting">欢迎学习，{{ userStore.realName }}</span>
-          <!-- P1-4: 未登录状态引导文案 -->
-          <span v-else class="user-greeting">登录后可报名学习</span>
-          <div class="action-btns">
+          <div class="hero-actions">
             <template v-if="!isLoggedIn">
-              <el-button type="primary" @click="goLogin">请先登录</el-button>
+              <el-button type="primary" size="large" @click="goLogin">登录后学习</el-button>
             </template>
             <template v-else-if="isEnrolled">
-              <el-button type="primary" @click="goLearn">继续学习</el-button>
+              <el-button type="primary" size="large" @click="goLearn">继续学习</el-button>
             </template>
             <template v-else>
-              <el-button type="primary" :loading="enrollLoading" @click="handleEnroll">
-                立即报名
+              <el-button type="primary" size="large" :loading="enrollLoading" @click="handleEnroll">
+                {{ course.price && !course.isFree ? '立即购买' : '立即参加' }}
               </el-button>
             </template>
           </div>
         </div>
       </div>
+
+      <!-- ====== Tab 导航 ====== -->
+      <div class="tab-nav">
+        <button :class="{ active: activeTab === 'detail' }" @click="activeTab = 'detail'">课程详情</button>
+        <button :class="{ active: activeTab === 'review' }" @click="activeTab = 'review'">课程评价</button>
+      </div>
+
+      <!-- ====== 主内容区 ====== -->
+      <div class="detail-body" v-if="activeTab === 'detail'">
+        <div class="detail-main">
+          <!-- 课程介绍 -->
+          <div class="section-card">
+            <div class="section-head">
+              <el-icon :size="20" color="#00cc7e"><Notebook /></el-icon>
+              <h2 class="section-title">课程介绍</h2>
+            </div>
+            <div class="section-body">
+              <p v-if="course.description" class="desc-text">{{ course.description }}</p>
+              <p v-else class="desc-text desc-text--empty">暂无课程介绍</p>
+            </div>
+          </div>
+
+          <!-- 课程大纲 / 幻灯片 -->
+          <div class="section-card">
+            <div class="section-head">
+              <el-icon :size="20" color="#00cc7e">
+                <List v-if="!isInteractive" /><Present v-else />
+              </el-icon>
+              <h2 class="section-title">{{ isInteractive ? '幻灯片' : '课程大纲' }}</h2>
+              <span class="section-count">共 {{ isInteractive ? slides.length : courseChapters.length }} {{ isInteractive ? '页' : '章节' }}</span>
+            </div>
+            <div class="section-body">
+              <!-- 互动课程: 幻灯片手风琴 -->
+              <template v-if="isInteractive">
+                <el-collapse v-if="slides.length > 0" v-model="activeChapters">
+                  <el-collapse-item v-for="(sp, idx) in slides" :key="idx" :name="'s' + sp.pageNumber">
+                    <template #title>
+                      <span class="outline-idx">{{ sp.pageNumber }}</span>
+                      <span class="outline-title">第 {{ sp.pageNumber }} 页</span>
+                      <el-tag v-if="sp.audioDuration" size="small" type="success" effect="plain">已配音</el-tag>
+                      <el-tag v-else size="small" type="info" effect="plain">待配音</el-tag>
+                      <span v-if="sp.audioDuration" class="outline-duration">{{ formatDuration(sp.audioDuration) }}</span>
+                    </template>
+                    <p v-if="sp.extractedText" class="outline-desc">{{ sp.extractedText }}</p>
+                    <el-button size="small" type="primary" text @click.stop="goToSlidePlayer">开始学习</el-button>
+                  </el-collapse-item>
+                </el-collapse>
+                <el-empty v-else description="暂无幻灯片，请教师上传课件" :image-size="60" />
+              </template>
+              <!-- 视频课程: 章节手风琴 -->
+              <template v-else>
+                <el-collapse v-if="courseChapters.length > 0" v-model="activeChapters">
+                  <el-collapse-item v-for="(ch, idx) in courseChapters" :key="ch.id" :name="ch.id">
+                    <template #title>
+                      <span class="outline-idx">{{ idx + 1 }}</span>
+                      <span class="outline-title">{{ ch.title }}</span>
+                      <el-tag v-if="ch.chapterType === 'VIDEO'" size="small" type="primary" effect="plain">视频</el-tag>
+                      <el-tag v-else-if="ch.chapterType === 'EXERCISE'" size="small" type="success" effect="plain">练习</el-tag>
+                      <el-tag v-else size="small" type="info" effect="plain">{{ ch.chapterType }}</el-tag>
+                      <span class="outline-duration">{{ formatDuration(ch.duration) }}</span>
+                    </template>
+                    <p v-if="ch.description" class="outline-desc">{{ ch.description }}</p>
+                    <el-button size="small" type="primary" text @click.stop="handleChapterClick(ch)">开始学习</el-button>
+                  </el-collapse-item>
+                </el-collapse>
+                <el-empty v-else description="暂无章节" :image-size="60" />
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧边栏 -->
+        <div class="detail-side">
+          <!-- 教师卡片 -->
+          <div class="side-card">
+            <h3 class="side-card-title">授课教师</h3>
+            <div class="teacher-block">
+              <el-avatar v-if="teacher.avatar" :size="64" :src="teacher.avatar" />
+              <el-avatar v-else :size="64">{{ (teacher.realName || course.teacherName || '教').charAt(0) }}</el-avatar>
+              <div class="teacher-info">
+                <p class="teacher-name">{{ teacher.realName || course.teacherName || '暂无信息' }}</p>
+                <p class="teacher-dept">{{ teacher.departmentName || '' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 课程信息 -->
+          <div class="side-card">
+            <h3 class="side-card-title">课程信息</h3>
+            <div class="info-list">
+              <div class="info-item"><span class="info-label">课程类型</span><span class="info-value">{{ isInteractive ? '互动课程' : '视频课程' }}</span></div>
+              <div class="info-item" v-if="course.price && !course.isFree"><span class="info-label">价格</span><span class="info-value price">¥{{ course.price }}</span></div>
+              <div class="info-item" v-if="course.studentCount"><span class="info-label">学习人数</span><span class="info-value">{{ course.studentCount }}</span></div>
+              <div class="info-item" v-if="course.creditHours"><span class="info-label">学分</span><span class="info-value">{{ course.creditHours }}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 评价 Tab -->
+      <div class="detail-body" v-if="activeTab === 'review'">
+        <div class="detail-main">
+          <div class="section-card">
+            <div class="section-head">
+              <el-icon :size="20" color="#00cc7e"><Star /></el-icon>
+              <h2 class="section-title">课程评价</h2>
+              <el-button size="small" text type="primary" @click="openReviewDialog">写评价</el-button>
+            </div>
+            <div class="section-body" v-loading="reviewLoading">
+              <div v-if="reviews.length > 0" class="review-list">
+                <div v-for="r in reviews" :key="r.id" class="review-item">
+                  <div class="review-top">
+                    <el-avatar :size="36" :src="r.userAvatar">{{ (r.userRealName || '匿').charAt(0) }}</el-avatar>
+                    <span class="review-user">{{ r.userRealName || '匿名用户' }}</span>
+                    <el-rate v-model="r.rating" disabled size="small" />
+                  </div>
+                  <p class="review-content">{{ r.content }}</p>
+                  <span class="review-time">{{ formatTime(r.createdAt) }}</span>
+                </div>
+              </div>
+              <el-empty v-else description="暂无评价" :image-size="60" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 写评价弹窗 -->
+      <el-dialog v-model="reviewDialogVisible" title="写评价" width="480px">
+        <el-form :model="reviewForm" :rules="reviewRules">
+          <el-form-item label="评分" prop="rating">
+            <el-rate v-model="reviewForm.rating" />
+          </el-form-item>
+          <el-form-item label="评价" prop="content">
+            <el-input v-model="reviewForm.content" type="textarea" :rows="4" maxlength="500" show-word-limit />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="reviewDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="reviewSubmitting" @click="handleSubmitReview">提交评价</el-button>
+        </template>
+      </el-dialog>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Star, User } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading } from '@element-plus/icons-vue'
 import { getCourseById } from '@/api/course'
 import { getPublicProfile } from '@/api/user'
+import { getVideos } from '@/api/video'
 import { enroll as enrollApi, getMyEnrollments, getCourseRanking } from '@/api/enrollment'
+import { createOrder, payOrder } from '@/api/order'
 import { createReview, getReviews } from '@/api/course-review'
+import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { useUserStore } from '@/store/user'
+import { getToken } from '@/utils/auth'
+import Hls from 'hls.js'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
 const courseId = computed(() => route.params.id)
-
 const course = ref({})
-// P1-1: 章节直接从 course.chapters 读取，不再单独请求
 const courseChapters = computed(() => course.value.chapters || [])
+const isInteractive = computed(() => course.value.courseType === 'INTERACTIVE')
+const slides = ref([])
+const slidesLoading = ref(false)
 const teacher = ref({})
-const studentCount = computed(() => course.value.studentCount || 0)
-
 const courseLoading = ref(false)
-const courseNotFound = ref(false) // P0-5
+const courseNotFound = ref(false)
 const teacherLoading = ref(false)
 const enrollLoading = ref(false)
 const isEnrolled = ref(false)
@@ -432,732 +262,268 @@ const reviewLoading = ref(false)
 const reviews = ref([])
 const reviewDialogVisible = ref(false)
 const reviewSubmitting = ref(false)
-const rankingLoading = ref(false)
 const rankingList = ref([])
-const activeChapters = ref([]) // P2-4: el-collapse 活跃项
+const activeChapters = ref([])
+const activeTab = ref('detail')
 
-const reviewForm = ref({
-  rating: 5,
-  content: ''
-})
-
-const reviewRules = {
-  rating: [{ required: true, message: '请选择评分', trigger: 'change' }],
-  content: [{ max: 500, message: '评价内容不超过500字', trigger: 'blur' }]
-}
-
+const reviewForm = ref({ rating: 5, content: '' })
+const reviewRules = { rating: [{ required: true, message: '请选择评分', trigger: 'change' }], content: [{ max: 500, message: '评价内容不超过500字', trigger: 'blur' }] }
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
-// P1-3: 难度文本映射
 const difficultyText = computed(() => {
-  const map = { EASY: '简单', MEDIUM: '中等', HARD: '困难' }
+  const map = { EASY: '简单', MEDIUM: '中等', HARD: '困难', BEGINNER: '初级', INTERMEDIATE: '中级', ADVANCED: '高级' }
   return map[course.value.difficulty] || course.value.difficulty || ''
 })
 
-// H5 Tab 状态
-const h5ActiveTab = ref('intro')
+// 内嵌视频播放
+const showPlayer = ref(false)
+const videoLoading = ref(false)
+const previewVideoUrl = ref('')
+let hlsInstance = null
+const videoRef = ref(null)
 
-// 响应式：移动端判断
-const isMobile = ref(window.innerWidth <= 768)
-const handleResize = () => {
-  isMobile.value = window.innerWidth <= 768
-}
-window.addEventListener('resize', handleResize)
-onBeforeUnmount(() => window.removeEventListener('resize', handleResize))
-
-// P2-1: 封面图加载失败兜底
-const defaultCoverUrl = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="280" height="180" fill="%23e0e0e0"><rect width="280" height="180" rx="8"/><text x="140" y="95" text-anchor="middle" fill="%23999" font-size="16">暂无封面</text></svg>')
-const handleCoverError = (e) => {
-  e.target.src = defaultCoverUrl
-}
-
-// 格式化时长：分钟 → XhYm
-const formatDuration = (minutes) => {
-  if (!minutes && minutes !== 0) return '-'
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  if (h === 0) return `${m}m`
-  if (m === 0) return `${h}h`
-  return `${h}h${m}m`
-}
-
-// 格式化时间
-const formatTime = (time) => {
-  if (!time) return ''
-  const d = new Date(time)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-// P0-5: 获取课程信息（含 404 处理）
-const fetchCourse = async () => {
-  if (!courseId.value) return
-  courseLoading.value = true
+const handlePlayPreview = async () => {
+  if (isInteractive.value) { goLearn(); return }
+  if (previewVideoUrl.value) { showPlayer.value = true; nextTick(() => initInlinePlayer()); return }
+  videoLoading.value = true
   try {
-    const { data } = await getCourseById(courseId.value)
-    course.value = data || {}
-    if (!data || !data.id) {
-      courseNotFound.value = true
+    const res = await getVideos({ courseId: courseId.value, page: 0, size: 1 })
+    const items = res.data?.items || []
+    if (items.length > 0) {
+      const v = items[0]
+      previewVideoUrl.value = v.hls_url || v.url || ''
     }
-  } catch (err) {
-    const status = err.response?.status
-    if (status === 404) {
-      courseNotFound.value = true
+    if (previewVideoUrl.value) {
+      showPlayer.value = true
+      nextTick(() => initInlinePlayer())
     } else {
-      ElMessage.error('获取课程信息失败')
+      ElMessage.info('暂无课程预览视频')
     }
-  } finally {
-    courseLoading.value = false
+  } catch { ElMessage.info('暂无课程预览视频') }
+  finally { videoLoading.value = false }
+}
+
+const initInlinePlayer = () => {
+  const video = videoRef.value
+  if (!video || !previewVideoUrl.value) return
+  if (Hls.isSupported()) {
+    if (hlsInstance) hlsInstance.destroy()
+    hlsInstance = new Hls({ xhrSetup: (xhr) => { const t = getToken(); if (t) xhr.setRequestHeader('Authorization', 'Bearer ' + t) } })
+    hlsInstance.loadSource(previewVideoUrl.value)
+    hlsInstance.attachMedia(video)
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play())
+    hlsInstance.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) { stopPreview(); ElMessage.error('视频播放出错') } })
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = previewVideoUrl.value; video.play()
   }
 }
 
-// P0-3 / P1-2: 获取教师信息（使用 public-profile 避免 403 + 降级兜底）
+const stopPreview = () => {
+  showPlayer.value = false
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
+  if (videoRef.value) { videoRef.value.pause(); videoRef.value.src = '' }
+}
+
+const isMobile = ref(window.innerWidth <= 768)
+const handleResize = () => { isMobile.value = window.innerWidth <= 768 }
+window.addEventListener('resize', handleResize)
+onBeforeUnmount(() => { window.removeEventListener('resize', handleResize); if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null } })
+
+const defaultCoverUrl = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="280" height="180" fill="%23e0e0e0"><rect width="280" height="180" rx="8"/><text x="140" y="95" text-anchor="middle" fill="%23999" font-size="16">暂无封面</text></svg>')
+const handleCoverError = (e) => { e.target.src = defaultCoverUrl }
+
+const formatDuration = (m) => { if (!m && m !== 0) return '-'; const h = Math.floor(m/60); const s = m%60; return h===0 ? `${s}m` : s===0 ? `${h}h` : `${h}h${s}m` }
+const formatTime = (t) => { if (!t) return ''; const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+
+const fetchCourse = async () => {
+  if (!courseId.value) return; courseLoading.value = true
+  try { const { data } = await getCourseById(courseId.value); course.value = data || {}; if (!data?.id) courseNotFound.value = true }
+  catch (e) { if (e.response?.status === 404) courseNotFound.value = true; else ElMessage.error('获取课程信息失败') }
+  finally { courseLoading.value = false }
+}
+
 const fetchTeacher = async () => {
-  if (!course.value.teacherId) return
-  teacherLoading.value = true
-  try {
-    const { data } = await getPublicProfile(course.value.teacherId)
-    teacher.value = data || {}
-  } catch (err) {
-    console.warn('[CourseDetail] fetchTeacher failed, falling back to course.teacherName:', err.message || err)
-    // P0-3: 降级显示 course.teacherName
-    teacher.value = {}
-  } finally {
-    teacherLoading.value = false
-  }
+  if (!course.value.teacherId) return; teacherLoading.value = true
+  try { const { data } = await getPublicProfile(course.value.teacherId); teacher.value = data || {} }
+  catch { teacher.value = {} }
+  finally { teacherLoading.value = false }
 }
 
-// 检查当前用户是否已报名
 const checkEnrollment = async () => {
   if (!isLoggedIn.value || !courseId.value) return
-  const userId = userStore.userInfo?.id
-  if (!userId) return
-  try {
-    const { data } = await getMyEnrollments(userId)
-    const list = Array.isArray(data) ? data : (data?.items || [])
-    isEnrolled.value = list.some(e => String(e.courseId) === String(courseId.value))
-  } catch {
-    isEnrolled.value = false
-  }
+  const uid = userStore.userInfo?.id; if (!uid) return
+  try { const { data } = await getMyEnrollments(uid); const list = Array.isArray(data) ? data : (data?.items || []); isEnrolled.value = list.some(e => String(e.courseId) === String(courseId.value)) }
+  catch { isEnrolled.value = false }
 }
 
-// P0-4: 报名（区分错误码 + 重复报名处理）
 const handleEnroll = async () => {
-  if (!isLoggedIn.value) {
-    goLogin()
-    return
-  }
-  const userId = userStore.userInfo?.id
-  if (!userId) {
-    ElMessage.error('用户信息未加载，请刷新重试')
-    return
-  }
+  if (!isLoggedIn.value) { goLogin(); return }
+  const uid = userStore.userInfo?.id; if (!uid) { ElMessage.error('用户信息未加载'); return }
   enrollLoading.value = true
   try {
-    await enrollApi({ userId, courseId: courseId.value })
-    ElMessage.success('报名成功')
-    isEnrolled.value = true
-  } catch (err) {
-    const respCode = err.response?.data?.code
-    const status = err.response?.status
-    if (respCode === 8002 || status === 409) {
-      // 重复报名：静默标记已报名（interceptor 已显示消息，这里覆盖为友好提示）
-      isEnrolled.value = true
+    if (course.value.price && !course.value.isFree) {
+      const { data: order } = await createOrder({ userId: uid, courseId: courseId.value })
+      if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); return }
+      await ElMessageBox.confirm(`确认支付 ¥${course.value.price}？`, '确认支付', { confirmButtonText: '支付', cancelButtonText: '取消', type: 'info' })
+      await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功')
+      return
     }
-    // 其他错误由 request.js interceptor 统一处理，不再重复弹窗
-  } finally {
-    enrollLoading.value = false
-  }
+    await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true
+  } catch (e) {
+    if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
+  } finally { enrollLoading.value = false }
 }
 
-// P0-2: 章节点击跳转到学习页
 const handleChapterClick = (row) => {
-  if (row.chapterType === 'EXERCISE') {
-    router.push(`/student/chapters/${row.id}/exercises`)
-  } else {
-    router.push(`/student/learning?courseId=${courseId.value}&chapterId=${row.id}`)
-  }
+  router.push(row.chapterType === 'EXERCISE' ? `/student/chapters/${row.id}/exercises` : `/student/learning?courseId=${courseId.value}&chapterId=${row.id}`)
 }
+const goLogin = () => router.push({ path: '/login', query: { redirect: route.fullPath } })
+const goLearn = () => { router.push(isInteractive.value ? `/student/courses/${courseId.value}/slides/player` : `/student/learning?courseId=${courseId.value}`) }
+const goToSlidePlayer = () => router.push(`/student/courses/${courseId.value}/slides/player`)
 
-// P0-6: 登录时携带 redirect
-const goLogin = () => {
-  router.push({ path: '/login', query: { redirect: route.fullPath } })
-}
-
-// P0-1: 继续学习跳转到学习播放页
-const goLearn = () => {
-  router.push(`/student/learning?courseId=${courseId.value}`)
-}
-
-// 获取课程评价
 const fetchReviews = async () => {
-  if (!courseId.value) return
-  reviewLoading.value = true
-  try {
-    const { data } = await getReviews(courseId.value, { page: 0, size: 5 })
-    reviews.value = data?.items || data || []
-  } catch {
-    reviews.value = []
-  } finally {
-    reviewLoading.value = false
-  }
+  if (!courseId.value) return; reviewLoading.value = true
+  try { const { data } = await getReviews(courseId.value, { page: 0, size: 5 }); reviews.value = data?.items || data || [] }
+  catch { reviews.value = [] }
+  finally { reviewLoading.value = false }
 }
 
-// 获取课程排行
 const fetchRanking = async () => {
   if (!courseId.value) return
-  rankingLoading.value = true
-  try {
-    const { data } = await getCourseRanking(courseId.value, { limit: 10 })
-    rankingList.value = data || []
-  } catch {
-    rankingList.value = []
-  } finally {
-    rankingLoading.value = false
-  }
+  try { const { data } = await getCourseRanking(courseId.value, { limit: 10 }); rankingList.value = data || [] } catch { rankingList.value = [] }
 }
 
-// 打开写评价弹窗
-const openReviewDialog = () => {
-  if (!isLoggedIn.value) {
-    goLogin()
-    return
-  }
-  reviewForm.value = { rating: 5, content: '' }
-  reviewDialogVisible.value = true
-}
-
-// P2-3: 提交评价后滚动到顶部
+const openReviewDialog = () => { if (!isLoggedIn.value) goLogin(); else { reviewForm.value = { rating: 5, content: '' }; reviewDialogVisible.value = true } }
 const handleSubmitReview = async () => {
-  if (!reviewForm.value.rating) {
-    ElMessage.warning('请选择评分')
-    return
-  }
+  if (!reviewForm.value.rating) { ElMessage.warning('请选择评分'); return }
   reviewSubmitting.value = true
-  try {
-    await createReview(courseId.value, {
-      rating: reviewForm.value.rating,
-      content: reviewForm.value.content
-    })
-    ElMessage.success('评价提交成功')
-    reviewDialogVisible.value = false
-    fetchReviews()
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  } catch {
-    ElMessage.error('提交失败，请重试')
-  } finally {
-    reviewSubmitting.value = false
-  }
+  try { await createReview(courseId.value, { rating: reviewForm.value.rating, content: reviewForm.value.content }); ElMessage.success('评价提交成功'); reviewDialogVisible.value = false; fetchReviews(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  catch { ElMessage.error('提交失败，请重试') }
+  finally { reviewSubmitting.value = false }
 }
 
-// P1-1: onMounted 移除 fetchChapters，章节从 course.chapters 获取
-onMounted(async () => {
-  await fetchCourse()
-  if (courseNotFound.value) return
-  await Promise.all([
-    fetchTeacher(),
-    checkEnrollment(),
-    fetchReviews(),
-    fetchRanking()
-  ])
-})
+const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch { slides.value = [] } finally { slidesLoading.value = false } }
+
+onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; if (isInteractive.value) fetchSlides(); await Promise.all([fetchTeacher(), checkEnrollment(), fetchReviews(), fetchRanking()]) })
 </script>
 
 <style scoped>
-.course-detail-page {
-  padding-bottom: 80px;
-}
-
-/* P0-5: 404 页面 */
-.not-found-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-}
-
-/* Banner 区 */
-.course-banner {
-  background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 100%);
-  height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-8);
-  color: #f5f5f5;
-  position: relative;
-  overflow: hidden;
-}
-
-.banner-content {
-  flex: 1;
-  max-width: 600px;
-}
-
-.course-title {
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-bold);
-  margin: 0 0 var(--space-3);
-  line-height: 1.3;
-}
-
-.course-subtitle {
-  font-size: var(--text-base);
-  margin: 0 0 var(--space-4);
-  opacity: 0.9;
-}
-
-.course-meta {
-  display: flex;
-  gap: var(--space-5);
-  font-size: var(--text-sm);
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.course-meta span {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-/* P1-3: Banner 中的标签 */
-.meta-tag {
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
-.banner-cover {
-  width: 280px;
-  height: 180px;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-}
-
-.banner-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* PC 布局 */
-.pc-layout .course-content {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-4);
-  display: flex;
-  gap: var(--space-6);
-}
-
-.main-column {
-  flex: 7;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.side-column {
-  flex: 3;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-/* H5 布局 */
-.h5-layout {
-  padding-bottom: 80px;
-}
-
-.h5-tabs {
-  display: flex;
-  background: var(--el-bg-color);
-  border-bottom: 1px solid var(--el-border-color-light);
-}
-
-.h5-tab {
-  flex: 1;
-  padding: 12px 0;
-  text-align: center;
-  font-size: var(--text-base);
-  font-weight: var(--weight-medium);
-  color: var(--el-text-color-secondary);
-  cursor: pointer;
-  transition: all var(--duration-base) var(--ease-out);
-  border-bottom: 2px solid transparent;
-}
-
-.h5-tab.active {
-  color: var(--role-primary);
-  border-bottom-color: var(--role-primary);
-}
-
-.h5-content {
-  padding: 16px 12px;
-}
-
-.h5-tab-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-/* P2-4: 章节折叠样式 */
-.chapter-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.chapter-count {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
-}
-
-.chapter-collapse-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: 1;
-  overflow: hidden;
-}
-
-.chapter-index {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-circle);
-  background: var(--el-fill-color);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-secondary);
-  flex-shrink: 0;
-}
-
-.chapter-title-text {
-  flex: 1;
-  font-size: var(--text-sm);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chapter-duration {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-placeholder);
-  flex-shrink: 0;
-  margin-left: auto;
-  padding-right: var(--space-2);
-}
-
-.chapter-collapse-body {
-  padding: var(--space-2) var(--space-4);
-}
-
-.chapter-desc {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
-  line-height: var(--leading-relaxed);
-  margin: 0 0 var(--space-2);
-}
-
-.chapter-desc-empty {
-  color: var(--el-text-color-placeholder);
-  font-style: italic;
-}
-
-/* 评价卡片 */
-.review-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.review-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.review-item {
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  padding-bottom: 12px;
-}
-
-.review-item:last-child {
-  border-bottom: none;
-}
-
-.review-user {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.review-username {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  color: var(--el-text-color-primary);
-}
-
-.review-rating {
-  margin-bottom: var(--space-1);
-}
-
-.review-content {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
-  line-height: var(--leading-relaxed);
-  margin: var(--space-1) 0 0;
-  white-space: pre-wrap;
-}
-
-.review-time {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-placeholder);
-}
-
-/* 卡片通用 */
-:deep(.el-card) {
-  border-radius: var(--radius-lg);
-  transition: box-shadow var(--duration-base) var(--ease-out),
-              transform var(--duration-base) var(--ease-out);
-}
-
-:deep(.el-card__header) {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-/* 卡片 hover 效果 */
-:deep(.el-card.card-hover:hover) {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-
-/* 对话框样式 */
-:deep(.review-dialog) {
-  max-width: 500px;
-}
-
-/* 按钮样式 */
-:deep(.el-button) {
-  cursor: pointer;
-}
-
-.section-title {
-  font-size: var(--text-base);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
-}
-
-.course-description {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
-  line-height: 1.8;
-  margin: 0;
-  white-space: pre-wrap;
-}
-
-/* 教师卡片 */
-.teacher-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-2) 0;
-}
-
-.teacher-avatar {
-  margin-bottom: var(--space-3);
-}
-
-.teacher-name {
-  font-size: var(--text-base);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
-  margin-bottom: var(--space-2);
-}
-
-.teacher-bio {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
-  text-align: center;
-  line-height: var(--leading-relaxed);
-}
-
-/* 学习同伴 */
-.companions-card {
-  background: var(--role-primary-light);
-}
-
-.companions-tip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
-}
-
-.companions-tip strong {
-  color: var(--role-primary);
-  font-size: var(--text-base);
-}
-
-/* 排行卡片 */
-.ranking-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.ranking-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-lg);
-  background: var(--el-fill-color-light);
-  transition: all var(--duration-base) var(--ease-out);
-}
-
-.ranking-item.ranking-current {
-  background: var(--el-fill-color-light);
-  border: 1px solid var(--role-primary);
-}
-
-.rank-num {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-circle);
-  background: var(--el-fill-color);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-secondary);
-  flex-shrink: 0;
-}
-
-.rank-num.rank-top {
-  background: linear-gradient(135deg, var(--role-primary) 0%, var(--role-primary-dark) 100%);
-  color: #f5f5f5;
-}
-
-.ranking-item.ranking-current .rank-num {
-  background: var(--role-primary);
-  color: #f5f5f5;
-}
-
-.rank-name {
-  flex: 1;
-  font-size: var(--text-sm);
-  color: var(--el-text-color-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rank-progress {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
-  flex-shrink: 0;
-}
-
-/* 底部固定栏 */
-.fixed-bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: var(--el-bg-color-page);
-  border-top: 1px solid var(--el-border-color);
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
-  z-index: 100;
-}
-
-.bar-inner {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: var(--space-3) var(--space-4);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.user-greeting {
-  font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
-}
-
-.action-btns {
-  display: flex;
-  gap: var(--space-3);
-}
-
-/* 响应式 */
+/* ====== 全局 ====== */
+.course-detail-page { background: #f5f5f5; min-height: 100vh; padding-bottom: 40px; }
+.not-found-page { display: flex; align-items: center; justify-content: center; min-height: 400px; }
+
+/* ====== 统一容器 ====== */
+.detail-breadcrumb,
+.hero-card,
+.tab-nav,
+.detail-body { max-width: 1200px; margin-left: auto; margin-right: auto; }
+
+/* ====== 面包屑 ====== */
+.detail-breadcrumb { padding: 16px 0 0; font-size: 13px; color: #999; }
+.detail-breadcrumb a { color: #666; text-decoration: none; }
+.detail-breadcrumb a:hover { color: #00cc7e; }
+.bc-sep { margin: 0 6px; color: #ddd; }
+.bc-current { color: #333; }
+
+/* ====== Hero Card ====== */
+.hero-card { margin-top: 16px; background: #fff; border-radius: 8px; display: flex; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.hero-left { width: 480px; flex-shrink: 0; }
+.hero-img-box { width: 100%; height: 270px; background: #f0f0f0; position: relative; cursor: pointer; }
+.hero-img-box:hover .hero-play-btn:not(.loading) { transform: translate(-50%,-50%) scale(1.1); background: rgba(0,0,0,.8); }
+.hero-player-active { cursor: default; }
+.hero-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hero-img-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f8f9fa, #e9ecef); }
+.hero-video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+.hero-play-btn {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center;
+  transition: all .25s ease; pointer-events: none;
+}
+.hero-play-btn.loading { pointer-events: none; }
+.hero-close-player {
+  position: absolute; top: 8px; right: 8px; width: 32px; height: 32px;
+  border-radius: 50%; border: none; background: rgba(0,0,0,.6);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .2s; z-index: 10;
+}
+.hero-close-player:hover { background: rgba(0,0,0,.85); }
+.loading-icon { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.hero-right { flex: 1; padding: 32px; display: flex; flex-direction: column; }
+.hero-title { font-size: 24px; font-weight: 600; color: #333; margin: 0 0 12px; line-height: 1.4; }
+.hero-subtitle { font-size: 14px; color: #666; margin: 0 0 16px; line-height: 1.6; }
+.hero-tags { display: flex; gap: 8px; margin-bottom: 16px; }
+.hero-stats { display: flex; gap: 24px; align-items: center; font-size: 14px; color: #666; margin-bottom: 20px; }
+.hero-stat { display: flex; align-items: center; gap: 4px; color: #999; }
+.hero-stat .el-icon { color: #ffc53d; }
+.hero-stat strong { color: #333; margin: 0 2px; }
+.hero-price { margin-left: auto; font-size: 28px; font-weight: 700; color: #ff5722; }
+.hero-price--free { color: #00cc7e; }
+.hero-actions { margin-top: auto; }
+
+/* ====== Tab Nav ====== */
+.tab-nav { background: #fff; display: flex; border-bottom: 1px solid #eee; }
+.tab-nav button { padding: 14px 24px; border: none; background: none; font-size: 16px; color: #666; cursor: pointer; border-bottom: 3px solid transparent; transition: all .2s; }
+.tab-nav button:hover { color: #00cc7e; }
+.tab-nav button.active { color: #00cc7e; border-bottom-color: #00cc7e; font-weight: 600; }
+
+/* ====== Main Body ====== */
+.detail-body { margin-top: 20px; display: flex; gap: 20px; align-items: flex-start; }
+.detail-main { flex: 1; min-width: 0; }
+.detail-side { width: 300px; flex-shrink: 0; }
+
+/* ====== Section Card ====== */
+.section-card { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.section-title { font-size: 18px; font-weight: 600; color: #333; margin: 0; }
+.section-count { font-size: 13px; color: #999; margin-left: auto; }
+.section-body { padding: 0; }
+.desc-text { font-size: 14px; color: #333; line-height: 2; margin: 0; }
+.desc-text--empty { color: #999; }
+
+/* ====== Outline / Slides ====== */
+.outline-idx { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: #f0fdf4; color: #00cc7e; font-size: 13px; font-weight: 600; margin-right: 12px; flex-shrink: 0; }
+.outline-title { font-size: 16px; font-weight: 500; color: #333; flex: 1; }
+.outline-duration { font-size: 13px; color: #999; margin-left: 12px; }
+.outline-desc { font-size: 14px; color: #666; line-height: 1.8; padding-left: 38px; margin: 0 0 8px; }
+.el-collapse { border: none; }
+:deep(.el-collapse-item__header) { height: auto; min-height: 52px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 15px; align-items: center; }
+:deep(.el-collapse-item__wrap) { border-bottom: none; }
+:deep(.el-collapse-item__content) { padding-bottom: 12px; }
+
+/* ====== Sidebar ====== */
+.side-card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.side-card-title { font-size: 15px; font-weight: 600; color: #333; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; }
+.teacher-block { display: flex; align-items: center; gap: 12px; }
+.teacher-name { font-size: 15px; font-weight: 600; color: #333; margin: 0 0 4px; }
+.teacher-dept { font-size: 13px; color: #999; margin: 0; }
+
+.info-list { display: flex; flex-direction: column; gap: 12px; }
+.info-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+.info-label { color: #999; }
+.info-value { color: #333; font-weight: 500; }
+.info-value.price { color: #ff5722; font-weight: 700; }
+
+/* ====== Reviews ====== */
+.review-list { display: flex; flex-direction: column; gap: 16px; }
+.review-item { padding-bottom: 16px; border-bottom: 1px solid #f5f5f5; }
+.review-item:last-child { border-bottom: none; padding-bottom: 0; }
+.review-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.review-user { font-size: 14px; color: #333; flex: 1; }
+.review-content { font-size: 14px; color: #333; line-height: 1.8; margin: 0 0 4px; }
+.review-time { font-size: 12px; color: #ccc; }
+
+/* ====== Responsive ====== */
 @media (max-width: 768px) {
-  .course-banner {
-    height: auto;
-    padding: 24px 20px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .banner-cover {
-    display: none;
-  }
-
-  .pc-layout .course-content {
-    flex-direction: column;
-    padding: 16px 12px;
-  }
-
-  .main-column,
-  .side-column {
-    flex: unset;
-    width: 100%;
-  }
-
-  .fixed-bottom-bar {
-    padding: var(--space-3) var(--space-3);
-  }
-
-  .bar-inner {
-    flex-direction: column;
-    gap: var(--space-3);
-    align-items: flex-start;
-  }
-
-  .action-btns {
-    width: 100%;
-    justify-content: flex-end;
-  }
-}
-
-/* el-collapse 样式覆盖 */
-:deep(.el-collapse) {
-  border: none;
-}
-
-:deep(.el-collapse-item__header) {
-  height: auto;
-  min-height: 48px;
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-:deep(.el-collapse-item__wrap) {
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-:deep(.el-collapse-item:last-child .el-collapse-item__header) {
-  border-bottom: none;
-}
-
-:deep(.el-collapse-item:last-child .el-collapse-item__wrap) {
-  border-bottom: none;
+  .hero-card { flex-direction: column; margin: 0; border-radius: 0; }
+  .hero-left { width: 100%; }
+  .hero-img-box { height: 200px; }
+  .hero-right { padding: 20px; }
+  .hero-stats { flex-wrap: wrap; gap: 12px; }
+  .hero-price { margin-left: 0; font-size: 22px; }
+  .detail-body { flex-direction: column; padding: 0 12px; }
+  .detail-side { width: 100%; }
+  .tab-nav { position: sticky; top: 0; z-index: 10; }
 }
 </style>

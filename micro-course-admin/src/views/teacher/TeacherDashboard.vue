@@ -149,7 +149,7 @@
                 <el-icon><WarningFilled /></el-icon>
                 <span>加载失败</span>
               </div>
-              <div v-else ref="studyChartRef" class="chart-container"></div>
+              <div v-else ref="studyChartRef" class="chart-container" role="img" aria-label="最近7天学情趋势图"></div>
             </template>
           </el-skeleton>
         </div>
@@ -166,7 +166,7 @@
                 <el-icon><WarningFilled /></el-icon>
                 <span>加载失败</span>
               </div>
-              <div v-else ref="activeChartRef" class="chart-container"></div>
+              <div v-else ref="activeChartRef" class="chart-container" role="img" aria-label="学员活跃度分布图"></div>
             </template>
           </el-skeleton>
         </div>

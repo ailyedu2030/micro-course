@@ -4,13 +4,16 @@ import com.microcourse.dto.*;
 import com.microcourse.service.TeacherService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/teacher")
+@Validated
 public class TeacherController {
 
     private final TeacherService teacherService;
@@ -33,13 +36,13 @@ public class TeacherController {
 
     @GetMapping("/pending-tasks")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
-    public R<List<PendingTaskVO>> getPendingTasks(@RequestParam(defaultValue = "5") int size) {
+    public R<List<PendingTaskVO>> getPendingTasks(@RequestParam(defaultValue = "5") @Range(min = 1, max = 100) int size) {
         return R.ok(teacherService.getPendingTasks(SecurityUtil.getCurrentUserId(), size));
     }
 
     @GetMapping("/notifications")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
-    public R<List<TeacherNotificationVO>> getNotifications(@RequestParam(defaultValue = "5") int size) {
+    public R<List<TeacherNotificationVO>> getNotifications(@RequestParam(defaultValue = "5") @Range(min = 1, max = 100) int size) {
         return R.ok(teacherService.getNotifications(SecurityUtil.getCurrentUserId(), size));
     }
 
@@ -47,7 +50,7 @@ public class TeacherController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<TeacherCourseVO>> getMyCourses(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "8") int size) {
+            @RequestParam(defaultValue = "8") @Range(min = 1, max = 10000) int size) {
         return R.ok(teacherService.getMyCourses(SecurityUtil.getCurrentUserId(), page, size));
     }
 }

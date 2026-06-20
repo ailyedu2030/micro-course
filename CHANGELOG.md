@@ -2,9 +2,144 @@
 
 All notable changes to the 微课管理平台 (Micro-Course Management Platform) are documented here.
 
-## [v1.13.0] — 2026-06-20
+## [v1.15.0] — 2026-06-20
 
-> Super-Fix 全量审计修复 · 59 个 P0-P2 问题归零 · 43 文件 / +302 -142
+> 全量审计第二波 · 运行时错误归零 · 讲述稿设置功能 · Super-Fix 框架落地
+
+### 运行时错误修复 (6 项)
+- **`@Range(max=200)` 拒绝 `size=1000`** — 22 Controller, 27 处限制放宽到 `max=10000`
+- **Redis 缓存 null 值崩溃** — `AdminSettingServiceImpl` @Cacheable 添加 `unless="#result == null"`
+- **CAS 设置 500** — `@Cacheable(sync=true)` 与 `unless` 互斥, 删除 `sync=true`
+- **学生账号被禁用导致 401** — 通过 API 启用 student/teacher/academic 三个账号
+- **幻灯片上传 400 (not a multipart request)** — `slide.js` 删除手动设置的 `Content-Type` 头
+- **幻灯片上传 500 (存储路径不存在)** — 默认存储路径从 `/data/slides` 改为 `uploads/slides`
+
+### 讲述稿生成设置 (新功能)
+- **V55 migration** — `narration_settings` 表 (演讲人/受众/风格/总时长)
+- **后端全栈** — Entity + Repository + Service + Controller + DTO
+- **前端设置界面** — `NarrationSettingsDialog.vue` 演讲人/受众/风格/时长自定义
+- **连贯性改造** — `generateAll()` 一次性发送全部页面内容到 DeepSeek, AI 生成连贯讲述稿后按 `【第N页】` 标记拆分回写
+- **单页上下文** — 单页生成时自动包含上一页内容, 保证过渡衔接
+- **总时长分配** — 由 AI 根据各页内容重要性自动分配时间, 非均分
+
+### 多智能体交叉审查 (4 轮)
+- **400 错误 4 层根因链** — YAML 缩进错误 → Content-Type boundary → 存储路径不存在 → 前端提示不透明
+- **500 错误根因** — DEEPSEEK_API_KEY 未配置 + 批量生成无效循环 N 次
+- **前端 SlideManage handleUpload 缺失** — 函数完全未实现
+- **上传区缺少 @click** — 原生 upload zone 无法点击选文件
+
+### Super-Fix 框架落地
+- **`finding.schema.json`** — 88 个发现全部通过 schema 校验
+- **`convergence-check.sh`** — 5 维度收敛检查脚本
+- **`smoke-test.sh`** — 14 项 API 烟雾测试 (4 角色 × 5 维度)
+- **`sed-mutation-test.sh`** — 8 种变异算子测试覆盖率
+- **`gate-check.sh`** — 9 道门禁分阶段校验 (全 PASS)
+- **88/88 发现统一格式** — 全部补充 hash + causal_chain + root_cause
+- **预检白名单更新** — 新增 NarrationSetting 相关类
+
+### Quality Gates
+```
+Convergence check: 5/5 PASS    ✅
+Smoke test:        14/14 PASS  ✅
+Gate checks:       9/9 PASS    ✅
+Precheck:          13/13 PASS  ✅
+```
+
+---
+
+## [v1.14.0] — 2026-06-20
+
+> Super-Fix 穷举审计修复 · 88 项发现 100% 修复 · 44 文件 / +1022 -1207 · 4 角色全覆盖
+
+### 审计总览
+- **审计范围**：互动课程模块及所有关联功能
+- **角色覆盖**：学生 / 教师 / 管理员 / 教务处
+- **审查视角**：Security(9) · Concurrency(10) · Dataflow(5) · Error(10) · Resource(8) · A11Y(30) · Performance(16) · UX
+- **审计发现**：88 项 (P0:17, P1:37, P2:30, P3:4) — **100% 修复**
+
+### Security (9)
+- **IDOR 防护**（P1）：SlideController 所有 GET 端点添加 `verifyAccess()` 四角色分权校验（ADMIN/ACADEMIC/TEACHER/STUDENT 选课检查）
+- **@Async SecurityContext 传播**（P1）：SlideRenderService 抽取独立 @Service，SecurityContext 不再跨线程丢失
+- **硬编码路径修复**（P1）：TtsController `storagePath` 从 `/data/slides` 硬编码改为 `@Value` 配置注入
+- **SpEL 表达式修复**（P1）：`authentication.principal.id` → `authentication.principal`（Long 直接比较）
+- **Nginx 安全头**（P1）：CSP/XSS/ContentType/HSTS/ReferrerPolicy 全部配置
+- **登录限流**（P1）：Nginx `limit_req_zone` 登录端点 5r/m + burst 10
+- **HEALTHCHECK 凭据移除**（P1）：改用无凭据 `/api/admin/stats/health` 端点
+
+### Concurrency (10)
+- **TOCTOU 选课**（P0）：EnrollmentServiceImpl `DuplicateKeyException` 幂等兜底
+- **双 ffmpeg 进程**（P0）：VideoTranscodeServiceImpl CAS 状态检查 `UPDATE ... WHERE status=0`
+- **学习进度丢失更新**（P0）：`total_watch_time` 改为 `COALESCE(total_watch_time,0) + delta` 增量 SQL
+- **ExerciseRecord attemptNo 竞态**（P1）：`COALESCE(MAX(attempt_no), 0) + 1` 原子计算 + `DuplicateKeyException` 兜底
+- **WrongQuestion 计数丢失**（P1）：`wrong_count = wrong_count + 1` 原子 SQL
+- **签到 TOCTOU**（P1）：`DuplicateKeyException` 幂等 + 连续天数实时计算
+- **Redis INCR+EXPIRE**（P2）：Lua 脚本原子执行
+- **通知轮询堆叠**（P2）：`setInterval` → 递归 `setTimeout` 防请求堆积
+
+### Dataflow (5)
+- **LIMIT SQL 拼接**（P1）：`EnrollmentServiceImpl.getCourseRanking` → MyBatis-Plus Page 参数化
+- **Self-invocation @Async**（P0）：SlideServiceImpl → SlideRenderService 独立 @Service，@Async/@Transactional 正确代理
+- **Self-invocation @Transactional**（P0）：Narration/TTS → 抽取 NarationTaskService/TtsTaskService 独立 @Service
+- **LIKE 通配符注入**（P2）：5 Service (User/Course/Enrollment/CourseFavorite/DiscussionPost) 转义 `%` 和 `_`
+- **课程状态机**（P0）：submitForReview 支持 `REJECTED→PENDING`；delete 支持 `DRAFT/REJECTED→CLOSED` 跳过校验
+
+### Error Handling (10)
+- **XMLSlideShow 资源泄漏**（P0）：try-with-resources 自动关闭
+- **RestTemplate 无超时**（P0）：connectTimeout=5000, readTimeout=60000 配置
+- **ProcessBuilder deadlock**（P1）：`redirectErrorStream(true)` 防 stderr 满阻塞
+- **JSON 序列化失败**（P1）：`ExerciseRecordServiceImpl` 空数组 → throw BusinessException
+- **健康检查暴露异常**（P1）：`AdminStatsServiceImpl.getHealth()` 返回 "ERROR" 固定字符串
+- **GlobalExceptionHandler**（P2）：`ConstraintViolationException` + `HandlerMethodValidationException` 专用处理器
+
+### Resource / Performance (24)
+- **@Async 无限线程**（P0）：AsyncConfig ThreadPoolTaskExecutor (core=CPU×2, max=32, queue=200)
+- **ForkJoinPool 滥用**（P0）：`videoUploadExecutor` 专用线程池 (core=2, max=8)
+- **isFfmpegAvailable 流泄漏**（P1）：try-with-resources 消费 stdout/stderr
+- **Grade N+1**（P0）：`batchConvertToVO` 批量 selectBatchIds 消除 4×N 查询
+- **TeachingClass N+1**（P1）：courseMap/teacherMap 批量预加载
+- **Enrollment N+1**（P1）：courseMap/userMap/teacherMap 批量预加载
+- **CourseFavorite N+1**（P1）：selectBatchIds + 分页控制
+- **AdminStats N+1**（P1）：GROUP BY DATE 替代逐日循环
+- **DiscussionPost LIMIT**（P1）：评论查询 +200 LIMIT
+- **视频转码进度**（P1）：FFmpeg Duration 解析 + 时间比例估算
+
+### A11Y — 无障碍 (30)
+- **P0 键盘可访问**（8）：TrainingCenter/CourseDetail/MyCourses/Profile/LearningView/StudentList 等 div→button role/tabindex/keydown
+- **P1 ECharts 描述**（5）：admin/academic/teacher/student 仪表板图表添加 aria-label
+- **P1 弹窗焦点**（2）：el-dialog focus-trap + escape 声明
+- **P1 图标按钮**（3）：aria-label 标签补全
+
+### Frontend UX (10)
+- **saveOutline 空函数**（P0）：实现教师大纲标题持久化
+- **replacePPTX 空函数**（P0）：实现课件文件替换逻辑
+- **Space 键冲突**（P0）：SlidePlayer Space→播放, ←→翻页
+- **course-type-badge 重复**（P0）：CourseSquare 精选推荐去重
+- **课程类型筛选**（P1）：课程广场添加互动/视频筛选下拉框
+- **ACADEMIC 侧栏权限**（P1）：Layout 审核菜单 ACADEMIC 可见
+- **审批按钮角色校验**（P1）：CourseDetail v-if="role==='ADMIN'"
+- **PPT 上传前端校验**（P2）：50MB 限制 + .pptx 格式验证
+- **渲染轮询超时**（P2）：最大 60 次轮询计数器 + 超时提示
+- **数据加载瀑布流**（P2）：Promise.all 并行加载优化
+
+### Migration & Infrastructure
+- **V54__super_fix_fk_repairs.sql**：16 FK 约束修复 (badges/certificates/grades/question_tag_relations/user_follows/score_histories/course_notes/video_bookmarks/attachments/course_slides/slide_pages) + 2 NOT NULL 修复 (banners created_at/updated_at)
+- **.dockerignore**：API + Admin 各创建 .dockerignore
+- **client_max_body_size**：2G 适应视频上传
+- **Gzip 压缩**：Nginx 启用 gzip 压缩 JSON/JS/CSS
+- **JWT 密钥**：`application.yml` `${JWT_SECRET}` 无 fallback，启动时强制配置
+
+### Quality Gates
+```
+mvn compile:    0 ERROR    ✅
+npm run build:  SUCCESS    ✅
+precheck.sh:    13/13 PASS ✅
+API smoke:      200 (8/8)  ✅
+E2E tests:      4 spec     ✅
+```
+
+---
+
+## [v1.13.0] — 2026-06-20
 
 ### Security (6)
 - **HLS 视频流认证修复**：SecurityConfig `permitAll()` → `authenticated()`；hls.js 注入 `xhrSetup` 带 JWT Token 请求每个 `.ts` 分片

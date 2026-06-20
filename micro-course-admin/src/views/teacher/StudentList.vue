@@ -113,6 +113,8 @@
         :data="tableData"
         stripe
         border
+        highlight-current-row
+        tabindex="0"
         class="data-table"
         ref="tableRef"
         @row-click="handleRowClick"

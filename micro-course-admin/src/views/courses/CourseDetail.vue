@@ -46,6 +46,15 @@
             <el-tag v-else-if="courseData.difficulty === 'ADVANCED'" size="small">高级</el-tag>
             <span v-else>-</span>
           </el-descriptions-item>
+          <el-descriptions-item label="课程类型">
+            <el-tag v-if="courseData.courseType === 'VIDEO'" type="primary" size="small">视频课程</el-tag>
+            <el-tag v-else-if="courseData.courseType === 'INTERACTIVE'" type="success" size="small">互动课程</el-tag>
+            <span v-else>{{ courseData.courseType || '视频课程' }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="价格">
+            <span v-if="courseData.price" style="color:#f56c6c;font-weight:600">¥{{ courseData.price }}</span>
+            <span v-else style="color:#67c23a">免费</span>
+          </el-descriptions-item>
           <el-descriptions-item label="评分">{{ courseData.rating ? courseData.rating.toFixed(1) : '-' }}</el-descriptions-item>
           <el-descriptions-item label="学生数">{{ courseData.studentCount || 0 }}</el-descriptions-item>
           <el-descriptions-item label="课程描述" :span="2">{{ courseData.description || '-' }}</el-descriptions-item>
@@ -84,6 +93,15 @@
             <el-option label="中级" value="INTERMEDIATE" />
             <el-option label="高级" value="ADVANCED" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="课程类型" prop="courseType">
+          <el-select v-model="formData.courseType" placeholder="请选择课程类型" class="full-width">
+            <el-option label="视频课程" value="VIDEO" />
+            <el-option label="互动课程" value="INTERACTIVE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="价格(¥)" prop="price">
+          <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0 表示免费" class="full-width" />
         </el-form-item>
         <el-form-item label="封面图" prop="coverUrl">
           <el-upload
@@ -203,7 +221,10 @@ const formData = reactive({
   description: '',
   creditHours: 1,
   semester: '',
-  difficulty: ''
+  difficulty: '',
+  courseType: 'VIDEO',
+  price: null,
+  isFree: true
 })
 
 const formRules = {
@@ -263,6 +284,9 @@ const fetchCourse = async () => {
       formData.creditHours = data.creditHours || 1
       formData.semester = data.semester || ''
       formData.difficulty = data.difficulty || ''
+      formData.courseType = data.courseType || 'VIDEO'
+      formData.price = data.price || null
+      formData.isFree = data.isFree !== false
     }
   } catch {
     ElMessage.error('获取课程信息失败')

@@ -14,11 +14,13 @@ import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/questions")
+@Validated
 public class QuestionController {
 
     private final QuestionService questionService;
@@ -33,8 +35,8 @@ public class QuestionController {
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) String questionType,
             @RequestParam(required = false) Integer difficulty,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, page, size);
         return R.ok(result);
     }

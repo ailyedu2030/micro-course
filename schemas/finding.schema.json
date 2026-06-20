@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Super-Fix Finding",
+  "description": "Schema for a single audit finding in the Super-Fix zero-trust audit framework",
+  "type": "object",
+  "required": [
+    "id", "severity", "title", "file", "description", "remediation",
+    "lens", "root_cause", "causal_chain", "hash"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z]+-\\d{3}$",
+      "description": "Unique finding ID, e.g. CON-001, SEC-012"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"],
+      "description": "P0=Security/Data corruption/Crash, P1=Functional bug/Race, P2=Minor/Cosmetic, P3=Enhancement"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 120,
+      "description": "Concise title describing the finding"
+    },
+    "file": {
+      "type": "string",
+      "description": "File path with line range, e.g. src/main/.../Foo.java:42-56"
+    },
+    "line_range": {
+      "type": "string",
+      "description": "Line range in format '42-56' or '42'"
+    },
+    "snippet": {
+      "type": "string",
+      "description": "Brief code snippet illustrating the issue"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Detailed description of the issue, scenario, and impact"
+    },
+    "remediation": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Concrete fix recommendation with code example"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Confidence in the finding's validity"
+    },
+    "lens": {
+      "type": "string",
+      "enum": ["security", "concurrency", "dataflow", "error", "resource", "performance", "a11y", "ux"],
+      "description": "Audit lens/ perspective"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{12}$",
+      "description": "Stable semantic hash for cross-run dedup (12 hex chars)"
+    },
+    "root_cause": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Root cause analysis — why this defect exists"
+    },
+    "causal_chain": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": {
+        "type": "string",
+        "minLength": 5
+      },
+      "description": "Trigger → Propagation → Impact → Root cause classification"
+    },
+    "seen_by": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Which lens(es) independently identified this finding"
+    },
+    "test_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs of tests covering this finding (for mutation kill verification)"
+    },
+    "mutation_killed": {
+      "type": "boolean",
+      "description": "Whether mutation test confirmed test effectiveness"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "severity": { "enum": ["P0", "P1"] } } },
+      "then": { "required": ["test_ids", "mutation_killed"] }
+    }
+  ]
+}

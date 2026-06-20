@@ -58,7 +58,16 @@ public enum ErrorCode {
     BANNER_NOT_FOUND(15001, "Banner 不存在", 404),
 
     CAS_NOT_CONFIGURED(1008, "CAS服务未配置", 500),
-    CAS_VALIDATION_FAILED(1009, "CAS票据验证失败", 401);
+    CAS_VALIDATION_FAILED(1009, "CAS票据验证失败", 401),
+
+    PLUGIN_NOT_ENABLED(16001, "该课程类型对应的插件未启用", 400),
+    PLUGIN_NO_GRANT(16002, "您没有该课程类型的创建权限", 403),
+    SLIDE_NOT_FOUND(16003, "幻灯片不存在", 404),
+    SLIDE_PAGE_NOT_FOUND(16004, "幻灯片页面不存在", 404),
+    NARRATION_GENERATE_FAILED(16005, "AI 讲述稿生成失败", 500),
+    TTS_GENERATE_FAILED(16006, "TTS 音频生成失败", 500),
+    PPT_PARSE_FAILED(16007, "PPT 文件解析失败", 400),
+    PPT_FORMAT_INVALID(16008, "不支持的 PPT 格式，请上传 .pptx 文件", 400);
 
     private final int code;
     private final String message;

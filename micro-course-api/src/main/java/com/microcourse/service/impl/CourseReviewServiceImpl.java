@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.CourseReviewRequest;
@@ -152,12 +153,11 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     }
 
     private void updateCourseAvgRating(Long courseId) {
-        BigDecimal avg = courseReviewRepository.selectAvgRatingByCourseId(courseId);
-        Course course = courseRepository.selectById(courseId);
-        if (course != null) {
-            course.setAvgRating(avg);
-            courseRepository.updateById(course);
-        }
+        // 原子 SQL 更新:避免 read-compute-write 并发丢失更新(CON-NEW 修复)
+        courseRepository.update(null,
+                new LambdaUpdateWrapper<Course>()
+                        .eq(Course::getId, courseId)
+                        .setSql("avg_rating = (SELECT COALESCE(AVG(rating), 0) FROM course_reviews WHERE course_id = " + courseId + " AND deleted_at IS NULL)"));
     }
 
     private CourseReviewVO convertToVO(CourseReview review) {

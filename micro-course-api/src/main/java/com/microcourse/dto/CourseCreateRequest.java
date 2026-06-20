@@ -38,6 +38,10 @@ public class CourseCreateRequest {
 
     private String tags;
 
+    private String courseType;
+
+    private java.math.BigDecimal price;
+
     public CourseCreateRequest() {}
 
     public String getTitle() { return title; }
@@ -68,4 +72,8 @@ public class CourseCreateRequest {
     public void setDescription(String description) { this.description = description; }
     public String getTags() { return tags; }
     public void setTags(String tags) { this.tags = tags; }
+    public String getCourseType() { return courseType; }
+    public void setCourseType(String courseType) { this.courseType = courseType; }
+    public java.math.BigDecimal getPrice() { return price; }
+    public void setPrice(java.math.BigDecimal price) { this.price = price; }
 }

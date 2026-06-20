@@ -196,7 +196,7 @@
               <div v-if="chartData.length === 0" class="empty-wrap">
                 <el-empty description="暂无学习数据" :image-size="80" />
               </div>
-              <div v-else ref="chartRef" class="echarts-container"></div>
+              <div v-else ref="chartRef" class="echarts-container" role="img" aria-label="本周学习时长分布图"></div>
             </div>
           </el-card>
         </div>
@@ -431,7 +431,7 @@
             <div v-if="chartData.length === 0" class="empty-wrap">
               <el-empty description="暂无学习数据" :image-size="60" />
             </div>
-            <div v-else ref="chartRefH5" class="echarts-container"></div>
+            <div v-else ref="chartRefH5" class="echarts-container" role="img" aria-label="本周学习时长分布图"></div>
           </div>
         </el-card>
       </div>

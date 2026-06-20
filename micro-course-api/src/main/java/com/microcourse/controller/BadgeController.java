@@ -6,13 +6,17 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.BadgeService;
 import com.microcourse.util.SecurityUtil;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/badges")
+@Validated
 public class BadgeController {
 
     private final BadgeService badgeService;
@@ -24,8 +28,8 @@ public class BadgeController {
     @GetMapping("/definitions")
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<BadgeDefinitionVO>> getDefinitions(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         return R.ok(badgeService.getDefinitionsPage(page, size));
     }
 
@@ -39,8 +43,8 @@ public class BadgeController {
     @GetMapping("/achievements")
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<AchievementVO>> getMyAchievements(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         Long userId = SecurityUtil.getCurrentUserId();
         return R.ok(badgeService.getMyAchievementsPage(userId, page, size));
     }

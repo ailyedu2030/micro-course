@@ -12,6 +12,8 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CertificateService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
@@ -31,6 +33,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class CertificateServiceImpl implements CertificateService {
+
+    private static final Logger log = LoggerFactory.getLogger(CertificateServiceImpl.class);
 
     private final CertificateRepository certificateRepository;
     private final CourseRepository courseRepository;
@@ -110,7 +114,17 @@ public class CertificateServiceImpl implements CertificateService {
         cert.setCourseId(courseId);
         cert.setCertCode(generateCertCode(userId, courseId));
         cert.setIssuedAt(LocalDateTime.now());
-        certificateRepository.insert(cert);
+        try {
+            certificateRepository.insert(cert);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            log.warn("[Certificate] 并发签发命中唯一冲突,降级查询已有证书 userId={} courseId={}", userId, courseId);
+            LambdaQueryWrapper<Certificate> retryWrapper = new LambdaQueryWrapper<>();
+            retryWrapper.eq(Certificate::getUserId, userId)
+                        .eq(Certificate::getCourseId, courseId);
+            Certificate retryExisting = certificateRepository.selectOne(retryWrapper);
+            if (retryExisting != null) return convertToVO(retryExisting);
+            throw e;
+        }
 
         return convertToVO(cert);
     }

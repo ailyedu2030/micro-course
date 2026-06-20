@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/api/operation-logs")
+@Validated
 public class OperationLogController {
 
     private static final Logger log = LoggerFactory.getLogger(OperationLogController.class);
@@ -65,7 +67,7 @@ public class OperationLogController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startTime,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endTime,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
 
         // P0-1: LocalDate → LocalDateTime 转换（开始日期取 00:00:00，结束日期取 23:59:59）
         LocalDateTime startDateTime = startTime != null ? startTime.atStartOfDay() : null;

@@ -1,8 +1,11 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.CourseFavoriteVO;
+import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.CourseFavoriteService;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -46,14 +49,18 @@ public class CourseFavoriteController {
 
     /**
      * GET /api/favorites
-     * 获取所有收藏记录
-     * 权限：ADMIN / TEACHER / STUDENT（已认证用户）
+     * 分页查询所有收藏记录
+     * 权限：ADMIN, ACADEMIC
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
-    public R<List<CourseFavoriteVO>> listAll() {
-        List<CourseFavoriteVO> favorites = favoriteService.listAll();
-        return R.ok(favorites);
+    public R<PageResult<CourseFavoriteVO>> listAll(
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
+            @RequestParam(required = false) String studentName,
+            @RequestParam(required = false) String courseName) {
+        PageResult<CourseFavoriteVO> result = favoriteService.listAll(page, size, studentName, courseName);
+        return R.ok(result);
     }
 
     private Long getCurrentUserId() {

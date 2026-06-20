@@ -144,7 +144,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         java.util.Set<Long> filterUserIds = null;
         if (query.getStudentName() != null && !query.getStudentName().isBlank()) {
             LambdaQueryWrapper<User> uWrapper = new LambdaQueryWrapper<>();
-            uWrapper.like(User::getRealName, query.getStudentName().trim());
+            uWrapper.like(User::getRealName, escapeLike(query.getStudentName().trim()));
             filterUserIds = userRepository.selectList(uWrapper).stream()
                     .map(User::getId).collect(java.util.stream.Collectors.toSet());
             if (filterUserIds.isEmpty()) {
@@ -155,7 +155,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         // P0-4: className → classIds → userIds（服务端关联过滤）
         if (query.getClassName() != null && !query.getClassName().isBlank()) {
             LambdaQueryWrapper<Classes> clsWrapper = new LambdaQueryWrapper<>();
-            clsWrapper.like(Classes::getName, query.getClassName().trim());
+            clsWrapper.like(Classes::getName, escapeLike(query.getClassName().trim()));
             java.util.Set<Long> classIds = classesRepository.selectList(clsWrapper).stream()
                     .map(Classes::getId).collect(java.util.stream.Collectors.toSet());
             if (classIds.isEmpty()) {
@@ -179,7 +179,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         // P0-4: majorName → majorIds → userIds（服务端关联过滤）
         if (query.getMajorName() != null && !query.getMajorName().isBlank()) {
             LambdaQueryWrapper<Major> mjWrapper = new LambdaQueryWrapper<>();
-            mjWrapper.like(Major::getName, query.getMajorName().trim());
+            mjWrapper.like(Major::getName, escapeLike(query.getMajorName().trim()));
             java.util.Set<Long> majorIds = majorRepository.selectList(mjWrapper).stream()
                     .map(Major::getId).collect(java.util.stream.Collectors.toSet());
             if (majorIds.isEmpty()) {
@@ -209,7 +209,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             }
         } else if (query.getCourseName() != null && !query.getCourseName().isBlank()) {
             LambdaQueryWrapper<Course> cWrapper = new LambdaQueryWrapper<>();
-            cWrapper.like(Course::getTitle, query.getCourseName().trim());
+            cWrapper.like(Course::getTitle, escapeLike(query.getCourseName().trim()));
             filterCourseIds = courseRepository.selectList(cWrapper).stream()
                     .map(Course::getId).collect(java.util.stream.Collectors.toSet());
             if (filterCourseIds.isEmpty()) {
@@ -235,7 +235,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     public List<EnrollmentVO> getCourseEnrollments(Long courseId) {
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Enrollment::getCourseId, courseId)
-                .orderByDesc(Enrollment::getEnrolledAt);
+                .orderByDesc(Enrollment::getEnrolledAt)
+                .last("LIMIT 200");
         List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);
         return convertToVOList(enrollments);
     }
@@ -667,6 +668,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             if (granted.getAuthority().equals("ROLE_ADMIN")) return true;
         }
         return false;
+    }
+
+    /** LIKE 通配符转义,防 DF-002 LIKE 注入 */
+    private static String escapeLike(String input) {
+        if (input == null) return null;
+        return input.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     /** P2: 提取教师课程 ID 集合的公共方法，消除重复代码 */

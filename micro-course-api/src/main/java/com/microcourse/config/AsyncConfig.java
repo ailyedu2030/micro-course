@@ -6,6 +6,7 @@ import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
@@ -21,6 +22,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  * 避免与 ForkJoinPool.commonPool(被用于 parallelStream 等其他场景)争用。
  */
 @Configuration
+@EnableAsync
 public class AsyncConfig implements AsyncConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncConfig.class);

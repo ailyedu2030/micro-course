@@ -223,11 +223,12 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             userIds.add(post.getUserId());
         }
 
-        // 查评论列表并构建树结构
+        // 查评论列表并构建树结构（PERF-006: 添加 LIMIT 防止全量加载）
         LambdaQueryWrapper<DiscussionComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DiscussionComment::getPostId, id)
                .eq(DiscussionComment::getStatus, 1)
-               .orderByAsc(DiscussionComment::getCreatedAt);
+               .orderByAsc(DiscussionComment::getCreatedAt)
+               .last("LIMIT 200");
         List<DiscussionComment> comments = commentRepository.selectList(wrapper);
 
         comments.forEach(c -> {

@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/videos")
+@Validated
 public class VideoController {
 
     private static final Logger log = LoggerFactory.getLogger(VideoController.class);
@@ -71,7 +73,7 @@ public class VideoController {
     public R<PageResult<VideoVO>> page(
             @RequestParam(required = false) Long courseId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         if (courseId == null) {
             return R.ok(PageResult.of(List.of(), 0L, page, size));
         }

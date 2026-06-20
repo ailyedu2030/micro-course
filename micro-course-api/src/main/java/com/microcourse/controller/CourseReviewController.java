@@ -55,7 +55,7 @@ public class CourseReviewController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseReviewVO>> list(@PathVariable Long id,
                                               @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-                                              @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
+                                              @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         return R.ok(courseReviewService.listByCourse(id, page, size));
     }
 
@@ -90,7 +90,7 @@ class MyReviewController {
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<PageResult<CourseReviewVO>> listAll(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
             @RequestParam(required = false) Long courseId) {
         PageResult<CourseReviewVO> result = courseReviewService.listAll(page, size, courseId);
         return R.ok(result);
@@ -104,7 +104,7 @@ class MyReviewController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseReviewVO>> getMyReviews(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         Long userId = SecurityContextHolder.getContext().getAuthentication().getPrincipal() instanceof Long
                 ? (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal()
                 : 0L;

@@ -13,8 +13,11 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +28,7 @@ import cn.hutool.poi.excel.ExcelWriter;
 
 @RestController
 @RequestMapping("/api/enrollments")
+@Validated
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
@@ -57,8 +61,8 @@ public class EnrollmentController {
     @GetMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<EnrollmentVO>> getEnrollments(
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) @PositiveOrZero Integer page,
+            @RequestParam(required = false) @Range(min = 1, max = 10000) Integer size,
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) String studentName,
             @RequestParam(required = false) String courseName,
@@ -83,8 +87,8 @@ public class EnrollmentController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<PageResult<EnrollmentVO>> getCourseEnrollments(
             @PathVariable Long courseId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) int size) {
         PageResult<EnrollmentVO> result = enrollmentService.getCourseEnrollmentPage(courseId, page, size);
         return R.ok(result);
     }

@@ -70,6 +70,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
+        <el-table-column label="类型" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.courseType === 'INTERACTIVE'" type="success" size="small" effect="plain">互动</el-tag>
+            <el-tag v-else type="primary" size="small" effect="plain">视频</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="categoryName" label="分类" width="120" />
         <el-table-column prop="teacherName" label="教师" width="100" />
         <el-table-column prop="studentCount" label="学员数" width="90" align="center" />
@@ -87,11 +93,13 @@
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right" align="center">
           <template #default="{ row }">
+            <el-button v-if="row.courseType === 'INTERACTIVE'" type="primary" link size="small" @click.stop="goWorkspace(row)">工作台</el-button>
             <el-button type="primary" link size="small" @click.stop="handleEdit(row)">编辑</el-button>
-            <el-button v-if="row.status === 1" type="success" link size="small" @click.stop="handleApprove(row)">审核通过</el-button>
-            <el-button v-if="row.status === 1" type="danger" link size="small" @click.stop="handleReject(row)">驳回</el-button>
-            <el-button v-if="row.status === 2" type="primary" link size="small" @click.stop="handlePublish(row)">发布</el-button>
-            <el-button v-if="row.status === 4" type="warning" link size="small" @click.stop="handleUnpublish(row)">下架</el-button>
+            <el-button v-if="row.courseType === 'INTERACTIVE'" type="success" link size="small" @click.stop="goSlides(row)">课件</el-button>
+            <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="success" link size="small" @click.stop="handleApprove(row)">审核通过</el-button>
+            <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="danger" link size="small" @click.stop="handleReject(row)">驳回</el-button>
+            <el-button v-if="row.status === 2 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="primary" link size="small" @click.stop="handlePublish(row)">发布</el-button>
+            <el-button v-if="row.status === 4 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="warning" link size="small" @click.stop="handleUnpublish(row)">下架</el-button>
             <el-button type="info" link size="small" @click.stop="handleView(row)">查看</el-button>
             <el-button type="primary" link size="small" @click.stop="handleCopy(row)">复制</el-button>
             <el-button type="danger" link size="small" @click.stop="handleDelete(row)">删除</el-button>
@@ -139,6 +147,15 @@
             <el-option label="中级" value="INTERMEDIATE" />
             <el-option label="高级" value="ADVANCED" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="课程类型" prop="courseType">
+          <el-select v-model="formData.courseType" class="full-width">
+            <el-option label="视频课程" value="VIDEO" />
+            <el-option label="互动课程" value="INTERACTIVE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="价格(元)" prop="price">
+          <el-input-number v-model="formData.price" :min="0" :precision="2" class="full-width" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -188,7 +205,9 @@ const formData = reactive({
   description: '',
   creditHours: 1,
   semester: '',
-  difficulty: ''
+  difficulty: '',
+  courseType: 'VIDEO',
+  price: null
 })
 
 const formRules = {
@@ -384,6 +403,13 @@ const handleCopy = async (row) => {
   } catch {
     ElMessage.error('复制失败')
   }
+}
+
+const goSlides = (row) => {
+  router.push(`/teacher/courses/${row.id}/slides`)
+}
+const goWorkspace = (row) => {
+  router.push(`/teacher/courses/${row.id}/workspace`)
 }
 
 const handleSubmit = async () => {

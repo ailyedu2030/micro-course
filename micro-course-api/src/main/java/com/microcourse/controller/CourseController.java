@@ -6,12 +6,14 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/courses")
+@Validated
 public class CourseController {
 
     private final CourseService courseService;
@@ -24,7 +26,7 @@ public class CourseController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 200) int size,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
@@ -32,6 +34,7 @@ public class CourseController {
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) Boolean recommended,
             @RequestParam(required = false) Integer difficulty,
+            @RequestParam(required = false) String courseType,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortOrder) {
         CoursePageQuery query = new CoursePageQuery();
@@ -44,6 +47,7 @@ public class CourseController {
         query.setStatus(status);
         query.setRecommended(recommended);
         query.setDifficulty(difficulty);
+        query.setCourseType(courseType);
         query.setSortBy(sortBy);
         query.setSortOrder(sortOrder);
         PageResult<CourseVO> result = courseService.page(query);

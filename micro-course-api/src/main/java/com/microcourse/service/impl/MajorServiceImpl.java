@@ -17,6 +17,7 @@ import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.repository.MajorRepository;
 import com.microcourse.service.MajorService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -65,6 +66,7 @@ public class MajorServiceImpl implements MajorService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public MajorVO create(MajorCreateRequest request) {
         if (departmentRepository.selectById(request.getDepartmentId()) == null) {
             throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
@@ -81,6 +83,7 @@ public class MajorServiceImpl implements MajorService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public MajorVO update(Long id, MajorUpdateRequest request) {
         Major major = majorRepository.selectById(id);
         if (major == null) {
@@ -109,6 +112,7 @@ public class MajorServiceImpl implements MajorService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Major major = majorRepository.selectById(id);
         if (major == null) {

@@ -1,6 +1,7 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.CourseFavoriteVO;
+import com.microcourse.dto.PageResult;
 
 import java.util.List;
 
@@ -13,10 +14,13 @@ public interface CourseFavoriteService {
     List<CourseFavoriteVO> getMyFavorites(Long userId);
 
     /**
-     * 获取所有收藏记录（管理员用）
-     * @return 所有收藏列表
+     * 分页查询所有收藏记录（管理员用）
+     * @param page 页码（0-based）
+     * @param size 每页条数
+     * @param studentName 学员姓名（可选，模糊搜索）
+     * @param courseName 课程名称（可选，模糊搜索）
      */
-    List<CourseFavoriteVO> listAll();
+    PageResult<CourseFavoriteVO> listAll(int page, int size, String studentName, String courseName);
 
     boolean isFavorited(Long userId, Long courseId);
 }

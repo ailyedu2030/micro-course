@@ -29,7 +29,7 @@ public class DiscussionAdminController {
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<PageResult<DiscussionPostVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 200) int size,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) String status) {

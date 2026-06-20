@@ -117,7 +117,7 @@
               <div v-if="deptError" class="chart-error">
                 <span>加载失败</span>
               </div>
-              <div v-else ref="deptChartRef" class="chart-container"></div>
+              <div v-else ref="deptChartRef" class="chart-container" role="img" aria-label="院系完成率对比图"></div>
             </template>
           </el-skeleton>
         </el-card>
@@ -134,7 +134,7 @@
               <div v-if="trendError" class="chart-error">
                 <span>加载失败</span>
               </div>
-              <div v-else ref="trendChartRef" class="chart-container"></div>
+              <div v-else ref="trendChartRef" class="chart-container" role="img" aria-label="参与率趋势图"></div>
             </template>
           </el-skeleton>
         </el-card>
