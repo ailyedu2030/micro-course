@@ -501,7 +501,7 @@ onBeforeUnmount(() => {
 .teacher-teaching-classes {
   padding: var(--space-6);
   background: var(--el-bg-color-page);
-  min-height: calc(100dvh - 120px);
+  min-height: 100dvh;
   max-width: 1440px;
   margin: 0 auto;
 }
@@ -515,7 +515,8 @@ onBeforeUnmount(() => {
   border: 1px solid var(--el-border-color-lighter);
   transition: box-shadow var(--duration-base) var(--ease-out),
               transform var(--duration-base) var(--ease-out);
-  height: calc(100dvh - 168px);
+  height: calc(100dvh - 180px);
+  min-height: 400px;
   overflow-y: auto;
 }
 

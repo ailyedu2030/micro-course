@@ -239,6 +239,8 @@
       </el-main>
     </el-container>
   </el-container>
+  <!-- 噪点纹理覆盖层 · 教职工端微装饰 -->
+  <div class="staff-noise-overlay" aria-hidden="true" />
 </template>
 
 <script setup>

@@ -549,6 +549,13 @@
   color: var(--el-text-color-primary);
   margin-bottom: var(--space-4);
   letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
+}
+
+/* 卡片标题统一加 text-wrap: balance 防止孤词 */
+.card-title,
+.card-header span:first-child {
+  text-wrap: balance;
 }
 
 /* 通用卡片 */
@@ -904,7 +911,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   6.5 噪点纹理覆盖层 (学生端专用)
+   6.5 噪点纹理覆盖层 (学生端专用 & 教职工通用)
    -------------------------------------------------------------------------- */
 .student-noise-overlay {
   position: fixed;
@@ -913,6 +920,17 @@
   z-index: var(--z-toast);
   opacity: 0.015;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+.staff-noise-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-toast);
+  opacity: 0.01;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 256px 256px;
 }
@@ -1144,7 +1162,7 @@
   border-top: 1px solid var(--el-border-color-lighter);
 }
 
-/* 统计卡片数字强调动画 */
+/* 统计卡片数字强调动画 + 等宽数字 */
 @keyframes countUp {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1152,6 +1170,16 @@
 
 .stat-card-value {
   animation: countUp 0.5s var(--ease-out);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 全局数字表格等宽 — 数据密集型场景 */
+.el-table .cell {
+  font-variant-numeric: tabular-nums;
+}
+
+.el-table .el-table__cell {
+  font-variant-numeric: tabular-nums;
 }
 
 /* --------------------------------------------------------------------------
