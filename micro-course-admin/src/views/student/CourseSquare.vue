@@ -20,7 +20,9 @@
         <div class="deco-circle deco-1" />
         <div class="deco-circle deco-2" />
         <div class="deco-circle deco-3" />
+        <div class="deco-circle deco-4" />
       </div>
+      <div class="hero-noise" aria-hidden="true" />
       <div class="hero-content">
         <h1 class="hero-title">发现优质课程</h1>
         <p class="hero-subtitle">开启你的学习之旅</p>
