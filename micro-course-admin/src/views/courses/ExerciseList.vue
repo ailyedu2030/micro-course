@@ -90,8 +90,8 @@
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="章节" prop="chapterId">
-          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width" :disabled="!formData.courseId">
+        <el-form-item label="章节" prop="chapterIds">
+          <el-select v-model="formData.chapterIds" placeholder="请选择章节（可多选）" multiple collapse-tags class="full-width" :disabled="!formData.courseId">
             <el-option v-for="item in formChapterOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -298,7 +298,7 @@ const questionSearchForm = reactive({
 
 const formData = reactive({
   courseId: null,
-  chapterId: null,
+  chapterIds: [],
   title: '',
   duration: 30,
   passScore: 60,
@@ -360,7 +360,7 @@ async function handleRandomPick() {
 
 const formRules = {
   courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
-  chapterId: [{ required: true, message: '请选择章节', trigger: 'change' }],
+  chapterIds: [{ required: true, message: '请选择章节', trigger: 'change' }],
   title: [{ required: true, message: '请输入练习标题', trigger: 'blur' }]
 }
 
@@ -446,7 +446,7 @@ const handleCreate = () => {
   isEdit.value = false
   currentId.value = null
   formData.courseId = searchForm.courseId
-  formData.chapterId = null
+  formData.chapterIds = []
   formData.title = ''
   formData.duration = 30
   formData.passScore = 60
@@ -464,7 +464,7 @@ const handleEdit = (row) => {
   isEdit.value = true
   currentId.value = row.id
   formData.courseId = row.courseId
-  formData.chapterId = row.chapterId
+  formData.chapterIds = row.chapterIds || []
   formData.title = row.title
   formData.duration = row.duration || 30
   formData.passScore = row.passScore || 60
@@ -478,7 +478,7 @@ const handleEdit = (row) => {
 }
 
 const handleFormCourseChange = async (val) => {
-  formData.chapterId = null
+  formData.chapterIds = []
   if (val) {
     const { data } = await getChapters({ courseId: val })
     formChapterOptions.value = data.items || []

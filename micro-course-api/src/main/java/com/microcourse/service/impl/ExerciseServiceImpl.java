@@ -10,11 +10,13 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Exercise;
+import com.microcourse.entity.ExerciseChapter;
 import com.microcourse.entity.ExerciseQuestion;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.ExerciseChapterRepository;
 import com.microcourse.repository.ExerciseQuestionRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.service.ExerciseService;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,15 +40,18 @@ public class ExerciseServiceImpl implements ExerciseService {
     private final ExerciseQuestionRepository exerciseQuestionRepository;
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
+    private final ExerciseChapterRepository exerciseChapterRepository;
 
     public ExerciseServiceImpl(ExerciseRepository exerciseRepository,
                                ExerciseQuestionRepository exerciseQuestionRepository,
                                CourseRepository courseRepository,
-                               CourseChapterRepository courseChapterRepository) {
+                               CourseChapterRepository courseChapterRepository,
+                               ExerciseChapterRepository exerciseChapterRepository) {
         this.exerciseRepository = exerciseRepository;
         this.exerciseQuestionRepository = exerciseQuestionRepository;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
+        this.exerciseChapterRepository = exerciseChapterRepository;
     }
 
     @Override
@@ -84,6 +90,17 @@ public class ExerciseServiceImpl implements ExerciseService {
         exercise.setQuestionCount(request.getQuestions().size());
 
         exerciseRepository.insert(exercise);
+
+        // Handle chapter associations (multi-chapter support)
+        List<Long> chapterIdsToInsert = resolveChapterIds(request.getChapterIds(), request.getChapterId());
+        if (chapterIdsToInsert != null && !chapterIdsToInsert.isEmpty()) {
+            for (Long cid : chapterIdsToInsert) {
+                ExerciseChapter ec = new ExerciseChapter();
+                ec.setExerciseId(exercise.getId());
+                ec.setChapterId(cid);
+                exerciseChapterRepository.insert(ec);
+            }
+        }
 
         List<ExerciseQuestion> exerciseQuestions = new ArrayList<>();
         for (ExerciseCreateRequest.ExerciseQuestionItem item : request.getQuestions()) {
@@ -166,6 +183,21 @@ public class ExerciseServiceImpl implements ExerciseService {
             }
         }
 
+        if (request.getChapterIds() != null || request.getChapterId() != null) {
+            List<Long> chapterIdsToUpdate = resolveChapterIds(request.getChapterIds(), request.getChapterId());
+            LambdaQueryWrapper<ExerciseChapter> chapterWrapper = new LambdaQueryWrapper<>();
+            chapterWrapper.eq(ExerciseChapter::getExerciseId, id);
+            exerciseChapterRepository.delete(chapterWrapper);
+            if (chapterIdsToUpdate != null && !chapterIdsToUpdate.isEmpty()) {
+                for (Long cid : chapterIdsToUpdate) {
+                    ExerciseChapter ec = new ExerciseChapter();
+                    ec.setExerciseId(id);
+                    ec.setChapterId(cid);
+                    exerciseChapterRepository.insert(ec);
+                }
+            }
+        }
+
         exercise.setUpdatedAt(LocalDateTime.now());
         exerciseRepository.updateById(exercise);
         return getById(id);
@@ -180,6 +212,10 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         // Owner check: only course teacher or ADMIN can delete exercise
         assertCourseOwner(exercise.getCourseId());
+
+        LambdaQueryWrapper<ExerciseChapter> chapterWrapper = new LambdaQueryWrapper<>();
+        chapterWrapper.eq(ExerciseChapter::getExerciseId, id);
+        exerciseChapterRepository.delete(chapterWrapper);
 
         LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ExerciseQuestion::getExerciseId, id);
@@ -217,10 +253,11 @@ public class ExerciseServiceImpl implements ExerciseService {
         IPage<Exercise> exercisePage = exerciseRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
 
-        // N+1 修复：批量预加载 course、chapter、questions
+        // N+1 修复：批量预加载 course、chapter、questions、multi-chapter
         Map<Long, Course> courseMap = new HashMap<>();
         Map<Long, CourseChapter> chapterMap = new HashMap<>();
         Map<Long, List<ExerciseQuestion>> questionsMap = new HashMap<>();
+        Map<Long, List<Long>> exerciseChapterIdsMap = new HashMap<>();
 
         Set<Long> courseIds = exercisePage.getRecords().stream()
                 .map(Exercise::getCourseId).filter(java.util.Objects::nonNull)
@@ -243,14 +280,29 @@ public class ExerciseServiceImpl implements ExerciseService {
                     .orderByAsc(ExerciseQuestion::getSortOrder);
             exerciseQuestionRepository.selectList(qWrapper)
                     .forEach(q -> questionsMap.computeIfAbsent(q.getExerciseId(), k -> new ArrayList<>()).add(q));
+
+            // Batch load multi-chapter associations
+            LambdaQueryWrapper<ExerciseChapter> ecWrapper = new LambdaQueryWrapper<>();
+            ecWrapper.in(ExerciseChapter::getExerciseId, exerciseIds);
+            List<ExerciseChapter> exerciseChapters = exerciseChapterRepository.selectList(ecWrapper);
+            Set<Long> multiChapterIds = new HashSet<>();
+            for (ExerciseChapter ec : exerciseChapters) {
+                exerciseChapterIdsMap.computeIfAbsent(ec.getExerciseId(), k -> new ArrayList<>()).add(ec.getChapterId());
+                multiChapterIds.add(ec.getChapterId());
+            }
+            // Batch load chapter titles for multi-chapter associations
+            if (!multiChapterIds.isEmpty()) {
+                courseChapterRepository.selectBatchIds(multiChapterIds).forEach(ch -> chapterMap.put(ch.getId(), ch));
+            }
         }
 
         final Map<Long, Course> finalCourseMap = courseMap;
         final Map<Long, CourseChapter> finalChapterMap = chapterMap;
         final Map<Long, List<ExerciseQuestion>> finalQuestionsMap = questionsMap;
+        final Map<Long, List<Long>> finalExerciseChapterIdsMap = exerciseChapterIdsMap;
 
         IPage<ExerciseVO> voPage = exercisePage.convert(e ->
-                convertToVO(e, finalCourseMap, finalChapterMap, finalQuestionsMap));
+                convertToVO(e, finalCourseMap, finalChapterMap, finalQuestionsMap, finalExerciseChapterIdsMap));
         return PageResult.of(voPage);
     }
 
@@ -299,6 +351,22 @@ public class ExerciseServiceImpl implements ExerciseService {
             }
         }
 
+        // Load multi-chapter associations
+        LambdaQueryWrapper<ExerciseChapter> ecWrapper = new LambdaQueryWrapper<>();
+        ecWrapper.eq(ExerciseChapter::getExerciseId, exercise.getId());
+        List<ExerciseChapter> exerciseChapters = exerciseChapterRepository.selectList(ecWrapper);
+        List<Long> chapterIds = new ArrayList<>();
+        List<String> chapterTitles = new ArrayList<>();
+        for (ExerciseChapter ec : exerciseChapters) {
+            chapterIds.add(ec.getChapterId());
+            CourseChapter ch = courseChapterRepository.selectById(ec.getChapterId());
+            if (ch != null) {
+                chapterTitles.add(ch.getTitle());
+            }
+        }
+        vo.setChapterIds(chapterIds);
+        vo.setChapterTitles(chapterTitles);
+
         LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ExerciseQuestion::getExerciseId, exercise.getId())
                 .orderByAsc(ExerciseQuestion::getSortOrder);
@@ -322,7 +390,8 @@ public class ExerciseServiceImpl implements ExerciseService {
 
     private ExerciseVO convertToVO(Exercise exercise, Map<Long, Course> courseMap,
                                      Map<Long, CourseChapter> chapterMap,
-                                     Map<Long, List<ExerciseQuestion>> questionsMap) {
+                                     Map<Long, List<ExerciseQuestion>> questionsMap,
+                                     Map<Long, List<Long>> exerciseChapterIdsMap) {
         ExerciseVO vo = new ExerciseVO();
         vo.setId(exercise.getId());
         vo.setChapterId(exercise.getChapterId());
@@ -353,6 +422,18 @@ public class ExerciseServiceImpl implements ExerciseService {
                 vo.setChapterTitle(chapter.getTitle());
             }
         }
+
+        // Populate multi-chapter data
+        List<Long> chapterIds = exerciseChapterIdsMap.getOrDefault(exercise.getId(), new ArrayList<>());
+        List<String> chapterTitles = new ArrayList<>();
+        for (Long cid : chapterIds) {
+            CourseChapter ch = chapterMap.get(cid);
+            if (ch != null) {
+                chapterTitles.add(ch.getTitle());
+            }
+        }
+        vo.setChapterIds(chapterIds);
+        vo.setChapterTitles(chapterTitles);
 
         List<ExerciseQuestion> exerciseQuestions = questionsMap.getOrDefault(exercise.getId(), new ArrayList<>());
 
@@ -386,6 +467,22 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
+    }
+
+    /**
+     * Resolve chapter IDs list from multi-chapter or single-chapter input.
+     * If chapterIds is not empty, use it; otherwise fall back to chapterId.
+     */
+    private List<Long> resolveChapterIds(List<Long> chapterIds, Long chapterId) {
+        if (chapterIds != null && !chapterIds.isEmpty()) {
+            return chapterIds;
+        }
+        if (chapterId != null) {
+            List<Long> singleList = new ArrayList<>();
+            singleList.add(chapterId);
+            return singleList;
+        }
+        return new ArrayList<>();
     }
 
     @Override

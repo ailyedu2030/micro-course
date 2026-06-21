@@ -6,6 +6,7 @@ public class ExerciseUpdateRequest {
 
     private Long courseId;
     private Long chapterId;
+    private List<Long> chapterIds;
     private String title;
     private Integer passScore;
     private Integer timeLimit;
@@ -21,6 +22,8 @@ public class ExerciseUpdateRequest {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Long getChapterId() { return chapterId; }
     public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
+    public List<Long> getChapterIds() { return chapterIds; }
+    public void setChapterIds(List<Long> chapterIds) { this.chapterIds = chapterIds; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public Integer getPassScore() { return passScore; }

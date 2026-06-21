@@ -8,6 +8,8 @@ public class ExerciseVO {
     private Long id;
     private Long chapterId;
     private String chapterTitle;
+    private List<Long> chapterIds;
+    private List<String> chapterTitles;
     private Long courseId;
     private String courseTitle;
     private String title;
@@ -32,6 +34,10 @@ public class ExerciseVO {
     public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public String getChapterTitle() { return chapterTitle; }
     public void setChapterTitle(String chapterTitle) { this.chapterTitle = chapterTitle; }
+    public List<Long> getChapterIds() { return chapterIds; }
+    public void setChapterIds(List<Long> chapterIds) { this.chapterIds = chapterIds; }
+    public List<String> getChapterTitles() { return chapterTitles; }
+    public void setChapterTitles(List<String> chapterTitles) { this.chapterTitles = chapterTitles; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public String getCourseTitle() { return courseTitle; }

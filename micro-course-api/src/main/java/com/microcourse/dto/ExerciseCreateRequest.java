@@ -12,6 +12,8 @@ public class ExerciseCreateRequest {
 
     private Long chapterId;
 
+    private List<Long> chapterIds;
+
     @NotBlank(message = "练习标题不能为空")
     private String title;
 
@@ -35,6 +37,8 @@ public class ExerciseCreateRequest {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Long getChapterId() { return chapterId; }
     public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
+    public List<Long> getChapterIds() { return chapterIds; }
+    public void setChapterIds(List<Long> chapterIds) { this.chapterIds = chapterIds; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public Integer getPassScore() { return passScore; }

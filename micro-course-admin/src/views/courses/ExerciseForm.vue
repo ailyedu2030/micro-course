@@ -29,8 +29,8 @@
             <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="章节" prop="chapterId">
-          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width" :disabled="!formData.courseId">
+        <el-form-item label="章节" prop="chapterIds">
+          <el-select v-model="formData.chapterIds" placeholder="请选择章节（可多选）" multiple collapse-tags class="full-width" :disabled="!formData.courseId">
             <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
@@ -212,7 +212,7 @@ const isEdit = computed(() => !!exerciseId.value)
 const formData = reactive({
   title: '',
   courseId: null,
-  chapterId: null,
+  chapterIds: [],
   duration: 30,
   passScore: 60,
   description: '',
@@ -247,7 +247,7 @@ async function refreshBankStats() {
   if (!formData.courseId) { bankStats.value = []; totalBankCount.value = 0; return }
   try {
     const params = { courseId: formData.courseId, size: 9999 }
-    if (formData.chapterId) params.chapterId = formData.chapterId
+    if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
     if (pickDifficulty.value) params.difficulty = pickDifficulty.value
     const { data } = await getQuestions(params)
     const items = data?.items || []
@@ -263,7 +263,7 @@ async function refreshBankStats() {
       .filter(s => s.count > 0)
   } catch { bankStats.value = []; totalBankCount.value = 0 }
 }
-watch(() => formData.chapterId, refreshBankStats)
+watch(() => formData.chapterIds, refreshBankStats, { deep: true })
 watch(pickDifficulty, refreshBankStats)
 
 async function handleRandomPick() {
@@ -273,7 +273,7 @@ async function handleRandomPick() {
   }
   try {
     const params = { courseId: formData.courseId, size: 9999 }
-    if (formData.chapterId) params.chapterId = formData.chapterId
+    if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
     if (pickDifficulty.value) params.difficulty = pickDifficulty.value
     const { data } = await getQuestions(params)
     let all = data?.items || []
@@ -341,7 +341,7 @@ const handleNextQuestion = () => {
 }
 
 const handleCourseChange = async (val) => {
-  formData.chapterId = null
+  formData.chapterIds = []
   if (val) {
     try {
       const { data } = await getChapters({ courseId: val })
@@ -407,7 +407,7 @@ const fetchExercise = async () => {
     if (data) {
       formData.title = data.title || ''
       formData.courseId = data.courseId
-      formData.chapterId = data.chapterId
+      formData.chapterIds = data.chapterIds || []
       formData.duration = data.duration || 30
       formData.passScore = data.passScore || 60
       formData.description = data.description || ''
