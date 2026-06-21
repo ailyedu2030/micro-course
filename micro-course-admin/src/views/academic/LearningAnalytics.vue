@@ -46,8 +46,8 @@
         <div v-for="(dept, idx) in departmentStats" :key="dept.id" class="dept-row" @click="selectDept(dept)" role="button" tabindex="0" @keydown.enter="selectDept(dept)">
           <div class="dept-rank">#{{ idx + 1 }}</div>
           <div class="dept-info">
-            <div class="dept-name">{{ dept.name }}</div>
-            <div class="dept-meta">选课 {{ dept.totalEnrollments }} 人次</div>
+            <div class="dept-name">{{ dept.departmentName || dept.name || '未知院系' }}</div>
+            <div class="dept-meta">选课 {{ dept.enrollmentCount || dept.totalEnrollments || 0 }} 人次</div>
           </div>
           <div class="dept-metrics">
             <div class="metric">
@@ -76,13 +76,17 @@
       <el-skeleton v-if="warnLoading" :rows="3" animated />
       <el-empty v-else-if="warnings.length === 0" description="暂无预警，所有院系完成率正常" :image-size="80" />
       <el-table v-else :data="warnings" stripe size="small">
-        <el-table-column prop="name" label="院系" min-width="140" />
+        <el-table-column label="课程" min-width="140">
+          <template #default="{ row }">{{ row.courseTitle || row.name || row.course_title || '未知课程' }}</template>
+        </el-table-column>
         <el-table-column label="完成率" width="200">
           <template #default="{ row }">
             <el-progress :percentage="row.completionRate || 0" :stroke-width="10" :status="row.completionRate < 30 ? 'exception' : 'warning'" />
           </template>
         </el-table-column>
-        <el-table-column prop="enrollmentCount" label="选课人数" width="100" align="center" />
+        <el-table-column prop="enrollmentCount" label="选课人数" width="100" align="center">
+          <template #default="{ row }">{{ row.enrollmentCount || row.enrollment_count || 0 }}</template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>
@@ -118,7 +122,7 @@ function accuracyColor(rate) {
 function sortDepartments() {
   const key = sortBy.value === 'completion' ? 'avgCompletionRate'
     : sortBy.value === 'accuracy' ? 'avgAccuracyRate'
-    : 'totalEnrollments'
+    : 'enrollmentCount'
   departmentStats.value.sort((a, b) => (b[key] || 0) - (a[key] || 0))
 }
 
@@ -147,13 +151,14 @@ async function fetchWarnings() {
   warnLoading.value = true
   try {
     const { data } = await getCompletionWarnings()
-    warnings.value = data?.items || []
+    // data 可能是数组（后端直接返回 List）或 { items } 结构
+    warnings.value = Array.isArray(data) ? data : (data?.items || [])
   } catch { /* ignore */ }
   finally { warnLoading.value = false }
 }
 
 function selectDept(dept) {
-  router.push(`/academic/dashboard?departmentId=${dept.id}`)
+  router.push(`/academic/dashboard?departmentId=${dept.departmentId || dept.id}`)
 }
 
 onMounted(() => {
