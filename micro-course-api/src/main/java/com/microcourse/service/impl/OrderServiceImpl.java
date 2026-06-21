@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.EnrollmentCreateRequest;
@@ -65,13 +66,18 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程未发布，无法购买");
         }
 
-        // 幂等性: 存在同一课程的 PENDING 订单时直接返回已有订单
-        LambdaQueryWrapper<Order> pendingWrapper = new LambdaQueryWrapper<>();
-        pendingWrapper.eq(Order::getUserId, userId)
+        // 幂等性: 存在同一课程的 PENDING/PAID 订单时直接返回
+        LambdaQueryWrapper<Order> dupWrapper = new LambdaQueryWrapper<>();
+        dupWrapper.eq(Order::getUserId, userId)
                 .eq(Order::getCourseId, courseId)
-                .eq(Order::getStatus, "PENDING");
-        Order existing = orderRepository.selectOne(pendingWrapper);
-        if (existing != null) return toVO(existing);
+                .in(Order::getStatus, "PENDING", "PAID");
+        Order existing = orderRepository.selectOne(dupWrapper);
+        if (existing != null) {
+            if ("PAID".equals(existing.getStatus())) {
+                return toVO(existing);
+            }
+            return toVO(existing);
+        }
 
         BigDecimal price = course.getPrice();
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
@@ -170,22 +176,79 @@ public class OrderServiceImpl implements OrderService {
         return toVO(orderRepository.selectById(orderId));
     }
 
+    /**
+     * 支付回调（外部网关调用，无 JWT 认证上下文）
+     * 使用独立的事务方法避免自调用 AOP 失效
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void paymentCallback(Map<String, String> params) {
         String orderNo = params.get("orderNo");
-        if (orderNo == null) return;
+        if (orderNo == null) {
+            log.warn("[paymentCallback] orderNo is null, params={}", params);
+            return;
+        }
 
         LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Order::getOrderNo, orderNo);
         Order order = orderRepository.selectOne(wrapper);
-        if (order == null) return;
-        if (!"PENDING".equals(order.getStatus())) return;
+        if (order == null) {
+            log.warn("[paymentCallback] order not found: orderNo={}", orderNo);
+            return;
+        }
+        if (!"PENDING".equals(order.getStatus())) {
+            log.warn("[paymentCallback] order status not PENDING: orderNo={}, status={}", orderNo, order.getStatus());
+            return;
+        }
 
         String status = params.getOrDefault("status", "SUCCESS");
         if ("SUCCESS".equals(status)) {
-            pay(order.getId(), params.getOrDefault("method", "UNKNOWN"));
+            processPayment(order.getId(), params.getOrDefault("method", "UNKNOWN"));
         }
+    }
+
+    /**
+     * 核心支付处理（无 SecurityUtil 校验，供回调使用）
+     * 单独事务方法，确保被 Spring AOP 拦截
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void processPayment(Long orderId, String paymentMethod) {
+        Order order = orderRepository.selectById(orderId);
+        if (order == null) {
+            log.warn("[processPayment] order not found: id={}", orderId);
+            return;
+        }
+        if (!"PENDING".equals(order.getStatus())) return;
+
+        // 先选课再标记支付
+        autoEnroll(order.getUserId(), order.getCourseId());
+        if (order.getBundleId() != null) {
+            enrollBundleCourses(order.getUserId(), order.getBundleId());
+        }
+
+        // CAS 更新
+        String transactionId = "TXN" + UUID.randomUUID().toString().replace("-", "").substring(0, 24).toUpperCase();
+        int affected = orderRepository.update(null,
+                new LambdaUpdateWrapper<Order>()
+                        .eq(Order::getId, orderId)
+                        .eq(Order::getStatus, "PENDING")
+                        .set(Order::getStatus, "PAID")
+                        .set(Order::getPaymentMethod, paymentMethod)
+                        .set(Order::getPaidAt, LocalDateTime.now())
+                        .set(Order::getUpdatedAt, LocalDateTime.now()));
+        if (affected == 0) {
+            log.warn("[processPayment] CAS failed, order already paid: id={}", orderId);
+            return;
+        }
+
+        Payment payment = new Payment();
+        payment.setOrderId(orderId);
+        payment.setTransactionId(transactionId);
+        payment.setPaymentMethod(paymentMethod);
+        payment.setAmount(order.getAmount());
+        payment.setStatus("SUCCESS");
+        payment.setCreatedAt(LocalDateTime.now());
+        paymentRepository.insert(payment);
     }
 
     private void autoEnroll(Long userId, Long courseId) {

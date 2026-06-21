@@ -287,7 +287,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         post.setIsEssence(false);
         post.setCommentCount(0);
         post.setLikeCount(0);
-        post.setStatus(1);
+        post.setStatus(0); // PENDING 审核
         post.setCreatedAt(LocalDateTime.now());
         post.setUpdatedAt(LocalDateTime.now());
         postRepository.insert(post);

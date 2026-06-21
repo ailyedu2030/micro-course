@@ -144,6 +144,13 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         }
         comment.setStatus(0);
         commentRepository.updateById(comment);
+        // 原子递减帖子评论数
+        if (comment.getPostId() != null) {
+            postRepository.update(null,
+                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<com.microcourse.entity.DiscussionPost>()
+                            .eq(com.microcourse.entity.DiscussionPost::getId, comment.getPostId())
+                            .setSql("comment_count = GREATEST(COALESCE(comment_count, 0) - 1, 0)"));
+        }
     }
 
     @Override
