@@ -332,7 +332,7 @@ watch(() => formData.courseId, async (val) => {
     bankStats.value = Object.entries(TYPE_LABELS)
       .map(([type, label]) => ({ type, label, count: groups[type] || 0, pickCount: 0 }))
       .filter(s => s.count > 0)
-  } catch { bankStats.value = []; totalBankCount.value = 0 }
+  } catch { bankStats.value = []; totalBankCount.value = 0; ElMessage.warning('加载题库统计失败') }
 })
 watch(pickDifficulty, () => {
   if (formData.courseId) { const cb = formData.courseId; formData.courseId = null; setTimeout(() => formData.courseId = cb, 0) }
@@ -355,7 +355,7 @@ async function handleRandomPick() {
     }
     pickedQuestions.value = picked
     bankStats.value.forEach(s => { s.pickCount = 0 })
-  } catch { /* ignore */ }
+  } catch { ElMessage.warning('随机选题失败') }
 }
 
 const formRules = {
