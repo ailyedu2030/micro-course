@@ -290,6 +290,25 @@ const selectedQuestions = ref([])
 const categoryOptions = ref([])
 const currentCourseId = ref(null)
 
+const questionSearchForm = reactive({
+  questionType: '',
+  difficulty: '',
+  categoryId: ''
+})
+
+const formData = reactive({
+  courseId: null,
+  chapterId: null,
+  title: '',
+  duration: 30,
+  passScore: 60,
+  description: '',
+  timeLimit: null,
+  maxAttempts: null,
+  shuffleQuestions: false,
+  shuffleOptions: false
+})
+
 // ===== 题库统计 & 随机选题 =====
 const TYPE_LABELS = { SINGLE_CHOICE: '单选题', MULTIPLE_CHOICE: '多选题', TRUE_FALSE: '判断题', FILL_BLANK: '填空题', SHORT_ANSWER: '简答题' }
 const bankStats = ref([])
@@ -315,7 +334,9 @@ watch(() => formData.courseId, async (val) => {
       .filter(s => s.count > 0)
   } catch { bankStats.value = []; totalBankCount.value = 0 }
 })
-watch(pickDifficulty, () => { if (formData.courseId) { const cb = formData.courseId; formData.courseId = null; setTimeout(() => formData.courseId = cb, 0) } })
+watch(pickDifficulty, () => {
+  if (formData.courseId) { const cb = formData.courseId; formData.courseId = null; setTimeout(() => formData.courseId = cb, 0) }
+})
 
 async function handleRandomPick() {
   const picks = {}
@@ -336,25 +357,6 @@ async function handleRandomPick() {
     bankStats.value.forEach(s => { s.pickCount = 0 })
   } catch { /* ignore */ }
 }
-
-const questionSearchForm = reactive({
-  questionType: '',
-  difficulty: '',
-  categoryId: ''
-})
-
-const formData = reactive({
-  courseId: null,
-  chapterId: null,
-  title: '',
-  duration: 30,
-  passScore: 60,
-  description: '',
-  timeLimit: null,
-  maxAttempts: null,
-  shuffleQuestions: false,
-  shuffleOptions: false
-})
 
 const formRules = {
   courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
