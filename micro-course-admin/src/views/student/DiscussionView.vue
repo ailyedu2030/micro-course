@@ -13,8 +13,16 @@
         <div class="toolbar">
           <div class="left-info">
             <h3 class="page-title">章节讨论</h3>
+            <div v-if="!chapterId" class="chapter-selector">
+              <el-select v-model="selectedCourseId" placeholder="选择课程" clearable size="small" style="width:200px;margin-right:8px" @change="handleCourseChange">
+                <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
+              </el-select>
+              <el-select v-model="routeQuery.chapterId" placeholder="选择章节" clearable size="small" style="width:200px" :disabled="!selectedCourseId" @change="handleChapterSelect">
+                <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
+              </el-select>
+            </div>
           </div>
-          <el-button type="primary" @click="openPostDialog">发布帖子</el-button>
+          <el-button type="primary" :disabled="!chapterId" @click="openPostDialog">发布帖子</el-button>
         </div>
       </el-card>
 
@@ -179,11 +187,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPosts, createPost, getPostById, getComments, createComment, likeComment, deletePost } from '@/api/discussion'
 import { useUserStore } from '@/store/user'
+import { getCourses } from '@/api/course'
+import { getChapters } from '@/api/chapter'
 import CommentNode from '@/components/CommentNode.vue'
 
 const userStore = useUserStore()
@@ -224,6 +234,37 @@ const replyAnonymous = ref(false)
 const replySubmitting = ref(false)
 
 const chapterId = computed(() => route.query.chapterId)
+const router = useRouter()
+const routeQuery = reactive({ chapterId: '' })
+const selectedCourseId = ref(null)
+const courseOptions = ref([])
+const chapterOptions = ref([])
+
+// 无 chapterId 时加载课程列表供选择
+async function fetchCourses() {
+  try {
+    const { data } = await getCourses({ page: 0, size: 999 })
+    courseOptions.value = data?.items || []
+  } catch { /* ignore */ }
+}
+async function handleCourseChange(cid) {
+  chapterOptions.value = []
+  routeQuery.chapterId = ''
+  if (!cid) return
+  try {
+    const { data } = await getChapters({ courseId: cid })
+    chapterOptions.value = data?.items || []
+  } catch { /* ignore */ }
+}
+function handleChapterSelect(chId) {
+  if (chId) router.replace({ query: { ...route.query, chapterId: chId } })
+}
+watch(() => route.query.chapterId, (val) => {
+  if (val) fetchData()
+})
+onMounted(() => {
+  if (!chapterId.value && !route.query.chapterId) fetchCourses()
+})
 
 const fetchData = async () => {
   if (!chapterId.value) {
