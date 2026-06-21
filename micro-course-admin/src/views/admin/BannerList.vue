@@ -53,7 +53,11 @@
               class="banner-image"
               :preview-src-list="[row.imageUrl]"
               preview-teleported
-            />
+            >
+              <template #error>
+                <div class="image-error">加载失败</div>
+              </template>
+            </el-image>
           </template>
         </el-table-column>
         <el-table-column prop="linkUrl" label="跳转链接" min-width="200" show-overflow-tooltip>
@@ -123,9 +127,13 @@
               <el-image
                 v-if="form.imageUrl"
                 :src="form.imageUrl"
-                fit="cover"
+                fit="contain"
                 class="preview-image"
-              />
+              >
+                <template #error>
+                  <div class="image-error">加载失败</div>
+                </template>
+              </el-image>
               <div v-else class="upload-placeholder">
                 <el-icon class="upload-icon"><Plus /></el-icon>
                 <span class="upload-text">点击上传图片</span>
