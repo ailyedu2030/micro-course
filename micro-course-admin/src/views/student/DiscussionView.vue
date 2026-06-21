@@ -408,7 +408,7 @@ const handlePageChange = () => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', handleResize)
-  fetchData()
+  if (chapterId.value || route.query.chapterId) fetchData()
 })
 
 onUnmounted(() => {
