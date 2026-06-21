@@ -101,6 +101,39 @@
         <el-form-item label="时长(分钟)" prop="duration">
           <el-input-number v-model="formData.duration" :min="0" class="full-width" />
         </el-form-item>
+
+        <!-- 题库统计 + 随机选题 -->
+        <el-divider v-if="formData.courseId" />
+        <el-form-item v-if="formData.courseId" label="题库统计">
+          <div class="bank-stats">
+            <el-tag v-for="s in bankStats" :key="s.type" :type="s.count > 0 ? 'primary' : 'info'" size="small" class="stat-tag" style="margin:2px">
+              {{ s.label }}: {{ s.count }} 题
+            </el-tag>
+            <el-tag type="primary" size="small" effect="dark" style="margin:2px">共 {{ totalBankCount }} 题</el-tag>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="formData.courseId" label="随机选题">
+          <div class="random-pick" style="display:flex;flex-direction:column;gap:6px;width:100%">
+            <el-select v-model="pickDifficulty" placeholder="难度筛选" clearable size="small" style="width:120px">
+              <el-option label="简单" value="EASY" />
+              <el-option label="中等" value="MEDIUM" />
+              <el-option label="困难" value="HARD" />
+            </el-select>
+            <div v-for="s in bankStats" :key="s.type" class="pick-row" style="display:flex;align-items:center;gap:8px">
+              <span class="pick-label" style="width:60px;font-size:13px">{{ s.label }}</span>
+              <el-input-number v-model="s.pickCount" :min="0" :max="s.count" size="small" controls-position="right" style="width:130px" />
+              <span style="font-size:12px;color:var(--el-text-color-secondary)">/ {{ s.count }} 题</span>
+            </div>
+            <el-button type="success" size="small" :disabled="totalPickCount === 0" @click="handleRandomPick" style="width:160px">
+              随机抽取 {{ totalPickCount }} 题
+            </el-button>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="formData.courseId && pickedQuestions.length > 0" label="已选">
+          <el-tag type="success">{{ pickedQuestions.length }} 题已随机选取</el-tag>
+        </el-form-item>
+        <el-divider v-if="formData.courseId" />
+
         <el-form-item label="及格分数" prop="passScore">
           <el-input-number v-model="formData.passScore" :min="0" :max="100" class="full-width" />
         </el-form-item>
@@ -214,9 +247,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getExercises, createExercise, updateExercise, deleteExercise, addQuestionsToExercise, removeQuestionFromExercise } from '@/api/exercise'
+import { getQuestions } from '@/api/question'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
-import { getQuestions } from '@/api/question'
 import { getCategories } from '@/api/course-category'
 
 const userStore = useUserStore()
@@ -256,6 +289,53 @@ const questionSize = ref(10)
 const selectedQuestions = ref([])
 const categoryOptions = ref([])
 const currentCourseId = ref(null)
+
+// ===== 题库统计 & 随机选题 =====
+const TYPE_LABELS = { SINGLE_CHOICE: '单选题', MULTIPLE_CHOICE: '多选题', TRUE_FALSE: '判断题', FILL_BLANK: '填空题', SHORT_ANSWER: '简答题' }
+const bankStats = ref([])
+const totalBankCount = ref(0)
+const totalPickCount = computed(() => bankStats.value.reduce((s, t) => s + (t.pickCount || 0), 0))
+const pickDifficulty = ref('')
+const pickedQuestions = ref([])
+
+watch(() => formData.courseId, async (val) => {
+  pickedQuestions.value = []
+  if (!val) { bankStats.value = []; totalBankCount.value = 0; return }
+  try {
+    const params = { courseId: val, size: 9999 }
+    if (pickDifficulty.value) params.difficulty = pickDifficulty.value
+    const { data } = await getQuestions(params)
+    const items = data?.items || []
+    const filtered = pickDifficulty.value ? items.filter(q => q.difficulty === pickDifficulty.value) : items
+    totalBankCount.value = filtered.length
+    const groups = {}
+    for (const q of filtered) { const t = q.questionType || 'OTHER'; groups[t] = (groups[t] || 0) + 1 }
+    bankStats.value = Object.entries(TYPE_LABELS)
+      .map(([type, label]) => ({ type, label, count: groups[type] || 0, pickCount: 0 }))
+      .filter(s => s.count > 0)
+  } catch { bankStats.value = []; totalBankCount.value = 0 }
+})
+watch(pickDifficulty, () => { if (formData.courseId) { const cb = formData.courseId; formData.courseId = null; setTimeout(() => formData.courseId = cb, 0) } })
+
+async function handleRandomPick() {
+  const picks = {}
+  for (const s of bankStats.value) { if (s.pickCount > 0) picks[s.type] = s.pickCount }
+  try {
+    const params = { courseId: formData.courseId, size: 9999 }
+    if (pickDifficulty.value) params.difficulty = pickDifficulty.value
+    const { data } = await getQuestions(params)
+    let all = data?.items || []
+    if (pickDifficulty.value) all = all.filter(q => q.difficulty === pickDifficulty.value)
+    const picked = []
+    for (const [type, count] of Object.entries(picks)) {
+      const pool = all.filter(q => (q.questionType || '') === type)
+      const shuffled = [...pool].sort(() => Math.random() - 0.5)
+      picked.push(...shuffled.slice(0, count))
+    }
+    pickedQuestions.value = picked
+    bankStats.value.forEach(s => { s.pickCount = 0 })
+  } catch { /* ignore */ }
+}
 
 const questionSearchForm = reactive({
   questionType: '',
@@ -424,12 +504,19 @@ const handleSubmit = async () => {
     if (!valid) return
     submitLoading.value = true
     try {
+      let exerciseId = currentId.value
       if (isEdit.value) {
-        await updateExercise(currentId.value, formData)
+        await updateExercise(exerciseId, formData)
         ElMessage.success('编辑成功')
       } else {
-        await createExercise(formData)
+        const { data } = await createExercise(formData)
+        exerciseId = data.id
         ElMessage.success('创建成功')
+      }
+      // 自动保存随机选题
+      if (pickedQuestions.value.length > 0) {
+        const qIds = pickedQuestions.value.map(q => q.id).filter(Boolean)
+        if (qIds.length > 0) await addQuestionsToExercise(exerciseId, { questionIds: qIds })
       }
       dialogVisible.value = false
       fetchData()
@@ -437,6 +524,7 @@ const handleSubmit = async () => {
       ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
     } finally {
       submitLoading.value = false
+      pickedQuestions.value = []
     }
   })
 }
