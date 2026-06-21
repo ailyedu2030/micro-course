@@ -353,4 +353,29 @@ onMounted(() => {
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--el-border-color-lighter);
 }
+/* ===== 响应式适配（Mobile / Tablet ≤768px）===== */
+@media (max-width: 768px) {
+  .department-list {
+    padding: var(--space-3);
+  }
+  .search-card :deep(.el-form--inline .el-form-item) {
+    display: flex;
+    width: 100%;
+    margin-right: 0;
+  }
+  .search-input {
+    width: 100%;
+  }
+  .card-header {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .data-table {
+    font-size: var(--text-sm);
+  }
+  .pagination-wrap {
+    padding: var(--space-3);
+    overflow-x: auto;
+  }
+}
 </style>

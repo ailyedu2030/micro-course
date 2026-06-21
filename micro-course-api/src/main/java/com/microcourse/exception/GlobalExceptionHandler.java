@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -55,9 +57,31 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(404).body(R.fail(404, "接口不存在: " + e.getRequestURL()));
     }
 
+    /**
+     * P3-13（Phase D-2 修复）：Spring 静态/资源处理链找不到目标资源时抛 NoResourceFoundException。
+     * 此前无专门 handler，被 {@link #handleGeneric} 兜底为 500（语义错误）。
+     * 修正为 404 —— "资源不存在" 才是符合 HTTP 语义的响应（例如公开文件 GET 命中不存在的物理路径）。
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<R<Void>> handleNoResourceFound(NoResourceFoundException e) {
+        log.warn("Resource not found: {}", e.getMessage());
+        return ResponseEntity.status(404).body(R.fail(404, "资源不存在"));
+    }
+
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<R<Void>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException e) {
         return ResponseEntity.status(405).body(R.fail(405, "请求方法不允许: " + e.getMethod()));
+    }
+
+    /**
+     * Round 11-4 安全加固：请求 Content-Type 不被任何 HttpMessageConverter 支持时
+     * （如向 @RequestBody JSON 端点发送 text/plain），Spring 抛 HttpMediaTypeNotSupportedException。
+     * 此前无专门 handler，被 {@link #handleGeneric} 兜底为 500（语义错误）。
+     * 修正为符合 HTTP 语义的 415 Unsupported Media Type，统一为标准 R&lt;Void&gt; 响应体。
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<R<Void>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
+        return ResponseEntity.status(415).body(R.fail(415, "不支持的媒体类型"));
     }
 
     @ExceptionHandler(MultipartException.class)

@@ -18,10 +18,6 @@
             <el-icon><Calendar /></el-icon>
             {{ currentDate }}
           </span>
-          <span class="badge-weather">
-            <el-icon><Sunny /></el-icon>
-            晴 26°C
-          </span>
           <span class="badge-motto">
             <el-icon><Star /></el-icon>
             学无止境
@@ -192,12 +188,12 @@
             <template #header>
               <div class="card-header-title">本周学习时长</div>
             </template>
-            <div v-loading="chartLoading" :aria-busy="chartLoading" class="chart-container">
-              <div v-if="chartData.length === 0" class="empty-wrap">
-                <el-empty description="暂无学习数据" :image-size="80" />
-              </div>
-              <div v-else ref="chartRef" class="echarts-container" role="img" aria-label="本周学习时长分布图"></div>
-            </div>
+            <AccuracyTrendChart
+              :data="chartData"
+              :loading="chartLoading"
+              :accuracy-mode="accuracyMode"
+              :mobile="false"
+            />
           </el-card>
         </div>
 
@@ -427,12 +423,12 @@
           <template #header>
             <div class="card-header-title">本周学习时长</div>
           </template>
-          <div v-loading="chartLoading" :aria-busy="chartLoading" class="chart-container h5-chart-container">
-            <div v-if="chartData.length === 0" class="empty-wrap">
-              <el-empty description="暂无学习数据" :image-size="60" />
-            </div>
-            <div v-else ref="chartRefH5" class="echarts-container" role="img" aria-label="本周学习时长分布图"></div>
-          </div>
+          <AccuracyTrendChart
+            :data="chartData"
+            :loading="chartLoading"
+            :accuracy-mode="accuracyMode"
+            :mobile="true"
+          />
         </el-card>
       </div>
 
@@ -491,11 +487,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import * as echarts from 'echarts'
+import AccuracyTrendChart from '@/components/learning-center/AccuracyTrendChart.vue'
 import { ElMessage } from 'element-plus'
-import { Calendar, Sunny, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine } from '@element-plus/icons-vue'
+import { Calendar, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getStudyDays, getTotalTime } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
@@ -603,10 +599,7 @@ const recentCourse = ref({
 // 图表数据
 // ---------------------------------------------------------------------------
 const chartData = ref([])
-const chartRef = ref(null)
-const chartRefH5 = ref(null)
 const accuracyMode = ref(false)  // 正确率趋势模式标志
-let chartInstance = null
 
 // ---------------------------------------------------------------------------
 // 热力图数据 (30天) — 从真实打卡 API 获取
@@ -621,9 +614,10 @@ async function loadHeatmap() {
     // 建立 date → minutes 映射
     const minutesMap = {}
     checkIns.forEach(record => {
-      if (record.checkInAt) {
-        const d = new Date(record.checkInAt)
-        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      // CheckInVO.checkinDate 是 LocalDate，序列化为 "YYYY-MM-DD" 字符串，
+      // 直接用作 dateKey 可避免 new Date() 的 UTC 时区偏移问题
+      if (record.checkinDate) {
+        const dateKey = String(record.checkinDate).slice(0, 10)
         minutesMap[dateKey] = (minutesMap[dateKey] || 0) + (record.duration || record.minutes || 0)
       }
     })
@@ -795,8 +789,9 @@ async function getChart() {
       })
 
       checkIns.forEach(record => {
-        if (record.checkInAt) {
-          const d = new Date(record.checkInAt)
+        if (record.checkinDate) {
+          // 加 T00:00:00 让字符串按本地时区解析，避免星期几算错
+          const d = new Date(String(record.checkinDate).slice(0, 10) + 'T00:00:00')
           const dayOfWeek = d.getDay()
           const idx = dayOfWeek === 0 ? 6 : dayOfWeek - 1
           if (dayMap[idx]) {
@@ -894,83 +889,6 @@ async function getRecentRecords(sharedEnrollments) {
 }
 
 // ---------------------------------------------------------------------------
-// 初始化图表
-// ---------------------------------------------------------------------------
-function initChart(containerRef) {
-  if (!containerRef || chartData.value.length === 0) return
-
-  if (chartInstance) {
-    chartInstance.dispose()
-  }
-
-  chartInstance = echarts.init(containerRef)
-
-  const option = {
-    title: {
-      text: accuracyMode.value ? '正确率趋势' : '本周学习时长',
-      textStyle: {
-        fontSize: 14,
-        fontWeight: 600,
-        color: 'var(--el-text-color-primary)'
-      },
-      left: 0,
-      top: 0
-    },
-    tooltip: {
-      trigger: 'axis',
-      formatter: accuracyMode.value ? '{b}: {c}%' : '{b}: {c} 小时'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '15%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: chartData.value.map((d) => d.day),
-      axisLine: { lineStyle: { color: 'var(--el-border-color)' } },
-      axisLabel: { color: 'var(--el-text-color-secondary)', fontSize: 12 }
-    },
-    yAxis: {
-      type: 'value',
-      name: '小时',
-      nameTextStyle: { color: 'var(--el-text-color-secondary)', fontSize: 12 },
-      axisLine: { show: false },
-      splitLine: { lineStyle: { color: 'var(--el-border-color-lighter)', type: 'dashed' } },
-      axisLabel: { color: 'var(--el-text-color-secondary)' }
-    },
-    series: [
-      {
-        data: chartData.value.map((d) => d.hours),
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 8,
-        lineStyle: { color: 'var(--role-primary)', width: 2 },
-        itemStyle: { color: 'var(--role-primary)', borderColor: 'var(--el-color-white)', borderWidth: 2 },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(99, 102, 241, 0.3)' },
-              { offset: 1, color: 'rgba(99, 102, 241, 0.02)' }
-            ]
-          }
-        }
-      }
-    ]
-  }
-
-  chartInstance.setOption(option)
-}
-
-// ---------------------------------------------------------------------------
 // 加载数据
 // ---------------------------------------------------------------------------
 async function loadData() {
@@ -1009,10 +927,11 @@ async function checkTodayStatus() {
     const { data } = await getMyCheckIns({ days: 1 })
     const checkIns = Array.isArray(data) ? data : []
     const today = new Date()
-    const todayStr = today.toISOString().slice(0, 10)
+    // 用本地日期而非 UTC，避免东八区跨日误判
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     checkedInToday.value = checkIns.some(c => {
-      if (!c.checkInAt) return false
-      return c.checkInAt.slice(0, 10) === todayStr
+      if (!c.checkinDate) return false
+      return String(c.checkinDate).slice(0, 10) === todayStr
     })
   } catch {
     checkedInToday.value = false
@@ -1032,50 +951,8 @@ async function doCheckIn() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 监听 chartData 变化后初始化图表
-// ---------------------------------------------------------------------------
-watch(chartData, async () => {
-  await nextTick()
-  if (!isMobile.value && chartRef.value) {
-    initChart(chartRef.value)
-  } else if (isMobile.value && chartRefH5.value) {
-    initChart(chartRefH5.value)
-  }
-})
-
-// ---------------------------------------------------------------------------
-// 监听 isMobile 变化，重新初始化图表
-// ---------------------------------------------------------------------------
-watch(isMobile, async (mobile) => {
-  await nextTick()
-  if (!mobile && chartRef.value) {
-    initChart(chartRef.value)
-  } else if (mobile && chartRefH5.value) {
-    initChart(chartRefH5.value)
-  }
-})
-
-// ---------------------------------------------------------------------------
-// 窗口 resize 时重绘图表
-// ---------------------------------------------------------------------------
-function handleResize() {
-  if (chartInstance) {
-    chartInstance.resize()
-  }
-}
-
 onMounted(async () => {
   await loadData()
-  window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  if (chartInstance) {
-    chartInstance.dispose()
-    chartInstance = null
-  }
 })
 </script>
 
@@ -1125,7 +1002,6 @@ onUnmounted(() => {
 }
 
 .badge-date,
-.badge-weather,
 .badge-motto {
   display: flex;
   align-items: center;
@@ -1167,13 +1043,11 @@ onUnmounted(() => {
 }
 
 .welcome-bar.student-welcome .badge-date,
-.welcome-bar.student-welcome .badge-weather,
 .welcome-bar.student-welcome .badge-motto {
   color: rgba(255, 255, 255, 0.85);
 }
 
 .welcome-bar.student-welcome .badge-date .el-icon,
-.welcome-bar.student-welcome .badge-weather .el-icon,
 .welcome-bar.student-welcome .badge-motto .el-icon {
   color: rgba(255, 255, 255, 0.7);
 }
@@ -1592,22 +1466,6 @@ onUnmounted(() => {
   color: var(--el-text-color-primary);
 }
 
-.chart-container {
-  height: 260px;
-}
-
-.echarts-container {
-  width: 100%;
-  height: 100%;
-}
-
-.empty-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
 /* ---------------------------------------------------------------------------
    热力图
    --------------------------------------------------------------------------- */
@@ -1885,10 +1743,6 @@ onUnmounted(() => {
 
 .h5-chart {
   margin-bottom: var(--space-4);
-}
-
-.h5-chart-container {
-  height: 200px;
 }
 
 .h5-recommend {

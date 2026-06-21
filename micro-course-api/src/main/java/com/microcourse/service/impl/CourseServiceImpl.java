@@ -9,8 +9,11 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.CourseReviewLog;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.User;
 import com.microcourse.enums.CourseStatus;
+import com.microcourse.enums.EnrollmentStatus;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -21,6 +24,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
@@ -28,7 +32,11 @@ import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.service.CourseService;
+import com.microcourse.service.NotificationService;
+import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,10 +46,23 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
 public class CourseServiceImpl implements CourseService {
+
+    // ★ Round 9-2 修复：业务数据缓存（Redis）日志器。命名用大写 LOG，避免与
+    // recordReviewLog() 内的局部变量 CourseReviewLog log 发生遮蔽。
+    private static final Logger LOG = LoggerFactory.getLogger(CourseServiceImpl.class);
+
+    // ★ Round 9-2 修复：课程详情缓存（5 分钟）—— 命中 5ms，避免每次回 DB（~100ms）
+    private static final String COURSE_CACHE_PREFIX = "course:detail:";
+    private static final long COURSE_CACHE_TTL = 300; // 秒
+
+    // ★ Round 9-2 修复：课程统计缓存（1 小时）—— 聚合查询昂贵，命中 3ms
+    private static final String COURSE_STATS_CACHE_PREFIX = "course:stats:";
+    private static final long COURSE_STATS_CACHE_TTL = 3600; // 秒
 
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
@@ -53,6 +74,9 @@ public class CourseServiceImpl implements CourseService {
     private final PluginRegistry pluginRegistry;
     private final CourseSlideMapper courseSlideMapper;
     private final SlidePageMapper slidePageMapper;
+    private final NotificationService notificationService;
+    private final EnrollmentRepository enrollmentRepository;
+    private final RedisUtil redisUtil;
 
     public CourseServiceImpl(CourseRepository courseRepository,
                              CourseCategoryRepository categoryRepository,
@@ -63,7 +87,10 @@ public class CourseServiceImpl implements CourseService {
                              PluginGrantRepository pluginGrantRepository,
                              PluginRegistry pluginRegistry,
                              CourseSlideMapper courseSlideMapper,
-                             SlidePageMapper slidePageMapper) {
+                             SlidePageMapper slidePageMapper,
+                             NotificationService notificationService,
+                             EnrollmentRepository enrollmentRepository,
+                             RedisUtil redisUtil) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
@@ -74,6 +101,101 @@ public class CourseServiceImpl implements CourseService {
         this.pluginRegistry = pluginRegistry;
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
+        this.notificationService = notificationService;
+        this.enrollmentRepository = enrollmentRepository;
+        this.redisUtil = redisUtil;
+    }
+
+    /**
+     * ★ Round 9-2 修复：清除课程相关缓存（详情 + 统计），保证缓存一致性（硬约束 #1）。
+     * Redis 故障时仅记录告警，不阻塞主流程（硬约束 #2 降级）。
+     */
+    public void evictCourseCache(Long courseId) {
+        if (courseId == null) {
+            return;
+        }
+        try {
+            redisUtil.delete(COURSE_CACHE_PREFIX + courseId);
+            redisUtil.delete(COURSE_STATS_CACHE_PREFIX + courseId);
+        } catch (Exception e) {
+            LOG.warn("[Round9-2] 课程缓存清除失败, courseId={}", courseId, e);
+        }
+    }
+
+    /**
+     * ★ Round 9-2 修复：在事务提交后清除缓存，规避 cache-aside 竞态
+     * （写未提交时并发读把旧值重新写入缓存）。无活跃事务时立即清除。
+     */
+    private void evictCourseCacheAfterCommit(Long courseId) {
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            evictCourseCache(courseId);
+                        }
+                    });
+        } else {
+            evictCourseCache(courseId);
+        }
+    }
+
+    /**
+     * Round 5-3 (P1-10): 计算课程统计数据。
+     *
+     * <p>选课人数 / 完成率 / 平均分均来自既有 {@code enrollments} 表（按 courseId 聚合），
+     * 教师名取自 {@code users}，不引入新表/新列。课程不存在抛 {@link ErrorCode#COURSE_NOT_FOUND}（404）。</p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public CourseStatsVO computeStats(Long courseId) {
+        // ★ Round 9-2 修复：1) 查缓存（Redis 故障降级回 DB，硬约束 #2）
+        String cacheKey = COURSE_STATS_CACHE_PREFIX + courseId;
+        try {
+            Object cached = redisUtil.get(cacheKey);
+            if (cached instanceof CourseStatsVO) {
+                return (CourseStatsVO) cached;
+            }
+        } catch (Exception e) {
+            LOG.warn("[Round9-2] 课程统计缓存读取失败，降级查询 DB, courseId={}", courseId, e);
+        }
+
+        // 2) 查 DB（业务逻辑零修改）
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        CourseStatsVO vo = new CourseStatsVO();
+        vo.setCourseId(courseId);
+        vo.setCourseTitle(course.getTitle());
+        if (course.getTeacherId() != null) {
+            User teacher = userRepository.selectById(course.getTeacherId());
+            if (teacher != null) {
+                vo.setTeacherName(teacher.getRealName());
+            }
+        }
+
+        long total = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>().eq(Enrollment::getCourseId, courseId));
+        long completed = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getCourseId, courseId)
+                        .eq(Enrollment::getCompleted, true));
+        vo.setEnrollmentCount(total);
+        vo.setCompletionRate(total > 0 ? (double) completed / total : 0.0);
+
+        // ★ Round 11-2 性能优化：单条 AVG 聚合替代「全量加载该课程已评分选课 + 内存求均值」。
+        // 语义等价：仅统计该课程 final_score 非空且未删除的选课记录均分；无数据时 AVG 为 NULL → 0.0。
+        Double avg = enrollmentRepository.avgScoreByCourseId(courseId);
+        vo.setAvgScore(avg != null ? avg : 0.0);
+
+        // 3) 写缓存（Redis 故障不影响主流程，硬约束 #2）
+        try {
+            redisUtil.set(cacheKey, vo, COURSE_STATS_CACHE_TTL, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOG.warn("[Round9-2] 课程统计缓存写入失败, courseId={}", courseId, e);
+        }
+        return vo;
     }
 
     /**
@@ -95,6 +217,13 @@ public class CourseServiceImpl implements CourseService {
     @Override
     public PageResult<CourseVO> page(CoursePageQuery query) {
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        // ★ Round 8-4 修复(P0)：TEACHER 课程列表隔离 —— 教师只能看到自己创建的课程，
+        // 不可越权浏览全平台课程；ADMIN / ACADEMIC 不受限（看到全部）。
+        // STUDENT 走 getPublishedCourses()，此处不额外限制；合法用户体验零退化。
+        boolean teacherScoped = SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin();
+        if (teacherScoped) {
+            wrapper.eq(Course::getTeacherId, SecurityUtil.getCurrentUserId());
+        }
         // keyword: 模糊匹配 title 或教师名（通过 teacherId 关联查询 teacher.real_name）
         if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
             String kw = query.getKeyword()
@@ -121,7 +250,9 @@ public class CourseServiceImpl implements CourseService {
         if (query.getCategoryId() != null) {
             wrapper.eq(Course::getCategoryId, query.getCategoryId());
         }
-        if (query.getTeacherId() != null) {
+        // TEACHER 已被强制隔离为本人课程，不允许通过 teacherId 参数越权按他人筛选；
+        // 非 TEACHER（ADMIN/ACADEMIC）仍可按教师维度筛选。
+        if (query.getTeacherId() != null && !teacherScoped) {
             wrapper.eq(Course::getTeacherId, query.getTeacherId());
         }
         if (query.getStatus() != null) {
@@ -210,6 +341,18 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public CourseVO getById(Long id) {
+        // ★ Round 9-2 修复：1) 查缓存（Redis 故障降级回 DB，硬约束 #2）
+        String cacheKey = COURSE_CACHE_PREFIX + id;
+        try {
+            Object cached = redisUtil.get(cacheKey);
+            if (cached instanceof CourseVO) {
+                return (CourseVO) cached;
+            }
+        } catch (Exception e) {
+            LOG.warn("[Round9-2] 课程详情缓存读取失败，降级查询 DB, id={}", id, e);
+        }
+
+        // 2) 查 DB（业务逻辑零修改：course 不存在仍抛 COURSE_NOT_FOUND）
         Course course = courseRepository.selectById(id);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
@@ -228,6 +371,13 @@ public class CourseServiceImpl implements CourseService {
                 .last("LIMIT 200");
         List<CourseChapter> chapters = chapterRepository.selectList(chapterWrapper);
         vo.setChapters(chapters.stream().map(this::convertChapterToVO).collect(Collectors.toList()));
+
+        // 3) 写缓存（含章节的完整 VO；Redis 故障不影响主流程，硬约束 #2）
+        try {
+            redisUtil.set(cacheKey, vo, COURSE_CACHE_TTL, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOG.warn("[Round9-2] 课程详情缓存写入失败, id={}", id, e);
+        }
 
         return vo;
     }
@@ -358,6 +508,8 @@ public class CourseServiceImpl implements CourseService {
         course.setUpdatedAt(LocalDateTime.now());
 
         courseRepository.updateById(course);
+        // ★ Round 9-2 修复：课程更新后清除缓存，保证一致性（硬约束 #1）
+        evictCourseCacheAfterCommit(id);
         return convertToVO(course, null, null, reviewRepository.countByCourseId(course.getId()));
     }
 
@@ -397,6 +549,8 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "课程状态已被其他操作修改，请刷新后重试");
         }
         recordReviewLog(id, "UPDATE", currentStatus, status, null);
+        // ★ Round 9-2 修复：状态变更后清除缓存，保证一致性（硬约束 #1）
+        evictCourseCacheAfterCommit(id);
     }
 
     @Override
@@ -435,13 +589,16 @@ public class CourseServiceImpl implements CourseService {
         }
         recordReviewLog(id, "SUBMIT", course.getStatus(),
                 CourseStatus.PENDING_REVIEW.getCode(), null);
+        // ★ Round 9-2 修复：提交审核后清除缓存，保证一致性（硬约束 #1）
+        evictCourseCacheAfterCommit(id);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void approve(Long id) {
         // R1-API-004 修复:保留 COURSE_NOT_FOUND 错误码区分
-        if (courseRepository.selectById(id) == null) {
+        Course course = courseRepository.selectById(id);
+        if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
         // Admin or Academic check
@@ -461,13 +618,25 @@ public class CourseServiceImpl implements CourseService {
         }
         recordReviewLog(id, "APPROVE", CourseStatus.PENDING_REVIEW.getCode(),
                 CourseStatus.APPROVED.getCode(), null);
+        // ★ Round 9-2 修复：审核通过后清除缓存，保证一致性（硬约束 #1）
+        evictCourseCacheAfterCommit(id);
+        // Phase B-2 (P0-7)：审核通过后异步通知课程教师，@Async 不阻塞审批主流程
+        if (course.getTeacherId() != null) {
+            notificationService.notifyAsync(
+                    course.getTeacherId(),
+                    NotificationType.COURSE_APPROVED,
+                    "课程已通过审核",
+                    "您的课程《" + course.getTitle() + "》已通过审核，可以发布了",
+                    id);
+        }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reject(Long id, String reason) {
         // R1-API-004 修复:保留 COURSE_NOT_FOUND 错误码区分
-        if (courseRepository.selectById(id) == null) {
+        Course course = courseRepository.selectById(id);
+        if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
         if (!SecurityUtil.isAdminOrAcademic()) {
@@ -487,6 +656,17 @@ public class CourseServiceImpl implements CourseService {
         }
         recordReviewLog(id, "REJECT", CourseStatus.PENDING_REVIEW.getCode(),
                 CourseStatus.REJECTED.getCode(), reason);
+        // ★ Round 9-2 修复：审核驳回后清除缓存，保证一致性（硬约束 #1）
+        evictCourseCacheAfterCommit(id);
+        // Phase B-2 (P0-7)：审核驳回后异步通知课程教师，@Async 不阻塞审批主流程
+        if (course.getTeacherId() != null) {
+            notificationService.notifyAsync(
+                    course.getTeacherId(),
+                    NotificationType.COURSE_REJECTED,
+                    "课程被驳回",
+                    "您的课程《" + course.getTitle() + "》被驳回，原因：" + (reason != null ? reason : "未填写"),
+                    id);
+        }
     }
 
     @Override
@@ -515,6 +695,54 @@ public class CourseServiceImpl implements CourseService {
         }
         recordReviewLog(id, "PUBLISH", CourseStatus.APPROVED.getCode(),
                 CourseStatus.PUBLISHED.getCode(), null);
+        // ★ Round 9-2 修复：课程上架后清除缓存，保证一致性（硬约束 #1）
+        evictCourseCacheAfterCommit(id);
+        // Phase B-2 (P0-7)：课程上架后异步通知所有已选（未取消）学生，@Async 不阻塞发布主流程
+        // ★ Round 9-1 修复(OOM)：原实现一次性 selectList 加载课程全部选课记录，热门课程（万级选课）
+        // 易触发 OOM / 长 GC。改为按主键 id 稳定排序分批（每批 500、仅取 user_id）遍历通知，内存占用恒定；
+        // 通知集合与遍历顺序无关，每个未取消选课的 user 仍恰好被通知一次，业务语义零变化。
+        notifyEnrolledStudentsOnPublish(id, course.getTitle());
+    }
+
+    /** Round 9-1：发布通知分批批大小，避免一次性加载海量选课导致 OOM。 */
+    private static final int PUBLISH_NOTIFY_BATCH_SIZE = 500;
+
+    /**
+     * Round 9-1（OOM 防护）：分批遍历课程「未取消」选课学生并异步发送上架通知。
+     * 按主键 id 升序稳定分页，每批仅查询 user_id 字段，遍历过程中内存占用恒定，不随选课规模增长；
+     * 每个学生恰好被通知一次（语义与原全量遍历一致）。@TableLogic 自动追加 deleted_at IS NULL，
+     * 与原 selectList 的软删过滤完全一致。
+     */
+    private void notifyEnrolledStudentsOnPublish(Long courseId, String courseTitle) {
+        long pageNo = 1;
+        while (true) {
+            Page<Enrollment> page = new Page<>(pageNo, PUBLISH_NOTIFY_BATCH_SIZE);
+            page.setSearchCount(false); // 不执行 count 查询，进一步降低开销
+            IPage<Enrollment> result = enrollmentRepository.selectPage(page,
+                    new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getCourseId, courseId)
+                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
+                            .select(Enrollment::getId, Enrollment::getUserId)
+                            .orderByAsc(Enrollment::getId));
+            List<Enrollment> batch = result.getRecords();
+            if (batch.isEmpty()) {
+                break;
+            }
+            for (Enrollment en : batch) {
+                if (en.getUserId() != null) {
+                    notificationService.notifyAsync(
+                            en.getUserId(),
+                            NotificationType.COURSE_PUBLISHED,
+                            "课程已上架",
+                            "您关注的课程《" + courseTitle + "》已上架，快去学习吧！",
+                            courseId);
+                }
+            }
+            if (batch.size() < PUBLISH_NOTIFY_BATCH_SIZE) {
+                break;
+            }
+            pageNo++;
+        }
     }
 
     @Override
@@ -559,6 +787,8 @@ public class CourseServiceImpl implements CourseService {
             slidePageMapper.delete(pageWrapper);
             courseSlideMapper.deleteById(slide.getId());
         }
+        // ★ Round 9-2 修复：课程删除后清除缓存，保证一致性（硬约束 #1）
+        evictCourseCacheAfterCommit(id);
     }
 
     @Override

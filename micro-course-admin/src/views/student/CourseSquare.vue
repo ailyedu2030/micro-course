@@ -791,7 +791,29 @@ onMounted(async () => {
    H5
    ========================================================================== */
 @media (max-width: 768px) {
-  .course-grid :deep(.el-col) { flex: 0 0 50%; max-width: 50%; }
+  /* 真 CSS columns 瀑布流：移动端取消 el-row 的 flex 等高栅格，
+     改为多列流式布局，卡片按列从上到下填充，消除栅格空白 */
+  .course-grid :deep(.el-row) {
+    display: block;
+    column-count: 2;
+    column-gap: 12px;
+    margin: 0 !important;
+  }
+  .course-grid :deep(.el-col) {
+    display: inline-block;
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+    break-inside: avoid;      /* 防止卡片被截断到下一列 */
+    -webkit-column-break-inside: avoid;
+    margin-bottom: 12px;
+    padding: 0 !important;    /* 覆盖 el-col gutter padding，改用 column-gap 控制间距 */
+  }
   .hot-card { flex: 0 0 200px; }
   .newest-chip { flex: 0 0 220px; }
+}
+
+@media (max-width: 480px) {
+  /* 超小屏单列瀑布流 */
+  .course-grid :deep(.el-row) { column-count: 1; }
 }</style>

@@ -1,9 +1,14 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.enums.CourseStatus;
+import com.microcourse.security.RequireRole;
 import com.microcourse.service.CourseService;
+import com.microcourse.service.EnrollmentService;
+import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
@@ -11,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -19,9 +25,12 @@ import java.util.Map;
 public class CourseController {
 
     private final CourseService courseService;
+    private final EnrollmentService enrollmentService;
 
-    public CourseController(CourseService courseService) {
+    public CourseController(CourseService courseService,
+                            EnrollmentService enrollmentService) {
         this.courseService = courseService;
+        this.enrollmentService = enrollmentService;
     }
 
     @GetMapping
@@ -60,26 +69,52 @@ public class CourseController {
     @PreAuthorize("isAuthenticated()")
     public R<CourseVO> getById(@PathVariable Long id) {
         CourseVO vo = courseService.getById(id);
+        // Round 11-1 数据隔离：下架(CLOSED)/归档(ARCHIVED)课程对学生等非授权角色不可见。
+        //   - ADMIN / ACADEMIC：运营与教务全程可见；
+        //   - TEACHER：仅本人课程可见（继续管理已下架课程）；
+        //   - 其余（STUDENT 等）：返回 404 模拟"不存在"，避免泄露下架课程的存在与元数据。
+        Integer status = vo.getStatus();
+        if (status != null
+                && (status.intValue() == CourseStatus.CLOSED.getCode()
+                    || status.intValue() == CourseStatus.ARCHIVED.getCode())) {
+            boolean privileged = SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC");
+            boolean ownerTeacher = SecurityUtil.hasRole("TEACHER")
+                    && vo.getTeacherId() != null
+                    && vo.getTeacherId().equals(SecurityUtil.getCurrentUserId());
+            if (!privileged && !ownerTeacher) {
+                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+            }
+        }
         return R.ok(vo);
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("创建课程")
     public R<CourseVO> create(@Valid @RequestBody CourseCreateRequest request) {
         CourseVO vo = courseService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<CourseVO> update(@PathVariable Long id,
                               @Valid @RequestBody CourseUpdateRequest request) {
         CourseVO vo = courseService.update(id, request);
         return R.ok(vo);
     }
 
+    /**
+     * PUT /api/courses/{id}/status — 课程状态变更
+     *
+     * <p>Phase D-1 P3-6 演示：{@code @RequireRole} 与 {@code @PreAuthorize} <b>叠加</b>使用，
+     * 角色集合完全一致（ADMIN / ACADEMIC），逻辑等价。{@code @PreAuthorize} 在过滤器层
+     * 先行决断，故本端点行为与权限语义零变化；{@code @RequireRole} 仅作为常量化注解的
+     * 落地示例，建立渐进迁移路径，不强制全量替换。</p>
+     */
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @RequireRole({"ADMIN", "ACADEMIC"})
     public R<Void> updateStatus(@PathVariable Long id,
                                 @RequestParam Integer status) {
         courseService.updateStatus(id, status);
@@ -100,6 +135,7 @@ public class CourseController {
      */
     @PostMapping("/{id}/submit")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("提交课程审核")
     public R<Void> submitForReview(@PathVariable Long id) {
         courseService.submitForReview(id);
         return R.ok();
@@ -112,6 +148,7 @@ public class CourseController {
      */
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
+    @AuditedLog("课程审核通过")
     public R<Void> approve(@PathVariable Long id) {
         courseService.approve(id);
         return R.ok();
@@ -125,6 +162,7 @@ public class CourseController {
      */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
+    @AuditedLog("课程审核驳回")
     public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String reason = body.getOrDefault("reason", "");
         // P0#3 修复:驳回原因不能为空或过短
@@ -141,10 +179,11 @@ public class CourseController {
     /**
      * POST /api/courses/{id}/publish
      * 发布课程（已通过 → 已发布）
-     * 权限：TEACHER, ADMIN
+     * 权限：ADMIN（Phase A-4 P0-9 修复：矩阵 §2.3 PUBLISH_COURSE 仅 ADMIN，移除 TEACHER/ACADEMIC 越权）
      */
     @PostMapping("/{id}/publish")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
+    @AuditedLog("课程上架")
     public R<Void> publish(@PathVariable Long id) {
         courseService.publish(id);
         return R.ok();
@@ -161,5 +200,72 @@ public class CourseController {
     public R<CourseVO> copy(@PathVariable Long id) {
         CourseVO vo = courseService.copy(id);
         return R.ok(vo);
+    }
+
+    /**
+     * GET /api/courses/pending-review
+     * 获取待审核课程列表（Phase A-4 P0-5 新增）
+     * 权限：ADMIN（依据 权限矩阵 v2.0 §2.3 READ_PENDING_REVIEW_COURSES = 仅 ADMIN）
+     */
+    @GetMapping("/pending-review")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<PageResult<CourseVO>> pendingReview(
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+        CoursePageQuery query = new CoursePageQuery();
+        query.setPage(page);
+        query.setSize(size);
+        query.setStatus(CourseStatus.PENDING_REVIEW.getCode());
+        return R.ok(courseService.page(query));
+    }
+
+    /**
+     * GET /api/courses/{id}/students
+     * 获取课程选课学生列表（Phase A-4 P0-5 新增）
+     * 权限：TEACHER(课程创建者) / ADMIN / ACADEMIC（依据 权限矩阵 v2.0 §2.3 READ_COURSE_STUDENTS）
+     * - TEACHER 必须为课程 owner（owner 校验下沉 Service）
+     * - ADMIN / ACADEMIC 无限制
+     */
+    @GetMapping("/{id}/students")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    public R<List<EnrollmentVO>> getCourseStudents(@PathVariable Long id) {
+        // TEACHER（非 ADMIN）必须为课程 owner，否则 403；ADMIN/ACADEMIC 跳过校验
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            enrollmentService.assertCourseOwnership(id);
+        }
+        List<EnrollmentVO> students = enrollmentService.getCourseEnrollments(id);
+        return R.ok(students);
+    }
+
+    /**
+     * POST /api/courses/{id}/unpublish
+     * 下架课程（已发布 → 下架）（Round 5-3 P1-10 新增）
+     * 权限：ADMIN（依据 权限矩阵 v2.0 §2.3 UNPUBLISH_COURSE = 仅 ADMIN）
+     *
+     * <p>复用既有 {@link CourseService#updateStatus} 的状态机白名单：PUBLISHED → CLOSED 为合法转换，
+     * 非已发布课程将得到 400（COURSE_STATUS_TRANSITION_NOT_ALLOWED），不会 5xx。</p>
+     */
+    @PostMapping("/{id}/unpublish")
+    @PreAuthorize("hasRole('ADMIN')")
+    @AuditedLog("课程下架")
+    public R<Void> unpublish(@PathVariable Long id) {
+        courseService.updateStatus(id, CourseStatus.CLOSED.getCode());
+        return R.ok();
+    }
+
+    /**
+     * GET /api/courses/{id}/stats
+     * 获取课程统计数据（选课人数 / 完成率 / 平均分）（Round 5-3 P1-10 新增）
+     * 权限：TEACHER(课程创建者) / ADMIN / ACADEMIC（依据 权限矩阵 v2.0 §2.3 READ_COURSE_STATS）
+     * - TEACHER（非 ADMIN）必须为课程 owner，否则 403（owner 校验复用 enrollmentService.assertCourseOwnership）
+     * - ADMIN / ACADEMIC 无限制
+     */
+    @GetMapping("/{id}/stats")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    public R<CourseStatsVO> getCourseStats(@PathVariable Long id) {
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            enrollmentService.assertCourseOwnership(id);
+        }
+        return R.ok(courseService.computeStats(id));
     }
 }

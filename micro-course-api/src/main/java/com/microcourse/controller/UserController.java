@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.UserCreateRequest;
@@ -102,6 +103,7 @@ public class UserController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @AuditedLog("修改用户状态")
     public R<Void> updateStatus(@PathVariable Long id,
                                  @Valid @RequestBody UserStatusRequest request) {
         userService.updateStatus(id, request);
@@ -127,6 +129,7 @@ public class UserController {
      */
     @PostMapping("/batch")
     @PreAuthorize("hasRole('ADMIN')")
+    @AuditedLog("批量导入用户")
     public R<BatchImportResultVO> batchImport(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");

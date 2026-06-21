@@ -3,8 +3,8 @@
   学生端侧边滑出购物车
 -->
 <template>
-  <el-drawer v-model="visible" title="购物车" size="380px" :with-header="true">
-    <template #title>
+  <el-drawer v-model="visible" size="380px" :with-header="true">
+    <template #header>
       <span class="drawer-title">购物车 <el-tag v-if="store.count" type="danger" size="small">{{ store.count }}</el-tag></span>
     </template>
 
@@ -14,7 +14,7 @@
 
     <div v-else class="cart-items">
       <div v-for="item in store.items" :key="item.courseId" class="cart-item">
-        <el-image v-if="item.coverUrl" :src="item.coverUrl" fit="cover" class="item-cover" />
+        <el-image v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title || '课程封面'" fit="cover" class="item-cover" />
         <div class="item-cover-placeholder" v-else>
           <el-icon :size="24"><Notebook /></el-icon>
         </div>

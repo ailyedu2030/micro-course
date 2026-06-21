@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.order.OrderVO;
@@ -26,6 +27,7 @@ public class OrderController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('STUDENT')")
+    @AuditedLog("创建订单")
     public R<OrderVO> createOrder(@RequestBody Map<String, Long> body) {
         Long userId = SecurityUtil.getCurrentUserId();
         return R.ok(orderService.createOrder(userId, body.get("courseId"), body.get("bundleId")));
@@ -47,6 +49,7 @@ public class OrderController {
 
     @PostMapping("/{id}/pay")
     @PreAuthorize("hasAnyRole('STUDENT')")
+    @AuditedLog("订单支付")
     public R<OrderVO> pay(@PathVariable Long id, @RequestBody Map<String, String> body) {
         return R.ok(orderService.pay(id, body.getOrDefault("paymentMethod", "BALANCE")));
     }

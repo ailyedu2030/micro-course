@@ -38,6 +38,8 @@ public class VideoBookmarkController {
         return R.ok(bookmarkService.create(videoId, request));
     }
 
+    // P0-3 对象级授权：@PreAuthorize 仅做认证兜底；owner 校验下沉至
+    // VideoBookmarkServiceImpl.delete（!currentUserId.equals(bookmark.userId) → NO_PERMISSION/403）
     @DeleteMapping("/{bookmarkId}")
     @PreAuthorize("isAuthenticated()")
     public R<Void> delete(@PathVariable Long videoId,

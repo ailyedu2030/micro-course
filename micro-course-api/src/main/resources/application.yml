@@ -11,11 +11,18 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     hikari:
+      # P3-14 连接池监控：pool-name 作为 Micrometer hikaricp_* 指标的 pool 标签，便于多池区分
+      pool-name: micro-course-pool
       minimum-idle: 5
       maximum-pool-size: 20
       idle-timeout: 300000
       max-lifetime: 1800000
-      connection-timeout: 30000
+      # ★ Round 9-2 修复：连接池满时 30s 等待对用户是灾难，降至 5s 快速失败
+      connection-timeout: 5000
+      # ★ Round 9-2 修复：60s 连接泄漏检测，及时暴露未归还连接
+      leak-detection-threshold: 60000
+      # ★ Round 9-2 修复：获取连接前校验超时 3s
+      validation-timeout: 3000
 
   flyway:
     enabled: true
@@ -115,3 +122,28 @@ plugin:
 # CORS (INFRA-NEW-4: 多个来源以逗号分隔,env 可覆盖)
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost}
+
+# P3-14 DB 连接池监控：Actuator + Micrometer Prometheus
+# 安全：exposure.include 仅白名单 4 个端点，绝不暴露 env/beans/configprops/heapdump/threaddump 等敏感端点。
+# 暴露内容为 hikaricp_*/jvm_*/http_* 运行时指标，不含业务数据。生产须在网络层再限制内网可达。
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never        # 不向匿名访问者泄露下游组件细节（DB/Redis 地址等）
+  metrics:
+    tags:
+      application: micro-course-api
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+# P3-15 慢 SQL 监控阈值（被 MybatisSlowSqlInterceptor 通过 @Value 读取；独立顶级键，不与 mybatis-plus 绑定冲突）
+mybatis:
+  slow-sql:
+    threshold-ms: ${SLOW_SQL_THRESHOLD_MS:500}   # 500ms 阈值（业务建议，可调整）
+    alert-enabled: ${SLOW_SQL_ALERT_ENABLED:true}

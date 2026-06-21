@@ -153,6 +153,43 @@ public class LearningProgressServiceImpl implements LearningProgressService {
             }
         }
 
+        // ★ Round 8-4 修复(P0)：多设备/并发重复上报防护。
+        // learning_progress 仅对 lesson_id IS NOT NULL 有 DB 唯一约束(uk_lp_user_lesson)，
+        // 章节级（lesson_id 为 null）记录此前无任何约束，并发 create 会产生重复记录、完成度翻倍。
+        // 这里先按业务粒度查重：命中则幂等更新已有记录（合法用户体验零退化）；
+        // 未命中再插入，极端并发命中 V66 部分唯一索引时兜底转 400 提示，绝不抛 500。
+        // 这里先按业务粒度查重：命中则幂等更新已有记录（合法用户体验零退化）；
+        // 未命中再走幂等 upsert（ON CONFLICT DO NOTHING），并发全部返回 200、最终仅 1 行。
+        LearningProgress existing = learningProgressRepository.selectOne(dedupWrapper(request));
+        if (existing != null) {
+            // 幂等更新：仅覆盖客户端上报的非空字段，last_watch_at 始终刷新
+            if (request.getVideoProgress() != null) existing.setVideoProgress(request.getVideoProgress());
+            if (request.getVideoPosition() != null) existing.setVideoPosition(request.getVideoPosition());
+            if (request.getTotalWatchTime() != null) existing.setTotalWatchTime(request.getTotalWatchTime());
+            if (request.getLessonId() != null) existing.setLessonId(request.getLessonId());
+            if (request.getExerciseCompleted() != null) existing.setExerciseCompleted(request.getExerciseCompleted());
+            if (request.getExercisePassed() != null) existing.setExercisePassed(request.getExercisePassed());
+            if (request.getDeviceId() != null) existing.setDeviceId(request.getDeviceId());
+            if (request.getPlatform() != null) existing.setPlatform(request.getPlatform());
+            if (request.getPlaybackSpeed() != null) existing.setPlaybackSpeed(request.getPlaybackSpeed());
+            if (request.getConfidence() != null) existing.setConfidence(request.getConfidence());
+            if (request.getCompleted() != null) existing.setCompleted(request.getCompleted());
+            existing.setLastWatchAt(LocalDateTime.now());
+            existing.setUpdatedAt(LocalDateTime.now());
+            learningProgressRepository.updateById(existing);
+            Map<Long, Course> exCourseMap = new HashMap<>();
+            Map<Long, CourseChapter> exChapterMap = new HashMap<>();
+            if (existing.getCourseId() != null) {
+                Course c = courseRepository.selectById(existing.getCourseId());
+                if (c != null) exCourseMap.put(c.getId(), c);
+            }
+            if (existing.getChapterId() != null) {
+                CourseChapter ch = courseChapterRepository.selectById(existing.getChapterId());
+                if (ch != null) exChapterMap.put(ch.getId(), ch);
+            }
+            return convertToVO(existing, exCourseMap, exChapterMap);
+        }
+
         LearningProgress progress = new LearningProgress();
         progress.setUserId(request.getUserId());
         progress.setCourseId(request.getCourseId());
@@ -171,23 +208,31 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         progress.setLastWatchAt(LocalDateTime.now());
         progress.setCreatedAt(LocalDateTime.now());
         progress.setUpdatedAt(LocalDateTime.now());
-        learningProgressRepository.insert(progress);
+        // ★ Round 8-4 修复(P0)：幂等 upsert —— ON CONFLICT DO NOTHING 永不抛唯一约束异常
+        // （PG 事务不会 abort）。并发 loser 会阻塞至 winner 提交后再回查命中，最终全部 200、仅 1 行，
+        // 既彻底消除重复进度记录（完成度翻倍），又保证合法用户体验零退化（不抛 500/不返回 4xx）。
+        learningProgressRepository.insertIfAbsent(progress);
+        LearningProgress saved = learningProgressRepository.selectOne(dedupWrapper(request));
+        if (saved == null) {
+            // 极端边界（插入后被并发软删除）：友好提示重试，绝不抛 500
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "学习进度记录创建失败，请重试");
+        }
         // N+1 修复:使用批量版 convertToVO,避免每次 create 触发 2 次 selectById
         Map<Long, Course> courseMap = new HashMap<>();
         Map<Long, CourseChapter> chapterMap = new HashMap<>();
-        if (progress.getCourseId() != null) {
-            Course course = courseRepository.selectById(progress.getCourseId());
+        if (saved.getCourseId() != null) {
+            Course course = courseRepository.selectById(saved.getCourseId());
             if (course != null) {
                 courseMap.put(course.getId(), course);
             }
         }
-        if (progress.getChapterId() != null) {
-            CourseChapter ch = courseChapterRepository.selectById(progress.getChapterId());
+        if (saved.getChapterId() != null) {
+            CourseChapter ch = courseChapterRepository.selectById(saved.getChapterId());
             if (ch != null) {
                 chapterMap.put(ch.getId(), ch);
             }
         }
-        return convertToVO(progress, courseMap, chapterMap);
+        return convertToVO(saved, courseMap, chapterMap);
     }
 
     @Override
@@ -246,6 +291,28 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         Map<String, Object> result = new HashMap<>();
         result.put("totalSeconds", totalSeconds);
         return result;
+    }
+
+    /**
+     * 构建学习进度查重条件（Round 8-4 P0）：按 (user, course, chapter, lesson) 业务粒度匹配活跃记录，
+     * chapter/lesson 为空时用 IS NULL 精确匹配，避免 NULL 误命中。@TableLogic 自动追加 deleted_at IS NULL。
+     */
+    private LambdaQueryWrapper<LearningProgress> dedupWrapper(ProgressCreateRequest request) {
+        LambdaQueryWrapper<LearningProgress> w = new LambdaQueryWrapper<>();
+        w.eq(LearningProgress::getUserId, request.getUserId())
+         .eq(LearningProgress::getCourseId, request.getCourseId());
+        if (request.getChapterId() != null) {
+            w.eq(LearningProgress::getChapterId, request.getChapterId());
+        } else {
+            w.isNull(LearningProgress::getChapterId);
+        }
+        if (request.getLessonId() != null) {
+            w.eq(LearningProgress::getLessonId, request.getLessonId());
+        } else {
+            w.isNull(LearningProgress::getLessonId);
+        }
+        w.orderByDesc(LearningProgress::getId).last("LIMIT 1");
+        return w;
     }
 
     private LearningProgressVO convertToVO(LearningProgress progress) {

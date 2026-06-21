@@ -12,6 +12,7 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.Order;
 import com.microcourse.entity.Payment;
 import com.microcourse.entity.CourseBundleItem;
+import com.microcourse.enums.OrderStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseBundleItemRepository;
@@ -146,8 +147,11 @@ public class OrderServiceImpl implements OrderService {
         if (!SecurityUtil.isOwnerOrAdmin(order.getUserId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        if (!"PENDING".equals(order.getStatus())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+        // Round 6-3：订单状态机白名单校验（PENDING → PAID），与下方 CAS 乐观锁形成「业务语义 + 并发竞态」双重防御
+        OrderStatus currentStatus = OrderStatus.fromValue(order.getStatus());
+        if (currentStatus == null || !currentStatus.canTransitionTo(OrderStatus.PAID)) {
+            log.warn("非法订单状态转换: orderId={} {} -> PAID", orderId, order.getStatus());
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "订单当前状态不允许支付");
         }
 
         // SECURITY: 先选课再标记支付——防止支付成功但选课失败导致钱课两空

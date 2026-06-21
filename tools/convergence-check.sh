@@ -141,4 +141,9 @@ if [ -f .audit-cache/audit_state.json ]; then
     echo "  当前审计阶段: $PHASE"
 fi
 
+# ---- 状态机枚举双向校验（Phase D-1 P3-7 新增）----
+# 仅警告不失败：以 || true 包裹，确保校验输出不阻塞收敛检查 / CI。
+echo ""
+bash "$(dirname "$0")/convergence-check-status-machine.sh" || true
+
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

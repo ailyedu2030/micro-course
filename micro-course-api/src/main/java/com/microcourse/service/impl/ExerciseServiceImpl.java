@@ -236,17 +236,11 @@ public class ExerciseServiceImpl implements ExerciseService {
         // SECURITY: TEACHER 只能看到自己授课课程的练习
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
             Long currentUserId = SecurityUtil.getCurrentUserId();
-            List<Course> teacherCourses = courseRepository.selectList(
-                    new LambdaQueryWrapper<Course>()
-                            .eq(Course::getTeacherId, currentUserId)
-                            .isNull(Course::getDeletedAt)
-                            .select(Course::getId));
-            Set<Long> teacherCourseIds = teacherCourses.stream()
-                    .map(Course::getId).collect(Collectors.toSet());
-            if (teacherCourseIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0L, page, size);
-            }
-            wrapper.in(Exercise::getCourseId, teacherCourseIds);
+            // ★ Round 11-2 性能优化：用数据库子查询替代「先 selectList 取教师课程 ID 到内存再 IN」，
+            // 消除课程数 O(N) 的内存装配；currentUserId 为 JWT 解析的 Long（非字符串），无注入面。
+            // 教师无任何课程时子查询返回空集，IN(空) 自然得空结果页，与原 in-memory 早返回语义一致。
+            wrapper.inSql(Exercise::getCourseId,
+                    "SELECT id FROM courses WHERE teacher_id = " + currentUserId + " AND deleted_at IS NULL");
         }
         wrapper.orderByDesc(Exercise::getCreatedAt);
 
@@ -352,16 +346,31 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
 
         // Load multi-chapter associations
+        // ★ Round 9-1 修复(N+1)：原实现对每个章节关联各执行一次 selectById（章节数 = N → N 次额外查询），
+        // 改为先批量 selectBatchIds 预加载全部章节标题，再按原顺序装配。结果与原逻辑逐元素等价
+        // （chapterIds 保留全部关联 id 含重复、chapterTitles 仅含存在章节的标题、顺序不变），查询次数由 N 降为 1。
         LambdaQueryWrapper<ExerciseChapter> ecWrapper = new LambdaQueryWrapper<>();
         ecWrapper.eq(ExerciseChapter::getExerciseId, exercise.getId());
         List<ExerciseChapter> exerciseChapters = exerciseChapterRepository.selectList(ecWrapper);
         List<Long> chapterIds = new ArrayList<>();
         List<String> chapterTitles = new ArrayList<>();
-        for (ExerciseChapter ec : exerciseChapters) {
-            chapterIds.add(ec.getChapterId());
-            CourseChapter ch = courseChapterRepository.selectById(ec.getChapterId());
-            if (ch != null) {
-                chapterTitles.add(ch.getTitle());
+        if (!exerciseChapters.isEmpty()) {
+            List<Long> distinctChapterIds = exerciseChapters.stream()
+                    .map(ExerciseChapter::getChapterId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            Map<Long, CourseChapter> multiChapterMap = new HashMap<>();
+            if (!distinctChapterIds.isEmpty()) {
+                courseChapterRepository.selectBatchIds(distinctChapterIds)
+                        .forEach(ch -> multiChapterMap.put(ch.getId(), ch));
+            }
+            for (ExerciseChapter ec : exerciseChapters) {
+                chapterIds.add(ec.getChapterId());
+                CourseChapter ch = multiChapterMap.get(ec.getChapterId());
+                if (ch != null) {
+                    chapterTitles.add(ch.getTitle());
+                }
             }
         }
         vo.setChapterIds(chapterIds);

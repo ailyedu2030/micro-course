@@ -27,7 +27,7 @@
               </template>
               <template #default>
                 <div class="stat-icon-wrap">
-                  <el-icon class="stat-icon"><Calendar /></el-icon>
+                  <el-icon class="stat-icon" aria-hidden="true"><Calendar /></el-icon>
                 </div>
                 <div class="stat-value">{{ reportData.learningDays }}</div>
                 <div class="stat-label">学习天数</div>
@@ -47,7 +47,7 @@
               </template>
               <template #default>
                 <div class="stat-icon-wrap">
-                  <el-icon class="stat-icon"><Timer /></el-icon>
+                  <el-icon class="stat-icon" aria-hidden="true"><Timer /></el-icon>
                 </div>
                 <div class="stat-value">{{ formatDuration(reportData.videoMinutes) }}</div>
                 <div class="stat-label">视频学习时长</div>
@@ -67,7 +67,7 @@
               </template>
               <template #default>
                 <div class="stat-icon-wrap">
-                  <el-icon class="stat-icon"><Edit /></el-icon>
+                  <el-icon class="stat-icon" aria-hidden="true"><Edit /></el-icon>
                 </div>
                 <div class="stat-value">{{ reportData.exerciseCount }}</div>
                 <div class="stat-label">完成练习数</div>
@@ -87,7 +87,7 @@
               </template>
               <template #default>
                 <div class="stat-icon-wrap">
-                  <el-icon class="stat-icon"><Aim /></el-icon>
+                  <el-icon class="stat-icon" aria-hidden="true"><Aim /></el-icon>
                 </div>
                 <div class="stat-value">{{ reportData.accuracyPercent }}%</div>
                 <div class="stat-label">正确率</div>

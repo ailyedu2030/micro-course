@@ -286,7 +286,6 @@ const userStore = useUserStore()
 // 欢迎信息
 const now = new Date()
 const welcomeDate = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 ${['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()]}`
-const weather = '晴'
 const userName = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || '老师')
 const greeting = computed(() => {
   const h = now.getHours()

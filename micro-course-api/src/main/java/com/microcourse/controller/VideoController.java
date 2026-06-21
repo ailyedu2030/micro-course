@@ -1,16 +1,22 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.R;
 import com.microcourse.dto.VideoCreateRequest;
 import com.microcourse.dto.VideoUpdateRequest;
 import com.microcourse.dto.VideoVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.LearningProgressVO;
+import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.entity.Video;
 import com.microcourse.entity.VideoStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.service.LearningProgressService;
 import com.microcourse.service.VideoService;
 import com.microcourse.service.VideoTranscodeService;
+import com.microcourse.service.impl.VideoAccessServiceImpl;
+import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.VideoSignUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -31,6 +37,7 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -52,6 +59,8 @@ public class VideoController {
     private final VideoTranscodeService videoTranscodeService;
     private final VideoSignUtil videoSignUtil;
     private final Executor videoUploadExecutor;
+    private final LearningProgressService learningProgressService;
+    private final VideoAccessServiceImpl videoAccessService;
 
     /** P1-1: 上传目录从配置注入 */
     @Value("${video.upload-dir:uploads/videos}")
@@ -61,11 +70,15 @@ public class VideoController {
                           VideoTranscodeService videoTranscodeService,
                           VideoSignUtil videoSignUtil,
                           @org.springframework.beans.factory.annotation.Qualifier("videoUploadExecutor")
-                          Executor videoUploadExecutor) {
+                          Executor videoUploadExecutor,
+                          LearningProgressService learningProgressService,
+                          VideoAccessServiceImpl videoAccessService) {
         this.videoService = videoService;
         this.videoTranscodeService = videoTranscodeService;
         this.videoSignUtil = videoSignUtil;
         this.videoUploadExecutor = videoUploadExecutor;
+        this.learningProgressService = learningProgressService;
+        this.videoAccessService = videoAccessService;
     }
 
     @GetMapping
@@ -84,6 +97,8 @@ public class VideoController {
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public R<VideoVO> getById(@PathVariable Long id) {
+        // ★ Round 8-1 修复：选课校验（仅 STUDENT；ADMIN/TEACHER/ACADEMIC 放行）
+        assertStudentEnrolled(id);
         VideoVO vo = videoService.getById(id);
         return R.ok(vo);
     }
@@ -120,6 +135,7 @@ public class VideoController {
      */
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("上传视频")
     public R<VideoVO> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam("courseId") Long courseId,
@@ -217,6 +233,10 @@ public class VideoController {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
         }
+        // Round 11-4 安全加固：文件名路径穿越防护（纵深防御）。
+        // 物理落盘虽用 UUID 重命名，但 originalFilename 会写入 DB title/file_name 字段，
+        // 仍须拒绝含 ".." / 绝对路径 / 反斜杠的恶意文件名，防止路径穿越与日志注入。
+        assertSafeFilename(file.getOriginalFilename());
         String originalFilename = file.getOriginalFilename();
         String ext = "";
         if (originalFilename != null && originalFilename.contains(".")) {
@@ -247,6 +267,21 @@ public class VideoController {
             }
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
+        }
+    }
+
+    /**
+     * Round 11-4 安全加固：文件名路径穿越防护。
+     * 拒绝含 ".." / 路径分隔符 / null 字节的恶意文件名，防止路径穿越与日志注入。
+     * 合法上传文件名（如 "lecture01.mp4"）不含这些字符，零影响。
+     */
+    private static void assertSafeFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return; // 文件名缺失走 UUID 落盘 + 默认名兜底，非攻击
+        }
+        if (filename.contains("..") || filename.contains("/")
+                || filename.contains("\\") || filename.indexOf('\u0000') >= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件名不合法");
         }
     }
 
@@ -287,11 +322,40 @@ public class VideoController {
     }
 
     /**
+     * Round 8-1 修复：视频访问选课校验。
+     *
+     * <p>仅对 STUDENT 角色强制选课校验；ADMIN / ACADEMIC / TEACHER 直接放行，
+     * 且<b>不读取视频行</b>——保持对管理员/教师既有行为零退化
+     * （既有测试对不存在 ID 的非学生请求依赖此放行）。</p>
+     *
+     * @param videoId 视频 ID
+     * @throws BusinessException VIDEO_NOT_FOUND（视频不存在）/ NOT_ENROLLED（学生未选课）
+     */
+    private void assertStudentEnrolled(Long videoId) {
+        if (!SecurityUtil.hasRole("STUDENT")) {
+            return; // 非学生（教师/管理员/教务）放行
+        }
+        Video video = videoService.findEntityById(videoId);
+        if (video == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        VideoAccessServiceImpl.AccessResult result =
+                videoAccessService.checkVideoAccess(SecurityUtil.getCurrentUserId(), video.getCourseId());
+        if (!result.allowed) {
+            throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
+        }
+    }
+
+    /**
      * 视频播放签名生成
+     *
+     * <p>Round 8-1：生成签名前先做选课校验（学生未选课 → 403 NOT_ENROLLED）。</p>
      */
     @GetMapping("/{id}/sign")
     @PreAuthorize("isAuthenticated()")
     public R<String> generateSign(@PathVariable @PositiveOrZero Long id) {
+        // ★ Round 8-1 修复：选课校验（仅 STUDENT；其余角色放行）
+        assertStudentEnrolled(id);
         String sign = videoSignUtil.generateSign(id, 2);
         return R.ok(sign);
     }
@@ -307,6 +371,15 @@ public class VideoController {
         Video video = videoService.findEntityById(id);
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+
+        // ★ Round 8-1 修复：选课校验（仅 STUDENT；先于签名校验，未选课直接 403 NOT_ENROLLED）
+        if (SecurityUtil.hasRole("STUDENT")) {
+            VideoAccessServiceImpl.AccessResult access =
+                    videoAccessService.checkVideoAccess(SecurityUtil.getCurrentUserId(), video.getCourseId());
+            if (!access.allowed) {
+                throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
+            }
         }
 
         if (sign == null || !videoSignUtil.verifySign(id, sign)) {
@@ -343,5 +416,66 @@ public class VideoController {
         }
         String coverUrl = videoService.uploadCover(id, file);
         return R.ok(coverUrl);
+    }
+
+    /**
+     * GET /api/videos/{id}/progress
+     * 获取当前学生在该视频所属课程的学习进度（Phase A-4 P0-5 新增）
+     * 权限：STUDENT（本人）—— 依据 权限矩阵 v2.0 §2.5 READ_VIDEO_PROGRESS（仅学生本人）。
+     * 说明：learning_progress 表以 (user_id, course_id, chapter_id) 为粒度（无 video_id 列），
+     *      故按视频所属课程返回本人进度；userId 强制取当前登录用户，天然防 IDOR。
+     */
+    @GetMapping("/{id}/progress")
+    @PreAuthorize("hasRole('STUDENT')")
+    public R<List<LearningProgressVO>> getVideoProgress(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        Video video = videoService.findEntityById(id);
+        if (video == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        return R.ok(learningProgressService.getByUserAndCourse(userId, video.getCourseId()));
+    }
+
+    /**
+     * POST /api/videos/{id}/progress
+     * 上报当前学生的视频观看进度（断点续播）（Phase A-4 P0-5 新增）
+     * 权限：STUDENT（本人）—— 依据 权限矩阵 v2.0 §2.5 UPDATE_VIDEO_PROGRESS（仅学生本人）。
+     * 复用既有并发安全的 LearningProgressService.create()；userId/courseId/chapterId 由服务端推导，
+     * 客户端无法篡改归属，天然防 IDOR。
+     */
+    @PostMapping("/{id}/progress")
+    @PreAuthorize("hasRole('STUDENT')")
+    public R<LearningProgressVO> reportVideoProgress(@PathVariable Long id,
+                                                     @RequestBody(required = false) Map<String, Object> body) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        Video video = videoService.findEntityById(id);
+        if (video == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        ProgressCreateRequest req = new ProgressCreateRequest();
+        req.setUserId(userId);
+        req.setCourseId(video.getCourseId());
+        req.setChapterId(video.getChapterId());
+        if (body != null) {
+            req.setVideoProgress(asInt(body.get("videoProgress")));
+            req.setVideoPosition(asInt(body.get("videoPosition")));
+            req.setTotalWatchTime(asInt(body.get("totalWatchTime")));
+        }
+        return R.ok(learningProgressService.create(req));
+    }
+
+    /** 宽松解析整数（兼容 Number / 字符串数字） */
+    private static Integer asInt(Object o) {
+        if (o == null) {
+            return null;
+        }
+        if (o instanceof Number) {
+            return ((Number) o).intValue();
+        }
+        try {
+            return Integer.parseInt(o.toString().trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

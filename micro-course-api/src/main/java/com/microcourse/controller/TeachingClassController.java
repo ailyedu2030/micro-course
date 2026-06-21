@@ -1,7 +1,9 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.*;
 import com.microcourse.service.TeachingClassService;
+import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
@@ -9,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/teaching-classes")
@@ -90,6 +93,48 @@ public class TeachingClassController {
                                       @PathVariable Long userId,
                                       @Valid @RequestBody UpdateStudentStatusRequest request) {
         teachingClassService.updateStudentStatus(id, userId, request.getStatus());
+        return R.ok();
+    }
+
+    /**
+     * GET /api/teaching-classes/{id}/schedule
+     * 获取教学班课表（Phase A-4 P0-5 新增）
+     * 权限：全部已登录角色（STUDENT 已入选 / TEACHER 授课 / ADMIN / ACADEMIC）——
+     *      依据 权限矩阵 v2.0 §2.9 READ_TEACHING_CLASS_SCHEDULE。
+     * 返回教学班详情（含 schedule / location / semester 字段）。
+     */
+    @GetMapping("/{id}/schedule")
+    @PreAuthorize("isAuthenticated()")
+    public R<TeachingClassVO> getSchedule(@PathVariable Long id) {
+        return R.ok(teachingClassService.getById(id));
+    }
+
+    /**
+     * POST /api/teaching-classes/{id}/complete
+     * 结课（ACTIVE → COMPLETED）。Round 6 状态机补全。
+     * 权限：ADMIN / ACADEMIC / TEACHER（依据 docs/状态机设计.md §4「系统/教师手动结课」）。
+     */
+    @PostMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC','TEACHER')")
+    @AuditedLog("教学班结课")
+    public R<Void> complete(@PathVariable Long id) {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        teachingClassService.complete(id, currentUserId);
+        return R.ok();
+    }
+
+    /**
+     * POST /api/teaching-classes/{id}/cancel
+     * 停开（ACTIVE → CANCELLED），停开原因必填。Round 6 状态机补全。
+     * 权限：ADMIN / ACADEMIC（依据 docs/状态机设计.md §4「管理员取消/教师申请停开」）。
+     */
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @AuditedLog("教学班停开")
+    public R<Void> cancel(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        String reason = body == null ? null : body.get("reason");
+        teachingClassService.cancel(id, reason, currentUserId);
         return R.ok();
     }
 }

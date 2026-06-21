@@ -2,6 +2,8 @@ package com.microcourse.controller;
 
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.service.impl.VideoAccessServiceImpl;
+import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +34,12 @@ public class VideoStreamController {
     @Value("${video.storage-base-dir:/data/videos}")
     private String storageBaseDir;
 
+    private final VideoAccessServiceImpl videoAccessService;
+
+    public VideoStreamController(VideoAccessServiceImpl videoAccessService) {
+        this.videoAccessService = videoAccessService;
+    }
+
     /**
      * 流式返回 HLS 文件（.m3u8 / .ts）
      *
@@ -44,6 +52,15 @@ public class VideoStreamController {
             @PathVariable Long courseId,
             @PathVariable Long videoId,
             @PathVariable String filename) {
+
+        // ★ Round 8-1 修复：HLS 流式端点选课校验（仅 STUDENT；先于一切文件处理，未选课直接 403）
+        if (SecurityUtil.hasRole("STUDENT")) {
+            VideoAccessServiceImpl.AccessResult access =
+                    videoAccessService.checkVideoAccess(SecurityUtil.getCurrentUserId(), courseId);
+            if (!access.allowed) {
+                throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
+            }
+        }
 
         // 安全校验：文件名不能包含路径穿越字符
         if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {

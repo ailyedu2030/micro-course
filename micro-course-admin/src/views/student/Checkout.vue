@@ -4,7 +4,11 @@
 -->
 <template>
   <div class="checkout-page">
-    <nav class="page-breadcrumb">结算</nav>
+    <nav class="page-breadcrumb" aria-label="面包屑">
+      <router-link to="/student/courses" class="bc-link">课程广场</router-link>
+      <span class="bc-sep">/</span>
+      <span>结算</span>
+    </nav>
 
     <el-alert v-if="paid" title="支付成功！" type="success" show-icon :closable="false" class="mg-bottom-16" />
 
@@ -84,7 +88,10 @@ onMounted(() => {
 })
 
 async function handleSubmit() {
-  if (!store.hasItems) return
+  if (!store.hasItems) {
+    ElMessage.warning('购物车为空或部分商品已下架')
+    return
+  }
   try {
     await ElMessageBox.confirm(`确认支付 ¥${store.totalPrice}？`, '确认支付', {
       confirmButtonText: '支付', cancelButtonText: '取消', type: 'info'
@@ -120,6 +127,9 @@ async function handleSubmit() {
 <style scoped>
 .checkout-page { padding: var(--space-6); max-width: 1200px; margin: 0 auto; min-height: 100dvh; background: var(--el-bg-color-page); }
 .page-breadcrumb { margin-bottom: var(--space-4); font-size: var(--text-md); font-weight: var(--weight-semibold); }
+.bc-link { color: var(--el-text-color-secondary); text-decoration: none; transition: color var(--duration-base) var(--ease-out); }
+.bc-link:hover { color: var(--role-primary); }
+.bc-sep { margin: 0 var(--space-2); color: var(--el-border-color); font-weight: var(--weight-regular); }
 .section-card { margin-bottom: var(--space-4); }
 .course-cell { display: flex; align-items: center; gap: 12px; }
 .cell-cover { width: 48px; height: 48px; border-radius: 6px; flex-shrink: 0; }

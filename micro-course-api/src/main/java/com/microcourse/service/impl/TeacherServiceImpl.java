@@ -142,14 +142,33 @@ public class TeacherServiceImpl implements TeacherService {
             stats.setPendingQuestions(0);
         }
 
-        // 完成率
-        long totalEnrollments = enrollmentService.countByTeacherId(teacherId);
-        long completedEnrollments = enrollmentService.countCompletedByTeacherId(teacherId);
+        // 完成率 / 平均分
+        // ★ Round 9-1 修复(N+1)：原实现经 enrollmentService 的三个方法各自重复查询「教师课程 ID 集合」
+        // （getCourseIdsByTeacherId 共 3 次额外 selectList）并重复统计总选课数；此处复用上方已加载的
+        // courseIds 与 studentCount（其查询条件 courseId∈courseIds AND deleted_at IS NULL 与 countByTeacherId
+        // 完全一致），改为基于 courseIds 直接聚合。计算结果与原逻辑逐字段等价，仅消除约 5 次冗余往返。
+        long totalEnrollments = studentCount; // 等价于 countByTeacherId（同一查询条件，上方已执行）
+        long completedEnrollments = 0;
+        double avgScore = 0;
+        if (!courseIds.isEmpty()) {
+            completedEnrollments = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                    .in(Enrollment::getCourseId, courseIds)
+                    .eq(Enrollment::getCompleted, true)
+                    .isNull(Enrollment::getDeletedAt));
+            List<Enrollment> scored = enrollmentRepository.selectList(
+                new LambdaQueryWrapper<Enrollment>()
+                    .in(Enrollment::getCourseId, courseIds)
+                    .isNotNull(Enrollment::getFinalScore)
+                    .isNull(Enrollment::getDeletedAt));
+            avgScore = scored.stream()
+                .filter(e -> e.getFinalScore() != null)
+                .mapToDouble(e -> e.getFinalScore().doubleValue())
+                .average()
+                .orElse(0);
+        }
         double completionRate = totalEnrollments > 0 ? completedEnrollments * 100.0 / totalEnrollments : 0;
         stats.setCompletionRate(completionRate);
-
-        // 平均分
-        double avgScore = enrollmentService.getAvgScoreByTeacherId(teacherId);
         stats.setAvgScore(avgScore);
 
         return stats;
@@ -221,6 +240,9 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public List<PendingTaskVO> getPendingTasks(Long teacherId, int size) {
+        // ★ Round 11-2 性能核验：本方法已为批量预加载实现（无逐门课程 N+1）——
+        // 1 次取教师课程 ID 集合 → 1 次 IN(courseIds) 批量取练习 ID → 1 次分页取待批改记录
+        // → 1 次分页取讨论帖；查询次数恒定，不随课程数增长，无需引入 per-course 循环查询。
         List<PendingTaskVO> tasks = new ArrayList<>();
 
         List<Long> courseIds = courseRepository.selectList(

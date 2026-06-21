@@ -60,6 +60,8 @@ public class ExerciseRecordController {
         return R.ok(trend);
     }
 
+    // P0-3 对象级授权：@PreAuthorize 仅做认证兜底；owner 校验下沉至
+    // ExerciseRecordServiceImpl.getRecordById（!record.userId.equals(userId) → NO_PERMISSION/403）
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public R<ExerciseRecordVO> getRecordById(@PathVariable Long id, Authentication authentication) {

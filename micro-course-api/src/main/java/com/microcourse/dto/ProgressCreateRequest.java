@@ -1,6 +1,7 @@
 package com.microcourse.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 
 public class ProgressCreateRequest {
 
@@ -13,14 +14,18 @@ public class ProgressCreateRequest {
 
     private Long lessonId;
 
+    // ★ Round 9-3 修复：进度/位置/时长不能为负数（null 时跳过，合法用户零退化）
+    @PositiveOrZero(message = "视频进度不能为负数")
     private Integer videoProgress;
 
+    @PositiveOrZero(message = "视频位置不能为负数")
     private Integer videoPosition;
 
     private Boolean exerciseCompleted;
 
     private Boolean exercisePassed;
 
+    @PositiveOrZero(message = "观看时长不能为负数")
     private Integer totalWatchTime;
 
     private String deviceId;

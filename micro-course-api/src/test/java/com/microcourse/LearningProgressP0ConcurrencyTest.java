@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.concurrent.*;
@@ -25,6 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * BOUNDARY: watchDelta=null 或负数 → 不变更 total_watch_time
  */
 @DisplayName("CON-003 学习进度增量累加")
+// P0 修复：补齐 courseId 1/2 + chapterId 1/5 种子（详见 /sql/p0-seed.sql）
+@Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class LearningProgressP0ConcurrencyTest extends BaseIntegrationTest {
 
     private Long progressId1;

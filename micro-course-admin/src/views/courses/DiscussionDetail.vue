@@ -33,7 +33,7 @@
           <div class="post-meta">
             <span class="meta-item">作者：{{ postData.authorName || '-' }}</span>
             <span class="meta-item">课程：{{ postData.courseName || '-' }}</span>
-            <span class="meta-item">发布时间：{{ postData.createdAt || '-' }}</span>
+            <span class="meta-item">发布时间：{{ formatDateTime(postData.createdAt) || '-' }}</span>
             <el-tag v-if="postData.status === 'PENDING'" type="warning" size="small">待审核</el-tag>
             <el-tag v-else-if="postData.status === 'PUBLISHED'" type="success" size="small">已发布</el-tag>
             <el-tag v-else-if="postData.status === 'DELETED'" type="info" size="small">已删除</el-tag>
@@ -60,7 +60,7 @@
         <div v-for="reply in replies" :key="reply.id" class="reply-item">
           <div class="reply-header">
             <span class="reply-author">{{ reply.authorName || '-' }}</span>
-            <span class="reply-time">{{ reply.createdAt || '-' }}</span>
+            <span class="reply-time">{{ formatDateTime(reply.createdAt) || '-' }}</span>
             <el-button type="danger" link size="small" @click="handleDeleteReply(reply)">删除</el-button>
           </div>
           <div class="reply-content">{{ reply.content }}</div>
@@ -75,6 +75,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getDiscussionById, approveDiscussion, rejectDiscussion, deleteDiscussion, getComments, deleteComment } from '@/api/discussion'
+import { formatDateTime } from '@/utils/format'
 
 const router = useRouter()
 const route = useRoute()

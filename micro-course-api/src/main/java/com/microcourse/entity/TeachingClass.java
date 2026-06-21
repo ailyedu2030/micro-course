@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -46,6 +47,12 @@ public class TeachingClass {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * 乐观锁版本号 —— Round 6 修复：防止教学班并发状态修改（结课/停开）丢失更新。
+     * 对应 DB 列由 V32 建表时创建、V64 幂等保障（NOT NULL DEFAULT 0）。
+     * 需配合 MyBatisPlusConfig 中已注册的 OptimisticLockerInnerInterceptor 生效。
+     */
+    @Version
     @TableField("version")
     private Integer version;
 

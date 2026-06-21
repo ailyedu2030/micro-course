@@ -27,10 +27,11 @@
 
         <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="handleLogin">
           <el-form-item prop="username" label="用户名">
-            <el-input v-model="form.username" placeholder="用户名" :prefix-icon="User" clearable aria-label="用户名" />
+            <el-input id="username" v-model="form.username" placeholder="用户名" :prefix-icon="User" clearable aria-label="用户名" />
           </el-form-item>
           <el-form-item prop="password" label="密码">
             <el-input
+              id="password"
               v-model="form.password"
               type="password"
               placeholder="密码"

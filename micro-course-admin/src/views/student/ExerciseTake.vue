@@ -103,7 +103,7 @@
         <!-- 顶部进度条（sticky） -->
         <div class="progress-bar-wrap">
           <div class="progress-inner">
-            <span class="progress-text">第 {{ currentIndex + 1 }} / {{ totalQuestions }} 题 · 已答 {{ answeredCount }} 题</span>
+            <span class="progress-text" aria-live="polite">第 {{ currentIndex + 1 }} / {{ totalQuestions }} 题 · 已答 {{ answeredCount }} 题</span>
             <el-progress
               :percentage="progressPercent"
               :show-text="false"
@@ -254,6 +254,7 @@
                     v-else
                     type="success"
                     :loading="submitting"
+                    :disabled="submitting"
                     @click="handleSubmit"
                   >
                     提交答案
@@ -330,7 +331,7 @@
         <!-- 紧凑进度 -->
         <div class="h5-progress-bar">
           <div class="h5-progress-inner">
-            <span class="h5-progress-text">{{ currentIndex + 1 }}/{{ totalQuestions }} · 已答{{ answeredCount }}题</span>
+            <span class="h5-progress-text" aria-live="polite">{{ currentIndex + 1 }}/{{ totalQuestions }} · 已答{{ answeredCount }}题</span>
             <el-progress
               :percentage="progressPercent"
               :show-text="false"
@@ -484,6 +485,7 @@
               type="success"
               class="h5-nav-btn"
               :loading="submitting"
+              :disabled="submitting"
               @click="handleSubmit"
             >
               提交答案
@@ -671,6 +673,7 @@ const correctCount = computed(() =>
 // ===== 生命周期 =====
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
+  window.addEventListener('keydown', handleKeydown)
   await fetchExerciseList()
 })
 
@@ -678,7 +681,31 @@ onUnmounted(() => {
   clearTimer()
   clearElapsedTimer()
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('keydown', handleKeydown)
 })
+
+// ===== 键盘导航（无障碍）=====
+// 答题界面下方向键切换上/下一题。焦点在选项组/输入框内时不拦截，
+// 让 el-radio-group / el-checkbox-group 的原生方向键行为优先。
+function handleKeydown(e) {
+  if (!exerciseStarted.value) return
+  const t = e.target
+  if (
+    t &&
+    (t.closest?.('.el-radio-group') ||
+      t.closest?.('.el-checkbox-group') ||
+      ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
+  ) {
+    return
+  }
+  if (e.key === 'ArrowLeft') {
+    e.preventDefault()
+    prevQuestion()
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault()
+    nextQuestion()
+  }
+}
 
 // ===== API =====
 async function fetchExerciseList() {

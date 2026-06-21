@@ -1,6 +1,9 @@
 package com.microcourse.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -11,9 +14,14 @@ public class SubmitAnswerRequest {
 
     private Long userId;
 
+    // ★ Round 9-3 修复：@Valid 级联校验每个 AnswerItem；@Size 限制答案条目数（防超大列表 DoS）
     @NotNull(message = "答案列表不能为空")
+    @Size(max = 5000, message = "答案数量超出限制")
+    @Valid
     private List<AnswerItem> answers;
 
+    // ★ Round 9-3 修复：时长不能为负数（null 时跳过，合法用户零退化）
+    @PositiveOrZero(message = "时长不能为负数")
     private Integer duration;
 
     private Integer attemptNo;
@@ -33,6 +41,9 @@ public class SubmitAnswerRequest {
 
     public static class AnswerItem {
         private Long questionId;
+
+        // ★ Round 9-3 修复：单条答案长度上限 5000 字符（拦截"数万字答案" → 友好 400 而非 500）
+        @Size(max = 5000, message = "答案长度不能超过 5000 字符")
         private String answer;
 
         public AnswerItem() {}

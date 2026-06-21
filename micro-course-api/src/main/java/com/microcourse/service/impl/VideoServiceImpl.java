@@ -288,6 +288,10 @@ public class VideoServiceImpl implements VideoService {
      */
     @Override
     public String uploadCover(Long videoId, MultipartFile file) {
+        // ★ Round 9-3 修复：空文件防御（Service 层兜底，防止保存 0 字节图片 → 友好 400）
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件不能为空");
+        }
         Video video = videoRepository.selectById(videoId);
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
@@ -302,6 +306,14 @@ public class VideoServiceImpl implements VideoService {
         // 保存到 {coverDir}/{videoId}/
         String baseDir = coverDir + "/" + videoId;
         String originalFilename = file.getOriginalFilename();
+        // Round 11-4 安全修复：封面文件名路径穿越防护。
+        // 原实现 ext 取自 originalFilename.substring(lastIndexOf(".")),恶意名如
+        // "x.jpg/../../evil" 会污染 Paths.get 落盘路径造成路径穿越,此处显式拒绝。
+        if (originalFilename != null
+                && (originalFilename.contains("..") || originalFilename.contains("/")
+                    || originalFilename.contains("\\") || originalFilename.indexOf('\u0000') >= 0)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件名不合法");
+        }
         String ext = "";
         if (originalFilename != null && originalFilename.contains(".")) {
             ext = originalFilename.substring(originalFilename.lastIndexOf("."));

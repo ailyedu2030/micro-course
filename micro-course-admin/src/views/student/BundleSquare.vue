@@ -5,12 +5,24 @@
       <span class="sub-hint">多课打包 · 系统学习</span>
     </nav>
 
-    <div v-loading="loading" class="bundle-grid">
+    <el-result
+      v-if="error"
+      icon="error"
+      title="加载失败"
+      sub-title="网络异常，请稍后重试"
+      class="bundle-error"
+    >
+      <template #extra>
+        <el-button type="primary" @click="fetchBundles">重试</el-button>
+      </template>
+    </el-result>
+
+    <div v-else v-loading="loading" class="bundle-grid">
       <el-row :gutter="24">
         <el-col v-for="bundle in bundles" :key="bundle.id" :xs="24" :sm="12" :md="8" :lg="6">
           <article class="bundle-card student-card-item" @click="goBundle(bundle.id)">
             <div class="bundle-cover">
-              <img v-if="bundle.coverUrl" :src="bundle.coverUrl" class="cover-img" />
+                <img v-if="bundle.coverUrl" :src="bundle.coverUrl" :alt="bundle.title || '课程套件封面'" class="cover-img" />
               <div v-else class="cover-placeholder">
                 <el-icon :size="36"><Collection /></el-icon>
               </div>
@@ -50,6 +62,7 @@ import { Collection } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const loading = ref(false)
+const error = ref(false)
 const bundles = ref([])
 const page = ref(0)
 const size = ref(20)
@@ -57,11 +70,15 @@ const total = ref(0)
 
 const fetchBundles = async () => {
   loading.value = true
+  error.value = false
   try {
     const { data } = await getBundles({ page: page.value, size: size.value })
     bundles.value = data.items || []
     total.value = data.totalElements || 0
-  } catch {}
+  } catch (e) {
+    console.error('加载课程套件失败:', e)
+    error.value = true
+  }
   finally { loading.value = false }
 }
 

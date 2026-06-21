@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.microcourse.enums.UserRole;
 
 import java.time.LocalDateTime;
@@ -69,6 +70,14 @@ public class User {
 
     @TableField("updated_at")
     private LocalDateTime updatedAt;
+
+    /**
+     * 乐观锁版本号 —— Round 6 状态机修复：防止 ADMIN 并发修改用户状态丢失更新。
+     * 对应 DB 列由 V63__users_add_version.sql 增量补齐（NOT NULL DEFAULT 0）。
+     */
+    @Version
+    @TableField("version")
+    private Integer version;
 
     public User() {}
 
@@ -136,4 +145,6 @@ public class User {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
 }

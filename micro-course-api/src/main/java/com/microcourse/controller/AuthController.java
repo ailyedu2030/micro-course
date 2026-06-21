@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.ChangePasswordRequest;
 import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
@@ -33,6 +34,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @AuditedLog("用户登录")
     public R<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return R.ok(response);
@@ -47,6 +49,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")
+    @AuditedLog("用户登出")
     public R<Void> logout() {
         authService.logout();
         return R.ok();
@@ -69,6 +72,7 @@ public class AuthController {
 
     @PutMapping("/me")
     @PreAuthorize("isAuthenticated()")
+    @AuditedLog("更新个人信息")
     public R<UserVO> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
         UserVO user = authService.updateProfile(request);
         return R.ok(user);
@@ -76,6 +80,7 @@ public class AuthController {
 
     @PutMapping("/me/password")
     @PreAuthorize("isAuthenticated()")
+    @AuditedLog("修改密码")
     public R<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(request);
         return R.ok();

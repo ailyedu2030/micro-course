@@ -2,6 +2,7 @@ package com.microcourse.service;
 
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
+import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
 import com.microcourse.dto.PageResult;
@@ -51,4 +52,14 @@ public interface CourseService {
      * @return 新课程VO
      */
     CourseVO copy(Long id);
+
+    /**
+     * Round 5-3 (P1-10): 计算课程统计数据（选课人数 / 完成率 / 平均分等）。
+     *
+     * <p>仅做数据装配，按角色的权限校验（TEACHER 必须课主 / ADMIN / ACADEMIC）在 Controller 层执行。</p>
+     *
+     * @param courseId 课程 ID
+     * @return 课程统计 VO
+     */
+    CourseStatsVO computeStats(Long courseId);
 }

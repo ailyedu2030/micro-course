@@ -42,4 +42,12 @@ public interface EnrollmentService {
 
     /** 校验当前教师是否为课程 Owner（TEACHER 角色专用） */
     void assertCourseOwnership(Long courseId);
+
+    /**
+     * Phase A-4 (P0-5): 获取单条选课详情。
+     * 仅负责数据装配，按角色的权限校验（本人/课主/ADMIN/ACADEMIC）在 Controller 层执行。
+     * @param id 选课记录ID
+     * @return 选课详情VO
+     */
+    EnrollmentVO getEnrollmentDetail(Long id);
 }

@@ -41,7 +41,9 @@
           </el-table-column>
           <el-table-column prop="replyCount" label="回复数" width="100" align="center" />
           <el-table-column prop="likeCount" label="点赞" width="80" align="center" />
-          <el-table-column prop="createdAt" label="发布时间" width="170" />
+          <el-table-column prop="createdAt" label="发布时间" width="170">
+            <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+          </el-table-column>
         </el-table>
         <!-- P0-6: PC 端空状态 -->
         <el-empty v-if="!loading && tableData.length === 0" description="暂无帖子" />
@@ -140,7 +142,7 @@
           <h3 class="post-title">{{ currentPost.title }}</h3>
           <div class="post-meta">
             <span>{{ currentPost.isAnonymous ? '匿名用户' : currentPost.authorName }}</span>
-            <span>{{ currentPost.createdAt }}</span>
+            <span>{{ formatDateTime(currentPost.createdAt) }}</span>
           </div>
         </div>
         <div class="post-content">{{ currentPost.content }}</div>
@@ -195,6 +197,7 @@ import { useUserStore } from '@/store/user'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import CommentNode from '@/components/CommentNode.vue'
+import { formatDateTime } from '@/utils/format'
 
 const userStore = useUserStore()
 

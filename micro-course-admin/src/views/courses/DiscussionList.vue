@@ -45,6 +45,12 @@
           <span class="card-title">讨论列表</span>
         </div>
       </template>
+      <el-result v-if="error" icon="error" title="加载失败" sub-title="网络异常，请稍后重试">
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重试</el-button>
+        </template>
+      </el-result>
+      <template v-else>
       <el-skeleton v-if="loading" :rows="6" animated />
       <el-empty v-else-if="tableData.length === 0" description="暂无讨论数据" />
       <el-table v-else :data="tableData" stripe border class="data-table">
@@ -86,6 +92,7 @@
           @size-change="handleSizeChange"
           @current-change="handlePageChange" aria-label="分页导航" />
       </div>
+      </template>
     </el-card>
   </div>
 </template>
@@ -102,6 +109,7 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const loading = ref(false)
+const error = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
@@ -127,6 +135,7 @@ const fetchCourseOptions = async () => {
 
 const fetchData = async () => {
   loading.value = true
+  error.value = false
   try {
     const params = {
       page: page.value - 1,
@@ -139,6 +148,7 @@ const fetchData = async () => {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
+    error.value = true
     ElMessage.error('获取讨论列表失败')
   } finally {
     loading.value = false

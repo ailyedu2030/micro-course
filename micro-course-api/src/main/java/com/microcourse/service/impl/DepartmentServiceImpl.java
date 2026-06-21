@@ -4,21 +4,29 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.DepartmentCreateRequest;
+import com.microcourse.dto.DepartmentStatsVO;
 import com.microcourse.dto.DepartmentUpdateRequest;
 import com.microcourse.dto.DepartmentVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.Department;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Major;
+import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DepartmentRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MajorRepository;
+import com.microcourse.repository.UserRepository;
 import com.microcourse.service.DepartmentService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,11 +34,20 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     private final DepartmentRepository departmentRepository;
     private final MajorRepository majorRepository;
+    private final CourseRepository courseRepository;
+    private final UserRepository userRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     public DepartmentServiceImpl(DepartmentRepository departmentRepository,
-                                  MajorRepository majorRepository) {
+                                  MajorRepository majorRepository,
+                                  CourseRepository courseRepository,
+                                  UserRepository userRepository,
+                                  EnrollmentRepository enrollmentRepository) {
         this.departmentRepository = departmentRepository;
         this.majorRepository = majorRepository;
+        this.courseRepository = courseRepository;
+        this.userRepository = userRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @Override
@@ -113,6 +130,44 @@ public class DepartmentServiceImpl implements DepartmentService {
             throw new BusinessException(ErrorCode.DEPARTMENT_HAS_MAJORS);
         }
         departmentRepository.deleteById(id);
+    }
+
+    /**
+     * Round 5-3 (P1-10): 计算院系统计数据。
+     *
+     * <p>开课数 = {@code courses.offer_department_id = id}；学生数 = {@code users.department_id = id}；
+     * 选课数 = 上述课程在 {@code enrollments} 的累计。全部基于既有表聚合，零新表/列。
+     * 院系不存在抛 {@link ErrorCode#DEPARTMENT_NOT_FOUND}（404）。</p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public DepartmentStatsVO computeStats(Long departmentId) {
+        Department department = departmentRepository.selectById(departmentId);
+        if (department == null) {
+            throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+        }
+        DepartmentStatsVO vo = new DepartmentStatsVO();
+        vo.setDepartmentId(departmentId);
+        vo.setDepartmentName(department.getName());
+
+        List<Course> courses = courseRepository.selectList(
+                new LambdaQueryWrapper<Course>().eq(Course::getOfferDepartmentId, departmentId));
+        vo.setCourseCount((long) courses.size());
+
+        long studentCount = userRepository.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getDepartmentId, departmentId));
+        vo.setStudentCount(studentCount);
+
+        Set<Long> courseIds = courses.stream()
+                .map(Course::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        long enrollmentCount = courseIds.isEmpty() ? 0L
+                : enrollmentRepository.selectCount(
+                        new LambdaQueryWrapper<Enrollment>().in(Enrollment::getCourseId, courseIds));
+        vo.setEnrollmentCount(enrollmentCount);
+
+        return vo;
     }
 
     private DepartmentVO convertToVO(Department department) {

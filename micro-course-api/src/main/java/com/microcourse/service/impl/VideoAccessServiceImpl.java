@@ -1,0 +1,113 @@
+package com.microcourse.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.microcourse.entity.Enrollment;
+import com.microcourse.enums.EnrollmentStatus;
+import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.util.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+/**
+ * 视频访问权限服务（Round 8-1 修复）。
+ *
+ * <p>解决"未选课也能看视频"的商业致命缺陷：在视频播放链路（sign / play / 元数据 / HLS 流）
+ * 上补齐选课校验。本类仅负责"判定是否允许访问"，HTTP 语义（403 NOT_ENROLLED + 友好提示）
+ * 由调用方 Controller 统一处理。</p>
+ *
+ * <p>权限矩阵（"用户体验优先"——合法用户零感、未选课友好拦截）：</p>
+ * <ul>
+ *   <li>ADMIN / ACADEMIC：始终允许（运营/教务需要全量访问）。</li>
+ *   <li>TEACHER：允许（课主级校验由上传/管理链路的 {@code assertCourseOwnership} 负责；
+ *       观看链路对教师放行，避免误伤既有教学流）。</li>
+ *   <li>STUDENT（及其余角色）：必须存在有效选课记录（ENROLLED / APPROVED / COMPLETED）。</li>
+ * </ul>
+ *
+ * <p>实现约束（对齐项目宪法）：不使用 Lombok（改用手动 SLF4J Logger），
+ * 依赖通过构造器注入（不使用 @Autowired 字段注入）。</p>
+ */
+@Service
+public class VideoAccessServiceImpl {
+
+    private static final Logger log = LoggerFactory.getLogger(VideoAccessServiceImpl.class);
+
+    private final EnrollmentRepository enrollmentRepository;
+
+    public VideoAccessServiceImpl(EnrollmentRepository enrollmentRepository) {
+        this.enrollmentRepository = enrollmentRepository;
+    }
+
+    /**
+     * 检查当前用户是否可访问指定课程的视频。
+     *
+     * <p>角色判定基于 {@link SecurityUtil}（从 SecurityContext 读取），故无需调用方传入角色字符串。</p>
+     *
+     * @param userId   当前登录用户 ID（学生选课校验使用）
+     * @param courseId 视频所属课程 ID
+     * @return {@link AccessResult}，包含允许/拒绝及原因
+     */
+    public AccessResult checkVideoAccess(Long userId, Long courseId) {
+        // 1. 管理员 / 教务：始终允许
+        if (SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC")) {
+            return AccessResult.allowed("管理员/教务");
+        }
+
+        // 2. 教师：放行（课主级校验由上传/管理链路负责，观看链路不误伤教师）
+        if (SecurityUtil.hasRole("TEACHER")) {
+            return AccessResult.allowed("教师");
+        }
+
+        // 3. 学生（及其余角色）：必须已选课
+        if (isEnrolled(userId, courseId)) {
+            return AccessResult.allowed("已选课");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("[VideoAccess] 拒绝访问：userId={} 未选课 courseId={}", userId, courseId);
+        }
+        return AccessResult.denied("请先选课");
+    }
+
+    /**
+     * 判定用户对课程是否持有有效选课记录。
+     *
+     * <p>有效状态：{@code ENROLLED}（历史在读值）/ {@code APPROVED}（契约在读值）/ {@code COMPLETED}（已完成，允许复习）。
+     * 逻辑删除（{@code deleted_at IS NULL}）由实体 {@code @TableLogic} 自动追加，无需手动拼接。</p>
+     */
+    public boolean isEnrolled(Long userId, Long courseId) {
+        if (userId == null || courseId == null) {
+            return false;
+        }
+        Long count = enrollmentRepository.selectCount(
+                new QueryWrapper<Enrollment>()
+                        .eq("user_id", userId)
+                        .eq("course_id", courseId)
+                        .in("enrollment_status",
+                                EnrollmentStatus.LEGACY_ENROLLED_VALUE,   // "ENROLLED"（Phase A-2 历史兼容）
+                                EnrollmentStatus.APPROVED.getValue(),     // "APPROVED"
+                                EnrollmentStatus.COMPLETED.getValue())    // "COMPLETED"（允许复习）
+        );
+        return count != null && count > 0;
+    }
+
+    /**
+     * 访问判定结果（不可变值对象）。
+     */
+    public static class AccessResult {
+        public final boolean allowed;
+        public final String reason;
+
+        private AccessResult(boolean allowed, String reason) {
+            this.allowed = allowed;
+            this.reason = reason;
+        }
+
+        public static AccessResult allowed(String reason) {
+            return new AccessResult(true, reason);
+        }
+
+        public static AccessResult denied(String reason) {
+            return new AccessResult(false, reason);
+        }
+    }
+}

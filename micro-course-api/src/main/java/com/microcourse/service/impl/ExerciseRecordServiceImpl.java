@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.dto.ExerciseRecordVO;
 import com.microcourse.dto.SubmitAnswerRequest;
 import com.microcourse.entity.Exercise;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.ExerciseQuestion;
 import com.microcourse.entity.ExerciseRecord;
 import com.microcourse.entity.Grade;
@@ -21,10 +22,13 @@ import org.slf4j.LoggerFactory;
 import com.microcourse.repository.ExerciseQuestionRepository;
 import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.ExerciseRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.GradeRepository;
 import com.microcourse.repository.QuestionRepository;
 import com.microcourse.repository.WrongQuestionRepository;
 import com.microcourse.service.ExerciseRecordService;
+import com.microcourse.service.NotificationService;
+import com.microcourse.enums.NotificationType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +50,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     private final WrongQuestionRepository wrongQuestionRepository;
     private final GradeRepository gradeRepository;
     private final ObjectMapper objectMapper;
+    private final CourseRepository courseRepository;
+    private final NotificationService notificationService;
 
     public ExerciseRecordServiceImpl(ExerciseRecordRepository exerciseRecordRepository,
                                        ExerciseRepository exerciseRepository,
@@ -53,7 +59,9 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                                        QuestionRepository questionRepository,
                                        WrongQuestionRepository wrongQuestionRepository,
                                        GradeRepository gradeRepository,
-                                       ObjectMapper objectMapper) {
+                                       ObjectMapper objectMapper,
+                                       CourseRepository courseRepository,
+                                       NotificationService notificationService) {
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.exerciseRepository = exerciseRepository;
         this.exerciseQuestionRepository = exerciseQuestionRepository;
@@ -61,6 +69,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         this.wrongQuestionRepository = wrongQuestionRepository;
         this.gradeRepository = gradeRepository;
         this.objectMapper = objectMapper;
+        this.courseRepository = courseRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -195,7 +205,25 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         grade.setGradedAt(LocalDateTime.now());
         grade.setCreatedAt(LocalDateTime.now());
         grade.setUpdatedAt(LocalDateTime.now());
-        gradeRepository.insert(grade);
+        // ★ Round 8-4 修复(P0)：成绩并发防护。grades 有部分唯一约束
+        // uk_grade_user_exercise(user_id, course_id, exercise_id, attempt_no)，并发 submit 时
+        // attemptNo 可能重复命中 UK 把答题主流程打成 500。这里先按唯一键预检查（命中则幂等跳过），
+        // 极端并发再兜底捕获 DuplicateKeyException，确保边界 case 友好处理、绝不抛 500 给用户。
+        boolean gradeExists = gradeRepository.selectCount(
+                new LambdaQueryWrapper<Grade>()
+                        .eq(Grade::getStudentId, request.getUserId())
+                        .eq(Grade::getCourseId, exercise.getCourseId())
+                        .eq(Grade::getExerciseId, request.getExerciseId())
+                        .eq(Grade::getAttemptNo, attemptNo)) > 0;
+        if (!gradeExists) {
+            try {
+                gradeRepository.insert(grade);
+            } catch (org.springframework.dao.DuplicateKeyException dupEx) {
+                // 并发竞态：对端已写入同一成绩，幂等忽略，避免整事务因 500 中断
+                log.warn("[Grade] 并发命中唯一约束，幂等忽略 userId={} exerciseId={} attemptNo={}",
+                        request.getUserId(), request.getExerciseId(), attemptNo);
+            }
+        }
 
         // 10. 错题入库(批量预检查,减少单独查询)
         Set<Long> wrongQuestionIds = gradingResults.stream()
@@ -244,6 +272,19 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                                             .setSql("last_wrong_at = NOW()"));
                         }
                     });
+        }
+
+        // Phase B-2 (P0-7)：练习提交批改完成后，异步通知课程教师。
+        // Exercise 无 teacherId 字段，经 courseId → course → teacherId 解析；@Async 不阻塞答题主流程。
+        Course notifyCourse = exercise.getCourseId() != null
+                ? courseRepository.selectById(exercise.getCourseId()) : null;
+        if (notifyCourse != null && notifyCourse.getTeacherId() != null) {
+            notificationService.notifyAsync(
+                    notifyCourse.getTeacherId(),
+                    NotificationType.EXERCISE_GRADED,
+                    "学生完成练习",
+                    "有学生完成了练习《" + exercise.getTitle() + "》，得分 " + totalScore,
+                    exercise.getId());
         }
 
         return convertToVO(record, exercise);

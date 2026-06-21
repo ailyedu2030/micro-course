@@ -36,6 +36,8 @@ public class DiscussionCommentController {
         return R.ok(vo);
     }
 
+    // P0-3 对象级授权：@PreAuthorize 仅做认证兜底；owner 校验下沉至
+    // DiscussionCommentServiceImpl.delete（!comment.userId.equals(userId) && !isAdminOrTeacher → 拒绝）
     @DeleteMapping("/comments/{id}")
     @PreAuthorize("isAuthenticated()")
     public R<Void> delete(@PathVariable Long id) {

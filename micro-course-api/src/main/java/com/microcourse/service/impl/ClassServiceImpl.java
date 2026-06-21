@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.ClassCreateRequest;
+import com.microcourse.dto.ClassStudentVO;
 import com.microcourse.dto.ClassUpdateRequest;
 import com.microcourse.dto.ClassVO;
 import com.microcourse.dto.PageResult;
@@ -21,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ClassServiceImpl implements ClassService {
@@ -133,6 +136,36 @@ public class ClassServiceImpl implements ClassService {
             throw new BusinessException(ErrorCode.CLASS_HAS_STUDENTS);
         }
         classesRepository.deleteById(id);
+    }
+
+    /**
+     * Round 5-3 (P1-10): 获取班级学生名单。
+     *
+     * <p>students = {@code users} 表中 {@code class_id = classId} 且未被删除（status != 3）的用户。
+     * 班级不存在抛 {@link ErrorCode#CLASS_NOT_FOUND}（404）。复用既有 userRepository，零新表/列。</p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClassStudentVO> getStudents(Long classId) {
+        Classes classes = classesRepository.selectById(classId);
+        if (classes == null) {
+            throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
+        }
+        List<User> users = userRepository.selectList(
+                new LambdaQueryWrapper<User>()
+                        .eq(User::getClassId, classId)
+                        .ne(User::getStatus, 3)
+                        .orderByAsc(User::getStudentNo));
+        return users.stream().map(u -> {
+            ClassStudentVO vo = new ClassStudentVO();
+            vo.setUserId(u.getId());
+            vo.setClassId(classId);
+            vo.setUsername(u.getUsername());
+            vo.setRealName(u.getRealName());
+            vo.setStudentNo(u.getStudentNo());
+            vo.setStatus(u.getStatus());
+            return vo;
+        }).collect(Collectors.toList());
     }
 
     private ClassVO convertToVO(Classes classes) {

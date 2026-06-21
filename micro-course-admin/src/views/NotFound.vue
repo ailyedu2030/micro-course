@@ -12,12 +12,34 @@
       <p class="nf-title">页面未找到</p>
       <p class="nf-desc">您访问的页面不存在，可能已被删除或地址有误</p>
       <div class="nf-actions">
-        <el-button type="primary" @click="$router.push('/login')" round>返回首页</el-button>
+        <el-button type="primary" @click="goHome" round>返回首页</el-button>
         <el-button @click="$router.back()" round>返回上一页</el-button>
       </div>
     </div>
   </div>
 </template>
+
+<script setup>
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/store/user'
+
+const router = useRouter()
+const userStore = useUserStore()
+
+function goHome() {
+  // Round 8-3: 已登录用户回到角色首页，未登录用户到登录页
+  if (userStore.isLoggedIn) {
+    const role = userStore.role
+    if (role === 'STUDENT') router.push('/student/courses')
+    else if (role === 'TEACHER') router.push('/teacher/dashboard')
+    else if (role === 'ACADEMIC') router.push('/academic/dashboard')
+    else if (role === 'ADMIN') router.push('/admin/dashboard')
+    else router.push('/login')
+  } else {
+    router.push('/login')
+  }
+}
+</script>
 
 <style scoped>
 .not-found-container {

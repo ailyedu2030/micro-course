@@ -15,6 +15,9 @@ import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/tags")
 public class TagController {
@@ -59,6 +62,46 @@ public class TagController {
     @PreAuthorize("hasRole('ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         tagRepository.deleteById(id);
+        return R.ok();
+    }
+
+    /**
+     * GET /api/tags/course/{courseId}
+     * 获取课程标签列表（Round 5-3 P1-10 新增）
+     * 权限：已登录可读（依据 权限矩阵 v2.0 READ_COURSE_TAGS = 公开读）
+     */
+    @GetMapping("/course/{courseId}")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<TagVO>> courseTags(@PathVariable Long courseId) {
+        return R.ok(tagService.getCourseTags(courseId));
+    }
+
+    /**
+     * POST /api/tags/course/{courseId}
+     * 为课程添加标签（Round 5-3 P1-10 新增）
+     * 权限：TEACHER(课程创建者) / ADMIN（owner 校验下沉 Service）
+     * @param body {"tagId": 123}
+     */
+    @PostMapping("/course/{courseId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> addCourseTag(@PathVariable Long courseId, @RequestBody Map<String, Long> body) {
+        Long tagId = body != null ? body.get("tagId") : null;
+        if (tagId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "tagId 不能为空");
+        }
+        tagService.addCourseTag(courseId, tagId);
+        return R.ok();
+    }
+
+    /**
+     * DELETE /api/tags/course/{courseId}/{tagId}
+     * 移除课程标签（Round 5-3 P1-10 新增）
+     * 权限：TEACHER(课程创建者) / ADMIN（owner 校验下沉 Service）
+     */
+    @DeleteMapping("/course/{courseId}/{tagId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> removeCourseTag(@PathVariable Long courseId, @PathVariable Long tagId) {
+        tagService.removeCourseTag(courseId, tagId);
         return R.ok();
     }
 }

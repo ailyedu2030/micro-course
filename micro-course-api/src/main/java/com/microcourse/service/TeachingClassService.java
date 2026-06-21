@@ -23,4 +23,21 @@ public interface TeachingClassService {
     void removeStudent(Long classId, Long userId);
 
     void updateStudentStatus(Long classId, Long userId, String status);
+
+    /**
+     * 结课（ACTIVE → COMPLETED）。状态机校验 + 乐观锁更新。
+     *
+     * @param classId    教学班 ID
+     * @param operatorId 操作人 ID（用于审计日志）
+     */
+    void complete(Long classId, Long operatorId);
+
+    /**
+     * 停开（ACTIVE → CANCELLED）。状态机校验 + 乐观锁更新；停开原因必填。
+     *
+     * @param classId    教学班 ID
+     * @param reason     停开原因（不可为空）
+     * @param operatorId 操作人 ID（用于审计日志）
+     */
+    void cancel(Long classId, String reason, Long operatorId);
 }

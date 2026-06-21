@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -62,6 +63,16 @@ public class LearningProgress {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * 乐观锁版本号 —— P0-6 修复：防止同用户多端并发上报进度时丢失更新。
+     * 对应 DB 列由 V62__learning_progress_add_version.sql 增量补齐（NOT NULL DEFAULT 0）。
+     * 注意：updateProgress 走 update(null, wrapper) 原子 SQL 累加（CON-003），
+     *      wrapperMode 默认关闭，故并发上报全部成功且累加；@Version 守护 updateById 实体更新路径。
+     */
+    @Version
+    @TableField("version")
+    private Integer version;
+
     @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
@@ -103,6 +114,8 @@ public class LearningProgress {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

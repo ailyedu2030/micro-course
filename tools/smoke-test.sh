@@ -3,10 +3,40 @@
 # smoke-test.sh — 微课平台 API 烟雾测试
 #
 # 验证关键 API 端点是否正常响应，覆盖 4 种用户角色。
-# 用法: bash tools/smoke-test.sh [--verbose]
+# 用法: bash tools/smoke-test.sh [--verbose|--help]
 # ===================================================================
 
 set -euo pipefail
+
+# Phase 7 (P2-3) 整合：--help 输出用例清单与 CI 集成说明。
+# 该分支不发起任何网络请求，无需运行中的服务即可执行（始终 exit 0）。
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  cat <<'USAGE'
+smoke-test.sh — 微课平台 API 启动期烟雾测试
+
+用法:
+  bash tools/smoke-test.sh [--verbose]   # 对运行中的服务执行烟雾测试
+  bash tools/smoke-test.sh --help        # 显示本帮助
+  bash tools/smoke-test-classifier.sh    # 显示 smoke vs JUnit 测试分类
+
+环境变量:
+  API_BASE_URL   被测服务地址（默认 http://localhost:8080）
+
+测试用例清单（启动期烟雾）:
+  [1] 登录认证（4 角色）
+  [2] 公开/认证 API（含管理端健康检查）
+  [3] 角色权限边界
+  [4] 幻灯片上传（权限 + 教师上传）
+  [5] 讲述稿设置
+  [6] 核心业务链路（学生视角 + 权限回归）
+
+完整功能测试已迁移到 JUnit 集成测试（Phase B-3，38 个核心链路）:
+  micro-course-api/src/test/java/.../*IntegrationTest.java
+
+CI 流水线: smoke-test.sh → mvn test（JUnit 集成测试）→ e2e（playwright）
+USAGE
+  exit 0
+fi
 
 BASE_URL="${API_BASE_URL:-http://localhost:8080}"
 VERBOSE=false
@@ -161,6 +191,27 @@ if [ -n "$TOKEN_TEACHER" ]; then
     check "讲述稿设置 → $HTTP_CODE" "$([ "$HTTP_CODE" = "200" ] && echo "true" || echo "false")"
 fi
 
+# ---- 6. 核心业务链路（P1-12 E2E 增强 · 学生视角）----
+echo ""
+echo "[6] 核心业务链路"
+if [ -n "$TOKEN_STUDENT" ]; then
+    # 学生可读自身核心数据（空库亦返回 200）
+    for spec in \
+        "/api/enrollments/my:我的选课列表" \
+        "/api/notifications/unread-count:未读消息数"; do
+        PATH_URL=$(echo "$spec" | cut -d: -f1)
+        NAME=$(echo "$spec" | cut -d: -f2)
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL$PATH_URL" \
+            -H "Authorization: Bearer $TOKEN_STUDENT" 2>/dev/null || echo "000")
+        check "$NAME → $HTTP_CODE" "$([ "$HTTP_CODE" = "200" ] && echo "true" || echo "false")"
+    done
+
+    # 学生无权访问教务/管理选课分页列表 → 403（权限边界回归）
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/enrollments?page=0&size=5" \
+        -H "Authorization: Bearer $TOKEN_STUDENT" 2>/dev/null || echo "000")
+    check "学生无权访问选课管理列表 → $HTTP_CODE" "$([ "$HTTP_CODE" = "403" ] && echo "true" || echo "false")"
+fi
+
 # ---- 结果汇总 ----
 echo ""
 echo "========================================"
@@ -171,3 +222,21 @@ for name in "${FAILED_NAMES[@]:-}"; do
 done
 
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
+
+# ===================================================================
+# Phase 7 整合说明（P2-3 · smoke-test 与 JUnit 集成测试合并）
+# -------------------------------------------------------------------
+# 1. 本脚本仅做启动期烟雾测试（登录/退出/健康检查/权限边界）。
+# 2. 完整功能测试已迁移到 JUnit 集成测试：
+#       micro-course-api/src/test/java/.../*IntegrationTest.java
+# 3. CI 流水线：smoke-test.sh（启动期）→ mvn test（JUnit 集成测试）→ e2e（playwright）。
+# 4. 如需扩展功能测试，请优先添加 JUnit 测试，而非扩展本 shell 脚本。
+#
+# 测试用例清单：
+#   [1] 登录认证（成功/失败，4 角色）
+#   [2] 公开/认证 API + 健康检查
+#   [3] 角色权限边界
+#   [4] 核心业务链路（Phase B-3 已迁 JUnit：AuthFlowIntegrationTest 等 5 个，38 用例）
+#   [5] 讲述稿设置 / 退出
+#   [6] 错误响应 / 权限回归
+# ===================================================================

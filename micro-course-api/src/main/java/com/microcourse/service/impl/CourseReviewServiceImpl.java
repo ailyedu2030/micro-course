@@ -1,13 +1,11 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.CourseReviewRequest;
 import com.microcourse.dto.CourseReviewVO;
 import com.microcourse.dto.PageResult;
-import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseReview;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.User;
@@ -154,10 +152,9 @@ public class CourseReviewServiceImpl implements CourseReviewService {
 
     private void updateCourseAvgRating(Long courseId) {
         // 原子 SQL 更新:避免 read-compute-write 并发丢失更新(CON-NEW 修复)
-        courseRepository.update(null,
-                new LambdaUpdateWrapper<Course>()
-                        .eq(Course::getId, courseId)
-                        .setSql("avg_rating = (SELECT COALESCE(AVG(rating), 0) FROM course_reviews WHERE course_id = " + courseId + " AND deleted_at IS NULL)"));
+        // Round 11-4 安全修复:原 setSql 字符串拼接 courseId 存在 SQL 注入隐患,
+        // 改用 CourseRepository.updateAvgRating 的 #{courseId} 参数化预编译占位符。
+        courseRepository.updateAvgRating(courseId);
     }
 
     private CourseReviewVO convertToVO(CourseReview review) {

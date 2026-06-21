@@ -5,7 +5,18 @@
     </nav>
 
     <el-card shadow="never">
-      <el-table v-loading="loading" :data="orders" class="data-table" stripe border>
+      <!-- 空状态 -->
+      <el-empty
+        v-if="!loading && orders.length === 0"
+        description="暂无订单"
+        :image-size="120"
+      >
+        <el-button type="primary" @click="router.push('/student/courses')">去课程广场</el-button>
+      </el-empty>
+
+      <!-- 订单列表 -->
+      <template v-else>
+        <el-table v-loading="loading" :data="orders" class="data-table" stripe border>
         <el-table-column prop="orderNo" label="订单号" min-width="200" show-overflow-tooltip />
         <el-table-column prop="courseTitle" label="课程" min-width="200" show-overflow-tooltip />
         <el-table-column prop="amount" label="金额" width="120" align="center">
@@ -54,47 +65,56 @@
           @current-change="fetchOrders"
         />
       </div>
+      </template>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { getMyOrders, payOrder } from '@/api/order'
+import { useAsyncData } from '@/composables/useAsyncData'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 
 const router = useRouter()
-const loading = ref(false)
 const payingId = ref(null)
 const orders = ref([])
 const page = ref(0)
 const size = ref(20)
 const total = ref(0)
 
+// Round 11-3: 统一异步加载 + 统一错误处理
+const { handleError, handleSuccess } = useErrorHandler()
+const { loading, execute } = useAsyncData((p) => getMyOrders({ page: p, size: size.value }))
+
 const fetchOrders = async () => {
-  loading.value = true
   try {
-    const { data } = await getMyOrders({ page: page.value, size: size.value })
+    const { data } = await execute(page.value)
     orders.value = data.items || []
     total.value = data.totalElements || 0
-  } catch { ElMessage.error('加载订单失败') }
-  finally { loading.value = false }
+  } catch (e) {
+    handleError(e, '加载订单失败')
+  }
 }
 
 const handlePay = async (row) => {
   payingId.value = row.id
   try {
     await payOrder(row.id, 'BALANCE')
-    ElMessage.success('支付成功')
+    handleSuccess('支付成功')
     fetchOrders()
-  } catch { ElMessage.error('支付失败') }
-  finally { payingId.value = null }
+  } catch (e) {
+    handleError(e, '支付失败')
+  } finally {
+    payingId.value = null
+  }
 }
 
 const goCourse = (id) => router.push(`/student/courses/${id}`)
 
-onMounted(() => fetchOrders())
+// setup 阶段即发起首次加载，execute 同步置 loading=true（保持首屏 loading 行为）
+fetchOrders()
 </script>
 
 <style scoped>

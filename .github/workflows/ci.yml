@@ -6,6 +6,10 @@ on:
     tags: [v*]
   pull_request:
     branches: [main]
+  # P3-10 quarantine（Round 7-4）：每周日 03:00 UTC 触发完整测试套件（含 quarantine 测试），
+  # 见 quarantine-weekly job——用于提醒被隔离的损坏测试的修复进度，不影响日常 push/PR。
+  schedule:
+    - cron: "0 3 * * 0"
 
 jobs:
   precheck:
@@ -17,6 +21,31 @@ jobs:
 
   backend-build:
     runs-on: ubuntu-latest
+    # P0-1 修复：backend-build 必须运行测试（此前仅 mvn compile，11 个测试全部腐烂）。
+    # 集成测试为 @SpringBootTest，强依赖 PostgreSQL + Redis，故补齐 services（否则 CI 必红）。
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: micro_course_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -25,9 +54,68 @@ jobs:
           java-version: "17"
           distribution: "temurin"
           cache: maven
-      - name: Compile
+      - name: Run tests
+        # P0-1 修复：CI 屏障 — 必须跑测试而非仅编译。
+        # P3-10 quarantine（Round 7-4）：损坏的 P0 测试（Enrollment/Video/VideoUpload）已用
+        #   @Tag("quarantine") 标记，并由 pom.xml surefire <excludedGroups>quarantine</excludedGroups>
+        #   默认排除——取代此前散落的 -Dtest='!...' 黑名单，机制集中、可选择性启用。
+        # 仍纳入守护：LearningProgressP0ConcurrencyTest（Phase B-1 已修复 CON-003，未被 quarantine）。
+        # 启用 quarantine 测试：mvn test -Dquarantine=true（见 quarantine-weekly job）。
+        run: mvn test -B
+        working-directory: micro-course-api
+        env:
+          TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course_test
+          TEST_REDIS_HOST: localhost
+          TEST_REDIS_PORT: 6379
+      - name: Compile (verify)
         run: mvn compile -B
         working-directory: micro-course-api
+
+  quarantine-weekly:
+    # P3-10 quarantine（Round 7-4）：每周回归 — 运行被 @Tag("quarantine") 隔离的损坏测试，
+    # 提醒其修复进度。仅在每周 schedule 触发时运行；push/PR 不受影响（保持绿）。
+    # 注意：当前 quarantine 测试已知 ERROR，本 job 预期失败 = "待修复"提醒信号，
+    #   独立运行、不被任何 job needs，故不阻塞日常 CI 与发布流水线。
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: micro_course_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: maven
+      - name: Run tests (include quarantine)
+        run: mvn test -B -Dquarantine=true
+        working-directory: micro-course-api
+        env:
+          TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course_test
+          TEST_REDIS_HOST: localhost
+          TEST_REDIS_PORT: 6379
 
   frontend-build:
     runs-on: ubuntu-latest

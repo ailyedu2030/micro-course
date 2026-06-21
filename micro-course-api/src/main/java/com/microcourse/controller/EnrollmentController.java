@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.EnrollmentCreateRequest;
 import com.microcourse.dto.EnrollmentQueryRequest;
 import com.microcourse.dto.EnrollmentRankingVO;
@@ -39,6 +40,7 @@ public class EnrollmentController {
 
     @PostMapping
     @PreAuthorize("hasRole('STUDENT')")
+    @AuditedLog("创建选课")
     public R<EnrollmentVO> enroll(@Valid @RequestBody EnrollmentCreateRequest request) {
         Long userId = getCurrentUserId();
         if (userId == null) {
@@ -119,8 +121,37 @@ public class EnrollmentController {
         return R.ok(ranking);
     }
 
+    /**
+     * GET /api/enrollments/{id}
+     * 获取选课详情（Phase A-4 P0-5 新增）
+     * 权限：STUDENT(本人) / TEACHER(课程创建者) / ADMIN / ACADEMIC ——
+     *      依据 权限矩阵 v2.0 §2.8 READ_ENROLLMENT_DETAIL。
+     * - ADMIN / ACADEMIC：无限制
+     * - TEACHER：必须为该选课所属课程的 owner（assertCourseOwnership，非 owner → 403）
+     * - STUDENT：仅本人选课（IDOR 校验，非本人 → 403）
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN','ACADEMIC')")
+    public R<EnrollmentVO> getEnrollmentDetail(@PathVariable Long id) {
+        EnrollmentVO vo = enrollmentService.getEnrollmentDetail(id);
+        if (SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC")) {
+            return R.ok(vo);
+        }
+        if (SecurityUtil.hasRole("TEACHER")) {
+            // TEACHER 必须为课程 owner，否则抛 NO_PERMISSION(403)
+            enrollmentService.assertCourseOwnership(vo.getCourseId());
+            return R.ok(vo);
+        }
+        // STUDENT：仅本人
+        Long currentUserId = getCurrentUserId();
+        if (vo.getUserId() == null || !vo.getUserId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        return R.ok(vo);
+    }
+
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<EnrollmentVO> updateEnrollment(@PathVariable Long id,
                                             @Valid @RequestBody EnrollmentUpdateRequest request) {
         EnrollmentVO vo = enrollmentService.updateEnrollment(id, request);

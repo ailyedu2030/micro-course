@@ -5,8 +5,13 @@
 -->
 <template>
   <div class="course-detail-page">
+    <!-- 加载骨架屏 -->
+    <div v-if="courseLoading" class="course-skeleton">
+      <el-skeleton :rows="8" animated />
+    </div>
+
     <!-- 404 -->
-    <div v-if="courseNotFound" class="not-found-page">
+    <div v-else-if="courseNotFound" class="not-found-page">
       <el-empty description="课程不存在或已下架" :image-size="160">
         <el-button type="primary" @click="router.push('/student/courses')">返回课程广场</el-button>
       </el-empty>
@@ -161,7 +166,7 @@
           <div class="side-card">
             <h3 class="side-card-title">授课教师</h3>
             <div class="teacher-block">
-              <el-avatar v-if="teacher.avatar" :size="64" :src="teacher.avatar" />
+              <el-avatar v-if="teacher.avatar" :size="64" :src="teacher.avatar" :alt="(teacher.realName || course.teacherName || '教师') + '头像'" />
               <el-avatar v-else :size="64">{{ (teacher.realName || course.teacherName || '教').charAt(0) }}</el-avatar>
               <div class="teacher-info">
                 <p class="teacher-name">{{ teacher.realName || course.teacherName || '暂无信息' }}</p>
@@ -196,7 +201,7 @@
               <div v-if="reviews.length > 0" class="review-list">
                 <div v-for="r in reviews" :key="r.id" class="review-item">
                   <div class="review-top">
-                    <el-avatar :size="36" :src="r.userAvatar">{{ (r.userRealName || '匿').charAt(0) }}</el-avatar>
+                    <el-avatar :size="36" :src="r.userAvatar" :alt="(r.userRealName || '用户') + '头像'">{{ (r.userRealName || '匿').charAt(0) }}</el-avatar>
                     <span class="review-user">{{ r.userRealName || '匿名用户' }}</span>
                     <el-rate v-model="r.rating" disabled size="small" />
                   </div>
@@ -258,7 +263,7 @@ const isInteractive = computed(() => course.value.courseType === 'INTERACTIVE')
 const slides = ref([])
 const slidesLoading = ref(false)
 const teacher = ref({})
-const courseLoading = ref(false)
+const courseLoading = ref(true)
 const courseNotFound = ref(false)
 const teacherLoading = ref(false)
 const enrollLoading = ref(false)
@@ -442,6 +447,11 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   align-items: center;
   justify-content: center;
   min-height: 60vh;
+}
+.course-skeleton {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-6) 0;
 }
 
 /* ====== 统一容器 ====== */

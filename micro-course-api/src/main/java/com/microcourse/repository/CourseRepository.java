@@ -5,12 +5,42 @@ import com.microcourse.entity.Course;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 import java.util.Map;
 
 @Mapper
 public interface CourseRepository extends BaseMapper<Course> {
+
+    /**
+     * 原子增加课程选课人数（Round 8-4 P0 修复：选课/取消与 student_count 同步）。
+     * 用 SQL 原子自增避免并发读-改-写丢失；COALESCE 兜底 NULL。
+     */
+    @Update("UPDATE courses SET student_count = COALESCE(student_count, 0) + 1, " +
+            "updated_at = CURRENT_TIMESTAMP WHERE id = #{courseId} AND deleted_at IS NULL")
+    int atomicIncrementStudentCount(@Param("courseId") Long courseId);
+
+    /**
+     * 原子减少课程选课人数（Round 8-4 P0 修复）。
+     * GREATEST 兜底避免出现负数；COALESCE 兜底 NULL。
+     */
+    @Update("UPDATE courses SET student_count = GREATEST(COALESCE(student_count, 0) - 1, 0), " +
+            "updated_at = CURRENT_TIMESTAMP WHERE id = #{courseId} AND deleted_at IS NULL")
+    int atomicDecrementStudentCount(@Param("courseId") Long courseId);
+
+    /**
+     * 原子更新课程平均评分（Round 11-4 安全修复：消除字符串拼接 SQL 注入风险）。
+     * 原实现使用 {@code LambdaUpdateWrapper.setSql("... course_id = " + courseId + " ...")}
+     * 字符串拼接，存在 SQL 注入隐患。改为 MyBatis {@code #{courseId}} 参数化预编译占位符，
+     * 与 {@link #atomicIncrementStudentCount} 同模式。COALESCE 兜底无评价时 avg_rating=0，
+     * 保持原 read-compute-write 原子语义不变；WHERE 加 deleted_at IS NULL 与逻辑删除一致。
+     */
+    @Update("UPDATE courses SET avg_rating = (" +
+            "SELECT COALESCE(AVG(rating), 0) FROM course_reviews " +
+            "WHERE course_id = #{courseId} AND deleted_at IS NULL" +
+            ") WHERE id = #{courseId} AND deleted_at IS NULL")
+    int updateAvgRating(@Param("courseId") Long courseId);
 
     /**
      * 全校平均完成率：已发布课程（status=2）关联 enrollments，计算 completed=true 比例的 AVG

@@ -9,6 +9,7 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.TeachingClass;
 import com.microcourse.entity.TeachingClassStudent;
 import com.microcourse.entity.User;
+import com.microcourse.enums.TeachingClassStatus;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -142,7 +143,9 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         tc.setSchedule(req.getSchedule());
         tc.setLocation(req.getLocation());
         tc.setSemester(req.getSemester());
-        tc.setStatus(0);
+        // Round 6 修复：教学班创建的初始状态应为 ACTIVE(1) 开课中，而非历史误写的 0（已停开）。
+        // 对齐 docs/状态机设计.md §4「[*] --> ACTIVE: 教学班创建」及 V32 建表 DB DEFAULT 1。
+        tc.setStatus(TeachingClassStatus.ACTIVE.getCode());
         tc.setCreatedAt(LocalDateTime.now());
         tc.setUpdatedAt(LocalDateTime.now());
         tc.setVersion(0);
@@ -202,7 +205,15 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         if (req.getSemester() != null) {
             tc.setSemester(req.getSemester());
         }
-        if (req.getStatus() != null) {
+        if (req.getStatus() != null && !req.getStatus().equals(tc.getStatus())) {
+            // Round 6：教学班状态变更需通过状态机白名单校验
+            // （ACTIVE → COMPLETED/CANCELLED；COMPLETED/CANCELLED 为终态，不可再转）。
+            TeachingClassStatus currentStatus = TeachingClassStatus.fromCode(tc.getStatus());
+            TeachingClassStatus newStatus = TeachingClassStatus.fromCode(req.getStatus());
+            if (currentStatus == null || !currentStatus.canTransitionTo(newStatus)) {
+                throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
+                        "教学班不允许从 " + currentStatus + " 转换到 " + newStatus);
+            }
             tc.setStatus(req.getStatus());
         }
         tc.setUpdatedAt(LocalDateTime.now());
@@ -395,6 +406,53 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         teachingClassStudentRepository.updateById(record);
 
         log.info("修改学生状态: classId={}, userId={}, {} -> {}, operator={}", classId, userId, oldStatus, status, currentUserId);
+    }
+
+    /**
+     * 结课（ACTIVE → COMPLETED）。状态机白名单校验 + @Version 乐观锁更新。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void complete(Long classId, Long operatorId) {
+        TeachingClass tc = teachingClassRepository.selectById(classId);
+        if (tc == null) {
+            throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
+        }
+        TeachingClassStatus currentStatus = TeachingClassStatus.fromCode(tc.getStatus());
+        TeachingClassStatus targetStatus = TeachingClassStatus.COMPLETED;
+        if (currentStatus == null || !currentStatus.canTransitionTo(targetStatus)) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
+                    "教学班当前状态 " + currentStatus + " 不能结课");
+        }
+        tc.setStatus(targetStatus.getCode());
+        tc.setUpdatedAt(LocalDateTime.now());
+        teachingClassRepository.updateById(tc);  // @Version 乐观锁 CAS
+        log.info("教学班结课: classId={}, name={}, operator={}", classId, tc.getName(), operatorId);
+    }
+
+    /**
+     * 停开（ACTIVE → CANCELLED）。停开原因必填；状态机白名单校验 + @Version 乐观锁更新。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancel(Long classId, String reason, Long operatorId) {
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "停开原因不能为空");
+        }
+        TeachingClass tc = teachingClassRepository.selectById(classId);
+        if (tc == null) {
+            throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
+        }
+        TeachingClassStatus currentStatus = TeachingClassStatus.fromCode(tc.getStatus());
+        TeachingClassStatus targetStatus = TeachingClassStatus.CANCELLED;
+        if (currentStatus == null || !currentStatus.canTransitionTo(targetStatus)) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
+                    "教学班当前状态 " + currentStatus + " 不能停开");
+        }
+        tc.setStatus(targetStatus.getCode());
+        tc.setUpdatedAt(LocalDateTime.now());
+        teachingClassRepository.updateById(tc);  // @Version 乐观锁 CAS
+        log.info("教学班停开: classId={}, name={}, operator={}, reason={}", classId, tc.getName(), operatorId, reason);
     }
 
     private TeachingClassVO convertToVO(TeachingClass tc) {

@@ -18,6 +18,7 @@ import com.microcourse.entity.Major;
 import com.microcourse.entity.OperationLog;
 import com.microcourse.entity.User;
 import com.microcourse.enums.UserRole;
+import com.microcourse.enums.UserStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.listener.UserBatchImportListener;
@@ -25,6 +26,7 @@ import com.microcourse.repository.ClassesRepository;
 import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.security.UserStatusCheckFilter;
 import com.microcourse.service.OperationLogService;
 import com.microcourse.service.UserService;
 import com.microcourse.util.IpUtil;
@@ -36,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -170,6 +173,12 @@ public class UserServiceImpl implements UserService {
             vo.setRealName(maskRealName(vo.getRealName()));
             vo.setEmail(maskEmail(vo.getEmail()));
             vo.setPhone(maskPhone(vo.getPhone()));
+            // Round 11-1 数据隔离：学号/工号属强标识字段。ACADEMIC（教务）因学籍管理职责保留可见，
+            // 其余角色（如 TEACHER）查看他人时一律隐藏，防止跨角色越权关联学生身份。
+            if (!SecurityUtil.hasRole("ACADEMIC")) {
+                vo.setStudentNo(null);
+                vo.setTeacherNo(null);
+            }
         }
         return vo;
     }
@@ -242,50 +251,114 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long id, UserStatusRequest request) {
+        // 解析目标状态码（非法码 → 参数错误，避免 500）
+        UserStatus newStatus;
+        try {
+            newStatus = UserStatus.fromCode(request.getStatus());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "无效的用户状态值: " + request.getStatus());
+        }
+
+        // 先按常规查询（未删除用户）；DELETED 用户被全局逻辑删除过滤，需绕过查询以支持恢复
         User user = userRepository.selectById(id);
+        if (user == null) {
+            user = userRepository.selectByIdIncludingDeleted(id);
+        }
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
+        UserStatus currentStatus = UserStatus.fromCode(user.getStatus());
         Integer oldStatus = user.getStatus();
-        Integer newStatus = request.getStatus();
+        Integer newStatusCode = request.getStatus();
+
+        // 幂等：目标与当前一致时直接返回（UX 零退化：重复点击同一操作不报错）
+        if (currentStatus == newStatus) {
+            return;
+        }
+
+        // 前置校验：状态流转合法性（状态机白名单）
+        if (currentStatus == null || !currentStatus.canTransitionTo(newStatus)) {
+            log.warn("非法用户状态转换: userId={} {} -> {}", id, currentStatus, newStatus);
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
+                    "不允许从 " + currentStatus + " 转换到 " + newStatus);
+        }
+
+        // DELETED → INACTIVE 恢复：180 天保留窗口检查 + 绕过逻辑删除恢复
+        if (currentStatus == UserStatus.DELETED && newStatus == UserStatus.INACTIVE) {
+            if (user.getDeletedAt() != null) {
+                long daysSinceDeleted = ChronoUnit.DAYS.between(user.getDeletedAt(), LocalDateTime.now());
+                if (daysSinceDeleted > 180) {
+                    throw new BusinessException(ErrorCode.DELETED_USER_RETENTION_EXPIRED);
+                }
+            }
+            // updateById 会自动追加 deleted_at IS NULL 条件，无法命中已删除行，故走原生恢复 SQL
+            userRepository.restoreToInactive(id);
+            writeStatusAuditLog(user, oldStatus, newStatusCode);
+            // Round 8-2：状态变更后立即清除状态缓存，确保 UserStatusCheckFilter 即时放行恢复后的用户
+            evictUserStatusCache(id);
+            log.info("用户状态变更(恢复): userId={} {} -> {}", id, currentStatus, newStatus);
+            return;
+        }
+
+        // 常规状态变更（保留既有 deleted_at 联动与 token 黑名单清理逻辑）
         switch (newStatus) {
-            case 0: // INACTIVE（未激活）— 仅设状态，不操作 deleted_at
-                user.setStatus(0);
-                break;
-            case 1: // ACTIVE（启用/恢复）
+            case ACTIVE: // 启用 / 解禁
                 user.setStatus(1);
                 user.setDeletedAt(null);
                 break;
-            case 2: // DISABLED（禁用）
+            case DISABLED: // 禁用
                 user.setStatus(2);
-                // 将当前用户的所有 Token 加入黑名单，使立即失效
+                // 清理登录失败计数，配合 Token 失效策略
                 redisUtil.clearLoginFailure(user.getUsername());
                 break;
-            case 3: // DELETED（软删除，180天保留）
+            case DELETED: // 软删除（180 天保留）
                 user.setStatus(3);
                 user.setDeletedAt(LocalDateTime.now());
-                // 将当前用户的所有 Token 加入黑名单，使立即失效
                 redisUtil.clearLoginFailure(user.getUsername());
                 break;
-            default:
-                throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+            default: // INACTIVE 仅 DELETED→INACTIVE 合法，已在恢复分支处理；此处理论不可达
+                user.setStatus(newStatusCode);
+                break;
         }
 
         user.setUpdatedAt(LocalDateTime.now());
         // Phase 6: 需通过 WebSocket/Redis PubSub 通知所有实例使该用户 Token 失效
-        userRepository.updateById(user);
+        userRepository.updateById(user); // @Version 自动 CAS
 
-        // 记录操作日志
-        OperationLog log = new OperationLog();
-        log.setUserId(user.getId());
-        log.setAction("STATUS_CHANGE");
-        log.setTargetType("USER");
-        log.setTargetId(user.getId());
-        log.setDetail("{\"field\":\"status\",\"old\":" + oldStatus + ",\"new\":" + newStatus + "}");
-        log.setIp(IpUtil.getClientIp());
-        log.setSuccess(true);
-        operationLogService.log(log);
+        writeStatusAuditLog(user, oldStatus, newStatusCode);
+        // Round 8-2：状态变更后立即清除状态缓存（禁用→立即失效 / 解禁→立即恢复访问），UX 零延迟生效
+        evictUserStatusCache(id);
+        log.info("用户状态变更: userId={} {} -> {}", id, currentStatus, newStatus);
+    }
+
+    /**
+     * 清除用户状态缓存（Round 8-2）。
+     *
+     * <p>用户状态变更后立即失效 {@code user:status:{id}} 缓存，确保
+     * {@link UserStatusCheckFilter} 在下一次请求时读到最新状态（禁用/解禁即时生效）。
+     * Redis 故障被吞掉，绝不回滚状态变更主事务（缓存最多 30 秒 TTL 后自然失效）。</p>
+     */
+    private void evictUserStatusCache(Long id) {
+        try {
+            redisUtil.delete(UserStatusCheckFilter.STATUS_CACHE_PREFIX + id);
+        } catch (Exception e) {
+            log.warn("清除用户状态缓存失败（不影响状态变更主流程）: userId={}", id, e);
+        }
+    }
+
+    /** 写入用户状态变更审计日志（抽取以避免局部变量遮蔽类级 Logger）。 */
+    private void writeStatusAuditLog(User user, Integer oldStatus, Integer newStatus) {
+        OperationLog logEntry = new OperationLog();
+        logEntry.setUserId(user.getId());
+        logEntry.setAction("STATUS_CHANGE");
+        logEntry.setTargetType("USER");
+        logEntry.setTargetId(user.getId());
+        logEntry.setDetail("{\"field\":\"status\",\"old\":" + oldStatus + ",\"new\":" + newStatus + "}");
+        logEntry.setIp(IpUtil.getClientIp());
+        logEntry.setSuccess(true);
+        operationLogService.log(logEntry);
     }
 
     @Override
@@ -400,7 +473,15 @@ public class UserServiceImpl implements UserService {
         }
 
         // Step 5: P1-3 批量插入
-        batchInsertUsers(usersToInsert);
+        // Round 11-1 数据隔离：批量导入必须满足原子性（全有或全无）。方法级 @Transactional
+        // 仅在抛出异常时回滚，而逐行校验失败是被收集进 errors 而非抛异常，故需显式守门：
+        // 任一行校验失败 → 不插入任何用户，避免"部分导入"造成脏数据与后续清理困难。
+        // 合法输入（errors 为空）行为完全不变，successCount 即全部导入行数（UX 零退化）。
+        if (errors.isEmpty()) {
+            batchInsertUsers(usersToInsert);
+        } else {
+            successCount = 0;
+        }
 
         int failCount = errors.size();
 

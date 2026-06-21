@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.DepartmentCreateRequest;
+import com.microcourse.dto.DepartmentStatsVO;
 import com.microcourse.dto.DepartmentUpdateRequest;
 import com.microcourse.dto.DepartmentVO;
 import com.microcourse.dto.PageResult;
@@ -58,5 +59,18 @@ public class DepartmentController {
     public R<Void> delete(@PathVariable Long id) {
         departmentService.delete(id);
         return R.ok();
+    }
+
+    /**
+     * GET /api/departments/{id}/stats
+     * 获取院系统计数据（开课数 / 学生数 / 选课数）（Round 5-3 P1-10 新增）
+     * 权限：ADMIN / ACADEMIC（依据 权限矩阵 v2.0 READ_DEPARTMENT_STATS）
+     *
+     * <p>角色级 @PreAuthorize 收紧至 A/AC；院系不存在返回 404。纯读端点，合法用户操作零感。</p>
+     */
+    @GetMapping("/{id}/stats")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<DepartmentStatsVO> stats(@PathVariable Long id) {
+        return R.ok(departmentService.computeStats(id));
     }
 }

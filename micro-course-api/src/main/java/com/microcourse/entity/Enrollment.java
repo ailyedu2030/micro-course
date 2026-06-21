@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -46,6 +47,14 @@ public class Enrollment {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * 乐观锁版本号 —— P0-2 修复：防止并发状态修改丢失更新。
+     * 对应 DB 列由 V61__enrollments_add_version.sql 增量补齐（NOT NULL DEFAULT 0）。
+     */
+    @Version
+    @TableField("version")
+    private Integer version;
+
     @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
@@ -75,6 +84,8 @@ public class Enrollment {
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

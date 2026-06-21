@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.ClassCreateRequest;
+import com.microcourse.dto.ClassStudentVO;
 import com.microcourse.dto.ClassUpdateRequest;
 import com.microcourse.dto.ClassVO;
 import com.microcourse.dto.PageResult;
@@ -11,6 +12,8 @@ import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/classes")
@@ -58,5 +61,19 @@ public class ClassController {
     public R<Void> delete(@PathVariable Long id) {
         classService.delete(id);
         return R.ok();
+    }
+
+    /**
+     * GET /api/classes/{id}/students
+     * 获取班级学生名单（Round 5-3 P1-10 新增）
+     * 权限：TEACHER(辅导员) / ADMIN / ACADEMIC（依据 权限矩阵 v2.0 READ_CLASS_STUDENTS）
+     *
+     * <p>角色级 @PreAuthorize 收紧至 T/A/AC；班级不存在返回 404。学生名单源自 users 表（classId 关联），
+     * 不涉及对象级写操作，沿用既有 GET 读语义，合法用户操作零感。</p>
+     */
+    @GetMapping("/{id}/students")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    public R<List<ClassStudentVO>> students(@PathVariable Long id) {
+        return R.ok(classService.getStudents(id));
     }
 }
