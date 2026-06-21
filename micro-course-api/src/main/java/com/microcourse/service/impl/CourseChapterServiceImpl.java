@@ -45,6 +45,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<ChapterVO> page(int page, int size, Long courseId) {
         LambdaQueryWrapper<CourseChapter> wrapper = new LambdaQueryWrapper<>();
         if (courseId != null) {
@@ -68,6 +69,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ChapterVO getById(Long id) {
         CourseChapter chapter = chapterRepository.selectById(id);
         if (chapter == null) {
