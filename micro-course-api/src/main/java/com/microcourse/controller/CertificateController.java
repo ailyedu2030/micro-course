@@ -54,7 +54,7 @@ public class CertificateController {
     }
 
     @PostMapping("/issue")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<CertificateVO> issueCertificate(@RequestParam Long courseId) {
         Long userId = SecurityUtil.getCurrentUserId();
         CertificateVO cert = certificateService.issueCertificate(userId, courseId);

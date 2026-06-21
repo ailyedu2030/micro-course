@@ -44,7 +44,7 @@ public class TagController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody TagUpdateRequest request) {
         var tag = tagRepository.selectById(id);
         if (tag == null) {
@@ -56,7 +56,7 @@ public class TagController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         tagRepository.deleteById(id);
         return R.ok();
