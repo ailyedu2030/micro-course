@@ -271,7 +271,7 @@ const fetchMyReviews = async () => {
       courseId: filterCourseId.value
     })
     reviews.value = data?.items || data || []
-    pagination.total = data?.totalElements || 0
+    pagination.value.total = data?.totalElements || 0
   } catch {
     errorState.value = true
     ElMessage.error('加载评价失败')

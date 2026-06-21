@@ -12,7 +12,8 @@
         <p>共 {{ exerciseCount }} 道练习题</p>
       </div>
     </div>
-    <el-button type="primary" size="large" round @click="$emit('start-exercise')"><el-icon><CaretRight /></el-icon>
+    <el-button type="primary" size="large" round @click="$emit('start-exercise')">
+      <el-icon><CaretRight /></el-icon>
       开始练习
     </el-button>
   </div>

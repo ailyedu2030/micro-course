@@ -6,7 +6,8 @@
 <template>
   <header class="learning-header">
     <div class="header-left">
-      <el-button text class="back-btn" @click="$emit('back')"><el-icon><ArrowLeft /></el-icon>
+      <el-button text class="back-btn" @click="$emit('back')">
+        <el-icon><ArrowLeft /></el-icon>
         <span>返回</span>
       </el-button>
     </div>
@@ -27,11 +28,13 @@
         <span class="progress-text">{{ totalProgress }}%</span>
       </div>
       <!-- 笔记按钮 -->
-      <el-button text class="header-btn" @click="$emit('show-notes')" title="笔记"><el-icon><Edit /></el-icon>
+      <el-button text class="header-btn" @click="$emit('show-notes')" title="笔记">
+        <el-icon><Edit /></el-icon>
         <span>笔记</span>
       </el-button>
       <!-- 收藏按钮 -->
-      <el-button text class="header-btn" :class="{ 'is-favorited': isFavorited }" @click="$emit('toggle-favorite')" :title="isFavorited ? '取消收藏' : '收藏课程'"><el-icon><Star /></el-icon>
+      <el-button text class="header-btn" :class="{ 'is-favorited': isFavorited }" @click="$emit('toggle-favorite')" :title="isFavorited ? '取消收藏' : '收藏课程'">
+        <el-icon><Star /></el-icon>
         <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
       </el-button>
     </div>

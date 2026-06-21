@@ -97,9 +97,10 @@
         v-if="prevLesson"
         class="nav-btn prev-btn"
         @click="$emit('go-to-lesson', prevLesson)"
-       ><el-icon><ArrowLeft /></el-icon>
-         上一节: {{ prevLesson.title }}
-      </el-button>
+        >
+          <el-icon><ArrowLeft /></el-icon>
+          上一节: {{ prevLesson.title }}
+        </el-button>
       <div v-else />
       <el-button
         v-if="nextLesson"

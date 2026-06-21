@@ -33,7 +33,9 @@
           @click="handleChangePassword"
           :loading="passwordLoading"
           :size="isMobile ? 'default' : ''"
-        >修改密码</el-button>
+        >
+          修改密码
+        </el-button>
       </el-form-item>
     </el-form>
   </el-card>

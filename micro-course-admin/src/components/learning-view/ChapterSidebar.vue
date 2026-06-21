@@ -83,10 +83,12 @@
           </div>
         </div>
         <div class="stats-actions">
-          <el-button type="primary" size="small" @click="$emit('continue-learning')"><el-icon><VideoPlay /></el-icon>
+          <el-button type="primary" size="small" @click="$emit('continue-learning')">
+            <el-icon><VideoPlay /></el-icon>
             继续学习
           </el-button>
-          <el-button size="small" @click="$emit('start-exercise')"><el-icon><Edit /></el-icon>
+          <el-button size="small" @click="$emit('start-exercise')">
+            <el-icon><Edit /></el-icon>
             开始练习
           </el-button>
         </div>

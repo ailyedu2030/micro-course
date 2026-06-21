@@ -43,7 +43,9 @@
           @click="handleUpdateProfile"
           :loading="profileLoading"
           :size="isMobile ? 'default' : ''"
-        >保存修改</el-button>
+        >
+          保存修改
+        </el-button>
       </el-form-item>
     </el-form>
   </el-card>
