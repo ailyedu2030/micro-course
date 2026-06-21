@@ -53,7 +53,7 @@ public class CourseFavoriteController {
      * 权限：ADMIN, ACADEMIC
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC', 'TEACHER')")
     public R<PageResult<CourseFavoriteVO>> listAll(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
