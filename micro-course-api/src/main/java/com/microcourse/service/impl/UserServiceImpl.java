@@ -336,7 +336,7 @@ public class UserServiceImpl implements UserService {
     /**
      * 清除用户状态缓存（Round 8-2）。
      *
-     * <p>用户状态变更后立即失效 {@code user:status:{id}} 缓存，确保
+     * <p>用户状态变更后立即失效 {@code mc:user:status:{id}} 缓存，确保
      * {@link UserStatusCheckFilter} 在下一次请求时读到最新状态（禁用/解禁即时生效）。
      * Redis 故障被吞掉，绝不回滚状态变更主事务（缓存最多 30 秒 TTL 后自然失效）。</p>
      */
@@ -419,7 +419,7 @@ public class UserServiceImpl implements UserService {
         } catch (Exception e) {
             log.warn("[UserImport] Excel 解析失败", e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                    "Excel 解析失败: " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
+                    "Excel 文件解析失败，请检查文件格式和内容是否正确", e);
         }
 
         errors.addAll(listener.getErrors());

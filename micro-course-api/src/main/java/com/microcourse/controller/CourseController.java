@@ -12,9 +12,11 @@ import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -251,6 +253,26 @@ public class CourseController {
     public R<Void> unpublish(@PathVariable Long id) {
         courseService.updateStatus(id, CourseStatus.CLOSED.getCode());
         return R.ok();
+    }
+
+    /**
+     * POST /api/courses/{id}/cover
+     * 更新课程封面
+     * 权限：TEACHER(课程创建者) / ADMIN
+     */
+    @PostMapping("/{id}/cover")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("更新课程封面")
+    public R<CourseVO> updateCover(@PathVariable Long id,
+                                   @RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件不能为空");
+        }
+        if (file.getSize() > 2 * 1024 * 1024) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件不能超过 2MB");
+        }
+        CourseVO vo = courseService.updateCover(id, file);
+        return R.ok(vo);
     }
 
     /**

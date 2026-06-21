@@ -4,10 +4,8 @@ import com.microcourse.dto.LearningProgressVO;
 import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.dto.ProgressUpdateRequest;
 import com.microcourse.dto.R;
-import com.microcourse.entity.Course;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.LearningProgressService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,12 +22,9 @@ import java.util.Map;
 public class LearningProgressController {
 
     private final LearningProgressService learningProgressService;
-    private final CourseRepository courseRepository;
 
-    public LearningProgressController(LearningProgressService learningProgressService,
-                                      CourseRepository courseRepository) {
+    public LearningProgressController(LearningProgressService learningProgressService) {
         this.learningProgressService = learningProgressService;
-        this.courseRepository = courseRepository;
     }
 
     /**
@@ -51,12 +46,9 @@ public class LearningProgressController {
         // 如果未传 userId，默认查自己的进度
         Long targetUserId = (userId != null) ? userId : currentUserId;
         if (!currentUserId.equals(targetUserId) && !hasRole("ADMIN")) {
-            // P2: TEACHER 可查看自己授课课程的学生进度
+            // TEACHER 可查看自己授课课程的学生进度（校验下沉 Service）
             if (hasRole("TEACHER")) {
-                Course course = courseRepository.selectById(courseId);
-                if (course == null || !course.getTeacherId().equals(currentUserId)) {
-                    throw new BusinessException(ErrorCode.NO_PERMISSION);
-                }
+                learningProgressService.assertTeacherOwnsCourse(currentUserId, courseId);
             } else {
                 throw new BusinessException(ErrorCode.NO_PERMISSION);
             }
@@ -90,12 +82,9 @@ public class LearningProgressController {
             @RequestParam(required = false) Long courseId) {
         Long currentUserId = getCurrentUserId();
         if (!currentUserId.equals(userId) && !hasRole("ADMIN")) {
-            // P2: TEACHER 可查看自己授课课程的学生学习进度
+            // TEACHER 可查看自己授课课程的学生进度（校验下沉 Service）
             if (hasRole("TEACHER") && courseId != null) {
-                Course course = courseRepository.selectById(courseId);
-                if (course == null || !course.getTeacherId().equals(currentUserId)) {
-                    throw new BusinessException(ErrorCode.NO_PERMISSION);
-                }
+                learningProgressService.assertTeacherOwnsCourse(currentUserId, courseId);
             } else {
                 throw new BusinessException(ErrorCode.NO_PERMISSION);
             }

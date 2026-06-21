@@ -304,7 +304,7 @@ public class AuthServiceImpl implements AuthService {
             xmlResponse = restTemplate.getForObject(validateUrl, String.class);
         } catch (Exception e) {
             log.error("[CAS] 调用 CAS serviceValidate 失败 url={}", validateUrl, e);
-            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "无法连接CAS服务器: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "无法连接CAS服务器，请稍后重试或联系管理员", e);
         }
 
         if (xmlResponse == null || xmlResponse.isBlank()) {
@@ -440,7 +440,7 @@ public class AuthServiceImpl implements AuthService {
             throw e;
         } catch (Exception e) {
             log.error("[CAS] 解析CAS XML响应失败", e);
-            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "CAS响应解析失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "CAS认证响应格式异常，请联系管理员", e);
         }
     }
 

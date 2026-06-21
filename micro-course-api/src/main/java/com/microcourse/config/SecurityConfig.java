@@ -77,7 +77,7 @@ public class SecurityConfig {
                                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                                 "img-src 'self' data: blob: https:; " +
                                 "font-src 'self' data: https://fonts.gstatic.com; " +
-                                "connect-src 'self' http: https: ws: wss:; " +
+                                "connect-src 'self' https://api.deepseek.com ws: wss:; " +
                                 "media-src 'self' blob: https:; " +
                                 "frame-src 'self'; " +
                                 "worker-src 'self' blob:; " +
@@ -108,6 +108,10 @@ public class SecurityConfig {
                         // 非敏感元数据，权限矩阵 v2.0 定义为「所有用户（含未登录）」。Controller 内白名单
                         // 严格限定可返回键，CAS/上传上限等敏感配置永不暴露。须先于通配 authenticated。
                         .requestMatchers("GET", "/api/system-configs/public").permitAll()
+                        // 前端错误自动上报 —— 匿名公开端点：未登录态下发生的 JS/Promise 异常也需可上报，
+                        // Controller 仅落日志、不返回敏感数据、不写库。显式放行（虽被下方 /api/** 通配覆盖），
+                        // 以防未来收窄通配规则时误伤；仅放行 POST，最小授权。
+                        .requestMatchers("POST", "/api/frontend-errors").permitAll()
                         .requestMatchers("GET", "/api/departments/**").authenticated()
                         .requestMatchers("GET", "/api/majors/**").authenticated()
                         .requestMatchers("GET", "/api/classes/**").authenticated()
@@ -127,6 +131,8 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/files/system/**").permitAll()
                         // 其他文件（slides 课件、attachments 附件等私有资源）：需登录 + Controller 层 owner 校验
                         .requestMatchers("GET", "/api/files/**").authenticated()
+                        // 未知 API 路径放行给 Dispatcher（抛出 NoHandlerFoundException 后由 GlobalExceptionHandler 返回 404）
+                        .requestMatchers("/api/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

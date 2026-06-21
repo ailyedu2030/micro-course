@@ -5,13 +5,18 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.OperationLog;
+import com.microcourse.entity.User;
 import com.microcourse.repository.OperationLogRepository;
+import com.microcourse.repository.UserRepository;
 import com.microcourse.service.OperationLogService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 操作日志服务实现
@@ -22,10 +27,15 @@ import java.util.List;
 @Service
 public class OperationLogServiceImpl implements OperationLogService {
 
-    private final OperationLogRepository operationLogRepository;
+    private static final Logger log = LoggerFactory.getLogger(OperationLogServiceImpl.class);
 
-    public OperationLogServiceImpl(OperationLogRepository operationLogRepository) {
+    private final OperationLogRepository operationLogRepository;
+    private final UserRepository userRepository;
+
+    public OperationLogServiceImpl(OperationLogRepository operationLogRepository,
+                                   UserRepository userRepository) {
         this.operationLogRepository = operationLogRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -77,5 +87,32 @@ public class OperationLogServiceImpl implements OperationLogService {
         wrapper.orderByDesc(OperationLog::getCreatedAt);
         IPage<OperationLog> result = operationLogRepository.selectPage(pg, wrapper);
         return PageResult.of(result.getRecords(), result.getTotal(), page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> findUserIdsByUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return Collections.emptyList();
+        }
+        LambdaQueryWrapper<User> uWrapper = new LambdaQueryWrapper<>();
+        uWrapper.like(User::getUsername, username);
+        uWrapper.select(User::getId);
+        List<User> matchedUsers = userRepository.selectList(uWrapper);
+        return matchedUsers.stream().map(User::getId).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, String> batchFindUsernames(Set<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        try {
+            List<User> users = userRepository.selectBatchIds(userIds);
+            return users.stream().collect(Collectors.toMap(User::getId, User::getUsername, (a, b) -> a));
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
     }
 }

@@ -43,7 +43,7 @@ public class FileAccessRateLimitInterceptor implements HandlerInterceptor {
     /** 仅对此前缀限速。 */
     private static final String COVER_PATH_PREFIX = "/api/files/covers/";
     /** Redis 计数 key 前缀。 */
-    private static final String RATE_KEY_PREFIX = "rate:file:cover:";
+    private static final String RATE_KEY_PREFIX = "mc:rate:file:cover:";
 
     private final RedisUtil redisUtil;
     private final FileAccessLogger fileAccessLogger;

@@ -34,30 +34,30 @@
 | API | 方法 | 路径 | 权限 |
 |-----|------|------|------|
 | 列表 | GET | `/api/departments` | 已认证 |
-| 创建 | POST | `/api/departments` | `@PreAuthorize("hasRole('ADMIN')")` |
+| 创建 | POST | `/api/departments` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
 | 详情 | GET | `/api/departments/{id}` | 已认证 |
-| 更新 | PUT | `/api/departments/{id}` | `@PreAuthorize("hasRole('ADMIN')")` |
-| 删除 | DELETE | `/api/departments/{id}` | `@PreAuthorize("hasRole('ADMIN')")` |
+| 更新 | PUT | `/api/departments/{id}` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
+| 删除 | DELETE | `/api/departments/{id}` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
 
 ### 2.3 专业管理（5 个）
 
 | API | 方法 | 路径 | 权限 |
 |-----|------|------|------|
 | 列表 | GET | `/api/majors` | 已认证 |
-| 创建 | POST | `/api/majors` | `@PreAuthorize("hasRole('ADMIN')")` |
+| 创建 | POST | `/api/majors` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
 | 详情 | GET | `/api/majors/{id}` | 已认证 |
-| 更新 | PUT | `/api/majors/{id}` | `@PreAuthorize("hasRole('ADMIN')")` |
-| 删除 | DELETE | `/api/majors/{id}` | `@PreAuthorize("hasRole('ADMIN')")` |
+| 更新 | PUT | `/api/majors/{id}` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
+| 删除 | DELETE | `/api/majors/{id}` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
 
 ### 2.4 班级管理（5 个）
 
 | API | 方法 | 路径 | 权限 |
 |-----|------|------|------|
 | 列表 | GET | `/api/classes` | 已认证 |
-| 创建 | POST | `/api/classes` | `@PreAuthorize("hasRole('ADMIN')")` |
+| 创建 | POST | `/api/classes` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
 | 详情 | GET | `/api/classes/{id}` | 已认证 |
-| 更新 | PUT | `/api/classes/{id}` | `@PreAuthorize("hasRole('ADMIN')")` |
-| 删除 | DELETE | `/api/classes/{id}` | `@PreAuthorize("hasRole('ADMIN')")` |
+| 更新 | PUT | `/api/classes/{id}` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
+| 删除 | DELETE | `/api/classes/{id}` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
 
 ### 2.5 用户管理（5+1 个）
 
@@ -67,7 +67,7 @@
 | 创建 | POST | `/api/users` | `@PreAuthorize("hasRole('ADMIN')")` |
 | 详情 | GET | `/api/users/{id}` | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC') or hasRole('TEACHER') or #id == authentication.principal.id")` |
 | 更新 | PUT | `/api/users/{id}` | `@PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")` |
-| 状态 | **PUT** | **`/api/users/{id}/status`** | `@PreAuthorize("hasRole('ADMIN')")` |
+| 状态 | **PUT** | **`/api/users/{id}/status`** | `@PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")` |
 
 ---
 
@@ -75,26 +75,27 @@
 
 ```java
 http.authorizeHttpRequests(auth -> auth
-    .requestMatchers("/api/auth/login", "/api/auth/cas").permitAll()
-    .requestMatchers("/api/auth/**").authenticated()
-    .requestMatchers(HttpMethod.GET, "/api/departments/**", "/api/majors/**", "/api/classes/**")
-        .authenticated()
-    .requestMatchers(HttpMethod.POST, "/api/departments", "/api/majors", "/api/classes")
-        .hasRole("ADMIN")
-    .requestMatchers(HttpMethod.PUT, "/api/departments/**", "/api/majors/**", "/api/classes/**")
-        .hasRole("ADMIN")
-    .requestMatchers(HttpMethod.DELETE, "/api/departments/**", "/api/majors/**", "/api/classes/**")
-        .hasRole("ADMIN")
-    .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "ACADEMIC", "TEACHER", "STUDENT")
+    .requestMatchers("/api/auth/login", "/api/auth/cas", "/api/auth/refresh").permitAll()
+    .requestMatchers("GET", "/api/admin/stats/health").permitAll()
+    .requestMatchers("GET", "/api/enums/export").permitAll()
+    .requestMatchers("GET", "/api/system-configs/public").permitAll()
+    .requestMatchers("GET", "/api/files/covers/**", "/api/files/avatars/**",
+                     "/api/files/banners/**", "/api/files/system/**").permitAll()
+    .requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
+    .requestMatchers("GET", "/api/departments/**", "/api/majors/**", "/api/classes/**").authenticated()
+    .requestMatchers("/api/auth/**", "/api/users/**").authenticated()
+    .requestMatchers("GET", "/api/videos/stream/**").authenticated()
+    .requestMatchers("GET", "/api/files/**").authenticated()
+    .requestMatchers("/api/**").permitAll() // 未知路由→Dispatcher→GlobalExceptionHandler→404
     .anyRequest().authenticated()
 );
 ```
 
 **两层防御**：
-- SecurityConfig 路径配置 = 粗粒度（路径级）
-- @PreAuthorize 注解 = 细粒度（资源/行级）
+- SecurityConfig 路径配置 = 粗粒度（仅认证/公开，角色校验全部委托 @PreAuthorize）
+- @PreAuthorize 注解 = 细粒度（资源/行级角色控制）
 
-**任一缺失 = 越权风险**。
+**说明**：@PreAuthorize（配合 @EnableMethodSecurity）是角色鉴权的主防线，SecurityConfig 仅做路径级认证控制。未知 API 路径通过 `/api/**` permitAll 放行给 Dispatcher 返回 404。
 
 ---
 

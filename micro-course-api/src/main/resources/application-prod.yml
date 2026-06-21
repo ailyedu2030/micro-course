@@ -3,3 +3,10 @@ logging:
     com.microcourse: INFO
     org.flywaydb: WARN
     org.springframework.security: WARN
+
+# P1 安全：生产环境禁用 Swagger / OpenAPI 文档，避免接口元数据外泄
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

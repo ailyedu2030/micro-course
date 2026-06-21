@@ -293,6 +293,14 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         return result;
     }
 
+    @Override
+    public void assertTeacherOwnsCourse(Long teacherId, Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null || !course.getTeacherId().equals(teacherId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+    }
+
     /**
      * 构建学习进度查重条件（Round 8-4 P0）：按 (user, course, chapter, lesson) 业务粒度匹配活跃记录，
      * chapter/lesson 为空时用 IS NULL 精确匹配，避免 NULL 误命中。@TableLogic 自动追加 deleted_at IS NULL。

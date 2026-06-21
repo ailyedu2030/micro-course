@@ -2,6 +2,7 @@ package com.microcourse.service;
 
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.TagCreateRequest;
+import com.microcourse.dto.TagUpdateRequest;
 import com.microcourse.dto.TagVO;
 
 import java.util.List;
@@ -35,4 +36,20 @@ public interface TagService {
      * @param tagId    标签 ID
      */
     void removeCourseTag(Long courseId, Long tagId);
+
+    /**
+     * 更新标签名称
+     *
+     * @param id      标签 ID
+     * @param request 更新请求
+     * @return 标签 VO
+     */
+    TagVO updateTag(Long id, TagUpdateRequest request);
+
+    /**
+     * 删除标签
+     *
+     * @param id 标签 ID
+     */
+    void deleteTag(Long id);
 }

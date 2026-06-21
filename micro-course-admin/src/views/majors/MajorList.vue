@@ -50,11 +50,7 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-popconfirm title="确定删除该专业？" @confirm="handleDelete(row)">
-              <template #reference>
-                <el-button type="danger" link size="small">删除</el-button>
-              </template>
-            </el-popconfirm>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -98,7 +94,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getMajors, createMajor, updateMajor, deleteMajor } from '@/api/major'
 import { getDepartments } from '@/api/department'
@@ -212,6 +208,11 @@ const handleEdit = (row) => {
 }
 
 const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定删除该专业?', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
   try {
     await deleteMajor(row.id)
     ElMessage.success('删除成功')

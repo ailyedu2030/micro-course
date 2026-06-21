@@ -19,8 +19,11 @@ public class Course {
     private String subtitle;
     private String summary;
     private String coverUrl;
+    @TableField("category_id")
     private Long categoryId;
+    @TableField("teacher_id")
     private Long teacherId;
+    @TableField("offer_department_id")
     private Long offerDepartmentId;
     private String semester;
     private BigDecimal creditHours;

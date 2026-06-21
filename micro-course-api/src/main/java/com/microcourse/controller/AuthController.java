@@ -56,6 +56,7 @@ public class AuthController {
     }
 
     @GetMapping("/cas")
+    @PreAuthorize("permitAll()")
     public R<LoginResponse> cas(
             @RequestParam("ticket") String ticket,
             @RequestParam(value = "state", required = false) String state) {

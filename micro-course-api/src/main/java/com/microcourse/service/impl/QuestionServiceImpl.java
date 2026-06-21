@@ -363,7 +363,7 @@ public class QuestionServiceImpl implements QuestionService {
         } catch (Exception e) {
             // 透传原始异常 cause 便于追踪
             log.error("[Question] Excel 解析失败", e);
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Excel 解析失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Excel 文件解析失败，请检查文件格式和内容是否正确", e);
         } finally {
             if (reader != null) {
                 reader.close();

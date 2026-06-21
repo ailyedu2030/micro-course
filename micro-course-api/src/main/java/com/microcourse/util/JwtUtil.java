@@ -72,7 +72,7 @@ public class JwtUtil {
 
     /**
      * 生成 refreshToken
-     * claims: sub(userId), iat, exp
+     * claims: sub(userId), jti(UUID), iat, exp
      */
     public String generateRefreshToken(Long userId) {
         Date now = new Date();
@@ -80,6 +80,7 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim("jti", UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getKey())

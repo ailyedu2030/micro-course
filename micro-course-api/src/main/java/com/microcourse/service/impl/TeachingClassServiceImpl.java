@@ -382,7 +382,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     public void updateStudentStatus(Long classId, Long userId, String status) {
         // P1-1: 状态白名单校验
         if (status == null || !VALID_STUDENT_STATUSES.contains(status)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "学生状态值无效，应为 ENROLLED/DROPPED/COMPLETED");
         }
 
         // P0-3: 越权校验

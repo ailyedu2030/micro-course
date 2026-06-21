@@ -5,6 +5,8 @@ import com.microcourse.entity.OperationLog;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 操作日志服务接口
@@ -39,4 +41,18 @@ public interface OperationLogService {
                                         String module, Long targetId,
                                         LocalDateTime startTime, LocalDateTime endTime,
                                         int page, int size);
+
+    /**
+     * 按用户名模糊搜索用户ID列表
+     * @param username 用户名（支持模糊）
+     * @return 用户ID列表
+     */
+    List<Long> findUserIdsByUsername(String username);
+
+    /**
+     * 批量查询用户 ID → 用户名映射
+     * @param userIds 用户ID集合
+     * @return userId → username 映射
+     */
+    Map<Long, String> batchFindUsernames(Set<Long> userIds);
 }

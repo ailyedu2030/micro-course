@@ -7,7 +7,6 @@ import com.microcourse.dto.TagUpdateRequest;
 import com.microcourse.dto.TagVO;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.TagRepository;
 import com.microcourse.service.TagService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -23,11 +22,9 @@ import java.util.Map;
 public class TagController {
 
     private final TagService tagService;
-    private final TagRepository tagRepository;
 
-    public TagController(TagService tagService, TagRepository tagRepository) {
+    public TagController(TagService tagService) {
         this.tagService = tagService;
-        this.tagRepository = tagRepository;
     }
 
     @GetMapping
@@ -48,20 +45,15 @@ public class TagController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public R<Void> update(@PathVariable Long id, @Valid @RequestBody TagUpdateRequest request) {
-        var tag = tagRepository.selectById(id);
-        if (tag == null) {
-            throw new BusinessException(ErrorCode.TAG_NOT_FOUND);
-        }
-        tag.setName(request.getName());
-        tagRepository.updateById(tag);
-        return R.ok();
+    public R<TagVO> update(@PathVariable Long id, @Valid @RequestBody TagUpdateRequest request) {
+        TagVO vo = tagService.updateTag(id, request);
+        return R.ok(vo);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
-        tagRepository.deleteById(id);
+        tagService.deleteTag(id);
         return R.ok();
     }
 

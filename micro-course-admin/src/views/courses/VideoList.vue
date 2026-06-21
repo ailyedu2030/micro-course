@@ -39,7 +39,9 @@
               accept="video/*"
               :show-file-list="false"
             >
-              <el-button type="success" size="small" v-if="userRole !== 'ACADEMIC'" :disabled="!searchForm.courseId || !searchForm.chapterId">批量上传视频</el-button>
+              <el-tooltip v-if="userRole !== 'ACADEMIC'" content="请先选择课程和章节" placement="top">
+                <el-button type="success" size="small" :disabled="!searchForm.courseId || !searchForm.chapterId">批量上传视频</el-button>
+              </el-tooltip>
             </el-upload>
             <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增视频</el-button>
           </div>

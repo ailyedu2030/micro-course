@@ -104,7 +104,7 @@ public class NarrationServiceImpl implements NarrationService {
         } catch (Exception e) {
             log.error("DeepSeek API failed for courseId={} pageNumber={}", courseId, pageNumber, e);
             throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED,
-                    "DeepSeek API 调用失败: " + e.getMessage(), e);
+                    "AI 讲述稿生成服务暂时不可用，请稍后重试", e);
         }
 
         page.setNarrationScript(narrationScript);

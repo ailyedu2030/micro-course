@@ -61,7 +61,7 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
     }
 
     @Override
-    @Async
+    @Async("videoUploadExecutor")
     public void transcode(Long videoId) {
         log.info("[VideoTranscode] 开始转码 videoId={}", videoId);
 
@@ -198,7 +198,7 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
         } catch (Exception e) {
             log.error("[VideoTranscode] 转码异常 videoId={}", videoId, e);
-            failTranscode(video, "转码异常: " + e.getMessage());
+            failTranscode(video, "视频转码失败，请稍后重试或联系管理员");
             cleanupHlsFragments(outputDir);
         }
     }

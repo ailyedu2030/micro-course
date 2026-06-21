@@ -6,6 +6,7 @@ import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
 import com.microcourse.dto.PageResult;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface CourseService {
 
@@ -52,6 +53,14 @@ public interface CourseService {
      * @return 新课程VO
      */
     CourseVO copy(Long id);
+
+    /**
+     * 更新课程封面
+     * @param id 课程ID
+     * @param file 封面文件
+     * @return 课程VO
+     */
+    CourseVO updateCover(Long id, MultipartFile file);
 
     /**
      * Round 5-3 (P1-10): 计算课程统计数据（选课人数 / 完成率 / 平均分等）。

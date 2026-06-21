@@ -19,10 +19,12 @@ export default defineConfig({
     }
   },
   build: {
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-element': ['element-plus', '@element-plus/icons-vue'],
+          'vendor-element-base': ['element-plus'],
+          'vendor-element-icons': ['@element-plus/icons-vue'],
           'vendor-xlsx': ['xlsx'],
           'vendor-video': ['./src/views/student/VideoPlayer.vue'],
         }

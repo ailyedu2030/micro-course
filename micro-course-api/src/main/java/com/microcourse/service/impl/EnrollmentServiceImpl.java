@@ -522,7 +522,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             if (paidOrder != null) {
                 log.warn("取消选课后发现已支付订单未退款: orderId={}, userId={}, courseId={}",
                         paidOrder.getId(), enrollment.getUserId(), enrollment.getCourseId());
-                // TODO: 实际生产环境应触发退款流程，当前记录日志待人工处理
+                // Phase-6 挂载点: 生产环境需在此处触发退款流程(调用 OrderService.refund)。当前仅记录告警日志。
             }
         }
     }

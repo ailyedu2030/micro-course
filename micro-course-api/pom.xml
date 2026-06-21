@@ -25,6 +25,9 @@
         <springdoc.version>2.5.0</springdoc.version>
         <flyway.version>9.22.3</flyway.version>
         <lombok.version>1.18.36</lombok.version>
+        <!-- P0 CVE 修复：覆盖 Spring Boot BOM 管理的传递依赖版本 -->
+        <tomcat.version>10.1.55</tomcat.version>
+        <postgresql.version>42.7.11</postgresql.version>
         <!-- P3-10 quarantine 机制：默认排除 @Tag("quarantine") 的损坏测试（种子数据/共享状态问题）。 -->
         <!-- 默认值 = quarantine（CI 与本地 `mvn test` 均跳过）；通过 -Dquarantine=true 由下方 -->
         <!-- profile 清空本属性，从而把 quarantine 测试纳入运行（用于每周回归/排查）。 -->
@@ -139,7 +142,7 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.8.32</version>
+            <version>5.8.46</version>
         </dependency>
 
         <!-- EasyExcel -->
@@ -147,9 +150,34 @@
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
             <version>3.3.4</version>
+            <exclusions>
+                <!-- 排除所有 POI 传递依赖，使用项目显式声明的 poi-ooxml:5.3.0 -->
+                <exclusion>
+                    <groupId>org.apache.poi</groupId>
+                    <artifactId>poi</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.poi</groupId>
+                    <artifactId>poi-ooxml</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.poi</groupId>
+                    <artifactId>poi-ooxml-full</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.poi</groupId>
+                    <artifactId>poi-ooxml-schemas</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
-        <!-- Phase 11: Apache POI - PPTX 解析与渲染 (full bundle fixes xmlbeans conflict) -->
+        <!-- Apache POI - PPTX 解析与渲染 -->
+        <!-- poi-ooxml 含 XSLF 类(XMLSlideShow/XSLFTextRun等)，poi-ooxml-full 仅含额外 schema -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.3.0</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml-full</artifactId>

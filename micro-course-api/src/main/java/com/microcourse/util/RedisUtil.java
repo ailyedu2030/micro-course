@@ -53,25 +53,60 @@ public class RedisUtil {
         return redisTemplate.execute(script, java.util.Collections.singletonList(key), expireSeconds);
     }
 
+    /**
+     * 登录失败计数（Redis 故障时降级为 0，不阻塞登录）
+     */
     public Long incrLoginFailure(String username) {
-        return incrementWithExpire("login:lock:" + username, 30 * 60);
+        try {
+            return incrementWithExpire("mc:login:lock:" + username, 30 * 60);
+        } catch (Exception e) {
+            log.warn("[Redis] incrLoginFailure 失败，降级处理: {}", e.getMessage());
+            return 1L;
+        }
     }
 
+    /**
+     * 获取登录失败次数（Redis 故障时返回 0，不阻塞登录）
+     */
     public Integer getLoginFailureCount(String username) {
-        Object val = get("login:lock:" + username);
-        return val == null ? 0 : Integer.parseInt(val.toString());
+        try {
+            Object val = get("mc:login:lock:" + username);
+            return val == null ? 0 : Integer.parseInt(val.toString());
+        } catch (Exception e) {
+            log.warn("[Redis] getLoginFailureCount 失败，降级为 0: {}", e.getMessage());
+            return 0;
+        }
     }
 
     public void clearLoginFailure(String username) {
-        delete("login:lock:" + username);
+        try {
+            delete("mc:login:lock:" + username);
+        } catch (Exception e) {
+            log.warn("[Redis] clearLoginFailure 失败: {}", e.getMessage());
+        }
     }
 
+    /**
+     * Token 黑名单（Redis 故障时静默降级，不阻止请求）
+     */
     public void blacklistToken(String jti, long ttlSeconds) {
-        set("jwt:blacklist:" + jti, "1", ttlSeconds, TimeUnit.SECONDS);
+        try {
+            set("mc:jwt:blacklist:" + jti, "1", ttlSeconds, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.warn("[Redis] blacklistToken 失败 jti={}: {}", jti, e.getMessage());
+        }
     }
 
+    /**
+     * Token 黑名单校验（Redis 故障时返回 false，不误杀合法请求）
+     */
     public Boolean isTokenBlacklisted(String jti) {
-        return hasKey("jwt:blacklist:" + jti);
+        try {
+            return hasKey("mc:jwt:blacklist:" + jti);
+        } catch (Exception e) {
+            log.warn("[Redis] isTokenBlacklisted 失败 jti={}，降级为未黑名单: {}", jti, e.getMessage());
+            return false;
+        }
     }
 
     /**

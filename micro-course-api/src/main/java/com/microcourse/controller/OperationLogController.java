@@ -1,6 +1,5 @@
 package com.microcourse.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,8 +7,6 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.OperationLogVO;
 import com.microcourse.entity.OperationLog;
-import com.microcourse.entity.User;
-import com.microcourse.repository.UserRepository;
 import com.microcourse.service.OperationLogService;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
@@ -40,14 +37,11 @@ public class OperationLogController {
     private static final Logger log = LoggerFactory.getLogger(OperationLogController.class);
 
     private final OperationLogService operationLogService;
-    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
     public OperationLogController(OperationLogService operationLogService,
-                                  UserRepository userRepository,
                                   ObjectMapper objectMapper) {
         this.operationLogService = operationLogService;
-        this.userRepository = userRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -73,16 +67,11 @@ public class OperationLogController {
         LocalDateTime startDateTime = startTime != null ? startTime.atStartOfDay() : null;
         LocalDateTime endDateTime = endTime != null ? endTime.atTime(LocalTime.MAX) : null;
 
-        // P0-3: username 模糊搜索 → 转换为 userIds
+        // P0-3: username 模糊搜索 → 转换为 userIds（下沉 Service）
         List<Long> userIds = null;
         if (username != null && !username.isBlank()) {
-            LambdaQueryWrapper<User> uWrapper = new LambdaQueryWrapper<>();
-            uWrapper.like(User::getUsername, username);
-            uWrapper.select(User::getId);
-            List<User> matchedUsers = userRepository.selectList(uWrapper);
-            userIds = matchedUsers.stream().map(User::getId).collect(Collectors.toList());
-            if (userIds.isEmpty()) {
-                // 没有匹配用户，直接返回空结果
+            userIds = operationLogService.findUserIdsByUsername(username);
+            if (userIds == null || userIds.isEmpty()) {
                 return R.ok(PageResult.of(List.of(), 0L, page, size));
             }
         }
@@ -91,8 +80,9 @@ public class OperationLogController {
                 userId, userIds, action, module, targetId,
                 startDateTime, endDateTime, page, size);
 
-        // P1-1: 批量查询用户名，避免 N+1
+        // P1-1: 批量查询用户名，避免 N+1（下沉 Service）
         Map<Long, String> userNameMap = buildUserNameMap(result.getItems());
+
 
         List<OperationLogVO> vos = result.getItems().stream()
                 .map(entity -> convertToVO(entity, userNameMap))
@@ -101,7 +91,7 @@ public class OperationLogController {
     }
 
     /**
-     * P1-1: 批量查询所有日志涉及的 userId → username 映射
+     * P1-1: 批量查询所有日志涉及的 userId → username 映射（委托 Service）
      */
     private Map<Long, String> buildUserNameMap(List<OperationLog> logs) {
         Set<Long> userIdSet = logs.stream()
@@ -111,13 +101,7 @@ public class OperationLogController {
         if (userIdSet.isEmpty()) {
             return Collections.emptyMap();
         }
-        try {
-            List<User> users = userRepository.selectBatchIds(userIdSet);
-            return users.stream().collect(Collectors.toMap(User::getId, User::getUsername, (a, b) -> a));
-        } catch (Exception e) {
-            log.warn("批量查询用户名失败, userIds={}", userIdSet, e);
-            return Collections.emptyMap();
-        }
+        return operationLogService.batchFindUsernames(userIdSet);
     }
 
     private OperationLogVO convertToVO(OperationLog entity, Map<Long, String> userNameMap) {

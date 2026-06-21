@@ -30,10 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 @Service
@@ -116,7 +114,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderVO getOrder(Long orderId) {
         Order order = orderRepository.selectById(orderId);
-        if (order == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+        if (order == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单不存在");
         if (!SecurityUtil.isOwnerOrAdmin(order.getUserId()) && !SecurityUtil.hasRole("ACADEMIC")) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
@@ -129,7 +127,18 @@ public class OrderServiceImpl implements OrderService {
         wrapper.eq(Order::getUserId, userId).orderByDesc(Order::getCreatedAt);
         IPage<Order> ipage = orderRepository.selectPage(new Page<>(page + 1, size), wrapper);
 
-        List<OrderVO> vos = ipage.getRecords().stream().map(this::toVO).collect(Collectors.toList());
+        // N+1 修复：批量预加载 course 标题
+        Set<Long> courseIds = ipage.getRecords().stream()
+                .map(Order::getCourseId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> courseTitleMap = new HashMap<>();
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds)
+                    .forEach(c -> courseTitleMap.put(c.getId(), c.getTitle()));
+        }
+
+        List<OrderVO> vos = ipage.getRecords().stream()
+                .map(o -> toVO(o, courseTitleMap)).collect(Collectors.toList());
         PageResult<OrderVO> result = new PageResult<>();
         result.setItems(vos);
         result.setPage(page);
@@ -143,7 +152,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(rollbackFor = Exception.class)
     public OrderVO pay(Long orderId, String paymentMethod) {
         Order order = orderRepository.selectById(orderId);
-        if (order == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+        if (order == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单不存在");
         if (!SecurityUtil.isOwnerOrAdmin(order.getUserId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
@@ -353,6 +362,25 @@ public class OrderServiceImpl implements OrderService {
         if (order.getCourseId() != null) {
             Course course = courseRepository.selectById(order.getCourseId());
             if (course != null) vo.setCourseTitle(course.getTitle());
+        }
+        return vo;
+    }
+
+    private OrderVO toVO(Order order, Map<Long, String> courseTitleMap) {
+        OrderVO vo = new OrderVO();
+        vo.setId(order.getId());
+        vo.setOrderNo(order.getOrderNo());
+        vo.setUserId(order.getUserId());
+        vo.setCourseId(order.getCourseId());
+        vo.setBundleId(order.getBundleId());
+        vo.setAmount(order.getAmount());
+        vo.setStatus(order.getStatus());
+        vo.setStatusText(OrderVO.statusText(order.getStatus()));
+        vo.setPaymentMethod(order.getPaymentMethod());
+        vo.setPaidAt(order.getPaidAt());
+        vo.setCreatedAt(order.getCreatedAt());
+        if (order.getCourseId() != null && courseTitleMap != null) {
+            vo.setCourseTitle(courseTitleMap.get(order.getCourseId()));
         }
         return vo;
     }

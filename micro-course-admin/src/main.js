@@ -8,12 +8,16 @@ import App from './App.vue'
 import router from './router'
 import { usePluginStore } from './store/plugins'
 import { syncEnumsFromBackend } from './utils/enums'
+import { initErrorReporting } from './utils/errorReport'
 
 const app = createApp(App)
 
 app.config.errorHandler = (err, instance, info) => {
   console.error('[Global Error]', info, err)
 }
+
+// 全局 JS / 未处理 Promise 异常自动上报后端（与 Vue errorHandler 互补，捕获非 Vue 运行时错误）
+initErrorReporting()
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)

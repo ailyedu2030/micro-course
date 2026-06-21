@@ -70,8 +70,8 @@
               accept="image/*"
               class="avatar-uploader"
             >
-              <el-avatar v-if="row.avatar" :src="row.avatar" :size="40" class="clickable-avatar" />
-              <el-avatar v-else :size="40" class="clickable-avatar">{{ row.realName?.charAt(0) || 'U' }}</el-avatar>
+              <el-avatar v-if="row.avatar" :src="row.avatar" :size="40" class="clickable-avatar" title="点击上传头像" />
+              <el-avatar v-else :size="40" class="clickable-avatar" title="点击上传头像">{{ row.realName?.charAt(0) || 'U' }}</el-avatar>
             </el-upload>
           </template>
         </el-table-column>

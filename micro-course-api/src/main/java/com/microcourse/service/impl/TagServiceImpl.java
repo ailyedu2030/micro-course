@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.TagCreateRequest;
+import com.microcourse.dto.TagUpdateRequest;
 import com.microcourse.dto.TagVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseTagRelation;
@@ -134,6 +135,28 @@ public class TagServiceImpl implements TagService {
                 throw new BusinessException(ErrorCode.NO_PERMISSION, "无权操作非本人课程的标签");
             }
         }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TagVO updateTag(Long id, TagUpdateRequest request) {
+        Tag tag = tagRepository.selectById(id);
+        if (tag == null) {
+            throw new BusinessException(ErrorCode.TAG_NOT_FOUND);
+        }
+        tag.setName(request.getName());
+        tagRepository.updateById(tag);
+        return convertToVO(tag);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteTag(Long id) {
+        Tag tag = tagRepository.selectById(id);
+        if (tag == null) {
+            throw new BusinessException(ErrorCode.TAG_NOT_FOUND);
+        }
+        tagRepository.deleteById(id);
     }
 
     private TagVO convertToVO(Tag tag) {

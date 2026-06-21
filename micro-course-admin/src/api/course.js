@@ -24,10 +24,6 @@ export function submitCourseForReview(id) {
   return request({ method: 'POST', url: `/courses/${id}/submit` })
 }
 
-export function submitForReview(id) {
-  return request({ method: 'POST', url: `/courses/${id}/submit` })
-}
-
 export function approveCourse(id) {
   return request({ method: 'POST', url: `/courses/${id}/approve` })
 }

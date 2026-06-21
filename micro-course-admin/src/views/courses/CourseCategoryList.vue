@@ -16,7 +16,18 @@
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <span class="toolbar-title">课程分类管理</span>
-        <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增分类</el-button>
+        <div class="toolbar-actions">
+          <el-input
+            v-model="searchForm.name"
+            placeholder="按名称搜索分类"
+            clearable
+            class="search-input"
+            @keyup.enter="handleSearch"
+            @clear="handleSearch"
+          />
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增分类</el-button>
+        </div>
       </div>
     </el-card>
 
@@ -92,6 +103,10 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 
+const searchForm = reactive({
+  name: ''
+})
+
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增分类')
 const isEdit = ref(false)
@@ -115,7 +130,7 @@ const formRules = {
 const fetchData = async () => {
   loading.value = true
   try {
-    const params = { page: page.value - 1, size: size.value }
+    const params = { page: page.value - 1, size: size.value, name: searchForm.name || undefined }
     const { data } = await getCategories(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
@@ -253,6 +268,16 @@ onMounted(() => {
   font-weight: var(--weight-semibold);
   color: var(--el-text-color-primary);
   letter-spacing: var(--tracking-wide);
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.search-input {
+  width: 220px;
 }
 
 .table-card {

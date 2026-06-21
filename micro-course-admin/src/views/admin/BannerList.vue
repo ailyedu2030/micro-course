@@ -12,7 +12,7 @@
           <span class="card-title">轮播图管理</span>
         </div>
         <div class="toolbar-right">
-          <el-button type="primary" @click="handleAdd" aria-label="删除"><el-icon><Plus /></el-icon>添加轮播图
+          <el-button type="primary" @click="handleAdd" aria-label="添加轮播图"><el-icon><Plus /></el-icon>添加轮播图
           </el-button>
         </div>
       </div>
@@ -51,6 +51,7 @@
               :src="row.imageUrl"
               fit="cover"
               class="banner-image"
+              :alt="row.title || '轮播图'"
               :preview-src-list="[row.imageUrl]"
               preview-teleported
             >

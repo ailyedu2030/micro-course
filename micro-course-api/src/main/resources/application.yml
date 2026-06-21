@@ -36,7 +36,7 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD}
       database: ${REDIS_DB:0}
       timeout: 2000ms
       lettuce:
@@ -63,6 +63,10 @@ spring:
   web:
     resources:
       static-locations: classpath:/static/,file:./uploads/
+      add-mappings: true
+
+  mvc:
+    throw-exception-if-no-handler-found: true
 
 mybatis-plus:
   mapper-locations: classpath:mapper/**/*.xml
@@ -76,6 +80,7 @@ mybatis-plus:
 
 jwt:
   secret: ${JWT_SECRET}
+  # 生产建议: JWT_EXPIRATION=1800000(30分), refresh=604800000(7天)
   expiration: ${JWT_EXPIRATION:7200000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
@@ -85,8 +90,9 @@ video:
   upload-dir: ${VIDEO_UPLOAD_DIR:uploads/videos}
   cover-dir: ${VIDEO_COVER_DIR:uploads/covers}
   # P1-7: 视频签名独立密钥（不与 JWT 共用）
+  # P1 安全：禁止 fallback 到 JWT_SECRET —— 未配置 VIDEO_SIGN_SECRET 时直接启动失败，避免静默复用 JWT 密钥
   sign:
-    secret: ${VIDEO_SIGN_SECRET:${JWT_SECRET}}
+    secret: ${VIDEO_SIGN_SECRET}
   transcode:
     # P1-2: FFmpeg 超时（分钟）可配置
     timeout-minutes: ${VIDEO_TRANSCODE_TIMEOUT:60}
@@ -112,7 +118,7 @@ plugin:
       page-image-width: 1920
       thumbnail-width: 320
     deepseek:
-      api-key: ${DEEPSEEK_API_KEY:}
+      api-key: ${DEEPSEEK_API_KEY}
       model: deepseek-chat
       base-url: https://api.deepseek.com
     minimax:

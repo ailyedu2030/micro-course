@@ -45,7 +45,8 @@ onErrorCaptured((err, instance, info) => {
 })
 
 onMounted(async () => {
-  if (isAuthenticated() && !userStore.userInfo) {
+  // 仅在 beforeEach 未填充角色时补充获取（避免冗余 API 调用）
+  if (isAuthenticated() && !userStore.role) {
     try {
       await userStore.getInfo()
     } catch (err) {

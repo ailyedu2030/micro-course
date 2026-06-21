@@ -11,6 +11,7 @@
       </template>
 
       <el-table v-loading="loading" :data="bundles" stripe border>
+        <template #empty><el-empty description="暂无课程套件" /></template>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="creatorName" label="创建者" width="120" />
@@ -42,8 +43,8 @@
 
     <!-- 创建/编辑套件 -->
     <el-dialog v-model="dialogVisible" :title="editingBundle ? '编辑套件' : '创建套件'" width="500px" @closed="resetForm">
-      <el-form :model="formData" label-width="80px">
-        <el-form-item label="名称">
+      <el-form ref="bundleFormRef" :model="formData" :rules="bundleRules" label-width="80px">
+        <el-form-item label="名称" prop="title">
           <el-input v-model="formData.title" placeholder="如：英语四级通关" />
         </el-form-item>
         <el-form-item label="描述">
@@ -113,6 +114,10 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const editingBundle = ref(null)
 const formData = ref({ title: '', description: '', price: null })
+const bundleFormRef = ref(null)
+const bundleRules = {
+  title: [{ required: true, message: '请输入套件名称', trigger: 'blur' }]
+}
 
 const itemDialog = ref(false)
 const currentBundle = ref(null)
@@ -141,10 +146,16 @@ const showCreateDialog = () => {
 const resetForm = () => {
   formData.value = { title: '', description: '', price: null }
   editingBundle.value = null
+  bundleFormRef.value?.clearValidate()
 }
 
 const handleSave = async () => {
-  if (!formData.value.title) { ElMessage.warning('请输入套件名称'); return }
+  if (!bundleFormRef.value) return
+  try {
+    await bundleFormRef.value.validate()
+  } catch {
+    return
+  }
   saving.value = true
   try {
     await createBundle({ title: formData.value.title, description: formData.value.description, price: formData.value.price, isFree: !formData.value.price })

@@ -43,7 +43,7 @@ public class UserStatusCheckFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(UserStatusCheckFilter.class);
 
     /** 用户状态缓存 key 前缀（供 UserServiceImpl 状态变更时清缓存复用，保证前缀一致）。 */
-    public static final String STATUS_CACHE_PREFIX = "user:status:";
+    public static final String STATUS_CACHE_PREFIX = "mc:user:status:";
 
     /** 缓存 TTL（秒）：30 秒在「禁用生效延迟上限」与「DB 压力」之间取平衡。 */
     private static final long STATUS_CACHE_TTL = 30L;

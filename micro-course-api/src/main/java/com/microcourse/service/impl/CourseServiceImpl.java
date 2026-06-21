@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -57,11 +58,11 @@ public class CourseServiceImpl implements CourseService {
     private static final Logger LOG = LoggerFactory.getLogger(CourseServiceImpl.class);
 
     // ★ Round 9-2 修复：课程详情缓存（5 分钟）—— 命中 5ms，避免每次回 DB（~100ms）
-    private static final String COURSE_CACHE_PREFIX = "course:detail:";
+    private static final String COURSE_CACHE_PREFIX = "mc:course:detail:";
     private static final long COURSE_CACHE_TTL = 300; // 秒
 
     // ★ Round 9-2 修复：课程统计缓存（1 小时）—— 聚合查询昂贵，命中 3ms
-    private static final String COURSE_STATS_CACHE_PREFIX = "course:stats:";
+    private static final String COURSE_STATS_CACHE_PREFIX = "mc:course:stats:";
     private static final long COURSE_STATS_CACHE_TTL = 3600; // 秒
 
     private final CourseRepository courseRepository;
@@ -146,6 +147,42 @@ public class CourseServiceImpl implements CourseService {
      * <p>选课人数 / 完成率 / 平均分均来自既有 {@code enrollments} 表（按 courseId 聚合），
      * 教师名取自 {@code users}，不引入新表/新列。课程不存在抛 {@link ErrorCode#COURSE_NOT_FOUND}（404）。</p>
      */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public CourseVO updateCover(Long id, MultipartFile file) {
+        Course course = courseRepository.selectById(id);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        try {
+            String uploadDir = System.getProperty("user.dir") + "/uploads/covers/";
+            java.io.File dir = new java.io.File(uploadDir);
+            if (!dir.exists()) dir.mkdirs();
+
+            String contentType = file.getContentType();
+            String ext = ".jpg";
+            if ("image/png".equals(contentType)) ext = ".png";
+            else if ("image/gif".equals(contentType)) ext = ".gif";
+            else if ("image/webp".equals(contentType)) ext = ".webp";
+            String filename = "course_" + id + "_" + System.currentTimeMillis() + ext;
+            java.io.File dest = new java.io.File(uploadDir + filename);
+            file.transferTo(dest);
+
+            String coverUrl = "/api/files/covers/" + filename;
+            course.setCoverUrl(coverUrl);
+            course.setUpdatedAt(LocalDateTime.now());
+            courseRepository.updateById(course);
+            evictCourseCacheAfterCommit(id);
+            return convertToVO(course);
+        } catch (Exception e) {
+            LOG.error("[Course] 封面上传失败 courseId={}", id, e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面上传失败");
+        }
+    }
+
     @Override
     @Transactional(readOnly = true)
     public CourseStatsVO computeStats(Long courseId) {
@@ -287,31 +324,63 @@ public class CourseServiceImpl implements CourseService {
         IPage<Course> ipage = courseRepository.selectPage(
                 new Page<>(query.getPage() + 1, query.getSize()), wrapper);
 
-        // N+1 修复：批量预加载 category 和 teacher
-        java.util.Map<Long, CourseCategory> categoryMap = new java.util.HashMap<>();
-        java.util.Map<Long, User> teacherMap = new java.util.HashMap<>();
+        // N+1 修复：批量预加载 category/teacher/评价数量（提取为独立方法降低 page() 复杂度）
+        List<Course> records = ipage.getRecords();
+        java.util.Map<Long, CourseCategory> categoryMap = buildCategoryMap(records);
+        java.util.Map<Long, User> teacherMap = buildTeacherMap(records);
+        java.util.Map<Long, Long> ratingCountMap = buildRatingCountMap(records);
 
-        java.util.Set<Long> categoryIds = ipage.getRecords().stream()
+        List<CourseVO> vos = records.stream()
+                .map(course -> convertToVOFromMaps(course, categoryMap, teacherMap, ratingCountMap))
+                .collect(Collectors.toList());
+
+        PageResult<CourseVO> result = new PageResult<>();
+        result.setItems(vos);
+        result.setPage(query.getPage());
+        result.setSize(query.getSize());
+        result.setTotalElements(ipage.getTotal());
+        result.setTotalPages(ipage.getPages());
+        return result;
+    }
+
+    /**
+     * N+1 修复（提取自 page()）：从课程记录批量提取 categoryId 并一次性查询，
+     * 返回 categoryId -> CourseCategory 的预加载 Map。空集合时返回空 Map，行为与原内联逻辑完全一致。
+     */
+    private java.util.Map<Long, CourseCategory> buildCategoryMap(List<Course> records) {
+        java.util.Map<Long, CourseCategory> categoryMap = new java.util.HashMap<>();
+        java.util.Set<Long> categoryIds = records.stream()
                 .map(Course::getCategoryId).filter(java.util.Objects::nonNull)
                 .collect(java.util.stream.Collectors.toSet());
-        java.util.Set<Long> teacherIds = ipage.getRecords().stream()
-                .map(Course::getTeacherId).filter(java.util.Objects::nonNull)
-                .collect(java.util.stream.Collectors.toSet());
-
         if (!categoryIds.isEmpty()) {
             categoryRepository.selectBatchIds(categoryIds).forEach(c -> categoryMap.put(c.getId(), c));
         }
+        return categoryMap;
+    }
+
+    /**
+     * N+1 修复（提取自 page()）：从课程记录批量提取 teacherId 并一次性查询，
+     * 返回 teacherId -> User 的预加载 Map。空集合时返回空 Map，行为与原内联逻辑完全一致。
+     */
+    private java.util.Map<Long, User> buildTeacherMap(List<Course> records) {
+        java.util.Map<Long, User> teacherMap = new java.util.HashMap<>();
+        java.util.Set<Long> teacherIds = records.stream()
+                .map(Course::getTeacherId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
         if (!teacherIds.isEmpty()) {
             userRepository.selectBatchIds(teacherIds).forEach(u -> teacherMap.put(u.getId(), u));
         }
+        return teacherMap;
+    }
 
-        final java.util.Map<Long, CourseCategory> finalCategoryMap = categoryMap;
-        final java.util.Map<Long, User> finalTeacherMap = teacherMap;
-
-        // Phase 11: 批量预加载评价数量，避免 N+1
+    /**
+     * Phase 11 N+1 修复（提取自 page()）：批量加载课程评价数量，
+     * 返回 courseId -> 评价数 的预加载 Map。空记录时返回空 Map，行为与原内联逻辑完全一致。
+     */
+    private java.util.Map<Long, Long> buildRatingCountMap(List<Course> records) {
         java.util.Map<Long, Long> ratingCountMap = new java.util.HashMap<>();
-        if (!ipage.getRecords().isEmpty()) {
-            List<Long> courseIds = ipage.getRecords().stream()
+        if (!records.isEmpty()) {
+            List<Long> courseIds = records.stream()
                     .map(Course::getId).collect(Collectors.toList());
             List<java.util.Map<String, Object>> countRows = reviewRepository.countByCourseIds(courseIds);
             for (java.util.Map<String, Object> row : countRows) {
@@ -324,19 +393,7 @@ public class CourseServiceImpl implements CourseService {
                 }
             }
         }
-        final java.util.Map<Long, Long> finalRatingCountMap = ratingCountMap;
-
-        List<CourseVO> vos = ipage.getRecords().stream()
-                .map(course -> convertToVOFromMaps(course, finalCategoryMap, finalTeacherMap, finalRatingCountMap))
-                .collect(Collectors.toList());
-
-        PageResult<CourseVO> result = new PageResult<>();
-        result.setItems(vos);
-        result.setPage(query.getPage());
-        result.setSize(query.getSize());
-        result.setTotalElements(ipage.getTotal());
-        result.setTotalPages(ipage.getPages());
-        return result;
+        return ratingCountMap;
     }
 
     @Override

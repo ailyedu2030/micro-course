@@ -23,8 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -73,10 +72,31 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         LambdaQueryWrapper<CourseBundleItem> itemWrapper = new LambdaQueryWrapper<>();
         itemWrapper.eq(CourseBundleItem::getBundleId, id).orderByAsc(CourseBundleItem::getSortOrder);
         List<CourseBundleItem> items = itemRepository.selectList(itemWrapper);
+        if (items.isEmpty()) {
+            vo.setItems(Collections.emptyList());
+            return vo;
+        }
+
+        // N+1 修复：批量预加载 course 和 teacher
+        Set<Long> courseIds = items.stream()
+                .map(CourseBundleItem::getCourseId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Course> courseMap = new HashMap<>();
+        Map<Long, User> teacherMap = new HashMap<>();
+        if (!courseIds.isEmpty()) {
+            List<Course> courses = courseRepository.selectBatchIds(courseIds);
+            for (Course c : courses) {
+                courseMap.put(c.getId(), c);
+                if (c.getTeacherId() != null && !teacherMap.containsKey(c.getTeacherId())) {
+                    User teacher = userRepository.selectById(c.getTeacherId());
+                    if (teacher != null) teacherMap.put(teacher.getId(), teacher);
+                }
+            }
+        }
 
         List<BundleItemVO> itemVOs = new ArrayList<>();
         for (CourseBundleItem item : items) {
-            Course course = courseRepository.selectById(item.getCourseId());
+            Course course = courseMap.get(item.getCourseId());
             if (course == null) continue;
             BundleItemVO ivo = new BundleItemVO();
             ivo.setId(item.getId());
@@ -86,7 +106,7 @@ public class CourseBundleServiceImpl implements CourseBundleService {
             ivo.setCourseType(course.getCourseType());
             ivo.setSortOrder(item.getSortOrder());
             ivo.setIsRequired(item.getIsRequired());
-            User teacher = userRepository.selectById(course.getTeacherId());
+            User teacher = teacherMap.get(course.getTeacherId());
             if (teacher != null) ivo.setTeacherName(teacher.getRealName());
             itemVOs.add(ivo);
         }
@@ -103,7 +123,17 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         wrapper.orderByDesc(CourseBundle::getCreatedAt);
         IPage<CourseBundle> ipage = bundleRepository.selectPage(new Page<>(page + 1, size), wrapper);
 
-        List<BundleVO> vos = ipage.getRecords().stream().map(this::toVO).collect(Collectors.toList());
+        // N+1 修复：批量预加载 creator 名称
+        Set<Long> creatorIds = ipage.getRecords().stream()
+                .map(CourseBundle::getCreatorId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> creatorNameMap = new HashMap<>();
+        if (!creatorIds.isEmpty()) {
+            userRepository.selectBatchIds(creatorIds).forEach(u -> creatorNameMap.put(u.getId(), u.getRealName()));
+        }
+
+        List<BundleVO> vos = ipage.getRecords().stream()
+                .map(b -> toVO(b, creatorNameMap)).collect(Collectors.toList());
         PageResult<BundleVO> result = new PageResult<>();
         result.setItems(vos);
         result.setPage(page);
@@ -135,7 +165,7 @@ public class CourseBundleServiceImpl implements CourseBundleService {
     public void removeCourse(Long bundleId, Long itemId) {
         CourseBundleItem item = itemRepository.selectById(itemId);
         if (item == null || !item.getBundleId().equals(bundleId)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "套餐课程项不存在或不属于该套餐");
         }
         CourseBundle bundle = bundleRepository.selectById(bundleId);
         if (bundle != null && !SecurityUtil.isOwnerOrAdmin(bundle.getCreatorId())) {
@@ -170,6 +200,22 @@ public class CourseBundleServiceImpl implements CourseBundleService {
             User creator = userRepository.selectById(bundle.getCreatorId());
             if (creator != null) vo.setCreatorName(creator.getRealName());
         }
+        return vo;
+    }
+
+    private BundleVO toVO(CourseBundle bundle, Map<Long, String> creatorNameMap) {
+        BundleVO vo = new BundleVO();
+        vo.setId(bundle.getId());
+        vo.setTitle(bundle.getTitle());
+        vo.setDescription(bundle.getDescription());
+        vo.setCoverUrl(bundle.getCoverUrl());
+        vo.setCreatorId(bundle.getCreatorId());
+        vo.setPrice(bundle.getPrice());
+        vo.setIsFree(bundle.getIsFree());
+        vo.setStudentCount(bundle.getStudentCount());
+        vo.setStatus(bundle.getStatus());
+        vo.setCreatedAt(bundle.getCreatedAt());
+        vo.setCreatorName(creatorNameMap.get(bundle.getCreatorId()));
         return vo;
     }
 }

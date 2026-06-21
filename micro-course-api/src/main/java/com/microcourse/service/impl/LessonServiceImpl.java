@@ -49,7 +49,7 @@ public class LessonServiceImpl implements LessonService {
     @Transactional(rollbackFor = Exception.class)
     public LessonVO update(Long id, String title, Integer duration, Boolean visible) {
         Lesson lesson = lessonRepository.selectById(id);
-        if (lesson == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+        if (lesson == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课时不存在");
         if (title != null) lesson.setTitle(title);
         if (duration != null) lesson.setDuration(duration);
         if (visible != null) lesson.setVisible(visible);
@@ -85,7 +85,7 @@ public class LessonServiceImpl implements LessonService {
     @Override
     public LessonVO getById(Long id) {
         Lesson lesson = lessonRepository.selectById(id);
-        if (lesson == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+        if (lesson == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课时不存在");
         return toVO(lesson);
     }
 

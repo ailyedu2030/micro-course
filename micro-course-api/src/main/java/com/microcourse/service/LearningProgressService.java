@@ -30,4 +30,12 @@ public interface LearningProgressService {
      * @return { totalSeconds: N }
      */
     Map<String, Object> getTotalTime(Long userId);
+
+    /**
+     * 校验教师是否为指定课程的授课教师
+     * @param teacherId 教师用户ID
+     * @param courseId 课程ID
+     * @throws BusinessException 非本人课程时抛 NO_PERMISSION
+     */
+    void assertTeacherOwnsCourse(Long teacherId, Long courseId);
 }
