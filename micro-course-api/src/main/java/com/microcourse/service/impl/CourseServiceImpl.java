@@ -8,6 +8,7 @@ import com.microcourse.dto.*;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
 import com.microcourse.entity.CourseChapter;
+import com.microcourse.entity.CourseReviewLog;
 import com.microcourse.entity.User;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.UserRole;
@@ -19,6 +20,7 @@ import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseReviewRepository;
+import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
@@ -46,6 +48,7 @@ public class CourseServiceImpl implements CourseService {
     private final UserRepository userRepository;
     private final CourseChapterRepository chapterRepository;
     private final CourseReviewRepository reviewRepository;
+    private final CourseReviewLogRepository reviewLogRepository;
     private final PluginGrantRepository pluginGrantRepository;
     private final PluginRegistry pluginRegistry;
     private final CourseSlideMapper courseSlideMapper;
@@ -56,6 +59,7 @@ public class CourseServiceImpl implements CourseService {
                              UserRepository userRepository,
                              CourseChapterRepository chapterRepository,
                              CourseReviewRepository reviewRepository,
+                             CourseReviewLogRepository reviewLogRepository,
                              PluginGrantRepository pluginGrantRepository,
                              PluginRegistry pluginRegistry,
                              CourseSlideMapper courseSlideMapper,
@@ -65,10 +69,27 @@ public class CourseServiceImpl implements CourseService {
         this.userRepository = userRepository;
         this.chapterRepository = chapterRepository;
         this.reviewRepository = reviewRepository;
+        this.reviewLogRepository = reviewLogRepository;
         this.pluginGrantRepository = pluginGrantRepository;
         this.pluginRegistry = pluginRegistry;
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
+    }
+
+    /**
+     * 记录课程审核日志（CAS 更新成功后调用）
+     */
+    private void recordReviewLog(Long courseId, String action, Integer previousStatus,
+                                 Integer newStatus, String reason) {
+        CourseReviewLog log = new CourseReviewLog();
+        log.setCourseId(courseId);
+        log.setReviewerId(SecurityUtil.getCurrentUserId());
+        log.setAction(action);
+        log.setPreviousStatus(previousStatus);
+        log.setNewStatus(newStatus);
+        log.setReason(reason);
+        log.setCreatedAt(LocalDateTime.now());
+        reviewLogRepository.insert(log);
     }
 
     @Override
@@ -362,6 +383,7 @@ public class CourseServiceImpl implements CourseService {
         }
 
         courseRepository.updateById(course);
+        recordReviewLog(id, "UPDATE", currentStatus, status, null);
     }
 
     @Override
@@ -388,6 +410,8 @@ public class CourseServiceImpl implements CourseService {
         if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
+        recordReviewLog(id, "SUBMIT", course.getStatus(),
+                CourseStatus.PENDING_REVIEW.getCode(), null);
     }
 
     @Override
@@ -412,6 +436,8 @@ public class CourseServiceImpl implements CourseService {
         if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
+        recordReviewLog(id, "APPROVE", CourseStatus.PENDING_REVIEW.getCode(),
+                CourseStatus.APPROVED.getCode(), null);
     }
 
     @Override
@@ -436,6 +462,8 @@ public class CourseServiceImpl implements CourseService {
         if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
+        recordReviewLog(id, "REJECT", CourseStatus.PENDING_REVIEW.getCode(),
+                CourseStatus.REJECTED.getCode(), reason);
     }
 
     @Override
@@ -460,6 +488,8 @@ public class CourseServiceImpl implements CourseService {
         if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
+        recordReviewLog(id, "PUBLISH", CourseStatus.APPROVED.getCode(),
+                CourseStatus.PUBLISHED.getCode(), null);
     }
 
     @Override

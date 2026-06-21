@@ -15,5 +15,7 @@ public interface OrderService {
 
     OrderVO pay(Long orderId, String paymentMethod);
 
+    OrderVO cancelOrder(Long orderId);
+
     void paymentCallback(Map<String, String> params);
 }

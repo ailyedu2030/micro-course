@@ -51,6 +51,12 @@ public class OrderController {
         return R.ok(orderService.pay(id, body.getOrDefault("paymentMethod", "BALANCE")));
     }
 
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
+    public R<OrderVO> cancelOrder(@PathVariable Long id) {
+        return R.ok(orderService.cancelOrder(id));
+    }
+
     @PostMapping("/callback")
     @PreAuthorize("hasAnyRole('ADMIN')")
     public R<Void> paymentCallback(@RequestBody Map<String, String> params) {

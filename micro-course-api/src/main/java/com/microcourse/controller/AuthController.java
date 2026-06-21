@@ -39,6 +39,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
+    @PreAuthorize("permitAll()")
     public R<LoginResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         LoginResponse response = authService.refresh(request.getRefreshToken());
         return R.ok(response);

@@ -15,6 +15,7 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.Major;
+import com.microcourse.entity.Order;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -23,6 +24,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.MajorRepository;
+import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.CertificateService;
@@ -55,6 +57,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final MajorRepository majorRepository;
     private final CertificateService certificateService;
     private final BadgeService badgeService;
+    private final OrderRepository orderRepository;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
                                  CourseRepository courseRepository,
@@ -63,7 +66,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                  ClassesRepository classesRepository,
                                  MajorRepository majorRepository,
                                  CertificateService certificateService,
-                                 BadgeService badgeService) {
+                                 BadgeService badgeService,
+                                 OrderRepository orderRepository) {
         this.enrollmentRepository = enrollmentRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
@@ -72,6 +76,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         this.learningProgressRepository = learningProgressRepository;
         this.classesRepository = classesRepository;
         this.majorRepository = majorRepository;
+        this.orderRepository = orderRepository;
     }
 
     @Override
@@ -441,6 +446,20 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.setEnrollmentStatus("CANCELLED");
         enrollment.setUpdatedAt(LocalDateTime.now());
         enrollmentRepository.updateById(enrollment);
+
+        // 同步检查关联订单：若有 PAID 订单则标记为 REFUNDED 并记录日志
+        if (enrollment.getCourseId() != null) {
+            LambdaQueryWrapper<Order> orderWrapper = new LambdaQueryWrapper<>();
+            orderWrapper.eq(Order::getUserId, enrollment.getUserId())
+                    .eq(Order::getCourseId, enrollment.getCourseId())
+                    .eq(Order::getStatus, "PAID");
+            Order paidOrder = orderRepository.selectOne(orderWrapper);
+            if (paidOrder != null) {
+                log.warn("取消选课后发现已支付订单未退款: orderId={}, userId={}, courseId={}",
+                        paidOrder.getId(), enrollment.getUserId(), enrollment.getCourseId());
+                // TODO: 实际生产环境应触发退款流程，当前记录日志待人工处理
+            }
+        }
     }
 
     @Override

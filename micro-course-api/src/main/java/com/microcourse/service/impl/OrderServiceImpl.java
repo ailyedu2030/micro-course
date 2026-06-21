@@ -176,6 +176,30 @@ public class OrderServiceImpl implements OrderService {
         return toVO(orderRepository.selectById(orderId));
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderVO cancelOrder(Long orderId) {
+        Order order = orderRepository.selectById(orderId);
+        if (order == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单不存在");
+        if (!SecurityUtil.isOwnerOrAdmin(order.getUserId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        if (!"PENDING".equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "只能取消待支付订单");
+        }
+        order.setStatus("CANCELLED");
+        order.setUpdatedAt(LocalDateTime.now());
+        // 用 CAS 更新防止并发
+        int affected = orderRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                        .eq(Order::getId, orderId)
+                        .eq(Order::getStatus, "PENDING")
+                        .set(Order::getStatus, "CANCELLED")
+                        .set(Order::getUpdatedAt, LocalDateTime.now()));
+        if (affected == 0) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更");
+        return toVO(orderRepository.selectById(orderId));
+    }
+
     /**
      * 支付回调（外部网关调用，无 JWT 认证上下文）
      * 使用独立的事务方法避免自调用 AOP 失效
@@ -212,7 +236,7 @@ public class OrderServiceImpl implements OrderService {
      * 单独事务方法，确保被 Spring AOP 拦截
      */
     @Transactional(rollbackFor = Exception.class)
-    public void processPayment(Long orderId, String paymentMethod) {
+    private void processPayment(Long orderId, String paymentMethod) {
         Order order = orderRepository.selectById(orderId);
         if (order == null) {
             log.warn("[processPayment] order not found: id={}", orderId);
