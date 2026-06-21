@@ -58,10 +58,39 @@
           <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入练习描述" />
         </el-form-item>
 
+        <!-- 题库统计 & 随机选题 -->
+        <el-divider v-if="formData.courseId" />
+        <el-form-item v-if="formData.courseId" label="题库统计">
+          <div class="bank-stats">
+            <el-tag v-for="s in bankStats" :key="s.type" :type="s.count > 0 ? 'primary' : 'info'" size="small" class="stat-tag">
+              {{ s.label }}: {{ s.count }} 题
+            </el-tag>
+            <el-tag type="primary" size="small" effect="dark">共 {{ totalBankCount }} 题</el-tag>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="formData.courseId" label="随机选题">
+          <div class="random-pick">
+            <div v-for="s in bankStats" :key="s.type" class="pick-row">
+              <span class="pick-label">{{ s.label }}</span>
+              <el-input-number v-model="s.pickCount" :min="0" :max="s.count" size="small" controls-position="right" class="pick-input" />
+              <span class="pick-hint">/ {{ s.count }} 题</span>
+            </div>
+            <el-button type="success" size="small" :disabled="totalPickCount === 0" @click="handleRandomPick">
+              随机抽取 {{ totalPickCount }} 题
+            </el-button>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="formData.courseId && exerciseQuestions.length > 0" label="已选题">
+          <div class="selected-info">
+            <span class="selected-count">{{ exerciseQuestions.length }} 题已选</span>
+            <el-button type="danger" size="small" plain @click="exerciseQuestions = []">清空</el-button>
+          </div>
+        </el-form-item>
+
         <!-- 题目预览入口 -->
-        <el-form-item v-if="exerciseQuestions.length > 0" label="题目预览">
-          <el-button type="primary" plain @click="handlePreviewQuestions">
-            预览题目 ({{ exerciseQuestions.length }} 题)
+        <el-form-item v-if="exerciseQuestions.length > 0" label="操作">
+          <el-button type="primary" plain @click="handlePreviewQuestions" class="preview-btn">
+            <el-icon><View /></el-icon>预览题目 ({{ exerciseQuestions.length }} 题)
           </el-button>
         </el-form-item>
       </el-form>
@@ -150,15 +179,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getExerciseById, createExercise, updateExercise } from '@/api/exercise'
+import { View } from '@element-plus/icons-vue'
+import { getExerciseById, createExercise, updateExercise, addQuestionsToExercise } from '@/api/exercise'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
+import { getQuestions } from '@/api/question'
+import { useUserStore } from '@/store/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 const formRef = ref(null)
 const submitLoading = ref(false)
@@ -190,6 +223,58 @@ const formRules = {
 const previewDialogVisible = ref(false)
 const currentPreviewIndex = ref(0)
 const currentPreviewQuestion = computed(() => exerciseQuestions.value[currentPreviewIndex.value] || null)
+
+// ===== 题库统计 & 随机选题 =====
+const TYPE_LABELS = {
+  SINGLE_CHOICE: '单选题', MULTIPLE_CHOICE: '多选题',
+  TRUE_FALSE: '判断题', FILL_BLANK: '填空题', SHORT_ANSWER: '简答题'
+}
+const bankStats = ref([])
+const totalBankCount = ref(0)
+const totalPickCount = computed(() => bankStats.value.reduce((s, t) => s + (t.pickCount || 0), 0))
+
+// 课程或章节变化时刷新题库统计
+watch(() => formData.chapterId, async (val) => {
+  if (!formData.courseId) { bankStats.value = []; totalBankCount.value = 0; return }
+  try {
+    const params = { courseId: formData.courseId, size: 9999 }
+    if (val) params.chapterId = val
+    const { data } = await getQuestions(params)
+    const items = data?.items || []
+    totalBankCount.value = items.length
+    const groups = {}
+    for (const q of items) {
+      const t = q.questionType || 'OTHER'
+      groups[t] = (groups[t] || 0) + 1
+    }
+    bankStats.value = Object.entries(TYPE_LABELS)
+      .map(([type, label]) => ({ type, label, count: groups[type] || 0, pickCount: 0 }))
+      .filter(s => s.count > 0)
+  } catch { bankStats.value = []; totalBankCount.value = 0 }
+})
+
+async function handleRandomPick() {
+  const picks = {}
+  for (const s of bankStats.value) {
+    if (s.pickCount > 0) picks[s.type] = s.pickCount
+  }
+  try {
+    const params = { courseId: formData.courseId, size: 9999 }
+    if (formData.chapterId) params.chapterId = formData.chapterId
+    const { data } = await getQuestions(params)
+    const all = data?.items || []
+    const picked = []
+    for (const [type, count] of Object.entries(picks)) {
+      const pool = all.filter(q => (q.questionType || '') === type)
+      const shuffled = [...pool].sort(() => Math.random() - 0.5)
+      picked.push(...shuffled.slice(0, count))
+    }
+    exerciseQuestions.value = [...exerciseQuestions.value, ...picked]
+    // 重置抽取数量
+    bankStats.value.forEach(s => { s.pickCount = 0 })
+    ElMessage.success(`已随机抽取 ${picked.length} 题`)
+  } catch { ElMessage.error('随机选题失败') }
+}
 
 const parsedOptions = (optionsStr) => {
   if (!optionsStr) return []
@@ -262,12 +347,21 @@ const handleSubmit = async () => {
     if (!valid) return
     submitLoading.value = true
     try {
+      let exerciseId = exerciseId.value
       if (isEdit.value) {
-        await updateExercise(exerciseId.value, formData)
+        await updateExercise(exerciseId, formData)
         ElMessage.success('编辑成功')
       } else {
-        await createExercise(formData)
+        const { data } = await createExercise(formData)
+        exerciseId = data.id
         ElMessage.success('创建成功')
+      }
+      // 自动保存已选的随机题目
+      if (exerciseQuestions.value.length > 0) {
+        const qIds = exerciseQuestions.value.map(q => q.id).filter(Boolean)
+        if (qIds.length > 0) {
+          await addQuestionsToExercise(exerciseId, { questionIds: qIds })
+        }
       }
       router.back()
     } catch {
@@ -280,7 +374,9 @@ const handleSubmit = async () => {
 
 const fetchCourseOptions = async () => {
   try {
-    const { data } = await getCourses({ page: 0, size: 1000 })
+    const params = { page: 0, size: 1000 }
+    if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
+    const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
     ElMessage.error('获取课程列表失败')
