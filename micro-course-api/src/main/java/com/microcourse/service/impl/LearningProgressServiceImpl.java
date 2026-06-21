@@ -3,9 +3,6 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.LearningProgressVO;
 import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.dto.ProgressUpdateRequest;
@@ -144,6 +141,10 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LearningProgressVO create(ProgressCreateRequest request) {
+        // Validate courseId exists
+        if (request.getCourseId() == null || courseRepository.selectById(request.getCourseId()) == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
         // Validate chapterId exists if provided (FK constraint)
         if (request.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(request.getChapterId());

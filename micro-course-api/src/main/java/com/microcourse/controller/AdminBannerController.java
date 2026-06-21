@@ -84,7 +84,7 @@ public class AdminBannerController {
             java.io.File dest = new java.io.File(uploadDir + filename);
             image.transferTo(dest);
 
-            String imageUrl = "/banners/" + filename;
+            String imageUrl = "/api/files/banners/" + filename;
 
             // 3. 创建 Banner 记录
             BannerVO banner = bannerService.create(imageUrl, linkUrl, sortOrder, enabled);
