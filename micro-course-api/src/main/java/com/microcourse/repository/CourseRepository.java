@@ -81,7 +81,7 @@ public interface CourseRepository extends BaseMapper<Course> {
             "  SELECT c.id AS course_id, " +
             "    CASE WHEN COUNT(e2.id) = 0 THEN 0 " +
             "         ELSE COUNT(CASE WHEN e2.completed = true THEN 1 END) * 100.0 / COUNT(e2.id) END AS completion_rate, " +
-            "    COALESCE(AVG(er.score * 1.0 / NULLIF(er.total_score, 0)), 0) AS accuracy_rate " +
+            "    COALESCE(AVG(er.score * 100.0 / NULLIF(er.total_score, 0)), 0) AS accuracy_rate " +
             "  FROM courses c " +
             "  LEFT JOIN enrollments e2 ON e2.course_id = c.id AND e2.deleted_at IS NULL " +
             "  LEFT JOIN exercise_records er ON er.user_id = e2.user_id AND er.deleted_at IS NULL " +
@@ -102,7 +102,7 @@ public interface CourseRepository extends BaseMapper<Course> {
             "  COUNT(DISTINCT e.id) AS enrollment_count, " +
             "  CASE WHEN COUNT(e.id) = 0 THEN 0 " +
             "       ELSE COUNT(CASE WHEN e.completed = true THEN 1 END) * 100.0 / COUNT(e.id) END AS completion_rate, " +
-            "  COALESCE(AVG(er.score * 1.0 / NULLIF(er.total_score, 0)), 0) AS avg_score " +
+            "  COALESCE(AVG(er.score * 100.0 / NULLIF(er.total_score, 0)), 0) AS avg_score " +
             "FROM courses c " +
             "LEFT JOIN users u ON u.id = c.teacher_id AND u.deleted_at IS NULL " +
             "LEFT JOIN enrollments e ON e.course_id = c.id AND e.deleted_at IS NULL " +
