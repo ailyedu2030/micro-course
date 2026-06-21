@@ -52,11 +52,11 @@
           <div class="dept-metrics">
             <div class="metric">
               <div class="metric-label">完成率</div>
-              <el-progress :percentage="dept.avgCompletionRate || 0" :stroke-width="6" :color="completionColor(dept.avgCompletionRate)" />
+              <el-progress :percentage="Math.round(dept.avgCompletionRate || 0)" :stroke-width="6" :color="completionColor(dept.avgCompletionRate)" />
             </div>
             <div class="metric">
               <div class="metric-label">正确率</div>
-              <el-progress :percentage="dept.avgAccuracyRate || 0" :stroke-width="6" :color="accuracyColor(dept.avgAccuracyRate)" />
+              <el-progress :percentage="Math.round(dept.avgAccuracyRate || 0)" :stroke-width="6" :color="accuracyColor(dept.avgAccuracyRate)" />
             </div>
           </div>
           <div class="dept-action">
@@ -107,6 +107,10 @@ const deptLoading = ref(false)
 const warnLoading = ref(false)
 const sortBy = ref('completion')
 
+function fmtPct(v) {
+  return v !== null && v !== undefined ? Number(v).toFixed(1) + '%' : '—'
+}
+
 function completionColor(rate) {
   if (rate >= 80) return '#67c23a'
   if (rate >= 50) return '#409eff'
@@ -132,8 +136,8 @@ async function fetchOverview() {
     overviewStats.value = [
       { label: '总课程数', value: data.totalCourses ?? '—', color: '#409eff' },
       { label: '选课人次', value: data.totalEnrollments ?? '—', color: '#67c23a' },
-      { label: '平均完成率', value: (data.avgCompletionRate ?? '—') + '%', color: '#e6a23c', trend: data.completionTrend },
-      { label: '平均正确率', value: (data.avgAccuracyRate ?? '—') + '%', color: '#f56c6c', trend: data.accuracyTrend },
+      { label: '平均完成率', value: fmtPct(data.avgCompletionRate), color: '#e6a23c', trend: data.completionTrend },
+      { label: '平均正确率', value: fmtPct(data.avgAccuracyRate), color: '#f56c6c', trend: data.accuracyTrend },
     ]
   } catch { /* ignore */ }
 }
