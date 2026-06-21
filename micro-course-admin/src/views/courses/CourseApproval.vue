@@ -81,8 +81,6 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourses, approveCourse, rejectCourse, publishCourse } from '@/api/course'
 import { useUserStore } from '@/store/user'
-import { Select, Close } from '@element-plus/icons-vue'
-import { ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const userStore = useUserStore()
