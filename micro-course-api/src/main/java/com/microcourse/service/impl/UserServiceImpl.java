@@ -571,6 +571,12 @@ public class UserServiceImpl implements UserService {
 
             // 更新数据库
             String avatarUrl = "/api/files/avatars/" + filename;
+            // 清理旧头像文件
+            if (user.getAvatar() != null && user.getAvatar().startsWith("/api/files/avatars/")) {
+                String oldFilename = user.getAvatar().substring("/api/files/avatars/".length());
+                java.io.File oldFile = new java.io.File(uploadDir + oldFilename);
+                if (oldFile.exists()) oldFile.delete();
+            }
             user.setAvatar(avatarUrl);
             userRepository.updateById(user);
 

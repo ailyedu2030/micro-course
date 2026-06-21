@@ -126,7 +126,11 @@ public class LearningProgressController {
     private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof Long) return (Long) principal;
-        throw new com.microcourse.exception.BusinessException(com.microcourse.exception.ErrorCode.TOKEN_INVALID);
+        if (principal instanceof Number) return ((Number) principal).longValue();
+        if (principal instanceof String str) {
+            try { return Long.parseLong(str); } catch (NumberFormatException ignored) { }
+        }
+        throw new BusinessException(ErrorCode.TOKEN_INVALID, "无法获取用户ID");
     }
 
     private boolean hasRole(String role) {

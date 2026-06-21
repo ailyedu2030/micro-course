@@ -116,8 +116,9 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         if (request.getWatchDelta() != null && request.getWatchDelta() > 0) {
             wrapper.setSql(true, "total_watch_time = COALESCE(total_watch_time, 0) + {0}", request.getWatchDelta());
         } else if (request.getTotalWatchTime() != null && request.getTotalWatchTime() > 0) {
-            // 兼容旧客户端字段:也转为累加语义,而非覆盖
-            wrapper.setSql(true, "total_watch_time = COALESCE(total_watch_time, 0) + {0}", request.getTotalWatchTime());
+            // 兼容旧客户端字段:旧客户端把 totalWatchTime 当绝对值上传,改用 GREATEST 取最大值,
+            // 避免每次上报都累加导致数据翻倍
+            wrapper.setSql(true, "total_watch_time = GREATEST(COALESCE(total_watch_time, 0), {0})", request.getTotalWatchTime());
         }
         if (request.getDeviceId() != null) {
             wrapper.set(LearningProgress::getDeviceId, request.getDeviceId());
