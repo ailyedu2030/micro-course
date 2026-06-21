@@ -265,6 +265,18 @@ public class QuestionServiceImpl implements QuestionService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
+        // SECURITY: Excel 魔数校验（XLS: D0CF11E0, XLSX: 504B0304）
+        try (java.io.InputStream is = file.getInputStream()) {
+            byte[] magic = new byte[4];
+            int read = is.read(magic);
+            if (read < 4) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小，无法验证格式");
+            boolean isXls = (magic[0] & 0xFF) == 0xD0 && (magic[1] & 0xFF) == 0xCF
+                    && (magic[2] & 0xFF) == 0x11 && (magic[3] & 0xFF) == 0xE0;
+            boolean isXlsx = (magic[0] & 0xFF) == 0x50 && magic[1] == 0x4B
+                    && magic[2] == 0x03 && magic[3] == 0x04;
+            if (!isXls && !isXlsx) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 Excel 文件（魔数校验失败）");
+        } catch (java.io.IOException e) { throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取文件"); }
+
         // SECURITY: 只有课程教师或 ADMIN 可批量导入题目
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "无权向该课程导入题目");

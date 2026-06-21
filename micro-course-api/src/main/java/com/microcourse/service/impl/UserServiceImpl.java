@@ -551,6 +551,8 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
+        // SECURITY: 图片魔数校验（JPEG: FFD8FF, PNG: 89504E47）
+        validateImageMagic(file);
         try {
             // 保存到 uploads/avatars/ 目录
             String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
@@ -577,6 +579,17 @@ public class UserServiceImpl implements UserService {
             log.error("[User] 头像上传失败 userId={}", user != null ? user.getId() : "null", e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像上传失败");
         }
+    }
+
+    private void validateImageMagic(MultipartFile file) {
+        try (java.io.InputStream is = file.getInputStream()) {
+            byte[] magic = new byte[8];
+            int read = is.read(magic);
+            if (read < 4) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小，无法验证图片格式");
+            boolean isJpeg = (magic[0] & 0xFF) == 0xFF && (magic[1] & 0xFF) == 0xD8 && (magic[2] & 0xFF) == 0xFF;
+            boolean isPng = (magic[0] & 0xFF) == 0x89 && magic[1] == 'P' && magic[2] == 'N' && magic[3] == 'G';
+            if (!isJpeg && !isPng) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像必须为 JPEG 或 PNG 格式（魔数校验失败）");
+        } catch (java.io.IOException e) { throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取头像文件"); }
     }
 
     private UserVO convertToVO(User user) {

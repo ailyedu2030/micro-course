@@ -62,6 +62,16 @@ public class AdminBannerController {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 jpg/png/webp 格式");
         }
 
+        // SECURITY: 图片魔数校验（JPEG: FFD8FF, PNG: 89504E47, WebP: 52494646）
+        try (java.io.InputStream is = image.getInputStream()) {
+            byte[] magic = new byte[8];
+            int read = is.read(magic);
+            if (read < 4) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小");
+            boolean isJpeg = (magic[0] & 0xFF) == 0xFF && (magic[1] & 0xFF) == 0xD8 && (magic[2] & 0xFF) == 0xFF;
+            boolean isPng = (magic[0] & 0xFF) == 0x89 && magic[1] == 'P' && magic[2] == 'N' && magic[3] == 'G';
+            if (!isJpeg && !isPng) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片格式校验失败（仅支持JPEG/PNG）");
+        } catch (java.io.IOException e) { throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取图片"); }
+
         // 2. 保存图片到 uploads/banners/{uuid}.{ext}
         try {
             String uploadDir = System.getProperty("user.dir") + "/uploads/banners/";
