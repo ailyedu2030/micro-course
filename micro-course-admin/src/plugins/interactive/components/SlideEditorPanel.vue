@@ -22,7 +22,11 @@
 
 <script setup>
 import { computed } from 'vue'
-const props = defineProps({ page: Object, aiLoading: Boolean, ttsLoading: Boolean })
+const props = defineProps({
+  page: { type: Object, default: () => ({}) },
+  aiLoading: { type: Boolean, default: false },
+  ttsLoading: { type: Boolean, default: false }
+})
 defineEmits(['generateAI', 'generateTTS', 'saveScript'])
 const script = computed({
   get: () => props.page?.narrationScript || '',

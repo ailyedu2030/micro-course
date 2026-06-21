@@ -3,10 +3,14 @@
     <SlideUploadZone v-if="!slide" :uploading="uploading" :handle-upload="handleUpload" />
     <div v-else class="editor-layout">
       <SlideThumbnailGrid :pages="pages" :selected="selectedPage" @select="selectPage" />
-      <SlideEditorPanel v-if="selectedPage" :page="selectedPage"
-        :ai-loading="aiLoading" :tts-loading="ttsLoading"
-        @generateAI="handleGenerateAI" @generateTTS="handleGenerateTTS"
-        @saveScript="handleSaveScript" />
+      <SlideEditorPanel
+        v-if="selectedPage"
+        :page="selectedPage"
+        :ai-loading="aiLoading"
+        :tts-loading="ttsLoading"
+        @generate-ai="handleGenerateAI"
+        @generate-tts="handleGenerateTTS"
+        @save-script="handleSaveScript" />
       <div v-else class="editor-empty-hint">点击左侧缩略图编辑讲述稿</div>
     </div>
   </div>

@@ -43,8 +43,8 @@ import { ElMessage } from 'element-plus'
 import { getNarrationSettings, updateNarrationSettings } from '../api/slide'
 
 const props = defineProps({
-  modelValue: Boolean,
-  courseId: [Number, String]
+  modelValue: { type: Boolean, default: false },
+  courseId: { type: [Number, String], default: null }
 })
 const emit = defineEmits(['update:modelValue', 'saved'])
 

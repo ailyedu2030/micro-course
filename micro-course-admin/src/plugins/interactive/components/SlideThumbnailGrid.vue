@@ -1,6 +1,9 @@
 <template>
   <div class="thumb-grid">
-    <div v-for="page in pages" :key="page.pageNumber" class="thumb-item"
+    <div
+      v-for="page in pages"
+      :key="page.pageNumber"
+      class="thumb-item"
       :class="{ active: selected?.pageNumber === page.pageNumber }"
       @click="$emit('select', page)">
       <div class="thumb-img-wrap">
@@ -15,7 +18,10 @@
 </template>
 
 <script setup>
-defineProps({ pages: Array, selected: Object })
+defineProps({
+  pages: { type: Array, default: () => [] },
+  selected: { type: Object, default: null }
+})
 defineEmits(['select'])
 const statusClass = (p) => {
   if (p.narrationStatus === 'AUDIO_READY') return 'dot-ready'
