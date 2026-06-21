@@ -697,8 +697,9 @@ public class CourseServiceImpl implements CourseService {
         if (f == CourseStatus.PUBLISHED.getCode() && to == CourseStatus.CLOSED.getCode()) return true;
         // CLOSED → ARCHIVED or DRAFT
         if (f == CourseStatus.CLOSED.getCode() && (to == CourseStatus.ARCHIVED.getCode() || to == CourseStatus.DRAFT.getCode())) return true;
-        // REJECTED → DRAFT
-        if (f == CourseStatus.REJECTED.getCode() && to == CourseStatus.DRAFT.getCode()) return true;
+        // REJECTED → DRAFT or PENDING_REVIEW（P1#6 修复：教师被驳回后可重新提交审核）
+        if (f == CourseStatus.REJECTED.getCode()
+                && (to == CourseStatus.DRAFT.getCode() || to == CourseStatus.PENDING_REVIEW.getCode())) return true;
         return false;
     }
 

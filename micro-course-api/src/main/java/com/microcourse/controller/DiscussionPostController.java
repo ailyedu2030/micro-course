@@ -83,6 +83,14 @@ public class DiscussionPostController {
         return R.ok();
     }
 
+    @PostMapping("/{id}/like")
+    @PreAuthorize("isAuthenticated()")
+    public R<Void> like(@PathVariable Long id) {
+        Long userId = getCurrentUserId();
+        postService.like(id, userId);
+        return R.ok();
+    }
+
     private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof Long) {

@@ -279,7 +279,10 @@ public class OrderServiceImpl implements OrderService {
                 enrollmentService.enroll(req);
             } catch (BusinessException e) {
                 if (e.getCode() != ErrorCode.ENROLLMENT_ALREADY_EXISTS.getCode()) {
-                    log.warn("Bundle auto-enroll failed: userId={}, courseId={}", userId, item.getCourseId());
+                    // P0#3 修复：套餐必选课程选课失败必须抛异常回滚整个支付事务，
+                    // 防止用户支付成功但部分课程未选课（钱课两空）
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                            "套餐课程「" + item.getCourseId() + "」选课失败，订单已取消");
                 }
             } catch (DuplicateKeyException e) {
                 log.debug("Bundle enrollment already exists: userId={}, courseId={}", userId, item.getCourseId());

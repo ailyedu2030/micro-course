@@ -111,7 +111,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         comment.setIsAnonymous(req.getIsAnonymous() != null ? req.getIsAnonymous() : false);
         comment.setIsTeacherReply(isTeacherOrAdmin);
         comment.setLikeCount(0);
-        comment.setStatus(1);
+        comment.setStatus(0); // P1#8: 评论默认待审核（0=PENDING），由审核员通过后才发布
         comment.setCreatedAt(LocalDateTime.now());
         comment.setUpdatedAt(LocalDateTime.now());
         commentRepository.insert(comment);

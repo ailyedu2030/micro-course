@@ -30,4 +30,9 @@ public interface DiscussionPostService {
      * 更新讨论状态（审核通过/驳回）
      */
     void updateStatus(Long id, String status);
+
+    /**
+     * P1#12: 帖子点赞
+     */
+    void like(Long postId, Long userId);
 }

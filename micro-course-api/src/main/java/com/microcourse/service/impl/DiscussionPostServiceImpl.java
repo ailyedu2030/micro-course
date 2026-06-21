@@ -57,10 +57,25 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
        @Override
     @Transactional(readOnly = true)
     public PageResult<DiscussionPostVO> page(Long chapterId, int page, int size) {
+        // 当前登录用户（讨论列表可能匿名访问，取不到时按 null 处理）
+        Long currentUserId;
+        try {
+            currentUserId = com.microcourse.util.SecurityUtil.getCurrentUserId();
+        } catch (Exception e) {
+            currentUserId = null;
+        }
+        final Long uid = currentUserId;
+
         LambdaQueryWrapper<DiscussionPost> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(chapterId != null, DiscussionPost::getChapterId, chapterId)
-               .eq(DiscussionPost::getStatus, 1)
-               .orderByDesc(DiscussionPost::getIsPinned)
+        wrapper.eq(chapterId != null, DiscussionPost::getChapterId, chapterId);
+        // 所有用户可见已发布(status=1)；作者本人可见自己的所有状态(含 PENDING/REJECTED)
+        if (uid != null) {
+            wrapper.and(w -> w.eq(DiscussionPost::getStatus, 1)
+                    .or(w2 -> w2.eq(DiscussionPost::getUserId, uid)));
+        } else {
+            wrapper.eq(DiscussionPost::getStatus, 1);
+        }
+        wrapper.orderByDesc(DiscussionPost::getIsPinned)
                .orderByDesc(DiscussionPost::getCreatedAt);
         IPage<DiscussionPost> ipage = postRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
@@ -104,12 +119,13 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         // 按courseId筛选
         wrapper.eq(query.getCourseId() != null, DiscussionPost::getCourseId, query.getCourseId());
 
-        // 按status筛选（前端传字符串：PENDING/PUBLISHED/DELETED，数据库存整数）
+        // 按status筛选（前端传字符串：PENDING/PUBLISHED/REJECTED/DELETED，数据库存整数）
         if (query.getStatus() != null && !query.getStatus().isBlank()) {
             Integer statusVal = switch (query.getStatus()) {
                 case "PENDING" -> 0;
                 case "PUBLISHED" -> 1;
-                case "DELETED" -> 2;
+                case "REJECTED" -> 2;
+                case "DELETED" -> 3;
                 default -> null;
             };
             wrapper.eq(statusVal != null, DiscussionPost::getStatus, statusVal);
@@ -175,8 +191,9 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         String statusStr = switch (statusCode) {
             case 0 -> "PENDING";
             case 1 -> "PUBLISHED";
-            case 2 -> "DELETED";
-            default -> "PENDING";
+            case 2 -> "REJECTED";
+            case 3 -> "DELETED";
+            default -> "UNKNOWN";
         };
         vo.setStatus(statusStr);
 
@@ -384,17 +401,47 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         if (post == null) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
         }
-        Integer statusVal = switch (status) {
-            case "APPROVED" -> 1;   // PUBLISHED
-            case "REJECTED" -> 2;   // DELETED
-            case "PENDING"  -> 0;
-            case "PUBLISHED" -> 1;
-            case "DELETED"  -> 2;
-            default -> throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        // P1#10: REJECTED 与 DELETED 拆为不同状态码（2=REJECTED 审核驳回，3=DELETED 用户删除）
+        Integer target = switch (status) {
+            case "APPROVED", "PUBLISHED" -> 1;   // APPROVED/PUBLISHED
+            case "REJECTED" -> 2;                // 审核驳回
+            case "PENDING"  -> 0;                // 待审核
+            case "DELETED"  -> 3;                // 用户删除
+            default -> throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无效的讨论状态");
         };
-        post.setStatus(statusVal);
+
+        // P1#9: 合法状态转换校验
+        //   0 (PENDING)  → 1 (APPROVED), 2 (REJECTED)
+        //   1 (APPROVED) → 2 (REJECTED), 3 (DELETED)
+        //   2 (REJECTED) → 0 (PENDING) 允许重新提交
+        //   3 (DELETED)  终态，不可再转换
+        int current = post.getStatus() != null ? post.getStatus() : 0;
+        boolean allowed = switch (current) {
+            case 0 -> target == 1 || target == 2;
+            case 1 -> target == 2 || target == 3;
+            case 2 -> target == 0;
+            default -> false;
+        };
+        if (!allowed) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不允许的状态转换");
+        }
+
+        post.setStatus(target);
         post.setUpdatedAt(LocalDateTime.now());
         postRepository.updateById(post);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void like(Long postId, Long userId) {
+        DiscussionPost post = postRepository.selectById(postId);
+        if (post == null || post.getStatus() == 0 || post.getStatus() == 2 || post.getStatus() == 3) {
+            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        postRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<DiscussionPost>()
+                        .eq(DiscussionPost::getId, postId)
+                        .setSql("like_count = COALESCE(like_count, 0) + 1"));
     }
 
     private DiscussionPostVO convertToVO(DiscussionPost post) {
