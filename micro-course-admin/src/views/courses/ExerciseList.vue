@@ -221,6 +221,7 @@ import { getCategories } from '@/api/course-category'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+const isTeacher = computed(() => userStore.role === 'TEACHER')
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -283,7 +284,9 @@ const formRules = {
 
 const fetchCourseOptions = async () => {
   try {
-    const { data } = await getCourses({ page: 0, size: 1000 })
+    const params = { page: 0, size: 1000 }
+    if (isTeacher.value) params.teacherId = userStore.userInfo?.id
+    const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
     ElMessage.error('获取课程列表失败')
