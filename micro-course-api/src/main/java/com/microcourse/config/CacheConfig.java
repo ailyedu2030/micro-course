@@ -55,7 +55,8 @@ public class CacheConfig {
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(defaultConfig)
-                .withCacheConfiguration("adminSettings", defaultConfig.entryTtl(Duration.ofMinutes(10)))
+                .withCacheConfiguration("adminSettingsList", defaultConfig.entryTtl(Duration.ofMinutes(10)))
+                .withCacheConfiguration("adminSettingsByKey", defaultConfig.entryTtl(Duration.ofMinutes(10)))
                 .withCacheConfiguration("banners", defaultConfig.entryTtl(Duration.ofMinutes(15)))
                 .withCacheConfiguration("categories", defaultConfig.entryTtl(Duration.ofMinutes(30)))
                 .build();

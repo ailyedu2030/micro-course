@@ -161,20 +161,20 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     private int countStreakFromDate(Long userId, LocalDate startDate) {
-        int streak = 0;
-        LocalDate checkDate = startDate;
+        // 性能优化: 单次查询获取最近30天打卡记录，替代逐日N+1查询
+        List<CheckIn> recent = checkInRepository.selectList(
+                new LambdaQueryWrapper<CheckIn>()
+                        .eq(CheckIn::getUserId, userId)
+                        .ge(CheckIn::getCheckinDate, startDate.minusDays(30))
+                        .orderByDesc(CheckIn::getCheckinDate));
+        if (recent.isEmpty()) return 0;
 
-        while (true) {
-            CheckIn record = checkInRepository.selectOne(
-                    new LambdaQueryWrapper<CheckIn>()
-                            .eq(CheckIn::getUserId, userId)
-                            .eq(CheckIn::getCheckinDate, checkDate)
-            );
-            if (record == null) {
-                break;
-            }
+        int streak = 0;
+        LocalDate expected = startDate;
+        for (CheckIn record : recent) {
+            if (!record.getCheckinDate().equals(expected)) break;
             streak++;
-            checkDate = checkDate.minusDays(1);
+            expected = expected.minusDays(1);
         }
         return streak;
     }

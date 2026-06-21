@@ -16,7 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,8 +40,22 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
                         .eq(CourseCategory::getLevel, 1)
                         .orderByAsc(CourseCategory::getSortOrder)
         );
-        List<CourseCategoryVO> vos = ipage.getRecords().stream()
-                .map(this::convertToVO).collect(Collectors.toList());
+        List<CourseCategory> records = ipage.getRecords();
+        // 批量预加载所有子分类,避免 convertToVO 逐条查询导致的 N+1
+        List<Long> parentIds = records.stream().map(CourseCategory::getId).collect(Collectors.toList());
+        Map<Long, List<CourseCategory>> childrenMap = new HashMap<>();
+        if (!parentIds.isEmpty()) {
+            List<CourseCategory> allChildren = courseCategoryRepository.selectList(
+                    new LambdaQueryWrapper<CourseCategory>()
+                            .in(CourseCategory::getParentId, parentIds)
+                            .eq(CourseCategory::getLevel, 2)
+                            .orderByAsc(CourseCategory::getSortOrder)
+            );
+            childrenMap = allChildren.stream().collect(Collectors.groupingBy(CourseCategory::getParentId));
+        }
+        final Map<Long, List<CourseCategory>> finalChildrenMap = childrenMap;
+        List<CourseCategoryVO> vos = records.stream()
+                .map(c -> convertToVO(c, finalChildrenMap)).collect(Collectors.toList());
         PageResult<CourseCategoryVO> result = new PageResult<>();
         result.setItems(vos);
         result.setPage((int) ipage.getCurrent() - 1);
@@ -106,14 +123,10 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
         courseCategoryRepository.deleteById(id);
     }
 
+    /**
+     * 单条转换:实时查询子分类(用于 getById / create / update,单条无 N+1 风险)。
+     */
     private CourseCategoryVO convertToVO(CourseCategory category) {
-        CourseCategoryVO vo = new CourseCategoryVO();
-        vo.setId(category.getId());
-        vo.setName(category.getName());
-        vo.setParentId(category.getParentId());
-        vo.setLevel(category.getLevel());
-        vo.setSortOrder(category.getSortOrder());
-        vo.setCreatedAt(category.getCreatedAt());
         // children: 查询 level=2 且 parent_id = 当前分类
         List<CourseCategory> childrenList = courseCategoryRepository.selectList(
                 new LambdaQueryWrapper<CourseCategory>()
@@ -121,6 +134,25 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
                         .eq(CourseCategory::getLevel, 2)
                         .orderByAsc(CourseCategory::getSortOrder)
         );
+        return toVO(category, childrenList);
+    }
+
+    /**
+     * 批量转换:从预加载的 childrenMap 取子分类(用于 page,避免 N+1)。
+     */
+    private CourseCategoryVO convertToVO(CourseCategory category, Map<Long, List<CourseCategory>> childrenMap) {
+        List<CourseCategory> childrenList = childrenMap.getOrDefault(category.getId(), Collections.emptyList());
+        return toVO(category, childrenList);
+    }
+
+    private CourseCategoryVO toVO(CourseCategory category, List<CourseCategory> childrenList) {
+        CourseCategoryVO vo = new CourseCategoryVO();
+        vo.setId(category.getId());
+        vo.setName(category.getName());
+        vo.setParentId(category.getParentId());
+        vo.setLevel(category.getLevel());
+        vo.setSortOrder(category.getSortOrder());
+        vo.setCreatedAt(category.getCreatedAt());
         List<CourseCategoryVO> children = childrenList.stream()
                 .map(child -> {
                     CourseCategoryVO childVO = new CourseCategoryVO();
