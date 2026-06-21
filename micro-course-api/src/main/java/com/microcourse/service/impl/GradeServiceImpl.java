@@ -3,6 +3,9 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.dto.*;
 import com.microcourse.entity.*;
 import com.microcourse.exception.BusinessException;
@@ -26,18 +29,24 @@ public class GradeServiceImpl implements GradeService {
     private final UserRepository userRepository;
     private final ExerciseRepository exerciseRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final ExerciseRecordRepository exerciseRecordRepository;
+    private final ObjectMapper objectMapper;
 
     public GradeServiceImpl(
             GradeRepository gradeRepository,
             CourseRepository courseRepository,
             UserRepository userRepository,
             ExerciseRepository exerciseRepository,
-            EnrollmentRepository enrollmentRepository) {
+            EnrollmentRepository enrollmentRepository,
+            ExerciseRecordRepository exerciseRecordRepository,
+            ObjectMapper objectMapper) {
         this.gradeRepository = gradeRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.exerciseRepository = exerciseRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.exerciseRecordRepository = exerciseRecordRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -270,6 +279,254 @@ public class GradeServiceImpl implements GradeService {
         GradeVO vo = batchConvertToVO(Collections.singletonList(grade)).get(0);
         vo.setEnrollmentId(request.getEnrollmentId());
         return vo;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<ExerciseRecordVO> getPendingReview(int page, int size, Long currentUserId) {
+        LambdaQueryWrapper<ExerciseRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.isNull(ExerciseRecord::getDeletedAt)
+               // answers JSON 中存在尚未人工批改的主观题
+               .like(ExerciseRecord::getAnswers, "\"needsManualGrading\":true");
+
+        // TEACHER 数据隔离 — 仅返回自己授课课程下练习的记录；ADMIN 不限制
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            LambdaQueryWrapper<Course> courseWrapper = new LambdaQueryWrapper<>();
+            courseWrapper.eq(Course::getTeacherId, currentUserId).isNull(Course::getDeletedAt);
+            List<Long> teacherCourseIds = courseRepository.selectList(courseWrapper).stream()
+                    .map(Course::getId).collect(Collectors.toList());
+            if (teacherCourseIds.isEmpty()) {
+                return PageResult.of(new ArrayList<>(), 0L, page, size);
+            }
+            LambdaQueryWrapper<Exercise> exerciseWrapper = new LambdaQueryWrapper<>();
+            exerciseWrapper.in(Exercise::getCourseId, teacherCourseIds).isNull(Exercise::getDeletedAt);
+            List<Long> exerciseIds = exerciseRepository.selectList(exerciseWrapper).stream()
+                    .map(Exercise::getId).collect(Collectors.toList());
+            if (exerciseIds.isEmpty()) {
+                return PageResult.of(new ArrayList<>(), 0L, page, size);
+            }
+            wrapper.in(ExerciseRecord::getExerciseId, exerciseIds);
+        }
+
+        wrapper.orderByDesc(ExerciseRecord::getSubmittedAt);
+        IPage<ExerciseRecord> recordPage = exerciseRecordRepository.selectPage(new Page<>(page + 1, size), wrapper);
+        List<ExerciseRecordVO> vos = toRecordVOList(recordPage.getRecords());
+        return PageResult.of(vos, recordPage.getTotal(), page, size);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void manualGrade(Long recordId, Map<String, Object> body, Long teacherId) {
+        ExerciseRecord record = exerciseRecordRepository.selectById(recordId);
+        if (record == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题记录不存在");
+        }
+
+        Exercise exercise = exerciseRepository.selectById(record.getExerciseId());
+        if (exercise == null) {
+            throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
+        }
+
+        // SECURITY: 仅课程授课教师或 ADMIN 可批改
+        if (exercise.getCourseId() != null) {
+            Course course = courseRepository.selectById(exercise.getCourseId());
+            if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权批改该课程练习");
+            }
+        }
+
+        Long questionId = toLong(body.get("questionId"));
+        Integer newScore = toInteger(body.get("score"));
+        String comment = sanitizeComment(toStringVal(body.get("comment")));
+        if (questionId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "questionId 不能为空");
+        }
+        if (newScore == null || newScore < 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "score 非法");
+        }
+
+        // 解析 answers JSON
+        List<Map<String, Object>> items;
+        String answers = record.getAnswers();
+        if (answers == null || answers.isBlank()) {
+            items = new ArrayList<>();
+        } else {
+            try {
+                items = objectMapper.readValue(answers, new TypeReference<List<Map<String, Object>>>() {});
+            } catch (JsonProcessingException e) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题数据解析失败");
+            }
+        }
+
+        // 定位目标题目
+        Map<String, Object> target = null;
+        for (Map<String, Object> item : items) {
+            Long qid = toLong(item.get("questionId"));
+            if (qid != null && qid.equals(questionId)) {
+                target = item;
+                break;
+            }
+        }
+        if (target == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该题目不在此答题记录中");
+        }
+
+        // 校验不超过该题满分
+        Integer fullScore = toInteger(target.get("fullScore"));
+        if (fullScore != null && newScore > fullScore) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "得分不能超过该题满分");
+        }
+
+        // 写回单题 score / comment / 标记已批改
+        target.put("score", newScore);
+        target.put("comment", comment);
+        target.put("isCorrect", newScore > 0);
+        target.put("needsManualGrading", false);
+
+        // 重算记录总得分
+        int total = 0;
+        for (Map<String, Object> item : items) {
+            Integer s = toInteger(item.get("score"));
+            if (s != null) {
+                total += s;
+            }
+        }
+
+        String newAnswers;
+        try {
+            newAnswers = objectMapper.writeValueAsString(items);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题数据序列化失败");
+        }
+
+        boolean passed = exercise.getPassScore() != null && total >= exercise.getPassScore();
+        record.setAnswers(newAnswers);
+        record.setScore(total);
+        record.setPassed(passed);
+        exerciseRecordRepository.updateById(record);
+
+        // 同步更新 grades 表对应记录（优先按 attemptNo 精确匹配本次作答）
+        Grade grade = findGradeForRecord(record, exercise.getCourseId());
+        if (grade != null) {
+            grade.setScore(BigDecimal.valueOf(total));
+            grade.setPassed(passed);
+            grade.setComment(comment);
+            grade.setGradedBy(teacherId);
+            grade.setGradedAt(LocalDateTime.now());
+            grade.setUpdatedAt(LocalDateTime.now());
+            gradeRepository.updateById(grade);
+        } else {
+            Grade ng = new Grade();
+            ng.setStudentId(record.getUserId());
+            ng.setExerciseId(record.getExerciseId());
+            ng.setCourseId(exercise.getCourseId());
+            ng.setScore(BigDecimal.valueOf(total));
+            ng.setTotalScore(record.getTotalScore() != null ? BigDecimal.valueOf(record.getTotalScore()) : null);
+            ng.setPassed(passed);
+            ng.setAttemptNo(record.getAttemptNo());
+            ng.setComment(comment);
+            ng.setGradedBy(teacherId);
+            ng.setGradedAt(LocalDateTime.now());
+            ng.setSubmittedAt(record.getSubmittedAt());
+            ng.setCreatedAt(LocalDateTime.now());
+            ng.setUpdatedAt(LocalDateTime.now());
+            gradeRepository.insert(ng);
+        }
+    }
+
+    /**
+     * 为某条作答记录定位对应的 grades 行：先按 (user, course, exercise, attempt) 精确匹配，
+     * 找不到时退化为同 (user, course, exercise) 下 attempt 最大者。
+     */
+    private Grade findGradeForRecord(ExerciseRecord record, Long courseId) {
+        LambdaQueryWrapper<Grade> exact = new LambdaQueryWrapper<>();
+        exact.eq(Grade::getStudentId, record.getUserId())
+             .eq(Grade::getExerciseId, record.getExerciseId())
+             .isNull(Grade::getDeletedAt);
+        if (courseId != null) {
+            exact.eq(Grade::getCourseId, courseId);
+        }
+        if (record.getAttemptNo() != null) {
+            exact.eq(Grade::getAttemptNo, record.getAttemptNo());
+        }
+        Grade grade = gradeRepository.selectList(exact).stream().findFirst().orElse(null);
+        if (grade != null) {
+            return grade;
+        }
+        LambdaQueryWrapper<Grade> fallback = new LambdaQueryWrapper<>();
+        fallback.eq(Grade::getStudentId, record.getUserId())
+                .eq(Grade::getExerciseId, record.getExerciseId())
+                .isNull(Grade::getDeletedAt)
+                .orderByDesc(Grade::getAttemptNo);
+        if (courseId != null) {
+            fallback.eq(Grade::getCourseId, courseId);
+        }
+        return gradeRepository.selectList(fallback).stream().findFirst().orElse(null);
+    }
+
+    /**
+     * ExerciseRecord -> VO 批量转换（批量预加载练习标题，避免 N+1）
+     */
+    private List<ExerciseRecordVO> toRecordVOList(List<ExerciseRecord> records) {
+        if (records.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Set<Long> exerciseIds = records.stream()
+                .map(ExerciseRecord::getExerciseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Exercise> exerciseMap = exerciseIds.isEmpty() ? Collections.emptyMap()
+                : exerciseRepository.selectBatchIds(exerciseIds).stream()
+                        .collect(Collectors.toMap(Exercise::getId, e -> e));
+
+        return records.stream().map(r -> {
+            ExerciseRecordVO vo = new ExerciseRecordVO();
+            vo.setId(r.getId());
+            vo.setExerciseId(r.getExerciseId());
+            Exercise ex = exerciseMap.get(r.getExerciseId());
+            vo.setExerciseTitle(ex != null ? ex.getTitle() : null);
+            vo.setUserId(r.getUserId());
+            vo.setAttemptNo(r.getAttemptNo());
+            vo.setScore(r.getScore());
+            vo.setTotalScore(r.getTotalScore());
+            vo.setPassed(r.getPassed());
+            vo.setDuration(r.getDuration());
+            vo.setAnswers(r.getAnswers());
+            vo.setSubmittedAt(r.getSubmittedAt());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    private Long toLong(Object o) {
+        if (o == null) {
+            return null;
+        }
+        if (o instanceof Number n) {
+            return n.longValue();
+        }
+        try {
+            return Long.parseLong(o.toString().trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Integer toInteger(Object o) {
+        if (o == null) {
+            return null;
+        }
+        if (o instanceof Number n) {
+            return n.intValue();
+        }
+        try {
+            return Integer.parseInt(o.toString().trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String toStringVal(Object o) {
+        return o == null ? null : o.toString();
     }
 
     /**

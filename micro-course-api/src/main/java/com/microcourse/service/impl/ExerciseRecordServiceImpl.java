@@ -3,6 +3,7 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.dto.ExerciseRecordVO;
@@ -493,6 +494,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         return vo;
     }
 
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     private static class GradingResult {
         Long questionId;
         String questionType;

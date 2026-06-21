@@ -11,6 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/grades")
 public class GradeController {
@@ -72,6 +74,30 @@ public class GradeController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
         gradeService.delete(id);
+        return R.ok();
+    }
+
+    /**
+     * GET /api/grades/pending-review
+     * 获取待批改的练习记录列表（仅 TEACHER/ADMIN）
+     */
+    @GetMapping("/pending-review")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<PageResult<ExerciseRecordVO>> getPendingReview(
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+        return R.ok(gradeService.getPendingReview(page, size, getCurrentUserId()));
+    }
+
+    /**
+     * POST /api/grades/{recordId}/manual-grade
+     * 教师手动批改主观题
+     * body: { "questionId": 123, "score": 85, "comment": "做得不错" }
+     */
+    @PostMapping("/{recordId}/manual-grade")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> manualGrade(@PathVariable Long recordId, @RequestBody Map<String, Object> body) {
+        gradeService.manualGrade(recordId, body, getCurrentUserId());
         return R.ok();
     }
 

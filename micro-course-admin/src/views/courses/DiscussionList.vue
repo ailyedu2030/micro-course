@@ -27,6 +27,7 @@
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120">
             <el-option label="待审核" value="PENDING" />
             <el-option label="已发布" value="PUBLISHED" />
+            <el-option label="已驳回" value="REJECTED" />
             <el-option label="已删除" value="DELETED" />
           </el-select>
         </el-form-item>
@@ -59,17 +60,18 @@
         <el-table-column prop="createdAt" label="发布时间" width="170" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 'PENDING'" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="row.status === 'PUBLISHED'" type="success" size="small">已发布</el-tag>
-            <el-tag v-else-if="row.status === 'DELETED'" type="info" size="small">已删除</el-tag>
-            <el-tag v-else type="info" size="small">{{ row.status || '-' }}</el-tag>
+            <el-tag v-if="row.statusStr === 'PENDING'" type="warning" size="small">待审核</el-tag>
+            <el-tag v-else-if="row.statusStr === 'APPROVED' || row.statusStr === 'PUBLISHED'" type="success" size="small">已发布</el-tag>
+            <el-tag v-else-if="row.statusStr === 'REJECTED'" type="danger" size="small">已驳回</el-tag>
+            <el-tag v-else-if="row.statusStr === 'DELETED'" type="info" size="small">已删除</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.statusStr || '-' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleView(row)">查看</el-button>
-            <el-button v-if="row.status === 'PENDING'" type="success" link size="small" @click="handleApprove(row)">通过</el-button>
-            <el-button v-if="row.status === 'PENDING'" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
+            <el-button v-if="(row.status === 'PENDING' || row.statusStr === 'PENDING')" type="success" link size="small" @click="handleApprove(row)">通过</el-button>
+            <el-button v-if="(row.status === 'PENDING' || row.statusStr === 'PENDING')" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
