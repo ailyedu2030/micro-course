@@ -197,6 +197,21 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (chapterId != null) {
             wrapper.eq(Exercise::getChapterId, chapterId);
         }
+        // SECURITY: TEACHER 只能看到自己授课课程的练习
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            List<Course> teacherCourses = courseRepository.selectList(
+                    new LambdaQueryWrapper<Course>()
+                            .eq(Course::getTeacherId, currentUserId)
+                            .isNull(Course::getDeletedAt)
+                            .select(Course::getId));
+            Set<Long> teacherCourseIds = teacherCourses.stream()
+                    .map(Course::getId).collect(Collectors.toSet());
+            if (teacherCourseIds.isEmpty()) {
+                return PageResult.of(java.util.Collections.emptyList(), 0L, page, size);
+            }
+            wrapper.in(Exercise::getCourseId, teacherCourseIds);
+        }
         wrapper.orderByDesc(Exercise::getCreatedAt);
 
         IPage<Exercise> exercisePage = exerciseRepository.selectPage(
@@ -244,6 +259,10 @@ public class ExerciseServiceImpl implements ExerciseService {
         Exercise exercise = exerciseRepository.selectById(id);
         if (exercise == null) {
             throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
+        }
+        // SECURITY: TEACHER 只能查看自己课程的练习
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            assertCourseOwner(exercise.getCourseId());
         }
         return convertToVO(exercise);
     }
