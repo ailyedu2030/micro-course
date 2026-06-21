@@ -70,6 +70,14 @@
         </el-form-item>
         <el-form-item v-if="formData.courseId" label="随机选题">
           <div class="random-pick">
+            <div class="pick-filter">
+              <span class="pick-filter-label">难度</span>
+              <el-select v-model="pickDifficulty" placeholder="全部难度" clearable size="small" style="width:120px">
+                <el-option label="简单" value="EASY" />
+                <el-option label="中等" value="MEDIUM" />
+                <el-option label="困难" value="HARD" />
+              </el-select>
+            </div>
             <div v-for="s in bankStats" :key="s.type" class="pick-row">
               <span class="pick-label">{{ s.label }}</span>
               <el-input-number v-model="s.pickCount" :min="0" :max="s.count" size="small" controls-position="right" class="pick-input" />
@@ -232,18 +240,21 @@ const TYPE_LABELS = {
 const bankStats = ref([])
 const totalBankCount = ref(0)
 const totalPickCount = computed(() => bankStats.value.reduce((s, t) => s + (t.pickCount || 0), 0))
+const pickDifficulty = ref('')
 
-// 课程或章节变化时刷新题库统计
-watch(() => formData.chapterId, async (val) => {
+// 课程/章节/难度变化时刷新题库统计
+async function refreshBankStats() {
   if (!formData.courseId) { bankStats.value = []; totalBankCount.value = 0; return }
   try {
     const params = { courseId: formData.courseId, size: 9999 }
-    if (val) params.chapterId = val
+    if (formData.chapterId) params.chapterId = formData.chapterId
+    if (pickDifficulty.value) params.difficulty = pickDifficulty.value
     const { data } = await getQuestions(params)
     const items = data?.items || []
-    totalBankCount.value = items.length
+    const filtered = pickDifficulty.value ? items.filter(q => q.difficulty === pickDifficulty.value) : items
+    totalBankCount.value = filtered.length
     const groups = {}
-    for (const q of items) {
+    for (const q of filtered) {
       const t = q.questionType || 'OTHER'
       groups[t] = (groups[t] || 0) + 1
     }
@@ -251,7 +262,9 @@ watch(() => formData.chapterId, async (val) => {
       .map(([type, label]) => ({ type, label, count: groups[type] || 0, pickCount: 0 }))
       .filter(s => s.count > 0)
   } catch { bankStats.value = []; totalBankCount.value = 0 }
-})
+}
+watch(() => formData.chapterId, refreshBankStats)
+watch(pickDifficulty, refreshBankStats)
 
 async function handleRandomPick() {
   const picks = {}
@@ -261,8 +274,13 @@ async function handleRandomPick() {
   try {
     const params = { courseId: formData.courseId, size: 9999 }
     if (formData.chapterId) params.chapterId = formData.chapterId
+    if (pickDifficulty.value) params.difficulty = pickDifficulty.value
     const { data } = await getQuestions(params)
-    const all = data?.items || []
+    let all = data?.items || []
+    // 如果后端不支持按难度过滤，前端再过滤一次
+    if (pickDifficulty.value && all.some(q => q.difficulty)) {
+      all = all.filter(q => q.difficulty === pickDifficulty.value)
+    }
     const picked = []
     for (const [type, count] of Object.entries(picks)) {
       const pool = all.filter(q => (q.questionType || '') === type)
@@ -270,7 +288,6 @@ async function handleRandomPick() {
       picked.push(...shuffled.slice(0, count))
     }
     exerciseQuestions.value = [...exerciseQuestions.value, ...picked]
-    // 重置抽取数量
     bankStats.value.forEach(s => { s.pickCount = 0 })
     ElMessage.success(`已随机抽取 ${picked.length} 题`)
   } catch { ElMessage.error('随机选题失败') }
