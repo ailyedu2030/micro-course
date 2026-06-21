@@ -245,7 +245,7 @@ public class OrderServiceImpl implements OrderService {
      * 核心支付处理（无 SecurityUtil 校验，供回调使用）
      * 单独事务方法，确保被 Spring AOP 拦截
      */
-    @Transactional(rollbackFor = Exception.class)
+    // 事务由调用方 paymentCallback 的 @Transactional 保证
     private void processPayment(Long orderId, String paymentMethod) {
         // P1: 支付方式白名单校验
         Set<String> validMethods = Set.of("BALANCE", "WECHAT", "ALIPAY");
