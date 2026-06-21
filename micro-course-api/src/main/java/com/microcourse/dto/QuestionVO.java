@@ -1,6 +1,7 @@
 package com.microcourse.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class QuestionVO {
 
@@ -22,6 +23,8 @@ public class QuestionVO {
     private Integer status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<Long> chapterIds;
+    private List<String> chapterTitles;
 
     public QuestionVO() {}
 
@@ -61,4 +64,8 @@ public class QuestionVO {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public List<Long> getChapterIds() { return chapterIds; }
+    public void setChapterIds(List<Long> chapterIds) { this.chapterIds = chapterIds; }
+    public List<String> getChapterTitles() { return chapterTitles; }
+    public void setChapterTitles(List<String> chapterTitles) { this.chapterTitles = chapterTitles; }
 }

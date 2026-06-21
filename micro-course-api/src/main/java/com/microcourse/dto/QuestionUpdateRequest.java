@@ -1,5 +1,7 @@
 package com.microcourse.dto;
 
+import java.util.List;
+
 public class QuestionUpdateRequest {
 
     private Long courseId;
@@ -12,6 +14,7 @@ public class QuestionUpdateRequest {
     private String explanation;
     private Integer difficulty;
     private Integer status;
+    private List<Long> chapterIds;
 
     public QuestionUpdateRequest() {}
 
@@ -35,4 +38,6 @@ public class QuestionUpdateRequest {
     public void setDifficulty(Integer difficulty) { this.difficulty = difficulty; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public List<Long> getChapterIds() { return chapterIds; }
+    public void setChapterIds(List<Long> chapterIds) { this.chapterIds = chapterIds; }
 }

@@ -44,6 +44,7 @@
               <el-option label="多选题" value="MULTIPLE_CHOICE" />
               <el-option label="判断题" value="TRUE_FALSE" />
               <el-option label="简答题" value="SHORT_ANSWER" />
+              <el-option label="综合题" value="COMPREHENSIVE" />
             </el-select>
           </el-form-item>
           <el-form-item label="难度">
@@ -96,6 +97,7 @@
             <el-tag v-else-if="row.questionType === 'MULTIPLE_CHOICE'" type="success" size="small">多选题</el-tag>
             <el-tag v-else-if="row.questionType === 'TRUE_FALSE'" type="warning" size="small">判断题</el-tag>
             <el-tag v-else-if="row.questionType === 'SHORT_ANSWER'" type="info" size="small">简答题</el-tag>
+            <el-tag v-else-if="row.questionType === 'COMPREHENSIVE'" type="danger" size="small">综合题</el-tag>
             <el-tag v-else type="info" size="small">{{ row.questionType || '-' }}</el-tag>
           </template>
         </el-table-column>
@@ -110,6 +112,11 @@
         <el-table-column prop="categoryName" label="分类" width="120">
           <template #default="{ row }">
             {{ row.categoryName || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="关联章节" min-width="120">
+          <template #default="{ row }">
+            <span>{{ row.chapterTitles?.join(', ') || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="content" label="题目内容" min-width="250" show-overflow-tooltip />
@@ -154,6 +161,12 @@
             <el-option label="多选题" value="MULTIPLE_CHOICE" />
             <el-option label="判断题" value="TRUE_FALSE" />
             <el-option label="简答题" value="SHORT_ANSWER" />
+            <el-option label="综合题" value="COMPREHENSIVE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关联章节">
+          <el-select v-model="formData.chapterIds" placeholder="可多选" multiple collapse-tags clearable class="full-width" :disabled="!selectedCourse">
+            <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="难度" prop="difficulty">
@@ -226,6 +239,7 @@ import { useUserStore } from '@/store/user'
 import { getQuestions, createQuestion, updateQuestion, deleteQuestion, batchImportQuestion } from '@/api/question'
 import { getCategories } from '@/api/course-category'
 import { getCourses } from '@/api/course'
+import { getChapters } from '@/api/chapter'
 import * as XLSX from 'xlsx'
 import QuestionPreview from './QuestionPreview.vue'
 
@@ -240,6 +254,7 @@ const page = ref(1)
 const size = ref(10)
 const categoryOptions = ref([])
 const courseOptions = ref([])
+const chapterOptions = ref([])
 
 const selectedCourseId = ref('')
 const selectedCourse = computed(() => {
@@ -259,6 +274,7 @@ function onCourseChange(val) {
     selectedCourseId.value = ''
     tableData.value = []
     totalElements.value = 0
+    chapterOptions.value = []
     return
   }
   searchForm.questionType = ''
@@ -266,7 +282,21 @@ function onCourseChange(val) {
   searchForm.categoryId = ''
   searchForm.keyword = ''
   page.value = 1
+  fetchChapterOptions()
   fetchData()
+}
+
+const fetchChapterOptions = async () => {
+  if (!selectedCourseId.value) {
+    chapterOptions.value = []
+    return
+  }
+  try {
+    const { data } = await getChapters({ courseId: selectedCourseId.value })
+    chapterOptions.value = data.items || []
+  } catch {
+    chapterOptions.value = []
+  }
 }
 
 const dialogVisible = ref(false)
@@ -289,7 +319,8 @@ const formData = reactive({
   options: '',
   answer: '',
   partialScore: false,
-  partialScoreRule: ''
+  partialScoreRule: '',
+  chapterIds: []
 })
 
 const formRules = {
@@ -387,7 +418,8 @@ function getQuestionTypeLabel(type) {
     'SINGLE_CHOICE': '单选题',
     'MULTIPLE_CHOICE': '多选题',
     'TRUE_FALSE': '判断题',
-    'SHORT_ANSWER': '简答题'
+    'SHORT_ANSWER': '简答题',
+    'COMPREHENSIVE': '综合题'
   }
   return map[type] || type || ''
 }
@@ -463,7 +495,9 @@ const handleCreate = () => {
   formData.answer = ''
   formData.partialScore = false
   formData.partialScoreRule = ''
+  formData.chapterIds = []
   optionList.value = []
+  if (chapterOptions.value.length === 0) fetchChapterOptions()
   dialogVisible.value = true
 }
 
@@ -480,6 +514,8 @@ const handleEdit = (row) => {
   formData.answer = row.answer || ''
   formData.partialScore = !!row.partialScore
   formData.partialScoreRule = row.partialScoreRule || ''
+  formData.chapterIds = Array.isArray(row.chapterIds) ? [...row.chapterIds] : []
+  if (chapterOptions.value.length === 0) fetchChapterOptions()
   if (row.options) {
     try {
       optionList.value = JSON.parse(row.options)

@@ -3,6 +3,8 @@ package com.microcourse.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+
 public class QuestionCreateRequest {
 
     @NotNull(message = "课程ID不能为空")
@@ -32,6 +34,8 @@ public class QuestionCreateRequest {
 
     private Integer status;
 
+    private List<Long> chapterIds;
+
     public QuestionCreateRequest() {}
 
     public Long getCourseId() { return courseId; }
@@ -56,4 +60,6 @@ public class QuestionCreateRequest {
     public void setDifficulty(Integer difficulty) { this.difficulty = difficulty; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public List<Long> getChapterIds() { return chapterIds; }
+    public void setChapterIds(List<Long> chapterIds) { this.chapterIds = chapterIds; }
 }

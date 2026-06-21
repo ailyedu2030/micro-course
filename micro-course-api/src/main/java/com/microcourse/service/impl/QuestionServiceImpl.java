@@ -10,12 +10,16 @@ import com.microcourse.dto.QuestionCreateRequest;
 import com.microcourse.dto.QuestionUpdateRequest;
 import com.microcourse.dto.QuestionVO;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Question;
+import com.microcourse.entity.QuestionChapter;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseCategoryRepository;
+import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.QuestionChapterRepository;
 import com.microcourse.repository.QuestionRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.QuestionService;
@@ -26,7 +30,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,15 +49,21 @@ public class QuestionServiceImpl implements QuestionService {
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final CourseCategoryRepository categoryRepository;
+    private final QuestionChapterRepository questionChapterRepository;
+    private final CourseChapterRepository courseChapterRepository;
 
     public QuestionServiceImpl(QuestionRepository questionRepository,
                               CourseRepository courseRepository,
                               UserRepository userRepository,
-                              CourseCategoryRepository categoryRepository) {
+                              CourseCategoryRepository categoryRepository,
+                              QuestionChapterRepository questionChapterRepository,
+                              CourseChapterRepository courseChapterRepository) {
         this.questionRepository = questionRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
+        this.questionChapterRepository = questionChapterRepository;
+        this.courseChapterRepository = courseChapterRepository;
     }
 
     @Override
@@ -83,6 +99,20 @@ public class QuestionServiceImpl implements QuestionService {
         question.setUpdatedAt(LocalDateTime.now());
 
         questionRepository.insert(question);
+
+        // Handle chapter associations (multi-chapter support)
+        if (request.getChapterIds() != null && !request.getChapterIds().isEmpty()) {
+            for (Long cid : request.getChapterIds()) {
+                if (cid == null) {
+                    continue;
+                }
+                QuestionChapter qc = new QuestionChapter();
+                qc.setQuestionId(question.getId());
+                qc.setChapterId(cid);
+                questionChapterRepository.insert(qc);
+            }
+        }
+
         return convertToVO(question);
     }
 
@@ -129,6 +159,23 @@ public class QuestionServiceImpl implements QuestionService {
 
         question.setUpdatedAt(LocalDateTime.now());
         questionRepository.updateById(question);
+
+        // Handle chapter associations (multi-chapter support): replace old with new
+        if (request.getChapterIds() != null && !request.getChapterIds().isEmpty()) {
+            LambdaQueryWrapper<QuestionChapter> chapterWrapper = new LambdaQueryWrapper<>();
+            chapterWrapper.eq(QuestionChapter::getQuestionId, id);
+            questionChapterRepository.delete(chapterWrapper);
+            for (Long cid : request.getChapterIds()) {
+                if (cid == null) {
+                    continue;
+                }
+                QuestionChapter qc = new QuestionChapter();
+                qc.setQuestionId(id);
+                qc.setChapterId(cid);
+                questionChapterRepository.insert(qc);
+            }
+        }
+
         return convertToVO(question);
     }
 
@@ -141,6 +188,12 @@ public class QuestionServiceImpl implements QuestionService {
         }
         // Owner check: only course teacher or ADMIN can delete question
         assertCourseOwner(question.getCourseId());
+
+        // Cascade delete chapter associations
+        LambdaQueryWrapper<QuestionChapter> chapterWrapper = new LambdaQueryWrapper<>();
+        chapterWrapper.eq(QuestionChapter::getQuestionId, id);
+        questionChapterRepository.delete(chapterWrapper);
+
         questionRepository.deleteById(id);
     }
 
@@ -161,7 +214,36 @@ public class QuestionServiceImpl implements QuestionService {
         IPage<Question> questionPage = questionRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
 
-        IPage<QuestionVO> voPage = questionPage.convert(this::convertToVO);
+        // Batch load multi-chapter associations to avoid N+1
+        Map<Long, List<Long>> questionChapterIdsMap = new HashMap<>();
+        Map<Long, CourseChapter> chapterMap = new HashMap<>();
+
+        Set<Long> questionIds = questionPage.getRecords().stream()
+                .map(Question::getId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (!questionIds.isEmpty()) {
+            LambdaQueryWrapper<QuestionChapter> qcWrapper = new LambdaQueryWrapper<>();
+            qcWrapper.in(QuestionChapter::getQuestionId, questionIds);
+            List<QuestionChapter> questionChapters = questionChapterRepository.selectList(qcWrapper);
+            Set<Long> allChapterIds = new HashSet<>();
+            for (QuestionChapter qc : questionChapters) {
+                questionChapterIdsMap
+                        .computeIfAbsent(qc.getQuestionId(), k -> new ArrayList<>())
+                        .add(qc.getChapterId());
+                allChapterIds.add(qc.getChapterId());
+            }
+            if (!allChapterIds.isEmpty()) {
+                courseChapterRepository.selectBatchIds(allChapterIds)
+                        .forEach(ch -> chapterMap.put(ch.getId(), ch));
+            }
+        }
+
+        final Map<Long, List<Long>> finalQuestionChapterIdsMap = questionChapterIdsMap;
+        final Map<Long, CourseChapter> finalChapterMap = chapterMap;
+
+        IPage<QuestionVO> voPage = questionPage.convert(
+                q -> convertToVO(q, finalQuestionChapterIdsMap, finalChapterMap));
         return PageResult.of(voPage);
     }
 
@@ -283,7 +365,7 @@ public class QuestionServiceImpl implements QuestionService {
         return result;
     }
 
-    private QuestionVO convertToVO(Question question) {
+    private QuestionVO toBaseVO(Question question) {
         QuestionVO vo = new QuestionVO();
         vo.setId(question.getId());
         vo.setCourseId(question.getCourseId());
@@ -322,6 +404,50 @@ public class QuestionServiceImpl implements QuestionService {
                 vo.setCategoryName(category.getName());
             }
         }
+
+        return vo;
+    }
+
+    private QuestionVO convertToVO(Question question) {
+        QuestionVO vo = toBaseVO(question);
+
+        // Load multi-chapter associations
+        List<Long> chapterIds = new ArrayList<>();
+        List<String> chapterTitles = new ArrayList<>();
+        if (question.getId() != null) {
+            LambdaQueryWrapper<QuestionChapter> qcWrapper = new LambdaQueryWrapper<>();
+            qcWrapper.eq(QuestionChapter::getQuestionId, question.getId());
+            List<QuestionChapter> questionChapters = questionChapterRepository.selectList(qcWrapper);
+            for (QuestionChapter qc : questionChapters) {
+                chapterIds.add(qc.getChapterId());
+                CourseChapter ch = courseChapterRepository.selectById(qc.getChapterId());
+                if (ch != null) {
+                    chapterTitles.add(ch.getTitle());
+                }
+            }
+        }
+        vo.setChapterIds(chapterIds);
+        vo.setChapterTitles(chapterTitles);
+
+        return vo;
+    }
+
+    private QuestionVO convertToVO(Question question,
+                                   Map<Long, List<Long>> questionChapterIdsMap,
+                                   Map<Long, CourseChapter> chapterMap) {
+        QuestionVO vo = toBaseVO(question);
+
+        // Populate multi-chapter data from pre-loaded maps
+        List<Long> chapterIds = questionChapterIdsMap.getOrDefault(question.getId(), new ArrayList<>());
+        List<String> chapterTitles = new ArrayList<>();
+        for (Long cid : chapterIds) {
+            CourseChapter ch = chapterMap.get(cid);
+            if (ch != null) {
+                chapterTitles.add(ch.getTitle());
+            }
+        }
+        vo.setChapterIds(chapterIds);
+        vo.setChapterTitles(chapterTitles);
 
         return vo;
     }
