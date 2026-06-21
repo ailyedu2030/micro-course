@@ -96,6 +96,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
+        // SECURITY: 付费课程必须通过订单支付，不能直接选课
+        if (course.getPrice() != null && course.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0
+                && Boolean.FALSE.equals(course.getIsFree())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程为付费课程，请先购买");
+        }
         // Check user exists
         User user = userRepository.selectById(request.getUserId());
         if (user == null) {

@@ -386,13 +386,16 @@ public class CourseServiceImpl implements CourseService {
 
         course.setStatus(status);
         course.setUpdatedAt(LocalDateTime.now());
-        course.setVersion(course.getVersion() == null ? 1 : course.getVersion() + 1);
 
         if (status == CourseStatus.PUBLISHED.getCode()) {
             course.setPublishedAt(LocalDateTime.now());
         }
 
-        courseRepository.updateById(course);
+        // SECURITY: 乐观锁 CAS 更新（@Version 自动管理）
+        boolean updated = courseRepository.updateById(course) > 0;
+        if (!updated) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "课程状态已被其他操作修改，请刷新后重试");
+        }
         recordReviewLog(id, "UPDATE", currentStatus, status, null);
     }
 
