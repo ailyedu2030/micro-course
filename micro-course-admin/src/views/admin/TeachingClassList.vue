@@ -100,7 +100,8 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航" />
+          @current-change="handlePageChange" aria-label="分页导航"
+/>
       </div>
     </el-card>
 
@@ -149,10 +150,12 @@
               <el-input v-model="schedule.startTime" placeholder="开始时间" class="time-input" />
               <el-input v-model="schedule.endTime" placeholder="结束时间" class="time-input" />
               <el-input v-model="schedule.location" placeholder="上课地点" class="location-input" />
-              <el-button type="danger" link @click="removeSchedule(index)" aria-label="删除"><el-icon><Delete /></el-icon>
+              <el-button type="danger" link @click="removeSchedule(index)" aria-label="删除">
+<el-icon><Delete /></el-icon>
               </el-button>
             </div>
-            <el-button type="primary" link @click="addSchedule" aria-label="提交"><el-icon><Plus /></el-icon>添加时间段
+            <el-button type="primary" link @click="addSchedule" aria-label="提交">
+<el-icon><Plus /></el-icon>添加时间段
             </el-button>
           </div>
         </el-form-item>

@@ -33,8 +33,10 @@
         </div>
         <h2 class="upload-title">上传 PPT 课件</h2>
         <p class="upload-desc">支持 .pptx 格式，最大 50MB。上传后将自动渲染为高清幻灯片</p>
-        <el-upload drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx" :disabled="uploading"
-          class="upload-dragger">
+        <el-upload
+drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx" :disabled="uploading"
+          class="upload-dragger"
+>
           <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
           <div class="el-upload__text">拖拽文件到此处，或 <em>点击上传</em></div>
         </el-upload>
@@ -66,21 +68,27 @@
     <section v-else-if="slide.status === 2" class="workspace">
       <!-- Thumbnail Grid -->
       <div class="thumb-grid">
-        <div v-for="page in pages" :key="page.pageNumber"
+        <div
+v-for="page in pages" :key="page.pageNumber"
           class="thumb-card" :class="{ active: selectedPage?.pageNumber === page.pageNumber }"
           tabindex="0" role="button"
           :aria-label="'第' + page.pageNumber + '页'"
           @click="selectPage(page)"
           @keydown.enter="selectPage(page)"
-          @keydown.space.prevent="selectPage(page)">
+          @keydown.space.prevent="selectPage(page)"
+>
           <div class="thumb-img-wrap">
-            <img v-if="thumbUrls[page.pageNumber]" :src="thumbUrls[page.pageNumber]"
-              :alt="'第' + page.pageNumber + '页'" class="thumb-img" loading="lazy" />
+            <img
+v-if="thumbUrls[page.pageNumber]" :src="thumbUrls[page.pageNumber]"
+              :alt="'第' + page.pageNumber + '页'" class="thumb-img" loading="lazy"
+/>
             <div v-else class="thumb-skeleton" />
             <div class="thumb-overlay">
               <span class="thumb-num">{{ page.pageNumber }}</span>
-              <span v-if="page.hasAnimation || page.hasEmbeddedMedia"
-                class="compat-warn" title="包含无法在播放器中展示的内容">⚠</span>
+              <span
+v-if="page.hasAnimation || page.hasEmbeddedMedia"
+                class="compat-warn" title="包含无法在播放器中展示的内容"
+>⚠</span>
             </div>
           </div>
           <div class="thumb-status">
@@ -126,15 +134,19 @@
               <el-button size="small" :loading="aiLoading" @click="handleGenerateAI" :icon="MagicStick">
                 AI 生成
               </el-button>
-              <el-button v-if="selectedPage.narrationScript" size="small" type="success"
-                :loading="ttsLoading" @click="handleGenerateTTS" :icon="Headset">
+              <el-button
+v-if="selectedPage.narrationScript" size="small" type="success"
+                :loading="ttsLoading" @click="handleGenerateTTS" :icon="Headset"
+>
                 生成音频
               </el-button>
             </div>
           </div>
-          <el-input v-model="editingScript" type="textarea" :rows="10"
+          <el-input
+v-model="editingScript" type="textarea" :rows="10"
             placeholder="点击「AI 生成」自动生成讲述稿，或手动输入..."
-            @blur="handleSaveScript" resize="none" />
+            @blur="handleSaveScript" resize="none"
+/>
           <div v-if="audioInfo" class="audio-meta">
             <el-icon :size="14"><Headset /></el-icon>
             <span>{{ audioInfo }}</span>

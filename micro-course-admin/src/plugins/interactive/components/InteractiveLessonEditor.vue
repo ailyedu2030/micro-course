@@ -10,7 +10,8 @@
         :tts-loading="ttsLoading"
         @generate-ai="handleGenerateAI"
         @generate-tts="handleGenerateTTS"
-        @save-script="handleSaveScript" />
+        @save-script="handleSaveScript"
+/>
       <div v-else class="editor-empty-hint">点击左侧缩略图编辑讲述稿</div>
     </div>
   </div>

@@ -12,7 +12,8 @@
           <span class="card-title">轮播图管理</span>
         </div>
         <div class="toolbar-right">
-          <el-button type="primary" @click="handleAdd" aria-label="添加轮播图"><el-icon><Plus /></el-icon>添加轮播图
+          <el-button type="primary" @click="handleAdd" aria-label="添加轮播图">
+<el-icon><Plus /></el-icon>添加轮播图
           </el-button>
         </div>
       </div>
@@ -87,9 +88,11 @@
         </el-table-column>
         <el-table-column label="操作" width="160" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)" aria-label="编辑"><el-icon><Edit /></el-icon>编辑
+            <el-button type="primary" link @click="handleEdit(row)" aria-label="编辑">
+<el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button type="danger" link @click="handleDelete(row)" aria-label="删除"><el-icon><Delete /></el-icon>删除
+            <el-button type="danger" link @click="handleDelete(row)" aria-label="删除">
+<el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
         </el-table-column>
@@ -106,7 +109,8 @@
       :title="isEdit ? '编辑轮播图' : '添加轮播图'"
       width="600px"
       destroy-on-close
-     :close-on-press-escape="true">
+     :close-on-press-escape="true"
+>
       <el-form
         ref="formRef"
         :model="form"
@@ -141,7 +145,8 @@
               </div>
             </el-upload>
             <div v-if="form.imageUrl" class="image-actions">
-              <el-button type="danger" size="small" @click="handleRemoveImage" aria-label="删除"><el-icon><Delete /></el-icon>移除
+              <el-button type="danger" size="small" @click="handleRemoveImage" aria-label="删除">
+<el-icon><Delete /></el-icon>移除
               </el-button>
             </div>
           </div>

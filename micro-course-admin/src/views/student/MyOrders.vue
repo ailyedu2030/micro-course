@@ -46,12 +46,16 @@
               size="small" type="primary"
               :loading="payingId === row.id"
               @click="handlePay(row)"
-            >支付</el-button>
+            >
+支付
+</el-button>
             <el-button
               v-if="row.courseId"
               size="small"
               @click="goCourse(row.courseId)"
-            >查看课程</el-button>
+            >
+查看课程
+</el-button>
           </template>
         </el-table-column>
       </el-table>

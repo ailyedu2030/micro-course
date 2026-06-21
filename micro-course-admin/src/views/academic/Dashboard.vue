@@ -147,7 +147,8 @@
       <el-col :xs="24" :md="12">
         <el-card class="table-card" shadow="never">
           <template #header>
-            <div class="card-header">完成率预警
+            <div class="card-header">
+完成率预警
               <el-tag size="small" type="danger" class="header-tag">completionRate &lt; 30%</el-tag>
             </div>
           </template>

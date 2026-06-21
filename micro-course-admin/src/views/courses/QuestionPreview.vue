@@ -20,7 +20,8 @@
             v-for="(opt, idx) in parsedOptions"
             :key="idx"
             :value="idx"
-            class="option-item">
+            class="option-item"
+>
             {{ opt.label }}
           </el-radio>
         </el-radio-group>
@@ -33,7 +34,8 @@
             v-for="(opt, idx) in parsedOptions"
             :key="idx"
             :value="idx"
-            class="option-item">
+            class="option-item"
+>
             {{ opt.label }}
           </el-checkbox>
         </el-checkbox-group>
@@ -54,7 +56,8 @@
           type="textarea"
           :rows="3"
           placeholder="输入答案"
-          class="fill-input" />
+          class="fill-input"
+/>
       </div>
 
       <div class="correct-answer">

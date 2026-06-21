@@ -239,7 +239,8 @@
               layout="total, sizes, prev, pager, next"
               background
               @size-change="handleSizeChange"
-              @current-change="handlePageChange" aria-label="分页导航" />
+              @current-change="handlePageChange" aria-label="分页导航"
+/>
           </div>
         </div>
       </div>

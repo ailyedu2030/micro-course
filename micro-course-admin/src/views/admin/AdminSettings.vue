@@ -55,7 +55,8 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">系统参数</span>
-              <el-button type="primary" size="small" :loading="saving" @click="handleSave('system')" aria-label="保存"><el-icon><Check /></el-icon>保存修改
+              <el-button type="primary" size="small" :loading="saving" @click="handleSave('system')" aria-label="保存">
+<el-icon><Check /></el-icon>保存修改
               </el-button>
             </div>
           </template>
@@ -102,7 +103,8 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">邮件配置</span>
-              <el-button type="primary" size="small" :loading="saving" @click="handleSave('mail')" aria-label="保存"><el-icon><Check /></el-icon>保存修改
+              <el-button type="primary" size="small" :loading="saving" @click="handleSave('mail')" aria-label="保存">
+<el-icon><Check /></el-icon>保存修改
               </el-button>
             </div>
           </template>
@@ -149,7 +151,8 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">安全设置</span>
-              <el-button type="primary" size="small" :loading="saving" @click="handleSave('security')" aria-label="保存"><el-icon><Check /></el-icon>保存修改
+              <el-button type="primary" size="small" :loading="saving" @click="handleSave('security')" aria-label="保存">
+<el-icon><Check /></el-icon>保存修改
               </el-button>
             </div>
           </template>
@@ -218,7 +221,8 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">CAS 统一身份认证配置</span>
-              <el-button type="primary" size="small" :loading="saving" @click="handleSave('cas')" aria-label="编辑"><el-icon><Check /></el-icon>保存修改
+              <el-button type="primary" size="small" :loading="saving" @click="handleSave('cas')" aria-label="编辑">
+<el-icon><Check /></el-icon>保存修改
               </el-button>
             </div>
           </template>

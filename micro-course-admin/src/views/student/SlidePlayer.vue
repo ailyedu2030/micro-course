@@ -8,15 +8,19 @@
       <div class="header-center">
         <span class="page-counter">{{ current + 1 }}<span class="counter-divider">/</span>{{ pages.length }}</span>
         <div class="page-thumb-strip">
-          <button v-for="(p, i) in pages" :key="i"
+          <button
+v-for="(p, i) in pages" :key="i"
             class="thumb-dot" :class="{ active: i === current, 'has-audio': p.audioDuration }"
-            @click="goTo(i)" :aria-label="'第' + (i + 1) + '页'" />
+            @click="goTo(i)" :aria-label="'第' + (i + 1) + '页'"
+/>
         </div>
       </div>
       <div class="header-right">
-        <button class="btn-icon btn-auto" :class="{ active: autoMode }"
+        <button
+class="btn-icon btn-auto" :class="{ active: autoMode }"
           @click="autoMode = !autoMode" :aria-label="autoMode ? '关闭自动播放' : '开启自动播放'"
-          :title="autoMode ? '自动播放中' : '手动模式'">
+          :title="autoMode ? '自动播放中' : '手动模式'"
+>
           <el-icon :size="16"><VideoPlay v-if="autoMode" /><VideoPause v-else /></el-icon>
         </button>
         <button class="btn-icon" @click="toggleFullscreen" aria-label="全屏">
@@ -32,8 +36,10 @@
         <div class="slide-frame">
           <transition :name="transitionName" mode="out-in">
             <div class="slide-wrapper" :key="current">
-              <img :src="imageUrls[current] || ''" class="slide-image"
-                :alt="'第' + (current + 1) + '页'" loading="eager" />
+              <img
+:src="imageUrls[current] || ''" class="slide-image"
+                :alt="'第' + (current + 1) + '页'" loading="eager"
+/>
               <div class="slide-gradient" />
             </div>
           </transition>
@@ -57,8 +63,10 @@
 
       <!-- Narration Panel -->
       <aside class="narration-panel" :class="{ collapsed: !showNarration }">
-        <button class="narration-handle" @click="showNarration = !showNarration"
-          :aria-label="showNarration ? '收起讲述稿' : '展开讲述稿'">
+        <button
+class="narration-handle" @click="showNarration = !showNarration"
+          :aria-label="showNarration ? '收起讲述稿' : '展开讲述稿'"
+>
           <el-icon :size="14"><ArrowRight v-if="!showNarration" /><ArrowLeft v-else /></el-icon>
         </button>
         <div v-if="showNarration" class="narration-body">
@@ -96,10 +104,12 @@
         </div>
 
         <div class="speed-group">
-          <button v-for="s in speeds" :key="s"
+          <button
+v-for="s in speeds" :key="s"
             class="speed-chip" :class="{ active: speed === s }"
             :aria-label="s + '倍速'"
-            @click="speed = s; setSpeed()">
+            @click="speed = s; setSpeed()"
+>
             {{ s }}x
           </button>
         </div>

@@ -69,7 +69,8 @@
           :page-sizes="[10, 20, 50]"
           layout="total,sizes,prev,pager,next"
           @size-change="fetchData"
-          @current-change="fetchData" />
+          @current-change="fetchData"
+/>
       </div>
     </el-card>
   </div>

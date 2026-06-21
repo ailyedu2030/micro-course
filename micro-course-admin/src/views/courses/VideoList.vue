@@ -66,7 +66,9 @@
             size="small"
             link
             @click="handleCancelUpload(idx)"
-          >取消</el-button>
+          >
+取消
+</el-button>
         </div>
         <div class="queue-summary">
           成功: {{ uploadSuccess }} / 失败: {{ uploadError }} / 总计: {{ uploadQueue.length }}
@@ -125,7 +127,8 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航" />
+          @current-change="handlePageChange" aria-label="分页导航"
+/>
       </div>
     </el-card>
 

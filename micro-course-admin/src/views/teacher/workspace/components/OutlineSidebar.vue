@@ -6,18 +6,22 @@
     </div>
     <div class="outline-tree">
       <div v-for="ch in structure" :key="ch.id" class="chapter-group" :data-chapter-id="ch.id">
-        <div class="chapter-row"
+        <div
+class="chapter-row"
           :class="{ active: selected?.type === 'chapter' && selected?.id === ch.id }"
-          @click="$emit('selectChapter', ch)">
+          @click="$emit('selectChapter', ch)"
+>
           <span class="drag-handle"><el-icon><Rank /></el-icon></span>
           <el-icon><FolderOpened /></el-icon>
           <span class="node-title">{{ ch.title }}</span>
           <el-tag size="small" type="info" effect="plain">{{ ch.lessons?.length || 0 }}</el-tag>
         </div>
         <div class="lesson-list">
-          <div v-for="lesson in ch.lessons" :key="lesson.id" class="lesson-row"
+          <div
+v-for="lesson in ch.lessons" :key="lesson.id" class="lesson-row"
             :class="{ active: selected?.type === 'lesson' && selected?.id === lesson.id }"
-            @click="$emit('selectLesson', lesson, ch)">
+            @click="$emit('selectLesson', lesson, ch)"
+>
             <span class="drag-handle"><el-icon><Rank /></el-icon></span>
             <el-icon :size="16" v-if="lesson.lessonType === 'INTERACTIVE'" class="lesson-icon-interactive"><Present /></el-icon>
             <el-icon :size="16" v-else class="lesson-icon-video"><VideoPlay /></el-icon>
@@ -40,7 +44,11 @@
 
 <script setup>
 import { Plus, Rank, FolderOpened, Present, VideoPlay } from '@element-plus/icons-vue'
-defineProps({ structure: Array, selected: Object, progress: Object })
+defineProps({
+  structure: { type: Array, default: () => [] },
+  selected: { type: Object, default: null },
+  progress: { type: Object, default: () => ({ percent: 0, done: 0, total: 0 }) }
+})
 defineEmits(['selectChapter', 'selectLesson', 'addChapter', 'addLesson'])
 </script>
 

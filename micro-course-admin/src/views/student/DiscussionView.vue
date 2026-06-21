@@ -55,7 +55,8 @@
             :page-sizes="[10, 20, 50]"
             layout="total,sizes,prev,pager,next"
             @size-change="handleSizeChange"
-            @current-change="handlePageChange" aria-label="分页导航" />
+            @current-change="handlePageChange" aria-label="分页导航"
+/>
         </div>
       </el-card>
     </template>
@@ -100,7 +101,8 @@
           :page-sizes="[10, 20, 50]"
           layout="total,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航" />
+          @current-change="handlePageChange" aria-label="分页导航"
+/>
       </div>
     </template>
 
@@ -136,7 +138,8 @@
       :title="isMobile ? '' : '帖子详情'"
       :width="isMobile ? '90vw' : '600px'"
       @close="resetDetail"
-     :close-on-press-escape="true">
+     :close-on-press-escape="true"
+>
       <div v-if="currentPost" class="post-detail">
         <div class="post-header">
           <h3 class="post-title">{{ currentPost.title }}</h3>

@@ -5,7 +5,8 @@
       :key="page.pageNumber"
       class="thumb-item"
       :class="{ active: selected?.pageNumber === page.pageNumber }"
-      @click="$emit('select', page)">
+      @click="$emit('select', page)"
+>
       <div class="thumb-img-wrap">
         <div class="thumb-num">{{ page.pageNumber }}</div>
       </div>

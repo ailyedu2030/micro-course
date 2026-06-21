@@ -79,7 +79,8 @@
               :show-file-list="false"
               :before-upload="handleImportExcel"
               accept=".xlsx,.xls"
-              class="upload-inline">
+              class="upload-inline"
+>
               <el-button type="success" size="small" :disabled="!selectedCourse">导入Excel</el-button>
             </el-upload>
             <el-button type="warning" size="small" @click="handleExportExcel">导出Excel</el-button>
@@ -141,7 +142,8 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航" />
+          @current-change="handlePageChange" aria-label="分页导航"
+/>
       </div>
     </el-card>
     </template>

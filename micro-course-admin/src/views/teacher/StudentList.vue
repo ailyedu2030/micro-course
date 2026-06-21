@@ -58,9 +58,11 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch" aria-label="重置"><el-icon><Search /></el-icon>搜索
+          <el-button type="primary" @click="handleSearch" aria-label="重置">
+<el-icon><Search /></el-icon>搜索
           </el-button>
-          <el-button @click="handleReset" aria-label="导出"><el-icon><RefreshRight /></el-icon>重置
+          <el-button @click="handleReset" aria-label="导出">
+<el-icon><RefreshRight /></el-icon>重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -150,9 +152,11 @@
         </el-table-column>
         <el-table-column label="操作" width="140" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click.stop="handleViewDetail(row)" aria-label="查看详情"><el-icon><View /></el-icon>详情
+            <el-button type="primary" link @click.stop="handleViewDetail(row)" aria-label="查看详情">
+<el-icon><View /></el-icon>详情
             </el-button>
-            <el-button type="primary" link @click.stop="handleSendMessage(row)" aria-label="发送消息"><el-icon><Message /></el-icon>发消息
+            <el-button type="primary" link @click.stop="handleSendMessage(row)" aria-label="发送消息">
+<el-icon><Message /></el-icon>发消息
             </el-button>
           </template>
         </el-table-column>
@@ -167,7 +171,8 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航" />
+          @current-change="handlePageChange" aria-label="分页导航"
+/>
       </div>
     </el-card>
 
@@ -177,7 +182,8 @@
       title="学员详情"
       width="600px"
       destroy-on-close
-     :close-on-press-escape="true">
+     :close-on-press-escape="true"
+>
       <el-descriptions :column="2" border v-if="currentStudent">
         <el-descriptions-item label="学号">{{ currentStudent.username }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ currentStudent.realName }}</el-descriptions-item>
@@ -202,7 +208,8 @@
       title="发送消息"
       width="500px"
       destroy-on-close
-     :close-on-press-escape="true">
+     :close-on-press-escape="true"
+>
       <el-form :model="messageForm" label-width="80px">
         <el-form-item label="收件人">
           <el-input :model-value="currentStudent?.realName || ''" disabled />

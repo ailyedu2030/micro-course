@@ -7,12 +7,14 @@
         <el-col :span="16">
           <el-card shadow="never">
             <template #header><span>套件子课（{{ items.length }} 门）</span></template>
-            <div v-for="item in items" :key="item.id" class="course-row student-card-item"
+            <div
+v-for="item in items" :key="item.id" class="course-row student-card-item"
               tabindex="0" role="button"
               :aria-label="'课程：' + item.courseTitle"
               @click="goCourse(item.courseId)"
               @keydown.enter="goCourse(item.courseId)"
-              @keydown.space.prevent="goCourse(item.courseId)">
+              @keydown.space.prevent="goCourse(item.courseId)"
+>
               <span class="course-order">{{ item.sortOrder || '-' }}</span>
               <div class="course-info">
                 <span class="course-title">{{ item.courseTitle }}</span>

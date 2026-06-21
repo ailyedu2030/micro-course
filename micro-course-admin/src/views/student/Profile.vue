@@ -85,8 +85,7 @@
         </el-col>
       </el-row>
 
-      <template v-if="userStore.role === 'STUDENT'"
->
+      <template v-if="userStore.role === 'STUDENT'">
         <!-- 成就 -->
         <AchievementBadges :is-mobile="false" />
 
@@ -150,8 +149,7 @@
       <!-- 修改密码 -->
       <PasswordEditor :is-mobile="true" />
 
-      <template v-if="userStore.role === 'STUDENT'"
->
+      <template v-if="userStore.role === 'STUDENT'">
         <!-- 成就 -->
         <AchievementBadges :is-mobile="true" />
 

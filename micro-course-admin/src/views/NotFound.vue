@@ -3,9 +3,9 @@
     <div class="not-found-card">
       <div class="nf-icon-wrap">
         <svg viewBox="0 0 80 80" width="80" height="80" fill="none" stroke="currentColor" stroke-width="1.2" class="nf-icon">
-          <circle cx="40" cy="40" r="28" stroke="var(--role-primary)" opacity="0.2"/>
-          <circle cx="40" cy="40" r="28" stroke="var(--role-primary)" stroke-dasharray="176" stroke-dashoffset="44" stroke-linecap="round"/>
-          <path d="M40 28v16M40 52h.01" stroke="var(--role-primary)" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="40" cy="40" r="28" stroke="var(--role-primary)" opacity="0.2" />
+          <circle cx="40" cy="40" r="28" stroke="var(--role-primary)" stroke-dasharray="176" stroke-dashoffset="44" stroke-linecap="round" />
+          <path d="M40 28v16M40 52h.01" stroke="var(--role-primary)" stroke-width="2" stroke-linecap="round" />
         </svg>
       </div>
       <h1 class="nf-code">404</h1>

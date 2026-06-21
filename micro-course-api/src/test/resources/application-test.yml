@@ -26,6 +26,11 @@ video:
   sign:
     secret: test-secret-key-for-integration-tests-must-be-at-least-32-chars
 
+plugin:
+  interactive:
+    deepseek:
+      api-key: test-deepseek-api-key-for-tests
+
 logging:
   level:
     com.microcourse: warn

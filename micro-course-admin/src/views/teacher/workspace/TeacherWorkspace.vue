@@ -28,8 +28,10 @@
         <h2 class="step-title">📤 上传课件</h2>
         <p class="step-desc">上传 PPT 文件，系统将自动提取内容生成课程大纲和讲述稿</p>
         <div v-if="!slide" class="upload-box">
-          <div class="native-upload-zone" @drop.prevent="onDrop" @dragover.prevent @click="$refs.fileInput.click()" tabindex="0" role="button"
-               @keydown.enter.prevent="$refs.fileInput.click()" @keydown.space.prevent="$refs.fileInput.click()">
+          <div
+class="native-upload-zone" @drop.prevent="onDrop" @dragover.prevent @click="$refs.fileInput.click()" tabindex="0" role="button"
+               @keydown.enter.prevent="$refs.fileInput.click()" @keydown.space.prevent="$refs.fileInput.click()"
+>
             <input ref="fileInput" type="file" accept=".pptx" style="display:none" @change="onFileSelected" />
             <el-icon :size="40" class="upload-icon"><UploadFilled /></el-icon>
             <div class="upload-text">拖拽 .pptx 文件到此处</div>
@@ -78,14 +80,18 @@
             </div>
             <div class="narration-editor">
               <span class="label">讲述稿：</span>
-              <el-input v-model="page.narrationScript" type="textarea" :rows="4"
-                @blur="saveNarration(page)" placeholder="点击「AI 生成本页」或手动输入..." />
+              <el-input
+v-model="page.narrationScript" type="textarea" :rows="4"
+                @blur="saveNarration(page)" placeholder="点击「AI 生成本页」或手动输入..."
+/>
               <div class="narration-actions">
                 <el-button size="small" :loading="aiLoading[idx]" @click="generateOneNarration(idx)">
                   🤖 AI 生成本页
                 </el-button>
-                <el-button size="small" type="success" :loading="ttsLoading[idx]"
-                  :disabled="!page.narrationScript" @click="generateOneAudio(idx)">
+                <el-button
+size="small" type="success" :loading="ttsLoading[idx]"
+                  :disabled="!page.narrationScript" @click="generateOneAudio(idx)"
+>
                   🔊 生成音频
                 </el-button>
               </div>

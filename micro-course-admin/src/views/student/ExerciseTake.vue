@@ -97,8 +97,7 @@
 
     <!-- ===== 答题界面 ===== -->
     <div v-else class="exercise-answer-view">
-
-      <!-- ===== PC 答题布局 ===== -->
+<!-- ===== PC 答题布局 ===== -->
       <template v-if="!isMobile">
         <!-- 顶部进度条（sticky） -->
         <div class="progress-bar-wrap">
@@ -529,7 +528,8 @@
         style="max-width: 500px;"
         :close-on-click-modal="false"
         :show-close="false"
-       :close-on-press-escape="true">
+       :close-on-press-escape="true"
+>
         <div class="result-content">
           <div class="result-score" :class="resultPassed ? 'passed' : 'failed'">
             <div class="score-number">{{ submitResult.score }}</div>

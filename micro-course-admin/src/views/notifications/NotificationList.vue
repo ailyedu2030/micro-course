@@ -26,7 +26,9 @@
           :type="typeFilter === tab.value ? 'primary' : 'default'"
           size="small"
           @click="handleTypeChange(tab.value)"
-        >{{ tab.label }}</el-button>
+        >
+{{ tab.label }}
+</el-button>
       </div>
 
       <!-- 骨架屏 -->
@@ -112,7 +114,9 @@
               link
               size="small"
               @click.stop="handleMarkRead(row)"
-            >标记已读</el-button>
+            >
+标记已读
+</el-button>
           </div>
         </div>
       </div>
@@ -125,7 +129,8 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航" />
+          @current-change="handlePageChange" aria-label="分页导航"
+/>
       </div>
     </el-card>
   </div>

@@ -7,8 +7,7 @@
 -->
 <template>
   <div class="course-square fade-in">
-
-    <!-- ============ 面包屑 ============ -->
+<!-- ============ 面包屑 ============ -->
     <nav class="page-breadcrumb" aria-label="面包屑">
       <el-icon><HomeFilled /></el-icon>
       <span class="bc-sep">/</span>
@@ -34,28 +33,36 @@
     <div class="filter-bar">
       <el-card class="filter-card" shadow="never">
         <div class="filter-row">
-          <el-input v-model="searchForm.keyword" placeholder="搜索课程名称或教师" clearable
-            class="keyword-input" aria-label="搜索关键词" @keyup.enter="handleSearch">
+          <el-input
+v-model="searchForm.keyword" placeholder="搜索课程名称或教师" clearable
+            class="keyword-input" aria-label="搜索关键词" @keyup.enter="handleSearch"
+>
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
-          <el-select v-model="searchForm.difficulty" placeholder="全部难度" clearable
-            class="difficulty-select" aria-label="难度筛选" @change="handleSearch">
+          <el-select
+v-model="searchForm.difficulty" placeholder="全部难度" clearable
+            class="difficulty-select" aria-label="难度筛选" @change="handleSearch"
+>
             <el-option label="全部难度" value="" />
             <el-option label="初级" :value="1" />
             <el-option label="中级" :value="2" />
             <el-option label="高级" :value="3" />
           </el-select>
           <div class="category-scroll" v-loading="categoriesLoading">
-            <el-radio-group v-model="selectedCategoryId" class="category-chip-group"
-              aria-label="课程分类" @change="handleCategoryChange">
+            <el-radio-group
+v-model="selectedCategoryId" class="category-chip-group"
+              aria-label="课程分类" @change="handleCategoryChange"
+>
               <el-radio-button value="">全部</el-radio-button>
               <el-radio-button v-for="cat in categoryList" :key="cat.id" :value="cat.id">
                 {{ cat.name }}
               </el-radio-button>
             </el-radio-group>
           </div>
-          <el-button type="primary" :icon="Search" :loading="loading" class="search-btn"
-            :aria-label="loading ? '搜索中，请稍候' : '搜索课程'" @click="handleSearch">
+          <el-button
+type="primary" :icon="Search" :loading="loading" class="search-btn"
+            :aria-label="loading ? '搜索中，请稍候' : '搜索课程'" @click="handleSearch"
+>
             搜索
           </el-button>
           <el-button type="default" :icon="RefreshRight" class="reset-btn" @click="handleReset">
@@ -72,11 +79,15 @@
       </header>
       <div class="course-grid">
         <el-row :gutter="24">
-          <el-col v-for="(course, rIndex) in recommendedCourses" :key="'rec-'+course.id"
-            :xs="24" :sm="12" :md="8" :lg="6">
-            <article class="course-card" :style="{ '--card-index': rIndex }"
+          <el-col
+v-for="(course, rIndex) in recommendedCourses" :key="'rec-'+course.id"
+            :xs="24" :sm="12" :md="8" :lg="6"
+>
+            <article
+class="course-card" :style="{ '--card-index': rIndex }"
               role="button" tabindex="0" :aria-label="`推荐课程 ${course.title}`"
-              @click="handleCourseClick(course.id)" @keydown.enter="handleCourseClick(course.id)">
+              @click="handleCourseClick(course.id)" @keydown.enter="handleCourseClick(course.id)"
+>
               <div class="course-cover">
                 <div class="cover-placeholder" aria-hidden="true"><el-icon :size="48"><VideoPlay /></el-icon></div>
                 <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="cover-img" @error="handleImgError" />
@@ -104,9 +115,11 @@
         <el-button text type="primary" @click="goBundles">查看全部 →</el-button>
       </header>
       <div class="bundle-scroll">
-        <div v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
+        <div
+v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
           :aria-label="'课程套件：' + b.title" @click="goBundle(b.id)"
-          @keydown.enter="goBundle(b.id)" @keydown.space.prevent="goBundle(b.id)">
+          @keydown.enter="goBundle(b.id)" @keydown.space.prevent="goBundle(b.id)"
+>
           <div class="b-chip-icon"><el-icon :size="20"><FolderOpened /></el-icon></div>
           <div class="b-chip-info">
             <span class="b-chip-title">{{ b.title }}</span>
@@ -157,8 +170,10 @@
       </el-empty>
 
       <!-- Empty (无搜索结果) -->
-      <el-empty v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
-        :description="`未找到与 '${searchForm.keyword || '当前筛选'}' 相关的课程`">
+      <el-empty
+v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
+        :description="`未找到与 '${searchForm.keyword || '当前筛选'}' 相关的课程`"
+>
         <template #image><el-icon :size="64" class="state-icon"><Search /></el-icon></template>
         <el-button type="primary" class="state-action" @click="handleReset">清除筛选</el-button>
       </el-empty>
@@ -167,16 +182,20 @@
       <div v-else class="course-grid">
         <el-row :gutter="24">
           <el-col v-for="(course, cIndex) in courseList" :key="course.id" :xs="24" :sm="12" :md="8" :lg="8">
-            <article class="course-card" :style="{ '--card-index': cIndex }" role="button" tabindex="0"
+            <article
+class="course-card" :style="{ '--card-index': cIndex }" role="button" tabindex="0"
               :aria-label="`课程 ${course.title}，教师 ${course.teacherName || '未知'}，${course.studentCount || 0} 人学习`"
-              @click="handleCourseClick(course.id)" @keydown.enter="handleCourseClick(course.id)" @keydown.space.prevent="handleCourseClick(course.id)">
+              @click="handleCourseClick(course.id)" @keydown.enter="handleCourseClick(course.id)" @keydown.space.prevent="handleCourseClick(course.id)"
+>
               <div class="course-cover">
                 <div class="cover-placeholder" aria-hidden="true"><el-icon :size="48"><VideoPlay /></el-icon></div>
                 <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="cover-img" @error="handleImgError" />
                 <el-tag v-if="course.categoryName" class="category-chip" type="info" effect="plain" size="small">{{ course.categoryName }}</el-tag>
                 <span v-if="course.difficulty" class="difficulty-label" :class="'difficulty-label--' + getDifficultyType(course.difficulty)">{{ getDifficultyLabel(course.difficulty) }}</span>
-                <span v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
-                  :style="{ background: getCardTypeConfig(course.courseType).typeColor }">{{ getCardTypeConfig(course.courseType).typeLabel }}</span>
+                <span
+v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
+                  :style="{ background: getCardTypeConfig(course.courseType).typeColor }"
+>{{ getCardTypeConfig(course.courseType).typeLabel }}</span>
               </div>
               <div class="course-info">
                 <h3 class="course-title" :title="course.title">{{ course.title }}</h3>
@@ -195,10 +214,12 @@
           </el-col>
         </el-row>
         <div v-if="totalElements > 0" class="pagination-wrap">
-          <el-pagination v-model:current-page="page" v-model:page-size="size" :total="totalElements"
+          <el-pagination
+v-model:current-page="page" v-model:page-size="size" :total="totalElements"
             :page-sizes="[12, 24, 48]" :disabled="loading" layout="total, sizes, prev, pager, next, jumper"
             background class="course-pagination" @size-change="handleSizeChange"
-            @current-change="handlePageChange" aria-label="分页导航" />
+            @current-change="handlePageChange" aria-label="分页导航"
+/>
         </div>
       </div>
     </section>
@@ -210,9 +231,11 @@
         <el-button text type="primary" :icon="TrendCharts">查看全部 →</el-button>
       </header>
       <div class="hot-scroll">
-        <div v-for="(course, index) in hotCourses" :key="course.id" class="hot-card" role="button" tabindex="0"
+        <div
+v-for="(course, index) in hotCourses" :key="course.id" class="hot-card" role="button" tabindex="0"
           :style="{ '--hot-index': index }" :aria-label="`热门第 ${index + 1} 名：${course.title}`"
-          @click="handleCourseClick(course.id)" @keydown.enter="handleCourseClick(course.id)">
+          @click="handleCourseClick(course.id)" @keydown.enter="handleCourseClick(course.id)"
+>
           <div class="course-cover hot-card-cover">
             <div class="cover-placeholder" aria-hidden="true"><el-icon :size="28"><VideoPlay /></el-icon></div>
             <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="cover-img" @error="handleImgError" />
@@ -232,9 +255,11 @@
         <h2 class="section-title">最新课程</h2>
       </header>
       <div class="newest-scroll">
-        <div v-for="(course, nIndex) in newestCourses" :key="course.id" class="newest-chip" role="button" tabindex="0"
+        <div
+v-for="(course, nIndex) in newestCourses" :key="course.id" class="newest-chip" role="button" tabindex="0"
           :aria-label="`最新课程：${course.title}`" @click="handleCourseClick(course.id)"
-          @keydown.enter="handleCourseClick(course.id)">
+          @keydown.enter="handleCourseClick(course.id)"
+>
           <div class="newest-chip-icon"><el-icon :size="18"><VideoPlay /></el-icon></div>
           <div class="newest-chip-info">
             <span class="newest-chip-title">{{ course.title }}</span>
@@ -243,8 +268,7 @@
         </div>
       </div>
     </section>
-
-  </div>
+</div>
 </template>
 
 <script setup>

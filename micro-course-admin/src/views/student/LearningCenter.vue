@@ -163,7 +163,9 @@
                 type="success"
                 size="small"
                 effect="dark"
-              >已完成</el-tag>
+              >
+已完成
+</el-tag>
             </div>
             <div class="recent-info">
               <div class="recent-title">{{ record.title }}</div>

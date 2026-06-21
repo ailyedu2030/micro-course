@@ -38,9 +38,9 @@
     <div v-else-if="errorMsg" class="player-error">
       <div class="error-icon">
         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       </div>
       <p class="error-title">视频加载失败</p>
@@ -55,7 +55,7 @@
         <div class="header-left">
           <el-button class="back-btn" link @click="goBack" aria-label="返回">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="15 18 9 12 15 6"/>
+              <polyline points="15 18 9 12 15 6" />
             </svg>
           </el-button>
           <span class="header-title">{{ videoData.title || '视频加载中' }}</span>
@@ -65,7 +65,7 @@
             <span class="speed-btn">
               {{ playbackRate }}x
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 12 15 18 9"/>
+                <polyline points="6 9 12 15 18 9" />
               </svg>
             </span>
             <template #dropdown>
@@ -81,18 +81,18 @@
           </el-dropdown>
           <el-button link @click="showChapterList = !showChapterList" aria-label="章节列表">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="8" y1="6" x2="21" y2="6"/>
-              <line x1="8" y1="12" x2="21" y2="12"/>
-              <line x1="8" y1="18" x2="21" y2="18"/>
-              <line x1="3" y1="6" x2="3.01" y2="6"/>
-              <line x1="3" y1="12" x2="3.01" y2="12"/>
-              <line x1="3" y1="18" x2="3.01" y2="18"/>
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
             </svg>
           </el-button>
           <el-button link @click="toggleSettings" aria-label="设置">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           </el-button>
         </div>
@@ -102,7 +102,7 @@
       <header class="player-header h5-header">
         <el-button class="back-btn" link @click="goBack" aria-label="返回">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"/>
+            <polyline points="15 18 9 12 15 6" />
           </svg>
         </el-button>
         <span class="header-title">{{ videoData.title || '视频' }}</span>
@@ -162,8 +162,8 @@
               <div v-if="volumeIndicatorVisible" class="gesture-indicator volume-indicator" :style="{ left: gestureIndicatorX + 'px', top: gestureIndicatorY + 'px' }">
                 <div class="gi-icon">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                    <path v-if="volumeIndicatorValue > 0" d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path v-if="volumeIndicatorValue > 0" d="M15.54 8.46a5 5 0 0 1 0 7.07" />
                   </svg>
                 </div>
                 <div class="gi-bar">
@@ -177,15 +177,15 @@
               <div v-if="brightnessIndicatorVisible" class="gesture-indicator brightness-indicator" :style="{ left: gestureIndicatorX + 'px', top: gestureIndicatorY + 'px' }">
                 <div class="gi-icon">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="5"/>
-                    <line x1="12" y1="1" x2="12" y2="3"/>
-                    <line x1="12" y1="21" x2="12" y2="23"/>
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                    <line x1="1" y1="12" x2="3" y2="12"/>
-                    <line x1="21" y1="12" x2="23" y2="12"/>
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                   </svg>
                 </div>
                 <div class="gi-bar">
@@ -199,12 +199,12 @@
             <transition name="seek-indicator-fade">
               <div v-if="showSeekIndicator" class="seek-indicator">
                 <svg v-if="seekIndicatorDir === 'backward'" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="11 19 2 12 11 5 11 19"/>
-                  <polygon points="22 19 13 12 22 5 22 19"/>
+                  <polygon points="11 19 2 12 11 5 11 19" />
+                  <polygon points="22 19 13 12 22 5 22 19" />
                 </svg>
                 <svg v-else width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="13 19 22 12 13 5 13 19"/>
-                  <polygon points="2 19 11 12 2 5 2 19"/>
+                  <polygon points="13 19 22 12 13 5 13 19" />
+                  <polygon points="2 19 11 12 2 5 2 19" />
                 </svg>
                 <span>{{ seekIndicatorSeconds }}s</span>
               </div>
@@ -213,7 +213,7 @@
             <!-- Center Play Button (when paused) -->
             <div v-if="!isPlaying && !isBuffering && !loading" class="center-play-btn" role="button" tabindex="0" aria-label="播放视频" @click="togglePlay" @keydown.enter="togglePlay" @keydown.space.prevent="togglePlay">
               <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3"/>
+                <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
             </div>
 
@@ -227,9 +227,9 @@
               <div v-if="showObjectives" class="learning-objectives-overlay">
                 <div class="obj-icon">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
                 </div>
                 <div class="obj-content">
@@ -255,27 +255,27 @@
                   <!-- Play/Pause -->
                   <button class="ctrl-btn" @click="togglePlay" :aria-label="isPlaying ? '暂停' : '播放'">
                     <svg v-if="isPlaying" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <rect x="6" y="4" width="4" height="16"/>
-                      <rect x="14" y="4" width="4" height="16"/>
+                      <rect x="6" y="4" width="4" height="16" />
+                      <rect x="14" y="4" width="4" height="16" />
                     </svg>
                     <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <polygon points="5 3 19 12 5 21 5 3"/>
+                      <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
                   </button>
 
                   <!-- Skip Backward -->
                   <button class="ctrl-btn" @click="skipBackward" aria-label="快退10秒">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polygon points="11 19 2 12 11 5 11 19"/>
-                      <polygon points="22 19 13 12 22 5 22 19"/>
+                      <polygon points="11 19 2 12 11 5 11 19" />
+                      <polygon points="22 19 13 12 22 5 22 19" />
                     </svg>
                   </button>
 
                   <!-- Skip Forward -->
                   <button class="ctrl-btn" @click="skipForward" aria-label="快进10秒">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polygon points="13 19 22 12 13 5 13 19"/>
-                      <polygon points="2 19 11 12 2 5 2 19"/>
+                      <polygon points="13 19 22 12 13 5 13 19" />
+                      <polygon points="2 19 11 12 2 5 2 19" />
                     </svg>
                   </button>
 
@@ -283,14 +283,14 @@
                   <div class="volume-control">
                     <button class="ctrl-btn" @click="toggleMute" :aria-label="isMuted ? '取消静音' : '静音'">
                       <svg v-if="isMuted || volume === 0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                        <line x1="23" y1="9" x2="17" y2="15"/>
-                        <line x1="17" y1="9" x2="23" y2="15"/>
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                        <line x1="23" y1="9" x2="17" y2="15" />
+                        <line x1="17" y1="9" x2="23" y2="15" />
                       </svg>
                       <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
                       </svg>
                     </button>
                     <el-slider
@@ -326,33 +326,33 @@
                   <!-- Subtitles -->
                   <button v-if="videoData.subtitleUrl" class="ctrl-btn" :class="{ active: subtitlesEnabled }" @click="toggleSubtitles" aria-label="字幕">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="2" y="6" width="20" height="12" rx="2"/>
-                      <line x1="6" y1="12" x2="18" y2="12"/>
-                      <line x1="8" y1="16" x2="16" y2="16"/>
+                      <rect x="2" y="6" width="20" height="12" rx="2" />
+                      <line x1="6" y1="12" x2="18" y2="12" />
+                      <line x1="8" y1="16" x2="16" y2="16" />
                     </svg>
                   </button>
 
                   <!-- Picture-in-Picture -->
                   <button v-if="isPipSupported" class="ctrl-btn" :class="{ active: isPip }" @click="togglePictureInPicture" :aria-label="isPip ? '退出画中画' : '画中画'">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                      <rect x="12" y="9" width="8" height="6" rx="1" ry="1" :fill="isPip ? 'currentColor' : 'none'"/>
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <rect x="12" y="9" width="8" height="6" rx="1" ry="1" :fill="isPip ? 'currentColor' : 'none'" />
                     </svg>
                   </button>
 
                   <!-- Fullscreen -->
                   <button class="ctrl-btn" @click="toggleFullscreen" :aria-label="isFullscreen ? '退出全屏' : '全屏'">
                     <svg v-if="!isFullscreen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="15 3 21 3 21 9"/>
-                      <polyline points="9 21 3 21 3 15"/>
-                      <line x1="21" y1="3" x2="14" y2="10"/>
-                      <line x1="3" y1="21" x2="10" y2="14"/>
+                      <polyline points="15 3 21 3 21 9" />
+                      <polyline points="9 21 3 21 3 15" />
+                      <line x1="21" y1="3" x2="14" y2="10" />
+                      <line x1="3" y1="21" x2="10" y2="14" />
                     </svg>
                     <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="4 14 10 14 10 20"/>
-                      <polyline points="20 10 14 10 14 4"/>
-                      <line x1="14" y1="10" x2="21" y2="3"/>
-                      <line x1="3" y1="21" x2="10" y2="14"/>
+                      <polyline points="4 14 10 14 10 20" />
+                      <polyline points="20 10 14 10 14 4" />
+                      <line x1="14" y1="10" x2="21" y2="3" />
+                      <line x1="3" y1="21" x2="10" y2="14" />
                     </svg>
                   </button>
                 </div>
@@ -380,7 +380,7 @@
               <span class="chip-index">{{ index + 1 }}</span>
               <span class="chip-title">{{ chapter.title }}</span>
               <svg v-if="chapter.isCompleted" class="chip-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"/>
+                <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
           </div>
@@ -429,7 +429,7 @@
                     <div class="chapter-duration">{{ formatTime(chapter.duration || 0) }}</div>
                   </div>
                   <svg v-if="chapter.isCompleted" class="chapter-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="20 6 9 17 4 12"/>
+                    <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
               </div>
@@ -504,7 +504,7 @@
                     <div class="chapter-duration">{{ formatTime(chapter.duration || 0) }}</div>
                   </div>
                   <svg v-if="chapter.isCompleted" class="chapter-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="20 6 9 17 4 12"/>
+                    <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
               </div>
