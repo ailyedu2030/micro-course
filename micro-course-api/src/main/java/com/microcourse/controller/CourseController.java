@@ -1,6 +1,8 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.*;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.CourseService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -109,7 +111,7 @@ public class CourseController {
      * 权限：ADMIN
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> approve(@PathVariable Long id) {
         courseService.approve(id);
         return R.ok();
@@ -122,9 +124,16 @@ public class CourseController {
      * @param body {"reason": "拒绝原因"}
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String reason = body.getOrDefault("reason", "");
+        // P0#3 修复:驳回原因不能为空或过短
+        if (reason == null || reason.isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因不能为空");
+        }
+        if (reason.trim().length() < 5) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因过短，至少需要5个字符");
+        }
         courseService.reject(id, reason);
         return R.ok();
     }
@@ -135,7 +144,7 @@ public class CourseController {
      * 权限：TEACHER, ADMIN
      */
     @PostMapping("/{id}/publish")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<Void> publish(@PathVariable Long id) {
         courseService.publish(id);
         return R.ok();

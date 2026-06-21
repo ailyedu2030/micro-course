@@ -303,6 +303,12 @@ public class CourseServiceImpl implements CourseService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
+        // P0#4 修复:已关闭(CLOSED)或已归档(ARCHIVED)课程禁止编辑
+        if (course.getStatus() != null
+                && (course.getStatus() == CourseStatus.CLOSED.getCode()
+                    || course.getStatus() == CourseStatus.ARCHIVED.getCode())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程已关闭或归档，无法编辑");
+        }
         // Published course cannot be edited directly
         if (course.getStatus() != null && course.getStatus() == CourseStatus.PUBLISHED.getCode()) {
             throw new BusinessException(ErrorCode.COURSE_PUBLISHED_CANNOT_EDIT);
@@ -362,6 +368,10 @@ public class CourseServiceImpl implements CourseService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
+        // P0: 所有权校验，防止越权修改他人课程状态
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
 
         CourseStatus newStatus = CourseStatus.fromCode(status);
         if (newStatus == null) {
@@ -396,6 +406,16 @@ public class CourseServiceImpl implements CourseService {
         }
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        // P0#2 修复:提交审核前置校验——课程标题不能为空
+        if (course.getTitle() == null || course.getTitle().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程标题不能为空");
+        }
+        // P0#2 修复:提交审核前置校验——课程必须包含至少一个章节
+        LambdaQueryWrapper<CourseChapter> chapterCountWrapper = new LambdaQueryWrapper<>();
+        chapterCountWrapper.eq(CourseChapter::getCourseId, id);
+        if (chapterRepository.selectCount(chapterCountWrapper) <= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程必须包含至少一个章节");
         }
         // DRAFT(0) / REJECTED(3) → PENDING_REVIEW(1) CAS 推进(CON-NEW-3 修复:防止并发双提交)
         int affected = courseRepository.update(null,
@@ -470,10 +490,12 @@ public class CourseServiceImpl implements CourseService {
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         // R1-API-004 修复:保留 COURSE_NOT_FOUND 错误码区分
-        if (courseRepository.selectById(id) == null) {
+        Course course = courseRepository.selectById(id);
+        if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (!SecurityUtil.isAdminOrAcademic()) {
+        // ADMIN/ACADEMIC 可发布任意课程；TEACHER 只能发布自己的课程
+        if (!SecurityUtil.isAdminOrAcademic() && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         // APPROVED(2) → PUBLISHED(4) CAS
@@ -723,13 +745,17 @@ public class CourseServiceImpl implements CourseService {
         if (f == CourseStatus.PENDING_REVIEW.getCode() && (to == CourseStatus.APPROVED.getCode() || to == CourseStatus.REJECTED.getCode())) return true;
         // APPROVED → PUBLISHED
         if (f == CourseStatus.APPROVED.getCode() && to == CourseStatus.PUBLISHED.getCode()) return true;
-        // PUBLISHED → CLOSED
-        if (f == CourseStatus.PUBLISHED.getCode() && to == CourseStatus.CLOSED.getCode()) return true;
-        // CLOSED → ARCHIVED or DRAFT
-        if (f == CourseStatus.CLOSED.getCode() && (to == CourseStatus.ARCHIVED.getCode() || to == CourseStatus.DRAFT.getCode())) return true;
-        // REJECTED → DRAFT or PENDING_REVIEW（P1#6 修复：教师被驳回后可重新提交审核）
+        // PUBLISHED → CLOSED or ARCHIVED（P0#1 修复：已发布课程可直接归档）
+        if (f == CourseStatus.PUBLISHED.getCode()
+                && (to == CourseStatus.CLOSED.getCode() || to == CourseStatus.ARCHIVED.getCode())) return true;
+        // CLOSED → ARCHIVED or DRAFT or PUBLISHED（P0#1 修复：已关闭课程可重新发布）
+        if (f == CourseStatus.CLOSED.getCode()
+                && (to == CourseStatus.ARCHIVED.getCode() || to == CourseStatus.DRAFT.getCode()
+                    || to == CourseStatus.PUBLISHED.getCode())) return true;
+        // REJECTED → DRAFT or PENDING_REVIEW or ARCHIVED（P1#6 修复：教师被驳回后可重新提交审核；P0#1：驳回课程可归档）
         if (f == CourseStatus.REJECTED.getCode()
-                && (to == CourseStatus.DRAFT.getCode() || to == CourseStatus.PENDING_REVIEW.getCode())) return true;
+                && (to == CourseStatus.DRAFT.getCode() || to == CourseStatus.PENDING_REVIEW.getCode()
+                    || to == CourseStatus.ARCHIVED.getCode())) return true;
         return false;
     }
 

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.EnrollmentCreateRequest;
+import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.order.OrderVO;
 import com.microcourse.entity.Course;
@@ -30,6 +31,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -77,6 +79,14 @@ public class OrderServiceImpl implements OrderService {
                 return toVO(existing);
             }
             return toVO(existing);
+        }
+
+        // SECURITY: 检查是否已选课（含免费选课），防止已选课用户重复购买
+        List<EnrollmentVO> myEnrollments = enrollmentService.getMyEnrollments(userId, null);
+        boolean alreadyEnrolled = myEnrollments.stream()
+                .anyMatch(e -> courseId.equals(e.getCourseId()) && !"CANCELLED".equals(e.getEnrollmentStatus()));
+        if (alreadyEnrolled) {
+            throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS, "您已选课，无需重复购买");
         }
 
         BigDecimal price = course.getPrice();
@@ -237,6 +247,11 @@ public class OrderServiceImpl implements OrderService {
      */
     @Transactional(rollbackFor = Exception.class)
     private void processPayment(Long orderId, String paymentMethod) {
+        // P1: 支付方式白名单校验
+        Set<String> validMethods = Set.of("BALANCE", "WECHAT", "ALIPAY");
+        if (paymentMethod == null || !validMethods.contains(paymentMethod)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不支持的支付方式");
+        }
         Order order = orderRepository.selectById(orderId);
         if (order == null) {
             log.warn("[processPayment] order not found: id={}", orderId);
