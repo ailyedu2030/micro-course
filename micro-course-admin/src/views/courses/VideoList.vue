@@ -246,7 +246,9 @@ const coverUploadRef = ref(null)
 
 const fetchCourses = async () => {
   try {
-    const { data } = await getCourses({ page: 0, size: 1000 })
+    const params = { page: 0, size: 1000 }
+    if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
+    const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
     ElMessage.error('获取课程列表失败')

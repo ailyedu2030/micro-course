@@ -92,10 +92,12 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import { getDiscussions, approveDiscussion, rejectDiscussion, deleteDiscussion } from '@/api/discussion'
 import { getCourses } from '@/api/course'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -112,7 +114,9 @@ const searchForm = reactive({
 
 const fetchCourseOptions = async () => {
   try {
-    const { data } = await getCourses({ page: 0, size: 1000 })
+    const params = { page: 0, size: 1000 }
+    if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
+    const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
     ElMessage.error('获取课程列表失败')
