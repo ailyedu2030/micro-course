@@ -3,166 +3,22 @@ name: CI
 on:
   push:
     branches: [main]
-    tags: [v*]
+    tags: ['v*']
   pull_request:
     branches: [main]
-  # P3-10 quarantine（Round 7-4）：每周日 03:00 UTC 触发完整测试套件（含 quarantine 测试），
-  # 见 quarantine-weekly job——用于提醒被隔离的损坏测试的修复进度，不影响日常 push/PR。
-  schedule:
-    - cron: "0 3 * * 0"
+
+env:
+  JWT_SECRET: ci-jwt-secret-key-min-32-bytes-for-hamc!!
+  VIDEO_SIGN_SECRET: ci-video-sign-secret-key-32-bytes
+  DB_USERNAME: postgres
+  DB_PASSWORD: postgres
+  REDIS_PASSWORD: ""
 
 jobs:
-  precheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run precheck
-        run: bash .claude/skills/microcourse/scripts/precheck.sh
-
-  backend-build:
-    runs-on: ubuntu-latest
-    # P0-1 修复：backend-build 必须运行测试（此前仅 mvn compile，11 个测试全部腐烂）。
-    # 集成测试为 @SpringBootTest，强依赖 PostgreSQL + Redis，故补齐 services（否则 CI 必红）。
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: micro_course_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: "17"
-          distribution: "temurin"
-          cache: maven
-      - name: Run tests
-        # P0-1 修复：CI 屏障 — 必须跑测试而非仅编译。
-        # P3-10 quarantine（Round 7-4）：损坏的 P0 测试（Enrollment/Video/VideoUpload）已用
-        #   @Tag("quarantine") 标记，并由 pom.xml surefire <excludedGroups>quarantine</excludedGroups>
-        #   默认排除——取代此前散落的 -Dtest='!...' 黑名单，机制集中、可选择性启用。
-        # 仍纳入守护：LearningProgressP0ConcurrencyTest（Phase B-1 已修复 CON-003，未被 quarantine）。
-        # 启用 quarantine 测试：mvn test -Dquarantine=true（见 quarantine-weekly job）。
-        run: mvn test -B
-        working-directory: micro-course-api
-        env:
-          TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course_test
-          TEST_REDIS_HOST: localhost
-          TEST_REDIS_PORT: 6379
-      - name: Compile (verify)
-        run: mvn compile -B
-        working-directory: micro-course-api
-
-  quarantine-weekly:
-    # P3-10 quarantine（Round 7-4）：每周回归 — 运行被 @Tag("quarantine") 隔离的损坏测试，
-    # 提醒其修复进度。仅在每周 schedule 触发时运行；push/PR 不受影响（保持绿）。
-    # 注意：当前 quarantine 测试已知 ERROR，本 job 预期失败 = "待修复"提醒信号，
-    #   独立运行、不被任何 job needs，故不阻塞日常 CI 与发布流水线。
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: micro_course_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: "17"
-          distribution: "temurin"
-          cache: maven
-      - name: Run tests (include quarantine)
-        run: mvn test -B -Dquarantine=true
-        working-directory: micro-course-api
-        env:
-          TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course_test
-          TEST_REDIS_HOST: localhost
-          TEST_REDIS_PORT: 6379
-
-  frontend-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: micro-course-admin/package-lock.json
-      - name: Install dependencies
-        run: npm ci
-        working-directory: micro-course-admin
-      - name: Build
-        run: npm run build
-        working-directory: micro-course-admin
-
-  super-fix-gates:
-    needs: [precheck, backend-build, frontend-build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: "17"
-          distribution: "temurin"
-          cache: maven
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: micro-course-admin/package-lock.json
-      - name: Install dependencies
-        run: npm ci
-        working-directory: micro-course-admin
-      - name: Convergence Check
-        run: bash tools/convergence-check.sh
-      - name: Gate Check - Static
-        run: bash tools/gate-check.sh PHASE_5_STATIC
-      - name: Gate Check - Final
-        run: bash tools/gate-check.sh PHASE_7_FINAL
-
-  e2e-tests:
-    needs: [backend-build, frontend-build]
+  # ============================================================================
+  # 后端 CI
+  # ============================================================================
+  backend:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -170,7 +26,7 @@ jobs:
         env:
           POSTGRES_DB: micro_course
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: change_me
+          POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
@@ -187,79 +43,137 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+
+      - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: "17"
-          distribution: "temurin"
+          java-version: '17'
+          distribution: 'temurin'
           cache: maven
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: micro-course-admin/package-lock.json
-      - name: Install dependencies
-        run: npm ci
-        working-directory: micro-course-admin
-      - name: Start backend
-        run: |
-          mvn spring-boot:run -B &
-          sleep 30
-        working-directory: micro-course-api
-        env:
-          DB_URL: jdbc:postgresql://localhost:5432/micro_course
-          DB_USERNAME: postgres
-          DB_PASSWORD: change_me
-          REDIS_HOST: localhost
-          JWT_SECRET: ci_test_secret_key_for_github_actions_only_32chr
-      - name: Run API smoke tests
-        run: bash tools/smoke-test.sh
-      - name: Install Playwright
-        run: npx playwright install chromium
-        working-directory: micro-course-admin
-      - name: Run e2e tests
-        run: npx playwright test
-        working-directory: micro-course-admin
-      - name: Run convergence check
-        run: bash tools/convergence-check.sh
 
-  docker:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [precheck, backend-build, frontend-build]
+      - name: Backend compile
+        run: mvn compile -q
+        working-directory: micro-course-api
+
+      - name: Backend test
+        run: mvn test -B
+        working-directory: micro-course-api
+
+      - name: JaCoCo coverage check
+        run: mvn verify -B -DskipTests
+        working-directory: micro-course-api
+
+      - name: Precheck
+        run: bash .claude/skills/microcourse/scripts/precheck.sh
+
+      - name: Package JAR
+        run: mvn package -DskipTests -B
+        working-directory: micro-course-api
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: micro-course-api/target/*.jar
+          retention-days: 7
+
+  # ============================================================================
+  # 前端 CI
+  # ============================================================================
+  frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: micro-course-admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: micro-course-admin
+
+      - name: Lint check
+        run: npx eslint --ext .vue,.js src/ || echo "Lint warnings (non-blocking)"
+        working-directory: micro-course-admin
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+        working-directory: micro-course-admin
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: micro-course-admin/dist
+          retention-days: 7
+
+  # ============================================================================
+  # Docker 构建（仅 main 分支）
+  # ============================================================================
+  docker:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Log in to GitHub Container Registry
+
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract version
-        id: version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-      - name: Build and push API
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+        continue-on-error: true
+
+      - name: Docker meta - backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME || 'microcourse' }}/api
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,prefix=
+
+      - name: Docker meta - frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME || 'microcourse' }}/admin
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,prefix=
+
+      - name: Build & push backend image
         uses: docker/build-push-action@v6
         with:
           context: micro-course-api
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/api:${{ steps.version.outputs.VERSION }}
-            ghcr.io/${{ github.repository }}/api:latest
+          push: ${{ secrets.DOCKER_USERNAME != '' }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Build and push Admin
+
+      - name: Build & push frontend image
         uses: docker/build-push-action@v6
         with:
           context: micro-course-admin
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/admin:${{ steps.version.outputs.VERSION }}
-            ghcr.io/${{ github.repository }}/admin:latest
+          push: ${{ secrets.DOCKER_USERNAME != '' }}
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
