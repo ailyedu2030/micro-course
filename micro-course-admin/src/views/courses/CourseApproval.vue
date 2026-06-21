@@ -49,13 +49,13 @@
         <el-table-column label="操作" width="260" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleView(row)">查看</el-button>
-            <el-button v-if="row.status === 1" type="success" link size="small" @click="handleApprove(row)">
+            <el-button v-if="row.status === 1 && userStore.role === 'ADMIN'" type="success" link size="small" @click="handleApprove(row)">
               <el-icon><Select /></el-icon>通过
             </el-button>
-            <el-button v-if="row.status === 1" type="danger" link size="small" @click="handleReject(row)">
+            <el-button v-if="row.status === 1 && userStore.role === 'ADMIN'" type="danger" link size="small" @click="handleReject(row)">
               <el-icon><Close /></el-icon>驳回
             </el-button>
-            <el-button v-if="row.status === 2" type="primary" link size="small" @click="handlePublish(row)">
+            <el-button v-if="row.status === 2 && (userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC')" type="primary" link size="small" @click="handlePublish(row)">
               发布
             </el-button>
           </template>
@@ -80,9 +80,12 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourses, approveCourse, rejectCourse, publishCourse } from '@/api/course'
+import { useUserStore } from '@/store/user'
 import { Select, Close } from '@element-plus/icons-vue'
+import { ElMessageBox } from 'element-plus'
 
 const router = useRouter()
+const userStore = useUserStore()
 const loading = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
@@ -122,8 +125,12 @@ async function handleApprove(row) {
 
 async function handleReject(row) {
   try {
-    await ElMessageBox.confirm('确定驳回该课程？', '提示', { type: 'warning' })
-    await rejectCourse(row.id, { reason: '管理员驳回' })
+    const { value: reason } = await ElMessageBox.prompt('请输入驳回原因', '驳回课程', {
+      confirmButtonText: '确定驳回', cancelButtonText: '取消',
+      inputValidator: v => v?.trim()?.length >= 5 || '驳回原因至少5个字符',
+      inputPlaceholder: '请输入驳回原因（至少5个字符）',
+    })
+    await rejectCourse(row.id, { reason })
     ElMessage.success('已驳回'); fetchData()
   } catch { /* cancel */ }
 }
