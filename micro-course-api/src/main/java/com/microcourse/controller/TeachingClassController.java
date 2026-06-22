@@ -58,8 +58,13 @@ public class TeachingClassController {
         return R.ok(vo);
     }
 
+    /**
+     * DELETE /api/teaching-classes/{id}
+     * 删除教学班
+     * 权限：ADMIN（依据 权限矩阵 v2.0 §2.9 DELETE_TEACHING_CLASS = 仅 ADMIN）
+     */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         teachingClassService.delete(id);
         return R.ok();

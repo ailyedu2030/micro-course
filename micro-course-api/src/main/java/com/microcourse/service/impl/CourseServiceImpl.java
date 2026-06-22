@@ -11,6 +11,8 @@ import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.CourseReviewLog;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.User;
+import com.microcourse.entity.Video;
+import com.microcourse.entity.VideoStatus;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
@@ -27,6 +29,7 @@ import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.repository.VideoRepository;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
@@ -35,18 +38,22 @@ import com.microcourse.service.CourseService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
+import com.microcourse.util.XssSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -75,9 +82,19 @@ public class CourseServiceImpl implements CourseService {
     private final PluginRegistry pluginRegistry;
     private final CourseSlideMapper courseSlideMapper;
     private final SlidePageMapper slidePageMapper;
+    private final VideoRepository videoRepository;
     private final NotificationService notificationService;
     private final EnrollmentRepository enrollmentRepository;
     private final RedisUtil redisUtil;
+
+    // E2-1: self-injection 解决内部调用绕过 @Transactional 代理问题
+    // @Lazy 避免循环依赖，通过 AOP 代理确保 updateStatus() 的事务正确传播
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private CourseServiceImpl self;
+
+    /** C2-3 修复：异步线程池，用于 publish() 后异步发送通知，不阻塞主事务。 */
+    private final Executor taskExecutor;
 
     public CourseServiceImpl(CourseRepository courseRepository,
                              CourseCategoryRepository categoryRepository,
@@ -89,9 +106,11 @@ public class CourseServiceImpl implements CourseService {
                              PluginRegistry pluginRegistry,
                              CourseSlideMapper courseSlideMapper,
                              SlidePageMapper slidePageMapper,
+                             VideoRepository videoRepository,
                              NotificationService notificationService,
                              EnrollmentRepository enrollmentRepository,
-                             RedisUtil redisUtil) {
+                             RedisUtil redisUtil,
+                             @Qualifier("taskExecutor") Executor taskExecutor) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
@@ -102,9 +121,11 @@ public class CourseServiceImpl implements CourseService {
         this.pluginRegistry = pluginRegistry;
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
+        this.videoRepository = videoRepository;
         this.notificationService = notificationService;
         this.enrollmentRepository = enrollmentRepository;
         this.redisUtil = redisUtil;
+        this.taskExecutor = taskExecutor;
     }
 
     /**
@@ -473,14 +494,15 @@ public class CourseServiceImpl implements CourseService {
         }
 
         Course course = new Course();
-        course.setTitle(request.getTitle());
+        // P1 安全修复: XSS 净化课程文本字段（管理员可信任但防御深度）
+        course.setTitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getTitle()));
         course.setCourseType(courseType);
         course.setPrice(request.getPrice());
         course.setIsFree(request.getPrice() == null || request.getPrice().compareTo(java.math.BigDecimal.ZERO) == 0);
         course.setCategoryId(request.getCategoryId());
         course.setTeacherId(request.getTeacherId());
-        course.setSubtitle(request.getSubtitle());
-        course.setSummary(request.getSummary());
+        course.setSubtitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getSubtitle()));
+        course.setSummary(com.microcourse.util.XssSanitizer.sanitize(request.getSummary()));
         course.setCoverUrl(request.getCoverUrl());
         course.setOfferDepartmentId(request.getOfferDepartmentId());
         course.setSemester(request.getSemester());
@@ -488,7 +510,7 @@ public class CourseServiceImpl implements CourseService {
         course.setCourseNature(request.getCourseNature());
         course.setMaxStudents(request.getMaxStudents());
         course.setDifficulty(request.getDifficulty());
-        course.setDescription(request.getDescription());
+        course.setDescription(com.microcourse.util.XssSanitizer.sanitize(request.getDescription()));
         course.setTags(request.getTags());
         course.setStatus(CourseStatus.DRAFT.getCode());
         course.setCreatedAt(LocalDateTime.now());
@@ -522,7 +544,8 @@ public class CourseServiceImpl implements CourseService {
         }
 
         // Partial update
-        if (request.getTitle() != null) course.setTitle(request.getTitle());
+        // P1 安全修复: XSS 净化更新字段
+        if (request.getTitle() != null) course.setTitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getTitle()));
         if (request.getCategoryId() != null) {
             if (categoryRepository.selectById(request.getCategoryId()) == null) {
                 throw new BusinessException(ErrorCode.COURSE_CATEGORY_NOT_FOUND);
@@ -536,8 +559,8 @@ public class CourseServiceImpl implements CourseService {
             }
             course.setTeacherId(request.getTeacherId());
         }
-        if (request.getSubtitle() != null) course.setSubtitle(request.getSubtitle());
-        if (request.getSummary() != null) course.setSummary(request.getSummary());
+        if (request.getSubtitle() != null) course.setSubtitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getSubtitle()));
+        if (request.getSummary() != null) course.setSummary(com.microcourse.util.XssSanitizer.sanitize(request.getSummary()));
         if (request.getCoverUrl() != null) course.setCoverUrl(request.getCoverUrl());
         if (request.getOfferDepartmentId() != null) course.setOfferDepartmentId(request.getOfferDepartmentId());
         if (request.getSemester() != null) course.setSemester(request.getSemester());
@@ -545,7 +568,7 @@ public class CourseServiceImpl implements CourseService {
         if (request.getCourseNature() != null) course.setCourseNature(request.getCourseNature());
         if (request.getMaxStudents() != null) course.setMaxStudents(request.getMaxStudents());
         if (request.getDifficulty() != null) course.setDifficulty(request.getDifficulty());
-        if (request.getDescription() != null) course.setDescription(request.getDescription());
+        if (request.getDescription() != null) course.setDescription(com.microcourse.util.XssSanitizer.sanitize(request.getDescription()));
         if (request.getTags() != null) course.setTags(request.getTags());
         if (request.getCourseType() != null) {
             // courseType 变更时校验插件授权
@@ -631,6 +654,27 @@ public class CourseServiceImpl implements CourseService {
         if (chapterRepository.selectCount(chapterCountWrapper) <= 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程必须包含至少一个章节");
         }
+        // P0-A7 修复:提交审核前置校验——课程必须有封面
+        if (course.getCoverUrl() == null || course.getCoverUrl().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程必须设置封面");
+        }
+        // P0-A7 修复:提交审核前置校验——课程必须有简介（summary 或 description）
+        boolean hasSummary = course.getSummary() != null && !course.getSummary().isBlank();
+        boolean hasDescription = course.getDescription() != null && !course.getDescription().isBlank();
+        if (!hasSummary && !hasDescription) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程必须填写简介或描述");
+        }
+        // P0-A7 修复:提交审核前置校验——课程必须包含至少一个视频或互动课件（PPT）
+        LambdaQueryWrapper<Video> videoCountWrapper = new LambdaQueryWrapper<>();
+        videoCountWrapper.eq(Video::getCourseId, id)
+                .eq(Video::getStatus, VideoStatus.COMPLETED.getCode());
+        long videoCount = videoRepository.selectCount(videoCountWrapper);
+        LambdaQueryWrapper<CourseSlide> slideCountWrapper = new LambdaQueryWrapper<>();
+        slideCountWrapper.eq(CourseSlide::getCourseId, id);
+        long slideCount = courseSlideMapper.selectCount(slideCountWrapper);
+        if (videoCount <= 0 && slideCount <= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程必须包含至少一个视频或互动课件（PPT）");
+        }
         // DRAFT(0) / REJECTED(3) → PENDING_REVIEW(1) CAS 推进(CON-NEW-3 修复:防止并发双提交)
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
@@ -699,20 +743,22 @@ public class CourseServiceImpl implements CourseService {
         if (!SecurityUtil.isAdminOrAcademic()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
+        // P0#4 修复:驳回原因存储前 XSS 净化,防止存储型 XSS
+        String safeReason = XssSanitizer.sanitizePlainText(reason);
         // PENDING_REVIEW(1) → REJECTED(3) CAS
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
                         .set(Course::getStatus, CourseStatus.REJECTED.getCode())
-                        .set(Course::getRejectReason, reason)
+                        .set(Course::getRejectReason, safeReason)
                         .set(Course::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = COALESCE(version, 0) + 1"));
         if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
         recordReviewLog(id, "REJECT", CourseStatus.PENDING_REVIEW.getCode(),
-                CourseStatus.REJECTED.getCode(), reason);
+                CourseStatus.REJECTED.getCode(), safeReason);
         // ★ Round 9-2 修复：审核驳回后清除缓存，保证一致性（硬约束 #1）
         evictCourseCacheAfterCommit(id);
         // Phase B-2 (P0-7)：审核驳回后异步通知课程教师，@Async 不阻塞审批主流程
@@ -721,7 +767,7 @@ public class CourseServiceImpl implements CourseService {
                     course.getTeacherId(),
                     NotificationType.COURSE_REJECTED,
                     "课程被驳回",
-                    "您的课程《" + course.getTitle() + "》被驳回，原因：" + (reason != null ? reason : "未填写"),
+                    "您的课程《" + course.getTitle() + "》被驳回，原因：" + (safeReason != null ? safeReason : "未填写"),
                     id);
         }
     }
@@ -754,11 +800,11 @@ public class CourseServiceImpl implements CourseService {
                 CourseStatus.PUBLISHED.getCode(), null);
         // ★ Round 9-2 修复：课程上架后清除缓存，保证一致性（硬约束 #1）
         evictCourseCacheAfterCommit(id);
-        // Phase B-2 (P0-7)：课程上架后异步通知所有已选（未取消）学生，@Async 不阻塞发布主流程
-        // ★ Round 9-1 修复(OOM)：原实现一次性 selectList 加载课程全部选课记录，热门课程（万级选课）
-        // 易触发 OOM / 长 GC。改为按主键 id 稳定排序分批（每批 500、仅取 user_id）遍历通知，内存占用恒定；
-        // 通知集合与遍历顺序无关，每个未取消选课的 user 仍恰好被通知一次，业务语义零变化。
-        notifyEnrolledStudentsOnPublish(id, course.getTitle());
+        // C2-3 修复：课程上架后异步通知所有已选（未取消）学生。
+        // 原实现同步执行分页循环发通知，阻塞 publish 事务。现改为 @Async 线程池异步执行，
+        // publish 主事务立即提交返回，通知发送在后台线程中独立完成。
+        final String courseTitle = course.getTitle();
+        taskExecutor.execute(() -> notifyEnrolledStudentsOnPublish(id, courseTitle));
     }
 
     /** Round 9-1：发布通知分批批大小，避免一次性加载海量选课导致 OOM。 */
@@ -827,8 +873,8 @@ public class CourseServiceImpl implements CourseService {
                 throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
             }
         } else {
-            // PUBLISHED → CLOSED 等合法转换走 updateStatus
-            updateStatus(id, CourseStatus.CLOSED.getCode());
+            // PUBLISHED → CLOSED 等合法转换走 updateStatus（E2-1: self 代理确保 @Transactional 生效）
+            self.updateStatus(id, CourseStatus.CLOSED.getCode());
         }
 
         LambdaQueryWrapper<CourseChapter> wrapper = new LambdaQueryWrapper<>();
@@ -886,12 +932,15 @@ public class CourseServiceImpl implements CourseService {
 
         courseRepository.insert(newCourse);
 
-        // 复制章节结构（不含视频文件，只复制章节元数据）
+        // 查询源课程的章节结构
         LambdaQueryWrapper<CourseChapter> chapterWrapper = new LambdaQueryWrapper<>();
         chapterWrapper.eq(CourseChapter::getCourseId, id)
                 .orderByAsc(CourseChapter::getSortOrder);
         List<CourseChapter> sourceChapters = chapterRepository.selectList(chapterWrapper);
 
+        // 复制章节结构（不含视频文件，只复制章节元数据）
+        // C2-4: 先收集再循环 insert，所有 insert 在 @Transactional 事务内共享同一连接。
+        List<CourseChapter> newChapters = new ArrayList<>();
         for (CourseChapter srcChapter : sourceChapters) {
             CourseChapter newChapter = new CourseChapter();
             newChapter.setCourseId(newCourse.getId());
@@ -899,11 +948,18 @@ public class CourseServiceImpl implements CourseService {
             newChapter.setDescription(srcChapter.getDescription());
             newChapter.setSortOrder(srcChapter.getSortOrder());
             newChapter.setChapterType(srcChapter.getChapterType());
-            newChapter.setDuration(0); // 不复制视频时长，重置为0
+            newChapter.setDuration(0);
             newChapter.setCreatedAt(LocalDateTime.now());
             newChapter.setUpdatedAt(LocalDateTime.now());
             newChapter.setVersion(0);
-            chapterRepository.insert(newChapter);
+            newChapters.add(newChapter);
+        }
+        if (!newChapters.isEmpty()) {
+            // C2-4: 循环插入在 @Transactional 事务内，所有 insert 共享同一 DB 连接和事务。
+            // 对于典型课程（< 50 章节），逐条 insert 开销可接受；future 可改为 MyBatis BATCH executor。
+            for (CourseChapter ch : newChapters) {
+                chapterRepository.insert(ch);
+            }
         }
 
         return convertToVO(newCourse);

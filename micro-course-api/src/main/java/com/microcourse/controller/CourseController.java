@@ -98,8 +98,13 @@ public class CourseController {
         return R.ok(vo);
     }
 
+    /**
+     * PUT /api/courses/{id}
+     * 更新课程信息
+     * 权限：TEACHER（课程创建者，Service 层 isOwnerOrAdmin 校验）
+     */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER')")
     public R<CourseVO> update(@PathVariable Long id,
                               @Valid @RequestBody CourseUpdateRequest request) {
         CourseVO vo = courseService.update(id, request);
@@ -146,10 +151,10 @@ public class CourseController {
     /**
      * POST /api/courses/{id}/approve
      * 审核通过（待审核 → 已通过）
-     * 权限：ADMIN
+     * 权限：ADMIN, ACADEMIC
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     @AuditedLog("课程审核通过")
     public R<Void> approve(@PathVariable Long id) {
         courseService.approve(id);
@@ -159,11 +164,11 @@ public class CourseController {
     /**
      * POST /api/courses/{id}/reject
      * 审核拒绝（待审核 → 已驳回）
-     * 权限：ADMIN
+     * 权限：ADMIN, ACADEMIC
      * @param body {"reason": "拒绝原因"}
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     @AuditedLog("课程审核驳回")
     public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String reason = body.getOrDefault("reason", "");
@@ -258,10 +263,10 @@ public class CourseController {
     /**
      * POST /api/courses/{id}/cover
      * 更新课程封面
-     * 权限：TEACHER(课程创建者) / ADMIN
+     * 权限：TEACHER（课程创建者）
      */
     @PostMapping("/{id}/cover")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER')")
     @AuditedLog("更新课程封面")
     public R<CourseVO> updateCover(@PathVariable Long id,
                                    @RequestParam("file") MultipartFile file) {

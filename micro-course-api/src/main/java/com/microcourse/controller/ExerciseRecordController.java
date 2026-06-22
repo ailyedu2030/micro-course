@@ -23,7 +23,7 @@ public class ExerciseRecordController {
     }
 
     @PostMapping("/submit")
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<ExerciseRecordVO> submitAnswer(
             @Valid @RequestBody SubmitAnswerRequest request,
             Authentication authentication) {
