@@ -52,7 +52,8 @@ public class SlideController {
             String filename = file.getOriginalFilename();
             long size = file.getSize();
             String mime = file.getContentType();
-            log.info("[SlideUpload] courseId={}, filename={}, size={}, mime={}", courseId, filename, size, mime);
+            log.info("[SlideUpload] courseId={}, filename={}, size={}, mime={}",
+                    courseId, sanitizeForLog(filename), size, mime);
             SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes());
             return R.ok(resp);
         } catch (IOException e) {
@@ -112,9 +113,11 @@ public class SlideController {
 
     /**
      * IDOR 防护：验证当前用户有权限访问此课程的课件。
-     * - ADMIN/ACADEMIC: 全部通行
+     * 身份叠加原则（权限矩阵 §4.1）：同时具备多个角色的用户，权限集合取并集。
+     * - ADMIN: 全部通行
+     * - ACADEMIC: 全部通行
      * - TEACHER: 必须是课程的所有者
-     * - STUDENT: 必须已选此课（有 enrollment 记录）
+     * - STUDENT: 必须已选此课（有非 CANCELLED 的 enrollment 记录）
      */
     private void verifyAccess(Long courseId) {
         if (SecurityUtil.isAdmin()) {
@@ -127,24 +130,36 @@ public class SlideController {
         if (SecurityUtil.hasRole("ACADEMIC")) {
             return;
         }
-        if (SecurityUtil.hasRole("TEACHER")) {
-            if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION);
-            }
-            return;
+
+        boolean allowed = false;
+
+        if (SecurityUtil.hasRole("TEACHER")
+                && SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            allowed = true;
         }
-        // STUDENT: 检查是否已选课
-        if (SecurityUtil.hasRole("STUDENT")) {
+
+        if (!allowed && SecurityUtil.hasRole("STUDENT")) {
             Long currentUserId = SecurityUtil.getCurrentUserId();
             long count = enrollmentRepository.selectCount(
                     new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.Enrollment>()
                             .eq(com.microcourse.entity.Enrollment::getUserId, currentUserId)
                             .eq(com.microcourse.entity.Enrollment::getCourseId, courseId)
                             .ne(com.microcourse.entity.Enrollment::getEnrollmentStatus, "CANCELLED"));
-            if (count == 0) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            if (count > 0) {
+                allowed = true;
             }
-            return;
         }
+
+        if (!allowed) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+    }
+
+    /**
+     * 清理用户输入用于日志：替换 \r \n 为下划线，防止日志注入。
+     */
+    private String sanitizeForLog(String input) {
+        if (input == null) return "";
+        return input.replace('\r', '_').replace('\n', '_');
     }
 }

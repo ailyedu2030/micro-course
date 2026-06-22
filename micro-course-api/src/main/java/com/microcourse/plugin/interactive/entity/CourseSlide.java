@@ -12,6 +12,7 @@ public class CourseSlide {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long courseId;
+    private Long lessonId;
     private String fileName;
     private String fileUrl;
     private Integer totalPages;
@@ -27,6 +28,8 @@ public class CourseSlide {
     public void setId(Long id) { this.id = id; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
+    public Long getLessonId() { return lessonId; }
+    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
     public String getFileUrl() { return fileUrl; }

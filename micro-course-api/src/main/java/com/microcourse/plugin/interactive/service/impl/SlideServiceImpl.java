@@ -20,9 +20,10 @@ import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -139,10 +140,17 @@ public class SlideServiceImpl implements SlideService {
             throw new BusinessException(ErrorCode.PPT_PARSE_FAILED);
         }
 
-        slideRenderService.renderAsync(slide.getId(), fileBytes);
+        final Long slideId = slide.getId();
+        final byte[] bytesForRender = fileBytes;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                slideRenderService.renderAsync(slideId, bytesForRender);
+            }
+        });
 
         SlideUploadResponse resp = new SlideUploadResponse();
-        resp.setSlideId(slide.getId());
+        resp.setSlideId(slideId);
         resp.setTotalPages(0);
         resp.setStatus(0);
         resp.setMessage("上传成功，正在后台渲染...");
@@ -187,7 +195,8 @@ public class SlideServiceImpl implements SlideService {
     public byte[] getPageImage(Long courseId, Integer pageNumber) {
         SlidePageVO pageVO = getPage(courseId, pageNumber);
         try {
-            Path imagePath = Paths.get(storagePath, String.valueOf(courseId), "images",
+            Path imagePath = Paths.get(storagePath, String.valueOf(courseId),
+                    String.valueOf(pageVO.getSlideId()), "images",
                     "page_" + pageNumber + ".png");
             return Files.readAllBytes(imagePath);
         } catch (IOException e) {
@@ -199,7 +208,8 @@ public class SlideServiceImpl implements SlideService {
     public byte[] getPageThumbnail(Long courseId, Integer pageNumber) {
         SlidePageVO pageVO = getPage(courseId, pageNumber);
         try {
-            Path thumbPath = Paths.get(storagePath, String.valueOf(courseId), "thumbnails",
+            Path thumbPath = Paths.get(storagePath, String.valueOf(courseId),
+                    String.valueOf(pageVO.getSlideId()), "thumbnails",
                     "page_" + pageNumber + ".png");
             return Files.readAllBytes(thumbPath);
         } catch (IOException e) {

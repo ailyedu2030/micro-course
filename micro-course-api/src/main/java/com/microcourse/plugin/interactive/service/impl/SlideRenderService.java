@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -33,6 +33,7 @@ public class SlideRenderService {
 
     private final CourseSlideMapper courseSlideMapper;
     private final SlidePageMapper slidePageMapper;
+    private final TransactionTemplate transactionTemplate;
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
@@ -43,13 +44,15 @@ public class SlideRenderService {
     @Value("${plugin.interactive.slides.thumbnail-width:320}")
     private int thumbnailWidth;
 
-    public SlideRenderService(CourseSlideMapper courseSlideMapper, SlidePageMapper slidePageMapper) {
+    public SlideRenderService(CourseSlideMapper courseSlideMapper,
+                              SlidePageMapper slidePageMapper,
+                              TransactionTemplate transactionTemplate) {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Async("slideRenderExecutor")
-    @Transactional(rollbackFor = Exception.class)
     public void renderAsync(Long slideId, byte[] pptxBytes) {
         CourseSlide slide = courseSlideMapper.selectById(slideId);
         if (slide == null) return;
@@ -65,8 +68,10 @@ public class SlideRenderService {
             slide.setUpdatedAt(LocalDateTime.now());
             courseSlideMapper.updateById(slide);
 
-            imagesDir = Paths.get(storagePath, String.valueOf(slide.getCourseId()), "images");
-            thumbnailsDir = Paths.get(storagePath, String.valueOf(slide.getCourseId()), "thumbnails");
+            imagesDir = Paths.get(storagePath, String.valueOf(slide.getCourseId()),
+                    String.valueOf(slideId), "images");
+            thumbnailsDir = Paths.get(storagePath, String.valueOf(slide.getCourseId()),
+                    String.valueOf(slideId), "thumbnails");
             Files.createDirectories(imagesDir);
             Files.createDirectories(thumbnailsDir);
 
@@ -83,9 +88,10 @@ public class SlideRenderService {
                     int pageNumber = i + 1;
                     BufferedImage image = null;
                     BufferedImage thumb = null;
+                    Graphics2D g = null;
                     try {
                         image = new BufferedImage(pageImageWidth, scaledHeight, BufferedImage.TYPE_INT_ARGB);
-                        Graphics2D g = image.createGraphics();
+                        g = image.createGraphics();
                         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
                         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
@@ -94,6 +100,7 @@ public class SlideRenderService {
                         g.scale(scale, scale);
                         xslfSlide.draw(g);
                         g.dispose();
+                        g = null;
 
                         Path imagePath = imagesDir.resolve("page_" + pageNumber + ".png");
                         ImageIO.write(image, "PNG", imagePath.toFile());
@@ -102,6 +109,7 @@ public class SlideRenderService {
                         Path thumbPath = thumbnailsDir.resolve("page_" + pageNumber + ".png");
                         ImageIO.write(thumb, "PNG", thumbPath.toFile());
                     } finally {
+                        if (g != null) g.dispose();
                         if (image != null) image.flush();
                         if (thumb != null) thumb.flush();
                     }
@@ -125,10 +133,11 @@ public class SlideRenderService {
                 }
             }
 
-            // BATCH INSERT: 批量写入而非逐条插入
-            if (!batchPages.isEmpty()) {
+            // BATCH INSERT with short transaction for data integrity
+            transactionTemplate.execute(status -> {
                 slidePageMapper.insertBatch(batchPages);
-            }
+                return null;
+            });
 
             slide.setTotalPages(totalPages);
             slide.setStatus(2);
@@ -138,10 +147,13 @@ public class SlideRenderService {
 
         } catch (Exception e) {
             log.error("Slide render failed: slideId={}", slideId, e);
-            slide.setStatus(3);
-            slide.setErrorMessage("课件渲染失败，请检查文件内容或联系管理员");
-            slide.setUpdatedAt(LocalDateTime.now());
-            courseSlideMapper.updateById(slide);
+            CourseSlide failedSlide = courseSlideMapper.selectById(slideId);
+            if (failedSlide != null) {
+                failedSlide.setStatus(3);
+                failedSlide.setErrorMessage("课件渲染失败，请检查文件内容或联系管理员");
+                failedSlide.setUpdatedAt(LocalDateTime.now());
+                courseSlideMapper.updateById(failedSlide);
+            }
         }
     }
 

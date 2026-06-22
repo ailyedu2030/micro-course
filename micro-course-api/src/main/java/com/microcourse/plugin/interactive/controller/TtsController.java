@@ -78,18 +78,20 @@ public class TtsController {
         if (SecurityUtil.hasRole("ADMIN") || SecurityUtil.hasRole("ACADEMIC")) return;
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        if (SecurityUtil.hasRole("TEACHER")) {
-            if (!course.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION);
-            }
-            return;
+
+        boolean allowed = false;
+        if (SecurityUtil.hasRole("TEACHER")
+                && course.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
+            allowed = true;
         }
-        // STUDENT: must be enrolled
-        long count = enrollmentRepository.selectCount(
-                new LambdaQueryWrapper<Enrollment>()
-                        .eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
-                        .eq(Enrollment::getCourseId, courseId)
-                        .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
-        if (count == 0) throw new BusinessException(ErrorCode.NO_PERMISSION);
+        if (!allowed && SecurityUtil.hasRole("STUDENT")) {
+            long count = enrollmentRepository.selectCount(
+                    new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
+                            .eq(Enrollment::getCourseId, courseId)
+                            .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
+            if (count > 0) allowed = true;
+        }
+        if (!allowed) throw new BusinessException(ErrorCode.NO_PERMISSION);
     }
 }
