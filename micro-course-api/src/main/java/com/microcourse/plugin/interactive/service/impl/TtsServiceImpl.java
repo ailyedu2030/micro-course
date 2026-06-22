@@ -235,25 +235,25 @@ public class TtsServiceImpl implements TtsService {
     }
 
     private SlidePageVO toPageVO(SlidePage page) {
-        return new SlidePageVO() {{
-            setId(page.getId());
-            setSlideId(page.getSlideId());
-            setCourseId(page.getCourseId());
-            setPageNumber(page.getPageNumber());
-            setImageUrl(page.getImageUrl());
-            setThumbnailUrl(page.getThumbnailUrl());
-            setImageWidth(page.getImageWidth());
-            setImageHeight(page.getImageHeight());
-            setExtractedText(page.getExtractedText());
-            setHasAnimation(page.getHasAnimation());
-            setHasEmbeddedMedia(page.getHasEmbeddedMedia());
-            setNarrationScript(page.getNarrationScript());
-            setNarrationAudioUrl(page.getNarrationAudioUrl());
-            setAudioDuration(page.getAudioDuration());
-            setNarrationStatus(page.getNarrationStatus());
-            setNarrationStatusText(SlidePageVO.narrationStatusText(page.getNarrationStatus()));
-            setCreatedAt(page.getCreatedAt());
-            setUpdatedAt(page.getUpdatedAt());
-        }};
+        SlidePageVO vo = new SlidePageVO();
+        vo.setId(page.getId());
+        vo.setSlideId(page.getSlideId());
+        vo.setCourseId(page.getCourseId());
+        vo.setPageNumber(page.getPageNumber());
+        vo.setImageUrl(page.getImageUrl());
+        vo.setThumbnailUrl(page.getThumbnailUrl());
+        vo.setImageWidth(page.getImageWidth());
+        vo.setImageHeight(page.getImageHeight());
+        vo.setExtractedText(page.getExtractedText());
+        vo.setHasAnimation(page.getHasAnimation());
+        vo.setHasEmbeddedMedia(page.getHasEmbeddedMedia());
+        vo.setNarrationScript(page.getNarrationScript());
+        vo.setNarrationAudioUrl(page.getNarrationAudioUrl());
+        vo.setAudioDuration(page.getAudioDuration());
+        vo.setNarrationStatus(page.getNarrationStatus());
+        vo.setNarrationStatusText(SlidePageVO.narrationStatusText(page.getNarrationStatus()));
+        vo.setCreatedAt(page.getCreatedAt());
+        vo.setUpdatedAt(page.getUpdatedAt());
+        return vo;
     }
 }

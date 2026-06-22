@@ -105,7 +105,7 @@ onMounted(async () => {
       const enrolledCourseIds = new Set((data.items || data || []).map(e => e.courseId))
       const requiredIds = items.value.filter(i => i.isRequired).map(i => i.courseId)
       isEnrolled.value = requiredIds.every(id => enrolledCourseIds.has(id))
-    } catch {}
+    } catch { ElMessage.warning('课程信息加载失败') }
   }
 })
 

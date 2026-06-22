@@ -29,6 +29,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Arrays;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -411,8 +413,8 @@ public class VideoController {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面大小不能超过5MB");
         }
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "只支持图片格式");
+        if (!Arrays.asList("image/jpeg", "image/png").contains(contentType)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面仅支持 JPG/PNG");
         }
         String coverUrl = videoService.uploadCover(id, file);
         return R.ok(coverUrl);

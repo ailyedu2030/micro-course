@@ -17,6 +17,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
+
+import java.util.Arrays;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +28,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 @RestController
 @RequestMapping("/api/users")
@@ -143,6 +148,8 @@ public class UserController {
                 !contentType.startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 Excel 文件 (.xls/.xlsx)");
         }
+        // P1-1: Excel 魔数校验（防御 Content-Type 伪造）
+        verifyExcelMagic(file);
         BatchImportResultVO result = userService.batchImportUsers(file);
         return R.ok(result);
     }
@@ -162,10 +169,34 @@ public class UserController {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像大小不能超过 2MB");
         }
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "只支持图片格式");
+        if (!Arrays.asList("image/jpeg", "image/png", "image/webp").contains(contentType)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 JPG/PNG/WebP 格式");
         }
         String avatarUrl = userService.uploadAvatar(id, file);
         return R.ok(avatarUrl);
+    }
+
+    /**
+     * P1-1: Excel 文件魔数校验（防御 Content-Type 伪造）
+     * XLS:  D0 CF 11 E0（OLE2 复合文档）
+     * XLSX: PK\x03\x04（ZIP 压缩包）
+     */
+    private void verifyExcelMagic(MultipartFile file) {
+        try (InputStream is = file.getInputStream()) {
+            byte[] magic = new byte[4];
+            int read = is.read(magic);
+            if (read < 4) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小，无法验证格式");
+            }
+            boolean isXls = (magic[0] & 0xFF) == 0xD0 && (magic[1] & 0xFF) == 0xCF
+                         && (magic[2] & 0xFF) == 0x11 && (magic[3] & 0xFF) == 0xE0;
+            boolean isXlsx = (magic[0] & 0xFF) == 0x50 && magic[1] == 0x4B
+                          && magic[2] == 0x03 && magic[3] == 0x04;
+            if (!isXls && !isXlsx) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请上传有效的 Excel 文件（魔数校验失败）");
+            }
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
+        }
     }
 }

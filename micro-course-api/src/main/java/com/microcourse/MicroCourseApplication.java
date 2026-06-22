@@ -7,7 +7,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 @SpringBootApplication
+@EnableScheduling
 public class MicroCourseApplication {
 
     private static final Logger log = LoggerFactory.getLogger(MicroCourseApplication.class);
@@ -31,12 +34,17 @@ public class MicroCourseApplication {
     /**
      * P0-12: 生产环境禁止使用 mock 支付模式。
      * 若 active profile 包含 prod 且 payment.mode 为 mock，启动直接失败。
+     * P0-4: 非 prod 环境使用 mock 模式时记录警告日志。
      */
     @jakarta.annotation.PostConstruct
     public void checkPaymentMode() {
-        if (activeProfile.contains("prod") && "mock".equals(paymentMode)) {
-            throw new IllegalStateException(
-                    "生产环境禁止使用 mock 支付模式，请设置 PAY_MODE=real 并配置支付网关");
+        if ("mock".equals(paymentMode)) {
+            if (activeProfile.contains("prod")) {
+                throw new IllegalStateException(
+                        "生产环境禁止使用 mock 支付模式，请设置 PAYMENT_MODE=real 并配置支付网关");
+            }
+            log.warn("[PAYMENT] 当前使用 MOCK 支付模式！支付将模拟成功，不产生真实交易。"
+                    + " 生产部署前请务必切换为 real 模式。");
         }
     }
 

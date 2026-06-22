@@ -256,7 +256,7 @@ async function fetchCourses() {
     if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data?.items || []
-  } catch { /* ignore */ }
+  } catch { ElMessage.warning('课程列表加载失败') }
 }
 async function handleCourseChange(cid) {
   chapterOptions.value = []
@@ -265,7 +265,7 @@ async function handleCourseChange(cid) {
   try {
     const { data } = await getChapters({ courseId: cid })
     chapterOptions.value = data?.items || []
-  } catch { /* ignore */ }
+  } catch { ElMessage.warning('章节列表加载失败') }
 }
 function handleChapterSelect(chId) {
   if (chId) router.replace({ query: { ...route.query, chapterId: chId } })
@@ -277,7 +277,7 @@ watch(() => route.query.chapterId, async (val) => {
     try {
       const { data } = await getChapterById(val)
       if (data?.courseId) currentCourseId.value = data.courseId
-    } catch { /* ignore */ }
+    } catch { ElMessage.warning('章节信息加载失败') }
     fetchData()
   }
 }, { immediate: false })
@@ -335,7 +335,10 @@ const handleSubmitPost = async () => {
           courseId = Number(data.courseId)
           currentCourseId.value = courseId
         }
-      } catch { /* ignore */ }
+      } catch (e) {
+        console.warn('[DiscussionView] fetchCourses 获取课程列表失败', e)
+        ElMessage.warning('课程列表加载失败')
+      }
     }
     await createPost({
       ...postForm.value,
@@ -457,7 +460,10 @@ onMounted(async () => {
     try {
       const { data } = await getChapterById(chId)
       if (data?.courseId) currentCourseId.value = data.courseId
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.warn('[DiscussionView] handleCourseChange 获取章节列表失败', e)
+      ElMessage.warning('章节列表加载失败')
+    }
     fetchData()
   }
 })

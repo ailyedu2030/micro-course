@@ -49,7 +49,18 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">{{ userRole === 'TEACHER' ? '我的课程' : '课程列表' }}</span>
-          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增课程</el-button>
+          <div class="header-actions">
+            <el-button
+              type="warning"
+              size="default"
+              :disabled="tableData.length === 0"
+              @click="handleExport"
+              aria-label="导出数据"
+            >
+              <el-icon><Download /></el-icon>导出
+            </el-button>
+            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增课程</el-button>
+          </div>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="5" animated />
@@ -175,6 +186,8 @@
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Download } from '@element-plus/icons-vue'
+import * as XLSX from 'xlsx'
 import { useUserStore } from '@/store/user'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse } from '@/api/course'
 import { getCategories } from '@/api/course-category'
@@ -377,6 +390,36 @@ const handleCopy = async (row) => {
   }
 }
 
+const handleExport = () => {
+  if (tableData.value.length === 0) {
+    ElMessage.warning('无可导出数据')
+    return
+  }
+  try {
+    const exportData = tableData.value.map((item, index) => ({
+      '序号': index + 1,
+      '标题': item.title || '',
+      '类型': item.courseType === 'INTERACTIVE' ? '互动' : '视频',
+      '分类': item.categoryName || '',
+      '教师': item.teacherName || '',
+      '学员数': item.studentCount || 0,
+      '状态': getStatusLabel(item.status)
+    }))
+    const ws = XLSX.utils.json_to_sheet(exportData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '课程列表')
+    XLSX.writeFile(wb, `课程导出_${Date.now()}.xlsx`)
+    ElMessage.success(`导出成功，共 ${exportData.length} 条`)
+  } catch {
+    ElMessage.error('导出失败')
+  }
+}
+
+function getStatusLabel(status) {
+  const map = { 0: '草稿', 1: '待审核', 2: '通过', 3: '驳回', 4: '已发布', 5: '下架', 6: '归档' }
+  return map[status] || '未知'
+}
+
 const goSlides = (row) => {
   router.push(`/teacher/courses/${row.id}/slides`)
 }
@@ -452,6 +495,11 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .card-title {

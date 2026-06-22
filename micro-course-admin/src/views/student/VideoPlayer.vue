@@ -157,6 +157,19 @@
               <div class="buffering-spinner"></div>
             </div>
 
+            <!-- P1-1: HLS Fatal Error Retry Overlay -->
+            <div v-if="hlsFatal" class="hls-error-fallback">
+              <div class="hls-error-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+              <p class="hls-error-text">视频加载失败</p>
+              <el-button type="primary" size="default" @click="retryHls">重试</el-button>
+            </div>
+
             <!-- Gesture Indicators -->
             <transition name="gesture-fade">
               <div v-if="volumeIndicatorVisible" class="gesture-indicator volume-indicator" :style="{ left: gestureIndicatorX + 'px', top: gestureIndicatorY + 'px' }">
@@ -658,6 +671,7 @@ const NOTES_STORAGE_KEY = computed(() => {
 
 // HLS
 let hlsInstance = ref(null)
+const hlsFatal = ref(false)
 
 // Learning objectives overlay
 const showObjectives = ref(false)
@@ -792,6 +806,7 @@ const initPlayer = () => {
       })
       hlsInstance.value.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
+          hlsFatal.value = true
           errorMsg.value = '视频播放出错'
         }
       })
@@ -810,7 +825,25 @@ const isHLS = (url) => {
 }
 
 const retryLoad = () => {
+  hlsFatal.value = false
   loadVideo()
+}
+
+// P1-1: 重试 HLS 播放（仅重新初始化播放器，不重新加载数据）
+const retryHls = () => {
+  hlsFatal.value = false
+  errorMsg.value = ''
+  if (hlsInstance.value) {
+    hlsInstance.value.destroy()
+    hlsInstance.value = null
+  }
+  const video = videoRef.value
+  if (video) {
+    video.pause()
+    video.removeAttribute('src')
+    video.load()
+  }
+  nextTick(() => initPlayer())
 }
 
 // Chapters
@@ -1745,6 +1778,30 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.4);
+}
+
+/* P1-1: HLS Fatal Error Fallback Overlay */
+.hls-error-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 10;
+}
+
+.hls-error-icon {
+  color: var(--el-color-danger);
+  opacity: 0.8;
+}
+
+.hls-error-text {
+  font-size: var(--text-base);
+  color: var(--vp-text);
+  margin: 0;
 }
 
 .buffering-spinner {

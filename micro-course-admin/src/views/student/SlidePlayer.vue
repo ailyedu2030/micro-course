@@ -275,7 +275,7 @@ async function loadAudio(index) {
     try {
       const blobUrl = await loadAuthImage(relUrl)
       if (blobUrl) { audioBlobUrls.value[relUrl] = blobUrl; audioRef.value.src = blobUrl; audioRef.value.load() }
-    } catch {}
+    } catch { ElMessage.warning('音频加载失败') }
   }
   audioDuration.value = page.audioDuration || 0
 }

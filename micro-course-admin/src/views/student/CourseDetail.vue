@@ -411,13 +411,13 @@ const goToSlidePlayer = () => router.push(`/student/courses/${courseId.value}/sl
 const fetchReviews = async () => {
   if (!courseId.value) return; reviewLoading.value = true
   try { const { data } = await getReviews(courseId.value, { page: 0, size: 5 }); reviews.value = data?.items || data || [] }
-  catch (e) { console.warn('[CourseDetail] fetchReviews 获取评价失败', e); reviews.value = [] }
+  catch (e) { console.warn('[CourseDetail] fetchReviews 获取评价失败', e); ElMessage.warning('评价数据加载失败'); reviews.value = [] }
   finally { reviewLoading.value = false }
 }
 
 const fetchRanking = async () => {
   if (!courseId.value) return
-  try { const { data } = await getCourseRanking(courseId.value, { limit: 10 }); rankingList.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchRanking 获取排行失败', e); rankingList.value = [] }
+  try { const { data } = await getCourseRanking(courseId.value, { limit: 10 }); rankingList.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchRanking 获取排行失败', e); ElMessage.warning('排行榜加载失败'); rankingList.value = [] }
 }
 
 const openReviewDialog = () => { if (!isLoggedIn.value) goLogin(); else { reviewForm.value = { rating: 5, content: '' }; reviewDialogVisible.value = true } }
@@ -429,7 +429,7 @@ const handleSubmitReview = async () => {
   finally { reviewSubmitting.value = false }
 }
 
-const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch { slides.value = [] } finally { slidesLoading.value = false } }
+const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchSlides 获取课件失败', e); ElMessage.warning('课件加载失败'); slides.value = [] } finally { slidesLoading.value = false } }
 
 onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; if (isInteractive.value) fetchSlides(); await Promise.all([fetchTeacher(), checkEnrollment(), fetchReviews(), fetchRanking()]) })
 </script>

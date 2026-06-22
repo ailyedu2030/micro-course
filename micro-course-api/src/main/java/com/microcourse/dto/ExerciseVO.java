@@ -21,6 +21,7 @@ public class ExerciseVO {
     private Boolean shuffleOptions;
     private Integer totalScore;
     private Integer questionCount;
+    private Boolean isExam;
     private Integer version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -60,6 +61,8 @@ public class ExerciseVO {
     public void setTotalScore(Integer totalScore) { this.totalScore = totalScore; }
     public Integer getQuestionCount() { return questionCount; }
     public void setQuestionCount(Integer questionCount) { this.questionCount = questionCount; }
+    public Boolean getIsExam() { return isExam; }
+    public void setIsExam(Boolean isExam) { this.isExam = isExam; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getCreatedAt() { return createdAt; }

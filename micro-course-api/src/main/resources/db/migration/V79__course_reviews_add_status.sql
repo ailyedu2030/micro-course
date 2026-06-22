@@ -2,7 +2,7 @@
 -- 0=待审核, 1=通过, 2=驳回; 存量数据默认为 1（通过）
 
 ALTER TABLE course_reviews
-    ADD COLUMN IF NOT EXISTS status INTEGER DEFAULT 1;
+    ADD COLUMN IF NOT EXISTS status INTEGER NOT NULL DEFAULT 1;
 
 -- 已有数据全部设为通过（兼容原有行为）
 UPDATE course_reviews SET status = 1 WHERE status IS NULL;

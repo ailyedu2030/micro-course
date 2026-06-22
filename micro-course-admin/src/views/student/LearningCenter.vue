@@ -76,7 +76,12 @@
           v-for="entry in quickEntries"
           :key="entry.path"
           class="quick-entry-item student-card-item"
+          role="button"
+          tabindex="0"
+          :aria-label="'快捷入口：' + entry.label"
           @click="navigateTo(entry.path)"
+          @keydown.enter="navigateTo(entry.path)"
+          @keydown.space.prevent="navigateTo(entry.path)"
         >
           <div class="quick-entry-icon" :style="{ backgroundColor: entry.color + '15', color: entry.color }">
             <el-icon :size="24"><component :is="entry.icon" /></el-icon>
@@ -342,7 +347,12 @@
           v-for="entry in quickEntries"
           :key="entry.path"
           class="quick-entry-item student-card-item"
+          role="button"
+          tabindex="0"
+          :aria-label="'快捷入口：' + entry.label"
           @click="navigateTo(entry.path)"
+          @keydown.enter="navigateTo(entry.path)"
+          @keydown.space.prevent="navigateTo(entry.path)"
         >
           <div class="quick-entry-icon" :style="{ backgroundColor: entry.color + '15', color: entry.color }">
             <el-icon :size="20"><component :is="entry.icon" /></el-icon>
@@ -690,6 +700,7 @@ async function loadHeatmap() {
     heatmapData.value = weeks
   } catch (e) {
       console.warn("[LearningCenter]", e)
+      ElMessage.warning('学习热力图加载失败')
     heatmapData.value = []
   }
 }
@@ -755,6 +766,7 @@ async function getStats(sharedEnrollments) {
     animateNumber(streakDays, (v) => { animatedDays.value = v })
   } catch (e) {
       console.warn("[LearningCenter]", e)
+    ElMessage.warning('部分数据加载失败')
     stats.value = {
       totalHours: '0小时',
       completedCourses: 0,
@@ -787,6 +799,7 @@ async function getRecent(sharedEnrollments) {
     }
   } catch (e) {
       console.warn("[LearningCenter]", e)
+    ElMessage.warning('部分数据加载失败')
     recentCourse.value = { title: '', currentChapter: 0, progress: 0, cover: '' }
   }
 }
@@ -815,6 +828,8 @@ async function getChart() {
       }
     } catch (e) {
       // API 不存在，继续用打卡数据
+      console.warn("[LearningCenter]", e)
+      ElMessage.warning('部分数据加载失败')
     }
 
     if (!accuracyMode.value) {
@@ -843,6 +858,7 @@ async function getChart() {
     }
   } catch (e) {
       console.warn("[LearningCenter]", e)
+    ElMessage.warning('部分数据加载失败')
     chartData.value = []
   }
 }
@@ -877,6 +893,7 @@ async function getRecommendations(sharedEnrollments) {
     }
   } catch (e) {
       console.warn("[LearningCenter]", e)
+    ElMessage.warning('部分数据加载失败')
     recommendations.value = []
   }
 }
@@ -893,6 +910,7 @@ async function getBadges() {
     }))
   } catch (e) {
       console.warn("[LearningCenter]", e)
+    ElMessage.warning('部分数据加载失败')
     badges.value = []
   }
 }
@@ -927,6 +945,7 @@ async function getRecentRecords(sharedEnrollments) {
     }))
   } catch (e) {
       console.warn("[LearningCenter]", e)
+    ElMessage.warning('部分数据加载失败')
     recentRecords.value = []
   }
 }
@@ -982,7 +1001,8 @@ async function checkTodayStatus() {
     })
   } catch (e) {
       console.warn("[LearningCenter]", e)
-    checkedInToday.value = false
+      ElMessage.warning('学习趋势数据加载失败')
+    chartData.value = []
   }
 }
 

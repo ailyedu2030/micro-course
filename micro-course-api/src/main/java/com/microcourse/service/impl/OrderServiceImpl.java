@@ -9,6 +9,7 @@ import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.order.OrderVO;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Order;
 import com.microcourse.entity.Payment;
 import com.microcourse.entity.CourseBundleItem;
@@ -17,6 +18,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseBundleItemRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.PaymentRepository;
 import com.microcourse.service.EnrollmentService;
@@ -48,6 +50,7 @@ public class OrderServiceImpl implements OrderService {
     private final PaymentRepository paymentRepository;
     private final CourseRepository courseRepository;
     private final CourseBundleItemRepository bundleItemRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentService enrollmentService;
 
     /** J9-01: 支付模式 — mock(dev) / real(生产) */
@@ -62,11 +65,13 @@ public class OrderServiceImpl implements OrderService {
                             PaymentRepository paymentRepository,
                             CourseRepository courseRepository,
                             CourseBundleItemRepository bundleItemRepository,
+                            EnrollmentRepository enrollmentRepository,
                             @Lazy EnrollmentService enrollmentService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.courseRepository = courseRepository;
         this.bundleItemRepository = bundleItemRepository;
+        this.enrollmentRepository = enrollmentRepository;
         this.enrollmentService = enrollmentService;
     }
 
@@ -276,6 +281,18 @@ public class OrderServiceImpl implements OrderService {
         refundPayment.setStatus("REFUNDED");
         refundPayment.setCreatedAt(LocalDateTime.now());
         paymentRepository.insert(refundPayment);
+
+        // P0-3: 退款后取消选课记录，防止学生继续学习已退款的课程
+        if (order.getUserId() != null && order.getCourseId() != null) {
+            LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
+            enrollWrapper.eq(Enrollment::getUserId, order.getUserId())
+                    .eq(Enrollment::getCourseId, order.getCourseId())
+                    .ne(Enrollment::getEnrollmentStatus, "CANCELLED");
+            Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
+            if (enrollment != null) {
+                enrollmentService.cancelEnrollment(enrollment.getId(), order.getUserId());
+            }
+        }
 
         log.info("退款成功: orderId={}, refundTxnId={}, amount={}", orderId, refundTxnId, order.getAmount());
         return toVO(orderRepository.selectById(orderId));

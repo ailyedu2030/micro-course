@@ -872,6 +872,26 @@ async function handleSubmit() {
       return
     }
   }
+  // 检查多选题是否完整作答（仅选1项可能不完整）
+  const partialMultiples = questionIds.value.filter(id => {
+    const q = questions.value.find(q => q.id === id)
+    if (!q || q.questionType !== 'MULTIPLE') return false
+    const arr = multipleAnswers[id]
+    return Array.isArray(arr) && arr.length === 1
+  })
+  if (partialMultiples.length > 0) {
+    try {
+      await ElMessageBox.confirm(
+        `有 ${partialMultiples.length} 道多选题仅选了 1 个选项，可能未完整作答，确定提交吗？`,
+        '多选题提示',
+        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+      )
+    } catch {
+      const firstPartialIdx = questionIds.value.findIndex(id => partialMultiples.includes(id))
+      if (firstPartialIdx >= 0) currentIndex.value = firstPartialIdx
+      return
+    }
+  }
   await doSubmit()
 }
 

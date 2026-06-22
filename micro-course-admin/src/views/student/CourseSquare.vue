@@ -496,6 +496,7 @@ const loadBundles = async () => {
     bundles.value = data.items || []
   } catch (e) {
     console.warn('[CourseSquare] 加载套餐列表失败', e)
+    ElMessage.warning('推荐课程加载失败')
   }
 }
 

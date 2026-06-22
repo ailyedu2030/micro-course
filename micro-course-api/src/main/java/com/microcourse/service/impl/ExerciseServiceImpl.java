@@ -329,6 +329,7 @@ public class ExerciseServiceImpl implements ExerciseService {
         vo.setShowAnswerWhen(exercise.getShowAnswerWhen());
         vo.setShuffleQuestions(exercise.getShuffleQuestions());
         vo.setShuffleOptions(exercise.getShuffleOptions());
+        vo.setIsExam(exercise.getIsExam());
         vo.setTotalScore(exercise.getTotalScore());
         vo.setQuestionCount(exercise.getQuestionCount());
         vo.setVersion(exercise.getVersion());
@@ -416,6 +417,7 @@ public class ExerciseServiceImpl implements ExerciseService {
         vo.setShowAnswerWhen(exercise.getShowAnswerWhen());
         vo.setShuffleQuestions(exercise.getShuffleQuestions());
         vo.setShuffleOptions(exercise.getShuffleOptions());
+        vo.setIsExam(exercise.getIsExam());
         vo.setTotalScore(exercise.getTotalScore());
         vo.setQuestionCount(exercise.getQuestionCount());
         vo.setVersion(exercise.getVersion());

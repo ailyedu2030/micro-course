@@ -160,8 +160,8 @@ public class BadgeServiceImpl implements BadgeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void checkAndAwardStreak(Long userId, int consecutiveDays) {
-        if (consecutiveDays >= 7 && !hasBadge(userId, "SEVEN_DAY_STREAK")) {
-            awardBadge(userId, "SEVEN_DAY_STREAK");
+        if (consecutiveDays >= 7 && !self.hasBadge(userId, "SEVEN_DAY_STREAK")) {
+            self.awardBadge(userId, "SEVEN_DAY_STREAK");
         }
     }
 

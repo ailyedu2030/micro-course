@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +73,8 @@ public class TtsController {
                     .header(HttpHeaders.CACHE_CONTROL,
                             CacheControl.maxAge(1, TimeUnit.HOURS).getHeaderValue())
                     .body(audioBytes);
+        } catch (NoSuchFileException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件不存在: " + e.getMessage());
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件未找到");
         }

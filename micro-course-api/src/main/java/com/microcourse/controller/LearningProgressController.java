@@ -37,16 +37,26 @@ public class LearningProgressController {
         return R.fail(ErrorCode.BAD_REQUEST_PARAM);
     }
 
+    /**
+     * GET /api/learning-progress/progress?userId=&courseId=
+     * 获取指定用户在某课程的学习进度。
+     * IDOR 防护策略（3 层逐级放行）：
+     *   L1: 未传 userId → 默认查自己（安全）
+     *   L2: 传 userId == currentUserId → 查自己（安全）
+     *   L3: ADMIN → 允许查任意用户（管理特权）
+     *   L4: TEACHER + assertTeacherOwnsCourse → 仅允许查自己授课课程的学生进度
+     *   L5: 其他角色 → 直接拒绝 NO_PERMISSION
+     * 注意：STUDENT 无法通过此接口窃取其他用户进度。
+     */
     @GetMapping("/progress")
     @PreAuthorize("isAuthenticated()")
     public R<List<LearningProgressVO>> getByUserAndCourse(
             @RequestParam(required = false) Long userId,
             @RequestParam Long courseId) {
         Long currentUserId = getCurrentUserId();
-        // 如果未传 userId，默认查自己的进度
         Long targetUserId = (userId != null) ? userId : currentUserId;
+        // IDOR: 非本人且非 ADMIN 时，TEACHER 需校验课程归属，否则拒绝
         if (!currentUserId.equals(targetUserId) && !hasRole("ADMIN")) {
-            // TEACHER 可查看自己授课课程的学生进度（校验下沉 Service）
             if (hasRole("TEACHER")) {
                 learningProgressService.assertTeacherOwnsCourse(currentUserId, courseId);
             } else {
@@ -75,14 +85,21 @@ public class LearningProgressController {
         return R.ok();
     }
 
+    /**
+     * GET /api/learning-progress/progress/completion?userId=&courseId=
+     * 获取用户课程完成度。支持不传 courseId（返回所有课程完成度）。
+     * IDOR 防护策略：与 getByUserAndCourse 一致 ——
+     *   非 ADMIN 用户必须 userId == currentUserId；
+     *   TEACHER 可查自己授课课程的学生完成度（校验下沉 Service）。
+     */
     @GetMapping("/progress/completion")
     @PreAuthorize("isAuthenticated()")
     public R<Map<String, Object>> getCourseCompletion(
             @RequestParam Long userId,
             @RequestParam(required = false) Long courseId) {
         Long currentUserId = getCurrentUserId();
+        // IDOR: 非本人且非 ADMIN 时，TEACHER 需校验课程归属，否则拒绝
         if (!currentUserId.equals(userId) && !hasRole("ADMIN")) {
-            // TEACHER 可查看自己授课课程的学生进度（校验下沉 Service）
             if (hasRole("TEACHER") && courseId != null) {
                 learningProgressService.assertTeacherOwnsCourse(currentUserId, courseId);
             } else {

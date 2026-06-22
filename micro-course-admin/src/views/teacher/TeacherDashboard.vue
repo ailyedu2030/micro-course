@@ -351,6 +351,7 @@ async function loadStats() {
     stats.value = res.data || {}
   } catch {
     statsError.value = true
+    ElMessage.error('统计数据加载失败')
   } finally {
     statsLoading.value = false
   }
@@ -367,6 +368,7 @@ async function loadActivity() {
     renderActiveChart(data)
   } catch {
     activityError.value = true
+    ElMessage.error('学情数据加载失败')
     renderStudyChart([])
     renderActiveChart([])
   } finally {
@@ -458,6 +460,7 @@ async function loadTasks() {
     tasks.value = res.data || []
   } catch {
     tasksError.value = true
+    ElMessage.error('待办数据加载失败')
   } finally {
     tasksLoading.value = false
   }
@@ -472,6 +475,7 @@ async function loadNotifications() {
     notifications.value = res.data || []
   } catch {
     notifError.value = true
+    ElMessage.error('通知数据加载失败')
   } finally {
     notifLoading.value = false
   }
@@ -486,6 +490,7 @@ async function loadCourses() {
     courses.value = res.data?.items || res.data || []
   } catch {
     coursesError.value = true
+    ElMessage.error('课程数据加载失败')
   } finally {
     coursesLoading.value = false
   }

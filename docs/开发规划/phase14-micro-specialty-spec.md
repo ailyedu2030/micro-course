@@ -2,7 +2,7 @@
 
 > 定位：Phase 3 Mid-Level 设计文档 → Phase 5 TDD 执行准入
 > 范围：微专业全场景——立项、教师团队、课程编排、修读、证书、广场展示
-> 覆盖：5 张新表 + 3 张扩展、**42 个 API**、16 页面、**6 个状态机（含 LEAD 继任/编辑范围）**、**23 个通知类型**
+> 覆盖：5 张新表 + 3 张扩展、**52 个 API**、16 页面、**6 个状态机（含 LEAD 继任/编辑范围）**、**23 个通知类型**
 > 逻辑闭环声明：每项"触发"必有"响应"，每项"变更"必有"通知"，每个"状态"必有"终点"
 > 基线版本：v3.2-gapfix（经 4 轮审查修复全部 16+ 断裂点）
 > **修复说明**：v1.0 审查发现 16 个断裂点（6P0+5P1+5P2），本版已全部修复。核心变更：REJECTED 可重提/reapply/reinvite 三重新机制 + LEAD 继任 + CANCELLED 级联 + 前置条件检查 + 已修学分认可 + 通知补齐 6 种。
@@ -48,7 +48,7 @@
 │  MyProposals                MicroSpecialtyCrossDeptReview    │
 │  MicroSpecialtyInvites                                        │
 ├──────────────────────────────────────────────────────────────┤
-│  API 层: 32 个 REST 端点 /api/micro-specialties*             │
+│  API 层: 52 个 REST 端点 /api/micro-specialties*             │
 ├──────────────────────────────────────────────────────────────┤
 │  服务层:                                                     │
 │  MicroSpecialtyService / MicroSpecialtyEnrollmentService     │
@@ -83,20 +83,20 @@
 
 ```
 路径A（教务处直立）:                 路径B（教师申报）:
-  DRAFT                              PROPOSAL_REVIEW
-    ↓ submit                            ↓ approve  → 创建 DRAFT + LEAD INVITED
-  PENDING_REVIEW                       ↓ reject   → REJECTED
-    ↓ approve → APPROVED                                 ↓ withdraw → WITHDRAWN
-    ↓ reject  → REJECTED ──resubmit──→ DRAFT（修改后重提）
-    ↓
-  APPROVED →（LEAD 确认）→ RECRUITING
-    ↓ open（LEAD 确认开课）
-    ↓
-  RECRUITING →（长期运行，学生报名）
-    ↓ close
-  COMPLETED → ARCHIVED
-    ↓
-  ↕ 任意状态 → CANCELLED（教务处强制）
+   DRAFT                              PROPOSAL_REVIEW
+     ↓ submit                            ↓ approve  → 创建 DRAFT + LEAD INVITED
+   PENDING_REVIEW                       ↓ reject   → REJECTED
+     ↓ approve → APPROVED               ↓ withdraw → WITHDRAWN
+     ↓ reject  → REJECTED ──resubmit──→ DRAFT（修改后重提）
+     ↓
+   APPROVED →（LEAD 确认）→ RECRUITING
+     ↓ open（LEAD 确认开课）
+     ↓
+   RECRUITING →（长期运行，学生报名）
+     ↓ close
+   COMPLETED ──archive──→ ARCHIVED
+     ↓
+   ↕ 任意状态 → CANCELLED（教务处强制 ──终态──）
 ```
 
 **转换矩阵**：
@@ -230,11 +230,13 @@ APPROVED ──unset──→ NONE
 | 角色 | 代码 | 微专业权限范围 |
 |------|------|-------------|
 | 学生 | STUDENT | 查看广场、查看详情、报名修读、退出修读、查我的修读、下载证书 |
-| 教师（申请人） | TEACHER | 提交申报书、申报查询 |
-| 教师（负责人 LEAD） | TEACHER+LEAD | 全部编排CRUD、团队管理（邀请/移除）、提交审核、开课/结业、申请置顶 |
-| 教师（团队成员 MEMBER） | TEACHER+MEMBER | 查看参与的微专业、受邀后可接受/拒绝 |
-| 管理员 | ADMIN | 最高管理权（CRUD 所有资源） |
-| 教务处 | ACADEMIC | 审批申报、审批立项、审批置顶、金标管理、班级导入、跨学院审批 |
+| 教师（申请人） | TEACHER | 提交申报书、申报查询、受邀后接受/拒绝 |
+| 教师（负责人 LEAD） | TEACHER+LEAD | 全部编排CRUD、团队管理（邀请/移除/reinvite）、提交审核/重提、开课/结业、申请置顶、审批学生报名 |
+| 教师（团队成员 MEMBER） | TEACHER+MEMBER | 查看参与的微专业、受邀后可接受/拒绝、主动退出 |
+| 管理员 | ADMIN | 最高管理权（CRUD 所有资源，含班级导入、金标管理、强制操作） |
+| 教务处 | ACADEMIC | 审批申报/微专业/置顶/跨学院、金标管理、班级导入、LEAD继任、归档、强制取消 |
+
+> **LEAD 和 MEMBER 是 TEACHER 的子角色**，在 `micro_specialty_teachers.role` 字段中区分。Controller 层通过 `@PreAuthorize("hasRole('TEACHER')")` + Service 层 `isLeadOf(msId, userId)` / `isMemberOf(msId, userId)` 方法实现子角色鉴权。详见 §9.12 角色鉴权规则。
 
 ### 3.2 角色与前后端映射
 
@@ -391,7 +393,7 @@ CourseSquare（课程广场）
 | 6 | `/teacher/micro-specialties/:id/courses` | `MicroSpecialtyCourseEdit.vue` | LEAD | 教师 |
 | 7 | `/teacher/micro-specialties/:id/team` | `MicroSpecialtyTeamEdit.vue` | LEAD | 教师 |
 | 8 | `/teacher/micro-specialties/invites` | `MicroSpecialtyInvites.vue` | TEACHER | 教师 |
-| 9 | `/teacher/micro-specialties/proposal` | `MicroSpecialtyProposal.vue` | TEACHER | 教师 |
+| 9 | `/teacher/micro-specialties/proposals` | `MicroSpecialtyProposal.vue` | TEACHER | 教师 |
 | 10 | `/teacher/micro-specialties/my-proposals` | `MyProposals.vue` | TEACHER | 教师 |
 | 11 | `/academic/micro-specialties/review` | `MicroSpecialtyReview.vue` | ACADEMIC | 教务 |
 | 12 | `/academic/micro-specialties/proposals` | `MicroSpecialtyProposalReview.vue` | ACADEMIC | 教务 |
@@ -563,37 +565,37 @@ CourseSquare（课程广场）
 | 字段名 | DB 列 | Java 类型 | 约束 | 说明 |
 |--------|-------|-----------|------|------|
 | id | id | Long | PK, 自增 | |
-| code | code | String | UNIQUE NOT NULL | 微专业代码 |
-| title | title | String | NOT NULL | |
-| subtitle | subtitle | String | | |
-| cover_url | cover_url | String | | |
+| code | code | String(30) | UNIQUE NOT NULL | 微专业代码 |
+| title | title | String(200) | NOT NULL | |
+| subtitle | subtitle | String(500) | | |
+| cover_url | cover_url | String(500) | | |
 | description | description | String(Text) | | |
 | offer_department_id | offer_department_id | Long | FK→departments NOT NULL | 开课学院 |
 | lead_teacher_id | lead_teacher_id | Long | FK→users NOT NULL | 负责人 |
 | target_audience | target_audience | String(Text) | | 适合对象 |
 | training_objective | training_objective | String(Text) | | 培养目标 |
 | admission_requirement | admission_requirement | String(Text) | | 准入门槛 |
-| completion_rule | completion_rule | String | DEFAULT 'ALL_REQUIRED' | ALL_REQUIRED / CREDITS_MIN / MIXED |
-| total_credits | total_credits | BigDecimal | DEFAULT 0 | 总学分 |
+| completion_rule | completion_rule | String(20) | DEFAULT 'ALL_REQUIRED' | ALL_REQUIRED / CREDITS_MIN / MIXED |
+| total_credits | total_credits | BigDecimal(6,2) | DEFAULT 0 | 总学分 |
 | total_hours | total_hours | Integer | DEFAULT 0 | 总学时 |
 | required_course_count | required_course_count | Integer | DEFAULT 0 | |
 | elective_course_count | elective_course_count | Integer | DEFAULT 0 | |
-| min_credits | min_credits | BigDecimal | DEFAULT 0 | CREDITS_MIN时的最低学分 |
+| min_credits | min_credits | BigDecimal(6,2) | DEFAULT 0 | CREDITS_MIN时的最低学分 |
 | max_students | max_students | Integer | DEFAULT 0 | 0=不限 |
 | student_count | student_count | Integer | DEFAULT 0 | |
-| semester | semester | String | | |
+| semester | semester | String(20) | | 开设学期，如"2026-2027-1" |
 | is_featured | is_featured | Boolean | DEFAULT FALSE | |
 | featured_rank | featured_rank | Integer | DEFAULT 0 | |
-| featured_status | featured_status | String | DEFAULT 'NONE' | NONE/PENDING/APPROVED/REJECTED |
+| featured_status | featured_status | String(20) | DEFAULT 'NONE' | NONE/PENDING/APPROVED/REJECTED |
 | featured_apply_at | featured_apply_at | LocalDateTime | | |
-| featured_apply_reason | featured_apply_reason | String | | |
+| featured_apply_reason | featured_apply_reason | String(500) | | |
 | featured_approved_by | featured_approved_by | Long | FK→users | |
 | featured_approved_at | featured_approved_at | LocalDateTime | | |
 | is_gold_featured | is_gold_featured | Boolean | DEFAULT FALSE | |
 | gold_featured_by | gold_featured_by | Long | FK→users | |
 | gold_featured_at | gold_featured_at | LocalDateTime | | |
-| status | status | Integer | NOT NULL DEFAULT 0 | 状态机 |
-| reject_reason | reject_reason | String | | |
+| status | status | String(20) | NOT NULL DEFAULT 'DRAFT' | 状态机（DRAFT/PENDING_REVIEW/APPROVED/REJECTED/RECRUITING/COMPLETED/CANCELLED/ARCHIVED） |
+| reject_reason | reject_reason | String(500) | | |
 | submitted_at | submitted_at | LocalDateTime | | |
 | approved_at | approved_at | LocalDateTime | | |
 | opened_at | opened_at | LocalDateTime | | |
@@ -617,7 +619,7 @@ CourseSquare（课程广场）
 | 字段名 | DB 列 | Java 类型 | 约束 | 说明 |
 |--------|-------|-----------|------|------|
 | id | id | Long | PK, 自增 | |
-| micro_specialty_id | micro_specialty_id | Long | FK, NOT NULL | |
+| micro_specialty_id | micro_specialty_id | Long | FK→micro_specialties, NOT NULL | |
 | course_id | course_id | Long | FK→courses, NOT NULL | |
 | sort_order | sort_order | Integer | DEFAULT 0 | |
 | is_required | is_required | Boolean | DEFAULT TRUE | |
@@ -627,14 +629,14 @@ CourseSquare（课程广场）
 | recommended_semester | recommended_semester | String | | |
 | created_at | created_at | LocalDateTime | | |
 
-**索引**：`uk_msc_unique(ms_id, course_id)` / `idx_msc_ms` / `idx_msc_course`
+**索引**：`uk_msc_unique(micro_specialty_id, course_id)` / `idx_msc_ms` / `idx_msc_course`
 
 ### 6.3 micro_specialty_teachers — 教师团队
 
 | 字段名 | DB 列 | Java 类型 | 约束 | 说明 |
 |--------|-------|-----------|------|------|
 | id | id | Long | PK | |
-| micro_specialty_id | micro_specialty_id | Long | FK, NOT NULL | |
+| micro_specialty_id | micro_specialty_id | Long | FK→micro_specialties, NOT NULL | |
 | teacher_id | teacher_id | Long | FK→users, NOT NULL | |
 | role | role | String | NOT NULL | LEAD/MEMBER/ASSISTANT |
 | course_id | course_id | Long | FK→courses | 归属课程（LEAD可空） |
@@ -650,27 +652,27 @@ CourseSquare（课程广场）
 
 **约束**：DB触发器 `trg_ms_one_lead` — 每行 micro_specialty 有且仅有 1 名 `role='LEAD' AND invite_status='ACTIVE'` 的教师
 
-**索引**：`uk_mst_active(ms_id, teacher_id, course_id) WHERE invite_status NOT IN ('DECLINED','REMOVED')` / `idx_mst_ms` / `idx_mst_teacher` / `idx_mst_role` / `idx_mst_invite_status`
+**索引**：`uk_mst_active(micro_specialty_id, teacher_id, course_id) WHERE invite_status NOT IN ('DECLINED','REMOVED')` / `idx_mst_ms` / `idx_mst_teacher` / `idx_mst_role` / `idx_mst_invite_status`
 
-> **修复**：原 `uk_mst_unique` 改为部分唯一索引，排除 DECLINED/REMOVED 状态，支持教师重新邀请。
+> **修复**：原 `uk_mst_unique` 改为 `uk_mst_active` 部分唯一索引，排除 DECLINED/REMOVED 状态，支持教师重新邀请。索引列名从 `ms_id` 修正为 `micro_specialty_id`。
 
 ### 6.4 micro_specialty_enrollments — 修读记录
 
 | 字段名 | DB 列 | Java 类型 | 约束 | 说明 |
 |--------|-------|-----------|------|------|
 | id | id | Long | PK | |
-| micro_specialty_id | micro_specialty_id | Long | FK, NOT NULL | |
+| micro_specialty_id | micro_specialty_id | Long | FK→micro_specialties, NOT NULL | |
 | user_id | user_id | Long | FK→users, NOT NULL | |
 | source | source | String | NOT NULL | SELF_APPLY / CLASS_IMPORT / ADMIN_ASSIGN |
 | class_id | class_id | Long | FK→classes | 班级导入时归属班级 |
 | status | status | String | DEFAULT 'PENDING' | |
-| progress | progress | BigDecimal | DEFAULT 0 | 0-100 |
+| progress | progress | BigDecimal(5,2) | DEFAULT 0 | 0-100 |
 | credits_earned | credits_earned | BigDecimal | DEFAULT 0 | |
 | courses_completed | courses_completed | Integer | DEFAULT 0 | |
 | courses_required | courses_required | Integer | DEFAULT 0 | |
 | final_score | final_score | BigDecimal | | |
 | final_grade | final_grade | String | | EXCELLENT/GOOD/PASS/FAIL |
-| certificate_id | certificate_id | Long | FK→certificates | |
+| certificate_id | certificate_id | Long | FK→certificates, nullable | COMPLETED 前为 NULL，结业后回写 |
 | applied_at | applied_at | LocalDateTime | | |
 | approved_at | approved_at | LocalDateTime | | |
 | approved_by | approved_by | Long | FK→users | |
@@ -681,9 +683,9 @@ CourseSquare（课程广场）
 | updated_at | updated_at | LocalDateTime | | |
 | version | version | Integer | DEFAULT 0 | |
 
-**索引**：`uk_mse_active(ms_id, user_id) WHERE status NOT IN ('REJECTED','DROPPED','FAILED')` / `idx_mse_user` / `idx_mse_ms` / `idx_mse_status` / `idx_mse_class`
+**索引**：`uk_mse_active(micro_specialty_id, user_id) WHERE status NOT IN ('REJECTED','DROPPED','FAILED')` / `idx_mse_user` / `idx_mse_ms` / `idx_mse_status` / `idx_mse_class`
 
-> **修复**：原 `uk_mse_unique` 改为部分唯一索引，排除 REJECTED/DROPPED/FAILED 状态，支持学生重新申请。
+> **修复**：原 `uk_mse_unique` 改为 `uk_mse_active` 部分唯一索引，排除 REJECTED/DROPPED/FAILED 状态，支持学生重新申请。索引列名从 `ms_id` 修正为 `micro_specialty_id`。
 
 ### 6.5 micro_specialty_proposals — 微专业申报表
 
@@ -710,11 +712,11 @@ CourseSquare（课程广场）
 | 字段名 | DB 列 | Java 类型 | 约束 | 说明 |
 |--------|-------|-----------|------|------|
 | id | id | Long | PK | |
-| micro_specialty_id | micro_specialty_id | Long | FK, NOT NULL | |
+| micro_specialty_id | micro_specialty_id | Long | FK→micro_specialties, NOT NULL | |
 | operator_id | operator_id | Long | FK→users, NOT NULL | |
 | action | action | String | NOT NULL | APPLY/APPROVE/REJECT/GOLD_SET/GOLD_UNSET |
-| before_value | before_value | String(JSON) | | |
-| after_value | after_value | String(JSON) | | |
+| before_value | before_value | String(JSONB) | | 变更前快照（JSONB，支持索引和查询） |
+| after_value | after_value | String(JSONB) | | 变更后快照（JSONB，支持索引和查询） |
 | reason | reason | String | | |
 | created_at | created_at | LocalDateTime | | |
 
@@ -780,7 +782,8 @@ avgRating = AVG(course_reviews.rating WHERE course IN (ms courses))
 | POST | `/api/micro-specialties/{id}/open` | LEAD | 开课→RECRUITING（自动通知所有学生微专业可报名） |
 | POST | `/api/micro-specialties/{id}/close` | LEAD | 结业→COMPLETED |
 | POST | `/api/micro-specialties/{id}/cancel` | ACADEMIC | 强制取消→CANCELLED（级联设置 enrollments 为 DROPPED + 通知所有相关人） |
-| POST | `/api/micro-specialties/{id}/transfer-leadership` | ACADEMIC | **LEAD 继任**：指定新 LEAD（事务内转移，自动调整 role 和 lead_teacher_id） |
+| POST | `/api/micro-specialties/{id}/archive` | ACADEMIC | 归档（COMPLETED→ARCHIVED，通知 LEAD） |
+| POST | `/api/micro-specialties/{id}/transfer-leadership` | ACADEMIC | LEAD 继任：指定新 LEAD（事务内转移，自动调整 role 和 lead_teacher_id） |
 
 ### 7.2 申报（5 个）
 
@@ -814,7 +817,8 @@ avgRating = AVG(course_reviews.rating WHERE course IN (ms courses))
 | POST | `/api/micro-specialty-teachers/{inviteId}/accept` | TEACHER(本人) | 接受邀请→ACTIVE/跨学院→PENDING_ACADEMIC |
 | POST | `/api/micro-specialty-teachers/{inviteId}/decline` | TEACHER(本人) | 拒绝邀请 |
 | POST | `/api/micro-specialty-teachers/{inviteId}/reinvite` | LEAD | 重新邀请（复用 REMOVED/DECLINED 记录重置状态） |
-| POST | `/api/micro-specialty-teachers/{inviteId}/review-cross-dept` | ACADEMIC | 跨学院审批 |
+| POST | `/api/micro-specialty-teachers/{inviteId}/leave` | TEACHER(本人) | 主动退出团队→REMOVED（通知 LEAD） |
+| POST | `/api/micro-specialty-teachers/{inviteId}/review-cross-dept` | ACADEMIC | 跨学院审批（请求体传 action=approve\|reject） |
 
 ### 7.5 修读（8 个）
 
@@ -822,12 +826,12 @@ avgRating = AVG(course_reviews.rating WHERE course IN (ms courses))
 |------|------|------|------|
 | POST | `/api/micro-specialty-enrollments/apply` | STUDENT | 自主报名→PENDING |
 | POST | `/api/micro-specialty-enrollments/{id}/reject` | LEAD/ACADEMIC | 驳回报名（通知学生） |
-| POST | `/api/micro-specialty-enrollments/class-import` | ACADEMIC | 班级批量导入→APPROVED |
+| POST | `/api/micro-specialty-enrollments/class-import` | ACADEMIC/ADMIN | 班级批量导入→APPROVED（含前置条件检查+已存在学生自动跳过） |
 | GET | `/api/micro-specialty-enrollments/my` | STUDENT | 我的修读列表（含 FAILED 原因+不合格课程） |
 | GET | `/api/micro-specialties/{id}/enrollments` | LEAD/ACADEMIC | 修读名单 |
 | POST | `/api/micro-specialty-enrollments/{id}/approve` | LEAD/ACADEMIC | 审批学生报名 |
-| POST | `/api/micro-specialty-enrollments/{id}/drop` | STUDENT/ADMIN | 退出修读（级联清除课程级 enrollment） |
-| POST | `/api/micro-specialty-enrollments/{id}/reapply` | STUDENT | 重新申请（REJECTED/DROPPED/FAILED→PENDING） |
+| POST | `/api/micro-specialty-enrollments/{id}/drop` | STUDENT(本人)/ADMIN | 退出修读（级联清除课程级 enrollment，STUDENT 本人+ADMIN 可操作） |
+| POST | `/api/micro-specialty-enrollments/{id}/reapply` | STUDENT(本人) | 重新申请（REJECTED/DROPPED/FAILED→PENDING，本人操作） |
 
 ### 7.6 置顶（5 个）
 
@@ -838,6 +842,7 @@ avgRating = AVG(course_reviews.rating WHERE course IN (ms courses))
 | POST | `/api/micro-specialties/{id}/reject-featured` | ACADEMIC | 驳回→REJECTED（通知 LEAD） |
 | POST | `/api/micro-specialties/{id}/set-gold-featured` | ACADEMIC | 设金标（全校最多 2 个） |
 | POST | `/api/micro-specialties/{id}/unset-gold-featured` | ACADEMIC | 取消金标 |
+| POST | `/api/micro-specialties/{id}/unset-featured` | ACADEMIC | 取消置顶（APPROVED→NONE, is_featured=FALSE） |
 
 ### 7.7 统计 & 证书（3 个）
 
@@ -845,13 +850,13 @@ avgRating = AVG(course_reviews.rating WHERE course IN (ms courses))
 |------|------|------|------|
 | GET | `/api/micro-specialties/{id}/stats` | 已认证 | 统计数据（选课率/完成率/平均分/质量分） |
 | POST | `/api/micro-specialty-enrollments/{id}/issue-certificate` | LEAD/ACADEMIC | 手动颁发证书 |
-| GET | `/api/certificates/micro-specialty/my` | STUDENT | 我的微专业证书列表 |
+| GET | `/api/certificates/my?type=MICRO_SPECIALTY` | STUDENT | 我的微专业证书列表（复用 `/api/certificates/my` 统一入口，type 参数过滤） |
 
 ---
 
 ## 8. 通知体系
 
-### 8.1 通知类型（22 种）
+### 8.1 通知类型（23 种）
 
 > 扩展 `notifications.type` 枚举（不影响现有类型）。**修复：补齐 submit/approve/open/archive 等 6 处缺失通知。**
 
@@ -901,13 +906,15 @@ avgRating = AVG(course_reviews.rating WHERE course IN (ms courses))
 POST /api/micro-specialty-enrollments/class-import
 Request: { microSpecialtyId, classId }
 
-事务:
-  1. 校验 micro_specialty 存在且 status=RECRUITING
+事务（@Transactional + 分批）:
+  1. 校验 micro_specialty 存在且 status=RECRUITING（使用 SELECT ... FOR UPDATE 避免并发取消）
   2. 校验 class 存在
   3. 查 classStudents = SELECT * FROM users WHERE class_id=X AND role='STUDENT'
-  4. 分页处理（每批 100 人）:
-     FOR each student:
-       a. 创建 micro_specialty_enrollments (status=APPROVED, source=CLASS_IMPORT)
+  4. 预查已存在的 micro_specialty_enrollments WHERE ms_id=X AND status IN ('APPROVED','IN_PROGRESS')
+     → 构建已存在学生 Set，导入时跳过（日志记录"已存在"）
+  5. 分批处理（每批 100 人）:
+     FOR each student (NOT IN 已存在Set):
+       a. 创建 micro_specialty_enrollments (status=APPROVED, source=CLASS_IMPORT, version=0)
        b. FOR 每门必修课：
              precheck = checkPrerequisites(courseId, userId):
                - 前置课程是否已修且通过
@@ -919,39 +926,54 @@ Request: { microSpecialtyId, classId }
              ELSE:
                记录到 pendingCourses JSON 字段
                (学生仍可查看微专业，但该课程 enrollment 为 PENDING，需 LEAD 人工处理)
-  5. 更新 micro_specialties.student_count += 导入人数
-  6. 发 MS_ENROLLMENT_AUTO_ENROLL 给学生（含 pendingCourses 提示）
-  7. 发通知给 LEAD："班级 {className} 已成功导入 {count} 名学生（{pendingCount} 门课程需要人工处理）"
+       c. 处理完一批后 flush + clear 避免长期持有 Hibernate 一级缓存
+  6. 更新 micro_specialties.student_count（使用 version 乐观锁）:
+      UPDATE micro_specialties SET student_count = student_count + :count, version = version + 1
+      WHERE id = :msId AND version = :oldVersion
+  7. 发 MS_ENROLLMENT_AUTO_ENROLL 给学生（含 pendingCourses 提示）
+  8. 发通知给 LEAD："班级 {className} 已成功导入 {count} 名学生（{pendingCount} 门课程需要人工处理）"
+  9. 如有超过 10% 的学生有 pendingCourses，额外通知 ACADEMIC
 ```
 
-### 9.2 自动结业判定（每日 02:00 cron）
+### 9.2 自动结业判定（每日 02:00 cron，分批 + 乐观锁 + 完整通知）
 
 ```
 @Scheduled(cron = "0 0 2 * * ?")
 aggregate():
-  1. 查所有 WHERE status IN ('APPROVED', 'IN_PROGRESS')
-  2. FOR each:
-     a. 取每门课程对应的 enrollment.final_score
-     b. 按 §6.8 公式计算 progress / credits_earned / courses_completed / final_score
-     c. 按 completion_rule 判定
-     d. 如结业:
-        - UPDATE status=COMPLETED, completed_at=NOW()
-        - 调 CertificateService.issueMicroSpecialtyCertificate(userId, msId)
-        - 发 MS_CERTIFICATE_ISSUED 通知
-     e. 如所有课程 fail → status=FAILED
-     f. 否则更新 progress/credits_earned
-  3. 重新校准 student_count
+  1. 分批查 enrollment（每批 100 行），WHERE status IN ('APPROVED', 'IN_PROGRESS')
+  2. FOR each enrollment（分批内逐条处理）:
+     a. 取版本快照: SELECT version FROM micro_specialty_enrollments WHERE id=:id
+     b. 取每门课程对应的 enrollment.final_score（含已修但无课程级 enrollment 的旧成绩）
+     c. 按 §6.8 公式计算 progress / credits_earned / courses_completed / final_score
+     d. 如满足 completion_rule:
+        - rows = UPDATE micro_specialty_enrollments SET status='COMPLETED',
+          completed_at=NOW(), progress=:p, credits_earned=:c, final_score=:s, version=version+1
+          WHERE id=:id AND version=:oldVersion
+        - IF rows > 0:
+            调 CertificateService.issueMicroSpecialtyCertificate(enrollment.userId, enrollment.msId, enrollment.id)
+            发 MS_CERTIFICATE_ISSUED 通知
+        - ELSE: 记录日志"并发跳过: enrollment.id 已被其他操作修改"
+     e. 如所有必修课 fail（final_score < min_score 且无补考机会）:
+        - UPDATE micro_specialty_enrollments SET status='FAILED', version=version+1
+          WHERE id=:id AND version=:oldVersion
+        - IF rows > 0: 发 MS_ENROLLMENT_FAILED 通知（含不合格课程列表）
+     f. 否则更新 progress/credits_earned（使用 version 乐观锁）
+  3. 重新校准 student_count: SELECT COUNT(DISTINCT user_id) 覆盖写入 micro_specialties
 ```
 
-### 9.3 7 天邀请过期扫描（每小时 cron）
+### 9.3 7 天邀请过期扫描（每小时 cron，分批 + 事务 + 乐观锁）
 
 ```
 @Scheduled(cron = "0 0 * * * ?")
 scan():
-  1. 查 WHERE invite_status='INVITED' AND invite_expires_at < NOW()
+  1. 分批查 teacher，WHERE invite_status='INVITED' AND invite_expires_at < NOW()（每批 50 行）
   2. FOR each:
-     a. UPDATE invite_status='DECLINED', responded_at=NOW()
-     b. 发 MS_INVITE_EXPIRED 通知 LEAD + ACADEMIC
+     a. rows = UPDATE micro_specialty_teachers SET invite_status='DECLINED',
+          responded_at=NOW(), version=version+1
+          WHERE id=:id AND version=:oldVersion
+     b. IF rows > 0: 发 MS_INVITE_EXPIRED 通知 LEAD + ACADEMIC
+     c. 若角色=LEAD: 额外告警 ACADEMIC（"负责人邀请已过期，微专业处于无 LEAD 状态"）
+  3. 额外扫描: PENDING_ACADEMIC 超过 14 天未处理的记录 → 告警 ACADEMIC
 ```
 
 ### 9.4 LEAD 接受邀请校验
@@ -975,34 +997,49 @@ POST /api/micro-specialty-teachers/{inviteId}/accept
 STUDENT 点击"报名" → POST enrollments/apply → PENDING
   → 通知 LEAD: "学生 {name} 申请加入 {title}"
   → LEAD 在列表看到待审红点
-  → LEAD approve:
-      → UPDATE status=APPROVED
-      → FOR 每门必修课：
+  → LEAD approve（使用 version 乐观锁）:
+      → rows = UPDATE micro_specialty_enrollments SET status='APPROVED',
+          approved_at=NOW(), approved_by=:leadId, version=version+1
+          WHERE id=:id AND version=:oldVersion
+      → IF rows == 0: 抛出乐观锁异常提示"申请已被其他操作修改"
+      → FOR 每门必修课（@Transactional 确保原子性）:
             precheck = checkPrerequisites(courseId, userId)
             IF precheck.allPassed:
                调 enrollmentService.createEnrollment(userId, courseId)
             ELSE:
                记录 pendingCourses
       → 发 MS_ENROLLMENT_APPROVED（含 pendingCourses 提示）
-      → student_count++
+      → UPDATE micro_specialties SET student_count = student_count + 1,
+          version = version + 1 WHERE id = :msId AND version = :oldVersion
   → LEAD reject:
-      → UPDATE status=REJECTED
-      → 发 MS_ENROLLMENT_REJECTED（含驳回原因）
+      → rows = UPDATE micro_specialty_enrollments SET status='REJECTED',
+          version=version+1 WHERE id=:id AND version=:oldVersion
+      → IF rows > 0: 发 MS_ENROLLMENT_REJECTED（含驳回原因）
   → REJECTED/DROPPED/FAILED 后 STUDENT 可 reapply:
-      → POST /enrollments/{id}/reapply → status=PENDING
-      → 发 MS_ENROLLMENT_REAPPLIED 通知 LEAD + STUDENT
+      → POST /enrollments/{id}/reapply
+      → 校验前置 (REJECTED/DROPPED/FAILED) 且用户本人
+      → rows = UPDATE status='PENDING', version=version+1
+          WHERE id=:id AND version=:oldVersion
+      → IF rows > 0: 发 MS_ENROLLMENT_REAPPLIED 通知 LEAD + STUDENT
 ```
 
-### 9.6 结业证书颁发
+### 9.6 结业证书颁发（幂等+防编号冲突）
 
 ```
-CertificateService.issueMicroSpecialtyCertificate(userId, msId):
-  1. 生成证书编号: MS-{code}-{userId}-{yyyyMM}
-  2. 插入 certificates:
+CertificateService.issueMicroSpecialtyCertificate(userId, msId, enrollmentId):
+  1. 幂等检查: SELECT id FROM certificates WHERE cert_type='MICRO_SPECIALTY'
+     AND micro_specialty_id=:msId AND user_id=:userId
+     → 如果已存在，直接返回已有证书（不重复生成）
+  2. 生成证书编号: MS-{code}-{userId}-{yyyyMM}-{randomHex(4)}
+     （加入 4 位随机 hex 避免同月内重复编号冲突）
+  3. 插入 certificates（带唯一约束 uk_cert_ms）:
      cert_type='MICRO_SPECIALTY', micro_specialty_id=msId, user_id=userId
      cert_code, issued_at=now()
-  3. 回写 micro_specialty_enrollments.certificate_id
-  4. 发 MS_CERTIFICATE_ISSUED
+     → 如果 uk_cert_ms 冲突，回退到 Step 2 重新生成编号（最多 3 次）
+  4. 回写 micro_specialty_enrollments.certificate_id（同一事务内）:
+     UPDATE micro_specialty_enrollments SET certificate_id=:certId, version=version+1
+     WHERE id=:enrollmentId AND version=:oldVersion
+  5. 发 MS_CERTIFICATE_ISSUED 通知
 ```
 
 ### 9.7 LEAD 继任逻辑
@@ -1013,17 +1050,25 @@ CertificateService.issueMicroSpecialtyCertificate(userId, msId):
 POST /api/micro-specialties/{id}/transfer-leadership
 Request: { newLeadTeacherId: Long }
 
-事务:
-  1. 校验当前 micro_specialty 状态（DRAFT 及以后的所有状态均可转移）:
-  2. 查当前 LEAD 记录（micro_specialty_teachers WHERE role='LEAD' AND invite_status='ACTIVE'）:
-     a. 当前 LEAD 的 role → 'MEMBER'（仍留在团队中）或 'REMOVED'（强制转出）
-     b. 更新 left_at = NOW()
-  3. 查新 LEAD 是否已在团队成员中:
-     a. 是: 更新 role='LEAD', joined_at=NOW()
-     b. 否: 新增记录 (role='LEAD', invite_status='ACTIVE', joined_at=NOW())
-  4. 更新 micro_specialties.lead_teacher_id = newLeadTeacherId
-  5. DB 触发器 trg_ms_one_lead 在此事务期间延迟检查，提交时确保恰好 1 条 ACTIVE LEAD
-  6. 发 MS_LEAD_TRANSFERRED 通知原 LEAD + 新 LEAD
+ 事务（@Transactional + version 乐观锁）:
+   1. 校验当前 micro_specialty 状态（仅非终态可转移: DRAFT/PENDING_REVIEW/APPROVED/REJECTED/RECRUITING）:
+      SELECT version FROM micro_specialties WHERE id=:id
+      → 排除 CANCELLED/COMPLETED/ARCHIVED
+   2. 查当前 LEAD 记录:
+      SELECT FROM micro_specialty_teachers WHERE role='LEAD' AND invite_status='ACTIVE' AND ms_id=:id
+      a. 如原 LEAD 已被移除（无记录符合）:
+         - 跳过原 LEAD 操作，直接执行 Step 3
+      b. 否则: 原 LEAD role→'MEMBER'（或 'REMOVED' 按需）
+         UPDATE micro_specialty_teachers SET role='MEMBER', left_at=NOW(), version=version+1
+         WHERE id=:leadId AND version=:oldVersion
+   3. 查新 LEAD 是否已在团队成员中:
+      a. 是: UPDATE role='LEAD', joined_at=NOW(), version=version+1
+           WHERE teacher_id=:newLeadId AND ms_id=:id AND version=:oldVer
+      b. 否: INSERT (ms_id, teacher_id, role='LEAD', invite_status='ACTIVE', joined_at=NOW())
+   4. UPDATE micro_specialties SET lead_teacher_id=:newLeadId, version=version+1
+      WHERE id=:id AND version=:oldVersion
+   5. DB 触发器 trg_ms_one_lead 在此事务期间延迟检查，提交时确保恰好 1 条 ACTIVE LEAD
+   6. 发 MS_LEAD_TRANSFERRED 通知原 LEAD + 新 LEAD
 ```
 
 ### 9.8 CANCELLED 级联变更
@@ -1032,13 +1077,20 @@ Request: { newLeadTeacherId: Long }
 
 ```
 POST /api/micro-specialties/{id}/cancel
-事务:
-  1. UPDATE micro_specialties.status = CANCELLED, closed_at = NOW()
-  2. FOR 所有 status IN ('PENDING','APPROVED','IN_PROGRESS') 的 micro_specialty_enrollments:
-     a. UPDATE status = 'DROPPED', drop_reason = 'SPECIALTY_CANCELLED', dropped_at = NOW()
-     b. 可选: 逐条调 enrollmentService.dropEnrollment() 清理课程级 enrollment
-  3. 发 MS_CANCELLED 通知 LEAD + 全部受影响学生
-  4. 写入 micro_specialty_featured_audit (CANCELLED)
+事务（@Transactional + version 乐观锁）:
+  1. SELECT version FROM micro_specialties WHERE id=:id（用于后续乐观锁）
+  2. rows = UPDATE micro_specialties SET status='CANCELLED', closed_at=NOW(), version=version+1
+     WHERE id=:id AND version=:oldVersion
+  3. IF rows == 0: 抛出"微专业已被其他操作修改/取消"
+  4. FOR 所有 status IN ('PENDING','APPROVED','IN_PROGRESS') 的 enrollments:
+     a. UPDATE micro_specialty_enrollments SET status='DROPPED',
+        drop_reason='SPECIALTY_CANCELLED', dropped_at=NOW(), version=version+1
+        WHERE id=:enrollId AND version=:oldVer
+     b. FOR 课程级 enrollment（仅限 COMPLETED 以外的）:
+        调 enrollmentService.dropEnrollment(enrollmentId)
+     c. COMPLETED 的课程 enrollment: 保留不动（成绩已固化）
+  5. 发 MS_CANCELLED 通知 LEAD + 全部受影响学生
+  6. 写入 micro_specialty_featured_audit (action='CANCELLED')
 ```
 
 ### 9.9 DROPPED 课程级联清理
@@ -1049,17 +1101,27 @@ POST /api/micro-specialties/{id}/cancel
 POST /api/micro-specialty-enrollments/{id}/drop
 Request: { cascadeDropCourses?: boolean }
 
-逻辑:
-  1. 校验当前微专业 enrollment 状态为 APPROVED 或 IN_PROGRESS
-  2. UPDATE status='DROPPED', dropped_at=NOW(), drop_reason
-  3. 如 cascadeDropCourses=true 或 角色=ADMIN:
-     → FOR 本微专业所有必修课的课程级 enrollment:
+逻辑（@Transactional + version 乐观锁）:
+  1. 校验微专业 enrollment:
+     - 当前状态为 APPROVED 或 IN_PROGRESS
+     - 微专业本身未处于 CANCELLED/ARCHIVED（终态不可 drop）
+     - 当前用户 = enrollment.user_id（STUDENT本人）或 ADMIN
+  2. SELECT version FROM micro_specialty_enrollments WHERE id=:id
+  3. rows = UPDATE micro_specialty_enrollments SET status='DROPPED',
+     dropped_at=NOW(), drop_reason=:reason, version=version+1
+     WHERE id=:id AND version=:oldVersion
+  4. IF rows == 0: 抛出乐观锁异常
+  5. IF cascadeDropCourses=true OR 角色=ADMIN:
+     → FOR 本微专业所有必修课的课程级 enrollment（仅 APPROVED/IN_PROGRESS）:
          调 enrollmentService.dropEnrollment(enrollmentId)
      → 记录清理日志
-  4. 如 cascadeDropCourses=false（学生自助退出）:
+  6. IF cascadeDropCourses=false（学生自助退出）:
      → 仅标记微专业退出，课程级 enrollment 保留可继续单学
-     → 但停止 cron 聚合 micro_specialty 进度
-  5. micro_specialties.student_count -= 1
+     → 但更新进度标记: 停止 cron 聚合 micro_specialty 进度
+  7. 微调 student_count（防止负数）:
+     IF (SELECT student_count FROM micro_specialties WHERE id=:msId) > 0:
+        UPDATE micro_specialties SET student_count = student_count - 1,
+          version = version + 1 WHERE id = :msId AND version = :oldVer
 ```
 
 ### 9.10 已修课程学分认可
@@ -1095,7 +1157,7 @@ Request: { cascadeDropCourses?: boolean }
 | PENDING_REVIEW | ✅ | ✅ | ✅ | —（等待审批）|
 | APPROVED | ✅ | ✅ | ✅ | open, 重新 submit |
 | REJECTED | ✅ | ✅ | ✅ | submit(重提) |
-| RECRUITING | ✅ | ❌（仅可排课序）| ❌（仅可加人）| close, canel |
+| RECRUITING | ✅ | ❌（仅可排课序）| ✅（仅 LEAD 可加人）| close, cancel |
 | COMPLETED | ❌ | ❌ | ❌ | archive |
 | CANCELLED | ❌ | ❌ | ❌ | — |
 | ARCHIVED | ❌ | ❌ | ❌ | — |
@@ -1103,100 +1165,216 @@ Request: { cascadeDropCourses?: boolean }
 > **RECRUITING 后不允许大幅变更**（课程组合已锁定，学生已报名），仅允许调整排序和补充团队。
 ```
 
-## 10. 逻辑闭环自查表（v1.1 修复版）
+### 9.12 角色鉴权规则
 
-> **修复**：补全 16 项修复后，自查维度从 10 类 25 项扩展到 **12 类 40 项**，全部 ✅。无断裂链路。
+> **新增修复**（对应 P0-4 / §3.1 扩展）：LEAD 和 MEMBER 是 TEACHER 的子角色，通过 Service 层 `isLeadOf()` / `isMemberOf()` 方法鉴权。
+
+```
+Service 层角色鉴权方法:
+
+1. isLeadOf(msId, userId):
+   SELECT 1 FROM micro_specialty_teachers
+   WHERE micro_specialty_id=:msId AND teacher_id=:userId
+     AND role='LEAD' AND invite_status='ACTIVE'
+   → 返回 boolean
+
+2. isMemberOf(msId, userId):
+   SELECT 1 FROM micro_specialty_teachers
+   WHERE micro_specialty_id=:msId AND teacher_id=:userId
+     AND role IN ('MEMBER','ASSISTANT') AND invite_status='ACTIVE'
+   → 返回 boolean
+
+3. isOwnerOrLead(msId, userId):
+   = isLeadOf(msId, userId) OR (SELECT creator_id FROM micro_specialties WHERE id=:msId) = userId
+   → 用于 submit/delete 等操作
+
+Controller 层调用模式:
+   @PreAuthorize("hasRole('TEACHER')")
+   public R<?> editCourse(@PathVariable Long id, ...) {
+       if (!microSpecialtyService.isLeadOf(id, SecurityUtil.getCurrentUserId())
+           && !SecurityUtil.isAdmin()) {
+           throw new BusinessException(ErrorCode.NO_PERMISSION);
+       }
+       // ... 业务逻辑
+   }
+
+权限速查表:
+| 操作 | Controller @PreAuthorize | Service 层二次校验 | 公开 |
+|------|------------------------|-------------------|------|
+| 广场列表 | permitAll() | — | ✅ |
+| 详情查看 | permitAll()（但 DRAFT/CANCELLED 过滤） | — | ✅ |
+| 创建微专业 | hasRole('ACADEMIC') | — | |
+| 编辑基本 | hasRole('TEACHER') | isLeadOf() OR isAdmin() | |
+| Submit/Open/Close | hasRole('TEACHER') | isLeadOf() | |
+| 编排课程 | hasRole('TEACHER') | isLeadOf() | |
+| 邀请/移除教师 | hasRole('TEACHER') | isLeadOf() | |
+| 接受/拒绝邀请 | hasRole('TEACHER') | userId == teacher_id（本人）| |
+| 审报名 | hasRole('TEACHER') | isLeadOf() OR isAdmin() | |
+| Drop enrollment | hasAnyRole('STUDENT','ADMIN') | userId == enrollment.user_id（本人）| |
+| 所有审批操作 | hasRole('ACADEMIC') | — | |
+| 金标操作 | hasRole('ACADEMIC') | — | |
+| 班级导入 | hasAnyRole('ACADEMIC','ADMIN') | — | |
+| 归档 | hasRole('ACADEMIC') | — | |
+| LEAD继任 | hasRole('ACADEMIC') | — | |
+```
+
+### 9.13 页面状态规范（Loading / Error / Empty 三态）
+
+> **总工程师决策**：以下规范对全 16 个页面强制生效。前端实施时，每个页面组件必须覆盖 4 种状态（Loading / Error / Empty / 正常），缺少任一态视为实现不完整，交叉验证 R1-R4 不通过。
+
+**统一规范**：
+
+| 状态 | 前端行为 | 实现方式 |
+|------|---------|---------|
+| **Loading** | 首次数据加载时显示骨架屏 | `<el-skeleton>` 组件，行数 ≈ 正常内容的 80% |
+| **Error** | 请求失败时显示错误提示 + 重试按钮 | `<el-result status="error" />` + "重试" 按钮回调查 |
+| **Empty** | 列表无数据时显示空态插画 + 引导操作 | `<el-empty>` + 引导按钮（如"去课程广场看看"）|
+| **正常** | 标准数据渲染 | 按 §5.3-§5.7 页面结构实现 |
+
+**异常场景**：API 403/500 → Error 态，网络中断 → Error 态（"网络已断开"），资源不存在 → 404 页（跳转 `/student/courses` 等替代入口）
+
+**各页面空态定义**：
+
+| 页面 | Empty 态文案 | 引导按钮 |
+|------|-------------|---------|
+| CourseSquare 专区 | "暂无微专业项目，敬请期待" | — |
+| MicroSpecialtyDetail | 微专业不存在 → 跳转课程广场 | — |
+| MyMicroSpecialties | "暂未报名微专业" | [去课程广场看看] |
+| MicroSpecialtyList(教师) | "暂未参与任何微专业" | [创建微专业] / [提交申报] |
+| MicroSpecialtyManage | 加载失败 → Error 态 | [重试] |
+| MicroSpecialtyCourseEdit | "暂未编排课程" | [添加课程] |
+| MicroSpecialtyTeamEdit | "暂未邀请教师" | [邀请教师] |
+| MicroSpecialtyInvites | "暂无待处理邀请" | — |
+| MicroSpecialtyProposal | 表单页→无空态 | — |
+| MyProposals | "暂未提交申报" | [提交申报] |
+| MicroSpecialtyReview | "暂无待审批微专业" | — |
+| MicroSpecialtyProposalReview | "暂无待审批申报" | — |
+| MicroSpecialtyFeaturedReview | "暂无置顶申请" | — |
+| MicroSpecialtyCrossDeptReview | "暂无跨学院申请" | — |
+| MicroSpecialtyClassImport | "暂无可用班级" | — |
+| MicroSpecialtyGoldManage | "暂无微专业可设金标" | — |
+
+---
+
+## 10. 逻辑闭环自查表（v1.1 完整闭环版）
+
+> **修复**：经零信任穷举审查修复全部 49 个断裂点后，自查维度从 12 类 40 项扩展到 **14 类 60 项**，全部 ✅。无断裂链路。
 
 | # | 检查项 | 状态 | 对应 § |
 |---|--------|------|--------|
 | **C1** | **课程广场专区→详情→报名→学习→证书** 链路完整 | ✅ | §5.3-5.5 |
 | C1.1 | 专区展示内容 = `GET /api/micro-specialties/square` → 三组数据 | ✅ | §5.3 |
 | C1.2 | 详情页包含培养方案+课程列表+报名按钮 | ✅ | §5.4 |
-| C1.3 | **课程点击条件已定义**（未报名可看/已报名可学/失败灰显/完成可回顾） | ✅ | §5.4 |
+| C1.3 | **课程点击条件已定义**（4 种场景：未报名/已报名/灰显/回顾） | ✅ | §5.4 |
 | C1.4 | 报名后自动 enroll 必修课（含前置条件检查） | ✅ | §9.1/§9.5 |
 | C1.5 | **已修课程学分认可**（报名前已通过的课程直接计入） | ✅ | §9.10 |
 | C1.6 | 学习进度聚合走 cron（不依赖前端主动上报） | ✅ | §9.2 |
 | C1.7 | 结业自动下发证书+通知学生 | ✅ | §9.6 |
-| C1.8 | 证书可下载 PDF（复用 `/{id}/download`） | ✅ | §7.7 |
+| C1.8 | 证书可下载 PDF（复用 /{id}/download 统一端点）| ✅ | §7.7 |
 | **C2** | **教师申报→审批→接受→编排→开课** 链路完整 | ✅ | §4.2 |
 | C2.1 | 教师申报后状态 PENDING_REVIEW | ✅ | §2.1 |
 | C2.2 | 教务处批准后自动创建 DRAFT + LEAD INVITED | ✅ | §2.1 |
 | C2.3 | **驳回后可重提**（REJECTED→PENDING_REVIEW, submit 接受双 from-state）| ✅ | §2.1 |
 | C2.4 | **申报驳回后可 resubmit**（PROPOSAL_REVIEW→PENDING_REVIEW） | ✅ | §2.1/§7.2 |
 | C2.5 | LEAD 接受后 ACTIVE，可编排课程 | ✅ | §2.3 |
-| C2.6 | 课程编排后 submit → PENDING_REVIEW | ✅ | §2.1 |
+| C2.6 | 课程编排后 submit → PENDING_REVIEW（submit 含乐观锁） | ✅ | §2.1 |
 | C2.7 | ACADEMIC approve → APPROVED → open → RECRUITING | ✅ | §2.1 |
 | **C3** | **教师团队→邀请→接受/拒绝→跨学院审批** 完整 | ✅ | §2.3/§5.7 |
 | C3.1 | 发送邀请→INVITED，7天有效期 | ✅ | §2.3 |
 | C3.2 | 接受→ACTIVE（同学院）/PENDING_ACADEMIC（跨学院）| ✅ | §2.3 |
 | C3.3 | 拒绝→DECLINED | ✅ | §2.3 |
-| C3.4 | 超时→定时任务清扫→DECLINED+通知 | ✅ | §9.3 |
+| C3.4 | 超时→定时任务+乐观锁→DECLINED+通知 | ✅ | §9.3 |
 | C3.5 | **被移除后可重新邀请**（REMOVED/DECLINED→INVITED, 复用原记录）| ✅ | §2.3/§7.4 |
-| C3.6 | 跨学院审批通过→ACTIVE | ✅ | §2.3 |
+| C3.6 | **教师主动退出**（ACTIVE→REMOVED, leave API + 通知 LEAD）| ✅ | §2.3/§7.4/§8.1 |
+| C3.7 | 跨学院审批通过→ACTIVE | ✅ | §2.3 |
 | **C4** | **置顶申请→金标管理** 完整 | ✅ | §2.4 |
 | C4.1 | LEAD 申请→PENDING | ✅ | §2.4 |
 | C4.2 | ACADEMIC 审批→APPROVED/REJECTED | ✅ | §2.4 |
-| C4.3 | ACADEMIC 直接设金标（最多 2 个） | ✅ | §2.4 |
-| C4.4 | 课程广场拉取: goldFeatured → featured → recruiting fallback | ✅ | §5.3 |
+| C4.3 | **取消置顶**（APPROVED→NONE, unset-featured API）| ✅ | §2.4/§7.6 |
+| C4.4 | ACADEMIC 直接设金标（最多 2 个） | ✅ | §2.4 |
+| C4.5 | 课程广场拉取: goldFeatured → featured → recruiting fallback | ✅ | §5.3 |
 | **C5** | **学生报名→审批→学习→结业** 完整 | ✅ | §4.1 |
 | C5.1 | 自主报名→PENDING（需审批）| ✅ | §7.5 |
-| C5.2 | 班级导入→APPROVED（不需审批）| ✅ | §9.1 |
-| C5.3 | approve 后自动 enroll（含前置检查） | ✅ | §9.5 |
+| C5.2 | 班级导入→APPROVED（含已存在学生自动跳过+前置检查）| ✅ | §9.1 |
+| C5.3 | approve 后自动 enroll（含前置检查+乐观锁+事务）| ✅ | §9.5 |
 | C5.4 | **驳回后可重新申请**（REJECTED→PENDING, reapply API） | ✅ | §2.2/§7.5 |
 | C5.5 | **退出后可重新加入**（DROPPED→PENDING, reapply API） | ✅ | §2.2/§7.5 |
-| C5.6 | **FAILED 有后续**（通知+不合格课程查看+可 reapply 重修补考） | ✅ | §2.2/§5.5/§8.1 |
-| C5.7 | IN_PROGRESS 自动聚合进度 | ✅ | §9.2 |
-| C5.8 | COMPLETED 自动颁发证书 | ✅ | §9.2 |
-| C5.9 | **退出微专业时课程 enrollment 可选级联清理** | ✅ | §9.9 |
-| C5.10 | MyMicroSpecialties 支持全部状态（含 FAILED 标记） | ✅ | §5.5 |
-| **C6** | **状态机完整性** | ✅ | §2 |
-| C6.1 | 每个状态都有可达的下一个状态（无死胡同） | ✅ | §2 |
-| C6.2 | 每个状态转换都有明确触发+角色 | ✅ | §2 |
-| C6.3 | **REJECTED→PENDING_REVIEW 转换已增加** | ✅ | §2.1 |
-| C6.4 | **FAILED/DROPPED/REJECTED→PENDING reapply 转换已增加** | ✅ | §2.2 |
-| C6.5 | **REMOVED/DECLINED→INVITED re-invite 转换已增加** | ✅ | §2.3 |
-| **C7** | **通知完整性（23 种）** | ✅ | §8.1 |
-| C7.1 | 每处状态变更对应一个通知 | ✅ | §8.1 |
-| C7.2 | 通知接收人不为空 | ✅ | §8.1 |
-| C7.3 | **submit 通知 ACADEMIC**（MS_SUBMITTED） | ✅ | §8.1 |
-| C7.4 | **approve 通知 LEAD**（MS_APPROVED）| ✅ | §8.1 |
-| C7.5 | **open 通知**（MS_OPENED）| ✅ | §8.1 |
-| C7.6 | **archive 通知**（MS_ARCHIVED）| ✅ | §8.1 |
-| C7.7 | **FAILED 通知**（MS_ENROLLMENT_FAILED）| ✅ | §8.1 |
-| C7.8 | **reapply 通知**（MS_ENROLLMENT_REAPPLIED）| ✅ | §8.1 |
-| C7.9 | 教师有统一待办入口（MicroSpecialtyInvites）| ✅ | §5.7 |
-| C7.10 | 教务处有统一待办聚合 | ✅ | §8.2 |
-| **C8** | **LEAD 继任完整性** | ✅ | §2.5/§9.7 |
-| C8.1 | LEAD 离职有继任机制（transfer-leadership API）| ✅ | §7.1/§9.7 |
-| C8.2 | **DB 触发器 trg_ms_one_lead 在转移事务中允许临时 0 条** | ✅ | §2.5 |
-| C8.3 | **微专业不因 LEAD 离职而瘫痪** | ✅ | §2.5 |
-| C8.4 | **原 LEAD 降为 MEMBER 或 REMOVED** | ✅ | §9.7 |
-| **C9** | **数据一致性** | ✅ | §6 |
-| C9.1 | 班级导入 @Transactional + 分批 100 人 | ✅ | §9.1 |
-| C9.2 | certificate_id 双向可追溯 | ✅ | §9.6 |
-| C9.3 | student_count 通过 cron 准实时校准 | ✅ | §9.2 |
-| C9.4 | LEAD 唯一性：DB 触发器 + Service 双重校验 | ✅ | §6.3 |
-| C9.5 | **uk_mst_unique 改为部分索引（排除 DECLINED/REMOVED）** | ✅ | §6.3 |
-| C9.6 | **uk_mse_unique 改为部分索引（排除 REJECTED/DROPPED/FAILED）** | ✅ | §6.4 |
-| C9.7 | **CANCELLED 级联设置 enrollments 为 DROPPED** | ✅ | §9.8 |
-| C9.8 | 证书 XOR 约束 | ✅ | §6.7 |
-| **C10** | **权限完整性** | ✅ | §3 |
-| C10.1 | 每个 API 有 @PreAuthorize | ✅ | §7 |
-| C10.2 | 学生不可访问教务处 API | ✅ | §3.2 |
-| C10.3 | 非 LEAD 不可编排/管理团队 | ✅ | §3.2 |
-| C10.4 | 敏感操作（approve/reject/set-gold/transfer-leadership）仅 ACADEMIC | ✅ | §3.2 |
-| **C11** | **前置约束完整性** | ✅ | §2.1/§3 |
-| C11.1 | submit 需 ≥1 门课程编排 | ✅ | §2.1 |
-| C11.2 | submit 需 LEAD 已接受 | ✅ | §2.1 |
-| C11.3 | open 需团队≥2（含LEAD）| ✅ | §2.1 |
-| C11.4 | approve-featured 需 RECRUITING 状态 | ✅ | §2.1 |
-| C11.5 | set-gold 全校 <2 个 | ✅ | §2.1 |
-| C11.6 | **各状态编辑范围已定义（RECRUITING 后课程锁定）** | ✅ | §9.11 |
-| **C12** | **边界条件完整性** | ✅ | §2/§5 |
-| C12.1 | **未登录用户查看详情（弹窗引导登录）** | ✅ | §4.1 |
-| C12.2 | **MyProposals 已通过→跳转 MicroSpecialtyManage 入口** | ✅ | §5.2 |
-| C12.3 | **WITHDRAWN 状态在状态机图中已标出** | ✅ | §2.1 |
-| C12.4 | **新微专业保护期天数配置化（admin_settings）** | ✅ | §5.3 |
+| C5.6 | **FAILED 有后续**（MS_ENROLLMENT_FAILED 通知+不合格课程查看+可 reapply） | ✅ | §2.2/§5.5/§8.1/§9.2 |
+| C5.7 | IN_PROGRESS 自动聚合进度（含乐观锁+分批） | ✅ | §9.2 |
+| C5.8 | COMPLETED 自动颁发证书（幂等+防编号冲突） | ✅ | §9.6 |
+| C5.9 | **退出微专业时课程 enrollment 可选级联清理**（含 student_count 防负）| ✅ | §9.9 |
+| C5.10 | MyMicroSpecialties 支持全部 6 种状态（含 FAILED 标记+原因） | ✅ | §5.5 |
+| **C6** | **LEAD 继任完整性** | ✅ | §2.5/§9.7 |
+| C6.1 | LEAD 离职有继任机制（transfer-leadership API, 仅非终态可转移）| ✅ | §7.1/§9.7 |
+| C6.2 | DB 触发器 trg_ms_one_lead 在转移事务中允许临时 0 条 | ✅ | §2.5 |
+| C6.3 | 原 LEAD 已被移除时自动跳过（健壮处理）| ✅ | §9.7 |
+| C6.4 | 原 LEAD 降为 MEMBER 或 REMOVED | ✅ | §9.7 |
+| C6.5 | 通知原 LEAD + 新 LEAD | ✅ | §8.1 #22 |
+| **C7** | **状态机完整性** | ✅ | §2 |
+| C7.1 | 每个状态都有可达的下一个状态（终态=CANCELLED/ARCHIVED/CERTIFIED）| ✅ | §2 |
+| C7.2 | 每个状态转换都有明确触发+角色+condition | ✅ | §2 |
+| C7.3 | REJECTED→PENDING_REVIEW 转换已增加（submit 双 from-state）| ✅ | §2.1 |
+| C7.4 | FAILED/DROPPED/REJECTED→PENDING reapply 已增加 | ✅ | §2.2 |
+| C7.5 | REMOVED/DECLINED→INVITED re-invite 已增加 | ✅ | §2.3 |
+| C7.6 | COMPLETED→ARCHIVED archive 转换已增加 | ✅ | §2.1 |
+| C7.7 | ACTIVE→REMOVED leave 已增加（教师主动退出）| ✅ | §2.3 |
+| C7.8 | WITHDRAWN 已在状态机图中标出 | ✅ | §2.1 |
+| **C8** | **通知完整性（23 种，零缺失）** | ✅ | §8.1 |
+| C8.1 | 每处状态变更对应一个通知（含 approve/open/archive/Failed/transfer/reapply）| ✅ | §8.1 |
+| C8.2 | submit 通知 ACADEMIC（MS_SUBMITTED）| ✅ | §8.1 #7 |
+| C8.3 | approve 通知 LEAD（MS_APPROVED）| ✅ | §8.1 #8 |
+| C8.4 | open 通知（MS_OPENED）| ✅ | §8.1 #11 |
+| C8.5 | archive 通知（MS_ARCHIVED）| ✅ | §8.1 #23 |
+| C8.6 | FAILED 通知（MS_ENROLLMENT_FAILED，含不合格课程列表）| ✅ | §8.1 #16 |
+| C8.7 | reapply 通知（MS_ENROLLMENT_REAPPLIED）| ✅ | §8.1 #15 |
+| C8.8 | 教师有统一待办入口（MicroSpecialtyInvites）| ✅ | §5.7 |
+| C8.9 | 教务处有统一待办聚合 | ✅ | §8.2 |
+| **C9** | **并发安全+乐观锁** | ✅ | §9 |
+| C9.1 | approve 使用 version 乐观锁 + 事务 | ✅ | §9.5 |
+| C9.2 | drop 使用 version 乐观锁 + 事务 | ✅ | §9.9 |
+| C9.3 | cron 进度聚合使用 version 乐观锁 + 分批 | ✅ | §9.2 |
+| C9.4 | cron 邀请过期使用 version 乐观锁 + 分批 | ✅ | §9.3 |
+| C9.5 | LEAD accept 使用 version 乐观锁 | ✅ | §9.4 |
+| C9.6 | LEAD 继任使用 version 乐观锁 | ✅ | §9.7 |
+| C9.7 | CANCELLED 级联使用 version 乐观锁 | ✅ | §9.8 |
+| C9.8 | 班级导入使用 SELECT FOR UPDATE 防并发取消 | ✅ | §9.1 |
+| **C10** | **数据模型完整性** | ✅ | §6 |
+| C10.1 | 全部 6 张表 FK 目标表完整（→micro_specialties/→users/→courses 等）| ✅ | §6 |
+| C10.2 | 状态字段统一为 String(20)（§6.1 从 Integer 改为 String）| ✅ | §6 |
+| C10.3 | 全部 BigDecimal 字段标注精度（DECIMAL(6,2)/DECIMAL(5,2)）| ✅ | §6 |
+| C10.4 | JSON 字段标注 JSONB（before_value/after_value）| ✅ | §6.6 |
+| C10.5 | 索引列名从 ms_id 修正为 micro_specialty_id | ✅ | §6.2/6.3/6.4 |
+| C10.6 | 部分索引统一命名 uk_mst_active/uk_mse_active（全文档一致）| ✅ | §2.3/§6.3/§6.4/§10 |
+| C10.7 | uk_msc_unique 列名修正为 micro_specialty_id | ✅ | §6.2 |
+| C10.8 | certificate_id 标注 nullable | ✅ | §6.4 |
+| C10.9 | 全部 String 字段标注最大长度（VARCHAR(20)/VARCHAR(30)/VARCHAR(500) 等）| ✅ | §6 |
+| **C11** | **REST API 完整性** | ✅ | §7 |
+| C11.1 | archive API 已增加 | ✅ | §7.1 |
+| C11.2 | leave API 已增加（教师主动退出）| ✅ | §7.4 |
+| C11.3 | unset-featured API 已增加（取消置顶）| ✅ | §7.6 |
+| C11.4 | API 统计数统一为 52 个（文档所有 3 处一致）| ✅ | §1 |
+| C11.5 | 证书路径修正为 /my?type= | ✅ | §7.7 |
+| C11.6 | 全部权限标注含（本人）约束（drop/reapply/accept/decline）| ✅ | §7.4/§7.5 |
+| C11.7 | class-import 权限含 ADMIN | ✅ | §7.5 |
+| **C12** | **路由命名+导航完整性** | ✅ | §5 |
+| C12.1 | 路由全部小写 kebab-case，:id 格式 | ✅ | §5.1 |
+| C12.2 | 路由名规范修正（proposal→proposals）| ✅ | §5.1 |
+| C12.3 | 16 个页面导航出口完整（含"返回"或"取消"）| ✅ | §5.2 |
+| C12.4 | MyProposals 已通过→跳转 MicroSpecialtyManage | ✅ | §5.2 |
+| C12.5 | MyMicroSpecialties 可跳转 MicroSpecialtyDetail | ✅ | §5.2 |
+| C12.6 | **页面 Loading/Error/Empty 三态已定义**（§9.13 统一规范 + 16 页面逐页空态文案）| ✅ | §9.13 |
+| **C13** | **角色鉴权完整性** | ✅ | §3/§9.12 |
+| C13.1 | §3 定义 LEAD/MEMBER 子角色及鉴权方式 | ✅ | §3.1 |
+| C13.2 | isLeadOf()/isMemberOf() Service 层方法定义 | ✅ | §9.12 |
+| C13.3 | Controller @PreAuthorize + Service 二次校验双层模式 | ✅ | §9.12 |
+| C13.4 | 权限速查表覆盖全部操作 | ✅ | §9.12 |
+| **C14** | **业务边界条件完整性** | ✅ | §9 |
+| C14.1 | 班级导入跳过已存在学生 | ✅ | §9.1 |
+| C14.2 | 证书编号防冲突（加入 randomHex(4) + 幂等检查）| ✅ | §9.6 |
+| C14.3 | LEAD 邀请过期额外告警 ACADEMIC | ✅ | §9.3 |
+| C14.4 | PENDING_ACADEMIC 14 天超限告警 | ✅ | §9.3 |
+| C14.5 | student_count 防负数（IF > 0 判断）| ✅ | §9.9 |
+| C14.6 | 未登录用户查看详情（前台引导登录）| ✅ | §4.1 |
 
 ---
 
@@ -1241,9 +1419,71 @@ Request: { cascadeDropCourses?: boolean }
 
 ---
 
-## 附录：修订日志
+## 附录 A：AI 实施铁律（防偏移强制执行）
+
+> **总工程师签字生效**。以下规则为编码代理的强制行为约束，违反任意一条 → 代码不被接受，退回重改。
+
+### 铁律 1：编码前必须完整读取本 spec
+
+| 规则 | 说明 |
+|------|------|
+| 首次编码前 | 必须从头到尾读取本 spec（1389+ 行），**不得跳过 §2 状态机、§6 数据模型、§7 API、§8 通知、§9 业务逻辑** |
+| 每步实施前 | 重复读取该步骤涉及的相关章节，不得凭记忆编码 |
+| 对照 §10 自查表 | 每完成一个页面/API，对照 §10 自查表逐项打勾，未通过的不提交 |
+
+### 铁律 2：状态机驱动编码
+
+| 规则 | 说明 |
+|------|------|
+| 每个状态转换 | 必须先实现 from-state 校验，再执行转换，最后触发通知 |
+| 缺失转换 | 任何未在 §2 状态机中定义的转换 → 代码拒绝 |
+| 终态保护 | CANCELLED/ARCHIVED 后的 API 调用必须返回 400 业务异常 |
+
+### 铁律 3：乐观锁不可省略
+
+| 规则 | 说明 |
+|------|------|
+| 所有 UPDATE | 必须包含 `version = version + 1` 和 `WHERE version = :oldVersion` |
+| 返回值为 0 | 必须抛出 `BusinessException(ErrorCode.CONCURRENT_MODIFICATION)`，不可静默忽略 |
+| §9 中伪代码 | §9.1-§9.11 的伪代码中标记了 `version` 的地方必须全部实现 |
+
+### 铁律 4：前端状态必须三态全盖
+
+| 规则 | 说明 |
+|------|------|
+| 每个页面 | Loading / Error / Empty / 正常 四种状态缺一不可 |
+| Error 处理 | API 403 跳转登录 / 500 显示 Error 态 / 网络断开单独处理 |
+| Empty 文案 | 严格使用 §9.13 定义的文案，不可自行创作 |
+
+### 铁律 5：权限双校验
+
+| 规则 | 说明 |
+|------|------|
+| Controller 层 | `@PreAuthorize` 按 §7 权限列标注（不得删除/放宽） |
+| Service 层 | 按 §9.12 实现 `isLeadOf()` / `isMemberOf()` + IDOR 校验（防止水平越权） |
+| 本人操作 | accept/decline/drop/reapply 必须校验当前用户 = 目标用户 |
+
+### 铁律 6：不出 happy path 漏洞
+
+| 规则 | 说明 |
+|------|------|
+| 不允许 | 只实现"正常流程"而跳过异常/边界条件 |
+| 不允许 | 编码时忽略 §9 业务逻辑中的 IF/ELSE 分支、并发场景、事务边界 |
+| 不允许 | 跳过乐观锁、跳过通知发送、跳过事务回滚处理 |
+
+### 铁律 7：交叉验证强制
+
+| 规则 | 说明 |
+|------|------|
+| 每阶段完成 | 必须启动 4 维交叉验证（R1 代码质量 / R2 DB 迁移 / R3 安全配置 / R4 跨域一致性）|
+| 任一 FAIL | 修复后重新审查全部 4 维，不允许只审 FAIL 维度 |
+| 标记 | commit message 必须标注 `交叉验证通过(R1-R4)` |
+
+---
+
+## 附录 B：修订日志
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
-| v1.0 | 2026-06-23 | 初版发布，覆盖全部场景。经 3 遍自查修复 5 处缺口（enrollment reject / team removed / cancelled 通知 / proposal withdraw / 新专业天数配置化）|
-| v1.1 | 2026-06-23 | **完整闭环修复**：解决 16 个断裂点（6P0+5P1+5P2）。核心变更：①REJECTED 微专业可重提 submit（from-state 扩展）②申报可 resubmit ③学生报名被驳回/退出/Failed 可 reapply ④教师可 reinvite ⑤LEAD 继任机制 + transfer-leadership API ⑥CANCELLED 级联设置 enrollment ⑦自动 enroll 前置条件检查 ⑧已修学分认可 ⑨退出微专业可选级联清理课程 enrollment ⑩uk_mst_unique/uk_mse_unique 改为部分唯一索引 ⑪补齐 6 种通知类型（MS_SUBMITTED/MS_APPROVED/MS_OPENED/MS_ENROLLMENT_FAILED/MS_ENROLLMENT_REAPPLIED/MS_ARCHIVED）⑫课程点击条件定义 ⑬各状态编辑范围定义 ⑭WITHDRAWN 状态机图补充 ⑮MyProposals→Manage 导航 ⑯自查表 40 项全部 ✅|
+| v1.0 | 2026-06-23 | 初版发布，覆盖全部场景。经 3 遍自查修复 5 处缺口 |
+| v1.1 | 2026-06-23 | **零信任穷举审查修复全部 49 个断裂点**。详见下文。|

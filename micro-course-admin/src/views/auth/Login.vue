@@ -220,8 +220,11 @@ const handleLogin = async () => {
         else if (role === 'ACADEMIC') router.push('/users')
         else router.push('/admin/dashboard')
       }
-    } catch {
-      // 错误已由 request.js 拦截器统一提示
+    } catch (e) {
+      // 拦截器已处理 401/500，这里兜底网络错误
+      if (!e.response) {
+        ElMessage.error('网络连接失败，请检查后重试')
+      }
     } finally {
       loading.value = false
     }
@@ -248,8 +251,11 @@ const handleRegister = async () => {
         showRegisterDialog.value = false
         router.push('/student/courses')
       }
-    } catch {
-      // 错误已由 request.js 拦截器统一提示
+    } catch (e) {
+      // 拦截器已处理 401/500，这里兜底网络错误
+      if (!e.response) {
+        ElMessage.error('网络连接失败，请检查后重试')
+      }
     } finally {
       registerLoading.value = false
     }

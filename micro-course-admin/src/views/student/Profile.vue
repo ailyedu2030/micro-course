@@ -7,8 +7,21 @@
 -->
 <template>
   <div class="profile-view">
+    <!-- P1-2: 个人信息加载失败 -->
+    <template v-if="profileError">
+      <el-result
+        icon="error"
+        title="加载失败"
+        sub-title="个人信息获取异常，请检查网络后重试"
+      >
+        <template #extra>
+          <el-button type="primary" @click="profileError = false; userStore.getInfo().catch(() => { profileError = true })">重新加载</el-button>
+        </template>
+      </el-result>
+    </template>
+
     <!-- 骨架屏：userInfo 加载中 -->
-    <template v-if="!userStore.userInfo">
+    <template v-else-if="!userStore.userInfo">
       <div class="profile-skeleton">
         <el-skeleton animated :rows="1" style="margin-bottom: 20px">
           <template #template>
@@ -213,6 +226,9 @@ import CertificatesCard from '@/components/profile/CertificatesCard.vue'
 
 const userStore = useUserStore()
 
+// P1-2: 个人信息加载错误状态
+const profileError = ref(false)
+
 // 头像上传
 const avatarPreview = ref('')
 const avatarLoading = ref(false)
@@ -318,9 +334,15 @@ onMounted(async () => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
 
-  // 确保 userInfo 已加载（账号信息卡片 + UserInfoEditor 依赖）
+  // P1-2: 确保 userInfo 已加载（账号信息卡片 + UserInfoEditor 依赖）
   if (!userStore.userInfo) {
-    await userStore.getInfo()
+    try {
+      await userStore.getInfo()
+    } catch (e) {
+      console.error('[Profile] getInfo failed', e)
+      userStore.userInfo = null
+      profileError.value = true
+    }
   }
   // 成就/错题/证书数据由各自子组件自行加载
 })

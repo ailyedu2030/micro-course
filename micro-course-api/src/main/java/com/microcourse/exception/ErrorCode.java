@@ -71,7 +71,22 @@ public enum ErrorCode {
     NARRATION_GENERATE_FAILED(16005, "AI 讲述稿生成失败", 500),
     TTS_GENERATE_FAILED(16006, "TTS 音频生成失败", 500),
     PPT_PARSE_FAILED(16007, "PPT 文件解析失败", 400),
-    PPT_FORMAT_INVALID(16008, "不支持的 PPT 格式，请上传 .pptx 文件", 400);
+    PPT_FORMAT_INVALID(16008, "不支持的 PPT 格式，请上传 .pptx 文件", 400),
+
+    // Phase 14: 微专业 17xxx
+    MS_NOT_FOUND(17001, "微专业不存在", 404),
+    MS_FORBIDDEN(17002, "无权限操作该微专业", 403),
+    MS_STATUS_INVALID(17003, "微专业状态不允许此操作", 400),
+    MS_DUPLICATE_ENROLL(17004, "已报名该微专业", 409),
+    MS_LEAD_REQUIRED(17005, "微专业负责人尚未确认", 400),
+    MS_CERT_NOT_READY(17006, "未满足微专业结业条件", 400),
+    MS_ENROLLMENT_NOT_FOUND(17007, "微专业修读记录不存在", 404),
+    MS_GOLD_LIMIT(17008, "金标微专业已达上限", 400),
+    MS_TEACHER_NOT_FOUND(17009, "教师在该微专业团队中不存在", 404),
+    MS_CONCURRENT_MODIFICATION(17010, "数据已被其他操作修改，请刷新重试", 409),
+    MS_DUPLICATE_TEACHER(17011, "教师已在微专业团队中", 409),
+    MS_LEAD_TRANSFER_INVALID(17012, "指定的新负责人不存在或不可用", 400),
+    MS_ENROLLMENT_CLOSED(17013, "微专业已结束，无法操作", 400);
 
     private final int code;
     private final String message;

@@ -545,6 +545,7 @@ async function loadTrends() {
   } catch (e) {
     trendsError.value = true
     trendsErrorMsg.value = e?.message || e?.toString?.() || '趋势数据加载失败'
+    ElMessage.error('趋势数据加载失败')
     renderTrendsChart({ users: [], courses: [], students: [] })
   } finally {
     trendsLoading.value = false
