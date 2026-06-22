@@ -5,8 +5,13 @@
 -->
 <template>
   <el-container class="layout-container">
+    <!-- D3: 移动端遮罩层 -->
+    <transition name="mobile-fade">
+      <div v-if="isMobile && mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu" aria-hidden="true" />
+    </transition>
+
     <!-- 侧边栏 -->
-    <el-aside class="layout-aside" :class="{ 'is-collapsed': collapsed }">
+    <el-aside class="layout-aside" :class="{ 'is-collapsed': collapsed, 'is-mobile-open': isMobile && mobileMenuOpen }">
       <!-- Logo 区域 -->
       <div class="layout-logo">
         <el-icon class="logo-icon"><Microphone /></el-icon>
@@ -40,9 +45,12 @@
     <el-container class="layout-body">
       <!-- 顶部 Header -->
       <el-header class="layout-header">
-        <!-- 左侧：折叠按钮 + 面包屑 -->
+        <!-- 左侧：折叠按钮 + 面包屑 + 移动端汉堡 -->
         <div class="header-left">
-          <el-icon class="header-collapse-btn" @click="toggleCollapse" :aria-label="collapsed ? '展开侧边栏' : '收起侧边栏'">
+          <el-icon v-if="isMobile" class="header-collapse-btn header-mobile-btn" @click="handleMobileMenuToggle" aria-label="打开菜单">
+            <Menu />
+          </el-icon>
+          <el-icon v-else class="header-collapse-btn" @click="toggleCollapse" :aria-label="collapsed ? '展开侧边栏' : '收起侧边栏'">
             <Fold v-if="!collapsed" /><Expand v-else />
           </el-icon>
           <el-breadcrumb separator="/">
@@ -72,7 +80,10 @@
                 :src="userStore.userInfo?.avatar"
                 class="user-avatar"
               >
-                {{ userStore.realName?.charAt(0) || userStore.username?.charAt(0) || 'U' }}
+                <template v-if="userStore.realName || userStore.username">
+                  {{ (userStore.realName || userStore.username).charAt(0) }}
+                </template>
+                <el-icon v-else><UserFilled /></el-icon>
               </el-avatar>
               <span class="user-name">{{ userStore.realName || userStore.username }}</span>
               <el-tag v-if="userStore.role" size="small" type="primary" class="user-role-tag">
@@ -121,7 +132,7 @@ import {
   School, User, Notebook, VideoCamera, Film, FolderOpened, List, VideoPlay,
   Tickets, Document, Edit, UserFilled, DataAnalysis, Finished, ChatLineSquare,
   Star, Setting, Odometer, Clock, Tools, SwitchButton, Sunny, Moon,
-  TrendCharts, PictureFilled
+  TrendCharts, PictureFilled, Menu
 } from '@element-plus/icons-vue'
 import { menuConfig } from '@/config/menuConfig'
 import { ElMessageBox } from 'element-plus'
@@ -136,7 +147,7 @@ const iconMap = {
   Grid, OfficeBuilding, Reading, School, User, Notebook, VideoCamera, Film,
   FolderOpened, List, VideoPlay, Tickets, Document, Edit, UserFilled,
   DataAnalysis, Finished, ChatLineSquare, Star, Setting, Odometer, Clock,
-  Tools, Bell, TrendCharts, PictureFilled, Microphone,
+  Tools, Bell, TrendCharts, PictureFilled, Microphone, Menu
 }
 
 // 当前角色菜单（从配置中读取）
@@ -172,11 +183,33 @@ function toggleTheme() {
 // 侧边栏折叠状态
 const collapsed = ref(false)
 
+// D3: 移动端检测（≤768px 强制折叠并切换为 overlay 模式）
+const isMobile = ref(false)
+const mobileMenuOpen = ref(false)
+
 // 响应式监听——窗口宽度 < 1200px 自动折叠
 function checkResponsive() {
-  if (window.innerWidth < 1200 && !collapsed.value) {
+  const wasMobile = isMobile.value
+  isMobile.value = window.innerWidth <= 768
+  if (isMobile.value) {
     collapsed.value = true
+    // 从桌面切到移动端，关闭 overlay
+    if (!wasMobile) mobileMenuOpen.value = false
+  } else if (window.innerWidth < 1200 && !collapsed.value) {
+    collapsed.value = true
+  } else if (window.innerWidth >= 1200 && collapsed.value && !isMobile.value) {
+    // 大屏恢复展开
+    const saved = localStorage.getItem('sidebar_collapsed')
+    if (saved !== 'true') collapsed.value = false
   }
+}
+
+function handleMobileMenuToggle() {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
+function closeMobileMenu() {
+  mobileMenuOpen.value = false
 }
 let resizeTimer = null
 function handleWindowResize() {
@@ -223,7 +256,8 @@ async function handleCommand(cmd) {
 
 // 监听路由变化关闭移动端抽屉
 watch(() => route.path, () => {
-  // 路由变化时确保移动端逻辑不干扰
+  // D3: 路由变化时自动关闭移动端菜单
+  if (isMobile.value) closeMobileMenu()
 })
 
 onMounted(() => {
@@ -556,5 +590,52 @@ onUnmounted(() => {
   .user-arrow {
     display: none;
   }
+
+  /* D3: 移动端侧边栏 overlay 模式 */
+  .layout-aside {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: calc(var(--z-sticky) + 10);
+    transform: translateX(-100%);
+    transition: transform var(--duration-normal) var(--ease-in-out);
+    width: 240px !important;
+  }
+
+  .layout-aside.is-mobile-open {
+    transform: translateX(0);
+  }
+
+  .layout-aside.is-collapsed {
+    width: 240px !important;
+  }
+
+  .mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: calc(var(--z-sticky) + 5);
+    backdrop-filter: blur(2px);
+  }
+
+  .header-mobile-btn {
+    font-size: 20px;
+  }
+
+  /* D3: 表格响应式 — 水平滚动 */
+  .el-scrollbar__wrap {
+    overflow-x: auto !important;
+  }
+}
+
+/* 移动端遮罩过渡 */
+.mobile-fade-enter-active,
+.mobile-fade-leave-active {
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+.mobile-fade-enter-from,
+.mobile-fade-leave-to {
+  opacity: 0;
 }
 </style>

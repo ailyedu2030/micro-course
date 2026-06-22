@@ -10,10 +10,38 @@ const request = axios.create({
   timeout: 60000
 })
 
+// D2: 全局上传进度管理器（可被外部组件 useUploadProgress 消费）
+import { reactive } from 'vue'
+export const globalUploadState = reactive({
+  active: false,
+  percent: 0,
+  fileName: ''
+})
+
 request.interceptors.request.use(config => {
   if (config._skipAuth) return config
   const token = getToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
+
+  // D2: FormData 上传自动注入进度回调
+  if (config.data instanceof FormData && !config.onUploadProgress) {
+    globalUploadState.active = true
+    globalUploadState.percent = 0
+    globalUploadState.fileName = ''
+    // 尝试提取文件名
+    for (const [key, value] of config.data.entries()) {
+      if (value instanceof File || value instanceof Blob) {
+        globalUploadState.fileName = value.name || ''
+        break
+      }
+    }
+    config.onUploadProgress = (progressEvent) => {
+      if (progressEvent.total) {
+        globalUploadState.percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+      }
+    }
+  }
+
   return config
 }, error => Promise.reject(error))
 
@@ -26,8 +54,14 @@ request.interceptors.response.use(response => {
     ElMessage.error(res.message || '请求失败')
     return Promise.reject(new Error(res.message))
   }
+  // D2: 请求完成后重置上传状态
+  globalUploadState.active = false
+  globalUploadState.percent = 0
   return res
 }, async error => {
+  // D2: 请求异常也重置上传状态
+  globalUploadState.active = false
+  globalUploadState.percent = 0
   if (!error.response) {
     if (error.code === 'ECONNABORTED') {
       ElMessage.error('请求超时，请检查网络后重试')
@@ -74,8 +108,10 @@ request.interceptors.response.use(response => {
     return Promise.reject(error)
   }
 
-  if (status === 403) {
-    ElMessage.error('无权访问该资源')
+  if (status === 404) {
+    ElMessage.warning('资源不存在或已被删除')
+  } else if (status === 403) {
+    ElMessage.error('无权访问该资源，请联系管理员获取权限')
   } else if (status >= 500) {
     ElMessage.error('服务器错误，请稍后重试')
   } else {

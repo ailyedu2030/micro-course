@@ -6,6 +6,8 @@
 -->
 <template>
   <div id="app" :class="appClass">
+    <!-- D2: 全局上传进度浮窗 -->
+    <UploadProgress />
     <div v-if="hasError" class="app-error-boundary">
       <div class="error-card">
         <el-icon :size="48" color="var(--el-color-danger)"><WarningFilled /></el-icon>
@@ -32,11 +34,13 @@
 <script setup>
 import { ref, computed, onErrorCaptured, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from './store/user'
 import { isAuthenticated } from './utils/auth'
 import { reportError } from './utils/errorReport'
 import Layout from './components/Layout.vue'
 import StudentLayout from './components/StudentLayout.vue'
+import UploadProgress from './components/UploadProgress.vue'
 import { WarningFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -66,7 +70,19 @@ onErrorCaptured((err, instance, info) => {
   return false
 })
 
+// D1: 全局网络状态检测
+function setupNetworkListeners() {
+  window.addEventListener('offline', () => {
+    ElMessage.warning('网络已断开，部分功能暂不可用')
+  })
+  window.addEventListener('online', () => {
+    ElMessage.success('网络已恢复')
+  })
+}
+
 onMounted(async () => {
+  // D1: 启动离线检测
+  setupNetworkListeners()
   // 仅在 beforeEach 未填充角色时补充获取（避免冗余 API 调用）
   if (isAuthenticated() && !userStore.role) {
     try {
@@ -115,7 +131,21 @@ body {
 .error-actions { display:flex; gap:12px; justify-content:center; }
 
 @media (max-width: 768px) {
-  .el-table { font-size: 12px; overflow-x: auto; display: block; }
+  /* D8: 表格响应式 — 水平滚动，不破坏布局 */
+  .el-table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+  .el-table .el-table__header,
+  .el-table .el-table__body {
+    min-width: 600px;
+    width: max-content;
+  }
+  .el-table .el-table__inner-wrapper {
+    overflow-x: auto;
+  }
   .el-form--inline .el-form-item { display: block; margin-right: 0; }
   .el-dialog { width: 90% !important; }
   .el-card { padding: 10px; }

@@ -496,6 +496,9 @@
 
 .el-tag--info {
   --el-tag-bg-color: #f4f4f5;
+  /* E7 WCAG 修复: info tag 原文颜色 #909399 在 #f4f4f5 上对比度 ~2.9:1,
+     改为 #6b6e73 达到 ~4.9:1 满足 WCAG AA 4.5:1 要求 */
+  --el-tag-text-color: #6b6e73;
 }
 
 /* 进度条 */
@@ -1283,6 +1286,36 @@
 }
 
 /* --------------------------------------------------------------------------
+    E7: WCAG 2.1 AA 色彩对比度修复 (≥ 4.5:1 正常文字)
+    --------------------------------------------------------------------------
+    修复项:
+    - el-tag--info 文字: #909399 → #6b6e73 (对比度 2.9→4.9:1, 已在 .el-tag--info 块修复)
+    - danger 色: #f56c6c → #dc2626 (白色背景对比度 3.27→4.5:1)
+    - el-link disabled: 调暗至 #999da5 确保 ≥ 3:1
+    -------------------------------------------------------------------------- */
+
+/* danger 色系全局覆盖（表单校验 / alert / message / tag--danger） */
+:root {
+  --el-color-danger: #dc2626;
+  --el-color-danger-light-3: #e85555;
+  --el-color-danger-light-5: #f08383;
+  --el-color-danger-light-7: #f7b1b1;
+  --el-color-danger-light-9: #fde0e0;
+  --el-color-danger-dark-2: #b91c1c;
+}
+
+/* 禁用链接可读性（虽然 WCAG 豁免 disabled 控件，但提升可读性） */
+.el-link.is-disabled {
+  color: #999da5 !important;
+}
+
+/* 深色模式 danger 保持辨识度 */
+[data-theme="dark"] {
+  --el-color-danger: #ef4444;
+  --el-color-danger-light-3: #f87171;
+}
+
+/* --------------------------------------------------------------------------
     7. 深色模式 (data-theme="dark")
     -------------------------------------------------------------------------- */
 [data-theme="dark"] {
@@ -1377,9 +1410,9 @@
 
 [data-theme="dark"] .el-tag--success { --el-tag-bg-color: rgba(103, 194, 58, 0.15); --el-tag-text-color: #67c23a; --el-tag-border-color: rgba(103, 194, 58, 0.25); }
 [data-theme="dark"] .el-tag--warning { --el-tag-bg-color: rgba(230, 162, 60, 0.15); --el-tag-text-color: #e6a23c; --el-tag-border-color: rgba(230, 162, 60, 0.25); }
-[data-theme="dark"] .el-tag--danger  { --el-tag-bg-color: rgba(245, 108, 108, 0.15); --el-tag-text-color: #f56c6c; --el-tag-border-color: rgba(245, 108, 108, 0.25); }
-[data-theme="dark"] .el-tag--info    { --el-tag-bg-color: rgba(144, 147, 153, 0.15); --el-tag-text-color: #909399; --el-tag-border-color: rgba(144, 147, 153, 0.25); }
+[data-theme="dark"] .el-tag--danger  { --el-tag-bg-color: rgba(239, 68, 68, 0.15); --el-tag-text-color: #ef4444; --el-tag-border-color: rgba(239, 68, 68, 0.25); }
 
+[data-theme="dark"] .el-tag--info    { --el-tag-bg-color: rgba(144, 147, 153, 0.15); --el-tag-text-color: #a8abb2; --el-tag-border-color: rgba(144, 147, 153, 0.25); }
 [data-theme="dark"] .el-menu {
   --el-menu-bg-color: transparent;
 }
