@@ -173,9 +173,33 @@ v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
       <el-empty
 v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
         :description="`未找到与 '${searchForm.keyword || '当前筛选'}' 相关的课程`"
->
+      >
         <template #image><el-icon :size="64" class="state-icon"><Search /></el-icon></template>
+        <p class="state-detail">未找到匹配项，尝试更换筛选条件</p>
         <el-button type="primary" class="state-action" @click="handleReset">清除筛选</el-button>
+        <!-- 搜索无结果时展示热门课程推荐 -->
+        <div v-if="hotCourses.length > 0" class="search-recommend-section">
+          <p class="recommend-hint">你可能感兴趣的课程：</p>
+          <div class="search-recommend-grid">
+            <div
+              v-for="course in hotCourses.slice(0, 4)"
+              :key="course.id"
+              class="search-recommend-item"
+              role="button"
+              tabindex="0"
+              @click="handleCourseClick(course.id)"
+            >
+              <div class="sr-cover">
+                <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="sr-cover-img" />
+                <div v-else class="sr-cover-placeholder"><el-icon :size="24"><VideoPlay /></el-icon></div>
+              </div>
+              <div class="sr-info">
+                <span class="sr-title">{{ course.title }}</span>
+                <span class="sr-meta">{{ course.studentCount || 0 }}人在学</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </el-empty>
 
       <!-- Normal Grid -->
@@ -356,10 +380,10 @@ const formatDate = (dateStr) => {
 const fetchCategories = async () => {
   categoriesLoading.value = true
   try {
-    const { data } = await getCategories({ size: 1000 })
+    const { data } = await getCategories({ size: 100 })
     categoryList.value = data?.items || data || []
   } catch (e) {
-    console.warn('分类加载失败:', e)
+    console.warn('[CourseSquare] 分类加载失败:', e)
     ElMessage.warning('分类加载失败')
   } finally {
     categoriesLoading.value = false
@@ -384,7 +408,7 @@ const fetchCourses = async () => {
     courseList.value = data?.items || []
     totalElements.value = data?.totalElements || 0
   } catch (e) {
-    console.error('课程加载失败:', e)
+    console.error('[CourseSquare] 课程加载失败:', e)
     error.value = true
     ElMessage.error('课程加载失败，请稍后重试')
   } finally {
@@ -402,7 +426,8 @@ const fetchSideCourses = async () => {
     hotCourses.value = (hotRes.data?.items || []).slice(0, 5)
     newestCourses.value = (newestRes.data?.items || []).slice(0, 5)
   } catch (e) {
-    console.warn('侧栏数据加载失败:', e)
+    console.warn('[CourseSquare] 侧栏数据加载失败:', e)
+    ElMessage.warning('侧栏数据加载失败')
   }
 }
 
@@ -412,8 +437,9 @@ const loadRecommended = async () => {
     const { data } = await getCourses({ recommended: true, size: 8, status: 2 })
     recommendedCourses.value = data?.items || []
   } catch (e) {
-    console.warn('推荐课程加载失败:', e)
+    console.warn('[CourseSquare] 推荐课程加载失败:', e)
     recommendedCourses.value = []
+    ElMessage.warning('推荐课程加载失败')
   }
 }
 
@@ -489,7 +515,7 @@ watch(() => searchForm.keyword, (newVal, oldVal) => {
       page.value = 1
       fetchCourses()
     }, 100)
-  } else if (newVal.length >= 2) {
+  } else if (newVal.length >= 1) {
     debounceTimer = setTimeout(() => {
       page.value = 1
       fetchCourses()
@@ -793,6 +819,51 @@ onMounted(async () => {
 .state-icon--error { color: var(--el-color-danger); opacity: .6; }
 .state-detail { margin: var(--space-3) 0 var(--space-5); font-size: var(--text-sm); color: var(--el-text-color-secondary); line-height: var(--leading-relaxed); }
 .state-action { min-width: 120px; border-radius: var(--radius-md); }
+
+/* 搜索无结果推荐 */
+.search-recommend-section {
+  margin-top: var(--space-6);
+  text-align: left;
+  padding: 0 var(--space-6);
+}
+.recommend-hint {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  margin: 0 0 var(--space-3);
+  text-align: center;
+}
+.search-recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+.search-recommend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-out);
+}
+.search-recommend-item:hover { background: var(--el-fill-color-lighter); }
+.sr-cover {
+  width: 64px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--role-primary-light-9), var(--role-primary-light-7));
+}
+.sr-cover-img { width: 100%; height: 100%; object-fit: cover; }
+.sr-cover-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--role-primary); opacity: .5;
+}
+.sr-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sr-title { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--el-text-color-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-meta { font-size: var(--text-xs); color: var(--el-text-color-secondary); }
 
 /* ==========================================================================
    Skeleton

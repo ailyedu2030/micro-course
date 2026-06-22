@@ -159,6 +159,7 @@
             :key="comment.id"
             :comment="comment"
             :depth="0"
+            :reply-loading="replyingCommentId === comment.id"
             @reply="handleReply"
             @like="handleLikeComment"
           />
@@ -238,6 +239,7 @@ const comments = ref([])
 const replyContent = ref('')
 const replyAnonymous = ref(false)
 const replySubmitting = ref(false)
+const replyingCommentId = ref(null)
 
 const chapterId = computed(() => route.query.chapterId)
 const router = useRouter()
@@ -267,9 +269,10 @@ async function handleCourseChange(cid) {
 function handleChapterSelect(chId) {
   if (chId) router.replace({ query: { ...route.query, chapterId: chId } })
 }
+// P1-修复: 添加 { immediate: false } 防止与 onMounted 重复触发
 watch(() => route.query.chapterId, (val) => {
   if (val) fetchData()
-})
+}, { immediate: false })
 onMounted(() => {
   if (!chapterId.value && !route.query.chapterId) fetchCourses()
 })
@@ -286,8 +289,13 @@ const fetchData = async () => {
     tableData.value = res.data?.items || []
     totalElements.value = res.data?.totalElements || 0
   } catch (error) {
-    const msg = error?.response?.data?.message || '获取帖子列表失败'
-    ElMessage.error(msg)
+    const status = error?.response?.status
+    if (status === 403) {
+      ElMessage.warning('您当前角色无权访问该讨论区，请联系管理员获取权限')
+    } else {
+      const msg = error?.response?.data?.message || '获取帖子列表失败'
+      ElMessage.error(msg)
+    }
   } finally {
     loading.value = false
   }
@@ -346,6 +354,7 @@ const resetDetail = () => {
 }
 
 const handleReply = async ({ parentId, content }) => {
+  replyingCommentId.value = parentId
   try {
     await createComment({ postId: currentPost.value.id, parentId, content, isAnonymous: replyAnonymous.value })
     ElMessage.success('回复成功')
@@ -355,6 +364,8 @@ const handleReply = async ({ parentId, content }) => {
   } catch (error) {
     const msg = error?.response?.data?.message || '回复失败'
     ElMessage.error(msg)
+  } finally {
+    replyingCommentId.value = null
   }
 }
 

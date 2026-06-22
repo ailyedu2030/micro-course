@@ -55,7 +55,8 @@
             <el-button v-if="row.status === 1 && userStore.role === 'ADMIN'" type="danger" link size="small" @click="handleReject(row)">
               <el-icon><Close /></el-icon>驳回
             </el-button>
-            <el-button v-if="row.status === 2 && (userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC')" type="primary" link size="small" @click="handlePublish(row)">
+            <!-- P0 修复：发布按钮仅 ADMIN 可见，后端 @PreAuthorize("hasRole('ADMIN')") 拒绝 ACADEMIC -->
+            <el-button v-if="row.status === 2 && userStore.role === 'ADMIN'" type="primary" link size="small" @click="handlePublish(row)">
               发布
             </el-button>
           </template>

@@ -1,3 +1,9 @@
+<!--
+  交互式课件播放器
+  路由路径: /student/courses/:id/slides/player
+  Phase 10
+  Author: Phase10-Development-Team
+-->
 <template>
   <div class="slide-player" ref="playerRef" tabindex="0" @keydown="handleKeydown">
     <!-- Top Bar -->
@@ -23,7 +29,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
 >
           <el-icon :size="16"><VideoPlay v-if="autoMode" /><VideoPause v-else /></el-icon>
         </button>
-        <button class="btn-icon" @click="toggleFullscreen" aria-label="全屏">
+        <button class="btn-icon" @click="toggleFullscreen" :aria-label="isFullscreen ? '退出全屏' : '全屏'">
           <el-icon :size="16"><FullScreen /></el-icon>
         </button>
       </div>
@@ -315,6 +321,12 @@ function toggleFullscreen() {
   if (document.fullscreenElement) document.exitFullscreen()
   else playerRef.value?.requestFullscreen()
 }
+
+// 监听全屏状态变化，动态更新 aria-label
+const isFullscreen = ref(false)
+function onFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+}
 function formatTime(s) {
   if (!s || isNaN(s)) return '0:00'
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
@@ -324,6 +336,7 @@ onMounted(async () => {
   await loadPages()
   if (pages.value.length > 0) loadAudio(0)
   playerRef.value?.focus()
+  document.addEventListener('fullscreenchange', onFullscreenChange)
   if (!sessionStorage.getItem('slide-player-hint-shown')) {
     showKeyboardHint.value = true
     sessionStorage.setItem('slide-player-hint-shown', '1')
@@ -333,6 +346,7 @@ onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer)
   if (audioRef.value) { audioRef.value.pause(); audioRef.value.src = '' }
   clearImageCache()
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
 })
 </script>
 

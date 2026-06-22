@@ -1,7 +1,9 @@
 package com.microcourse.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,6 +15,7 @@ public class CourseBundle {
     private String title;
     private String description;
     private String coverUrl;
+    @TableField("creator_id")
     private Long creatorId;
     private BigDecimal price;
     private Boolean isFree;
@@ -20,6 +23,9 @@ public class CourseBundle {
     private Integer status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @TableLogic(value = "null", delval = "now()")
+    private LocalDateTime deletedAt;
 
     public CourseBundle() {}
     public Long getId() { return id; }
@@ -44,4 +50,6 @@ public class CourseBundle {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

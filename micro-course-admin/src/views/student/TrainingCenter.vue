@@ -1,3 +1,9 @@
+<!--
+  训练中心
+  路由路径: /student/training
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="training-center">
     <!-- 面包屑导航 -->
@@ -115,7 +121,7 @@ async function fetchData() {
 
     enrollments.value = items
   } catch (e) {
-    console.error('训练中心加载失败', e)
+    console.error('[TrainingCenter] 训练中心加载失败', e)
     error.value = true
     ElMessage.error('加载失败，请稍后重试')
   } finally {

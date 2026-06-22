@@ -10,6 +10,7 @@ import com.microcourse.service.QuestionService;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,11 +34,13 @@ public class QuestionController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<QuestionVO>> page(
             @RequestParam(required = false) Long courseId,
-            @RequestParam(required = false) String questionType,
+            @RequestParam(required = false) @Pattern(regexp = "^(SINGLE|MULTIPLE|JUDGE|FILL|SHORT_ANSWER|ESSAY)?$", message = "题目类型无效") String questionType,
             @RequestParam(required = false) Integer difficulty,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
-        PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, page, size);
+        PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, keyword, categoryId, page, size);
         return R.ok(result);
     }
 

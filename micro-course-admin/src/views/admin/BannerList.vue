@@ -188,7 +188,7 @@
  * 管理员 - 轮播图管理
  * Vue 3.4 Composition API + script setup
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
 import {
@@ -374,6 +374,13 @@ function formatTime(isoString) {
 
 onMounted(() => {
   fetchData()
+})
+
+onUnmounted(() => {
+  // 清理未释放的 blob URL
+  if (form.imageUrl && form.imageUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(form.imageUrl)
+  }
 })
 </script>
 

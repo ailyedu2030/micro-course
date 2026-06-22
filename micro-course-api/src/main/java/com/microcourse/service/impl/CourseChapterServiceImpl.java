@@ -1,7 +1,6 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.ChapterCreateRequest;
@@ -22,6 +21,8 @@ import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -147,8 +148,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     /**
-     * C2-6 修复：使用 CASE WHEN SQL 一次更新所有章节排序，替代逐条 updateById 循环。
-     * 对 N 条排序请求从 N 次 UPDATE 降为 1 次 UPDATE，大幅减少 DB 往返。
+     * 更新所有章节排序：使用逐条 updateById（安全替代 CASE WHEN 字符串拼接，消除 SQL 注入风险）。
+     * P3 性能优化：使用 Map 查找替代双重循环 O(N*M) → O(N+M)。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -169,17 +170,18 @@ public class CourseChapterServiceImpl implements CourseChapterService {
             }
         }
 
-        // 构建 CASE WHEN SQL: sort_order = CASE id WHEN 1 THEN 0 WHEN 2 THEN 1 END
-        StringBuilder sortCase = new StringBuilder("CASE id ");
+        // P0-SEC-FIX: 使用逐条 updateById 替代 CASE WHEN 字符串拼接，消除 SQL 注入风险
+        // P3 性能优化: 使用 Map 查找替代双重循环 O(N*M) → O(N+M)
+        Map<Long, CourseChapter> chapterMap = chapters.stream()
+                .collect(Collectors.toMap(CourseChapter::getId, Function.identity()));
         for (ChapterSortRequest r : requests) {
-            sortCase.append("WHEN ").append(r.getId()).append(" THEN ").append(r.getSortOrder()).append(" ");
+            CourseChapter chapter = chapterMap.get(r.getId());
+            if (chapter != null) {
+                chapter.setSortOrder(r.getSortOrder());
+                chapter.setUpdatedAt(LocalDateTime.now());
+                chapterRepository.updateById(chapter);
+            }
         }
-        sortCase.append("END");
-
-        LambdaUpdateWrapper<CourseChapter> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.setSql("sort_order = " + sortCase.toString() + ", updated_at = NOW()");
-        wrapper.in(CourseChapter::getId, ids);
-        chapterRepository.update(null, wrapper);
     }
 
     private ChapterVO convertToVO(CourseChapter chapter) {

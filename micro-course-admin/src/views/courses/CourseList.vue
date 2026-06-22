@@ -53,7 +53,11 @@
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="5" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无课程数据" :image-size="120" />
+      <el-empty v-else-if="tableData.length === 0" description="未找到匹配的课程，尝试更换筛选条件" :image-size="120">
+        <template #default>
+          <el-button type="primary" @click="handleReset">清除筛选</el-button>
+        </template>
+      </el-empty>
       <el-table v-else :data="tableData" stripe border class="data-table" ref="tableRef" @row-click="handleRowClick">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column label="封面" width="80" align="center">

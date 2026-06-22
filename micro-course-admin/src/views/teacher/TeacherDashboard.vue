@@ -1,3 +1,9 @@
+<!--
+  教师端仪表盘
+  路由路径: /teacher/dashboard
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="teacher-dashboard">
     <!-- 顶部欢迎条 — 玻璃态 -->

@@ -1,3 +1,9 @@
+<!--
+  成就墙
+  路由路径: /student/achievements
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="achievement-wall">
     <!-- 面包屑导航 -->
@@ -175,7 +181,7 @@ async function fetchData() {
     allDefinitions.value = defRes.data?.items || defRes.data || []
     myAchievements.value = achRes.data?.items || achRes.data || []
   } catch (e) {
-    console.error('加载成就数据失败', e)
+    console.error('[AchievementWall] 加载成就数据失败', e)
     error.value = true
     ElMessage.error('加载成就数据失败，请稍后重试')
   } finally {

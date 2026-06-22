@@ -22,8 +22,6 @@ import com.microcourse.service.CourseReviewService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -119,6 +117,8 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         review.setParentId(parentId);
         review.setCreatedAt(LocalDateTime.now());
         review.setUpdatedAt(LocalDateTime.now());
+        // 新评价默认通过状态（原有行为：无审核流程）
+        review.setStatus(1);
 
         try {
             courseReviewRepository.insert(review);
@@ -162,9 +162,11 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     private List<CourseReviewVO> loadReplies(Long parentId, java.util.Map<Long, User> userMap, java.util.Map<Long, String> courseTitleMap) {
         LambdaQueryWrapper<CourseReview> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseReview::getParentId, parentId)
-                .orderByAsc(CourseReview::getCreatedAt)
-                .last("LIMIT 20");
-        List<CourseReview> replies = courseReviewRepository.selectList(wrapper);
+                .orderByAsc(CourseReview::getCreatedAt);
+        Page<CourseReview> pg = new Page<>(0, 20);
+        pg.setSearchCount(false);
+        IPage<CourseReview> pageResult = courseReviewRepository.selectPage(pg, wrapper);
+        List<CourseReview> replies = pageResult.getRecords();
         if (replies.isEmpty()) {
             return java.util.Collections.emptyList();
         }
@@ -232,6 +234,32 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         Long courseId = review.getCourseId();
         courseReviewRepository.deleteById(id);
         updateCourseAvgRating(courseId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void approveReview(Long id) {
+        CourseReview review = courseReviewRepository.selectById(id);
+        if (review == null) {
+            throw new BusinessException(ErrorCode.COURSE_REVIEW_NOT_FOUND);
+        }
+        review.setStatus(1); // APPROVED
+        review.setUpdatedAt(LocalDateTime.now());
+        courseReviewRepository.updateById(review);
+        updateCourseAvgRating(review.getCourseId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void rejectReview(Long id) {
+        CourseReview review = courseReviewRepository.selectById(id);
+        if (review == null) {
+            throw new BusinessException(ErrorCode.COURSE_REVIEW_NOT_FOUND);
+        }
+        review.setStatus(2); // REJECTED（逻辑驳回，不物理删除）
+        review.setUpdatedAt(LocalDateTime.now());
+        courseReviewRepository.updateById(review);
+        updateCourseAvgRating(review.getCourseId());
     }
 
     private void updateCourseAvgRating(Long courseId) {

@@ -68,7 +68,7 @@
         />
         <div class="reply-actions">
           <el-button size="small" @click="handleCancelReply">取消</el-button>
-          <el-button type="primary" size="small" :disabled="!replyContent.trim()" @click="handleReply">发送</el-button>
+          <el-button type="primary" size="small" :disabled="!replyContent.trim() || props.replyLoading" :loading="props.replyLoading" @click="handleReply">发送</el-button>
         </div>
       </div>
     </div>
@@ -80,6 +80,7 @@
         :key="child.id"
         :comment="child"
         :depth="depth + 1"
+        :reply-loading="props.replyLoading"
         @reply="$emit('reply', $event)"
         @like="$emit('like', $event)"
       />
@@ -97,7 +98,8 @@ const MAX_DEPTH = 10
 
 const props = defineProps({
   comment: { type: Object, required: true },
-  depth: { type: Number, default: 0 }
+  depth: { type: Number, default: 0 },
+  replyLoading: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['reply', 'like'])

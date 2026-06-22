@@ -1,3 +1,9 @@
+<!--
+  教务处仪表盘
+  路由路径: /academic/dashboard
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="academic-dashboard">
     <!-- 顶部欢迎条 — 玻璃态 -->
@@ -126,7 +132,24 @@
       <el-col :xs="24" :md="12">
         <el-card class="chart-card" shadow="never">
           <template #header>
-            <div class="card-header">参与率趋势</div>
+            <div class="card-header">
+              参与率趋势
+              <el-select
+                v-model="selectedSemester"
+                size="small"
+                style="width:150px; margin-left:auto"
+                placeholder="选择学期"
+                clearable
+                @change="handleSemesterChange"
+              >
+                <el-option
+                  v-for="sem in semesterOptions"
+                  :key="sem.value"
+                  :label="sem.label"
+                  :value="sem.value"
+                />
+              </el-select>
+            </div>
           </template>
           <el-skeleton :loading="trendLoading" animated :rows="3">
             <template #template><el-skeleton-item class="skeleton-chart" /></template>
@@ -289,6 +312,26 @@ function debounce(fn, delay = 200) {
     if (timer) clearTimeout(timer)
     timer = setTimeout(() => fn.apply(this, args), delay)
   }
+}
+
+// P1-8: 学期选择器
+const selectedSemester = ref('')
+const semesterOptions = computed(() => {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+  const semesters = []
+  for (let year = currentYear - 1; year <= currentYear + 1; year++) {
+    semesters.push({ label: `${year}-${year + 1} 第一学期`, value: `${year}-1` })
+    semesters.push({ label: `${year}-${year + 1} 第二学期`, value: `${year}-2` })
+  }
+  return semesters
+})
+// 默认选择当前学期
+selectedSemester.value = currentMonth < 8 ? `${currentYear - 1}-2` : `${currentYear}-1`
+
+function handleSemesterChange() {
+  loadTrend()
 }
 
 // Stats
@@ -465,9 +508,10 @@ async function loadTrend() {
   trendLoading.value = true
   trendError.value = false
   try {
+    // P0 修复：后端期望 semester 参数，days 被忽略。统一为不传 params（semester 可选）
     const [participationRes, completionRes] = await Promise.all([
-      getParticipationTrend({ days: 30 }),
-      getCompletionTrend({ days: 30 })
+      getParticipationTrend(selectedSemester.value ? { semester: selectedSemester.value } : undefined),
+      getCompletionTrend(selectedSemester.value ? { semester: selectedSemester.value } : undefined)
     ])
     const participationData = participationRes.data || []
     const completionData = completionRes.data || []
@@ -488,7 +532,8 @@ function renderTrendChart(participationData, completionData) {
   }
   trendChartInstance = echarts.init(trendChartRef.value)
 
-  const dates = participationData.map(item => item.date || '')
+  // P0 修复：后端 TrendPointVO 字段名为 month/value，非 date/participationRate/completionRate
+  const dates = participationData.map(item => item.month || '')
 
   trendChartInstance.setOption({
     color: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444'],
@@ -526,7 +571,7 @@ function renderTrendChart(participationData, completionData) {
         name: '参与率',
         type: 'line',
         smooth: true,
-        data: participationData.map(item => item.participationRate ?? 0),
+        data: participationData.map(item => item.value ?? 0),
         itemStyle: { color: '#4F46E5' },
         lineStyle: { width: 2 },
         areaStyle: { opacity: 0.12 }
@@ -535,7 +580,7 @@ function renderTrendChart(participationData, completionData) {
         name: '完成率',
         type: 'line',
         smooth: true,
-        data: completionData.map(item => item.completionRate ?? 0),
+        data: completionData.map(item => item.value ?? 0),
         itemStyle: { color: '#10B981' },
         lineStyle: { width: 2 },
         areaStyle: { opacity: 0.12 }

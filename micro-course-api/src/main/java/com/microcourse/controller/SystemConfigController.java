@@ -36,7 +36,7 @@ public class SystemConfigController {
             "site_logo",
             "platform_name",
             "platform_logo",
-            "registration_enabled",
+            "allowRegistration",
             "icp_number",
             "footer_text",
             "copyright"

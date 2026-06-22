@@ -1,4 +1,4 @@
-package com.microcourse.controller;
+package com.microcourse.plugin.interactive.controller;
 
 import com.microcourse.dto.R;
 import com.microcourse.dto.narration.NarrationSettingRequest;

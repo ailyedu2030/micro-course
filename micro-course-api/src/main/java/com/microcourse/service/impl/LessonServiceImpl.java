@@ -1,10 +1,8 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.lesson.LessonVO;
 import com.microcourse.entity.Course;
-import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Lesson;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -17,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -81,8 +81,8 @@ public class LessonServiceImpl implements LessonService {
     }
 
     /**
-     * C2-5 修复：使用 CASE WHEN SQL 一次更新所有课时排序，替代逐条 updateById 循环。
-     * 对 N 条排序请求从 N 次 UPDATE 降为 1 次 UPDATE，大幅减少 DB 往返。
+     * 更新所有课时排序：使用逐条 updateById（安全替代 CASE WHEN 字符串拼接，消除 SQL 注入风险）。
+     * P3 性能优化：使用 Map 查找替代双重循环 O(N*M) → O(N+M)。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -94,22 +94,19 @@ public class LessonServiceImpl implements LessonService {
             assertCourseOwnership(lesson.getCourseId());
         }
 
-        // 构建 CASE WHEN SQL: sort_order = CASE id WHEN 1 THEN 0 WHEN 2 THEN 1 END
-        StringBuilder sortCase = new StringBuilder("CASE id ");
-        StringBuilder chapterCase = new StringBuilder("CASE id ");
+        // P0-SEC-FIX: 使用逐条 updateById 替代 CASE WHEN 字符串拼接，消除 SQL 注入风险
+        // P3 性能优化: 使用 Map 查找替代双重循环 O(N*M) → O(N+M)
+        Map<Long, Lesson> lessonMap = lessons.stream()
+                .collect(Collectors.toMap(Lesson::getId, Function.identity()));
         for (LessonVO.SortItem item : items) {
-            sortCase.append("WHEN ").append(item.getId()).append(" THEN ").append(item.getSortOrder()).append(" ");
-            chapterCase.append("WHEN ").append(item.getId()).append(" THEN ").append(item.getChapterId()).append(" ");
+            Lesson lesson = lessonMap.get(item.getId());
+            if (lesson != null) {
+                lesson.setSortOrder(item.getSortOrder());
+                lesson.setChapterId(item.getChapterId());
+                lesson.setUpdatedAt(LocalDateTime.now());
+                lessonRepository.updateById(lesson);
+            }
         }
-        sortCase.append("END");
-        chapterCase.append("END");
-
-        LambdaUpdateWrapper<Lesson> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.setSql("sort_order = " + sortCase.toString()
-                + ", chapter_id = " + chapterCase.toString()
-                + ", updated_at = NOW()");
-        wrapper.in(Lesson::getId, ids);
-        lessonRepository.update(null, wrapper);
     }
 
     @Override

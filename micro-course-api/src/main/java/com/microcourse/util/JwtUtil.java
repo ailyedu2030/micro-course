@@ -151,6 +151,14 @@ public class JwtUtil {
     }
 
     /**
+     * 从 token 提取 role（支持逗号分隔的多角色）
+     */
+    public String getRoleFromTokenAsString(String token) {
+        Claims claims = getClaims(token);
+        return claims.get("role", String.class);
+    }
+
+    /**
      * 从 token 提取 role
      */
     public UserRole getRoleFromToken(String token) {

@@ -7,8 +7,34 @@
 -->
 <template>
   <div class="profile-view">
+    <!-- 骨架屏：userInfo 加载中 -->
+    <template v-if="!userStore.userInfo">
+      <div class="profile-skeleton">
+        <el-skeleton animated :rows="1" style="margin-bottom: 20px">
+          <template #template>
+            <el-skeleton-item variant="text" style="height: 32px; width: 160px" />
+          </template>
+        </el-skeleton>
+        <el-row :gutter="20">
+          <el-col :span="16">
+            <el-card class="profile-card" shadow="never">
+              <el-skeleton animated :rows="4" />
+            </el-card>
+            <el-card class="profile-card" shadow="never" style="margin-top: 16px">
+              <el-skeleton animated :rows="3" />
+            </el-card>
+          </el-col>
+          <el-col :span="8">
+            <el-card class="profile-card" shadow="never">
+              <el-skeleton animated :rows="3" />
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
+    </template>
+
     <!-- PC 端布局 -->
-    <template v-if="!isMobile">
+    <template v-else-if="!isMobile">
       <h2 class="page-title">个人中心</h2>
 
       <el-row :gutter="20">
@@ -160,6 +186,17 @@
         <CertificatesCard :is-mobile="true" />
       </template>
     </template>
+    <!-- 骨架屏：移动端 userInfo 加载中 -->
+    <template v-if="!userStore.userInfo && isMobile">
+      <div class="profile-skeleton-mobile">
+        <div class="profile-card" style="padding: 16px; background: var(--el-bg-color-overlay); border-radius: var(--radius-lg); margin-bottom: 16px;">
+          <el-skeleton animated :rows="2" />
+        </div>
+        <div class="profile-card" style="padding: 16px; background: var(--el-bg-color-overlay); border-radius: var(--radius-lg); margin-bottom: 16px;">
+          <el-skeleton animated :rows="4" />
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -208,6 +245,7 @@ const compressAvatar = (file) => {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
+      URL.revokeObjectURL(img.src)  // 及时释放 blob URL
       const canvas = document.createElement('canvas')
       canvas.width = 200
       canvas.height = 200
@@ -229,7 +267,10 @@ const compressAvatar = (file) => {
         0.8
       )
     }
-    img.onerror = () => reject(new Error('图片加载失败'))
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src)  // 及时释放 blob URL
+      reject(new Error('图片加载失败'))
+    }
     img.src = URL.createObjectURL(file)
   })
 }
@@ -442,6 +483,18 @@ onBeforeUnmount(() => {
 /* === All Buttons Cursor === */
 :deep(.el-button) {
   cursor: pointer;
+}
+
+/* === Profile Skeleton (PC) === */
+.profile-skeleton {
+  padding: var(--space-6);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* === Profile Skeleton (Mobile) === */
+.profile-skeleton-mobile {
+  padding: var(--space-3);
 }
 
 /* === Mobile Responsive === */

@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.ExerciseCreateRequest;
 import com.microcourse.dto.ExerciseRecordVO;
 import com.microcourse.dto.ExerciseUpdateRequest;
@@ -38,8 +39,8 @@ public class ExerciseController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<ExerciseVO>> page(
-            @RequestParam(required = false) Integer courseId,
-            @RequestParam(required = false) Integer chapterId,
+            @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
             @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) Integer size) {
         PageResult<ExerciseVO> result = exerciseService.page(courseId, chapterId, page, size);
@@ -55,6 +56,7 @@ public class ExerciseController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("创建练习")
     public R<ExerciseVO> create(@Valid @RequestBody ExerciseCreateRequest request) {
         ExerciseVO vo = exerciseService.create(request);
         return R.ok(vo);
@@ -62,6 +64,7 @@ public class ExerciseController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("更新练习")
     public R<ExerciseVO> update(@PathVariable Long id,
                                 @Valid @RequestBody ExerciseUpdateRequest request) {
         ExerciseVO vo = exerciseService.update(id, request);
@@ -70,6 +73,7 @@ public class ExerciseController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("删除练习")
     public R<Void> delete(@PathVariable Long id) {
         exerciseService.delete(id);
         return R.ok();
@@ -77,6 +81,7 @@ public class ExerciseController {
 
     @PostMapping("/{id}/questions")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("添加练习题目")
     public R<Void> addQuestions(@PathVariable Long id, @RequestBody Map<String, List<Long>> body) {
         List<Long> questionIds = body.get("questionIds");
         if (questionIds == null || questionIds.isEmpty()) {
@@ -89,6 +94,7 @@ public class ExerciseController {
 
     @DeleteMapping("/{exerciseId}/questions/{questionId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("移除练习题目")
     public R<Void> removeQuestion(@PathVariable Long exerciseId, @PathVariable Long questionId) {
         exerciseService.removeQuestion(exerciseId, questionId);
         return R.ok();
@@ -174,6 +180,7 @@ public class ExerciseController {
      */
     @PostMapping("/{id}/retry")
     @PreAuthorize("hasRole('STUDENT')")
+    @AuditedLog("重做练习")
     public R<Map<String, Object>> retry(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         ExerciseVO exercise = exerciseService.getById(id);

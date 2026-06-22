@@ -231,6 +231,14 @@
               CAS 配置用于对接学校统一身份认证系统。配置后将支持师生通过学校账号一键登录。
             </template>
           </el-alert>
+          <el-alert
+            v-if="casLoadFailed"
+            type="warning"
+            title="CAS 配置加载失败，表单显示默认值，保存将覆盖线上配置"
+            :closable="false"
+            show-icon
+            style="margin-bottom: var(--space-4)"
+          />
           <el-form ref="casFormRef" :model="casForm" :rules="casFormRules" label-width="140px" class="settings-form">
             <el-form-item label="启用 CAS">
               <el-switch v-model="casForm.enabled" />
@@ -367,6 +375,7 @@ const securityForm = reactive({
 })
 
 // CAS 配置表单 (localStorage mock)
+const casLoadFailed = ref(false)
 const casForm = reactive({
   enabled: false,
   serverUrl: '',
@@ -395,6 +404,8 @@ const casFormRules = {
 // 获取设置列表
 async function fetchSettings() {
   // P1-2: 后端存 String，前端需要类型转换
+  // P1-14 修复注意: 以下 BOOLEAN_KEYS / NUMBER_KEYS 必须与后端 admin_settings 表的 key 集合保持同步。
+  // 若后端新增设置项 key，需相应更新此处的类型映射。建议后续改为后端提供 key 类型元数据 API 实现动态配置。
   const BOOLEAN_KEYS = new Set([
     'allowRegistration', 'maintenanceMode',
     'useSsl', 'useTls',
@@ -436,6 +447,7 @@ async function fetchSettings() {
         casForm.validateSsl = casData.validateSsl
       }
     } catch {
+      casLoadFailed.value = true
       ElMessage.warning('CAS 配置加载失败，请稍后重试')
     }
   } catch (e) {

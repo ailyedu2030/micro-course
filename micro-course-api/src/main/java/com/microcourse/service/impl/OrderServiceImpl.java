@@ -245,6 +245,11 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.selectById(orderId);
         if (order == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单不存在");
 
+        // IDOR 校验: 只有订单所有者或 ADMIN 可退款
+        if (!SecurityUtil.isOwnerOrAdmin(order.getUserId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
         if (!"PAID".equals(order.getStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅已支付订单可退款");
         }

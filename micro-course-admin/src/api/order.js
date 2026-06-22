@@ -15,3 +15,11 @@ export function getMyOrders(params) {
 export function payOrder(id, paymentMethod) {
   return request({ method: 'POST', url: `/orders/${id}/pay`, data: { paymentMethod } })
 }
+
+export function cancelOrder(id) {
+  return request({ method: 'POST', url: `/orders/${id}/cancel` })
+}
+
+export function refundOrder(id) {
+  return request({ method: 'POST', url: `/orders/${id}/refund` })
+}

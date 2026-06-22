@@ -104,7 +104,7 @@ public class CourseController {
      * 权限：TEACHER（课程创建者，Service 层 isOwnerOrAdmin 校验）
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<CourseVO> update(@PathVariable Long id,
                               @Valid @RequestBody CourseUpdateRequest request) {
         CourseVO vo = courseService.update(id, request);
@@ -266,7 +266,7 @@ public class CourseController {
      * 权限：TEACHER（课程创建者）
      */
     @PostMapping("/{id}/cover")
-    @PreAuthorize("hasAnyRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("更新课程封面")
     public R<CourseVO> updateCover(@PathVariable Long id,
                                    @RequestParam("file") MultipartFile file) {
@@ -276,6 +276,8 @@ public class CourseController {
         if (file.getSize() > 2 * 1024 * 1024) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件不能超过 2MB");
         }
+        // P1 安全修复: 封面魔数校验（JPEG/PNG）
+        validateCoverImageMagic(file);
         CourseVO vo = courseService.updateCover(id, file);
         return R.ok(vo);
     }
@@ -294,5 +296,30 @@ public class CourseController {
             enrollmentService.assertCourseOwnership(id);
         }
         return R.ok(courseService.computeStats(id));
+    }
+
+    /**
+     * P1 安全修复: 封面图片魔数校验（JPEG: FFD8FF, PNG: 89504E47）
+     */
+    private void validateCoverImageMagic(MultipartFile file) {
+        try (java.io.InputStream is = file.getInputStream()) {
+            byte[] magic = new byte[8];
+            int read = is.read(magic);
+            if (read < 4) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件过小，无法验证格式");
+            }
+            boolean isJpeg = (magic[0] & 0xFF) == 0xFF
+                    && (magic[1] & 0xFF) == 0xD8
+                    && (magic[2] & 0xFF) == 0xFF;
+            boolean isPng = (magic[0] & 0xFF) == 0x89
+                    && magic[1] == 'P'
+                    && magic[2] == 'N'
+                    && magic[3] == 'G';
+            if (!isJpeg && !isPng) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面必须为 JPEG 或 PNG 格式（魔数校验失败）");
+            }
+        } catch (java.io.IOException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取封面文件");
+        }
     }
 }

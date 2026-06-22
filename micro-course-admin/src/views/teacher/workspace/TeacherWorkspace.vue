@@ -1,3 +1,9 @@
+<!--
+  教师工作区
+  路由路径: /teacher/courses/:id/workspace
+  Phase 10
+  Author: Phase10-Development-Team
+-->
 <template>
   <div class="course-editor" v-loading="loading">
     <header class="editor-header">

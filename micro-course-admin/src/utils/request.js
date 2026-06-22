@@ -3,11 +3,15 @@ import { ElMessage } from 'element-plus'
 import router from '../router'
 import { getToken, setToken, removeToken } from './auth'
 
+// P3-8: 提取硬编码配置为常量，便于统一调整
+const API_BASE_URL = '/api'
+const REQUEST_TIMEOUT = 60000 // 60s (文件上传可能较大)
+
 let isRefreshing = false
 
 const request = axios.create({
-  baseURL: '/api',
-  timeout: 60000
+  baseURL: API_BASE_URL,
+  timeout: REQUEST_TIMEOUT
 })
 
 // D2: 全局上传进度管理器（可被外部组件 useUploadProgress 消费）

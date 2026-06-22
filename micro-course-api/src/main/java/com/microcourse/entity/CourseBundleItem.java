@@ -1,7 +1,9 @@
 package com.microcourse.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
@@ -9,11 +11,16 @@ import java.time.LocalDateTime;
 public class CourseBundleItem {
     @TableId(type = IdType.AUTO)
     private Long id;
+    @TableField("bundle_id")
     private Long bundleId;
+    @TableField("course_id")
     private Long courseId;
     private Integer sortOrder;
     private Boolean isRequired;
     private LocalDateTime createdAt;
+
+    @TableLogic(value = "null", delval = "now()")
+    private LocalDateTime deletedAt;
 
     public CourseBundleItem() {}
     public Long getId() { return id; }
@@ -28,4 +35,6 @@ public class CourseBundleItem {
     public void setIsRequired(Boolean isRequired) { this.isRequired = isRequired; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

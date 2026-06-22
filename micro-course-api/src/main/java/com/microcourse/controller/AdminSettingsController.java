@@ -61,7 +61,7 @@ public class AdminSettingsController {
     public R<Void> toggleRegister(@RequestBody Map<String, Object> body) {
         Boolean enabled = body != null && body.containsKey("enabled") && body.get("enabled") instanceof Boolean
                 ? (Boolean) body.get("enabled") : false;
-        adminSettingService.upsert("registration_enabled", String.valueOf(enabled));
+        adminSettingService.upsert("allowRegistration", String.valueOf(enabled));
         return R.ok();
     }
 

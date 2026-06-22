@@ -1,3 +1,9 @@
+<!--
+  404 未找到页面
+  路由路径: /:pathMatch(.*)*
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="not-found-container">
     <div class="not-found-card">

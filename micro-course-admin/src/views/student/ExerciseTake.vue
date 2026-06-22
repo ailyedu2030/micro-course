@@ -674,6 +674,7 @@ const correctCount = computed(() =>
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   await fetchExerciseList()
 })
 
@@ -682,6 +683,7 @@ onUnmounted(() => {
   clearElapsedTimer()
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 // ===== 键盘导航（无障碍）=====
@@ -784,13 +786,20 @@ async function loadQuestion(id) {
   }
 }
 
-// ===== 计时器 =====
+// ===== 计时器（P1 修复: 使用 performance.now() 防止页面休眠/切换时漂移）=====
+const timerStartAt = ref(0)       // performance.now() 基准
+const elapsedStartAt = ref(0)     // 已用计时器基准
+
 function startTimer() {
   clearTimer()
+  timerStartAt.value = performance.now()
   timerInterval = setInterval(() => {
-    if (timeLeft.value > 0) {
-      timeLeft.value--
-    } else {
+    // 使用 performance.now() 计算实际经过秒数，避免 setInterval 漂移
+    const elapsed = Math.floor((performance.now() - timerStartAt.value) / 1000)
+    const totalSeconds = currentExercise.value?.timeLimit ? currentExercise.value.timeLimit * 60 : 0
+    const remaining = Math.max(0, totalSeconds - elapsed)
+    timeLeft.value = remaining
+    if (remaining <= 0) {
       clearTimer()
       ElMessage.warning('时间到，自动提交！')
       doSubmit()
@@ -814,8 +823,10 @@ function formatTimeLeft(seconds) {
 function startElapsedTimer() {
   clearElapsedTimer()
   elapsedTime.value = 0
+  elapsedStartAt.value = performance.now()
   elapsedTimerInterval = setInterval(() => {
-    elapsedTime.value++
+    // 使用 performance.now() 计算实际经过秒数
+    elapsedTime.value = Math.floor((performance.now() - elapsedStartAt.value) / 1000)
   }, 1000)
 }
 
@@ -825,6 +836,14 @@ function clearElapsedTimer() {
     elapsedTimerInterval = null
   }
 }
+
+/** P1 修复: 页面可见性变化时校准计时器（页面切换/休眠回来后修正漂移） */
+function handleVisibilityChange() {
+  if (document.hidden) return
+  // 页面恢复可见：计时器中的 setInterval 会在下一个 tick 自动通过 performance.now() 校准
+  // 无需额外操作，因为计时器每次 tick 都基于 performance.now() 计算真实经过时间
+}
+
 
 // ===== 导航 =====
 function prevQuestion() {

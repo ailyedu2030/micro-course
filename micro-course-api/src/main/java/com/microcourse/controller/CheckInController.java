@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.CheckInVO;
 import com.microcourse.dto.R;
 import com.microcourse.service.CheckInService;
@@ -21,6 +22,7 @@ public class CheckInController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
+    @AuditedLog("学生打卡")
     public R<CheckInVO> checkIn() {
         Long userId = getCurrentUserId();
         CheckInVO vo = checkInService.checkIn(userId);

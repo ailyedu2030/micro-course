@@ -65,7 +65,7 @@
           </div>
           <div class="hl-stat-body">
             <div class="hl-stat-value stat-number">{{ animatedDays }}</div>
-            <div class="hl-stat-label">累计学习天数</div>
+            <div class="hl-stat-label">连续打卡天数</div>
           </div>
         </el-card>
       </div>
@@ -91,6 +91,19 @@
           <el-skeleton :rows="1" animated />
         </el-card>
       </div>
+
+      <!-- 加载失败 -->
+      <el-result
+        v-else-if="statsError"
+        icon="error"
+        title="数据加载失败"
+        sub-title="统计信息获取异常，请重试"
+        class="stats-error-result"
+      >
+        <template #extra>
+          <el-button type="primary" @click="loadData">重新加载</el-button>
+        </template>
+      </el-result>
 
       <!-- 4 统计卡片 -->
       <div v-else class="stats-row student-stats-row">
@@ -318,7 +331,7 @@
           </div>
           <div class="hl-stat-body">
             <div class="hl-stat-value stat-number">{{ animatedDays }}</div>
-            <div class="hl-stat-label">学习天数</div>
+            <div class="hl-stat-label">连续打卡</div>
           </div>
         </el-card>
       </div>
@@ -344,6 +357,19 @@
           <el-skeleton :rows="1" animated />
         </el-card>
       </div>
+
+      <!-- 加载失败 (H5) -->
+      <el-result
+        v-else-if="statsError"
+        icon="error"
+        title="数据加载失败"
+        sub-title="统计信息获取异常，请重试"
+        class="h5-error-result"
+      >
+        <template #extra>
+          <el-button type="primary" size="small" @click="loadData">重试</el-button>
+        </template>
+      </el-result>
 
       <!-- 4 统计卡片 (2×2) -->
       <div v-else class="stats-row h5-stats student-stats-row">
@@ -499,7 +525,7 @@ import { getStudyDays, getTotalTime } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
 import { getMyCertificates } from '@/api/certificate'
-import { getMyCheckIns, createCheckIn } from '@/api/checkin'
+import { getMyCheckIns, createCheckIn, getCheckInStreak } from '@/api/checkin'
 import { getAccuracyTrend } from '@/api/exercise-record'
 
 // ---------------------------------------------------------------------------
@@ -550,6 +576,7 @@ const loading = ref(true)
 const chartLoading = ref(true)
 const checkInLoading = ref(false)
 const checkedInToday = ref(false)
+const statsError = ref(false)
 
 // ---------------------------------------------------------------------------
 // 统计数据
@@ -701,8 +728,15 @@ async function getStats(sharedEnrollments) {
     const totalSeconds = totalTimeData?.data?.totalSeconds || 0
     const totalHours = totalSeconds > 0 ? `${Math.round(totalSeconds / 3600)}小时` : '0小时'
 
-    // 学习天数
+    // 学习天数（总天数保留用于底部统计卡片）
     const studyDays = studyDaysData?.data?.totalDays ?? 0
+
+    // 连续打卡天数（从打卡 API 获取）
+    let streakDays = 0
+    try {
+      const streakRes = await getCheckInStreak()
+      streakDays = streakRes?.data?.streakDays ?? streakRes?.data?.streak ?? 0
+    } catch { /* 打卡 API 不可用时降级为总学习天数 */ streakDays = studyDays }
 
     // 证书数量
     const certificates = Array.isArray(certData?.data) ? certData.data.length : 0
@@ -714,11 +748,11 @@ async function getStats(sharedEnrollments) {
       studyDays
     }
 
-    // 触发数字动画
+    // 触发数字动画（连续打卡天数）
     const inProgressCount = enrollments.filter(e => !e.completed).length
     animateNumber(inProgressCount, (v) => { animatedInProgress.value = v })
     animateNumber(completedCourses, (v) => { animatedCompleted.value = v })
-    animateNumber(studyDays, (v) => { animatedDays.value = v })
+    animateNumber(streakDays, (v) => { animatedDays.value = v })
   } catch (e) {
       console.warn("[LearningCenter]", e)
     stats.value = {
@@ -748,7 +782,7 @@ async function getRecent(sharedEnrollments) {
         title: inProgress.courseTitle || inProgress.title || '课程',
         currentChapter: 1,
         progress: inProgress.progress || 0,
-        cover: inProgress.courseCover || inProgress.coverUrl || 'https://picsum.photos/seed/course/300/180'
+        cover: inProgress.courseCover || inProgress.coverUrl || (import.meta.env.BASE_URL + 'placeholder.svg')
       }
     }
   } catch (e) {
@@ -887,7 +921,7 @@ async function getRecentRecords(sharedEnrollments) {
     recentRecords.value = sorted.map(e => ({
       courseId: e.courseId,
       title: e.courseTitle || e.title || '课程',
-      cover: e.courseCover || e.coverUrl || 'https://picsum.photos/seed/course' + e.courseId + '/120/80',
+      cover: e.courseCover || e.coverUrl || (import.meta.env.BASE_URL + 'placeholder.svg'),
       progress: e.progress || 0,
       completed: !!e.completed
     }))
@@ -903,6 +937,7 @@ async function getRecentRecords(sharedEnrollments) {
 async function loadData() {
   loading.value = true
   chartLoading.value = true
+  statsError.value = false
   try {
     // 统一获取一次选课数据，避免 4 次重复调用
     const userId = userStore.userInfo?.id
@@ -925,6 +960,9 @@ async function loadData() {
     ])
     // 检查今日是否已打卡
     await checkTodayStatus()
+  } catch (e) {
+    console.warn("[LearningCenter] loadData 加载失败", e)
+    statsError.value = true
   } finally {
     loading.value = false
     chartLoading.value = false
@@ -1804,7 +1842,16 @@ onMounted(async () => {
 }
 
 /* ---------------------------------------------------------------------------
-   响应式
+   统计错误态
+   --------------------------------------------------------------------------- */
+.stats-error-result,
+.h5-error-result {
+  padding: var(--space-8) 0;
+  margin-bottom: var(--space-5);
+}
+
+/* ---------------------------------------------------------------------------
+    响应式
    --------------------------------------------------------------------------- */
 @media (max-width: 768px) {
   .learning-center {

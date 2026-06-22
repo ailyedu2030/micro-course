@@ -54,6 +54,8 @@ public class SlideController {
             String mime = file.getContentType();
             log.info("[SlideUpload] courseId={}, filename={}, size={}, mime={}",
                     courseId, sanitizeForLog(filename), size, mime);
+            // P1 安全修复: 文件魔数校验（PPTX=ZIP PK 0x03 0x04, 图片=JPEG/PNG）
+            validateSlideFileMagic(file);
             SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes());
             return R.ok(resp);
         } catch (IOException e) {
@@ -161,5 +163,36 @@ public class SlideController {
     private String sanitizeForLog(String input) {
         if (input == null) return "";
         return input.replace('\r', '_').replace('\n', '_');
+    }
+
+    /**
+     * P1 安全修复: 课件文件魔数校验。
+     * PPTX 文件是 ZIP 格式，魔数为 PK\x03\x04；
+     * 图片文件魔数为 JPEG(FFD8FF) / PNG(89504E47)。
+     */
+    private void validateSlideFileMagic(MultipartFile file) throws IOException {
+        byte[] magic = new byte[8];
+        try (java.io.InputStream is = file.getInputStream()) {
+            int read = is.read(magic);
+            if (read < 4) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课件文件过小，无法验证格式");
+            }
+        }
+        // ZIP/PPTX: PK\x03\x04
+        boolean isZip = magic[0] == 'P' && magic[1] == 'K'
+                && magic[2] == 0x03 && magic[3] == 0x04;
+        // JPEG: FFD8FF
+        boolean isJpeg = (magic[0] & 0xFF) == 0xFF
+                && (magic[1] & 0xFF) == 0xD8
+                && (magic[2] & 0xFF) == 0xFF;
+        // PNG: 89504E47
+        boolean isPng = (magic[0] & 0xFF) == 0x89
+                && magic[1] == 'P'
+                && magic[2] == 'N'
+                && magic[3] == 'G';
+        if (!isZip && !isJpeg && !isPng) {
+            throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID,
+                    "不支持的课件格式（仅支持 PPTX/PDF，或 JPEG/PNG 图片）");
+        }
     }
 }

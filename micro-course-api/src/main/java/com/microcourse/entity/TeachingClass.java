@@ -3,6 +3,7 @@ package com.microcourse.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 
@@ -46,6 +47,9 @@ public class TeachingClass {
 
     @TableField("updated_at")
     private LocalDateTime updatedAt;
+
+    @TableLogic(value = "null", delval = "now()")
+    private LocalDateTime deletedAt;
 
     /**
      * 乐观锁版本号 —— Round 6 修复：防止教学班并发状态修改（结课/停开）丢失更新。
@@ -153,6 +157,14 @@ public class TeachingClass {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     public Integer getVersion() {

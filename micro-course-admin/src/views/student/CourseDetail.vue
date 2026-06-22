@@ -355,7 +355,7 @@ const fetchCourse = async () => {
 const fetchTeacher = async () => {
   if (!course.value.teacherId) return; teacherLoading.value = true
   try { const { data } = await getPublicProfile(course.value.teacherId); teacher.value = data || {} }
-  catch { teacher.value = {} }
+  catch (e) { console.warn('[CourseDetail] fetchTeacher 获取教师信息失败', e); teacher.value = {}; ElMessage.error('获取教师信息失败，请稍后重试') }
   finally { teacherLoading.value = false }
 }
 
@@ -363,7 +363,7 @@ const checkEnrollment = async () => {
   if (!isLoggedIn.value || !courseId.value) return
   const uid = userStore.userInfo?.id; if (!uid) return
   try { const { data } = await getMyEnrollments(uid); const list = Array.isArray(data) ? data : (data?.items || []); isEnrolled.value = list.some(e => String(e.courseId) === String(courseId.value)) }
-  catch { isEnrolled.value = false }
+  catch (e) { console.warn('[CourseDetail] checkEnrollment 获取选课状态失败', e); isEnrolled.value = false }
 }
 
 const handleEnroll = async () => {
@@ -378,6 +378,8 @@ const handleEnroll = async () => {
       await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功')
       return
     }
+    // 免费课程：增加确认环节
+    await ElMessageBox.confirm('确认加入学习？', '加入课程', { confirmButtonText: '确认加入', cancelButtonText: '取消', type: 'info' })
     await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true
   } catch (e) {
     if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
@@ -409,13 +411,13 @@ const goToSlidePlayer = () => router.push(`/student/courses/${courseId.value}/sl
 const fetchReviews = async () => {
   if (!courseId.value) return; reviewLoading.value = true
   try { const { data } = await getReviews(courseId.value, { page: 0, size: 5 }); reviews.value = data?.items || data || [] }
-  catch { reviews.value = [] }
+  catch (e) { console.warn('[CourseDetail] fetchReviews 获取评价失败', e); reviews.value = [] }
   finally { reviewLoading.value = false }
 }
 
 const fetchRanking = async () => {
   if (!courseId.value) return
-  try { const { data } = await getCourseRanking(courseId.value, { limit: 10 }); rankingList.value = data || [] } catch { rankingList.value = [] }
+  try { const { data } = await getCourseRanking(courseId.value, { limit: 10 }); rankingList.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchRanking 获取排行失败', e); rankingList.value = [] }
 }
 
 const openReviewDialog = () => { if (!isLoggedIn.value) goLogin(); else { reviewForm.value = { rating: 5, content: '' }; reviewDialogVisible.value = true } }

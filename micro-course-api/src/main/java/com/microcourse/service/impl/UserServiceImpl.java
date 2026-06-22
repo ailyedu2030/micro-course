@@ -32,7 +32,7 @@ import com.microcourse.service.UserService;
 import com.microcourse.util.IpUtil;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,9 +67,8 @@ public class UserServiceImpl implements UserService {
     private final RedisUtil redisUtil;
     private final OperationLogService operationLogService;
 
-    /** Self-injection for @Transactional proxy access in batch operations */
-    private UserServiceImpl self;
-
+    /** Self-reference for @Transactional proxy access (via @Lazy constructor injection) */
+    private final UserServiceImpl self;
 
     public UserServiceImpl(UserRepository userRepository,
                            BCryptPasswordEncoder passwordEncoder,
@@ -77,7 +76,8 @@ public class UserServiceImpl implements UserService {
                            MajorRepository majorRepository,
                            ClassesRepository classesRepository,
                            RedisUtil redisUtil,
-                           OperationLogService operationLogService) {
+                           OperationLogService operationLogService,
+                           @Lazy UserServiceImpl self) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.departmentRepository = departmentRepository;
@@ -85,11 +85,7 @@ public class UserServiceImpl implements UserService {
         this.classesRepository = classesRepository;
         this.redisUtil = redisUtil;
         this.operationLogService = operationLogService;
-    }
-
-    @Autowired
-    public void setSelf(UserServiceImpl userServiceImpl) {
-        this.self = userServiceImpl;
+        this.self = self;
     }
 
     @Override

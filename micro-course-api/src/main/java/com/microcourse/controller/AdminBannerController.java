@@ -16,18 +16,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/banners")
 public class AdminBannerController {
-
-    private static final Logger log = LoggerFactory.getLogger(AdminBannerController.class);
 
     private final BannerService bannerService;
 
@@ -48,51 +43,12 @@ public class AdminBannerController {
                               @RequestParam String linkUrl,
                               @RequestParam(defaultValue = "0") Integer sortOrder,
                               @RequestParam(defaultValue = "true") Boolean enabled) {
-        // 1. 校验图片
         if (image.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片不能为空");
         }
-        if (image.getSize() > 5 * 1024 * 1024) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片大小不能超过 5MB");
-        }
-        String contentType = image.getContentType();
-        if (contentType == null || (!contentType.equals("image/jpeg")
-                && !contentType.equals("image/png")
-                && !contentType.equals("image/webp"))) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 jpg/png/webp 格式");
-        }
-
-        // SECURITY: 图片魔数校验（JPEG: FFD8FF, PNG: 89504E47, WebP: 52494646）
-        try (java.io.InputStream is = image.getInputStream()) {
-            byte[] magic = new byte[8];
-            int read = is.read(magic);
-            if (read < 4) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小");
-            boolean isJpeg = (magic[0] & 0xFF) == 0xFF && (magic[1] & 0xFF) == 0xD8 && (magic[2] & 0xFF) == 0xFF;
-            boolean isPng = (magic[0] & 0xFF) == 0x89 && magic[1] == 'P' && magic[2] == 'N' && magic[3] == 'G';
-            if (!isJpeg && !isPng) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片格式校验失败（仅支持JPEG/PNG）");
-        } catch (java.io.IOException e) { throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取图片"); }
-
-        // 2. 保存图片到 uploads/banners/{uuid}.{ext}
-        try {
-            String uploadDir = System.getProperty("user.dir") + "/uploads/banners/";
-            java.io.File dir = new java.io.File(uploadDir);
-            if (!dir.exists()) dir.mkdirs();
-
-            String ext = contentType.equals("image/jpeg") ? "jpg"
-                    : contentType.equals("image/png") ? "png" : "webp";
-            String filename = UUID.randomUUID().toString() + "." + ext;
-            java.io.File dest = new java.io.File(uploadDir + filename);
-            image.transferTo(dest);
-
-            String imageUrl = "/api/files/banners/" + filename;
-
-            // 3. 创建 Banner 记录
-            BannerVO banner = bannerService.create(imageUrl, linkUrl, sortOrder, enabled);
-            return R.ok(banner);
-        } catch (Exception e) {
-            log.error("[Banner] 创建Banner图片上传失败", e);
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片上传失败");
-        }
+        String imageUrl = bannerService.saveBannerImage(image);
+        BannerVO banner = bannerService.create(imageUrl, linkUrl, sortOrder, enabled);
+        return R.ok(banner);
     }
 
     @PutMapping("/{id}")
@@ -104,36 +60,8 @@ public class AdminBannerController {
                               @RequestParam(required = false) Boolean enabled) {
         String imageUrl = null;
         if (image != null && !image.isEmpty()) {
-            // 校验图片
-            if (image.getSize() > 5 * 1024 * 1024) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片大小不能超过 5MB");
-            }
-            String contentType = image.getContentType();
-            if (contentType == null || (!contentType.equals("image/jpeg")
-                    && !contentType.equals("image/png")
-                    && !contentType.equals("image/webp"))) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 jpg/png/webp 格式");
-            }
-
-            // 保存新图片
-            try {
-                String uploadDir = System.getProperty("user.dir") + "/uploads/banners/";
-                java.io.File dir = new java.io.File(uploadDir);
-                if (!dir.exists()) dir.mkdirs();
-
-                String ext = contentType.equals("image/jpeg") ? "jpg"
-                        : contentType.equals("image/png") ? "png" : "webp";
-                String filename = UUID.randomUUID().toString() + "." + ext;
-                java.io.File dest = new java.io.File(uploadDir + filename);
-                image.transferTo(dest);
-
-                imageUrl = "/banners/" + filename;
-            } catch (Exception e) {
-                log.error("[Banner] 更新Banner图片上传失败 id={}", id, e);
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片上传失败");
-            }
+            imageUrl = bannerService.saveBannerImage(image);
         }
-
         BannerVO banner = bannerService.update(id, imageUrl, linkUrl, sortOrder, enabled);
         return R.ok(banner);
     }

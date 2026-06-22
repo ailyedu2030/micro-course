@@ -173,9 +173,9 @@
         </el-form-item>
         <el-form-item label="难度" prop="difficulty">
           <el-select v-model="formData.difficulty" placeholder="请选择难度" class="full-width">
-            <el-option label="简单" value="EASY" />
-            <el-option label="中等" value="MEDIUM" />
-            <el-option label="困难" value="HARD" />
+            <el-option label="简单" :value="1" />
+            <el-option label="中等" :value="2" />
+            <el-option label="困难" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item label="题目内容" prop="content">
@@ -271,6 +271,15 @@ const searchForm = reactive({
   keyword: ''
 })
 
+// 难度字符串→整数映射（前端UI用字符串，后端用整数）
+const DIFFICULTY_MAP = { 'EASY': 1, 'MEDIUM': 2, 'HARD': 3 }
+function resolveDifficulty(raw) {
+  if (raw === '' || raw === null || raw === undefined) return undefined
+  const n = Number(raw)
+  if (!Number.isNaN(n) && n >= 1 && n <= 3) return n
+  return DIFFICULTY_MAP[String(raw).toUpperCase()] || undefined
+}
+
 function onCourseChange(val) {
   if (!val) {
     selectedCourseId.value = ''
@@ -313,7 +322,7 @@ const optionList = ref([])
 
 const formData = reactive({
   questionType: '',
-  difficulty: '',
+  difficulty: 1,
   categoryId: '',
   content: '',
   score: 10,
@@ -386,7 +395,7 @@ const handleExportExcel = async () => {
       size: 10000,
       courseId: selectedCourseId.value || undefined,
       questionType: searchForm.questionType || undefined,
-      difficulty: searchForm.difficulty || undefined,
+      difficulty: resolveDifficulty(searchForm.difficulty),
       categoryId: searchForm.categoryId || undefined,
       keyword: searchForm.keyword || undefined
     }
@@ -445,7 +454,7 @@ const fetchData = async () => {
       size: size.value,
       courseId: selectedCourseId.value,
       questionType: searchForm.questionType || undefined,
-      difficulty: searchForm.difficulty || undefined,
+      difficulty: resolveDifficulty(searchForm.difficulty),
       categoryId: searchForm.categoryId || undefined,
       keyword: searchForm.keyword || undefined
     }
@@ -488,7 +497,7 @@ const handleCreate = () => {
   isEdit.value = false
   currentId.value = null
   formData.questionType = ''
-  formData.difficulty = ''
+  formData.difficulty = 1
   formData.categoryId = ''
   formData.content = ''
   formData.score = 10

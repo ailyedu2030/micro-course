@@ -16,7 +16,7 @@
 
       <div class="page-header">
         <h2 class="page-title">我的评价</h2>
-        <span v-if="pagination.total > 0" class="count-badge">{{ pagination.total }}</span>
+        <span v-if="pagination.totalElements > 0" class="count-badge">{{ pagination.totalElements }}</span>
       </div>
 
       <!-- Filter bar -->
@@ -102,7 +102,7 @@
           <el-pagination
             v-model:current-page="pagination.page"
             v-model:page-size="pagination.size"
-            :total="pagination.total"
+            :total="pagination.totalElements"
             :page-sizes="[10, 20, 50]"
             layout="total, sizes, prev, pager, next"
             @size-change="handleSizeChange"
@@ -122,7 +122,7 @@
 
       <div class="h5-header">
         <h2 class="h5-title">我的评价</h2>
-        <span v-if="pagination.total > 0" class="h5-count-badge">{{ pagination.total }}</span>
+        <span v-if="pagination.totalElements > 0" class="h5-count-badge">{{ pagination.totalElements }}</span>
       </div>
 
       <!-- Filter chips - horizontal scroll -->
@@ -194,11 +194,11 @@
       </div>
 
       <!-- H5 Pagination -->
-      <div v-if="pagination.total > 0" class="h5-pagination">
+      <div v-if="pagination.totalElements > 0" class="h5-pagination">
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.size"
-          :total="pagination.total"
+          :total="pagination.totalElements"
           :page-sizes="[10, 20, 50]"
           layout="prev, pager, next"
           @size-change="handleSizeChange"
@@ -229,7 +229,7 @@ const courseOptions = ref([])
 const pagination = ref({
   page: 1,
   size: 10,
-  total: 0
+  totalElements: 0
 })
 
 // Responsive flag with throttle
@@ -264,6 +264,9 @@ const fetchCourseOptions = async () => {
   }
 }
 
+// P1-修复: 全部评价原始数据（客户端过滤用），后端 getMyReviews 不接受 courseId 参数
+const allReviews = ref([])
+
 const fetchMyReviews = async () => {
   if (!userStore.userInfo?.id) {
     await userStore.getInfo()
@@ -274,12 +277,21 @@ const fetchMyReviews = async () => {
   loading.value = true
   errorState.value = false
   try {
+    // 后端 getMyReviews(userId, page, size) 不支持 courseId 过滤，请求时不传 courseId
     const { data } = await getMyReviews({
-      ...pagination.value,
-      courseId: filterCourseId.value
+      page: 0,
+      size: 1000  // 拉取大量数据，客户端侧过滤
     })
-    reviews.value = data?.items || data || []
-    pagination.value.total = data?.totalElements || 0
+    const items = data?.items || data || []
+    allReviews.value = items
+
+    // 客户端侧按 courseId 过滤 + 分页
+    const filtered = filterCourseId.value
+      ? items.filter(r => r.courseId === filterCourseId.value)
+      : items
+    pagination.value.totalElements = filtered.length
+    const start = (pagination.value.page - 1) * pagination.value.size
+    reviews.value = filtered.slice(start, start + pagination.value.size)
   } catch {
     errorState.value = true
     ElMessage.error('加载评价失败')

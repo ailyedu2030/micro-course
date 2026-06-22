@@ -1,3 +1,9 @@
+<!--
+  管理后台仪表盘
+  路由路径: /admin/dashboard
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="admin-dashboard">
     <!-- 顶部欢迎条 -->
@@ -183,7 +189,8 @@
             <template #template><el-skeleton-item class="skeleton-chart" /></template>
             <template #default>
               <div v-if="trendsError" class="chart-error">
-                <span>加载失败</span>
+                <span>{{ trendsErrorMsg || '核心指标趋势加载失败，请稍后重试' }}</span>
+                <el-button size="small" text type="primary" @click="loadTrends" style="margin-top:8px">重试</el-button>
               </div>
               <div v-else ref="trendsChartRef" class="chart-container" role="img" aria-label="核心指标趋势图表,展示用户与课程增长趋势"></div>
             </template>
@@ -200,7 +207,8 @@
             <template #template><el-skeleton-item class="skeleton-chart" /></template>
             <template #default>
               <div v-if="categoryError" class="chart-error">
-                <span>加载失败</span>
+                <span>{{ categoryErrorMsg || '课程分类分布加载失败，请稍后重试' }}</span>
+                <el-button size="small" text type="primary" @click="loadCategoryStats" style="margin-top:8px">重试</el-button>
               </div>
               <div v-else ref="categoryChartRef" class="chart-container" role="img" aria-label="课程分类分布饼图"></div>
             </template>
@@ -221,7 +229,8 @@
             <template #template><el-skeleton-item class="skeleton-chart" /></template>
             <template #default>
               <div v-if="activityError" class="chart-error">
-                <span>加载失败</span>
+                <span>{{ activityErrorMsg || '最近30天活跃加载失败，请稍后重试' }}</span>
+                <el-button size="small" text type="primary" @click="loadActivity" style="margin-top:8px">重试</el-button>
               </div>
               <div v-else ref="activityChartRef" class="chart-container" role="img" aria-label="最近30天活跃用户趋势图"></div>
             </template>
@@ -362,6 +371,12 @@ async function handleRefresh() {
 }
 
 // ===== 快捷入口 =====
+// FIXME (P0#3): 举报处理功能缺失 — docs/审查todo-list.md §J6 要求管理员审核含"举报处理"，
+// 但当前无任何 report/complaint 相关 Controller/Service/Vue 页面。
+// 需评估：设计决定（暂不实现）还是遗漏。如确认需要，应新增：
+//   - 后端: ReportController + ReportService + report 表 migration
+//   - 前端: /admin/reports 举报管理页面
+// 当前暂以课程审核页面 /courses/review 覆盖审核需求。
 const quickActions = [
   { label: '新增用户', icon: markRaw(Plus), route: '/admin/users' },
   { label: '课程管理', icon: markRaw(Reading), route: '/courses' },
@@ -427,16 +442,19 @@ function animateAllStats(newStats) {
 // Charts
 const trendsLoading = ref(true)
 const trendsError = ref(false)
+const trendsErrorMsg = ref('')
 const trendsChartRef = ref(null)
 let trendsChart = null
 
 const categoryLoading = ref(true)
 const categoryError = ref(false)
+const categoryErrorMsg = ref('')
 const categoryChartRef = ref(null)
 let categoryChart = null
 
 const activityLoading = ref(true)
 const activityError = ref(false)
+const activityErrorMsg = ref('')
 const activityChartRef = ref(null)
 let activityChart = null
 
@@ -524,8 +542,9 @@ async function loadTrends() {
       students: []
     }
     renderTrendsChart(data)
-  } catch {
+  } catch (e) {
     trendsError.value = true
+    trendsErrorMsg.value = e?.message || e?.toString?.() || '趋势数据加载失败'
     renderTrendsChart({ users: [], courses: [], students: [] })
   } finally {
     trendsLoading.value = false
@@ -591,8 +610,9 @@ async function loadCategoryStats() {
     const data = res.data || {}
     const items = Object.entries(data).map(([name, value]) => ({ name, value }))
     renderCategoryChart(items)
-  } catch {
+  } catch (e) {
     categoryError.value = true
+    categoryErrorMsg.value = e?.message || e?.toString?.() || '分类数据加载失败'
     renderCategoryChart([])
   } finally {
     categoryLoading.value = false
@@ -633,8 +653,9 @@ async function loadActivity() {
     const res = await getDailyActivity(30)
     const items = res.data || []
     renderActivityChart(items)
-  } catch {
+  } catch (e) {
     activityError.value = true
+    activityErrorMsg.value = e?.message || e?.toString?.() || '活跃数据加载失败'
     renderActivityChart([])
   } finally {
     activityLoading.value = false

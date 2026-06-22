@@ -18,11 +18,13 @@ import com.microcourse.service.OperationLogService;
 import com.microcourse.util.IpUtil;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
+import com.microcourse.util.LogSanitizer;
+import com.microcourse.util.XssSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -63,13 +65,15 @@ public class AuthServiceImpl implements AuthService {
     private final java.util.Map<String, LocalLoginFailureEntry> localLoginFailCache =
             new java.util.concurrent.ConcurrentHashMap<>();
 
-    private AuthServiceImpl self;
+    /** Self-reference for @Transactional proxy access (via @Lazy constructor injection) */
+    private final AuthServiceImpl self;
 
     public AuthServiceImpl(UserRepository userRepository, JwtUtil jwtUtil,
                            BCryptPasswordEncoder passwordEncoder, RedisUtil redisUtil,
                            OperationLogService operationLogService,
                            HttpServletRequest httpServletRequest,
-                           AdminSettingService adminSettingService) {
+                           AdminSettingService adminSettingService,
+                           @Lazy AuthServiceImpl self) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
@@ -78,17 +82,7 @@ public class AuthServiceImpl implements AuthService {
         this.httpServletRequest = httpServletRequest;
         this.adminSettingService = adminSettingService;
         this.restTemplate = new RestTemplate();
-        this.self = null;
-    }
-
-    /**
-     * Self-injection to access @Transactional methods on the AOP proxy.
-     * Setter injection avoids field injection while allowing self-calls
-     * to pass through Spring's transaction interceptor.
-     */
-    @Autowired
-    public void setSelf(AuthServiceImpl authServiceImpl) {
-        this.self = authServiceImpl;
+        this.self = self;
     }
 
     @Override
@@ -116,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.insert(user);
 
-        log.info("[Register] 学生自助注册成功 username={} userId={}", request.getUsername(), user.getId());
+        log.info("[Register] 学生自助注册成功 username={} userId={}", LogSanitizer.sanitizeForLog(request.getUsername()), user.getId());
 
         // Step 4: 自动登录 - 生成 JWT
         String accessToken = jwtUtil.generateToken(
@@ -222,7 +216,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Login error for user: {}", request.getUsername(), e);
+            log.error("Login error for user: {}", LogSanitizer.sanitizeForLog(request.getUsername()), e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "登录服务异常，请稍后重试");
         }
     }
@@ -574,13 +568,13 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         if (request.getRealName() != null) {
-            user.setRealName(request.getRealName());
+            user.setRealName(XssSanitizer.sanitizePlainText(request.getRealName()));
         }
         if (request.getEmail() != null) {
-            user.setEmail(request.getEmail());
+            user.setEmail(XssSanitizer.sanitizePlainText(request.getEmail()));
         }
         if (request.getPhone() != null) {
-            user.setPhone(request.getPhone());
+            user.setPhone(XssSanitizer.sanitizePlainText(request.getPhone()));
         }
         if (request.getGender() != null) {
             user.setGender(request.getGender());
@@ -626,6 +620,8 @@ public class AuthServiceImpl implements AuthService {
         if (file.getSize() > 2 * 1024 * 1024) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像文件大小不能超过 2MB");
         }
+        // P1 安全修复: 文件魔数校验（JPEG/PNG/WebP）
+        validateImageMagic(file);
         try {
             String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
             java.io.File dir = new java.io.File(uploadDir);
@@ -689,6 +685,38 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void resetLoginLockout() {
         localLoginFailCache.clear();
+    }
+
+    /** P1 安全修复: 图片魔数校验（JPEG: FFD8FF, PNG: 89504E47, WebP: 52494646） */
+    private void validateImageMagic(MultipartFile file) {
+        try (java.io.InputStream is = file.getInputStream()) {
+            byte[] magic = new byte[12];
+            int read = is.read(magic);
+            if (read < 4) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小，无法验证图片格式");
+            }
+            boolean isJpeg = (magic[0] & 0xFF) == 0xFF
+                    && (magic[1] & 0xFF) == 0xD8
+                    && (magic[2] & 0xFF) == 0xFF;
+            boolean isPng = (magic[0] & 0xFF) == 0x89
+                    && magic[1] == 'P'
+                    && magic[2] == 'N'
+                    && magic[3] == 'G';
+            boolean isWebp = (magic[0] & 0xFF) == 'R'
+                    && (magic[1] & 0xFF) == 'I'
+                    && (magic[2] & 0xFF) == 'F'
+                    && (magic[3] & 0xFF) == 'F'
+                    && magic.length >= 12
+                    && magic[8] == 'W'
+                    && magic[9] == 'E'
+                    && magic[10] == 'B'
+                    && magic[11] == 'P';
+            if (!isJpeg && !isPng && !isWebp) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像必须为 JPEG/PNG/WebP 格式（魔数校验失败）");
+            }
+        } catch (java.io.IOException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取头像文件");
+        }
     }
 
     private void clearLoginFailureQuietly(String username) {

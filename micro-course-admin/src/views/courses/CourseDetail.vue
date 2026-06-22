@@ -196,7 +196,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
 import { useUserStore } from '@/store/user'
-import { getCourseById, updateCourse, updateCourseStatus, submitCourseForReview, updateCourseCover } from '@/api/course'
+import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 
@@ -406,7 +406,7 @@ const handleUploadCover = async () => {
 const handleApprove = async () => {
   try {
     await ElMessageBox.confirm('确定审核通过该课程?', '提示', { type: 'warning' })
-    await updateCourseStatus(courseId.value, 2)
+    await approveCourse(courseId.value)
     ElMessage.success('审核通过成功')
     fetchCourse()
   } catch (error) {
@@ -418,8 +418,14 @@ const handleApprove = async () => {
 
 const handleReject = async () => {
   try {
-    await ElMessageBox.confirm('确定驳回该课程?', '提示', { type: 'warning' })
-    await updateCourseStatus(courseId.value, 3)
+    const { value: reason } = await ElMessageBox.prompt('请输入驳回原因', '驳回课程', {
+      confirmButtonText: '确认驳回',
+      cancelButtonText: '取消',
+      type: 'warning',
+      inputPlaceholder: '请输入驳回原因...'
+    })
+    if (reason === null) return
+    await rejectCourse(courseId.value, reason)
     ElMessage.success('驳回成功')
     fetchCourse()
   } catch (error) {
@@ -552,6 +558,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   sortableInstance?.destroy()
+  if (coverPreviewUrl.value) {
+    URL.revokeObjectURL(coverPreviewUrl.value)
+    coverPreviewUrl.value = ''
+  }
 })
 </script>
 

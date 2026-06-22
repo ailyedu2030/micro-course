@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.*;
 import com.microcourse.service.CourseChapterService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,6 +40,7 @@ public class CourseChapterController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("创建章节")
     public R<ChapterVO> create(@Valid @RequestBody ChapterCreateRequest request) {
         ChapterVO vo = chapterService.create(request);
         return R.ok(vo);
@@ -46,6 +48,7 @@ public class CourseChapterController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("更新章节")
     public R<ChapterVO> update(@PathVariable Long id,
                                @Valid @RequestBody ChapterUpdateRequest request) {
         ChapterVO vo = chapterService.update(id, request);
@@ -54,6 +57,7 @@ public class CourseChapterController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("删除章节")
     public R<Void> delete(@PathVariable Long id) {
         chapterService.delete(id);
         return R.ok();
@@ -61,6 +65,7 @@ public class CourseChapterController {
 
     @PutMapping("/sort")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("章节排序")
     public R<Void> sort(@Valid @RequestBody List<ChapterSortRequest> requests) {
         chapterService.sort(requests);
         return R.ok();

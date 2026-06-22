@@ -132,6 +132,8 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/files/system/**").permitAll()
                         // 其他文件（slides 课件、attachments 附件等私有资源）：需登录 + Controller 层 owner 校验
                         .requestMatchers("GET", "/api/files/**").authenticated()
+                        // P0-SEC-FIX: 放行支付回调端点，外部支付网关无法携带 JWT
+                        .requestMatchers("POST", "/api/orders/callback").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

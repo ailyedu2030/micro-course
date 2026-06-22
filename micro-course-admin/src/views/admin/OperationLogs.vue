@@ -292,6 +292,9 @@ let requestSeq = 0
 // P1-4: 搜索防抖定时器
 let searchTimer = null
 
+// P1-10: 自动重试（500 错误重试一次）
+let retryTimer = null
+
 // 搜索表单
 const searchForm = reactive({
   userId: '',
@@ -362,6 +365,8 @@ async function fetchData() {
       size: size.value,
       userId: searchForm.userId ? Number(searchForm.userId) : undefined,
       username: searchForm.username || undefined,
+      // P1-修复: module 参数映射说明——后端 module 列由 action/targetType 推断（如创建课程 → module="COURSE"）
+      // 前端下拉选项值（USER/COURSE/GRADE/SETTING/PERMISSION/AUTH）与后端推断逻辑一致
       module: searchForm.module || undefined,
       action: searchForm.action || undefined,
       startTime: searchForm.startTime || undefined,
@@ -386,8 +391,17 @@ async function fetchData() {
       errorMessage.value = '请求参数有误，请检查筛选条件'
       ElMessage.warning('请求参数有误，请检查筛选条件')
     } else if (status >= 500) {
-      errorMessage.value = '服务器异常，请稍后重试'
-      ElMessage.error('服务器异常，请稍后重试')
+      // P1-10: 服务器错误自动重试一次（3 秒后）
+      if (!retryTimer) {
+        errorMessage.value = '服务器繁忙，3 秒后自动重试...'
+        retryTimer = setTimeout(() => {
+          retryTimer = null
+          fetchData()
+        }, 3000)
+      } else {
+        errorMessage.value = '服务器异常，请稍后重试'
+        ElMessage.error('服务器异常，自动重试失败，请手动重试')
+      }
     } else {
       errorMessage.value = '网络异常，请检查网络连接'
       ElMessage.error('获取操作日志失败')
@@ -483,6 +497,7 @@ onMounted(() => {
 // P1-4: 组件卸载时清理定时器
 onBeforeUnmount(() => {
   if (searchTimer) clearTimeout(searchTimer)
+  if (retryTimer) clearTimeout(retryTimer)
 })
 </script>
 

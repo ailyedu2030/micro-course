@@ -1,3 +1,9 @@
+<!--
+  课程套件广场
+  路由路径: /student/bundles
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="bundle-square">
     <nav class="page-breadcrumb" aria-label="面包屑">
@@ -76,7 +82,7 @@ const fetchBundles = async () => {
     bundles.value = data.items || []
     total.value = data.totalElements || 0
   } catch (e) {
-    console.error('加载课程套件失败:', e)
+    console.error('[BundleSquare] 加载课程套件失败:', e)
     error.value = true
   }
   finally { loading.value = false }

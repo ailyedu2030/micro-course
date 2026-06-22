@@ -25,7 +25,7 @@ import com.microcourse.repository.QuestionRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.QuestionService;
 import com.microcourse.util.SecurityUtil;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,26 +54,23 @@ public class QuestionServiceImpl implements QuestionService {
     private final QuestionChapterRepository questionChapterRepository;
     private final CourseChapterRepository courseChapterRepository;
 
-    /** Self-injection for @Transactional proxy access in batch operations */
-    private QuestionServiceImpl self;
+    /** Self-reference for @Transactional proxy access (via @Lazy constructor injection) */
+    private final QuestionServiceImpl self;
 
     public QuestionServiceImpl(QuestionRepository questionRepository,
                               CourseRepository courseRepository,
                               UserRepository userRepository,
                               CourseCategoryRepository categoryRepository,
                               QuestionChapterRepository questionChapterRepository,
-                              CourseChapterRepository courseChapterRepository) {
+                              CourseChapterRepository courseChapterRepository,
+                              @Lazy QuestionServiceImpl self) {
         this.questionRepository = questionRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.questionChapterRepository = questionChapterRepository;
         this.courseChapterRepository = courseChapterRepository;
-    }
-
-    @Autowired
-    public void setSelf(QuestionServiceImpl questionServiceImpl) {
-        this.self = questionServiceImpl;
+        this.self = self;
     }
 
     @Override
@@ -208,7 +205,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    public PageResult<QuestionVO> page(Long courseId, String questionType, Integer difficulty, Integer page, Integer size) {
+    public PageResult<QuestionVO> page(Long courseId, String questionType, Integer difficulty, String keyword, Long categoryId, Integer page, Integer size) {
         LambdaQueryWrapper<Question> wrapper = new LambdaQueryWrapper<>();
         if (courseId != null) {
             wrapper.eq(Question::getCourseId, courseId);
@@ -218,6 +215,29 @@ public class QuestionServiceImpl implements QuestionService {
         }
         if (difficulty != null) {
             wrapper.eq(Question::getDifficulty, difficulty);
+        }
+        // keyword: 模糊搜索题目内容
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            wrapper.like(Question::getContent, keyword.trim());
+        }
+        // categoryId: 按课程分类筛选（通过 courses.category_id 间接筛选）
+        if (categoryId != null) {
+            List<Long> courseIdsInCategory = courseRepository.selectList(
+                    new LambdaQueryWrapper<Course>()
+                            .eq(Course::getCategoryId, categoryId)
+                            .select(Course::getId)
+            ).stream().map(Course::getId).collect(Collectors.toList());
+            if (courseIdsInCategory.isEmpty()) {
+                return PageResult.of(java.util.List.of(), 0, page, size);
+            }
+            if (courseId == null) {
+                wrapper.in(Question::getCourseId, courseIdsInCategory);
+            }
+            // 如果同时传了 courseId 且 categoryId，按交集处理：
+            // 若该课程不属于此分类则返回空
+            else if (!courseIdsInCategory.contains(courseId)) {
+                return PageResult.of(java.util.List.of(), 0, page, size);
+            }
         }
         wrapper.orderByDesc(Question::getCreatedAt);
 

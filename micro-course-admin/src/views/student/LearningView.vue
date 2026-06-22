@@ -35,7 +35,7 @@
     </div>
 
     <!-- ===================== 3. 主体内容 ===================== -->
-    <div class="learning-body">
+    <div class="learning-body" v-loading="loading" element-loading-text="正在加载课程..." element-loading-background="var(--el-bg-color-page)">
       <!-- 左：主内容区（60%） -->
       <main class="content-main">
         <!-- 视频播放器 -->
@@ -299,6 +299,7 @@ async function loadProgress() {
     }
   } catch (err) {
     console.error('loadProgress error:', err)
+    ElMessage.warning('学习进度加载失败，部分数据可能不完整')
   }
 }
 

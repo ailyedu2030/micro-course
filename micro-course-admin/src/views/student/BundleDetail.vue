@@ -1,3 +1,9 @@
+<!--
+  课程套件详情
+  路由路径: /student/bundles/:id
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="bundle-detail">
     <el-page-header @back="$router.back()" :content="bundle?.title" class="mg-bottom-16" />
@@ -94,7 +100,8 @@ onMounted(async () => {
 
   if (isLoggedIn.value) {
     try {
-      const { data } = await getMyEnrollments(userStore.userInfo.id)
+      // P1-修复: 不传 userId，后端从 JWT 获取用户 ID（避免 number 被序列化为 ?0=N 查询参数）
+      const { data } = await getMyEnrollments()
       const enrolledCourseIds = new Set((data.items || data || []).map(e => e.courseId))
       const requiredIds = items.value.filter(i => i.isRequired).map(i => i.courseId)
       isEnrolled.value = requiredIds.every(id => enrolledCourseIds.has(id))

@@ -330,7 +330,7 @@ async function fetchData() {
     // 映射成绩数据
     tableData.value = items.map((item) => ({
       id: item.id,
-      realName: item.studentName || item.userName || item.realName || '-',
+      realName: item.realName || '-',     // 统一使用后端返回的 realName 字段
       courseName: item.courseName || '',
       score: item.score != null ? Math.round(item.score * 10) / 10 : null,
       comment: item.comment || '',

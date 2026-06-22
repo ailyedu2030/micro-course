@@ -1,3 +1,9 @@
+<!--
+  我的订单
+  路由路径: /student/orders
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="my-orders">
     <nav class="page-breadcrumb" aria-label="面包屑">
@@ -50,6 +56,14 @@
 支付
 </el-button>
             <el-button
+              v-if="row.status === 'PAID'"
+              size="small" type="danger" plain
+              :loading="refundingId === row.id"
+              @click="handleRefund(row)"
+            >
+申请退款
+</el-button>
+            <el-button
               v-if="row.courseId"
               size="small"
               @click="goCourse(row.courseId)"
@@ -77,12 +91,14 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMyOrders, payOrder } from '@/api/order'
+import { ElMessageBox } from 'element-plus'
+import { getMyOrders, payOrder, refundOrder } from '@/api/order'
 import { useAsyncData } from '@/composables/useAsyncData'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 
 const router = useRouter()
 const payingId = ref(null)
+const refundingId = ref(null)
 const orders = ref([])
 const page = ref(0)
 const size = ref(20)
@@ -112,6 +128,26 @@ const handlePay = async (row) => {
     handleError(e, '支付失败')
   } finally {
     payingId.value = null
+  }
+}
+
+const handleRefund = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定申请退款？退款后课程访问权限将被收回。', '确认退款', {
+      confirmButtonText: '确定退款',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    refundingId.value = row.id
+    await refundOrder(row.id)
+    handleSuccess('退款申请已提交')
+    fetchOrders()
+  } catch (e) {
+    if (e !== 'cancel') {
+      handleError(e, '退款失败')
+    }
+  } finally {
+    refundingId.value = null
   }
 }
 

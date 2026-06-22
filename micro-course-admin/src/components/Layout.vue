@@ -110,6 +110,10 @@
 
       <!-- 主体内容 -->
       <el-main class="layout-main">
+        <!-- 侧边栏切换时的淡入遮罩（P2-7: 折叠/展开进度指示） -->
+        <transition name="sidebar-shade-fade">
+          <div v-if="sidebarTransitioning" class="sidebar-shade-overlay" />
+        </transition>
         <router-view v-slot="{ Component }">
           <transition name="page-fade" mode="out-in">
             <component :is="Component" />
@@ -231,10 +235,14 @@ const roleLabel = computed(() => {
   return roleMap[userStore.role] || userStore.role || ''
 })
 
-// 切换折叠
+// 切换折叠（P2-7: 添加过渡状态指示）
+const sidebarTransitioning = ref(false)
 function toggleCollapse() {
   collapsed.value = !collapsed.value
   localStorage.setItem('sidebar_collapsed', String(collapsed.value))
+  // 显示淡入遮罩，300ms 后自动消失
+  sidebarTransitioning.value = true
+  setTimeout(() => { sidebarTransitioning.value = false }, 300)
 }
 
 // 处理下拉命令
@@ -558,6 +566,25 @@ onUnmounted(() => {
   padding: var(--space-4);
   overflow-y: auto;
   flex: 1;
+  position: relative;
+}
+
+/* 侧边栏折叠/展开时的淡入遮罩（P2-7） */
+.sidebar-shade-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.12);
+  z-index: 10;
+  pointer-events: none;
+  border-radius: var(--radius-md);
+}
+.sidebar-shade-fade-enter-active,
+.sidebar-shade-fade-leave-active {
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar-shade-fade-enter-from,
+.sidebar-shade-fade-leave-to {
+  opacity: 0;
 }
 
 /* ==================== 页面切换动画 (已迁移到 design-tokens.css .page-fade-*) ==================== */

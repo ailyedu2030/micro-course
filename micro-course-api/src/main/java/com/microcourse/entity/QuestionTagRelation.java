@@ -3,6 +3,7 @@ package com.microcourse.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,9 @@ public class QuestionTagRelation {
 
     @TableField("tag_id")
     private Long tagId;
+
+    @TableLogic(value = "null", delval = "now()")
+    private LocalDateTime deletedAt;
 
     public QuestionTagRelation() {
     }
@@ -44,5 +48,13 @@ public class QuestionTagRelation {
 
     public void setTagId(Long tagId) {
         this.tagId = tagId;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

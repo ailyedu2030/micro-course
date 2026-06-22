@@ -503,7 +503,30 @@ function handleDownloadTemplate() {
 }
 
 function handleExport() {
-  ElMessage.info('导出功能需要后端支持')
+  // P1-修复: 实现真正的导出功能——使用客户端 xlsx 库导出当前列表数据
+  // 后端 GET /api/users/export 暂未实现，待后端提供后优先使用后端导出
+  if (!tableData.value.length) {
+    ElMessage.warning('暂无数据可导出')
+    return
+  }
+  const exportData = tableData.value.map((item, index) => ({
+    序号: index + 1,
+    ID: item.id,
+    账号: item.username || '',
+    姓名: item.realName || '',
+    角色: getRoleLabel(item.role),
+    院系: item.departmentName || '',
+    专业: item.majorName || '',
+    班级: item.className || '',
+    状态: getStatusLabel(item.status),
+    注册时间: formatTime(item.createdAt)
+  }))
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '用户列表')
+  const date = new Date().toISOString().split('T')[0]
+  XLSX.writeFile(wb, `users-${date}.xlsx`)
+  ElMessage.success('导出成功')
 }
 
 // 查看详情

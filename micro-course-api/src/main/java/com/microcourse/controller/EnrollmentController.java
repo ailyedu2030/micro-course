@@ -178,6 +178,10 @@ public class EnrollmentController {
     public void exportEnrollments(
             @RequestParam Long courseId,
             HttpServletResponse response) throws IOException {
+        // P0-SEC-FIX: TEACHER 角色添加课程所有权校验，防止 IDOR 导出任意课程数据
+        if (hasRole("TEACHER")) {
+            enrollmentService.assertCourseOwnership(courseId);
+        }
         List<EnrollmentVO> enrollments = enrollmentService.getCourseEnrollments(courseId);
 
         // 设置响应头

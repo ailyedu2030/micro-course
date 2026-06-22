@@ -1,4 +1,4 @@
--- V52__lessons_table.sql
+-- V53__lessons_table.sql
 -- Phase 0: 教师工作台基础设施
 -- 章节→课时层次结构
 -- 迁移：videos.chapterId → lessons, exercises.chapterId → lessons

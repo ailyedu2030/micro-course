@@ -60,6 +60,17 @@ public class OrderController {
         return R.ok(orderService.cancelOrder(id));
     }
 
+    /**
+     * J9-02: 申请退款（将 PAID 订单转为 REFUNDED）
+     * POST /api/orders/{id}/refund
+     */
+    @PostMapping("/{id}/refund")
+    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
+    @AuditedLog("订单退款")
+    public R<OrderVO> refund(@PathVariable Long id) {
+        return R.ok(orderService.refund(id));
+    }
+
     @PostMapping("/callback")
     public R<Void> paymentCallback(@RequestBody Map<String, String> params) {
         orderService.paymentCallback(params);

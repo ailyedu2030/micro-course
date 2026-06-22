@@ -61,8 +61,11 @@ public class TtsController {
                                             @PathVariable Integer pageNumber) {
         verifyAccess(courseId);
         try {
-            Path audioPath = Paths.get(storagePath, String.valueOf(courseId),
-                    "audio", "page_" + pageNumber + ".mp3");
+            Path basePath = Paths.get(storagePath, String.valueOf(courseId), "audio").toRealPath();
+            Path audioPath = basePath.resolve("page_" + pageNumber + ".mp3").normalize();
+            if (!audioPath.startsWith(basePath)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法的音频路径");
+            }
             byte[] audioBytes = Files.readAllBytes(audioPath);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, "audio/mpeg")

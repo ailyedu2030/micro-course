@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -51,6 +52,7 @@ public class GradeController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("教师提交成绩")
     public R<GradeVO> create(@Valid @RequestBody GradeCreateRequest request) {
         return R.ok(gradeService.create(request, getCurrentUserId()));
     }
@@ -60,18 +62,21 @@ public class GradeController {
      */
     @PostMapping("/teacher-grade")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("教师批改成绩")
     public R<GradeVO> teacherGrade(@Valid @RequestBody GradeTeacherSubmitRequest request) {
         return R.ok(gradeService.teacherGrade(request, getCurrentUserId()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("更新成绩")
     public R<GradeVO> update(@PathVariable Long id, @Valid @RequestBody GradeUpdateRequest request) {
         return R.ok(gradeService.update(id, request, getCurrentUserId()));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("删除成绩")
     public R<Void> delete(@PathVariable Long id) {
         gradeService.delete(id);
         return R.ok();
@@ -96,6 +101,7 @@ public class GradeController {
      */
     @PostMapping("/{recordId}/manual-grade")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("手动评阅")
     public R<Void> manualGrade(@PathVariable Long recordId, @RequestBody Map<String, Object> body) {
         gradeService.manualGrade(recordId, body, getCurrentUserId());
         return R.ok();

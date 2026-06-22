@@ -100,6 +100,8 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
+    // P1-修复: 当前为"尽力提交"模式——多课程串行下单，中间失败前面订单仍然有效
+    // TODO: 后续可改为后端批量下单接口（事务原子性）或 catch 中调用取消已成功订单逻辑
     const items = [...store.items]
     for (const item of items) {
       try {

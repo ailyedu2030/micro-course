@@ -276,6 +276,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { VideoPlay, Bell, Lock, Setting } from '@element-plus/icons-vue'
+import { getMyPreferences, updateMyPreferences } from '@/api/notification-preference'
 
 const STORAGE_KEY = 'micro_course_settings'
 
@@ -302,36 +303,53 @@ const handleResize = () => {
   }, 200)
 }
 
-const loadSettings = () => {
+const loadSettings = async () => {
   loading.value = true
   error.value = false
   try {
+    // 优先从后端加载通知偏好设置
+    const { data } = await getMyPreferences()
+    if (data) {
+      settings.value.notificationEnabled = data.allowSite !== false
+      settings.value.emailNotification = data.allowEmail === true
+    }
+    // 播放/隐私/辅助功能从 localStorage 加载（或默认值）
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
       settings.value = {
-        playbackSpeed: parsed.playbackSpeed || '1',
+        playbackSpeed: parsed.playbackSpeed || settings.value.playbackSpeed,
         autoPlayNext: parsed.autoPlayNext !== false,
-        notificationEnabled: parsed.notificationEnabled !== false,
-        emailNotification: parsed.emailNotification === true,
-        profileVisibility: parsed.profileVisibility || 'public',
+        notificationEnabled: settings.value.notificationEnabled,
+        emailNotification: settings.value.emailNotification,
+        profileVisibility: parsed.profileVisibility || settings.value.profileVisibility,
         showProgress: parsed.showProgress !== false,
         reducedMotion: parsed.reducedMotion === true,
         highContrast: parsed.highContrast === true
       }
     }
+    // 加载成功后同步到 localStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
   } catch {
-    error.value = true
-    ElMessage.error('加载设置失败')
-    settings.value = {
-      playbackSpeed: '1',
-      autoPlayNext: true,
-      notificationEnabled: true,
-      emailNotification: false,
-      profileVisibility: 'public',
-      showProgress: true,
-      reducedMotion: false,
-      highContrast: false
+    // 后端不可用时回退到 localStorage
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        settings.value = {
+          playbackSpeed: parsed.playbackSpeed || '1',
+          autoPlayNext: parsed.autoPlayNext !== false,
+          notificationEnabled: parsed.notificationEnabled !== false,
+          emailNotification: parsed.emailNotification === true,
+          profileVisibility: parsed.profileVisibility || 'public',
+          showProgress: parsed.showProgress !== false,
+          reducedMotion: parsed.reducedMotion === true,
+          highContrast: parsed.highContrast === true
+        }
+      }
+    } catch {
+      error.value = true
+      ElMessage.error('加载设置失败')
     }
   } finally {
     loading.value = false
@@ -339,9 +357,19 @@ const loadSettings = () => {
 }
 
 let saveTimer = null
-const handleSave = () => {
+const handleSave = async () => {
   if (saveTimer) return
   saveTimer = setTimeout(() => { saveTimer = null }, 2000)
+  try {
+    // 保存通知偏好到后端
+    await updateMyPreferences({
+      allowSite: settings.value.notificationEnabled,
+      allowEmail: settings.value.emailNotification
+    })
+  } catch {
+    // 后端保存失败时静默降级
+  }
+  // 所有设置持久化到 localStorage 作为离线 fallback
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
   } catch {

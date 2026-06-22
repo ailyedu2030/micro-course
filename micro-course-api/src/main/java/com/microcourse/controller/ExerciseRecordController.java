@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.ExerciseRecordVO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.SubmitAnswerRequest;
@@ -24,6 +25,7 @@ public class ExerciseRecordController {
 
     @PostMapping("/submit")
     @PreAuthorize("hasRole('STUDENT')")
+    @AuditedLog("提交练习答案")
     public R<ExerciseRecordVO> submitAnswer(
             @Valid @RequestBody SubmitAnswerRequest request,
             Authentication authentication) {

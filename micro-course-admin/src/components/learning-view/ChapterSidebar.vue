@@ -35,7 +35,7 @@
           </template>
           <div class="lesson-list">
             <div
-              v-for="lesson in ch.lessons"
+              v-for="lesson in getPaginatedLessons(ch.id)"
               :key="lesson.id"
               class="lesson-item"
               :class="{ active: currentLessonId === lesson.id, completed: lesson.status === 'COMPLETED' }"
@@ -53,6 +53,17 @@
               </span>
               <span class="lesson-title">{{ lesson.title }}</span>
               <span v-if="lesson.duration" class="lesson-duration">{{ lesson.duration }}</span>
+            </div>
+            <!-- 课时分页（章节课时超过20页时显示） -->
+            <div v-if="getLessonPageInfo(ch.id).total > MAX_LESSONS_PER_PAGE" class="lesson-pagination">
+              <el-pagination
+                small
+                layout="prev, pager, next"
+                :page-size="MAX_LESSONS_PER_PAGE"
+                :total="getLessonPageInfo(ch.id).total"
+                :current-page="getLessonPageInfo(ch.id).page"
+                @current-change="(p) => setLessonPage(ch.id, p)"
+              />
             </div>
           </div>
         </el-collapse-item>
@@ -98,7 +109,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { Close, List, VideoPlay, VideoCamera, CircleCheck, DataAnalysis, Edit } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -129,6 +140,34 @@ function getChapterProgress(chapterId) {
   if (!ch?.lessons?.length) return 0
   const completed = ch.lessons.filter(l => l.status === 'COMPLETED').length
   return Math.round((completed / ch.lessons.length) * 100)
+}
+
+// 性能优化：每个章节最多显示 20 节课，超出部分通过分页查看
+const MAX_LESSONS_PER_PAGE = 20
+const chapterPageMap = ref({})
+
+function getPaginatedLessons(chapterId) {
+  const ch = props.chapters.find(c => c.id === chapterId)
+  if (!ch?.lessons) return []
+  const lessons = ch.lessons
+  const page = chapterPageMap.value[chapterId] || 1
+  const totalPages = Math.ceil(lessons.length / MAX_LESSONS_PER_PAGE)
+  if (lessons.length <= MAX_LESSONS_PER_PAGE) return lessons
+  const start = (page - 1) * MAX_LESSONS_PER_PAGE
+  return lessons.slice(start, start + MAX_LESSONS_PER_PAGE)
+}
+
+function getLessonPageInfo(chapterId) {
+  const ch = props.chapters.find(c => c.id === chapterId)
+  if (!ch?.lessons) return { total: 0, pages: 0, page: 1 }
+  const total = ch.lessons.length
+  const pages = Math.ceil(total / MAX_LESSONS_PER_PAGE)
+  const page = chapterPageMap.value[chapterId] || 1
+  return { total, pages, page }
+}
+
+function setLessonPage(chapterId, newPage) {
+  chapterPageMap.value = { ...chapterPageMap.value, [chapterId]: newPage }
 }
 </script>
 
@@ -265,6 +304,15 @@ function getChapterProgress(chapterId) {
 .stat-label { font-size: var(--text-xs); color: var(--color-primary); }
 .stats-actions { display: flex; gap: var(--space-2); }
 .stats-actions .el-button { flex: 1; }
+
+/* 课时分页 */
+.lesson-pagination {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-2) 0;
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--el-border-color-lighter);
+}
 
 /* 移动端 */
 @media (max-width: 768px) {

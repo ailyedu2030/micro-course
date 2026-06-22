@@ -104,9 +104,13 @@
       <!-- 空状态 -->
       <el-empty
         v-else-if="!loading && tableData.length === 0"
-        description="暂无学员数据"
+        description="未找到匹配的学员，尝试更换筛选条件"
         :image-size="120"
-      />
+      >
+        <template #default>
+          <el-button type="primary" @click="handleReset">清除筛选</el-button>
+        </template>
+      </el-empty>
 
       <!-- 数据表格 -->
       <el-table
@@ -246,7 +250,7 @@ import {
   Search, RefreshRight, Download, View, Message
 } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
-import { getCourseEnrollments, getEnrollments, getStudentDetail } from '@/api/enrollment'
+import { getCourseEnrollments, getEnrollments, getStudentDetail, exportEnrollments } from '@/api/enrollment'
 import { sendNotification } from '@/api/notification'
 import { useUserStore } from '@/store/user'
 
@@ -448,12 +452,34 @@ async function confirmSendMessage() {
   }
 }
 
-// 导出 Excel
-function handleExport() {
+// 导出 Excel（P1-修复: 优先使用后端导出接口，客户端 XLSX 作为兜底）
+async function handleExport() {
   if (!tableData.value.length) {
     ElMessage.warning('暂无数据可导出')
     return
   }
+
+  // 优先调用后端导出接口（支持服务端分页全量导出）
+  if (searchForm.courseId) {
+    try {
+      const res = await exportEnrollments(searchForm.courseId)
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const date = new Date().toISOString().split('T')[0]
+      link.download = `students-course-${searchForm.courseId}-${date}.xlsx`
+      link.click()
+      URL.revokeObjectURL(url)
+      ElMessage.success('导出成功')
+      return
+    } catch (err) {
+      console.warn('[StudentList] 后端导出失败，回退到客户端导出', err)
+      // 后端导出失败时回退到客户端 XLSX 导出
+    }
+  }
+
+  // 客户端 XLSX 兜底导出（当前页数据）
   const exportData = tableData.value.map((item, index) => ({
     序号: index + 1,
     学号: item.username || '',

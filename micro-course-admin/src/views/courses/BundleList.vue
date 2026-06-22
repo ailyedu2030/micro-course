@@ -1,3 +1,9 @@
+<!--
+  课程套餐管理
+  路由路径: /bundles
+  Phase 9
+  Author: Phase9-Development-Team
+-->
 <template>
   <div class="bundle-list">
     <el-page-header @back="$router.push('/courses')" content="课程套餐管理" />

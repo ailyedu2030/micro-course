@@ -230,7 +230,7 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     @Override
-    public PageResult<ExerciseVO> page(Integer courseId, Integer chapterId, Integer page, Integer size) {
+    public PageResult<ExerciseVO> page(Long courseId, Long chapterId, Integer page, Integer size) {
         LambdaQueryWrapper<Exercise> wrapper = new LambdaQueryWrapper<>();
         if (courseId != null) {
             wrapper.eq(Exercise::getCourseId, courseId);

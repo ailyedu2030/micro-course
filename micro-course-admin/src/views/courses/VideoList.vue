@@ -189,7 +189,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
@@ -351,61 +351,16 @@ const handleBatchUpload = async ({ file }) => {
     formData.append('courseId', courseId)
     formData.append('chapterId', chapterId)
 
-    const xhr = new XMLHttpRequest()
-    queueItem.xhr = xhr
-
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable) {
-        queueItem.percentage = Math.round((e.loaded / e.total) * 100)
-      }
-    })
-
-    xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        queueItem.status = 'success'
-        uploadSuccess.value++
-        ElMessage.success(`${file.name} 上传成功`)
-        fetchData()
-      } else {
-        queueItem.status = 'error'
-        uploadError.value++
-        try {
-          const err = JSON.parse(xhr.responseText)
-          ElMessage.error(`${file.name} 上传失败: ${err.message || '未知错误'}`)
-        } catch {
-          ElMessage.error(`${file.name} 上传失败`)
-        }
-      }
-      delete uploadXHRMap.value[file.name]
-    })
-
-    xhr.addEventListener('error', () => {
-      queueItem.status = 'error'
-      uploadError.value++
-      ElMessage.error(`${file.name} 上传失败`)
-      delete uploadXHRMap.value[file.name]
-    })
-
-    xhr.addEventListener('abort', () => {
-      queueItem.status = 'cancelled'
-      delete uploadXHRMap.value[file.name]
-    })
-
-    const baseURL = import.meta.env.VITE_API_BASE_URL
-    if (!baseURL) {
-      ElMessage.error('系统配置错误：缺少 API 地址配置')
-      return
-    }
-    xhr.open('POST', `${baseURL}/api/videos/upload`)
-    const token = getToken()
-    if (token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-    }
-    xhr.send(formData)
-  } catch {
+    // Use API wrapper (uploadVideo) for proper request handling through the unified request layer
+    await uploadVideo(formData)
+    queueItem.status = 'success'
+    uploadSuccess.value++
+    ElMessage.success(`${file.name} 上传成功`)
+    fetchData()
+  } catch (e) {
     queueItem.status = 'error'
     uploadError.value++
-    ElMessage.error(`${file.name} 上传失败`)
+    ElMessage.error(`${file.name} 上传失败: ${e?.response?.data?.message || e?.message || '未知错误'}`)
   }
 }
 
@@ -523,6 +478,13 @@ const handlePreviewCover = (row) => {
 
 onMounted(() => {
   fetchCourses()
+})
+
+onUnmounted(() => {
+  // 清理未释放的封面预览 blob URL
+  if (currentCoverUrl.value && currentCoverUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(currentCoverUrl.value)
+  }
 })
 </script>
 

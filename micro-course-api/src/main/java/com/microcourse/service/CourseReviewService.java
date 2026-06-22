@@ -53,4 +53,16 @@ public interface CourseReviewService {
      * @return 回复列表
      */
     java.util.List<CourseReviewVO> listReplies(Long parentId);
+
+    /**
+     * 审核通过评价
+     * @param id 评价ID
+     */
+    void approveReview(Long id);
+
+    /**
+     * 审核驳回评价（逻辑驳回，不物理删除）
+     * @param id 评价ID
+     */
+    void rejectReview(Long id);
 }

@@ -239,6 +239,11 @@
               </div>
             </transition>
 
+            <!-- Watermark Overlay (P1-13: 前端提示性水印 - 用户ID+时间戳) -->
+            <div class="video-watermark-overlay">
+              <span class="watermark-text">{{ watermarkText }}</span>
+            </div>
+
             <!-- Custom Controls -->
             <div class="video-controls" :class="{ visible: controlsVisible || !isPlaying }">
               <!-- Progress Bar -->
@@ -657,6 +662,14 @@ let hlsInstance = ref(null)
 // Learning objectives overlay
 const showObjectives = ref(false)
 let objectivesTimer = null
+
+// P1-13: 前端提示性水印（用户ID+时间戳）
+const watermarkText = computed(() => {
+  const uid = userStore.userInfo?.id || 'unknown'
+  const now = new Date()
+  const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+  return `用户 ${uid} · ${ts}`
+})
 
 // Mobile touch gestures
 let touchStartX = 0
@@ -2135,6 +2148,24 @@ onBeforeUnmount(() => {
   color: var(--el-color-success);
 }
 
+/* P1-13: Watermark Overlay — 半透明前端提示性水印 */
+.video-watermark-overlay {
+  position: absolute;
+  bottom: 50px;
+  right: 12px;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.watermark-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
 /* Video Info Card */
 .video-info-card {
   max-width: 1280px;
@@ -2538,6 +2569,52 @@ onBeforeUnmount(() => {
 
   .video-title-overlay {
     font-size: var(--text-xs);
+  }
+}
+
+/* ============================================================
+   P1-6: Portrait Orientation — Enlarged controls for portrait mode
+   ============================================================ */
+@media (orientation: portrait) {
+  .video-controls {
+    padding: var(--space-5) var(--space-5) calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .progress-track {
+    height: 10px;
+    margin-bottom: var(--space-5);
+  }
+
+  .controls-row {
+    gap: var(--space-3);
+  }
+
+  .controls-left,
+  .controls-right {
+    gap: var(--space-3);
+  }
+
+  .ctrl-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ctrl-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .time-display {
+    font-size: var(--text-base);
+  }
+
+  .volume-slider {
+    width: 100px;
+  }
+
+  .speed-ctrl-btn {
+    font-size: var(--text-base);
+    padding: 0 var(--space-4);
   }
 }
 
