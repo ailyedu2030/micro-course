@@ -44,14 +44,14 @@ public class TeachingClassController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<TeachingClassVO> create(@Valid @RequestBody TeachingClassCreateRequest request) {
         TeachingClassVO vo = teachingClassService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<TeachingClassVO> update(@PathVariable Long id,
                                      @Valid @RequestBody TeachingClassUpdateRequest request) {
         TeachingClassVO vo = teachingClassService.update(id, request);
@@ -73,7 +73,7 @@ public class TeachingClassController {
     }
 
     @PostMapping("/{id}/students")
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> addStudent(@PathVariable Long id,
                               @Valid @RequestBody AddStudentRequest request) {
         teachingClassService.addStudent(id, request.getUserId());
@@ -81,14 +81,14 @@ public class TeachingClassController {
     }
 
     @DeleteMapping("/{id}/students/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> removeStudent(@PathVariable Long id, @PathVariable Long userId) {
         teachingClassService.removeStudent(id, userId);
         return R.ok();
     }
 
     @PutMapping("/{id}/students/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> updateStudentStatus(@PathVariable Long id,
                                       @PathVariable Long userId,
                                       @Valid @RequestBody UpdateStudentStatusRequest request) {
