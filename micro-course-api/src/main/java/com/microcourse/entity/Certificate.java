@@ -20,6 +20,12 @@ public class Certificate {
     @TableField("course_id")
     private Long courseId;
 
+    @TableField("cert_type")
+    private String certType;
+
+    @TableField("micro_specialty_id")
+    private Long microSpecialtyId;
+
     @TableField("cert_code")
     private String certCode;
 
@@ -38,6 +44,10 @@ public class Certificate {
     public void setUserId(Long userId) { this.userId = userId; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
+    public String getCertType() { return certType; }
+    public void setCertType(String certType) { this.certType = certType; }
+    public Long getMicroSpecialtyId() { return microSpecialtyId; }
+    public void setMicroSpecialtyId(Long microSpecialtyId) { this.microSpecialtyId = microSpecialtyId; }
     public String getCertCode() { return certCode; }
     public void setCertCode(String certCode) { this.certCode = certCode; }
     public LocalDateTime getIssuedAt() { return issuedAt; }

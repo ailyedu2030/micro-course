@@ -1,0 +1,118 @@
+package com.microcourse.controller;
+
+import com.microcourse.dto.PageResult;
+import com.microcourse.dto.R;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
+import com.microcourse.service.MicroSpecialtyEnrollmentService;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 微专业修读 Controller。
+ * 职责：报名 + 审批 + 班级导入 + 退出/重新申请 + 证书 + 修读名单。
+ */
+@RestController
+@RequestMapping("/api/micro-specialty-enrollments")
+@Validated
+public class MicroSpecialtyEnrollmentController {
+
+    private final MicroSpecialtyEnrollmentService enrollmentService;
+
+    public MicroSpecialtyEnrollmentController(MicroSpecialtyEnrollmentService enrollmentService) {
+        this.enrollmentService = enrollmentService;
+    }
+
+    /** 学生自主报名 → PENDING */
+    @PostMapping("/apply")
+    @PreAuthorize("hasRole('STUDENT')")
+    public R<MicroSpecialtyEnrollmentVO> apply(@RequestBody Map<String, Object> body) {
+        Long msId = body.get("msId") != null
+                ? ((Number) body.get("msId")).longValue()
+                : null;
+        MicroSpecialtyEnrollmentVO vo = enrollmentService.apply(msId);
+        return R.ok(vo);
+    }
+
+    /** 审批通过 → APPROVED */
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    public R<MicroSpecialtyEnrollmentVO> approve(@PathVariable Long id) {
+        MicroSpecialtyEnrollmentVO vo = enrollmentService.approve(id);
+        return R.ok(vo);
+    }
+
+    /** 驳回报名 → REJECTED */
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String reason = body.getOrDefault("reason", "");
+        enrollmentService.reject(id, reason);
+        return R.ok();
+    }
+
+    /** 班级批量导入 → APPROVED */
+    @PostMapping("/class-import")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    public R<Integer> classImport(@RequestBody Map<String, Object> body) {
+        Long msId = body.get("msId") != null
+                ? ((Number) body.get("msId")).longValue()
+                : null;
+        Long classId = body.get("classId") != null
+                ? ((Number) body.get("classId")).longValue()
+                : null;
+        int count = enrollmentService.classImport(msId, classId);
+        return R.ok(count);
+    }
+
+    /** 退出修读 */
+    @PostMapping("/{id}/drop")
+    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
+    public R<Void> drop(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        boolean cascade = body.get("cascade") instanceof Boolean
+                ? (Boolean) body.get("cascade") : false;
+        String reason = body.get("reason") instanceof String
+                ? (String) body.get("reason") : "";
+        enrollmentService.drop(id, cascade, reason);
+        return R.ok();
+    }
+
+    /** 重新申请 */
+    @PostMapping("/{id}/reapply")
+    @PreAuthorize("hasRole('STUDENT')")
+    public R<MicroSpecialtyEnrollmentVO> reapply(@PathVariable Long id) {
+        MicroSpecialtyEnrollmentVO vo = enrollmentService.reapply(id);
+        return R.ok(vo);
+    }
+
+    /** 我的修读列表 */
+    @GetMapping("/my")
+    @PreAuthorize("hasRole('STUDENT')")
+    public R<List<MicroSpecialtyEnrollmentVO>> getMyEnrollments() {
+        List<MicroSpecialtyEnrollmentVO> list = enrollmentService.getMyEnrollments();
+        return R.ok(list);
+    }
+
+    /** 微专业修读名单 */
+    @GetMapping("/by-specialty/{msId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    public R<PageResult<MicroSpecialtyEnrollmentVO>> listEnrollments(
+            @PathVariable Long msId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        PageResult<MicroSpecialtyEnrollmentVO> result = enrollmentService.listEnrollments(msId, page, size, status);
+        return R.ok(result);
+    }
+
+    /** 手动颁发证书 */
+    @PostMapping("/{id}/issue-certificate")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    public R<Void> issueCertificate(@PathVariable Long id) {
+        enrollmentService.issueCertificate(id);
+        return R.ok();
+    }
+}
