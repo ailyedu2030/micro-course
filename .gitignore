@@ -116,3 +116,4 @@ page-state.yml
 .gstack/
 console-errors-all.log
 *.log
+dump.rdb

@@ -21,6 +21,7 @@ import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.PaymentRepository;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.OrderService;
+import org.springframework.context.annotation.Lazy;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,7 @@ public class OrderServiceImpl implements OrderService {
                             PaymentRepository paymentRepository,
                             CourseRepository courseRepository,
                             CourseBundleItemRepository bundleItemRepository,
-                            EnrollmentService enrollmentService) {
+                            @Lazy EnrollmentService enrollmentService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.courseRepository = courseRepository;
