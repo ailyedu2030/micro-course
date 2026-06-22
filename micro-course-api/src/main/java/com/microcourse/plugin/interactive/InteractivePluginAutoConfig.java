@@ -14,7 +14,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
-@ConditionalOnProperty(name = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(name = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 @EnableAsync
 @ComponentScan("com.microcourse.plugin.interactive")
 public class InteractivePluginAutoConfig {

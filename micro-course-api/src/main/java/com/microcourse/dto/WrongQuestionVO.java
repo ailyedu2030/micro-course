@@ -10,6 +10,12 @@ public class WrongQuestionVO {
     private String questionType;
     private String questionContent;
     private Long courseId;
+    private Long chapterId;           // P0-3: 章节ID
+    private String courseTitle;       // P0-3: 课程标题
+    private String chapterTitle;      // P0-3: 章节标题
+    private String correctAnswer;     // P0-3: 正确答案
+    private String content;           // P0-3: 题目内容（冗余 questionContent，兼容前端）
+    private Integer watchPosition;    // P0-3: 视频观看位置
     private Integer wrongCount;
     private LocalDateTime lastWrongAt;
     private LocalDateTime createdAt;
@@ -28,6 +34,18 @@ public class WrongQuestionVO {
     public void setQuestionContent(String questionContent) { this.questionContent = questionContent; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
+    public Long getChapterId() { return chapterId; }
+    public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
+    public String getCourseTitle() { return courseTitle; }
+    public void setCourseTitle(String courseTitle) { this.courseTitle = courseTitle; }
+    public String getChapterTitle() { return chapterTitle; }
+    public void setChapterTitle(String chapterTitle) { this.chapterTitle = chapterTitle; }
+    public String getCorrectAnswer() { return correctAnswer; }
+    public void setCorrectAnswer(String correctAnswer) { this.correctAnswer = correctAnswer; }
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+    public Integer getWatchPosition() { return watchPosition; }
+    public void setWatchPosition(Integer watchPosition) { this.watchPosition = watchPosition; }
     public Integer getWrongCount() { return wrongCount; }
     public void setWrongCount(Integer wrongCount) { this.wrongCount = wrongCount; }
     public LocalDateTime getLastWrongAt() { return lastWrongAt; }

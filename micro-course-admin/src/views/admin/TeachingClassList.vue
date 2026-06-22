@@ -14,12 +14,6 @@
     <!-- 搜索区 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="课程名">
-          <el-input v-model="searchForm.courseName" placeholder="请输入课程名称" clearable class="search-input" />
-        </el-form-item>
-        <el-form-item label="教师名">
-          <el-input v-model="searchForm.teacherName" placeholder="请输入教师名称" clearable class="search-input" />
-        </el-form-item>
         <el-form-item label="学期">
           <el-input v-model="searchForm.semester" placeholder="如 2024-1" clearable class="search-input" />
         </el-form-item>
@@ -60,18 +54,18 @@
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="教学班名称" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="courseName" label="课程名称" min-width="150" show-overflow-tooltip>
+         <el-table-column prop="courseTitle" label="课程名称" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-tag type="primary" size="small" effect="plain">{{ row.courseName || '-' }}</el-tag>
+            <el-tag type="primary" size="small" effect="plain">{{ row.courseTitle || '-' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="teacherName" label="授课教师" width="120" show-overflow-tooltip />
         <el-table-column prop="semester" label="学期" width="100" />
         <el-table-column prop="maxStudents" label="容量" width="80" align="center" />
-        <el-table-column prop="currentStudents" label="已选人数" width="100" align="center">
+        <el-table-column prop="studentCount" label="已选人数" width="100" align="center">
           <template #default="{ row }">
-            <span :class="row.currentStudents >= row.maxStudents ? 'text-danger' : 'text-success'">
-              {{ row.currentStudents || 0 }}
+            <span :class="(row.studentCount || 0) >= row.maxStudents ? 'text-danger' : 'text-success'">
+              {{ row.studentCount || 0 }}
             </span>
           </template>
         </el-table-column>
@@ -196,8 +190,6 @@ const courseOptions = ref([])
 const teacherOptions = ref([])
 
 const searchForm = reactive({
-  courseName: '',
-  teacherName: '',
   semester: '',
   status: null
 })
@@ -289,8 +281,6 @@ async function fetchData() {
     const params = {
       page: page.value - 1,
       size: size.value,
-      courseName: searchForm.courseName || undefined,
-      teacherName: searchForm.teacherName || undefined,
       semester: searchForm.semester || undefined,
       status: searchForm.status !== null ? searchForm.status : undefined
     }
@@ -310,8 +300,6 @@ function handleSearch() {
 }
 
 function handleReset() {
-  searchForm.courseName = ''
-  searchForm.teacherName = ''
   searchForm.semester = ''
   searchForm.status = null
   page.value = 1

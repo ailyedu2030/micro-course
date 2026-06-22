@@ -234,7 +234,9 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         if (post == null) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
         }
-        if (post.getStatus() != null && post.getStatus() == 0) {
+        // P0-2: 区分权限 —— 管理员/教师/教务可查看待审核帖子，学生不可
+        boolean isManager = SecurityUtil.isAdmin() || SecurityUtil.hasRole("TEACHER") || SecurityUtil.hasRole("ACADEMIC");
+        if (!isManager && post.getStatus() != null && post.getStatus() == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子正在审核中，暂时无法查看");
         }
 

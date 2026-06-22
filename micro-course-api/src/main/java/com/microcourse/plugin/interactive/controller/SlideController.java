@@ -54,6 +54,10 @@ public class SlideController {
             String mime = file.getContentType();
             log.info("[SlideUpload] courseId={}, filename={}, size={}, mime={}",
                     courseId, sanitizeForLog(filename), size, mime);
+            // P0-14: 应用层校验 50MB 早拒绝（Spring multipart 限制 60MB，中间 gap 由此处拦截）
+            if (file.getSize() > 50 * 1024 * 1024) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课件文件不能超过 50MB");
+            }
             // P1 安全修复: 文件魔数校验（PPTX=ZIP PK 0x03 0x04, 图片=JPEG/PNG）
             validateSlideFileMagic(file);
             SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes());

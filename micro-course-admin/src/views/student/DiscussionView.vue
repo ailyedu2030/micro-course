@@ -199,7 +199,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPosts, createPost, getPostById, getComments, createComment, likeComment, deletePost } from '@/api/discussion'
 import { useUserStore } from '@/store/user'
 import { getCourses } from '@/api/course'
-import { getChapters } from '@/api/chapter'
+import { getChapters, getChapterById } from '@/api/chapter'
 import CommentNode from '@/components/CommentNode.vue'
 import { formatDateTime } from '@/utils/format'
 
@@ -245,6 +245,7 @@ const chapterId = computed(() => route.query.chapterId)
 const router = useRouter()
 const routeQuery = reactive({ chapterId: '' })
 const selectedCourseId = ref(null)
+const currentCourseId = ref(null)  // P0-1: courseId derived from chapter lookup
 const courseOptions = ref([])
 const chapterOptions = ref([])
 
@@ -270,8 +271,15 @@ function handleChapterSelect(chId) {
   if (chId) router.replace({ query: { ...route.query, chapterId: chId } })
 }
 // P1-修复: 添加 { immediate: false } 防止与 onMounted 重复触发
-watch(() => route.query.chapterId, (val) => {
-  if (val) fetchData()
+watch(() => route.query.chapterId, async (val) => {
+  if (val) {
+    // P0-1: 从 chapterId 查询 courseId
+    try {
+      const { data } = await getChapterById(val)
+      if (data?.courseId) currentCourseId.value = data.courseId
+    } catch { /* ignore */ }
+    fetchData()
+  }
 }, { immediate: false })
 onMounted(() => {
   if (!chapterId.value && !route.query.chapterId) fetchCourses()
@@ -318,7 +326,22 @@ const handleSubmitPost = async () => {
   }
   submitting.value = true
   try {
-    await createPost({ ...postForm.value, chapterId: chapterId.value })
+    // P0-1: 确保 courseId 可用——若未预加载则实时查询章节获取
+    let courseId = currentCourseId.value ? Number(currentCourseId.value) : undefined
+    if (!courseId && chapterId.value) {
+      try {
+        const { data } = await getChapterById(chapterId.value)
+        if (data?.courseId) {
+          courseId = Number(data.courseId)
+          currentCourseId.value = courseId
+        }
+      } catch { /* ignore */ }
+    }
+    await createPost({
+      ...postForm.value,
+      chapterId: Number(chapterId.value),
+      courseId: courseId
+    })
     ElMessage.success('发布成功')
     postDialogVisible.value = false
     resetPostForm()
@@ -425,10 +448,18 @@ const handlePageChange = () => {
   fetchData()
 }
 
-onMounted(() => {
+onMounted(async () => {
   checkMobile()
   window.addEventListener('resize', handleResize)
-  if (chapterId.value || route.query.chapterId) fetchData()
+  if (chapterId.value || route.query.chapterId) {
+    // P0-1: 页面加载时从 chapterId 查询 courseId
+    const chId = chapterId.value || route.query.chapterId
+    try {
+      const { data } = await getChapterById(chId)
+      if (data?.courseId) currentCourseId.value = data.courseId
+    } catch { /* ignore */ }
+    fetchData()
+  }
 })
 
 onUnmounted(() => {

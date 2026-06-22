@@ -18,6 +18,13 @@ public interface LearningProgressService {
     Map<String, Object> getCourseCompletion(Long userId, Long courseId);
 
     /**
+     * P0-5: 聚合用户所有课程的完成进度
+     * @param userId 用户ID
+     * @return { courseId: { completion, progress, completedCount, totalLessons } }
+     */
+    Map<String, Object> getAllCourseCompletions(Long userId);
+
+    /**
      * 聚合用户所有课程的学习天数（distinct date）
      * @param userId 用户ID
      * @return { totalDays: N }

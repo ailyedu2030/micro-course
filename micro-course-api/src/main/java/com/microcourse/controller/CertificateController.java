@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/certificates")
@@ -35,7 +36,9 @@ public class CertificateController {
     @PreAuthorize("isAuthenticated()")
     public R<CertificateVO> getById(@PathVariable Long id) {
         CertificateVO cert = certificateService.getById(id);
-        if (!cert.getUserId().equals(SecurityUtil.getCurrentUserId())) {
+        Long certUserId = cert.getUserId();
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!Objects.equals(certUserId, currentUserId) && !SecurityUtil.hasRole("ADMIN")) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         return R.ok(cert);
@@ -45,7 +48,9 @@ public class CertificateController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadCertificate(@PathVariable Long id) {
         CertificateVO cert = certificateService.getById(id);
-        if (!cert.getUserId().equals(SecurityUtil.getCurrentUserId())) {
+        Long certUserId = cert.getUserId();
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!Objects.equals(certUserId, currentUserId) && !SecurityUtil.hasRole("ADMIN")) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         byte[] pdfBytes = certificateService.generateCertificatePdf(id);

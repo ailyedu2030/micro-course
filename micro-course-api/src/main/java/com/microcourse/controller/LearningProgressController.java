@@ -89,8 +89,10 @@ public class LearningProgressController {
                 throw new BusinessException(ErrorCode.NO_PERMISSION);
             }
         }
+        // P0-5: 支持无 courseId 时返回所有课程完成度 map
         if (courseId == null) {
-            return R.ok(new java.util.HashMap<>());
+            Map<String, Object> allCompletions = learningProgressService.getAllCourseCompletions(userId);
+            return R.ok(allCompletions);
         }
         Map<String, Object> result = learningProgressService.getCourseCompletion(userId, courseId);
         return R.ok(result);

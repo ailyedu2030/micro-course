@@ -18,8 +18,26 @@ public class MicroCourseApplication {
     @Value("${jwt.secret:}")
     private String jwtSecret;
 
+    @Value("${spring.profiles.active:}")
+    private String activeProfile;
+
+    @Value("${payment.mode:mock}")
+    private String paymentMode;
+
     public static void main(String[] args) {
         SpringApplication.run(MicroCourseApplication.class, args);
+    }
+
+    /**
+     * P0-12: 生产环境禁止使用 mock 支付模式。
+     * 若 active profile 包含 prod 且 payment.mode 为 mock，启动直接失败。
+     */
+    @jakarta.annotation.PostConstruct
+    public void checkPaymentMode() {
+        if (activeProfile.contains("prod") && "mock".equals(paymentMode)) {
+            throw new IllegalStateException(
+                    "生产环境禁止使用 mock 支付模式，请设置 PAY_MODE=real 并配置支付网关");
+        }
     }
 
     @EventListener(ApplicationReadyEvent.class)

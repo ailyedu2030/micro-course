@@ -244,8 +244,7 @@ public class ExerciseServiceImpl implements ExerciseService {
             // ★ Round 11-2 性能优化：用数据库子查询替代「先 selectList 取教师课程 ID 到内存再 IN」，
             // 消除课程数 O(N) 的内存装配；currentUserId 为 JWT 解析的 Long（非字符串），无注入面。
             // 教师无任何课程时子查询返回空集，IN(空) 自然得空结果页，与原 in-memory 早返回语义一致。
-            wrapper.inSql(Exercise::getCourseId,
-                    "SELECT id FROM courses WHERE teacher_id = " + currentUserId + " AND deleted_at IS NULL");
+            wrapper.apply("course_id IN (SELECT id FROM courses WHERE teacher_id = {0} AND deleted_at IS NULL)", currentUserId);
         }
         wrapper.orderByDesc(Exercise::getCreatedAt);
 

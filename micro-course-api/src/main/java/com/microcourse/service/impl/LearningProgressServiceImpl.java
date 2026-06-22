@@ -8,12 +8,14 @@ import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.dto.ProgressUpdateRequest;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.Video;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.LearningProgressService;
@@ -34,15 +36,18 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
     private final VideoRepository videoRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     public LearningProgressServiceImpl(LearningProgressRepository learningProgressRepository,
                                        CourseRepository courseRepository,
                                        CourseChapterRepository courseChapterRepository,
-                                       VideoRepository videoRepository) {
+                                       VideoRepository videoRepository,
+                                       EnrollmentRepository enrollmentRepository) {
         this.learningProgressRepository = learningProgressRepository;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
         this.videoRepository = videoRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @Override
@@ -52,7 +57,28 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         wrapper.eq(LearningProgress::getUserId, userId)
                .eq(LearningProgress::getCourseId, courseId);
         List<LearningProgress> list = learningProgressRepository.selectList(wrapper);
-        return convertToVOList(list);
+        List<LearningProgressVO> vos = convertToVOList(list);
+
+        // P0-4: 计算课程级练习完成统计
+        int completedEx = 0;
+        int totalEx = 0;
+        for (LearningProgress p : list) {
+            if (p.getLessonId() != null) { // 仅统计课时级记录
+                totalEx++;
+                if (Boolean.TRUE.equals(p.getExerciseCompleted())) {
+                    completedEx++;
+                }
+            }
+        }
+        if (totalEx > 0) {
+            final int ce = completedEx;
+            final int te = totalEx;
+            vos.forEach(vo -> {
+                vo.setCompletedExercises(ce);
+                vo.setTotalExercises(te);
+            });
+        }
+        return vos;
     }
 
     private List<LearningProgressVO> convertToVOList(List<LearningProgress> list) {
@@ -257,6 +283,26 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         result.put("totalLessons", totalVideos);
         result.put("startedLessons", totalProgressItems);
         result.put("completion", Math.min(completion, 1.0));
+        // P0-6: 同时返回 progress 别名，兼容前端两种用法
+        result.put("progress", Math.min(completion, 1.0));
+        return result;
+    }
+
+    /**
+     * P0-5: 聚合用户所有已选课程的完成进度
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAllCourseCompletions(Long userId) {
+        // 查询用户所有选课记录
+        List<Enrollment> enrollments = enrollmentRepository.selectList(
+                new LambdaQueryWrapper<Enrollment>().eq(Enrollment::getUserId, userId));
+        Map<String, Object> result = new HashMap<>();
+        for (Enrollment enrollment : enrollments) {
+            Long cid = enrollment.getCourseId();
+            Map<String, Object> single = getCourseCompletion(userId, cid);
+            result.put(String.valueOf(cid), single);
+        }
         return result;
     }
 

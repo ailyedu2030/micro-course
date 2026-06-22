@@ -25,6 +25,10 @@ public class LearningProgressVO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // P0-4: 课程级练习完成统计（由 Service 层聚合填充）
+    private Integer completedExercises;
+    private Integer totalExercises;
+
     public LearningProgressVO() {}
 
     public Long getId() { return id; }
@@ -67,4 +71,8 @@ public class LearningProgressVO {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Integer getCompletedExercises() { return completedExercises; }
+    public void setCompletedExercises(Integer completedExercises) { this.completedExercises = completedExercises; }
+    public Integer getTotalExercises() { return totalExercises; }
+    public void setTotalExercises(Integer totalExercises) { this.totalExercises = totalExercises; }
 }
