@@ -35,8 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 @DisplayName("Round9-2 缓存层")
 class CacheAndIndexTest extends BaseIntegrationTest {
 
-    private static final String COURSE_CACHE_PREFIX = "course:detail:";
-    private static final String COURSE_STATS_CACHE_PREFIX = "course:stats:";
+    private static final String COURSE_CACHE_PREFIX = "mc:course:detail:";
+    private static final String COURSE_STATS_CACHE_PREFIX = "mc:course:stats:";
 
     @Autowired
     private JdbcTemplate jdbc;

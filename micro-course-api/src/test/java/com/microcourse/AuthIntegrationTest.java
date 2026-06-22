@@ -46,7 +46,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         // 清除该用户名的登录失败计数：Redis 为共享实例（localhost:6379），本测试每次运行都会
         // 对 login:lock:nobody_99999 +1 却从不清理，多次运行后累积 >=5 会被锁定返回 423。
         // 与 loginWithInvalidPassword_Returns401 / BaseIntegrationTest 的清理逻辑保持一致。
-        applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("login:lock:nobody_99999");
+        applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("mc:login:lock:nobody_99999");
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginJson("nobody_99999", "x")))
