@@ -32,14 +32,14 @@ INSERT INTO users (id, username, password, real_name, role, status, cas_bound, c
 VALUES (6, 'p0_teacher',
         '$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK',
         'P0测试教师', 'TEACHER', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- 3) 学生账号 student/student123（EnrollmentP0ConcurrencyTest 以此登录，且 body userId=7）
 INSERT INTO users (id, username, password, real_name, role, status, cas_bound, created_at, updated_at)
 VALUES (7, 'student',
         '$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK',
         'P0测试学生', 'STUDENT', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- 4) 课程 1..4（免费 + 已发布；is_free=TRUE 以通过选课付费拦截）
 INSERT INTO courses (id, title, category_id, teacher_id, status, is_free, price,

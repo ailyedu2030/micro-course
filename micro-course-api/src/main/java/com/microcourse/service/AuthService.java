@@ -61,4 +61,7 @@ public interface AuthService {
      * @return 头像访问 URL
      */
     String uploadAvatar(MultipartFile file);
+
+    /** 测试支持：清除登录失败缓存 **/
+    void resetLoginLockout();
 }

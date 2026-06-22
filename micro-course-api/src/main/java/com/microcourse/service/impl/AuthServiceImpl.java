@@ -590,6 +590,11 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    @Override
+    public void resetLoginLockout() {
+        localLoginFailCache.clear();
+    }
+
     private void clearLoginFailureQuietly(String username) {
         try {
             redisUtil.clearLoginFailure(username);

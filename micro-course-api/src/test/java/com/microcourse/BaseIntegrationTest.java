@@ -53,7 +53,10 @@ public abstract class BaseIntegrationTest {
     public void resetLoginState() {
         cachedAdminToken = null;
         try {
-            applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("login:lock:admin");
+            applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("mc:login:lock:admin");
+            applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("mc:login:lock:student");
+            applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("mc:login:lock:p0_teacher");
+            applicationContext.getBean(com.microcourse.service.AuthService.class).resetLoginLockout();
         } catch (Exception ignored) {}
     }
 
