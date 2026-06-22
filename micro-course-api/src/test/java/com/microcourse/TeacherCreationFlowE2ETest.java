@@ -23,8 +23,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import org.springframework.mock.web.MockMultipartFile;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -100,10 +102,11 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
             safeUpdate("DELETE FROM exercise_questions WHERE question_id = ?", q);
             safeUpdate("DELETE FROM questions WHERE id = ?", q);
         }
-        // 3) 课程及其从属行（审核日志 / 上架通知 / 残留章节与练习）→ 最后删课程
+        // 3) 课程及其从属行（审核日志 / 上架通知 / 残留章节/视频/练习）→ 最后删课程
         for (Long c : createdCourseIds) {
             safeUpdate("DELETE FROM course_review_logs WHERE course_id = ?", c);
             safeUpdate("DELETE FROM notifications WHERE related_id = ?", c);
+            safeUpdate("DELETE FROM videos WHERE course_id = ?", c);
             safeUpdate("DELETE FROM exercises WHERE course_id = ?", c);
             safeUpdate("DELETE FROM questions WHERE course_id = ?", c);
             safeUpdate("DELETE FROM course_chapters WHERE course_id = ?", c);
@@ -446,8 +449,29 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.data.id").exists())
                 .andReturn();
         long id = idOf(result);
+        addCourseCover(bearer, id);
+        insertDummyCompletedVideo(id);
         track(createdCourseIds, id);
         return id;
+    }
+
+    /** 直接入库一门已完成状态的测试视频（业务要求：提交审核前课程必须有至少一个已完成视频或PPT）。 */
+    private void insertDummyCompletedVideo(long courseId) {
+        jdbc.update(
+            "INSERT INTO videos(course_id, title, url, status, duration, version, created_at, updated_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, now(), now())",
+            courseId, "测试视频_" + System.nanoTime(),
+            "/data/videos/dummy.mp4", 2, 120, 0);
+    }
+
+    /** 为课程上传一张封面（业务要求提交审核前必须设置封面）。 */
+    private void addCourseCover(String bearer, long courseId) throws Exception {
+        byte[] jpegHeader = { (byte)0xFF, (byte)0xD8, (byte)0xFF, (byte)0xE0 };
+        mockMvc.perform(multipart("/api/courses/" + courseId + "/cover")
+                        .file(new MockMultipartFile("file", "cover.jpg", "image/jpeg", jpegHeader))
+                        .header("Authorization", bearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
     }
 
     /** 经 API 为课程添加一个章节，返回章节 id。 */

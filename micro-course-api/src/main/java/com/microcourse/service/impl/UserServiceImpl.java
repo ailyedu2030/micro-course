@@ -35,6 +35,7 @@ import com.microcourse.util.SecurityUtil;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -413,6 +414,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public BatchImportResultVO batchImportUsers(MultipartFile file) {
         List<BatchImportResultVO.ImportErrorItem> errors = new ArrayList<>();
 
@@ -472,6 +474,19 @@ public class UserServiceImpl implements UserService {
             if (user != null) {
                 usersToInsert.add(user);
             }
+        }
+
+        // 原子性检查：存在任何校验错误时整体不入库，确保"全成功或全失败"语义
+        if (!errors.isEmpty()) {
+            for (User u : usersToInsert) {
+                errors.add(new BatchImportResultVO.ImportErrorItem(
+                        0, u.getUsername(), "批次存在错误行，整体回滚"));
+            }
+            BatchImportResultVO result = new BatchImportResultVO();
+            result.setSuccessCount(0);
+            result.setFailCount(errors.size());
+            result.setErrors(errors);
+            return result;
         }
 
         // Step 5: 分批入库（每 100 行一个独立事务，长事务修复 DB-P0-04）
@@ -632,7 +647,7 @@ public class UserServiceImpl implements UserService {
      * P1-3: 批量插入用户（单批次，由 AOP 代理调用以确保 @Transactional 生效）。
      * 每批最多 100 条，调用方负责通过 self 代理调用本方法以触发事务拦截器。
      */
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     protected void batchInsertUsersTransactional(List<User> users) {
         if (users.isEmpty()) {
             return;
