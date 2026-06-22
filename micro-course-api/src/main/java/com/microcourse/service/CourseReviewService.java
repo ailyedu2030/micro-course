@@ -46,4 +46,11 @@ public interface CourseReviewService {
      * 删除评价
      */
     void deleteReview(Long id);
+
+    /**
+     * E4: 查询某条评价的回复列表
+     * @param parentId 父评价ID
+     * @return 回复列表
+     */
+    java.util.List<CourseReviewVO> listReplies(Long parentId);
 }

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.CourseReviewRequest;
 import com.microcourse.dto.CourseReviewVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseReview;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
@@ -57,47 +58,65 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CourseReviewVO create(Long courseId, CourseReviewRequest request, Long userId) {
-        // 验证用户已选修该课程
-        LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
-        enrollWrapper.eq(Enrollment::getUserId, userId)
-                .eq(Enrollment::getCourseId, courseId);
-        Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
-        if (enrollment == null) {
-            throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
-        }
+        // E4: 回复评价前置校验——父评价必须存在且属于同一课程
+        Long parentId = request.getParentId();
+        if (parentId != null) {
+            CourseReview parent = courseReviewRepository.selectById(parentId);
+            if (parent == null) {
+                throw new BusinessException(ErrorCode.COURSE_REVIEW_NOT_FOUND, "父评价不存在");
+            }
+            if (!parent.getCourseId().equals(courseId)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "回复必须属于同一课程");
+            }
+            // 回复不需要重复校验选课状态和评分
+        } else {
+            // 顶级评价：验证用户已选修该课程
+            LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
+            enrollWrapper.eq(Enrollment::getUserId, userId)
+                    .eq(Enrollment::getCourseId, courseId);
+            Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
+            if (enrollment == null) {
+                throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
+            }
 
-        // J10-01: 校验用户已完课才能评价（completed=true 或 progress >= 80%）
-        if (!Boolean.TRUE.equals(enrollment.getCompleted())) {
-            // 检查学习进度是否 ≥ 80%
-            LambdaQueryWrapper<LearningProgress> progressWrapper = new LambdaQueryWrapper<>();
-            progressWrapper.eq(LearningProgress::getUserId, userId)
-                    .eq(LearningProgress::getCourseId, courseId);
-            LearningProgress progress = learningProgressRepository.selectOne(progressWrapper);
-            if (progress == null || progress.getVideoProgress() == null || progress.getVideoProgress() < 80) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请完成课程学习后再评价（学习进度 ≥ 80%）");
+            // J10-01: 校验用户已完课才能评价（completed=true 或 progress >= 80%）
+            if (!Boolean.TRUE.equals(enrollment.getCompleted())) {
+                // 检查学习进度是否 ≥ 80%
+                LambdaQueryWrapper<LearningProgress> progressWrapper = new LambdaQueryWrapper<>();
+                progressWrapper.eq(LearningProgress::getUserId, userId)
+                        .eq(LearningProgress::getCourseId, courseId);
+                LearningProgress progress = learningProgressRepository.selectOne(progressWrapper);
+                if (progress == null || progress.getVideoProgress() == null || progress.getVideoProgress() < 80) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请完成课程学习后再评价（学习进度 ≥ 80%）");
+                }
+            }
+
+            // 验证评分范围 1-5
+            if (request.getRating() == null || request.getRating() < 1 || request.getRating() > 5) {
+                throw new BusinessException(ErrorCode.COURSE_REVIEW_INVALID_RATING);
             }
         }
 
-        // 验证评分范围 1-5
-        if (request.getRating() == null || request.getRating() < 1 || request.getRating() > 5) {
-            throw new BusinessException(ErrorCode.COURSE_REVIEW_INVALID_RATING);
-        }
-
-        // 检查是否已评价（每人每课程只能评价一次）
-        LambdaQueryWrapper<CourseReview> reviewWrapper = new LambdaQueryWrapper<>();
-        reviewWrapper.eq(CourseReview::getUserId, userId)
-                .eq(CourseReview::getCourseId, courseId);
-        CourseReview existing = courseReviewRepository.selectOne(reviewWrapper);
-        if (existing != null) {
-            throw new BusinessException(ErrorCode.COURSE_REVIEW_ALREADY_EXISTS);
+        // 检查是否已评价（每人每课程只能评价一次，回复不受此限制）
+        if (parentId == null) {
+            LambdaQueryWrapper<CourseReview> reviewWrapper = new LambdaQueryWrapper<>();
+            reviewWrapper.eq(CourseReview::getUserId, userId)
+                    .eq(CourseReview::getCourseId, courseId)
+                    .isNull(CourseReview::getParentId);
+            CourseReview existing = courseReviewRepository.selectOne(reviewWrapper);
+            if (existing != null) {
+                throw new BusinessException(ErrorCode.COURSE_REVIEW_ALREADY_EXISTS);
+            }
         }
 
         CourseReview review = new CourseReview();
         review.setCourseId(courseId);
         review.setUserId(userId);
-        review.setRating(request.getRating());
-        review.setContent(request.getContent());
+        review.setRating(request.getRating() != null ? request.getRating() : 0);
+        // P1 安全修复: XSS 净化评价内容
+        review.setContent(com.microcourse.util.XssSanitizer.sanitize(request.getContent()));
         review.setIsAnonymous(request.getIsAnonymous() != null ? request.getIsAnonymous() : false);
+        review.setParentId(parentId);
         review.setCreatedAt(LocalDateTime.now());
         review.setUpdatedAt(LocalDateTime.now());
 
@@ -107,7 +126,10 @@ public class CourseReviewServiceImpl implements CourseReviewService {
             // CON-NEW-7 修复:DB uk_course_reviews_user_course 兜底,降级为业务异常
             throw new BusinessException(ErrorCode.COURSE_REVIEW_ALREADY_EXISTS);
         }
-        updateCourseAvgRating(courseId);
+        // 只有顶级评价才更新课程平均评分
+        if (parentId == null) {
+            updateCourseAvgRating(courseId);
+        }
         return convertToVO(review);
     }
 
@@ -116,13 +138,56 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     public PageResult<CourseReviewVO> listByCourse(Long courseId, int page, int size) {
         Page<CourseReview> pg = new Page<>(page + 1, size);
         LambdaQueryWrapper<CourseReview> wrapper = new LambdaQueryWrapper<>();
+        // E4: 只查顶级评价（parent_id IS NULL），回复通过 replies 嵌套
         wrapper.eq(CourseReview::getCourseId, courseId)
+                .isNull(CourseReview::getParentId)
                 .orderByDesc(CourseReview::getCreatedAt);
         IPage<CourseReview> result = courseReviewRepository.selectPage(pg, wrapper);
         java.util.Map<Long, User> userMap = buildUserMap(result.getRecords());
-        return PageResult.of(result.getRecords().stream()
-                .map(r -> convertToVO(r, userMap))
-                .collect(Collectors.toList()), result.getTotal(), page, size);
+        java.util.Map<Long, String> courseTitleMap = buildCourseTitleMap(result.getRecords());
+        List<CourseReviewVO> vos = result.getRecords().stream()
+                .map(r -> {
+                    CourseReviewVO vo = convertToVO(r, userMap, courseTitleMap);
+                    // E4: 加载回复（最多 20 条，按时间正序）
+                    vo.setReplies(loadReplies(r.getId(), userMap, courseTitleMap));
+                    return vo;
+                })
+                .collect(Collectors.toList());
+        return PageResult.of(vos, result.getTotal(), page, size);
+    }
+
+    /**
+     * E4: 加载某条评价的回复列表（按时间正序，最多 20 条）
+     */
+    private List<CourseReviewVO> loadReplies(Long parentId, java.util.Map<Long, User> userMap, java.util.Map<Long, String> courseTitleMap) {
+        LambdaQueryWrapper<CourseReview> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CourseReview::getParentId, parentId)
+                .orderByAsc(CourseReview::getCreatedAt)
+                .last("LIMIT 20");
+        List<CourseReview> replies = courseReviewRepository.selectList(wrapper);
+        if (replies.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        // 回复列表中追加新的用户信息
+        java.util.Map<Long, User> replyUserMap = new java.util.HashMap<>(userMap);
+        buildUserMap(replies).forEach((k, v) -> replyUserMap.putIfAbsent(k, v));
+        return replies.stream()
+                .map(r -> convertToVO(r, replyUserMap, courseTitleMap))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourseReviewVO> listReplies(Long parentId) {
+        LambdaQueryWrapper<CourseReview> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CourseReview::getParentId, parentId)
+                .orderByAsc(CourseReview::getCreatedAt);
+        List<CourseReview> replies = courseReviewRepository.selectList(wrapper);
+        java.util.Map<Long, User> userMap = buildUserMap(replies);
+        java.util.Map<Long, String> courseTitleMap = buildCourseTitleMap(replies);
+        return replies.stream()
+                .map(r -> convertToVO(r, userMap, courseTitleMap))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -134,8 +199,9 @@ public class CourseReviewServiceImpl implements CourseReviewService {
                 .orderByDesc(CourseReview::getCreatedAt);
         IPage<CourseReview> result = courseReviewRepository.selectPage(pg, wrapper);
         java.util.Map<Long, User> userMap = buildUserMap(result.getRecords());
+        java.util.Map<Long, String> courseTitleMap = buildCourseTitleMap(result.getRecords());
         return PageResult.of(result.getRecords().stream()
-                .map(r -> convertToVO(r, userMap))
+                .map(r -> convertToVO(r, userMap, courseTitleMap))
                 .collect(Collectors.toList()), result.getTotal(), page, size);
     }
 
@@ -150,8 +216,9 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         wrapper.orderByDesc(CourseReview::getCreatedAt);
         IPage<CourseReview> result = courseReviewRepository.selectPage(pg, wrapper);
         java.util.Map<Long, User> userMap = buildUserMap(result.getRecords());
+        java.util.Map<Long, String> courseTitleMap = buildCourseTitleMap(result.getRecords());
         return PageResult.of(result.getRecords().stream()
-                .map(r -> convertToVO(r, userMap))
+                .map(r -> convertToVO(r, userMap, courseTitleMap))
                 .collect(Collectors.toList()), result.getTotal(), page, size);
     }
 
@@ -179,6 +246,10 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     }
 
     private CourseReviewVO convertToVO(CourseReview review, java.util.Map<Long, User> userMap) {
+        return convertToVO(review, userMap, null);
+    }
+
+    private CourseReviewVO convertToVO(CourseReview review, java.util.Map<Long, User> userMap, java.util.Map<Long, String> courseTitleMap) {
         CourseReviewVO vo = new CourseReviewVO();
         vo.setId(review.getId());
         vo.setCourseId(review.getCourseId());
@@ -186,6 +257,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         vo.setRating(review.getRating());
         vo.setContent(review.getContent());
         vo.setIsAnonymous(review.getIsAnonymous());
+        vo.setParentId(review.getParentId());
         vo.setCreatedAt(review.getCreatedAt());
         vo.setUpdatedAt(review.getUpdatedAt());
 
@@ -197,7 +269,30 @@ public class CourseReviewServiceImpl implements CourseReviewService {
                 vo.setRealName(user.getRealName());
             }
         }
+        if (review.getCourseId() != null) {
+            String courseTitle = courseTitleMap != null ? courseTitleMap.get(review.getCourseId()) : null;
+            if (courseTitle == null) {
+                Course course = courseRepository.selectById(review.getCourseId());
+                if (course != null) {
+                    courseTitle = course.getTitle();
+                }
+            }
+            vo.setCourseTitle(courseTitle);
+        }
         return vo;
+    }
+
+    private java.util.Map<Long, String> buildCourseTitleMap(List<CourseReview> reviews) {
+        if (reviews == null || reviews.isEmpty()) return java.util.Collections.emptyMap();
+        List<Long> courseIds = reviews.stream()
+                .map(CourseReview::getCourseId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+        if (courseIds.isEmpty()) return java.util.Collections.emptyMap();
+        return courseRepository.selectBatchIds(courseIds).stream()
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toMap(Course::getId, Course::getTitle, (a, b) -> a));
     }
 
     private java.util.Map<Long, User> buildUserMap(List<CourseReview> reviews) {

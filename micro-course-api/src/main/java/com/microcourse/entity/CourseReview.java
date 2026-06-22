@@ -33,6 +33,9 @@ public class CourseReview {
     @TableField("is_anonymous")
     private Boolean isAnonymous;
 
+    @TableField("parent_id")
+    private Long parentId;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -56,6 +59,8 @@ public class CourseReview {
     public void setContent(String content) { this.content = content; }
     public Boolean getIsAnonymous() { return isAnonymous; }
     public void setIsAnonymous(Boolean isAnonymous) { this.isAnonymous = isAnonymous; }
+    public Long getParentId() { return parentId; }
+    public void setParentId(Long parentId) { this.parentId = parentId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

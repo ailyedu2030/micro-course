@@ -11,6 +11,7 @@ import com.microcourse.repository.UserRepository;
 import com.microcourse.service.OperationLogService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,10 +39,13 @@ public class OperationLogServiceImpl implements OperationLogService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * 记录操作日志（E9: @Async 异步写入，不阻塞主业务流程）
+     */
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    @Async
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void log(OperationLog operationLog) {
-        // Phase 6: 改为异步记录
         operationLogRepository.insert(operationLog);
     }
 

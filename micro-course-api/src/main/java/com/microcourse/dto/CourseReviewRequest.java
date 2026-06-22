@@ -21,6 +21,8 @@ public class CourseReviewRequest {
 
     private Boolean isAnonymous;
 
+    private Long parentId;
+
     public CourseReviewRequest() {}
 
     public Integer getRating() { return rating; }
@@ -29,4 +31,6 @@ public class CourseReviewRequest {
     public void setContent(String content) { this.content = content; }
     public Boolean getIsAnonymous() { return isAnonymous; }
     public void setIsAnonymous(Boolean isAnonymous) { this.isAnonymous = isAnonymous; }
+    public Long getParentId() { return parentId; }
+    public void setParentId(Long parentId) { this.parentId = parentId; }
 }

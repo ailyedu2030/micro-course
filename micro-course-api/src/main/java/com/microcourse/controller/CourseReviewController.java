@@ -143,4 +143,14 @@ class MyReviewController {
         courseReviewService.deleteReview(id);
         return R.ok();
     }
+
+    /**
+     * E4: 查询评价的回复列表
+     * GET /api/reviews/{id}/replies
+     */
+    @GetMapping("/{id}/replies")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<CourseReviewVO>> listReplies(@PathVariable Long id) {
+        return R.ok(courseReviewService.listReplies(id));
+    }
 }

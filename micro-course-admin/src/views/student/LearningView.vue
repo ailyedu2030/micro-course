@@ -96,7 +96,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, Bell, ChatDotRound, Edit, List } from '@element-plus/icons-vue'
@@ -505,8 +505,11 @@ const stopCourseWatch = watch(() => route.query.courseId, (newId) => {
   if (newId) loadCourse(parseInt(newId))
 })
 
-onUnmounted(() => {
-  clearInterval(progressSaveTimer)
+onBeforeUnmount(() => {
+  if (progressSaveTimer) {
+    clearInterval(progressSaveTimer)
+    progressSaveTimer = null
+  }
   stopCourseWatch()
 })
 </script>

@@ -27,6 +27,12 @@ public class BadgeServiceImpl implements BadgeService {
     private final BadgeDefinitionRepository badgeDefinitionRepository;
     private final AchievementRepository achievementRepository;
 
+    // E2-2: self-injection 解决内部调用绕过 @Transactional 代理问题
+    // @Lazy 避免循环依赖，通过 AOP 代理确保 hasBadge()/awardBadge() 的事务正确传播
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    private BadgeServiceImpl self;
+
     public BadgeServiceImpl(BadgeDefinitionRepository badgeDefinitionRepository,
                            AchievementRepository achievementRepository) {
         this.badgeDefinitionRepository = badgeDefinitionRepository;
@@ -140,13 +146,14 @@ public class BadgeServiceImpl implements BadgeService {
     @Transactional(rollbackFor = Exception.class)
     public void checkAndAwardCourseCompletion(Long userId, Long courseId,
                                              long totalEnrollments, long completedCount) {
-        if (!hasBadge(userId, "FIRST_COURSE") && completedCount >= 1) {
-            awardBadge(userId, "FIRST_COURSE");
+        // E2-2: 使用 self 代理调用，确保 @Transactional(readOnly) / @Transactional 生效
+        if (!self.hasBadge(userId, "FIRST_COURSE") && completedCount >= 1) {
+            self.awardBadge(userId, "FIRST_COURSE");
         }
 
-        if (totalEnrollments > 0 && !hasBadge(userId, "ALL_COURSES")
+        if (totalEnrollments > 0 && !self.hasBadge(userId, "ALL_COURSES")
                 && completedCount >= totalEnrollments) {
-            awardBadge(userId, "ALL_COURSES");
+            self.awardBadge(userId, "ALL_COURSES");
         }
     }
 
