@@ -16,6 +16,7 @@ import com.microcourse.service.*;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +51,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                                                UserRepository userRepository,
                                                NotificationService notificationService,
                                                EnrollmentService enrollmentService,
-                                               MicroSpecialtyService msService) {
+                                               @Lazy MicroSpecialtyService msService) {
         this.enrollmentRepository = enrollmentRepository;
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
