@@ -1458,3 +1458,59 @@
   border-top-color: var(--role-primary, #409eff) !important;
   border-left-color: var(--role-primary, #409eff) !important;
 }
+
+/* --------------------------------------------------------------------------
+    P3: 可访问性增强
+    - prefers-reduced-motion: 用户偏好减弱动效时，禁用过渡
+    - focus-visible: 键盘焦点环增强（仅键盘用户可见，鼠标用户不显示）
+    -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 全局键盘焦点环（仅键盘 Tab 时显示） */
+:focus-visible {
+  outline: 2px solid var(--role-primary, #409eff) !important;
+  outline-offset: 2px !important;
+  border-radius: 4px;
+}
+
+/* 跳过链接（无障碍最佳实践） */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 8px;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: var(--role-primary, #409eff);
+  color: #fff;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+/* 屏幕阅读器专用内容（视觉隐藏但可读） */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
