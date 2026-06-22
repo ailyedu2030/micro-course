@@ -54,7 +54,7 @@ public class NotificationServiceImpl implements NotificationService {
      * 全程 try-catch 兜底，通知持久化失败仅记录日志，绝不向调用方传播异常（异常隔离）。
      */
     @Async
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     @Override
     public void notifyAsync(Long userId, NotificationType type, String title, String content, Long relatedId) {
         try {

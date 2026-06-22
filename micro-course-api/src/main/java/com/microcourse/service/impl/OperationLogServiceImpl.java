@@ -44,7 +44,7 @@ public class OperationLogServiceImpl implements OperationLogService {
      */
     @Override
     @Async
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void log(OperationLog operationLog) {
         operationLogRepository.insert(operationLog);
     }
