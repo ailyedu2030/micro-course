@@ -1529,3 +1529,53 @@
 
 > 文档状态：正式发布
 > 下次评审：Phase 2 启动前
+
+---
+
+## Phase 6: 微专业 API
+
+> 本文档记录了 Phase 14 微专业模块的 API 契约。详细定义见 docs/开发规划/phase14-micro-specialty-spec.md §7。
+
+### GET /api/micro-specialties/square
+课程广场专区数据。公开访问。
+
+请求参数：无
+响应示例：
+```json
+{
+  "code": 200,
+  "data": {
+    "goldFeatured": [
+      {"id": 1, "title": "AI 微专业", "coverUrl": "...", "departmentName": "计算机学院", "leadTeacherName": "张教授", "totalCredits": 12.0, "courseCount": 6, "teacherCount": 3, "isGoldFeatured": true, "qualityScore": 9.5}
+    ],
+    "featured": [...],
+    "recruiting": [...]
+  }
+}
+```
+
+### GET /api/micro-specialties/{id}
+微专业详情。公开访问（DRAFT/CANCELLED 对非管理员过滤）。
+
+### POST /api/micro-specialties
+创建微专业。ACADEMIC 权限。
+
+### POST /api/micro-specialties/{id}/submit | approve | reject | open | close | cancel | archive
+状态流转操作。分别对应 LEAD 提交、ACADEMIC 审批、LEAD 开课/结业、ACADEMIC 取消/归档。
+
+### POST /api/micro-specialty-enrollments/apply
+学生自主报名。STUDENT 权限。
+
+### POST /api/micro-specialty-enrollments/class-import
+班级批量导入。ACADEMIC/ADMIN 权限。100人/批事务。
+
+### POST /api/micro-specialty-proposals
+教师提交申报。TEACHER 权限。
+
+### POST /api/micro-specialty-teachers/{inviteId}/accept
+教师接受邀请。TEACHER（本人）权限。
+
+### POST /api/micro-specialties/{id}/transfer-leadership
+LEAD 继任转移。ACADEMIC 权限。
+
+完整 API 请参考 docs/开发规划/phase14-micro-specialty-spec.md §7（32 个端点，含主表 14+、申报 7、课程编排 4、教师 8、修读 8、置顶 6、统计证书 3）。
