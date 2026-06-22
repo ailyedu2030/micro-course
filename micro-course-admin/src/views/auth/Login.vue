@@ -68,7 +68,58 @@
             {{ r.label }}
           </el-tag>
         </div>
+
+        <div class="register-link">
+          <span>还没有账号？</span>
+          <el-button type="primary" link @click="showRegisterDialog = true">立即注册</el-button>
+        </div>
       </el-card>
+
+      <!-- 注册弹窗 -->
+      <el-dialog
+        v-model="showRegisterDialog"
+        title="学生注册"
+        width="420px"
+        :close-on-click-modal="false"
+        center
+      >
+        <el-form ref="registerFormRef" :model="registerForm" :rules="registerRules" size="large" @keyup.enter="handleRegister">
+          <el-form-item prop="username" label="用户名">
+            <el-input
+              v-model="registerForm.username"
+              placeholder="请输入用户名（2-50个字符）"
+              :prefix-icon="User"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item prop="password" label="密码">
+            <el-input
+              v-model="registerForm.password"
+              type="password"
+              placeholder="至少8位，含字母和数字"
+              :prefix-icon="Lock"
+              show-password
+              clearable
+            />
+          </el-form-item>
+          <el-form-item prop="confirmPassword" label="确认密码">
+            <el-input
+              v-model="registerForm.confirmPassword"
+              type="password"
+              placeholder="请再次输入密码"
+              :prefix-icon="Lock"
+              show-password
+              clearable
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="showRegisterDialog = false">取消</el-button>
+          <el-button type="primary" :loading="registerLoading" @click="handleRegister">
+            {{ registerLoading ? '注册中...' : '注册并登录' }}
+          </el-button>
+        </template>
+      </el-dialog>
 
       <p class="login-footer">
         © {{ new Date().getFullYear() }} 微课管理平台 · Powered by Vue 3 + Element Plus
@@ -83,6 +134,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Reading } from '@element-plus/icons-vue'
+import { register as registerApi } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -90,6 +142,38 @@ const userStore = useUserStore()
 const formRef = ref(null)
 const loading = ref(false)
 const isMobile = ref(false)
+
+// 注册相关状态
+const showRegisterDialog = ref(false)
+const registerFormRef = ref(null)
+const registerLoading = ref(false)
+const registerForm = reactive({ username: '', password: '', confirmPassword: '' })
+
+const registerRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 2, max: 50, message: '用户名长度为 2-50 个字符', trigger: 'blur' },
+    { pattern: /^\S+$/, message: '用户名不能包含空格', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 8, max: 32, message: '密码长度为 8-32 个字符', trigger: 'blur' },
+    { pattern: /^(?=.*[A-Za-z])(?=.*\d)/, message: '密码需包含字母和数字', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入密码', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== registerForm.password) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
 
 const form = reactive({ username: '', password: '' })
 const rules = {
@@ -140,6 +224,34 @@ const handleLogin = async () => {
       // 错误已由 request.js 拦截器统一提示
     } finally {
       loading.value = false
+    }
+  })
+}
+
+const handleRegister = async () => {
+  if (!registerFormRef.value) return
+  await registerFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    registerLoading.value = true
+    try {
+      const res = await registerApi({
+        username: registerForm.username,
+        password: registerForm.password
+      })
+      // 注册成功自动登录：保存 token 并跳转
+      if (res.data && res.data.accessToken) {
+        localStorage.setItem('micro_course_token', res.data.accessToken)
+        localStorage.setItem('micro_course_refresh_token', res.data.refreshToken || '')
+        userStore.token = res.data.accessToken
+        await userStore.getInfo()
+        ElMessage.success('注册成功！欢迎你，' + (userStore.realName || registerForm.username))
+        showRegisterDialog.value = false
+        router.push('/student/courses')
+      }
+    } catch {
+      // 错误已由 request.js 拦截器统一提示
+    } finally {
+      registerLoading.value = false
     }
   })
 }
@@ -350,6 +462,19 @@ onUnmounted(() => {
 .role-tag:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.register-link {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--el-border-color-lighter);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+.register-link span {
+  margin-right: var(--space-1);
 }
 
 .login-footer {

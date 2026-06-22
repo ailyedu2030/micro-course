@@ -53,7 +53,7 @@
             <p>暂无考试安排</p>
           </template>
           <template #default>
-            <p class="empty-tip">你还没有报名的考试</p>
+            <p class="empty-tip">完成课程后可参加考试</p>
           </template>
         </el-empty>
 
@@ -194,7 +194,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Tickets, Reading, Clock, Timer } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
-import { getMyEnrollments } from '../../api/enrollment'
+import { getMyExams } from '../../api/exam'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -223,29 +223,19 @@ const formatTime = (timeStr) => {
 }
 
 const fetchExams = async () => {
-  if (!userStore.userInfo?.id) {
-    await userStore.getInfo()
-  }
-  const userId = userStore.userInfo?.id
-  if (!userId) {
-    ElMessage.error('无法获取用户信息')
-    return
-  }
   loading.value = true
   errorState.value = false
   try {
-    // 获取已报名的课程
-    const res = await getMyEnrollments({ userId })
-    const enrollments = res.data || []
-
-    // 目前没有独立的学生考试 API，先显示空状态
-    // 未来可扩展：从后端获取考试数据后填充 examList
-    examList.value = []
-
-    // 如果后端提供考试数据，可以这样处理：
-    // examList.value = enrollments
-    //   .filter(e => e.exams && e.exams.length > 0)
-    //   .flatMap(e => e.exams.map(exam => ({ ...exam, courseName: e.courseTitle })))
+    // J3-01: 调用真实的考试列表 API（基于 exercises 表 is_exam=true）
+    const res = await getMyExams()
+    examList.value = (res.data || []).map(exam => ({
+      ...exam,
+      examId: exam.id,
+      examTitle: exam.title,
+      courseTitle: exam.courseTitle || '未知课程',
+      examTime: exam.examTime || exam.updatedAt || null,
+      duration: exam.duration || exam.timeLimit || null
+    }))
   } catch {
     errorState.value = true
     ElMessage.error('加载考试信息失败')
@@ -255,8 +245,8 @@ const fetchExams = async () => {
 }
 
 const handleJoinExam = (exam) => {
-  ElMessage.info('考试功能即将上线')
-  // 未来可扩展：router.push(`/student/exams/${exam.examId}`)
+  // J3-01: 跳转到练习/考试页面
+  router.push(`/student/exercises/${exam.examId || exam.id}`)
 }
 </script>
 

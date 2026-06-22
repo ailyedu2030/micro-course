@@ -6,6 +6,7 @@ import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
 import com.microcourse.dto.R;
 import com.microcourse.dto.RefreshRequest;
+import com.microcourse.dto.RegisterRequest;
 import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.service.AuthService;
@@ -37,6 +38,13 @@ public class AuthController {
     @AuditedLog("用户登录")
     public R<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
+        return R.ok(response);
+    }
+
+    @PostMapping("/register")
+    @AuditedLog("学生自助注册")
+    public R<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
+        LoginResponse response = authService.register(request);
         return R.ok(response);
     }
 

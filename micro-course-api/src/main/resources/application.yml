@@ -126,6 +126,10 @@ plugin:
       tts-model: speech-2.8-hd
       tts-voice: Chinese_female_narrator
 
+# J9-01: 支付模式配置 — mock 模式（默认）dev 可用，生产部署时设为 real
+payment:
+  mode: ${PAY_MODE:mock}   # mock | real
+
 # CORS (INFRA-NEW-4: 多个来源以逗号分隔,env 可覆盖)
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost}

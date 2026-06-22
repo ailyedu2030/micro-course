@@ -3,6 +3,7 @@ package com.microcourse.service;
 import com.microcourse.dto.ChangePasswordRequest;
 import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
+import com.microcourse.dto.RegisterRequest;
 import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserVO;
 import org.springframework.web.multipart.MultipartFile;
@@ -11,6 +12,11 @@ import org.springframework.web.multipart.MultipartFile;
  * 认证服务接口
  */
 public interface AuthService {
+
+    /**
+     * 用户注册（J1-01：学生自助注册，角色=STUDENT，注册后自动登录）
+     */
+    LoginResponse register(RegisterRequest request);
 
     /**
      * 用户登录

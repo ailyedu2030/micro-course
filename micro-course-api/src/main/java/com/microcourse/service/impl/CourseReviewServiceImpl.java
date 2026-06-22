@@ -8,12 +8,14 @@ import com.microcourse.dto.CourseReviewVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.CourseReview;
 import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseReviewService;
 import org.springframework.stereotype.Service;
@@ -38,15 +40,18 @@ public class CourseReviewServiceImpl implements CourseReviewService {
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
+    private final LearningProgressRepository learningProgressRepository;
 
     public CourseReviewServiceImpl(CourseReviewRepository courseReviewRepository,
                                    EnrollmentRepository enrollmentRepository,
                                    UserRepository userRepository,
-                                   CourseRepository courseRepository) {
+                                   CourseRepository courseRepository,
+                                   LearningProgressRepository learningProgressRepository) {
         this.courseReviewRepository = courseReviewRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
+        this.learningProgressRepository = learningProgressRepository;
     }
 
     @Override
@@ -59,6 +64,18 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
         if (enrollment == null) {
             throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
+        }
+
+        // J10-01: 校验用户已完课才能评价（completed=true 或 progress >= 80%）
+        if (!Boolean.TRUE.equals(enrollment.getCompleted())) {
+            // 检查学习进度是否 ≥ 80%
+            LambdaQueryWrapper<LearningProgress> progressWrapper = new LambdaQueryWrapper<>();
+            progressWrapper.eq(LearningProgress::getUserId, userId)
+                    .eq(LearningProgress::getCourseId, courseId);
+            LearningProgress progress = learningProgressRepository.selectOne(progressWrapper);
+            if (progress == null || progress.getVideoProgress() == null || progress.getVideoProgress() < 80) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请完成课程学习后再评价（学习进度 ≥ 80%）");
+            }
         }
 
         // 验证评分范围 1-5

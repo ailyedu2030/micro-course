@@ -47,6 +47,10 @@ public class Exercise {
     @TableField("question_count")
     private Integer questionCount;
 
+    /** J3-01: 标记是否为考试（区别于普通练习） */
+    @TableField("is_exam")
+    private Boolean isExam;
+
     @Version
     private Integer version;
 
@@ -85,6 +89,8 @@ public class Exercise {
     public void setTotalScore(Integer totalScore) { this.totalScore = totalScore; }
     public Integer getQuestionCount() { return questionCount; }
     public void setQuestionCount(Integer questionCount) { this.questionCount = questionCount; }
+    public Boolean getIsExam() { return isExam; }
+    public void setIsExam(Boolean isExam) { this.isExam = isExam; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getCreatedAt() { return createdAt; }

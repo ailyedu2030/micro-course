@@ -3,6 +3,7 @@ package com.microcourse.service.impl;
 import com.microcourse.dto.ChangePasswordRequest;
 import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
+import com.microcourse.dto.RegisterRequest;
 import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.entity.User;
@@ -21,6 +22,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -61,6 +63,8 @@ public class AuthServiceImpl implements AuthService {
     private final java.util.Map<String, LocalLoginFailureEntry> localLoginFailCache =
             new java.util.concurrent.ConcurrentHashMap<>();
 
+    private AuthServiceImpl self;
+
     public AuthServiceImpl(UserRepository userRepository, JwtUtil jwtUtil,
                            BCryptPasswordEncoder passwordEncoder, RedisUtil redisUtil,
                            OperationLogService operationLogService,
@@ -74,6 +78,68 @@ public class AuthServiceImpl implements AuthService {
         this.httpServletRequest = httpServletRequest;
         this.adminSettingService = adminSettingService;
         this.restTemplate = new RestTemplate();
+        this.self = null;
+    }
+
+    /**
+     * Self-injection to access @Transactional methods on the AOP proxy.
+     * Setter injection avoids field injection while allowing self-calls
+     * to pass through Spring's transaction interceptor.
+     */
+    @Autowired
+    public void setSelf(AuthServiceImpl authServiceImpl) {
+        this.self = authServiceImpl;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public LoginResponse register(RegisterRequest request) {
+        // Step 1: 校验用户名唯一性
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new BusinessException(ErrorCode.USERNAME_EXISTS);
+        }
+
+        // Step 2: 密码复杂度已在 RegisterRequest @Pattern 校验，此处为双重保险
+        String password = request.getPassword();
+        if (password == null || password.length() < 8
+                || !java.util.regex.Pattern.compile("(?=.*[A-Za-z])(?=.*\\d)").matcher(password).find()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "密码需至少 8 位且包含字母和数字");
+        }
+
+        // Step 3: 创建学生用户（status=1 ACTIVE，无需管理员审核）
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(password));
+        user.setRole(UserRole.STUDENT);
+        user.setStatus(1); // ACTIVE
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.insert(user);
+
+        log.info("[Register] 学生自助注册成功 username={} userId={}", request.getUsername(), user.getId());
+
+        // Step 4: 自动登录 - 生成 JWT
+        String accessToken = jwtUtil.generateToken(
+                user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+
+        // Step 5: 记录操作日志
+        OperationLog logEntry = new OperationLog();
+        logEntry.setUserId(user.getId());
+        logEntry.setAction("REGISTER");
+        logEntry.setTargetType("USER");
+        logEntry.setTargetId(user.getId());
+        logEntry.setIp(IpUtil.getClientIp());
+        logEntry.setSuccess(true);
+        operationLogService.log(logEntry);
+
+        // Step 6: 构建响应
+        LoginResponse response = new LoginResponse();
+        response.setAccessToken(accessToken);
+        response.setRefreshToken(refreshToken);
+        response.setExpiresIn(7200);
+        response.setTokenType("Bearer");
+        return response;
     }
 
     @Override
@@ -302,9 +368,28 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public LoginResponse casLogin(String ticket, String state) {
-        // Step 1: 从 admin_settings 读取 CAS 配置
+        // Step 1: 验证 CAS ticket（外部 HTTP，非事务）
+        CasUserInfo casUser = verifyCasTicket(ticket);
+        if (casUser == null) {
+            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "CAS票据验证失败");
+        }
+
+        // Step 2: DB 操作（事务，通过 self 代理调用以触发 @Transactional）
+        if (self == null) {
+            // 极端容灾：self 注入未完成时回退到直接调用（仅测试环境可能触发）
+            log.warn("[CAS] self 未注入，回退到直接调用 casLoginTransaction");
+            return casLoginTransaction(casUser);
+        }
+        return self.casLoginTransaction(casUser);
+    }
+
+    /**
+     * 验证 CAS ticket，返回 CAS 用户信息。
+     * 此方法不涉及数据库操作，不加事务，避免长事务持有数据库连接。
+     */
+    private CasUserInfo verifyCasTicket(String ticket) {
+        // 读取 CAS 配置
         String casServerUrl = adminSettingService.getByKey("cas_server_url");
         String casServiceUrl = adminSettingService.getByKey("cas_service_url");
 
@@ -315,9 +400,8 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.CAS_NOT_CONFIGURED, "CAS回调地址未配置，请在系统设置中配置 cas_service_url");
         }
 
-        // Step 2: 调用 CAS serviceValidate 端点验证票据
+        // 调用 CAS serviceValidate 端点验证票据
         String encodedServiceUrl = URLEncoder.encode(casServiceUrl, StandardCharsets.UTF_8);
-        // 去除末尾斜杠
         String baseUrl = casServerUrl.endsWith("/") ? casServerUrl.substring(0, casServerUrl.length() - 1) : casServerUrl;
         String validateUrl = baseUrl + "/serviceValidate?ticket=" + URLEncoder.encode(ticket, StandardCharsets.UTF_8)
                 + "&service=" + encodedServiceUrl;
@@ -339,9 +423,20 @@ public class AuthServiceImpl implements AuthService {
 
         log.debug("[CAS] CAS 响应 XML: {}", xmlResponse);
 
-        // Step 3: 解析 CAS XML 响应提取用户名
+        // 解析 CAS XML 响应提取用户名
         String casUsername = parseCasUsername(xmlResponse);
         log.info("[CAS] 票据验证成功，CAS用户名={}", casUsername);
+
+        return new CasUserInfo(casUsername);
+    }
+
+    /**
+     * CAS 登录事务 — 仅包含数据库操作（upsert user、generate token、log）。
+     * 通过 AOP 代理（self）调用以确保 @Transactional 生效。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    protected LoginResponse casLoginTransaction(CasUserInfo casUser) {
+        String casUsername = casUser.getUsername();
 
         // Step 4: 查找或自动注册用户
         User user = userRepository.findByUsername(casUsername).orElse(null);
@@ -637,5 +732,19 @@ public class AuthServiceImpl implements AuthService {
         vo.setLastLoginAt(user.getLastLoginAt());
         vo.setCreatedAt(user.getCreatedAt());
         return vo;
+    }
+
+    /**
+     * CAS 用户信息 — verifyCasTicket 的返回值。
+     * 仅包含 CAS 验证阶段获取的数据，不含数据库操作。
+     */
+    static class CasUserInfo {
+        private final String username;
+
+        CasUserInfo(String username) {
+            this.username = username;
+        }
+
+        String getUsername() { return username; }
     }
 }

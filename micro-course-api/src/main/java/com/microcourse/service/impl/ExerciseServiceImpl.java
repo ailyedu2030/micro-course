@@ -9,6 +9,7 @@ import com.microcourse.dto.ExerciseVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Exercise;
 import com.microcourse.entity.ExerciseChapter;
 import com.microcourse.entity.ExerciseQuestion;
@@ -16,6 +17,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseChapterRepository;
 import com.microcourse.repository.ExerciseQuestionRepository;
 import com.microcourse.repository.ExerciseRepository;
@@ -41,17 +43,20 @@ public class ExerciseServiceImpl implements ExerciseService {
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
     private final ExerciseChapterRepository exerciseChapterRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     public ExerciseServiceImpl(ExerciseRepository exerciseRepository,
                                ExerciseQuestionRepository exerciseQuestionRepository,
                                CourseRepository courseRepository,
                                CourseChapterRepository courseChapterRepository,
-                               ExerciseChapterRepository exerciseChapterRepository) {
+                               ExerciseChapterRepository exerciseChapterRepository,
+                               EnrollmentRepository enrollmentRepository) {
         this.exerciseRepository = exerciseRepository;
         this.exerciseQuestionRepository = exerciseQuestionRepository;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
         this.exerciseChapterRepository = exerciseChapterRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @Override
@@ -492,6 +497,31 @@ public class ExerciseServiceImpl implements ExerciseService {
             return singleList;
         }
         return new ArrayList<>();
+    }
+
+    @Override
+    public List<ExerciseVO> getMyExams(Long userId) {
+        // J3-01: 查询学生已选课程
+        LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
+        enrollWrapper.eq(Enrollment::getUserId, userId)
+                .ne(Enrollment::getEnrollmentStatus, "CANCELLED");
+        List<Enrollment> enrollments = enrollmentRepository.selectList(enrollWrapper);
+        if (enrollments.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Long> courseIds = enrollments.stream()
+                .map(Enrollment::getCourseId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 查询这些课程中 is_exam=true 的练习
+        LambdaQueryWrapper<Exercise> examWrapper = new LambdaQueryWrapper<>();
+        examWrapper.in(Exercise::getCourseId, courseIds)
+                .eq(Exercise::getIsExam, true);
+        List<Exercise> exams = exerciseRepository.selectList(examWrapper);
+
+        return exams.stream().map(this::convertToVO).collect(Collectors.toList());
     }
 
     @Override

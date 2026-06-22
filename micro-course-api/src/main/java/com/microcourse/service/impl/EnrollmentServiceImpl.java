@@ -36,6 +36,7 @@ import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.CertificateService;
 import com.microcourse.service.BadgeService;
 import com.microcourse.service.NotificationService;
+import com.microcourse.service.OrderService;
 import com.microcourse.enums.NotificationType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -67,6 +68,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final CertificateService certificateService;
     private final BadgeService badgeService;
     private final OrderRepository orderRepository;
+    private final OrderService orderService;
     private final NotificationService notificationService;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
@@ -79,6 +81,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                  CertificateService certificateService,
                                  BadgeService badgeService,
                                  OrderRepository orderRepository,
+                                 OrderService orderService,
                                  NotificationService notificationService) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentHistoryRepository = enrollmentHistoryRepository;
@@ -90,6 +93,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         this.classesRepository = classesRepository;
         this.majorRepository = majorRepository;
         this.orderRepository = orderRepository;
+        this.orderService = orderService;
         this.notificationService = notificationService;
     }
 
@@ -525,9 +529,15 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     .eq(Order::getStatus, "PAID");
             Order paidOrder = orderRepository.selectOne(orderWrapper);
             if (paidOrder != null) {
-                log.warn("取消选课后发现已支付订单未退款: orderId={}, userId={}, courseId={}",
+                // J9-02: 取消选课时自动触发退款
+                log.info("取消选课触发退款: orderId={}, userId={}, courseId={}",
                         paidOrder.getId(), enrollment.getUserId(), enrollment.getCourseId());
-                // Phase-6 挂载点: 生产环境需在此处触发退款流程(调用 OrderService.refund)。当前仅记录告警日志。
+                try {
+                    orderService.refund(paidOrder.getId());
+                } catch (Exception e) {
+                    log.error("退款失败: orderId={}, error={}", paidOrder.getId(), e.getMessage(), e);
+                    // 退款失败不影响取消选课操作，但需记录异常
+                }
             }
         }
     }

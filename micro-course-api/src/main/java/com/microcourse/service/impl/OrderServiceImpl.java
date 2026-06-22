@@ -24,11 +24,15 @@ import com.microcourse.service.OrderService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,6 +48,14 @@ public class OrderServiceImpl implements OrderService {
     private final CourseRepository courseRepository;
     private final CourseBundleItemRepository bundleItemRepository;
     private final EnrollmentService enrollmentService;
+
+    /** J9-01: 支付模式 — mock(dev) / real(生产) */
+    @Value("${payment.mode:mock}")
+    private String payMode;
+
+    /** J9-03: 支付回调 HMAC 签名密钥（生产环境由环境变量注入） */
+    @Value("${payment.callback-secret:}")
+    private String payCallbackSecret;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             PaymentRepository paymentRepository,
@@ -224,12 +236,67 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
+     * J9-02: 退款 — 将 PAID 订单转为 REFUNDED，记录退款 Payment
+     * 状态机：PAID → REFUNDED
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderVO refund(Long orderId) {
+        Order order = orderRepository.selectById(orderId);
+        if (order == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单不存在");
+
+        if (!"PAID".equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅已支付订单可退款");
+        }
+
+        // CAS 乐观锁更新状态 PAID → REFUNDED
+        int affected = orderRepository.update(null,
+                new LambdaUpdateWrapper<Order>()
+                        .eq(Order::getId, orderId)
+                        .eq(Order::getStatus, "PAID")
+                        .set(Order::getStatus, "REFUNDED")
+                        .set(Order::getUpdatedAt, LocalDateTime.now()));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更");
+        }
+
+        // 记录退款 Payment
+        String refundTxnId = "RFND" + UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase();
+        Payment refundPayment = new Payment();
+        refundPayment.setOrderId(orderId);
+        refundPayment.setTransactionId(refundTxnId);
+        refundPayment.setPaymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : "REFUND");
+        refundPayment.setAmount(order.getAmount());
+        refundPayment.setStatus("REFUNDED");
+        refundPayment.setCreatedAt(LocalDateTime.now());
+        paymentRepository.insert(refundPayment);
+
+        log.info("退款成功: orderId={}, refundTxnId={}, amount={}", orderId, refundTxnId, order.getAmount());
+        return toVO(orderRepository.selectById(orderId));
+    }
+
+    /**
      * 支付回调（外部网关调用，无 JWT 认证上下文）
-     * 使用独立的事务方法避免自调用 AOP 失效
+     * J9-03: 增加 HMAC 签名验证（mock 模式下跳过）
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void paymentCallback(Map<String, String> params) {
+        // J9-03: HMAC 签名验证（mock 模式跳过）
+        if (!"mock".equalsIgnoreCase(payMode) && payCallbackSecret != null && !payCallbackSecret.isBlank()) {
+            String receivedSign = params.get("sign");
+            if (receivedSign == null || receivedSign.isBlank()) {
+                log.warn("[paymentCallback] 缺少签名，拒绝回调: params={}", params);
+                return;
+            }
+            String computedSign = computeHmacSignature(params, payCallbackSecret);
+            if (!computedSign.equals(receivedSign)) {
+                log.warn("[paymentCallback] 签名验证失败: received={}, computed={}", receivedSign, computedSign);
+                return;
+            }
+            log.info("[paymentCallback] 签名验证通过");
+        }
+
         String orderNo = params.get("orderNo");
         if (orderNo == null) {
             log.warn("[paymentCallback] orderNo is null, params={}", params);
@@ -251,6 +318,30 @@ public class OrderServiceImpl implements OrderService {
         String status = params.getOrDefault("status", "SUCCESS");
         if ("SUCCESS".equals(status)) {
             processPayment(order.getId(), params.getOrDefault("method", "UNKNOWN"));
+        }
+    }
+
+    /**
+     * J9-03: 计算 HMAC-SHA256 签名（排除 sign 字段本身）
+     */
+    private String computeHmacSignature(Map<String, String> params, String secret) {
+        try {
+            // 按 key 排序拼接参数字符串
+            StringBuilder sb = new StringBuilder();
+            params.entrySet().stream()
+                    .filter(e -> !"sign".equals(e.getKey()))
+                    .sorted(Map.Entry.comparingByKey())
+                    .forEach(e -> sb.append(e.getKey()).append("=").append(e.getValue()).append("&"));
+            if (sb.length() > 0) sb.setLength(sb.length() - 1); // 去掉末尾 &
+
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(keySpec);
+            byte[] hash = mac.doFinal(sb.toString().getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (Exception e) {
+            log.error("[paymentCallback] HMAC 签名计算失败", e);
+            return "";
         }
     }
 

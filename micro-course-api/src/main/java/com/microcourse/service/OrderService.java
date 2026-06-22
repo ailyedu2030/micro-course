@@ -18,4 +18,9 @@ public interface OrderService {
     OrderVO cancelOrder(Long orderId);
 
     void paymentCallback(Map<String, String> params);
+
+    /**
+     * J9-02: 退款（将 PAID 订单转为 REFUNDED，记录退款 Payment）
+     */
+    OrderVO refund(Long orderId);
 }

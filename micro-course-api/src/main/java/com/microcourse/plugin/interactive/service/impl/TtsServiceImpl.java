@@ -10,6 +10,7 @@ import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.TtsService;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.util.SecurityUtil;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,10 +47,40 @@ public class TtsServiceImpl implements TtsService {
 
     private static final String MMX_CMD = "mmx";
 
+    /** J8-01: 启动时检测 mmx CLI 是否可用 */
+    private volatile boolean mmxAvailable = false;
+    private volatile String mmxCheckMessage = "未检测";
+
     public TtsServiceImpl(SlidePageMapper slidePageMapper,
                           CourseRepository courseRepository) {
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
+    }
+
+    /**
+     * J8-01: 启动时检测 mmx CLI 是否可用，不可用时降级为纯文本模式（记录 warn 日志）
+     */
+    @PostConstruct
+    public void checkMmxAvailability() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(MMX_CMD, "--version");
+            Process process = pb.start();
+            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+            if (finished && process.exitValue() == 0) {
+                mmxAvailable = true;
+                mmxCheckMessage = "可用";
+                log.info("[TTS] mmx CLI 检测通过，TTS 功能正常可用");
+            } else {
+                mmxCheckMessage = "mmx CLI 执行失败或超时";
+                log.warn("[TTS] mmx CLI 不可用 (exit={})，TTS 将降级为纯文本模式", finished ? process.exitValue() : "timeout");
+            }
+        } catch (IOException e) {
+            mmxCheckMessage = "mmx CLI 未安装或不在 PATH 中: " + e.getMessage();
+            log.warn("[TTS] mmx CLI 不可用: {}，TTS 将降级为纯文本模式", e.getMessage());
+        } catch (Exception e) {
+            mmxCheckMessage = "检测 mmx 时异常: " + e.getMessage();
+            log.warn("[TTS] 检测 mmx CLI 时发生异常: {}", e.getMessage(), e);
+        }
     }
 
     @Override
@@ -60,7 +91,17 @@ public class TtsServiceImpl implements TtsService {
         SlidePage page = getPage(courseId, pageNumber);
         String script = page.getNarrationScript();
         if (script == null || script.isBlank()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "讲述稿为空，请先生成讲述稿");
+        }
+
+        // J8-01: 若 mmx CLI 不可用，降级为纯文本模式
+        if (!mmxAvailable) {
+            log.warn("[TTS] mmx 不可用 ({}), 跳过 TTS 生成 courseId={} page={}", mmxCheckMessage, courseId, pageNumber);
+            page.setNarrationStatus("TEACHER_EDITED");
+            page.setUpdatedAt(LocalDateTime.now());
+            slidePageMapper.updateById(page);
+            // J8-02: 不报错，返回页面但保留文本状态让用户知道 TTS 当前不可用
+            return toPageVO(page);
         }
 
         String audioFileName = "page_" + pageNumber + ".mp3";

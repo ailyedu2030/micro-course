@@ -22,4 +22,9 @@ public interface ExerciseService {
     void addQuestions(Long exerciseId, List<Long> questionIds);
 
     void removeQuestion(Long exerciseId, Long questionId);
+
+    /**
+     * J3-01: 获取当前学生的考试列表（已选课且 is_exam=true 的练习）
+     */
+    List<ExerciseVO> getMyExams(Long userId);
 }
