@@ -183,6 +183,7 @@ const pages = ref([])
 const selectedPage = ref(null)
 const editingScript = ref('')
 const uploading = ref(false)
+const uploadProgress = ref(0)
 const aiLoading = ref(false)
 const aiGenerating = ref(false)
 const ttsLoading = ref(false)
@@ -223,8 +224,11 @@ async function handleUpload(file) {
     return false
   }
   uploading.value = true
+  uploadProgress.value = 0
   try {
-    const res = await uploadSlide(courseId.value, file)
+    await uploadSlide(courseId.value, file, (e) => {
+      uploadProgress.value = Math.round((e.loaded / e.total) * 100)
+    })
     ElMessage.success('上传成功，正在后台渲染...')
     await loadData()
     startPolling()

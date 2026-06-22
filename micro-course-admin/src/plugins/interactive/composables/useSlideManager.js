@@ -8,6 +8,7 @@ export function useSlideManager(courseId) {
   const selectedPage = ref(null)
   const editingScript = ref('')
   const uploading = ref(false)
+  const uploadingProgress = ref(0)
   const aiLoading = ref(false)
   const ttsLoading = ref(false)
   const showPreview = ref(false)
@@ -20,7 +21,11 @@ export function useSlideManager(courseId) {
         const p = await getSlidePages(courseId.value)
         pages.value = p.data || []
       }
-    } catch { /* no slides */ }
+    } catch (e) {
+      if (e?.response?.status !== 404) {
+        console.warn('[SlideManager] loadData error', e)
+      }
+    }
   }
 
   function selectPage(page) {
@@ -31,9 +36,10 @@ export function useSlideManager(courseId) {
   async function handleUpload(file) {
     uploading.value = true
     try {
-      await uploadSlide(courseId.value, file)
+      await uploadSlide(courseId.value, file, (e) => {
+        uploadingProgress.value = Math.round((e.loaded / e.total) * 100)
+      })
       ElMessage.success('上传成功，正在后台渲染...')
-      // Poll for status
       startPolling()
     } catch { ElMessage.error('上传失败') }
     finally { uploading.value = false }
@@ -79,12 +85,24 @@ export function useSlideManager(courseId) {
   }
 
   let pollTimer = null
+  let pollCount = 0
+  const MAX_POLLS = 100
   function startPolling() {
     if (pollTimer) return
     pollTimer = setInterval(async () => {
+      pollCount++
+      if (pollCount > MAX_POLLS) {
+        clearInterval(pollTimer); pollTimer = null
+        ElMessage.warning('渲染耗时较长，请刷新页面检查状态')
+        return
+      }
       await loadData()
-      if (slide.value?.status !== 0 && slide.value?.status !== 1) {
-        if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+      if (slide.value?.status === 3) {
+        clearInterval(pollTimer); pollTimer = null
+        ElMessage.error(slide.value?.errorMessage || '课件渲染失败')
+      } else if (slide.value?.status === 2) {
+        clearInterval(pollTimer); pollTimer = null
+        ElMessage.success('课件渲染完成')
       }
     }, 3000)
   }
@@ -95,7 +113,7 @@ export function useSlideManager(courseId) {
 
   return {
     slide, pages, selectedPage, editingScript,
-    uploading, aiLoading, ttsLoading, showPreview,
+    uploading, uploadingProgress, aiLoading, ttsLoading, showPreview,
     loadData, selectPage, handleUpload,
     handleGenerateAI, handleGenerateTTS, handleSaveScript,
   }

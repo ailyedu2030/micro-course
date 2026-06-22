@@ -38,11 +38,76 @@ class="native-upload-zone" @drop.prevent="onDrop" @dragover.prevent @click="$ref
             <div class="upload-hint">或点击选择文件 · 支持 .pptx 格式，最大 50MB</div>
           </div>
         </div>
-        <div v-else class="file-info">
+        <div v-else-if="slide?.status === 2" class="file-info">
           <p>✅ {{ slide.fileName }}（{{ pages.length }} 页）</p>
           <el-button size="small" @click="replacePPTX">替换文件</el-button>
         </div>
-        <el-progress v-if="rendering" :percentage="renderProgress" :stroke-width="6" />
+        <div v-else-if="slide && (slide.status === 0 || slide.status === 1)" class="file-info">
+          <p>{{ slide.fileName }}</p>
+          <el-tag :type="statusTagType" size="small">{{ dynamicRenderText }}</el-tag>
+        </div>
+        <div v-if="uploadingFile">
+          <el-progress :percentage="realUploadProgress" :stroke-width="6" />
+          <p class="progress-hint">
+            正在上传文件... {{ realUploadProgress }}%
+            <template v-if="uploadSpeedMBps"> · {{ uploadSpeedMBps }} MB/s</template>
+            <template v-if="uploadEtaText"> · 剩余 {{ uploadEtaText }}</template>
+          </p>
+        </div>
+        <div v-else-if="rendering || (slide && (slide.status === 0 || slide.status === 1))">
+          <el-progress :percentage="renderProgress" :stroke-width="6" :status="renderProgress === 100 ? 'success' : ''" />
+          <p class="progress-hint">{{ dynamicRenderText }}</p>
+          <p v-if="renderElapsed > 0" class="progress-hint progress-elapsed">已渲染 {{ renderElapsed }} 秒</p>
+          <el-alert v-if="slide?.status === 1" type="warning" :closable="false" show-icon class="render-warning">
+            <template #title>渲染期间请勿关闭此页面</template>
+          </el-alert>
+          <!-- 渲染超时渐进反馈 -->
+          <div v-if="renderTimeoutLevel >= 1" class="timeout-feedback">
+            <div v-if="renderTimeoutLevel === 1" class="timeout-notice">
+              <el-text type="warning" size="small">⏱ 渲染耗时较长（已 {{ renderElapsed }} 秒），您可以先去处理其他事务，稍后刷新本页即可查看结果。</el-text>
+            </div>
+            <div v-else-if="renderTimeoutLevel === 2" class="timeout-notice">
+              <el-text type="warning" size="small">⏱ 已等待 {{ renderElapsed }} 秒，渲染仍在进行中。</el-text>
+              <el-button size="small" type="warning" plain class="timeout-btn" @click="viewBackendLogs">📋 查看后台日志</el-button>
+            </div>
+            <div v-else-if="renderTimeoutLevel === 3" class="timeout-notice timeout-urgent">
+              <el-text type="danger" size="small">⚠ 渲染已耗时 {{ renderElapsed }} 秒，可能存在问题。建议截图当前页面（含课程 ID：{{ courseId }}），联系管理员处理。</el-text>
+            </div>
+          </div>
+          <!-- 完全超时对话框 -->
+          <el-dialog
+            v-model="showTimeoutFeedback"
+            title="渲染超时"
+            width="440px"
+            :close-on-click-modal="false"
+            :show-close="false"
+          >
+            <div class="timeout-dialog-body">
+              <p>渲染已超过 5 分钟仍未完成。后台可能遇到异常。</p>
+              <p class="timeout-course-id">课程 ID：<code>{{ courseId }}</code></p>
+            </div>
+            <template #footer>
+              <el-button type="primary" @click="showTimeoutFeedback = false">我已知晓</el-button>
+              <el-button @click="viewBackendLogs">查看后台日志</el-button>
+            </template>
+          </el-dialog>
+        </div>
+        <div v-else-if="slide?.status === 3" class="render-failure">
+          <el-result icon="error" title="课件渲染失败" :sub-title="slide.errorMessage || '请尝试重新上传'">
+            <template #extra>
+              <el-button type="primary" size="small" @click="copyCourseId">📋 复制课程ID</el-button>
+              <el-button size="small" @click="replacePPTX">重新上传</el-button>
+              <p class="contact-admin">如问题持续，请联系管理员</p>
+            </template>
+          </el-result>
+        </div>
+        <div v-if="uploadFailed" class="upload-retry">
+          <el-result icon="error" title="上传失败" sub-title="文件上传失败，请重试">
+            <template #extra>
+              <el-button type="primary" @click="retryUpload">重新上传</el-button>
+            </template>
+          </el-result>
+        </div>
       </section>
 
       <!-- Step 2: Course Outline -->
@@ -131,7 +196,7 @@ size="small" type="success" :loading="ttsLoading[idx]"
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, UploadFilled } from '@element-plus/icons-vue'
 import { getCourseById, submitCourseForReview } from '@/api/course'
 import { getSlides, getSlidePages, uploadSlide, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio } from '@/plugins/interactive/api/slide'
@@ -148,6 +213,12 @@ const slide = ref(null)
 const pages = ref([])
 const rendering = ref(false)
 const renderProgress = ref(0)
+const uploadingFile = ref(false)
+const realUploadProgress = ref(0)
+const uploadSpeed = ref(null)
+const uploadEta = ref(null)
+const uploadStartBytes = ref(0)
+const uploadStartTime = ref(0)
 const openPages = ref(new Set([0]))
 const aiGenerating = ref(false)
 const aiLoading = ref({})
@@ -155,7 +226,15 @@ const ttsLoading = ref({})
 const aiExerciseLoading = ref(false)
 const exercises = ref([])
 const pollTimer = ref(null)
-const simTimer = ref(null)
+const narrationPollTimer = ref(null)
+const uploadFailed = ref(false)
+const renderStatusText = ref('')
+const statusTagType = ref('warning')
+const renderStartTime = ref(0)
+const renderElapsed = ref(0)
+const renderTimeoutLevel = ref(0) // 0=正常 1=60s 2=120s 3=180s 4=300s超时
+const showTimeoutFeedback = ref(false)
+let elapsedTimer = null
 
 function toggleOpen(idx) {
   const s = new Set(openPages.value)
@@ -167,6 +246,20 @@ function statusText(page) {
   const m = { AI_GENERATED: 'AI已生成', TEACHER_EDITED: '已编辑' }
   return m[page.narrationStatus] || page.narrationStatus
 }
+
+const tagTypeMap = { 0: 'info', 1: 'warning', 2: 'success', 3: 'danger' }
+
+const uploadSpeedMBps = computed(() => {
+  if (!uploadSpeed.value) return null
+  return (uploadSpeed.value / (1024 * 1024)).toFixed(1)
+})
+const uploadEtaText = computed(() => {
+  if (uploadEta.value === null || uploadEta.value === undefined) return ''
+  if (uploadEta.value < 60) return `${uploadEta.value} 秒`
+  const min = Math.floor(uploadEta.value / 60)
+  const sec = uploadEta.value % 60
+  return `${min} 分 ${sec} 秒`
+})
 
 async function loadCourse() {
   loading.value = true
@@ -195,14 +288,17 @@ async function loadSlides() {
       pages.value = (p.data || []).map(page => ({ ...page, pageTitle: `课时 ${page.pageNumber}` }))
       if (pages.value.length > 0) openPages.value = new Set([0])
     }
-  } catch { /* no slides */ }
+  } catch (e) {
+    if (e?.response?.status !== 404) {
+      console.warn('[TeacherWorkspace] loadSlides error', e)
+    }
+  }
 }
 
 async function uploadFile(file) {
   if (!file || !file.name) { ElMessage.warning('无效的文件'); return }
   if (file.size > 50 * 1024 * 1024) { ElMessage.warning('文件超过 50MB 限制'); return }
   if (!file.name.toLowerCase().endsWith('.pptx')) { ElMessage.warning('仅支持 .pptx 格式，当前文件：' + file.name); return }
-  // 检查文件是否为有效 ZIP/PPTX (前4字节 PK\x03\x04)
   if (file.slice && file.size >= 4) {
     try {
       const header = await file.slice(0, 4).arrayBuffer()
@@ -211,35 +307,98 @@ async function uploadFile(file) {
         ElMessage.warning('文件格式异常，请确认上传的是有效的 .pptx 文件')
         return
       }
-    } catch (e) { /* 降级：跳过浏览器端魔数校验 */ }
+    } catch (e) { /* skip magic check */ }
   }
+
+  uploadingFile.value = true
+  uploadFailed.value = false
+  realUploadProgress.value = 0
+  uploadSpeed.value = null
+  uploadEta.value = null
+  uploadStartBytes.value = 0
+  uploadStartTime.value = Date.now()
+  try {
+    await uploadSlide(courseId.value, file, (e) => {
+      realUploadProgress.value = Math.round((e.loaded / e.total) * 100)
+      const now = Date.now()
+      const deltaBytes = e.loaded - uploadStartBytes.value
+      const deltaSec = Math.max((now - uploadStartTime.value) / 1000, 0.01)
+      if (deltaSec >= 0.5 && deltaBytes > 0) {
+        uploadSpeed.value = deltaBytes / deltaSec
+        const remaining = e.total - e.loaded
+        uploadEta.value = uploadSpeed.value > 0 ? Math.ceil(remaining / uploadSpeed.value) : null
+        uploadStartBytes.value = e.loaded
+        uploadStartTime.value = now
+      }
+    })
+  } catch (e) {
+    uploadingFile.value = false
+    slide.value = null
+    pages.value = []
+    uploadFailed.value = true
+    ElMessage.error('上传失败，请稍后重试')
+    return
+  }
+  uploadingFile.value = false
+
   rendering.value = true
   renderProgress.value = 0
-  simTimer.value = setInterval(() => { renderProgress.value = Math.min(renderProgress.value + 5, 90) }, 2000)
-  try {
-    await uploadSlide(courseId.value, file)
-    pollTimer.value = setInterval(async () => {
-      try {
-        const s = await getSlides(courseId.value)
-        slide.value = s.data
-        if (s.data?.status === 2) {
-          clearInterval(pollTimer.value); clearInterval(simTimer.value)
-          rendering.value = false
-          renderProgress.value = 100
-          await loadSlides()
-          ElMessage.success('课件渲染完成')
-        } else if (s.data?.status === 3) {
-          clearInterval(pollTimer.value); clearInterval(simTimer.value)
-          rendering.value = false
-          ElMessage.error('渲染失败')
-        }
-      } catch {}
-    }, 3000)
-  } catch (e) {
-    clearInterval(simTimer.value)
-    rendering.value = false
-    ElMessage.error('上传失败，请稍后重试')
-  }
+  renderStartTime.value = Date.now()
+  renderElapsed.value = 0
+  renderTimeoutLevel.value = 0
+  showTimeoutFeedback.value = false
+  renderStatusText.value = '正在后台渲染课件...'
+
+  // 每秒更新一次已耗时（驱动 UI 提示）
+  if (elapsedTimer) clearInterval(elapsedTimer)
+  elapsedTimer = setInterval(() => {
+    renderElapsed.value = Math.floor((Date.now() - renderStartTime.value) / 1000)
+    // 渐进反馈：60s / 120s / 180s
+    if (renderElapsed.value >= 180) {
+      renderTimeoutLevel.value = 3
+    } else if (renderElapsed.value >= 120) {
+      renderTimeoutLevel.value = 2
+    } else if (renderElapsed.value >= 60) {
+      renderTimeoutLevel.value = 1
+    }
+  }, 1000)
+
+  let pollCount = 0
+  const maxPolls = 100 // 300s
+  pollTimer.value = setInterval(async () => {
+    pollCount++
+    if (pollCount > maxPolls) {
+      clearInterval(pollTimer.value)
+      if (elapsedTimer) clearInterval(elapsedTimer)
+      renderTimeoutLevel.value = 4
+      renderStatusText.value = '渲染超时（超过 5 分钟），请稍后刷新页面查看状态'
+      showTimeoutFeedback.value = true
+      return
+    }
+    try {
+      const s = await getSlides(courseId.value)
+      slide.value = s.data
+      const status = s.data?.status
+      renderStatusText.value = s.data?.statusText || '处理中...'
+      if (status === 2) {
+        clearInterval(pollTimer.value)
+        if (elapsedTimer) clearInterval(elapsedTimer)
+        renderProgress.value = 100
+        renderTimeoutLevel.value = 0
+        await loadSlides()
+        ElMessage.success('课件渲染完成')
+        setTimeout(() => { rendering.value = false }, 1500)
+      } else if (status === 3) {
+        clearInterval(pollTimer.value)
+        if (elapsedTimer) clearInterval(elapsedTimer)
+        rendering.value = false
+        renderTimeoutLevel.value = 0
+        ElMessage.error(getRenderErrorTip(s.data?.errorMessage))
+      }
+    } catch (e) {
+      /* poll silently */
+    }
+  }, 3000)
 }
 
 function onFileSelected(e) {
@@ -253,7 +412,43 @@ function onDrop(e) {
   if (file) uploadFile(file)
 }
 
-function replacePPTX() { slide.value = null; pages.value = []; }
+function retryUpload() {
+  uploadFailed.value = false
+  // 通过 Vue template ref 触发原生文件选择对话框
+  const inputEl = fileInput?.value || document.querySelector('.native-upload-zone input[type="file"]')
+  if (inputEl) {
+    inputEl.value = ''
+    inputEl.click()
+  }
+}
+
+function getRenderErrorTip(errorMessage) {
+  if (!errorMessage) return '课件渲染失败，请重新上传'
+  const msg = errorMessage.toLowerCase()
+  if (msg.includes('损坏') || msg.includes('corrupt') || msg.includes('invalid') || msg.includes('magic') || msg.includes('不是有效的')) {
+    return 'PPT 文件可能已损坏，请检查源文件后重新上传'
+  }
+  if (msg.includes('太大') || msg.includes('过大') || msg.includes('exceed') || msg.includes('too large')) {
+    return 'PPT 文件过大，请压缩图片或拆分为多个课程后重新上传'
+  }
+  if (msg.includes('格式') || msg.includes('format') || msg.includes('不支持') || msg.includes('unsupported')) {
+    return 'PPT 格式异常，请确认文件为有效的 .pptx 格式'
+  }
+  if (msg.includes('超时') || msg.includes('timeout') || msg.includes('timed out')) {
+    return '渲染超时，可能是文件页数过多或图片分辨率过高，请精简后重试'
+  }
+  if (msg.includes('内存') || msg.includes('memory') || msg.includes('oom')) {
+    return '文件内容过多导致内存不足，请拆分 PPT 或压缩图片后重试'
+  }
+  return `课件渲染失败：${errorMessage}`
+}
+
+function replacePPTX() {
+  if (pollTimer.value) { clearInterval(pollTimer.value); pollTimer.value = null }
+  slide.value = null
+  pages.value = []
+  uploadFailed.value = false
+}
 
 async function saveOutline(page) {
   // page title updates are displayed-only; slide_pages title not supported in current API
@@ -274,13 +469,38 @@ async function handleGenerateAllNarrations() {
   aiGenerating.value = true
   try {
     await generateAllNarrations(courseId.value)
-    ElMessage.success('批量AI生成已启动，请稍后刷新')
-    setTimeout(async () => {
+    ElMessage.success('批量讲述稿生成已启动，正在等待完成...')
+  } catch (e) {
+    ElMessage.error('操作失败')
+    console.warn('[TeacherWorkspace] generateAllNarrations failed', e)
+    aiGenerating.value = false
+    return
+  }
+
+  // 短轮询：每 2s 检查一次，最多 30 次（60s），直到 narrationStatus 全部变化
+  let pollCount = 0
+  const maxPolls = 30
+  narrationPollTimer.value = setInterval(async () => {
+    pollCount++
+    try {
       const p = await getSlidePages(courseId.value)
-      pages.value = (p.data || []).map(page => ({ ...page, pageTitle: `课时 ${page.pageNumber}` }))
-    }, 5000)
-  } catch { ElMessage.error('操作失败') }
-  finally { aiGenerating.value = false }
+      const newPages = (p.data || []).map(page => ({ ...page, pageTitle: `课时 ${page.pageNumber}` }))
+      const allDone = newPages.every(page => page.narrationStatus !== 'PENDING')
+      if (allDone || pollCount >= maxPolls) {
+        clearInterval(narrationPollTimer.value)
+        narrationPollTimer.value = null
+        pages.value = newPages
+        if (allDone) {
+          ElMessage.success('全部讲述稿生成完成')
+        } else {
+          ElMessage.warning('部分讲述稿仍在生成中，请稍后手动刷新')
+        }
+        aiGenerating.value = false
+      }
+    } catch {
+      // poll silently
+    }
+  }, 2000)
 }
 
 async function saveNarration(page) {
@@ -322,6 +542,13 @@ async function submitForReview() {
 
 function previewCourse() { window.open(`/student/courses/${courseId.value}`, '_blank') }
 
+function viewBackendLogs() {
+  // 打开新窗口访问后端日志端点（如已配置），否则提示前往服务器查看
+  const logUrl = `${import.meta.env.VITE_API_BASE_URL || ''}/actuator/logfile`
+  window.open(logUrl, '_blank')
+  ElMessage.info('如无法打开，请联系管理员并提供课程 ID：' + courseId.value)
+}
+
 function onNarrationSettingsSaved() {
   ElMessage.success('讲述稿设置已更新，下次 AI 生成将使用新设置')
 }
@@ -330,7 +557,7 @@ onMounted(() => loadCourse())
 
 onUnmounted(() => {
   if (pollTimer.value) clearInterval(pollTimer.value)
-  if (simTimer.value) clearInterval(simTimer.value)
+  if (elapsedTimer) clearInterval(elapsedTimer)
 })
 </script>
 
@@ -444,6 +671,10 @@ onUnmounted(() => {
               background var(--duration-base) var(--ease-out);
 }
 
+.upload-retry {
+  margin-top: var(--space-4);
+}
+
 .upload-box:hover {
   border-color: var(--role-primary);
   background: var(--role-primary-light-9);
@@ -463,6 +694,13 @@ onUnmounted(() => {
   font-size: var(--text-xs);
   color: var(--el-text-color-placeholder);
   margin-top: var(--space-1);
+}
+
+.progress-hint {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  margin-top: var(--space-2);
+  text-align: center;
 }
 
 .file-info {
@@ -581,6 +819,48 @@ onUnmounted(() => {
 
 .ex-content {
   flex: 1;
+}
+
+/* 渲染超时渐进反馈 */
+.timeout-feedback {
+  margin-top: var(--space-3);
+}
+
+.timeout-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.timeout-notice.timeout-urgent {
+  background: var(--el-color-danger-light-9);
+  border-color: var(--el-color-danger-light-5);
+}
+
+.timeout-btn {
+  align-self: flex-start;
+}
+
+.timeout-dialog-body {
+  line-height: var(--leading-relaxed);
+  color: var(--el-text-color-regular);
+}
+
+.timeout-course-id {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+.timeout-course-id code {
+  background: var(--el-fill-color-light);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
 }
 
 @media (max-width: 768px) {

@@ -45,10 +45,26 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
         <div class="slide-frame">
           <transition :name="transitionName" mode="out-in">
             <div class="slide-wrapper" :key="current">
+              <!-- 正常渲染的图片 -->
               <img
-:src="imageUrls[current] || ''" class="slide-image"
+                v-if="imageUrls[current] && !imageErrors[current]"
+                :src="imageUrls[current]" class="slide-image"
                 :alt="'第' + (current + 1) + '页'" loading="eager"
-/>
+                @error="imageErrors[current] = true"
+              />
+              <!-- 图片加载失败：占位图 + 重试按钮 -->
+              <div v-else class="slide-placeholder">
+                <el-icon :size="48" class="placeholder-icon"><PictureFilled /></el-icon>
+                <span class="placeholder-text">图片加载失败</span>
+                <el-button
+                  size="small" type="primary" plain
+                  :loading="imageRetrying[current]"
+                  :icon="RefreshRight"
+                  @click.stop="retryImage(current)"
+                >
+                  重试加载
+                </el-button>
+              </div>
               <div class="slide-gradient" />
             </div>
           </transition>
@@ -144,12 +160,12 @@ v-for="s in speeds" :key="s"
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { loadAuthImage, clearImageCache } from '@/utils/authImage'
-import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loading } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loading, RefreshRight, PictureFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const courseId = computed(() => route.params.id)
@@ -173,6 +189,8 @@ const playerRef = ref(null)
 const audioRef = ref(null)
 const imageUrls = ref({})
 const audioBlobUrls = ref({})
+const imageErrors = reactive({})       // { [pageIndex]: true } 标记哪些图片加载失败
+const imageRetrying = reactive({})     // { [pageIndex]: true } 正在重试中
 const lastDirection = ref(1)
 let countdownTimer = null
 
@@ -185,15 +203,48 @@ async function loadPages() {
     const res = await getSlidePages(courseId.value)
     pages.value = res.data || []
     for (const page of pages.value) {
+      const idx = page.pageNumber - 1
       const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`
-      const blobUrl = await loadAuthImage(relUrl)
-      if (blobUrl) imageUrls.value[page.pageNumber - 1] = blobUrl
+      try {
+        const blobUrl = await loadAuthImage(relUrl)
+        if (blobUrl) {
+          imageUrls.value[idx] = blobUrl
+          delete imageErrors[idx]
+        } else {
+          imageErrors[idx] = true
+        }
+      } catch {
+        imageErrors[idx] = true
+      }
     }
   } catch {
     pageError.value = true
     ElMessage.error('加载幻灯片失败')
   } finally {
     pageLoading.value = false
+  }
+}
+
+// 重试加载单张图片
+async function retryImage(pageIndex) {
+  if (imageRetrying[pageIndex]) return
+  const page = pages.value[pageIndex]
+  if (!page) return
+  imageRetrying[pageIndex] = true
+  const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`
+  try {
+    const blobUrl = await loadAuthImage(relUrl)
+    if (blobUrl) {
+      imageUrls.value[pageIndex] = blobUrl
+      delete imageErrors[pageIndex]
+      ElMessage.success('图片加载成功')
+    } else {
+      ElMessage.error('图片加载失败，请稍后重试')
+    }
+  } catch {
+    ElMessage.error('图片加载失败，请检查网络连接')
+  } finally {
+    delete imageRetrying[pageIndex]
   }
 }
 
@@ -349,6 +400,31 @@ onUnmounted(() => {
   position: absolute; inset: 0; border-radius: 4px;
   background: linear-gradient(180deg, transparent 85%, rgba(10,10,15,.4) 100%);
   pointer-events: none;
+}
+
+/* 图片加载失败占位 */
+.slide-placeholder {
+  width: 640px;
+  max-width: 80vw;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--player-surface);
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: 8px;
+  color: var(--player-text-secondary);
+}
+
+.placeholder-icon {
+  color: rgba(255,255,255,.1);
+}
+
+.placeholder-text {
+  font-size: 14px;
+  color: var(--player-text-secondary);
 }
 
 /* Navigation Arrows */

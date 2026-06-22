@@ -1,14 +1,14 @@
 import request from '@/utils/request'
 
-export function uploadSlide(courseId, file) {
+export function uploadSlide(courseId, file, onProgress) {
   const fd = new FormData()
   fd.append('file', file)
   return request({
     method: 'POST',
     url: `/courses/${courseId}/slides/upload`,
     data: fd,
-    // 注意: 不设置 Content-Type, axios 自动添加 multipart/form-data; boundary=xxx
-    timeout: 300000
+    timeout: 300000,
+    onUploadProgress: onProgress
   })
 }
 
