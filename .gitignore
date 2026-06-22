@@ -106,23 +106,8 @@ e2e/
 test-results/
 playwright.config.js
 
-# Flyway Migration 历史文件（V25-V39 已落库，禁止提交以避免 checksum mismatch）
-# 这些文件存在于本地但不需要进入版本控制
-micro-course-api/src/main/resources/db/migration/V25__*.sql
-micro-course-api/src/main/resources/db/migration/V26__*.sql
-micro-course-api/src/main/resources/db/migration/V27__*.sql
-micro-course-api/src/main/resources/db/migration/V28__*.sql
-micro-course-api/src/main/resources/db/migration/V29__*.sql
-micro-course-api/src/main/resources/db/migration/V30__*.sql
-micro-course-api/src/main/resources/db/migration/V31__*.sql
-micro-course-api/src/main/resources/db/migration/V32__*.sql
-micro-course-api/src/main/resources/db/migration/V33__*.sql
-micro-course-api/src/main/resources/db/migration/V34__*.sql
-micro-course-api/src/main/resources/db/migration/V35__*.sql
-micro-course-api/src/main/resources/db/migration/V36__*.sql
-micro-course-api/src/main/resources/db/migration/V37__*.sql
-micro-course-api/src/main/resources/db/migration/V38__*.sql
-micro-course-api/src/main/resources/db/migration/V39__*.sql
+# V25-V39 是完整迁移链的必要部分，必须提交以确保 CI 能从头构建数据库
+# 已从 gitignore 移除——见 fix(ci): flyway ignored migration files
 .gstack/
 page-state.yml
 .audit-cache/
