@@ -14,6 +14,9 @@ env:
   DB_PASSWORD: postgres
   REDIS_PASSWORD: ""
   DEEPSEEK_API_KEY: test-key-not-used-in-ci
+  TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course
+  TEST_REDIS_HOST: localhost
+  TEST_REDIS_PORT: 6379
 
 jobs:
   # ============================================================================
