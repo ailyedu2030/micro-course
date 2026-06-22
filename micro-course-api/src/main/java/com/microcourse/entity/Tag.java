@@ -19,7 +19,7 @@ public class Tag {
     @TableField("created_at")
     private LocalDateTime createdAt;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
     public Tag() {}

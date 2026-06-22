@@ -89,9 +89,7 @@ public class CourseServiceImpl implements CourseService {
 
     // E2-1: self-injection 解决内部调用绕过 @Transactional 代理问题
     // @Lazy 避免循环依赖，通过 AOP 代理确保 updateStatus() 的事务正确传播
-    @org.springframework.context.annotation.Lazy
-    @org.springframework.beans.factory.annotation.Autowired
-    private CourseServiceImpl self;
+    private final CourseServiceImpl self;
 
     /** C2-3 修复：异步线程池，用于 publish() 后异步发送通知，不阻塞主事务。 */
     private final Executor taskExecutor;
@@ -110,7 +108,8 @@ public class CourseServiceImpl implements CourseService {
                              NotificationService notificationService,
                              EnrollmentRepository enrollmentRepository,
                              RedisUtil redisUtil,
-                             @Qualifier("taskExecutor") Executor taskExecutor) {
+                             @Qualifier("taskExecutor") Executor taskExecutor,
+                             @org.springframework.context.annotation.Lazy CourseServiceImpl self) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
@@ -126,6 +125,7 @@ public class CourseServiceImpl implements CourseService {
         this.enrollmentRepository = enrollmentRepository;
         this.redisUtil = redisUtil;
         this.taskExecutor = taskExecutor;
+        this.self = self;
     }
 
     /**

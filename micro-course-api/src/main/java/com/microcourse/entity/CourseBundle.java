@@ -24,7 +24,7 @@ public class CourseBundle {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
     public CourseBundle() {}

@@ -6,6 +6,7 @@ import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.Gender;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +36,7 @@ import java.util.Map;
 public class EnumExportController {
 
     @GetMapping("/export")
+    @PreAuthorize("permitAll()")
     public R<Map<String, List<Map<String, Object>>>> export() {
         Map<String, List<Map<String, Object>>> result = new LinkedHashMap<>();
 

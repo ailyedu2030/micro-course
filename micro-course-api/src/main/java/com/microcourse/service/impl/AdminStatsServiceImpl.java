@@ -25,6 +25,7 @@ import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.AdminStatsService;
 import com.microcourse.util.RedisUtil;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +61,9 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     private final CertificateRepository certificateRepository;
     private final RedisUtil redisUtil;
     private final DataSource dataSource;
+
+    @Value("${upload.base-dir:uploads}")
+    private String uploadBaseDir;
 
     public AdminStatsServiceImpl(UserRepository userRepository,
                                   CourseRepository courseRepository,
@@ -329,11 +333,11 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             health.put("redis", "ERROR");
         }
 
-        // Disk check
+        // Disk check（检查 uploads 目录所在分区，而非根分区）
         try {
-            java.io.File root = new java.io.File("/");
-            long total = root.getTotalSpace();
-            long free = root.getFreeSpace();
+            java.io.File dir = new java.io.File(uploadBaseDir);
+            long total = dir.getTotalSpace();
+            long free = dir.getFreeSpace();
             long used = total - free;
             double usedPercent = (used * 100.0) / total;
             health.put("disk", usedPercent > 90 ? "WARN" : "OK");

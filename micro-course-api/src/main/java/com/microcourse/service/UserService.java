@@ -23,6 +23,11 @@ public interface UserService {
     void updateStatus(Long id, UserStatusRequest request);
 
     /**
+     * 软删除用户（status=3），ADMIN only
+     */
+    void updateStatus(Long id, Integer status);
+
+    /**
      * 更新教师入驻审核状态
      * @param id 用户ID
      * @param request 审核状态请求

@@ -20,7 +20,7 @@ public class QuestionTagRelation {
     @TableField("tag_id")
     private Long tagId;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
     public QuestionTagRelation() {

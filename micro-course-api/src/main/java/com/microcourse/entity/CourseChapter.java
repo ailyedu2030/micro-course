@@ -38,7 +38,7 @@ public class CourseChapter {
     @Version
     private Integer version;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     @TableField("deleted_at")
     private LocalDateTime deletedAt;
 

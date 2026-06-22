@@ -48,7 +48,7 @@ public class TeachingClass {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
     /**

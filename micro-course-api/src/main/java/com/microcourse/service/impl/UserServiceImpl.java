@@ -340,6 +340,17 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
+     * 简易重载：直接用状态码调用（如 Controller 中 userService.updateStatus(id, 3)）。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateStatus(Long id, Integer status) {
+        UserStatusRequest request = new UserStatusRequest();
+        request.setStatus(status);
+        updateStatus(id, request);
+    }
+
+    /**
      * 清除用户状态缓存（Round 8-2）。
      *
      * <p>用户状态变更后立即失效 {@code mc:user:status:{id}} 缓存，确保

@@ -45,7 +45,7 @@ public class CourseReview {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
     public CourseReview() {}

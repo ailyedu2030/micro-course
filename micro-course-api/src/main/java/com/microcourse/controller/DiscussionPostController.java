@@ -5,6 +5,8 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.PostCreateRequest;
 import com.microcourse.dto.PostUpdateRequest;
 import com.microcourse.dto.R;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.DiscussionPostService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -91,11 +93,14 @@ public class DiscussionPostController {
         return R.ok();
     }
 
+    /** 兼容 Long / String / Number 类型 principal（参照 EnrollmentController 写法） */
     private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof Long) {
-            return (Long) principal;
+        if (principal instanceof Long) return (Long) principal;
+        if (principal instanceof Number) return ((Number) principal).longValue();
+        if (principal instanceof String str) {
+            try { return Long.parseLong(str); } catch (NumberFormatException ignored) { /* fall through */ }
         }
-        throw new com.microcourse.exception.BusinessException(com.microcourse.exception.ErrorCode.TOKEN_INVALID);
+        throw new BusinessException(ErrorCode.TOKEN_INVALID);
     }
 }

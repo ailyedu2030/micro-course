@@ -73,7 +73,7 @@ public class LearningProgress {
     @TableField("version")
     private Integer version;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
     public LearningProgress() {}

@@ -42,7 +42,7 @@ public class ExerciseRecord {
     @Version
     private Integer version;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
     public ExerciseRecord() {}

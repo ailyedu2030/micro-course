@@ -19,7 +19,7 @@ public class CourseBundleItem {
     private Boolean isRequired;
     private LocalDateTime createdAt;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
     public CourseBundleItem() {}

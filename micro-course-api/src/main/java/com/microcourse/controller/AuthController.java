@@ -35,6 +35,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @PreAuthorize("permitAll()")
     @AuditedLog("用户登录")
     public R<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
@@ -42,6 +43,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @PreAuthorize("permitAll()")
     @AuditedLog("学生自助注册")
     public R<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
         LoginResponse response = authService.register(request);

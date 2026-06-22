@@ -51,7 +51,7 @@ public class Course {
     private BigDecimal price;
     private Boolean isFree;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
     public Course() {}

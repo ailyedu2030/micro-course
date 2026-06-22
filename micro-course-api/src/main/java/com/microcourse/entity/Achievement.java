@@ -26,7 +26,7 @@ public class Achievement {
     @TableField("earned_at")
     private LocalDateTime earnedAt;
 
-    @TableLogic(value = "null", delval = "now()")
+    @TableLogic(value = "NULL", delval = "now()")
     @TableField("deleted_at")
     private LocalDateTime deletedAt;
 
