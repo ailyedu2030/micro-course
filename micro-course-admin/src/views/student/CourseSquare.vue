@@ -29,6 +29,105 @@
       </div>
     </section>
 
+    <!-- ============ 微专业专区 ============ -->
+    <section class="micro-specialty-zone" aria-label="微专业专区">
+      <div class="ms-zone-header">
+        <h2 class="ms-zone-title">🎯 微专业 · 学校重点培养项目</h2>
+        <p class="ms-zone-desc">修读多门课程获得微专业结业证书</p>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="msLoading" class="ms-loading-row">
+        <div v-for="n in 3" :key="n" class="ms-skeleton-card">
+          <el-skeleton animated>
+            <template #template>
+              <div class="ms-skel-cover" />
+              <div class="ms-skel-body">
+                <el-skeleton-item variant="text" style="width: 70%; height: 18px;" />
+                <el-skeleton-item variant="text" style="width: 50%; height: 14px; margin-top: 8px;" />
+              </div>
+            </template>
+          </el-skeleton>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <el-result
+        v-else-if="msError" status="error" title="加载失败"
+        sub-title="请检查网络后重试" class="ms-error"
+      >
+        <template #extra>
+          <el-button type="primary" @click="fetchMicroSpecialties">重试</el-button>
+        </template>
+      </el-result>
+
+      <!-- Empty -->
+      <el-empty v-else-if="!hasMSData" class="ms-empty" description="暂无微专业项目" />
+
+      <!-- Has Data -->
+      <template v-else>
+        <!-- 金标位 (isGoldFeatured=TRUE，最多 2 张) -->
+        <div v-if="goldFeatured.length" class="ms-gold-row">
+          <div
+            v-for="item in goldFeatured" :key="'gold-'+item.id"
+            class="ms-gold-card" role="button" tabindex="0"
+            :aria-label="'微专业：' + item.title"
+            @click="goMSDetail(item.id)"
+            @keydown.enter="goMSDetail(item.id)"
+          >
+            <span class="gold-badge">🔥 学校重点推荐</span>
+            <div class="gold-cover">
+              <img
+                v-if="item.coverUrl" :src="item.coverUrl"
+                :alt="item.title" loading="lazy" class="gold-cover-img"
+              />
+              <div v-else class="gold-cover-placeholder">
+                <el-icon :size="40"><Notebook /></el-icon>
+              </div>
+            </div>
+            <div class="gold-info">
+              <h3 class="gold-title">{{ item.title }}</h3>
+              <p class="gold-meta">{{ item.departmentName }} · {{ item.leadTeacherName }}</p>
+              <p class="gold-stats">{{ item.totalCredits || 0 }} 学分 · {{ item.courseCount || 0 }} 门课</p>
+              <el-button type="primary" size="small" round class="gold-cta">立即了解 →</el-button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 常规位横滑 -->
+        <div v-if="featured.length" class="ms-scroll-wrap">
+          <div class="ms-scroll">
+            <div
+              v-for="item in featured" :key="'feat-'+item.id"
+              class="ms-card" role="button" tabindex="0"
+              :aria-label="'微专业：' + item.title"
+              @click="goMSDetail(item.id)"
+              @keydown.enter="goMSDetail(item.id)"
+            >
+              <div class="ms-card-cover">
+                <img
+                  v-if="item.coverUrl" :src="item.coverUrl"
+                  :alt="item.title" loading="lazy" class="ms-cover-img"
+                />
+                <div v-else class="ms-cover-placeholder">
+                  <el-icon :size="28"><Notebook /></el-icon>
+                </div>
+                <span v-if="item.isNew" class="ms-new-badge">NEW</span>
+              </div>
+              <div class="ms-card-body">
+                <h4 class="ms-card-title">{{ item.title }}</h4>
+                <p class="ms-card-dept">{{ item.departmentName }}</p>
+                <div v-if="item.qualityScore !== undefined" class="ms-quality-bar">
+                  <div class="ms-quality-fill" :style="{ width: Math.min(item.qualityScore * 10, 100) + '%' }" />
+                </div>
+                <p class="ms-card-credits">{{ item.totalCredits || 0 }} 学分 · {{ item.courseCount || 0 }} 门课</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </section>
+
     <!-- ============ 筛选卡 (悬浮在 Hero 下方) ============ -->
     <div class="filter-bar">
       <el-card class="filter-card" shadow="never">
@@ -314,6 +413,7 @@ import {
 import { getCourses } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 import { getBundles } from '@/api/bundle'
+import { getSquareData } from '@/api/microSpecialty'
 import { usePluginStore } from '@/store/plugins'
 
 const router = useRouter()
@@ -329,6 +429,13 @@ const hotCourses = ref([])
 const newestCourses = ref([])
 const recommendedCourses = ref([])
 const bundles = ref([])
+// 微专业专区
+const msLoading = ref(false)
+const msError = ref(false)
+const goldFeatured = ref([])
+const featured = ref([])
+const recruiting = ref([])
+const hasMSData = computed(() => goldFeatured.value.length > 0 || featured.value.length > 0)
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(12)
@@ -490,6 +597,28 @@ const handleCourseClick = (id) => {
 const goBundle = (id) => router.push(`/student/bundles/${id}`)
 const goBundles = () => router.push('/student/bundles')
 
+// 微专业专区 — 数据拉取
+const fetchMicroSpecialties = async () => {
+  msLoading.value = true
+  msError.value = false
+  try {
+    const { data } = await getSquareData()
+    goldFeatured.value = data?.goldFeatured || []
+    featured.value = data?.featured || []
+    recruiting.value = data?.recruiting || []
+  } catch (e) {
+    console.error('[CourseSquare] 微专业加载失败:', e)
+    msError.value = true
+  } finally {
+    msLoading.value = false
+  }
+}
+
+const goMSDetail = (id) => {
+  if (!id) return
+  router.push(`/student/micro-specialties/${id}`)
+}
+
 const loadBundles = async () => {
   try {
     const { data } = await getBundles({ size: 6 })
@@ -533,6 +662,7 @@ onMounted(async () => {
   fetchSideCourses()
   loadRecommended()
   loadBundles()
+  fetchMicroSpecialties()
 })
 </script>
 
@@ -877,6 +1007,294 @@ onMounted(async () => {
 .sk-title { height: 18px; width: 80%; margin-bottom: var(--space-3); border-radius: var(--radius-sm); }
 .sk-meta { height: 14px; width: 60%; margin-bottom: var(--space-2); border-radius: var(--radius-sm); }
 .sk-price { height: 18px; width: 30%; border-radius: var(--radius-sm); }
+
+/* ==========================================================================
+   Micro-Specialty Zone — 微专业专区
+   渐变紫背景 · 金标主推卡 · 常规横滑卡
+   ========================================================================== */
+.micro-specialty-zone {
+  margin: var(--space-7) 0 0;
+  padding: 32px 40px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  position: relative;
+}
+.ms-zone-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+.ms-zone-title {
+  font-size: 22px;
+  font-weight: var(--weight-bold);
+  color: #fff;
+  margin: 0 0 8px;
+  letter-spacing: var(--tracking-tight);
+}
+.ms-zone-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  font-weight: var(--weight-regular);
+}
+/* Loading */
+.ms-loading-row {
+  display: flex;
+  gap: 16px;
+}
+.ms-skeleton-card {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  min-height: 200px;
+}
+.ms-skel-cover {
+  aspect-ratio: 16 / 9;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+.ms-skel-body {
+  padding: 0 4px;
+}
+/* Error / Empty */
+.ms-error,
+.ms-empty {
+  padding: 40px 0;
+}
+.ms-empty :deep(.el-empty__description) {
+  color: rgba(255, 255, 255, 0.7);
+}
+/* 金标主推卡 */
+.ms-gold-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.ms-gold-card {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  background: #fff;
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.25);
+  transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+}
+.ms-gold-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, #f59e0b, #fbbf24) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.ms-gold-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.35);
+}
+.ms-gold-card:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.gold-badge {
+  position: absolute;
+  top: 8px;
+  right: -8px;
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: #fff;
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  padding: 4px 16px 4px 12px;
+  border-radius: 0 0 0 12px;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+  letter-spacing: var(--tracking-wide);
+}
+.gold-cover {
+  width: 200px;
+  min-width: 200px;
+  height: 140px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+}
+.gold-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+.ms-gold-card:hover .gold-cover-img {
+  transform: scale(1.05);
+}
+.gold-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a5b4fc;
+}
+.gold-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+.gold-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--el-text-color-primary);
+  margin: 0 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gold-meta {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  margin: 0 0 4px;
+}
+.gold-stats {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-regular);
+  margin: 0 0 12px;
+  font-weight: var(--weight-medium);
+}
+.gold-cta {
+  align-self: flex-start;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+}
+.gold-cta:hover {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+/* 常规横滑卡 */
+.ms-scroll-wrap {
+  position: relative;
+}
+.ms-scroll {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding-bottom: 4px;
+}
+.ms-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.ms-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-pill);
+}
+.ms-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ms-card {
+  flex: 0 0 248px;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  outline: none;
+  scroll-snap-align: start;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
+  transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out);
+}
+.ms-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.25);
+}
+.ms-card:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.ms-card-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+}
+.ms-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+.ms-card:hover .ms-cover-img {
+  transform: scale(1.08);
+}
+.ms-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a5b4fc;
+}
+.ms-new-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #10b981;
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  z-index: 2;
+  letter-spacing: var(--tracking-wide);
+}
+.ms-card-body {
+  padding: 12px 14px 14px;
+}
+.ms-card-title {
+  margin: 0 0 4px;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ms-card-dept {
+  margin: 0 0 8px;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+.ms-quality-bar {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 2px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.ms-quality-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 40%, #22c55e 100%);
+  transition: width var(--duration-slow) var(--ease-out);
+}
+.ms-card-credits {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  font-weight: var(--weight-medium);
+}
 
 /* ==========================================================================
    Utilities

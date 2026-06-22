@@ -4,14 +4,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.Certificate;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.entity.MicroSpecialtyEnrollment;
 import com.microcourse.entity.User;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CertificateRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.MicroSpecialtyRepository;
+import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CertificateService;
+import com.microcourse.service.NotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.lowagie.text.Document;
@@ -28,6 +34,9 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -40,38 +49,78 @@ public class CertificateServiceImpl implements CertificateService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
+    private final MicroSpecialtyRepository microSpecialtyRepository;
+    private final MicroSpecialtyEnrollmentRepository microSpecialtyEnrollmentRepository;
+    private final NotificationService notificationService;
 
     public CertificateServiceImpl(CertificateRepository certificateRepository,
                                   CourseRepository courseRepository,
                                   EnrollmentRepository enrollmentRepository,
-                                  UserRepository userRepository) {
+                                  UserRepository userRepository,
+                                  MicroSpecialtyRepository microSpecialtyRepository,
+                                  MicroSpecialtyEnrollmentRepository microSpecialtyEnrollmentRepository,
+                                  NotificationService notificationService) {
         this.certificateRepository = certificateRepository;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
+        this.microSpecialtyRepository = microSpecialtyRepository;
+        this.microSpecialtyEnrollmentRepository = microSpecialtyEnrollmentRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<com.microcourse.dto.CertificateVO> getMyCertificates(Long userId) {
+        return getMyCertificates(userId, "COURSE");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.microcourse.dto.CertificateVO> getMyCertificates(Long userId, String certType) {
         LambdaQueryWrapper<Certificate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Certificate::getUserId, userId)
+                .eq(Certificate::getCertType, certType)
                 .orderByDesc(Certificate::getIssuedAt);
         List<Certificate> certs = certificateRepository.selectList(wrapper);
         if (certs.isEmpty()) {
             return List.of();
         }
-        java.util.Set<Long> courseIds = certs.stream()
-                .map(Certificate::getCourseId).filter(java.util.Objects::nonNull)
-                .collect(java.util.stream.Collectors.toSet());
-        java.util.Map<Long, Course> courseMap = courseIds.isEmpty() ? java.util.Collections.emptyMap()
+
+        if ("MICRO_SPECIALTY".equals(certType)) {
+            Set<Long> msIds = certs.stream()
+                    .map(Certificate::getMicroSpecialtyId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Map<Long, MicroSpecialty> msMap = msIds.isEmpty() ? java.util.Collections.emptyMap()
+                    : microSpecialtyRepository.selectBatchIds(msIds).stream()
+                    .collect(Collectors.toMap(MicroSpecialty::getId, ms -> ms));
+            Map<Long, User> userMap = java.util.Collections.singletonMap(userId,
+                    userRepository.selectById(userId));
+            return certs.stream()
+                    .map(cert -> convertMicroSpecialtyToVO(cert, msMap, userMap))
+                    .collect(Collectors.toList());
+        }
+
+        // COURSE (default)
+        Set<Long> courseIds = certs.stream()
+                .map(Certificate::getCourseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Course> courseMap = courseIds.isEmpty() ? java.util.Collections.emptyMap()
                 : courseRepository.selectBatchIds(courseIds).stream()
-                .collect(java.util.stream.Collectors.toMap(Course::getId, c -> c));
-        java.util.Map<Long, User> userMap = java.util.Collections.singletonMap(userId,
+                .collect(Collectors.toMap(Course::getId, c -> c));
+        Map<Long, User> userMap = java.util.Collections.singletonMap(userId,
                 userRepository.selectById(userId));
         return certs.stream()
                 .map(cert -> convertToVO(cert, courseMap, userMap))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.microcourse.dto.CertificateVO> getMyMicroSpecialtyCertificates(Long userId) {
+        return getMyCertificates(userId, "MICRO_SPECIALTY");
     }
 
     @Override
@@ -89,7 +138,8 @@ public class CertificateServiceImpl implements CertificateService {
     public com.microcourse.dto.CertificateVO issueCertificate(Long userId, Long courseId) {
         LambdaQueryWrapper<Certificate> existingWrapper = new LambdaQueryWrapper<>();
         existingWrapper.eq(Certificate::getUserId, userId)
-                .eq(Certificate::getCourseId, courseId);
+                .eq(Certificate::getCourseId, courseId)
+                .eq(Certificate::getCertType, "COURSE");
         Certificate existing = certificateRepository.selectOne(existingWrapper);
         if (existing != null) {
             return convertToVO(existing);
@@ -112,6 +162,7 @@ public class CertificateServiceImpl implements CertificateService {
         Certificate cert = new Certificate();
         cert.setUserId(userId);
         cert.setCourseId(courseId);
+        cert.setCertType("COURSE");
         cert.setCertCode(generateCertCode(userId, courseId));
         cert.setIssuedAt(LocalDateTime.now());
         try {
@@ -120,13 +171,74 @@ public class CertificateServiceImpl implements CertificateService {
             log.warn("[Certificate] 并发签发命中唯一冲突,降级查询已有证书 userId={} courseId={}", userId, courseId);
             LambdaQueryWrapper<Certificate> retryWrapper = new LambdaQueryWrapper<>();
             retryWrapper.eq(Certificate::getUserId, userId)
-                        .eq(Certificate::getCourseId, courseId);
+                        .eq(Certificate::getCourseId, courseId)
+                        .eq(Certificate::getCertType, "COURSE");
             Certificate retryExisting = certificateRepository.selectOne(retryWrapper);
             if (retryExisting != null) return convertToVO(retryExisting);
             throw e;
         }
 
         return convertToVO(cert);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public com.microcourse.dto.CertificateVO issueMicroSpecialtyCertificate(Long userId, Long microSpecialtyId, Long enrollmentId) {
+        // 幂等检查：同 userId + microSpecialtyId + cert_type 不能重复签发
+        LambdaQueryWrapper<Certificate> existingWrapper = new LambdaQueryWrapper<>();
+        existingWrapper.eq(Certificate::getUserId, userId)
+                .eq(Certificate::getMicroSpecialtyId, microSpecialtyId)
+                .eq(Certificate::getCertType, "MICRO_SPECIALTY");
+        Certificate existing = certificateRepository.selectOne(existingWrapper);
+        if (existing != null) {
+            return convertMicroSpecialtyToVO(existing);
+        }
+
+        MicroSpecialty ms = microSpecialtyRepository.selectById(microSpecialtyId);
+        if (ms == null) {
+            throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        }
+
+        MicroSpecialtyEnrollment enrollment = microSpecialtyEnrollmentRepository.selectById(enrollmentId);
+        if (enrollment == null) {
+            throw new BusinessException(ErrorCode.MS_ENROLLMENT_NOT_FOUND);
+        }
+        if (!"COMPLETED".equals(enrollment.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_CERT_NOT_READY);
+        }
+
+        String certCode = generateMicroSpecialtyCertCode(ms.getCode(), userId);
+
+        Certificate cert = new Certificate();
+        cert.setUserId(userId);
+        cert.setCertType("MICRO_SPECIALTY");
+        cert.setMicroSpecialtyId(microSpecialtyId);
+        cert.setCertCode(certCode);
+        cert.setIssuedAt(LocalDateTime.now());
+        try {
+            certificateRepository.insert(cert);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            log.warn("[Certificate] 并发签发微专业证书命中唯一冲突,降级查询 userId={} microSpecialtyId={}", userId, microSpecialtyId);
+            Certificate retry = certificateRepository.selectOne(existingWrapper);
+            if (retry != null) return convertMicroSpecialtyToVO(retry);
+            throw e;
+        }
+
+        // 回写 enrollment.certificate_id
+        enrollment.setCertificateId(cert.getId());
+        microSpecialtyEnrollmentRepository.updateById(enrollment);
+
+        // 发通知（异步，异常隔离）
+        try {
+            notificationService.notifyAsync(userId, NotificationType.MS_CERTIFICATE_ISSUED,
+                    "微专业证书已颁发",
+                    "恭喜您获得微专业「" + ms.getTitle() + "」的结业证书！证书编号：" + certCode,
+                    microSpecialtyId);
+        } catch (Exception e) {
+            log.error("[Certificate] 发送微专业证书通知失败 userId={} microSpecialtyId={}", userId, microSpecialtyId, e);
+        }
+
+        return convertMicroSpecialtyToVO(cert);
     }
 
     @Override
@@ -225,11 +337,21 @@ public class CertificateServiceImpl implements CertificateService {
         return out.toByteArray();
     }
 
+    // ============ 私有辅助方法 ============
+
     private String generateCertCode(Long userId, Long courseId) {
         return String.format("MC-%d-%d-%s",
                 userId, courseId,
                 UUID.randomUUID().toString().substring(0, 8).toUpperCase());
     }
+
+    private String generateMicroSpecialtyCertCode(String specialtyCode, Long userId) {
+        String yyyyMM = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+        String randomHex = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        return String.format("MS-%s-%d-%s-%s", specialtyCode, userId, yyyyMM, randomHex);
+    }
+
+    // ---- Course 证书 VO 转换 ----
 
     private com.microcourse.dto.CertificateVO convertToVO(Certificate cert) {
         Course course = cert.getCourseId() != null ? courseRepository.selectById(cert.getCourseId()) : null;
@@ -238,8 +360,8 @@ public class CertificateServiceImpl implements CertificateService {
     }
 
     private com.microcourse.dto.CertificateVO convertToVO(Certificate cert,
-                                                          java.util.Map<Long, Course> courseMap,
-                                                          java.util.Map<Long, User> userMap) {
+                                                           Map<Long, Course> courseMap,
+                                                           Map<Long, User> userMap) {
         Course course = courseMap.get(cert.getCourseId());
         User user = userMap.get(cert.getUserId());
         return populateVO(cert, course, user);
@@ -255,6 +377,39 @@ public class CertificateServiceImpl implements CertificateService {
 
         if (course != null) {
             vo.setCourseName(course.getTitle());
+        }
+        if (user != null) {
+            vo.setStudentName(user.getRealName());
+        }
+        return vo;
+    }
+
+    // ---- 微专业证书 VO 转换 ----
+
+    private com.microcourse.dto.CertificateVO convertMicroSpecialtyToVO(Certificate cert) {
+        MicroSpecialty ms = cert.getMicroSpecialtyId() != null
+                ? microSpecialtyRepository.selectById(cert.getMicroSpecialtyId()) : null;
+        User user = cert.getUserId() != null ? userRepository.selectById(cert.getUserId()) : null;
+        return populateMicroSpecialtyVO(cert, ms, user);
+    }
+
+    private com.microcourse.dto.CertificateVO convertMicroSpecialtyToVO(Certificate cert,
+                                                                          Map<Long, MicroSpecialty> msMap,
+                                                                          Map<Long, User> userMap) {
+        MicroSpecialty ms = msMap.get(cert.getMicroSpecialtyId());
+        User user = userMap.get(cert.getUserId());
+        return populateMicroSpecialtyVO(cert, ms, user);
+    }
+
+    private com.microcourse.dto.CertificateVO populateMicroSpecialtyVO(Certificate cert, MicroSpecialty ms, User user) {
+        com.microcourse.dto.CertificateVO vo = new com.microcourse.dto.CertificateVO();
+        vo.setId(cert.getId());
+        vo.setUserId(cert.getUserId());
+        vo.setCourseId(cert.getMicroSpecialtyId()); // 复用 courseId 携带 microSpecialtyId
+        vo.setCertCode(cert.getCertCode());
+        vo.setIssuedAt(cert.getIssuedAt());
+        if (ms != null) {
+            vo.setCourseName(ms.getTitle());
         }
         if (user != null) {
             vo.setStudentName(user.getRealName());
