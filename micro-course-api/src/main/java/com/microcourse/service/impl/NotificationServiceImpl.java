@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -49,9 +50,11 @@ public class NotificationServiceImpl implements NotificationService {
      * P0-7：业务事件异步触发通知。
      *
      * <p>{@code @Async} 在独立线程池（AsyncConfig#taskExecutor）执行，不阻塞主业务事务；
+     * {@code @Transactional(propagation = REQUIRES_NEW)} 确保每次通知写入独立提交（E2-3 修复）；
      * 全程 try-catch 兜底，通知持久化失败仅记录日志，绝不向调用方传播异常（异常隔离）。
      */
     @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @Override
     public void notifyAsync(Long userId, NotificationType type, String title, String content, Long relatedId) {
         try {
@@ -104,8 +107,9 @@ public class NotificationServiceImpl implements NotificationService {
         Notification notification = new Notification();
         notification.setUserId(request.getUserId());
         notification.setType(request.getType());
-        notification.setTitle(request.getTitle());
-        notification.setContent(request.getContent());
+        // P1 安全修复: XSS 净化通知标题和内容
+        notification.setTitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getTitle()));
+        notification.setContent(com.microcourse.util.XssSanitizer.sanitize(request.getContent()));
         notification.setRelatedId(request.getRelatedId());
         notification.setChannel(request.getChannel() != null ? request.getChannel() : "SITE");
         notification.setIsRead(false);

@@ -359,10 +359,11 @@ public class AuthServiceImpl implements AuthService {
                 long remainingTtl = jwtUtil.getExpirationRemainingSeconds(token);
                 if (jti != null && remainingTtl > 0) {
                     redisUtil.blacklistToken(jti, remainingTtl);
-                    log.info("Logout: blacklisted token jti=" + jti + " ttl=" + remainingTtl);
+                    log.info("Logout: blacklisted token jti={} ttl={}",
+                            com.microcourse.util.LogSanitizer.sanitizeForLog(jti), remainingTtl);
                 }
             } catch (Exception e) {
-                log.warn("Logout: failed to blacklist token: " + e.getMessage());
+                log.warn("Logout: failed to blacklist token", e);
             }
         }
     }

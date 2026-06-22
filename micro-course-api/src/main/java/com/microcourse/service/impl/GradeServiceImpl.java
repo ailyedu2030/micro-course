@@ -605,12 +605,9 @@ public class GradeServiceImpl implements GradeService {
     }
 
     /**
-     * P2: 评语 XSS 过滤 — 剥离 HTML 标签
+     * P1 安全修复: 评语 XSS 过滤 — 使用 Jsoup Safelist 替代可被绕过的正则 {@code <[^>]*>}。
      */
     private String sanitizeComment(String comment) {
-        if (comment == null) {
-            return null;
-        }
-        return comment.replaceAll("<[^>]*>", "").trim();
+        return com.microcourse.util.XssSanitizer.sanitize(comment);
     }
 }

@@ -107,7 +107,8 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         comment.setPostId(req.getPostId());
         comment.setParentId(req.getParentId());
         comment.setUserId(userId);
-        comment.setContent(req.getContent());
+        // P1 安全修复: XSS 净化评论内容
+        comment.setContent(com.microcourse.util.XssSanitizer.sanitize(req.getContent()));
         comment.setIsAnonymous(req.getIsAnonymous() != null ? req.getIsAnonymous() : false);
         comment.setIsTeacherReply(isTeacherOrAdmin);
         comment.setLikeCount(0);

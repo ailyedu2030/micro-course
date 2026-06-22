@@ -87,6 +87,8 @@ public class QuestionController {
         if (file.getSize() > 10 * 1024 * 1024) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件大小不能超过 10MB");
         }
+        // P1 安全修复: 魔数校验（防御深度，防止 Content-Type 伪造）
+        verifyExcelMagic(file);
         String contentType = file.getContentType();
         if (contentType == null || (
                 !contentType.startsWith("application/vnd.ms-excel") &&
@@ -95,5 +97,30 @@ public class QuestionController {
         }
         BatchImportResultVO result = questionService.batchImport(file, courseId);
         return R.ok(result);
+    }
+
+    /**
+     * P1 安全修复: Excel 文件魔数校验（防御深度，防止 Content-Type 伪造）。
+     * XLS: D0 CF 11 E0（OLE2 复合文档）
+     * XLSX: PK\x03\x04（ZIP 压缩包）
+     * 使用独立 InputStream 读取，不消耗后续 service 层可用的流。
+     */
+    private void verifyExcelMagic(MultipartFile file) {
+        try (java.io.InputStream is = file.getInputStream()) {
+            byte[] magic = new byte[4];
+            int read = is.read(magic);
+            if (read < 4) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小，无法验证格式");
+            }
+            boolean isOle2 = (magic[0] & 0xFF) == 0xD0 && (magic[1] & 0xFF) == 0xCF
+                    && (magic[2] & 0xFF) == 0x11 && (magic[3] & 0xFF) == 0xE0;
+            boolean isZip = (magic[0] & 0xFF) == 0x50 && magic[1] == 0x4B
+                    && magic[2] == 0x03 && magic[3] == 0x04;
+            if (!isOle2 && !isZip) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请上传有效的 Excel 文件（魔数校验失败）");
+            }
+        } catch (java.io.IOException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
+        }
     }
 }

@@ -18,6 +18,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseChapterRepository;
+import com.microcourse.util.XssSanitizer;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.QuestionChapterRepository;
 import com.microcourse.repository.QuestionRepository;
@@ -96,11 +97,11 @@ public class QuestionServiceImpl implements QuestionService {
         question.setCourseId(request.getCourseId());
         question.setTeacherId(request.getTeacherId());
         question.setQuestionType(request.getQuestionType());
-        question.setContent(request.getContent());
-        question.setOptions(request.getOptions());
-        question.setAnswer(request.getAnswer());
+        question.setContent(XssSanitizer.sanitize(request.getContent()));
+        question.setOptions(request.getOptions() != null ? XssSanitizer.sanitize(request.getOptions()) : null);
+        question.setAnswer(XssSanitizer.sanitize(request.getAnswer()));
         question.setPartialScore(request.getPartialScore());
-        question.setExplanation(request.getExplanation());
+        question.setExplanation(request.getExplanation() != null ? XssSanitizer.sanitize(request.getExplanation()) : null);
         question.setDifficulty(request.getDifficulty() != null ? request.getDifficulty() : 1);
         question.setStatus(request.getStatus() != null ? request.getStatus() : 1);
         question.setVersion(1);
@@ -145,19 +146,19 @@ public class QuestionServiceImpl implements QuestionService {
             question.setQuestionType(request.getQuestionType());
         }
         if (request.getContent() != null) {
-            question.setContent(request.getContent());
+            question.setContent(XssSanitizer.sanitize(request.getContent()));
         }
         if (request.getOptions() != null) {
-            question.setOptions(request.getOptions());
+            question.setOptions(XssSanitizer.sanitize(request.getOptions()));
         }
         if (request.getAnswer() != null) {
-            question.setAnswer(request.getAnswer());
+            question.setAnswer(XssSanitizer.sanitize(request.getAnswer()));
         }
         if (request.getPartialScore() != null) {
             question.setPartialScore(request.getPartialScore());
         }
         if (request.getExplanation() != null) {
-            question.setExplanation(request.getExplanation());
+            question.setExplanation(XssSanitizer.sanitize(request.getExplanation()));
         }
         if (request.getDifficulty() != null) {
             question.setDifficulty(request.getDifficulty());
@@ -364,11 +365,11 @@ public class QuestionServiceImpl implements QuestionService {
                 question.setCourseId(courseId);
                 question.setTeacherId(teacherId);
                 question.setQuestionType(questionType.trim().toUpperCase());
-                question.setContent(content.trim());
-                question.setOptions(options != null ? options.trim() : null);
-                question.setAnswer(answer.trim());
+                question.setContent(XssSanitizer.sanitize(content.trim()));
+                question.setOptions(options != null ? XssSanitizer.sanitize(options.trim()) : null);
+                question.setAnswer(XssSanitizer.sanitize(answer.trim()));
                 question.setPartialScore(partialScore);
-                question.setExplanation(explanation != null ? explanation.trim() : null);
+                question.setExplanation(explanation != null ? XssSanitizer.sanitize(explanation.trim()) : null);
                 question.setDifficulty(difficulty);
                 question.setStatus(1);
                 question.setVersion(0);

@@ -286,7 +286,8 @@ public class OrderServiceImpl implements OrderService {
         if (!"mock".equalsIgnoreCase(payMode) && payCallbackSecret != null && !payCallbackSecret.isBlank()) {
             String receivedSign = params.get("sign");
             if (receivedSign == null || receivedSign.isBlank()) {
-                log.warn("[paymentCallback] 缺少签名，拒绝回调: params={}", params);
+                log.warn("[paymentCallback] 缺少签名，拒绝回调: params={}",
+                        com.microcourse.util.LogSanitizer.sanitizeForLog(params.toString(), 500));
                 return;
             }
             String computedSign = computeHmacSignature(params, payCallbackSecret);
@@ -299,7 +300,8 @@ public class OrderServiceImpl implements OrderService {
 
         String orderNo = params.get("orderNo");
         if (orderNo == null) {
-            log.warn("[paymentCallback] orderNo is null, params={}", params);
+            log.warn("[paymentCallback] orderNo is null, params={}",
+                    com.microcourse.util.LogSanitizer.sanitizeForLog(params.toString(), 500));
             return;
         }
 

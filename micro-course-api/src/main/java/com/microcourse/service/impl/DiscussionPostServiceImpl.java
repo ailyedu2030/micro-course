@@ -313,8 +313,9 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         post.setCourseId(req.getCourseId());
         post.setChapterId(req.getChapterId());
         post.setUserId(userId);
-        post.setTitle(req.getTitle());
-        post.setContent(req.getContent());
+        // P1 安全修复: XSS 净化 — 标题使用纯文本净化（不应含 HTML），内容允许安全标签
+        post.setTitle(com.microcourse.util.XssSanitizer.sanitizePlainText(req.getTitle()));
+        post.setContent(com.microcourse.util.XssSanitizer.sanitize(req.getContent()));
         post.setIsAnonymous(req.getIsAnonymous() != null ? req.getIsAnonymous() : false);
         post.setIsPinned(false);
         post.setIsEssence(false);
