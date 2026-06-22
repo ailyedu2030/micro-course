@@ -8,7 +8,7 @@
 |---|------|
 | 后端 | Spring Boot 3.2.12 / Java 17 / MyBatis-Plus 3.5.6 / Spring Security |
 | 前端 | Vue 3.4 / Element Plus 2.5 / Pinia 2.1 / Vite 5 / Axios 1.6 |
-| 数据库 | PostgreSQL 17.5 / Flyway 9.22.3 |
+| 数据库 | PostgreSQL 17.5 / Flyway 10.20.1 |
 | 缓存 | Redis 7 / Lettuce |
 | 视频 | FFmpeg / HLS (hls.js) / OpenPDF |
 
@@ -53,7 +53,7 @@ micro-course-api/         # Spring Boot 后端
 │   ├── config/           # Spring Security / MyBatis-Plus / 其它配置
 │   ├── exception/        # 全局异常处理 + ErrorCode
 │   └── util/             # 工具类 (JWT / Security / Redis)
-├── src/main/resources/db/migration/  # Flyway 迁移 (V1-V47)
+├── src/main/resources/db/migration/  # Flyway 迁移 (V1-V71)
 └── Dockerfile
 
 micro-course-admin/       # Vue 3 前端
@@ -89,6 +89,17 @@ docker-compose.yml        # 生产部署编排
 ## 发布历史
 
 参见 [CHANGELOG.md](./CHANGELOG.md)
+
+## CI/CD 状态
+
+- **Backend**: 228/228 tests pass · 0 failures · 0 errors · JaCoCo coverage
+- **Frontend**: 0 ESLint errors · 0 ESLint warnings · `npm run build` SUCCESS
+- **Precheck**: 13/13 PASS
+- **Workflow**: `.github/workflows/ci.yml` (3 jobs 并行: backend / frontend / docker)
+
+## 当前版本
+
+**v1.16.0** (2026-06-22) — 全量交叉验证收官 · CI/CD 零警告流水线 · 228/228 tests pass
 
 ## 环境变量
 

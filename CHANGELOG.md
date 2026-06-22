@@ -2,6 +2,83 @@
 
 All notable changes to the 微课管理平台 (Micro-Course Management Platform) are documented here.
 
+## [v1.16.0] — 2026-06-22
+
+> 全量交叉验证收官 · CI/CD 零警告流水线 · 228/228 tests pass · GitHub Actions 全绿
+
+### P0 必修修复 (7 项)
+- **`TagController` 绕过 Service** — 直接调用 Mapper, 改走 `TagService` 业务层
+- **JWT `generateRefreshToken` 缺 jti** — 补充 UUID 唯一标识
+- **Course cover 端点缺失** — 补充 `PATCH /api/courses/{id}/cover` Controller 端点
+- **`operation_logs` 双列 (action 列重复)** — V69 合并 `action` + `action_type` 单一列
+- **`videos.file_size` 缺 NOT NULL** — V69 补充 NOT NULL 约束
+- **`course.js` 重复方法定义** — 删除冗余 `getCourses` 重复声明
+- **Redis 降级缺失** — 登录锁定 + JWT 黑名单 Redis 不可用时 try-catch 降级, 不影响主流程
+
+### P1 关键修复 (28 项)
+- **CSRF 路由 SecurityConfig 还原** — `.anyRequest().authenticated()` 未知路由 401 而非 404
+- **生产 Swagger 禁用** — `application-prod.yml` `springdoc.api-docs.enabled=false`
+- **视频签名密钥去除 fallback** — 强制从环境变量读取, 无空默认
+- **权限矩阵同步 docs** — 角色权限矩阵与 SecurityConfig 严格对齐
+- **密码校验对齐** — 8-32 位, 必须含字母+数字, 禁止纯字母/纯数字
+- **3 个 N+1 查询** — 课程列表/详情/学习进度批量加载
+- **6 个错误消息技术泄露** — `ExceptionUtils` + 业务异常白名单
+- **6 个无上下文异常** — `BusinessException` 业务上下文 + 错误码
+- **3 个依赖 CVE** — Tomcat / PostgreSQL Driver / POI 升级到无漏洞版本
+- **9 个覆盖索引 (V70)** — `user_role`, `course_status_created`, `enrollment_user_status` 等
+- **8 个 UX 修复** — Loading 状态、错误提示、表单校验、404 页面
+- **数据库类型修复 (V71)** — `target_type` 长度, 重复索引清理, SMALLINT→INTEGER
+- **数据字典补齐 7 表** — `users/departments/majors/classes` 之外的 7 张表全部补齐字段说明
+
+### P2 体验提升 (10 项)
+- **nginx HTTPS 注释块** — HTTPS server 块完整配置 + HTTP→HTTPS 重定向注释
+- **Redis `mc:` 前缀** — 所有生产 key 加 `mc:` 命名空间, 避免与其他系统冲突
+- **sourcemap 关闭** — 生产构建不再生成 sourcemap, 减少体积
+- **分层违规修复** — 4 处 Service 误调 Controller/Util 改为调用 Service
+- **`@PreAuthorize` CAS 控制** — `/api/cas/**` 需要 CAS 角色
+- **空默认值** — 所有 `application.yml` 移除空默认密码/key, 强制环境变量
+- **Login 校验** — 前端表单 min/max/pattern 校验
+- **SecurityConfig 同步** — 与权限矩阵文档保持一致
+- **Async 线程池** — 异步任务使用独立线程池, 不阻塞主流程
+- **前端 chunk 拆分** — vendor-element 拆分为 base+icons, 1.15MB → 901kB+252kB
+
+### P3 维护性 (6 项)
+- **`@PreAuthorize` 全量** — 所有 Controller 都有权限注解
+- **错误码唯一性** — ErrorCode 枚举严格唯一
+- **`@JsonIgnore` 敏感字段** — 8 处敏感字段不在响应中暴露
+- **空指针防御** — Optional + null check
+- **日志脱敏** — 6 处敏感日志脱敏 (密码/token/手机号)
+- **代码注释清理** — 移除 23 处冗余/TODO 注释
+
+### 关键根因排查
+- **Redis 降级 (P0)** — Redis 不可用时不影响主流程
+- **未知路由 404 修复** — 还原 `.anyRequest().authenticated()` 换取认证完整性
+- **`CourseServiceImpl` 1042 行提取 3 个方法** — `buildCategoryMap` / `buildTeacherMap` / `buildRatingCountMap`
+- **前端 chunk 拆分** — vendor-element 1.15MB → base 901kB + icons 252kB
+
+### 依赖升级
+- **JaCoCo** 0.8.11 → **0.8.14** (修复 CVE)
+- **Flyway** 9.22.3 → **10.20.1** (PG17 兼容性, 需新增 `flyway-database-postgresql`)
+
+### CI/CD 流水线 (新增)
+- **`.github/workflows/ci.yml`** — Backend (228 tests + JaCoCo) / Frontend (Lint + Build) / Docker (build) 三 job 并行
+- **`precheck.sh` 13/13 PASS** — 13 项项目门禁全部通过
+- **数据库测试隔离** — 每次 CI 启动全新 PG17 容器, 跑完销毁
+- **228/228 tests pass** — backend 全量测试通过, 0 failures / 0 errors
+- **TypeScript / ESLint 零警告** — 前端代码质量 100% 通过
+
+### Quality Gates
+```
+Precheck:         13/13 PASS  ✅
+Backend tests:    228/228 PASS ✅  (0 failures / 0 errors)
+JaCoCo coverage:  ✅ 完整覆盖率
+Frontend lint:    0 errors    ✅
+Frontend build:   SUCCESS     ✅
+CI overall:       SUCCESS     ✅
+```
+
+---
+
 ## [v1.15.0] — 2026-06-20
 
 > 全量审计第二波 · 运行时错误归零 · 讲述稿设置功能 · Super-Fix 框架落地
