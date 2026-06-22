@@ -230,3 +230,53 @@ Content-Type: application/json
 
 *视图版本：v1.0 · 与源文档 v1.2 对齐*
 *最后更新：2026-06-11*
+
+---
+
+## 7. 微专业 API（Phase 14）
+
+> **源文档**：[`docs/开发规划/phase14-micro-specialty-spec.md` §7 REST API 全集](../../../docs/开发规划/phase14-micro-specialty-spec.md)
+> **完整清单**：52 个 API，详见 phase14-spec §7.1-§7.7
+
+### 7.1 核心入口（公开/学生侧）
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/api/micro-specialties/square` | 公开 | 课程广场专区：返回 goldFeatured + featured + recruiting 三组 |
+| GET | `/api/micro-specialties/{id}` | 公开 | 微专业详情（含课程+团队+stats） |
+
+### 7.2 微专业主表管理（LEAD/ACADEMIC）
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| POST | `/api/micro-specialties` | ACADEMIC | 教务处直立创建（DRAFT） |
+| POST | `/api/micro-specialties/{id}/submit` | LEAD | 提交/重新提交审核（DRAFT/REJECTED→PENDING_REVIEW） |
+| POST | `/api/micro-specialties/{id}/approve` | ACADEMIC | 审批通过→APPROVED |
+| POST | `/api/micro-specialties/{id}/reject` | ACADEMIC | 驳回→REJECTED |
+| POST | `/api/micro-specialties/{id}/open` | LEAD | 开课→RECRUITING |
+| POST | `/api/micro-specialties/{id}/close` | LEAD | 结业→COMPLETED |
+| POST | `/api/micro-specialties/{id}/cancel` | ACADEMIC | 强制取消→CANCELLED（级联 DROPPED） |
+| POST | `/api/micro-specialties/{id}/archive` | ACADEMIC | 归档→ARCHIVED |
+| POST | `/api/micro-specialties/{id}/transfer-leadership` | ACADEMIC | LEAD 继任转移 |
+
+### 7.3 修读与班级导入
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| POST | `/api/micro-specialty-enrollments/apply` | STUDENT | 自主报名→PENDING |
+| POST | `/api/micro-specialty-enrollments/class-import` | ACADEMIC/ADMIN | 班级批量导入→APPROVED（含前置检查+乐观锁+分批事务） |
+| GET | `/api/micro-specialty-enrollments/my` | STUDENT | 我的修读列表 |
+
+### 7.4 申报
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| POST | `/api/micro-specialty-proposals` | TEACHER | 提交微专业申报（路径B入口） |
+
+> **完整 API**：申报审批、教师团队邀请/接受/拒绝/reinvite/leave、课程编排 CRUD、置顶申请/审批/金标管理、证书颁发、统计等，详见 phase14-spec §7。
+
+**权限规则**：
+- LEAD 操作需 `@PreAuthorize("hasRole('TEACHER')")` + Service 层 `isLeadOf(msId, userId)` 二次校验
+- 教师本人操作（accept/decline/leave）必须校验 `userId == teacher_id`
+- 学生本人操作（reapply/drop）必须校验 `userId == enrollment.user_id`
+- ACADEMIC 拥有全部审批/金标/导入/归档/继任权限

@@ -145,3 +145,25 @@
 
 *视图版本：v1.0*
 *最后更新：2026-06-11*
+
+---
+
+## 11. 微专业自检项（Phase 14）
+
+> **源文档**：[`docs/开发规划/phase14-micro-specialty-spec.md` §10 逻辑闭环自查表](../../../docs/开发规划/phase14-micro-specialty-spec.md)
+> **完整自查**：14 类 60 项，详见 phase14-spec §10
+
+| # | 检查项 | ✅/❌ |
+|---|--------|------|
+| 11.1 | □ MicroSpecialty 状态机校验正确（8 状态：DRAFT/PENDING_REVIEW/APPROVED/REJECTED/RECRUITING/COMPLETED/CANCELLED/ARCHIVED，含 REJECTED→PENDING_REVIEW 重提路径） | |
+| 11.2 | □ version 乐观锁在全部 UPDATE 中使用（含主表、enrollments、teachers、cron 聚合、班级导入 SELECT FOR UPDATE） | |
+| 11.3 | □ 微专业权限 LEAD/MEMBER 子角色鉴权正确（Controller `@PreAuthorize("hasRole('TEACHER')")` + Service 层 `isLeadOf()`/`isMemberOf()` 二次校验，本人操作校验 userId 匹配） | |
+
+**关键自查项（补充）**：
+- □ 全部 6 张表 FK 方向正确（→micro_specialties/→users/→courses/→departments/→classes/→certificates）
+- □ 部分唯一索引 `uk_mst_active` / `uk_mse_active` 正确（排除终态允许 reapply/reinvite）
+- □ DB 触发器 `trg_ms_one_lead` 确保每微专业恰好 1 条 ACTIVE LEAD
+- □ 52 个 API 权限注解全部 `@PreAuthorize` + Service 层二次校验
+- □ 23 种通知类型全部触发到位
+- □ 所有页面覆盖 Loading/Error/Empty/正常 四态
+- □ certificates 表 `chk_cert_xor` 异或约束正确（COURSE ↔ MICRO_SPECIALTY 互斥）

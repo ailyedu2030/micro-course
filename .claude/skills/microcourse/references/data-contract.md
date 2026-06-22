@@ -170,3 +170,26 @@ departments (1) → majors (N) → classes (N) → users (N)
 
 *视图版本：v1.1 · 与源文档 v0.5 对齐*
 *最后更新：2026-06-12*
+
+---
+
+## 4. 微专业表（Phase 14）
+
+> **源文档**：[`docs/开发规划/phase14-micro-specialty-spec.md` §6 数据模型](../../../docs/开发规划/phase14-micro-specialty-spec.md)
+> **详细字段**：参见 phase14-spec §6.1-§6.7
+
+| 表名 | 说明 |
+|------|------|
+| `micro_specialties` | 微专业主表（5 张新表 + 3 张扩展），含 8 状态机、版本乐观锁 |
+| `micro_specialty_courses` | 课程编排（FK→courses，必修/选修标记，学分/学时冗余） |
+| `micro_specialty_teachers` | 教师团队（LEAD/MEMBER/ASSISTANT 角色，5 状态邀请机制，部分唯一索引） |
+| `micro_specialty_enrollments` | 修读记录（6 状态机，部分唯一索引支持 reapply） |
+| `micro_specialty_proposals` | 微专业申报表（教师路径B入口，4 状态） |
+| `micro_specialty_featured_audit` | 置顶审计表（APPLY/APPROVE/REJECT/GOLD_SET/GOLD_UNSET 操作，JSONB 快照） |
+
+**关键约束**：
+- `uk_mst_active`：教师激活态部分唯一索引 `WHERE invite_status NOT IN ('DECLINED','REMOVED')`
+- `uk_mse_active`：修读激活态部分唯一索引 `WHERE status NOT IN ('REJECTED','DROPPED','FAILED')`
+- `uk_ms_code`：微专业代码全局唯一
+- DB 触发器 `trg_ms_one_lead`：确保每微专业恰好 1 条 ACTIVE LEAD
+- `certificates` 表扩展 `cert_type` + `micro_specialty_id`，异或约束 `chk_cert_xor`

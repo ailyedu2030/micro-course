@@ -116,3 +116,43 @@ http.authorizeHttpRequests(auth -> auth
 
 *视图版本：v1.0 · 与源文档 v2.0 对齐*
 *最后更新：2026-06-11*
+
+---
+
+## 5. 微专业角色权限（Phase 14）
+
+> **源文档**：[`docs/开发规划/phase14-micro-specialty-spec.md` §3 用户角色与权限矩阵](../../../docs/开发规划/phase14-micro-specialty-spec.md)
+> **完整矩阵**：16 页面权限映射 + 52 API 权限速查表，详见 phase14-spec §3.2 + §9.12
+
+### 5.1 微专业角色摘要
+
+| 角色 | 代码 | 微专业权限范围 |
+|------|------|-------------|
+| 学生 | STUDENT | 查看广场专区、查看详情、自主报名/重新申请、我的修读（含进度+证书下载）、退出修读 |
+| 教师（负责人） | TEACHER+LEAD | 全部编排 CRUD、团队管理（邀请/移除/reinvite）、提交审核/重提、开课/结业、申请置顶、审批学生报名 |
+| 教师（团队成员） | TEACHER+MEMBER | 查看参与的微专业、受邀后可接受/拒绝、主动退出 |
+| 教务处 | ACADEMIC | 审批申报/微专业/置顶/跨学院、金标管理、班级导入、LEAD 继任、归档、强制取消 |
+| 管理员 | ADMIN | 最高管理权（CRUD 所有资源，含班级导入、金标管理、强制操作） |
+
+> **LEAD 和 MEMBER 是 TEACHER 的子角色**，通过 `micro_specialty_teachers.role` 区分。
+> Controller 层 `@PreAuthorize("hasRole('TEACHER')")` + Service 层 `isLeadOf(msId, userId)` / `isMemberOf(msId, userId)` 实现子角色鉴权。
+
+### 5.2 关键 API 权限映射
+
+| 操作 | Controller @PreAuthorize | Service 层二次校验 |
+|------|------------------------|-------------------|
+| 广场列表 | `permitAll()` | — |
+| 详情查看 | `permitAll()`（DRAFT/CANCELLED 过滤） | — |
+| 创建微专业 | `hasRole('ACADEMIC')` | — |
+| 编辑基本/编排/团队 | `hasRole('TEACHER')` | `isLeadOf()` OR `isAdmin()` |
+| Submit/Open/Close | `hasRole('TEACHER')` | `isLeadOf()` |
+| 邀请/移除教师 | `hasRole('TEACHER')` | `isLeadOf()` |
+| 接受/拒绝邀请 | `hasRole('TEACHER')` | `userId == teacher_id`（本人） |
+| 审报名 | `hasRole('TEACHER')` | `isLeadOf()` OR `isAdmin()` |
+| 自主报名 | `hasRole('STUDENT')` | — |
+| Drop enrollment | `hasAnyRole('STUDENT','ADMIN')` | `userId == enrollment.user_id`（本人） |
+| 所有审批操作 | `hasRole('ACADEMIC')` | — |
+| 金标操作 | `hasRole('ACADEMIC')` | — |
+| 班级导入 | `hasAnyRole('ACADEMIC','ADMIN')` | — |
+| 归档 | `hasRole('ACADEMIC')` | — |
+| LEAD 继任 | `hasRole('ACADEMIC')` | — |

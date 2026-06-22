@@ -202,3 +202,72 @@ DELETE /api/classes/{id}
 
 *视图版本：v1.0 · 与源文档对齐*
 *最后更新：2026-06-11*
+
+---
+
+## 8. 微专业状态机（Phase 14）
+
+> **源文档**：[`docs/开发规划/phase14-micro-specialty-spec.md` §2 状态机全集](../../../docs/开发规划/phase14-micro-specialty-spec.md)
+> **完整规则**：6 个状态机、转换矩阵、触发角色、前置条件，详见 phase14-spec §2.1-§2.5
+
+### 8.1 微专业主表 8 状态
+
+```
+路径A（教务处直立）:                 路径B（教师申报）:
+   DRAFT                              PROPOSAL_REVIEW
+     ↓ submit                            ↓ approve  → 创建 DRAFT + LEAD INVITED
+   PENDING_REVIEW                        ↓ reject   → REJECTED
+     ↓ approve → APPROVED                ↓ withdraw → WITHDRAWN
+     ↓ reject  → REJECTED ──resubmit──→ DRAFT（修改后重提）
+   APPROVED →（LEAD 确认开课）→ RECRUITING
+     ↓ open
+   RECRUITING →（长期运行，学生报名）
+     ↓ close
+   COMPLETED ──archive──→ ARCHIVED
+   
+   ↕ 任意状态 → CANCELLED（教务处强制 ──终态──）
+```
+
+**关键不变约束**：
+- LEAD 未接受邀请前，DRAFT 不可进 PENDING_REVIEW
+- 课程编排 < 1 门时不可进 RECRUITING
+- RECRUITING 状态前不可设置 is_featured
+- CANCELLED 后不再接受任何状态转换（终态）
+- `submit` API 接受 `DRAFT | REJECTED` 双 from-state
+- REJECTED 后 LEAD 修改信息后可重新 submit
+
+### 8.2 修读记录 6 状态
+
+```
+PENDING ──approve──→ APPROVED ──auto──→ IN_PROGRESS ──auto──→ COMPLETED → CERTIFIED
+   │                    │                    │                    ↓
+   ↓                    ↓                    ↓                 FAILED → reapply → PENDING
+REJECTED              DROPPED              FAILED
+   └──reapply──→ PENDING  └──reapply──→ PENDING
+```
+
+**非正常终止出口**：REJECTED/DROPPED/FAILED 都有 `reapply` 出口返回 PENDING。
+
+### 8.3 教师邀请 5 状态
+
+```
+INVITED ──accept──→ ACTIVE（同学院）
+   ├──→ PENDING_ACADEMIC（跨学院→教务处审批→ACTIVE）
+   ├──→ DECLINED（手动拒绝或7天超时）
+   └──→ REMOVED（LEAD移除或主动退出）
+
+REMOVED ──reinvite──→ INVITED（复用原记录）
+DECLINED ──reinvite──→ INVITED（复用原记录）
+```
+
+**部分唯一索引**：`WHERE invite_status NOT IN ('DECLINED','REMOVED')` 允许重新邀请。
+
+### 8.4 所有状态变更必须使用 version 乐观锁
+
+```
+UPDATE ... SET status = :newStatus, version = version + 1
+WHERE id = :id AND version = :oldVersion
+-- rows == 0 → 抛出 BusinessException(ErrorCode.CONCURRENT_MODIFICATION)
+```
+
+**强制**：所有 UPDATE 操作必须包含 version 乐观锁（§9.1-§9.11 伪代码标记了 version 的地方必须全部实现）。
