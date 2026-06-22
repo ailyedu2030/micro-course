@@ -138,8 +138,11 @@ public class CertificateServiceImpl implements CertificateService {
         return certificateRepository.selectCount(wrapper) > 0;
     }
 
+    /**
+     * C2-1 修复：PDF 生成（iText）不在事务内执行，避免长事务占用 DB 连接。
+     * 3 次 selectById 是快速点查，无需事务保护。
+     */
     @Override
-    @Transactional(readOnly = true)
     public byte[] generateCertificatePdf(Long certificateId) {
         Certificate cert = certificateRepository.selectById(certificateId);
         if (cert == null) {

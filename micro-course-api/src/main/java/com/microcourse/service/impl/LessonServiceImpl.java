@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.lesson.LessonVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
@@ -79,6 +80,10 @@ public class LessonServiceImpl implements LessonService {
         }
     }
 
+    /**
+     * C2-5 修复：使用 CASE WHEN SQL 一次更新所有课时排序，替代逐条 updateById 循环。
+     * 对 N 条排序请求从 N 次 UPDATE 降为 1 次 UPDATE，大幅减少 DB 往返。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sort(List<LessonVO.SortItem> items) {
@@ -88,16 +93,23 @@ public class LessonServiceImpl implements LessonService {
         for (Lesson lesson : lessons) {
             assertCourseOwnership(lesson.getCourseId());
         }
-        for (Lesson lesson : lessons) {
-            items.stream().filter(i -> i.getId().equals(lesson.getId())).findFirst().ifPresent(item -> {
-                lesson.setChapterId(item.getChapterId());
-                lesson.setSortOrder(item.getSortOrder());
-                lesson.setUpdatedAt(LocalDateTime.now());
-            });
+
+        // 构建 CASE WHEN SQL: sort_order = CASE id WHEN 1 THEN 0 WHEN 2 THEN 1 END
+        StringBuilder sortCase = new StringBuilder("CASE id ");
+        StringBuilder chapterCase = new StringBuilder("CASE id ");
+        for (LessonVO.SortItem item : items) {
+            sortCase.append("WHEN ").append(item.getId()).append(" THEN ").append(item.getSortOrder()).append(" ");
+            chapterCase.append("WHEN ").append(item.getId()).append(" THEN ").append(item.getChapterId()).append(" ");
         }
-        for (Lesson lesson : lessons) {
-            lessonRepository.updateById(lesson);
-        }
+        sortCase.append("END");
+        chapterCase.append("END");
+
+        LambdaUpdateWrapper<Lesson> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.setSql("sort_order = " + sortCase.toString()
+                + ", chapter_id = " + chapterCase.toString()
+                + ", updated_at = NOW()");
+        wrapper.in(Lesson::getId, ids);
+        lessonRepository.update(null, wrapper);
     }
 
     @Override

@@ -10,7 +10,11 @@ import com.microcourse.service.WrongQuestionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class WrongQuestionServiceImpl implements WrongQuestionService {
@@ -32,9 +36,7 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
                 .orderByDesc(WrongQuestion::getLastWrongAt);
         List<WrongQuestion> wrongQuestions = wrongQuestionRepository.selectList(wrapper);
 
-        return wrongQuestions.stream()
-                .map(this::convertToVO)
-                .toList();
+        return convertBatchToVO(wrongQuestions);
     }
 
     @Override
@@ -46,12 +48,29 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
                 .orderByDesc(WrongQuestion::getLastWrongAt);
         List<WrongQuestion> wrongQuestions = wrongQuestionRepository.selectList(wrapper);
 
+        return convertBatchToVO(wrongQuestions);
+    }
+
+    /**
+     * N+1 修复：批量预加载 Question，一次 selectBatchIds 替代每条错题的 selectById。
+     */
+    private List<WrongQuestionVO> convertBatchToVO(List<WrongQuestion> wrongQuestions) {
+        if (wrongQuestions.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> questionIds = wrongQuestions.stream()
+                .map(WrongQuestion::getQuestionId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Question> questionMap = questionIds.isEmpty() ? Collections.emptyMap()
+                : questionRepository.selectBatchIds(questionIds).stream()
+                .collect(Collectors.toMap(Question::getId, q -> q));
         return wrongQuestions.stream()
-                .map(this::convertToVO)
+                .map(wq -> convertToVO(wq, questionMap))
                 .toList();
     }
 
-    private WrongQuestionVO convertToVO(WrongQuestion wrongQuestion) {
+    private WrongQuestionVO convertToVO(WrongQuestion wrongQuestion, Map<Long, Question> questionMap) {
         WrongQuestionVO vo = new WrongQuestionVO();
         vo.setId(wrongQuestion.getId());
         vo.setUserId(wrongQuestion.getUserId());
@@ -61,8 +80,8 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
         vo.setLastWrongAt(wrongQuestion.getLastWrongAt());
         vo.setCreatedAt(wrongQuestion.getCreatedAt());
 
-        // 填充题目信息
-        Question question = questionRepository.selectById(wrongQuestion.getQuestionId());
+        // 使用预加载的题目 Map
+        Question question = questionMap.get(wrongQuestion.getQuestionId());
         if (question != null) {
             vo.setQuestionType(question.getQuestionType());
             vo.setQuestionContent(question.getContent());

@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.ChapterCreateRequest;
@@ -145,6 +146,10 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapterRepository.deleteById(id);
     }
 
+    /**
+     * C2-6 修复：使用 CASE WHEN SQL 一次更新所有章节排序，替代逐条 updateById 循环。
+     * 对 N 条排序请求从 N 次 UPDATE 降为 1 次 UPDATE，大幅减少 DB 往返。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sort(List<ChapterSortRequest> requests) {
@@ -164,17 +169,17 @@ public class CourseChapterServiceImpl implements CourseChapterService {
             }
         }
 
-        // 批量更新 sortOrder
-        for (CourseChapter chapter : chapters) {
-            requests.stream()
-                .filter(r -> r.getId().equals(chapter.getId()))
-                .findFirst()
-                .ifPresent(r -> {
-                    chapter.setSortOrder(r.getSortOrder());
-                    chapter.setUpdatedAt(LocalDateTime.now());
-                });
-            chapterRepository.updateById(chapter);
+        // 构建 CASE WHEN SQL: sort_order = CASE id WHEN 1 THEN 0 WHEN 2 THEN 1 END
+        StringBuilder sortCase = new StringBuilder("CASE id ");
+        for (ChapterSortRequest r : requests) {
+            sortCase.append("WHEN ").append(r.getId()).append(" THEN ").append(r.getSortOrder()).append(" ");
         }
+        sortCase.append("END");
+
+        LambdaUpdateWrapper<CourseChapter> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.setSql("sort_order = " + sortCase.toString() + ", updated_at = NOW()");
+        wrapper.in(CourseChapter::getId, ids);
+        chapterRepository.update(null, wrapper);
     }
 
     private ChapterVO convertToVO(CourseChapter chapter) {

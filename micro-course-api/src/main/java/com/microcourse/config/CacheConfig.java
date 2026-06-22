@@ -59,6 +59,7 @@ public class CacheConfig {
                 .withCacheConfiguration("adminSettingsByKey", defaultConfig.entryTtl(Duration.ofMinutes(10)))
                 .withCacheConfiguration("banners", defaultConfig.entryTtl(Duration.ofMinutes(15)))
                 .withCacheConfiguration("categories", defaultConfig.entryTtl(Duration.ofMinutes(30)))
+                .withCacheConfiguration("academicOverview", defaultConfig.entryTtl(Duration.ofMinutes(5)))
                 .build();
     }
 }

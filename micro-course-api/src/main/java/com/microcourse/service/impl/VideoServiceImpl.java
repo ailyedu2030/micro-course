@@ -201,7 +201,10 @@ public class VideoServiceImpl implements VideoService {
     }
 
     /**
-     * P0-4 修复：delete() 同时清理磁盘文件（视频目录 + 封面文件）
+     * P0-4 修复：delete() 同时清理磁盘文件（视频目录 + 封面文件）。
+     *
+     * C2-2 修复：DB 删除立即提交后，磁盘清理在事务外执行，
+     * 避免 Files.walk 阻塞 DB 连接/行锁，降低事务持有时间。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -213,11 +216,31 @@ public class VideoServiceImpl implements VideoService {
         // Owner check
         assertCourseOwnership(video.getCourseId());
 
-        // 逻辑删除数据库记录
+        // 删除数据库记录（事务内）
         videoRepository.deleteById(id);
 
-        // 异步清理磁盘文件（不阻塞响应，失败仅记日志）
-        cleanupDiskFiles(video);
+        // C2-2: 注册 afterCommit 回调，事务提交后再清理磁盘文件
+        scheduleDiskCleanup(video);
+
+        // 注意：磁盘清理通过 cleanupDiskFiles 在事务提交后执行。
+        // 由于 deleteById 是逻辑删除（@TableLogic），DB 操作极快，
+        // 事务提交后立即释放连接；磁盘清理不占用 DB 资源。
+        // 如果磁盘清理失败，仅记录日志，不影响 DB 删除结果。
+    }
+
+    /**
+     * C2-2 修复：事务提交后执行磁盘清理。
+     * 通过 TransactionSynchronizationManager 注册 afterCommit 回调，
+     * 确保 DB 删除已提交后才开始文件清理。
+     */
+    private void scheduleDiskCleanup(Video video) {
+        org.springframework.transaction.support.TransactionSynchronizationManager
+                .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        cleanupDiskFiles(video);
+                    }
+                });
     }
 
     /**
