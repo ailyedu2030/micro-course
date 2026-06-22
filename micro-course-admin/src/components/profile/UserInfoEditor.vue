@@ -77,6 +77,9 @@ const profileForm = ref({
 })
 
 const profileRules = {
+  realName: [
+    { required: true, message: '请输入姓名', trigger: 'blur' }
+  ],
   email: [
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],

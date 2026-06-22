@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.microcourse.dto.R;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -14,6 +15,7 @@ public class FrontendErrorController {
     private static final Logger log = LoggerFactory.getLogger(FrontendErrorController.class);
 
     @PostMapping
+    @PreAuthorize("isAuthenticated()")
     public R<Void> report(@RequestBody Map<String, Object> body) {
         log.warn("[FrontendError] message={}, url={}, line={}",
                 body.get("message"), body.get("url"), body.get("line"));

@@ -32,19 +32,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<R<Void>> handleValidation(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .findFirst()
-                .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
-                .orElse("参数校验失败");
+                .map(fieldError -> fieldError.getDefaultMessage())
+                .orElse("请求参数校验失败");
         return ResponseEntity.status(400).body(R.fail(400, message));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<R<Void>> handleMissingParam(MissingServletRequestParameterException e) {
-        return ResponseEntity.status(400).body(R.fail(400, "缺少必需参数: " + e.getParameterName()));
+        return ResponseEntity.status(400).body(R.fail(400, "缺少必需请求参数"));
     }
 
     @ExceptionHandler(TypeMismatchException.class)
     public ResponseEntity<R<Void>> handleTypeMismatch(TypeMismatchException e) {
-        return ResponseEntity.status(400).body(R.fail(400, "参数类型不匹配: " + e.getPropertyName()));
+        return ResponseEntity.status(400).body(R.fail(400, "请求参数格式错误"));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -54,7 +54,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<R<Void>> handleNoHandler(NoHandlerFoundException e) {
-        return ResponseEntity.status(404).body(R.fail(404, "接口不存在: " + e.getRequestURL()));
+        log.warn("No handler found: {}", e.getMessage());
+        return ResponseEntity.status(404).body(R.fail(404, "接口不存在"));
     }
 
     /**
@@ -70,7 +71,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<R<Void>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException e) {
-        return ResponseEntity.status(405).body(R.fail(405, "请求方法不允许: " + e.getMethod()));
+        return ResponseEntity.status(405).body(R.fail(405, "请求方法不允许"));
     }
 
     /**
@@ -112,7 +113,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<R<Void>> handleConstraintViolation(ConstraintViolationException e) {
         String message = e.getConstraintViolations().stream()
                 .findFirst()
-                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .map(v -> v.getMessage())
                 .orElse("参数校验失败");
         return ResponseEntity.status(400).body(R.fail(400, message));
     }
@@ -121,14 +122,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<R<Void>> handleHandlerMethodValidation(HandlerMethodValidationException e) {
         String message = e.getAllValidationResults().stream()
                 .findFirst()
-                .map(r -> {
-                    String paramName = r.getMethodParameter().getParameterName();
-                    String errorMsg = r.getResolvableErrors().stream()
-                            .findFirst()
-                            .map(err -> err.getDefaultMessage())
-                            .orElse("参数校验失败");
-                    return (paramName != null ? paramName + ": " : "") + errorMsg;
-                })
+                .map(r -> r.getResolvableErrors().stream()
+                        .findFirst()
+                        .map(err -> err.getDefaultMessage())
+                        .orElse("参数校验失败"))
                 .orElse("参数校验失败");
         return ResponseEntity.status(400).body(R.fail(400, message));
     }

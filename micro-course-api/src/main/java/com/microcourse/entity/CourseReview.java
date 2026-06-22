@@ -26,7 +26,7 @@ public class CourseReview {
     @TableField("user_id")
     private Long userId;
 
-    private Short rating;
+    private Integer rating;
 
     private String content;
 
@@ -50,8 +50,8 @@ public class CourseReview {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
-    public Short getRating() { return rating; }
-    public void setRating(Short rating) { this.rating = rating; }
+    public Integer getRating() { return rating; }
+    public void setRating(Integer rating) { this.rating = rating; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
     public Boolean getIsAnonymous() { return isAnonymous; }

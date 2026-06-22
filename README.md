@@ -40,6 +40,19 @@ npm install
 npm run dev
 ```
 
+## 测试
+
+```bash
+# 后端测试 (228)
+cd micro-course-api && mvn test
+
+# 前端 lint
+cd micro-course-admin && npm run lint
+
+# 项目预检
+bash .claude/skills/microcourse/scripts/precheck.sh
+```
+
 ## 项目结构
 
 ```
@@ -53,7 +66,7 @@ micro-course-api/         # Spring Boot 后端
 │   ├── config/           # Spring Security / MyBatis-Plus / 其它配置
 │   ├── exception/        # 全局异常处理 + ErrorCode
 │   └── util/             # 工具类 (JWT / Security / Redis)
-├── src/main/resources/db/migration/  # Flyway 迁移 (V1-V71)
+├── src/main/resources/db/migration/  # Flyway 迁移 (V1-V72)
 └── Dockerfile
 
 micro-course-admin/       # Vue 3 前端
@@ -88,7 +101,30 @@ docker-compose.yml        # 生产部署编排
 
 ## 发布历史
 
-参见 [CHANGELOG.md](./CHANGELOG.md)
+参见 [CHANGELOG.md](./CHANGELOG.md) — v1.17.0
+
+## CI/CD
+
+GitHub Actions 流水线定义在 `.github/workflows/ci.yml`：
+
+| Job | 内容 | 门禁 |
+|-----|------|------|
+| **backend** | `mvn test` + JaCoCo coverage | 228 tests, 行覆盖率 ≥ 10% |
+| **frontend** | ESLint + build | 0 error, build SUCCESS |
+| **docker** | `docker compose build` | 镜像构建通过 |
+
+### 本地运行 CI 检查
+
+```bash
+# 后端全套
+cd micro-course-api && mvn clean test
+
+# 前端全套
+cd micro-course-admin && npm run lint && npm run build
+
+# 预检
+bash .claude/skills/microcourse/scripts/precheck.sh
+```
 
 ## CI/CD 状态
 

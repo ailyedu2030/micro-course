@@ -468,7 +468,9 @@ const loadBundles = async () => {
   try {
     const { data } = await getBundles({ size: 6 })
     bundles.value = data.items || []
-  } catch {}
+  } catch (e) {
+    console.warn('[CourseSquare] 加载套餐列表失败', e)
+  }
 }
 
 // 封面图加载失败兜底：隐藏 img，露出底层占位符

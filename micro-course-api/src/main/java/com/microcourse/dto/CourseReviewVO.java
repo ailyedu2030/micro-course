@@ -15,7 +15,7 @@ public class CourseReviewVO {
     private Long userId;
     private String username;
     private String realName;
-    private Short rating;
+    private Integer rating;
     private String content;
     private Boolean isAnonymous;
     private LocalDateTime createdAt;
@@ -33,8 +33,8 @@ public class CourseReviewVO {
     public void setUsername(String username) { this.username = username; }
     public String getRealName() { return realName; }
     public void setRealName(String realName) { this.realName = realName; }
-    public Short getRating() { return rating; }
-    public void setRating(Short rating) { this.rating = rating; }
+    public Integer getRating() { return rating; }
+    public void setRating(Integer rating) { this.rating = rating; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
     public Boolean getIsAnonymous() { return isAnonymous; }

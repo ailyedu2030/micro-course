@@ -229,7 +229,7 @@ async function handleUpload(file) {
     await loadData()
     startPolling()
   } catch (e) {
-    ElMessage.error('上传失败：' + (e.response?.data?.message || e.message || '未知错误'))
+    ElMessage.error('上传失败')
   } finally {
     uploading.value = false
   }

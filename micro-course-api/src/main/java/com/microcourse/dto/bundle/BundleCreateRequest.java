@@ -1,12 +1,17 @@
 package com.microcourse.dto.bundle;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 public class BundleCreateRequest {
+    @NotBlank(message = "套餐名称不能为空")
     private String title;
+
+    @NotNull(message = "创建者不能为空")
+    private Long creatorId;
     private String description;
     private String coverUrl;
-    private Long creatorId;
     private BigDecimal price;
     private Boolean isFree;
 

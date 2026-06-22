@@ -435,9 +435,12 @@ async function fetchSettings() {
         casForm.superAdmins = Array.isArray(casData.superAdmins) ? casData.superAdmins.join(', ') : (casData.superAdmins || '')
         casForm.validateSsl = casData.validateSsl
       }
-    } catch { /* P1-8: 忽略加载失败，使用默认值 */ }
+    } catch {
+      ElMessage.warning('CAS 配置加载失败，请稍后重试')
+    }
   } catch (e) {
     console.warn('[AdminSettings] fetchSettings failed', e)
+    ElMessage.error('系统配置加载失败，当前表单显示默认值，保存将覆盖现有配置')
   } finally {
     loading.value = false
   }

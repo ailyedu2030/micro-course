@@ -47,7 +47,7 @@ public class SlideController {
         try {
             if (file == null || file.isEmpty()) {
                 log.warn("[SlideUpload] 上传文件为空 courseId={}", courseId);
-                return R.fail(400, "上传文件不能为空");
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
             }
             String filename = file.getOriginalFilename();
             long size = file.getSize();
@@ -57,7 +57,7 @@ public class SlideController {
             return R.ok(resp);
         } catch (IOException e) {
             log.error("[SlideUpload] 文件读取IO异常 courseId={}", courseId, e);
-            return R.fail(400, "文件读取失败");
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件读取失败");
         } catch (BusinessException e) {
             log.warn("[SlideUpload] 业务拒绝 courseId={}, code={}, msg={}", courseId, e.getCode(), e.getMessage());
             throw e;

@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, onScopeDispose } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSlides, getSlidePages, getSlidePage, uploadSlide, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio } from '@/plugins/interactive/api/slide'
 
@@ -72,7 +72,10 @@ export function useSlideManager(courseId) {
       await updateNarration(courseId.value, selectedPage.value.pageNumber, editingScript.value)
       selectedPage.value.narrationStatus = 'TEACHER_EDITED'
       selectedPage.value.narrationStatusText = '教师已编辑'
-    } catch {}
+    } catch (e) {
+      ElMessage.error('保存讲述稿失败')
+      console.warn('[SlideManager] saveNarration failed', e)
+    }
   }
 
   let pollTimer = null
@@ -85,6 +88,10 @@ export function useSlideManager(courseId) {
       }
     }, 3000)
   }
+
+  onScopeDispose(() => {
+    if (pollTimer) clearInterval(pollTimer)
+  })
 
   return {
     slide, pages, selectedPage, editingScript,

@@ -86,6 +86,9 @@ public class SecurityConfig {
                                 "form-action 'self'"))
                         .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
                         .contentTypeOptions(Customizer.withDefaults())
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31536000))
                         .frameOptions(frame -> frame.deny())
                         .referrerPolicy(referrer -> referrer.policy(
                                 org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
@@ -108,10 +111,8 @@ public class SecurityConfig {
                         // 非敏感元数据，权限矩阵 v2.0 定义为「所有用户（含未登录）」。Controller 内白名单
                         // 严格限定可返回键，CAS/上传上限等敏感配置永不暴露。须先于通配 authenticated。
                         .requestMatchers("GET", "/api/system-configs/public").permitAll()
-                        // 前端错误自动上报 —— 匿名公开端点：未登录态下发生的 JS/Promise 异常也需可上报，
-                        // Controller 仅落日志、不返回敏感数据、不写库。显式放行（虽被下方 /api/** 通配覆盖），
-                        // 以防未来收窄通配规则时误伤；仅放行 POST，最小授权。
-                        .requestMatchers("POST", "/api/frontend-errors").permitAll()
+                        // 前端错误自动上报 —— 需登录态。Controller 仅落日志、不返回敏感数据、不写库。
+                        // 权限由 Controller 上的 @PreAuthorize("isAuthenticated()") 控制
                         .requestMatchers("GET", "/api/departments/**").authenticated()
                         .requestMatchers("GET", "/api/majors/**").authenticated()
                         .requestMatchers("GET", "/api/classes/**").authenticated()

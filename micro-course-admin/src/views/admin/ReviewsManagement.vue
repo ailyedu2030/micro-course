@@ -104,19 +104,23 @@ async function handleApprove(row) {
 async function handleReject(row) {
   try {
     await ElMessageBox.confirm('确定驳回该评价？', '提示', { type: 'warning' })
+  } catch { return }
+  try {
     await rejectReview(row.id)
     ElMessage.success('已驳回')
     fetchData()
-  } catch { /* cancel */ }
+  } catch { ElMessage.error('驳回失败') }
 }
 
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm('确定删除该评价？', '提示', { type: 'warning' })
+  } catch { return }
+  try {
     await deleteReview(row.id)
     ElMessage.success('已删除')
     fetchData()
-  } catch { /* cancel */ }
+  } catch { ElMessage.error('删除失败') }
 }
 
 function formatDate(iso) {

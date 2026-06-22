@@ -2,6 +2,8 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.CertificateVO;
 import com.microcourse.dto.R;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.CertificateService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.http.HttpHeaders;
@@ -34,7 +36,7 @@ public class CertificateController {
     public R<CertificateVO> getById(@PathVariable Long id) {
         CertificateVO cert = certificateService.getById(id);
         if (!cert.getUserId().equals(SecurityUtil.getCurrentUserId())) {
-            return R.fail(403, "无权访问该证书");
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         return R.ok(cert);
     }
@@ -44,7 +46,7 @@ public class CertificateController {
     public ResponseEntity<byte[]> downloadCertificate(@PathVariable Long id) {
         CertificateVO cert = certificateService.getById(id);
         if (!cert.getUserId().equals(SecurityUtil.getCurrentUserId())) {
-            return ResponseEntity.status(403).build();
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         byte[] pdfBytes = certificateService.generateCertificatePdf(id);
         HttpHeaders headers = new HttpHeaders();

@@ -132,7 +132,8 @@ public class SlideServiceImpl implements SlideService {
             courseSlideMapper.updateById(slide);
         } catch (IOException e) {
             slide.setStatus(3);
-            slide.setErrorMessage("文件保存失败: " + e.getMessage());
+            slide.setErrorMessage("文件保存失败");
+            log.error("[SlideUpload] 文件保存IO异常 courseId={}", courseId, e);
             slide.setUpdatedAt(LocalDateTime.now());
             courseSlideMapper.updateById(slide);
             throw new BusinessException(ErrorCode.PPT_PARSE_FAILED);

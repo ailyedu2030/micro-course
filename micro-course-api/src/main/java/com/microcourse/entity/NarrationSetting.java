@@ -1,18 +1,36 @@
 package com.microcourse.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
 @TableName("narration_settings")
 public class NarrationSetting {
 
+    @TableId(type = IdType.AUTO)
     private Long id;
+
+    @TableField("course_id")
     private Long courseId;
+
+    @TableField("speaker_identity")
     private String speakerIdentity;
+
+    @TableField("target_audience")
     private String targetAudience;
+
+    @TableField("speaking_style")
     private String speakingStyle;
+
+    @TableField("total_duration_minutes")
     private Integer totalDurationMinutes;
+
+    @TableField("created_at")
     private LocalDateTime createdAt;
+
+    @TableField("updated_at")
     private LocalDateTime updatedAt;
 
     public Long getId() { return id; }

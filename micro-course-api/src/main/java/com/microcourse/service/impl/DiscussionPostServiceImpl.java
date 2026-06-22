@@ -22,7 +22,9 @@ import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseChapterRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.service.DiscussionPostService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,17 +43,20 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     public DiscussionPostServiceImpl(DiscussionPostRepository postRepository,
                                      DiscussionCommentRepository commentRepository,
                                      UserRepository userRepository,
                                      CourseRepository courseRepository,
-                                     CourseChapterRepository courseChapterRepository) {
+                                     CourseChapterRepository courseChapterRepository,
+                                     EnrollmentRepository enrollmentRepository) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
        @Override
@@ -274,6 +279,17 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DiscussionPostVO create(PostCreateRequest req, Long userId) {
+        // 选课检查：STUDENT 只能发己选课程的讨论
+        if (SecurityUtil.hasRole("STUDENT")) {
+            long enrolledCount = enrollmentRepository.selectCount(
+                    new LambdaQueryWrapper<com.microcourse.entity.Enrollment>()
+                            .eq(com.microcourse.entity.Enrollment::getUserId, userId)
+                            .eq(com.microcourse.entity.Enrollment::getCourseId, req.getCourseId()));
+            if (enrolledCount == 0) {
+                throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再参与讨论");
+            }
+        }
+
         // DISC-NEW-6 修复:发帖频率限制—30 秒内只能发一帖,防止刷帖
         DiscussionPost lastPost = postRepository.selectOne(
                 new LambdaQueryWrapper<DiscussionPost>()

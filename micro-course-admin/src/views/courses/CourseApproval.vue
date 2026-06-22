@@ -123,15 +123,17 @@ async function handleApprove(row) {
 }
 
 async function handleReject(row) {
+  let reason
   try {
-    const { value: reason } = await ElMessageBox.prompt('请输入驳回原因', '驳回课程', {
+    const res = await ElMessageBox.prompt('请输入驳回原因', '驳回课程', {
       confirmButtonText: '确定驳回', cancelButtonText: '取消',
       inputValidator: v => v?.trim()?.length >= 5 || '驳回原因至少5个字符',
       inputPlaceholder: '请输入驳回原因（至少5个字符）',
     })
-    await rejectCourse(row.id, { reason })
-    ElMessage.success('已驳回'); fetchData()
-  } catch { /* cancel */ }
+    reason = res.value
+  } catch { return }
+  try { await rejectCourse(row.id, { reason }); ElMessage.success('已驳回'); fetchData() }
+  catch { ElMessage.error('驳回失败') }
 }
 
 async function handlePublish(row) {

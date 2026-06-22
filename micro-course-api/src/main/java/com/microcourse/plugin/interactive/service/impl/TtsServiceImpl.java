@@ -146,6 +146,7 @@ public class TtsServiceImpl implements TtsService {
 
     @Override
     @Async("slideRenderExecutor")
+    @Transactional(rollbackFor = Exception.class)
     public void generateAll(Long courseId) {
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getCourseId, courseId)

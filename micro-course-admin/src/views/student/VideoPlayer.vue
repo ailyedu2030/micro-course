@@ -875,6 +875,7 @@ const ensureProgressRecord = async () => {
     return !!progressId.value
   } catch (e) {
     console.warn('[VideoPlayer] ensureProgressRecord 创建进度记录失败', e)
+    ElMessage.warning('学习进度保存失败')
     return false
   } finally {
     creatingProgress = false
@@ -900,6 +901,7 @@ const reportProgress = async () => {
     saveLocalPosition(current)
   } catch (e) {
     console.warn('[VideoPlayer] reportProgress 上报进度失败', e)
+    ElMessage.warning('进度上报失败')
   }
 }
 
@@ -964,6 +966,7 @@ const saveNotesToStorage = () => {
     localStorage.setItem(NOTES_STORAGE_KEY.value, JSON.stringify(notes.value))
   } catch (e) {
     console.warn('[VideoPlayer] saveNotesToStorage 保存笔记失败', e)
+    ElMessage.warning('笔记保存失败')
   }
 }
 

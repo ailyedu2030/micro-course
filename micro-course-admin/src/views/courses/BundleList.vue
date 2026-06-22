@@ -169,10 +169,12 @@ const handleSave = async () => {
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm('确定删除该套件?', '提示', { type: 'warning' })
+  } catch { return }
+  try {
     await deleteBundle(row.id)
     ElMessage.success('删除成功')
     fetchBundles()
-  } catch { /* cancelled */ }
+  } catch { ElMessage.error('删除失败') }
 }
 
 const openDetail = async (row) => {
@@ -202,6 +204,9 @@ const handleAddItem = async () => {
 }
 
 const handleRemoveItem = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定从套餐中移除「${row.courseTitle || row.courseId}」？`, '确认移除', { type: 'warning' })
+  } catch { return }
   try {
     await removeBundleCourse(currentBundle.value.id, row.id)
     ElMessage.success('移除成功')

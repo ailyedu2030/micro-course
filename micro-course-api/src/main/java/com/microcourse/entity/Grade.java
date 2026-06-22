@@ -20,7 +20,7 @@ public class Grade {
     private Long courseId;
 
     @TableField("user_id")
-    private Long studentId;
+    private Long userId;
 
     @TableField("exercise_id")
     private Long exerciseId;
@@ -64,8 +64,8 @@ public class Grade {
     public void setId(Long id) { this.id = id; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
-    public Long getStudentId() { return studentId; }
-    public void setStudentId(Long studentId) { this.studentId = studentId; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
     public Long getExerciseId() { return exerciseId; }
     public void setExerciseId(Long exerciseId) { this.exerciseId = exerciseId; }
     public BigDecimal getScore() { return score; }

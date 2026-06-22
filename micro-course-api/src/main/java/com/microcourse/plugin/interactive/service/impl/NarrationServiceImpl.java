@@ -133,6 +133,7 @@ public class NarrationServiceImpl implements NarrationService {
 
     @Override
     @Async("slideRenderExecutor")
+    @Transactional(rollbackFor = Exception.class)
     public void generateAll(Long courseId) {
         if (deepseekApiKey == null || deepseekApiKey.isBlank()) {
             log.warn("[Narration] DEEPSEEK_API_KEY 未配置，跳过 AI 讲述稿批量生成 courseId={}", courseId);

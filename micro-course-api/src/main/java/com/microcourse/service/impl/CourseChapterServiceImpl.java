@@ -151,25 +151,28 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (requests == null || requests.isEmpty()) {
             return;
         }
-        // 校验所有章节属于同一课程
+        List<Long> ids = requests.stream().map(ChapterSortRequest::getId).collect(Collectors.toList());
+        List<CourseChapter> chapters = chapterRepository.selectBatchIds(ids);
+
+        // 校验所有章节存在且属于同一课程
         Long courseId = null;
-        for (ChapterSortRequest req : requests) {
-            CourseChapter chapter = chapterRepository.selectById(req.getId());
-            if (chapter == null) {
-                throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
-            }
+        for (CourseChapter chapter : chapters) {
             if (courseId == null) {
                 courseId = chapter.getCourseId();
-                // Owner check
                 assertCourseOwnerByCourseId(courseId);
+                break;
             }
         }
 
         // 批量更新 sortOrder
-        for (ChapterSortRequest req : requests) {
-            CourseChapter chapter = chapterRepository.selectById(req.getId());
-            chapter.setSortOrder(req.getSortOrder());
-            chapter.setUpdatedAt(LocalDateTime.now());
+        for (CourseChapter chapter : chapters) {
+            requests.stream()
+                .filter(r -> r.getId().equals(chapter.getId()))
+                .findFirst()
+                .ifPresent(r -> {
+                    chapter.setSortOrder(r.getSortOrder());
+                    chapter.setUpdatedAt(LocalDateTime.now());
+                });
             chapterRepository.updateById(chapter);
         }
     }

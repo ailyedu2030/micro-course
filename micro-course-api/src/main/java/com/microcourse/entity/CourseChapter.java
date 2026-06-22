@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -13,19 +14,35 @@ public class CourseChapter {
 
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    @TableField("course_id")
     private Long courseId;
+
     private String title;
     private String description;
+
+    @TableField("sort_order")
     private Integer sortOrder;
+
+    @TableField("chapter_type")
     private String chapterType;
+
     private Integer duration;
+
+    @TableField("created_at")
     private LocalDateTime createdAt;
+
+    @TableField("updated_at")
     private LocalDateTime updatedAt;
+
+    @Version
     private Integer version;
 
     @TableLogic(value = "null", delval = "now()")
+    @TableField("deleted_at")
     private LocalDateTime deletedAt;
 
+    @TableField("learning_objectives")
     private String learningObjectives;
 
     public CourseChapter() {}

@@ -217,12 +217,15 @@ public class QuestionServiceImpl implements QuestionService {
         // Batch load multi-chapter associations to avoid N+1
         Map<Long, List<Long>> questionChapterIdsMap = new HashMap<>();
         Map<Long, CourseChapter> chapterMap = new HashMap<>();
+        Map<Long, Course> courseMap = new HashMap<>();
+        Map<Long, User> userMap = new HashMap<>();
 
         Set<Long> questionIds = questionPage.getRecords().stream()
                 .map(Question::getId).filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
         if (!questionIds.isEmpty()) {
+            // Batch-load chapter associations
             LambdaQueryWrapper<QuestionChapter> qcWrapper = new LambdaQueryWrapper<>();
             qcWrapper.in(QuestionChapter::getQuestionId, questionIds);
             List<QuestionChapter> questionChapters = questionChapterRepository.selectList(qcWrapper);
@@ -237,13 +240,28 @@ public class QuestionServiceImpl implements QuestionService {
                 courseChapterRepository.selectBatchIds(allChapterIds)
                         .forEach(ch -> chapterMap.put(ch.getId(), ch));
             }
+
+            // Batch-load courses, teachers, categories to eliminate N+1 in toBaseVO
+            Set<Long> courseIds = questionPage.getRecords().stream()
+                    .map(Question::getCourseId).filter(Objects::nonNull).collect(Collectors.toSet());
+            if (!courseIds.isEmpty()) {
+                courseRepository.selectBatchIds(courseIds)
+                        .forEach(c -> courseMap.put(c.getId(), c));
+            }
+            // categoryId comes from course, not question; will be populated during convertToVO
+            Set<Long> teacherIds = questionPage.getRecords().stream()
+                    .map(Question::getTeacherId).filter(Objects::nonNull).collect(Collectors.toSet());
+            if (!teacherIds.isEmpty()) {
+                userRepository.selectBatchIds(teacherIds)
+                        .forEach(u -> userMap.put(u.getId(), u));
+            }
         }
 
         final Map<Long, List<Long>> finalQuestionChapterIdsMap = questionChapterIdsMap;
         final Map<Long, CourseChapter> finalChapterMap = chapterMap;
 
         IPage<QuestionVO> voPage = questionPage.convert(
-                q -> convertToVO(q, finalQuestionChapterIdsMap, finalChapterMap));
+                q -> convertToVO(q, finalQuestionChapterIdsMap, finalChapterMap, courseMap, userMap));
         return PageResult.of(voPage);
     }
 
@@ -377,7 +395,9 @@ public class QuestionServiceImpl implements QuestionService {
         return result;
     }
 
-    private QuestionVO toBaseVO(Question question) {
+    private QuestionVO toBaseVO(Question question,
+                                 Map<Long, Course> courseMap,
+                                 Map<Long, User> userMap) {
         QuestionVO vo = new QuestionVO();
         vo.setId(question.getId());
         vo.setCourseId(question.getCourseId());
@@ -395,7 +415,7 @@ public class QuestionServiceImpl implements QuestionService {
         vo.setUpdatedAt(question.getUpdatedAt());
 
         if (question.getCourseId() != null) {
-            Course course = courseRepository.selectById(question.getCourseId());
+            Course course = courseMap != null ? courseMap.get(question.getCourseId()) : courseRepository.selectById(question.getCourseId());
             if (course != null) {
                 vo.setCourseTitle(course.getTitle());
                 vo.setCategoryId(course.getCategoryId());
@@ -403,17 +423,9 @@ public class QuestionServiceImpl implements QuestionService {
         }
 
         if (question.getTeacherId() != null) {
-            User user = userRepository.selectById(question.getTeacherId());
+            User user = userMap != null ? userMap.get(question.getTeacherId()) : userRepository.selectById(question.getTeacherId());
             if (user != null) {
                 vo.setTeacherName(user.getRealName());
-            }
-        }
-
-        // Populate category name if categoryId is set
-        if (vo.getCategoryId() != null) {
-            var category = categoryRepository.selectById(vo.getCategoryId());
-            if (category != null) {
-                vo.setCategoryName(category.getName());
             }
         }
 
@@ -421,7 +433,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     private QuestionVO convertToVO(Question question) {
-        QuestionVO vo = toBaseVO(question);
+        QuestionVO vo = toBaseVO(question, null, null);
 
         // Load multi-chapter associations
         List<Long> chapterIds = new ArrayList<>();
@@ -447,7 +459,25 @@ public class QuestionServiceImpl implements QuestionService {
     private QuestionVO convertToVO(Question question,
                                    Map<Long, List<Long>> questionChapterIdsMap,
                                    Map<Long, CourseChapter> chapterMap) {
-        QuestionVO vo = toBaseVO(question);
+        QuestionVO vo = toBaseVO(question, null, null);
+        // ... multi-chapter data from pre-loaded maps
+        List<Long> chapterIds = questionChapterIdsMap.getOrDefault(question.getId(), new ArrayList<>());
+        List<String> chapterTitles = new ArrayList<>();
+        for (Long cid : chapterIds) {
+            CourseChapter ch = chapterMap.get(cid);
+            if (ch != null) chapterTitles.add(ch.getTitle());
+        }
+        vo.setChapterIds(chapterIds);
+        vo.setChapterTitles(chapterTitles);
+        return vo;
+    }
+
+    private QuestionVO convertToVO(Question question,
+                                   Map<Long, List<Long>> questionChapterIdsMap,
+                                   Map<Long, CourseChapter> chapterMap,
+                                   Map<Long, Course> courseMap,
+                                   Map<Long, User> userMap) {
+        QuestionVO vo = toBaseVO(question, courseMap, userMap);
 
         // Populate multi-chapter data from pre-loaded maps
         List<Long> chapterIds = questionChapterIdsMap.getOrDefault(question.getId(), new ArrayList<>());

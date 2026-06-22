@@ -338,10 +338,12 @@ const loadSettings = () => {
   }
 }
 
+let saveTimer = null
 const handleSave = () => {
+  if (saveTimer) return
+  saveTimer = setTimeout(() => { saveTimer = null }, 2000)
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
-    ElMessage.success('设置已保存')
   } catch {
     ElMessage.error('保存失败')
   }

@@ -20,6 +20,8 @@
         :rules="formRules"
         label-position="top"
         class="user-form-body"
+        v-loading="pageLoading"
+        element-loading-text="加载用户数据中..."
       >
         <!-- Section 1: 基础信息 -->
         <div class="form-section">
@@ -373,10 +375,17 @@ const loadUserData = async (id) => {
   }
 }
 
+const pageLoading = ref(false)
+
 onMounted(async () => {
   await fetchDepartments()
   if (isEdit.value) {
-    await loadUserData(route.params.id)
+    pageLoading.value = true
+    try {
+      await loadUserData(route.params.id)
+    } finally {
+      pageLoading.value = false
+    }
   }
 })
 </script>

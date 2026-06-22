@@ -71,14 +71,17 @@ public class LessonServiceImpl implements LessonService {
     @Transactional(rollbackFor = Exception.class)
     public void sort(List<LessonVO.SortItem> items) {
         if (items == null) return;
-        for (LessonVO.SortItem item : items) {
-            Lesson lesson = lessonRepository.selectById(item.getId());
-            if (lesson != null) {
+        List<Long> ids = items.stream().map(LessonVO.SortItem::getId).collect(Collectors.toList());
+        List<Lesson> lessons = lessonRepository.selectBatchIds(ids);
+        for (Lesson lesson : lessons) {
+            items.stream().filter(i -> i.getId().equals(lesson.getId())).findFirst().ifPresent(item -> {
                 lesson.setChapterId(item.getChapterId());
                 lesson.setSortOrder(item.getSortOrder());
                 lesson.setUpdatedAt(LocalDateTime.now());
-                lessonRepository.updateById(lesson);
-            }
+            });
+        }
+        for (Lesson lesson : lessons) {
+            lessonRepository.updateById(lesson);
         }
     }
 

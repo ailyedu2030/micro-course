@@ -661,7 +661,8 @@ async function loadHeatmap() {
     }
 
     heatmapData.value = weeks
-  } catch {
+  } catch (e) {
+      console.warn("[LearningCenter]", e)
     heatmapData.value = []
   }
 }
@@ -718,7 +719,8 @@ async function getStats(sharedEnrollments) {
     animateNumber(inProgressCount, (v) => { animatedInProgress.value = v })
     animateNumber(completedCourses, (v) => { animatedCompleted.value = v })
     animateNumber(studyDays, (v) => { animatedDays.value = v })
-  } catch {
+  } catch (e) {
+      console.warn("[LearningCenter]", e)
     stats.value = {
       totalHours: '0小时',
       completedCourses: 0,
@@ -749,7 +751,8 @@ async function getRecent(sharedEnrollments) {
         cover: inProgress.courseCover || inProgress.coverUrl || 'https://picsum.photos/seed/course/300/180'
       }
     }
-  } catch {
+  } catch (e) {
+      console.warn("[LearningCenter]", e)
     recentCourse.value = { title: '', currentChapter: 0, progress: 0, cover: '' }
   }
 }
@@ -776,7 +779,7 @@ async function getChart() {
         })
         accuracyMode.value = true
       }
-    } catch {
+    } catch (e) {
       // API 不存在，继续用打卡数据
     }
 
@@ -804,7 +807,8 @@ async function getChart() {
 
       chartData.value = Object.values(dayMap)
     }
-  } catch {
+  } catch (e) {
+      console.warn("[LearningCenter]", e)
     chartData.value = []
   }
 }
@@ -837,7 +841,8 @@ async function getRecommendations(sharedEnrollments) {
     if (inProgress.length > 0) {
       recommendations.value = inProgress
     }
-  } catch {
+  } catch (e) {
+      console.warn("[LearningCenter]", e)
     recommendations.value = []
   }
 }
@@ -852,7 +857,8 @@ async function getBadges() {
       name: b.name || b.badgeName || '徽章',
       earned: b.earned !== false
     }))
-  } catch {
+  } catch (e) {
+      console.warn("[LearningCenter]", e)
     badges.value = []
   }
 }
@@ -885,7 +891,8 @@ async function getRecentRecords(sharedEnrollments) {
       progress: e.progress || 0,
       completed: !!e.completed
     }))
-  } catch {
+  } catch (e) {
+      console.warn("[LearningCenter]", e)
     recentRecords.value = []
   }
 }
@@ -903,7 +910,7 @@ async function loadData() {
     try {
       const { data: enrollmentData } = await getMyEnrollments(userId)
       sharedEnrollments = Array.isArray(enrollmentData) ? enrollmentData : []
-    } catch {
+    } catch (e) {
       sharedEnrollments = []
     }
 
@@ -935,7 +942,8 @@ async function checkTodayStatus() {
       if (!c.checkinDate) return false
       return String(c.checkinDate).slice(0, 10) === todayStr
     })
-  } catch {
+  } catch (e) {
+      console.warn("[LearningCenter]", e)
     checkedInToday.value = false
   }
 }
@@ -946,7 +954,8 @@ async function doCheckIn() {
     await createCheckIn({})
     checkedInToday.value = true
     ElMessage.success('打卡成功！')
-  } catch {
+  } catch (e) {
+      console.warn("[LearningCenter]", e)
     ElMessage.error('打卡失败，请稍后重试')
   } finally {
     checkInLoading.value = false

@@ -149,9 +149,14 @@
    -------------------------------------------------------------------------- */
 :root {
   /* 间距 */
+  --space-0: 0px;
+  --space-0-5: 2px;
   --space-1: 4px;
+  --space-1-5: 6px;
   --space-2: 8px;
+  --space-2-5: 10px;
   --space-3: 12px;
+  --space-3-5: 14px;
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
@@ -159,6 +164,7 @@
   --space-8: 48px;
   --space-9: 64px;
   --space-10: 80px;
+  --space-12: 96px;
 
   /* 字号 */
   --text-xs: 12px;

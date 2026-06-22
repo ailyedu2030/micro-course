@@ -6,26 +6,44 @@
 -->
 <template>
   <div id="app" :class="appClass">
-    <router-view v-if="isLoginPage || isVideoPage" v-slot="{ Component }">
-      <transition name="page-fade" mode="out-in">
-        <component :is="Component" />
-      </transition>
-    </router-view>
-    <StudentLayout v-else-if="isStudent" />
-    <Layout v-else />
+    <div v-if="hasError" class="app-error-boundary">
+      <div class="error-card">
+        <el-icon :size="48" color="var(--el-color-danger)"><WarningFilled /></el-icon>
+        <h2>页面出了点问题</h2>
+        <p>请尝试刷新页面或返回首页</p>
+        <div class="error-actions">
+          <el-button type="primary" @click="recover">刷新页面</el-button>
+          <el-button @click="goHome">返回首页</el-button>
+        </div>
+      </div>
+    </div>
+    <template v-else>
+      <router-view v-if="isLoginPage || isVideoPage" v-slot="{ Component }">
+        <transition name="page-fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
+      <StudentLayout v-else-if="isStudent" />
+      <Layout v-else />
+    </template>
   </div>
 </template>
 
 <script setup>
-import { computed, onErrorCaptured, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onErrorCaptured, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from './store/user'
 import { isAuthenticated } from './utils/auth'
+import { reportError } from './utils/errorReport'
 import Layout from './components/Layout.vue'
 import StudentLayout from './components/StudentLayout.vue'
+import { WarningFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
+
+const hasError = ref(false)
 
 const isLoginPage = computed(() => route.path === '/login')
 const isStudent = computed(() => userStore.role === 'STUDENT')
@@ -37,10 +55,14 @@ const appClass = computed(() => ({
   'role-video': isVideoPage.value
 }))
 
-// 根组件错误边界——捕获子组件未处理的错误
+function recover() { hasError.value = false; window.location.reload() }
+function goHome() { hasError.value = false; router.push('/login') }
+
+// 根组件错误边界——捕获子组件未处理的错误，显示降级 UI
 onErrorCaptured((err, instance, info) => {
   console.error('[App ErrorBoundary]', info, err)
-  // 返回 false 继续向上传播给 app.config.errorHandler
+  hasError.value = true
+  reportError(err)
   return false
 })
 
@@ -60,6 +82,8 @@ onMounted(async () => {
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body, #app {
   height: 100%;
+  display: flex;
+  flex-direction: column;
   font-family: 'Outfit', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -82,6 +106,13 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--el-border-color); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--el-text-color-placeholder); }
+
+/* 错误边界降级 UI */
+.app-error-boundary { display:flex; align-items:center; justify-content:center; height:100vh; padding:24px; }
+.error-card { text-align:center; max-width:400px; }
+.error-card h2 { margin:16px 0 8px; font-size:20px; color:var(--el-text-color-primary); }
+.error-card p { margin-bottom:24px; color:var(--el-text-color-secondary); }
+.error-actions { display:flex; gap:12px; justify-content:center; }
 
 @media (max-width: 768px) {
   .el-table { font-size: 12px; overflow-x: auto; display: block; }

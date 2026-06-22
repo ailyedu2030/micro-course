@@ -1,14 +1,17 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '../router'
-import { getToken, removeToken } from './auth'
+import { getToken, setToken, removeToken } from './auth'
+
+let isRefreshing = false
 
 const request = axios.create({
-  baseURL: '/api',   // vite proxy 转发到 localhost:8080
-  timeout: 60000     // 60s: 兼容大练习提交/批量导入等耗时操作
+  baseURL: '/api',
+  timeout: 60000
 })
 
 request.interceptors.request.use(config => {
+  if (config._skipAuth) return config
   const token = getToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
@@ -16,7 +19,6 @@ request.interceptors.request.use(config => {
 
 request.interceptors.response.use(response => {
   const res = response.data
-  // blob/arraybuffer 跳过 R 包装检查
   if (response.config.responseType === 'blob' || response.config.responseType === 'arraybuffer') {
     return response
   }
@@ -25,8 +27,7 @@ request.interceptors.response.use(response => {
     return Promise.reject(new Error(res.message))
   }
   return res
-}, error => {
-  // UX-NEW-6 修复:区分网络断连/超时与服务器错误
+}, async error => {
   if (!error.response) {
     if (error.code === 'ECONNABORTED') {
       ElMessage.error('请求超时，请检查网络后重试')
@@ -36,18 +37,44 @@ request.interceptors.response.use(response => {
     return Promise.reject(error)
   }
   const status = error.response?.status
-  if (status === 401) {
+  const config = error.config
+
+  if (status === 401 && !config._retry && !config._skipAuth) {
+    const refreshToken = sessionStorage.getItem('micro_course_refresh_token')
+    if (refreshToken) {
+      if (isRefreshing) return Promise.reject(error)
+      isRefreshing = true
+      try {
+        const res = await axios.post('/api/auth/refresh', { refreshToken }, { _skipAuth: true, headers: {} })
+        const newToken = res.data?.data?.accessToken
+        const newRefreshToken = res.data?.data?.refreshToken
+        if (newToken) {
+          setToken(newToken)
+          sessionStorage.setItem('micro_course_refresh_token', newRefreshToken || '')
+          config.headers.Authorization = `Bearer ${newToken}`
+          config._retry = true
+          return request(config)
+        }
+      } catch {
+        removeToken()
+        sessionStorage.removeItem('micro_course_refresh_token')
+      } finally {
+        isRefreshing = false
+      }
+    }
     removeToken()
     if (router.currentRoute.value.path !== '/login') {
       const currentPath = router.currentRoute.value.fullPath
       router.push({ path: '/login', query: { redirect: currentPath } })
       ElMessage.warning('登录已过期，请重新登录')
     } else {
-      // 已经在登录页 → 显示具体错误（如"用户名或密码错误"）
       const msg = error.response?.data?.message || '用户名或密码错误'
       ElMessage.error(msg)
     }
-  } else if (status === 403) {
+    return Promise.reject(error)
+  }
+
+  if (status === 403) {
     ElMessage.error('无权访问该资源')
   } else if (status >= 500) {
     ElMessage.error('服务器错误，请稍后重试')

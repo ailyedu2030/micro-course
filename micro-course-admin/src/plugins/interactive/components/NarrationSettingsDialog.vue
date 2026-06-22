@@ -100,7 +100,7 @@ async function handleSave() {
     emit('saved', payload)
     visible.value = false
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '保存失败')
+    ElMessage.error('保存失败')
   } finally {
     saving.value = false
   }

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -46,6 +47,7 @@ public class Exercise {
     @TableField("question_count")
     private Integer questionCount;
 
+    @Version
     private Integer version;
 
     @TableField("created_at")

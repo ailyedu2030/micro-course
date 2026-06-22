@@ -1,7 +1,10 @@
 package com.microcourse.dto;
 
+import jakarta.validation.constraints.Size;
+
 public class ChapterUpdateRequest {
 
+    @Size(max = 200, message = "章节标题不能超过200字")
     private String title;
 
     private String description;

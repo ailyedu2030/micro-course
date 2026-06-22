@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -62,6 +63,7 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
     @Override
     @Async("videoUploadExecutor")
+    @Transactional(rollbackFor = Exception.class)
     public void transcode(Long videoId) {
         log.info("[VideoTranscode] 开始转码 videoId={}", videoId);
 

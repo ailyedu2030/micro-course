@@ -138,7 +138,12 @@ router.beforeEach(async (to, from, next) => {
       await userStore.getInfo()
       userRole = userStore.role || ''
     } catch (e) {
-      console.warn('[router] 获取用户信息失败, 跳转登录', e)
+      console.warn('[router] 获取用户信息失败, 清除登录态', e)
+      removeToken()
+      sessionStorage.removeItem('userRole')
+      sessionStorage.removeItem('micro_course_refresh_token')
+      userStore.token = ''
+      userStore.userInfo = null
       return next({ path: '/login', query: { redirect: to.fullPath } })
     }
   }

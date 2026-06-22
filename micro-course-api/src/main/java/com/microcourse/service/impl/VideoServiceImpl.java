@@ -20,6 +20,7 @@ import com.microcourse.service.VideoService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -287,6 +288,7 @@ public class VideoServiceImpl implements VideoService {
      * P1-8 修复：封面文件魔数校验
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String uploadCover(Long videoId, MultipartFile file) {
         // ★ Round 9-3 修复：空文件防御（Service 层兜底，防止保存 0 字节图片 → 友好 400）
         if (file == null || file.isEmpty()) {

@@ -29,8 +29,17 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
       </div>
     </header>
 
+    <!-- Loading / Error State -->
+    <div v-if="pageLoading" class="player-loading" style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--el-text-color-secondary)">
+      <el-icon class="is-loading" :size="32"><Loading /></el-icon><span style="margin-left:12px">加载幻灯片中...</span>
+    </div>
+    <div v-else-if="pageError" class="player-loading" style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:12px">
+      <span style="color:var(--el-text-color-secondary)">幻灯片加载失败</span>
+      <el-button size="small" @click="loadPages">重试</el-button>
+    </div>
+
     <!-- Main Content -->
-    <main class="player-main">
+    <main v-else class="player-main">
       <!-- Slide Image Area -->
       <section class="slide-stage" @click="handleStageClick">
         <div class="slide-frame">
@@ -137,15 +146,18 @@ v-for="s in speeds" :key="s"
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { loadAuthImage, clearImageCache } from '@/utils/authImage'
-import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loading } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const courseId = computed(() => route.params.id)
 
 const pages = ref([])
 const current = ref(0)
+const pageLoading = ref(true)
+const pageError = ref(false)
 const showNarration = ref(true)
 const autoMode = ref(true)
 const playing = ref(false)
@@ -167,6 +179,8 @@ let countdownTimer = null
 const currentPage = computed(() => pages.value[current.value] || null)
 
 async function loadPages() {
+  pageLoading.value = true
+  pageError.value = false
   try {
     const res = await getSlidePages(courseId.value)
     pages.value = res.data || []
@@ -175,7 +189,12 @@ async function loadPages() {
       const blobUrl = await loadAuthImage(relUrl)
       if (blobUrl) imageUrls.value[page.pageNumber - 1] = blobUrl
     }
-  } catch {}
+  } catch {
+    pageError.value = true
+    ElMessage.error('加载幻灯片失败')
+  } finally {
+    pageLoading.value = false
+  }
 }
 
 function goTo(index) {

@@ -391,7 +391,11 @@ const handleBatchUpload = async ({ file }) => {
       delete uploadXHRMap.value[file.name]
     })
 
-    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+    const baseURL = import.meta.env.VITE_API_BASE_URL
+    if (!baseURL) {
+      ElMessage.error('系统配置错误：缺少 API 地址配置')
+      return
+    }
     xhr.open('POST', `${baseURL}/api/videos/upload`)
     const token = getToken()
     if (token) {

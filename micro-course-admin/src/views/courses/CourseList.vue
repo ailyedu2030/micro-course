@@ -326,73 +326,40 @@ const handleView = (row) => {
 }
 
 const handleApprove = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定审核通过该课程?', '提示', { type: 'warning' })
-    await approveCourse(row.id)
-    ElMessage.success('审核通过成功')
-    fetchData()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败')
-    }
-  }
+  try { await ElMessageBox.confirm('确定审核通过该课程?', '提示', { type: 'warning' }) } catch { return }
+  try { await approveCourse(row.id); ElMessage.success('审核通过成功'); fetchData() }
+  catch { ElMessage.error('审核通过失败') }
 }
 
 const handleReject = async (row) => {
+  let value
   try {
-    const { value } = await ElMessageBox.prompt('请输入驳回原因（选填）', '驳回课程', {
-      confirmButtonText: '确定驳回',
-      cancelButtonText: '取消',
-      inputType: 'textarea',
-      inputPlaceholder: '请填写驳回原因，以便教师修改后重新提交'
+    const res = await ElMessageBox.prompt('请输入驳回原因（选填）', '驳回课程', {
+      confirmButtonText: '确定驳回', cancelButtonText: '取消',
+      inputType: 'textarea', inputPlaceholder: '请填写驳回原因，以便教师修改后重新提交'
     })
-    await rejectCourse(row.id, value || '')
-    ElMessage.success('驳回成功')
-    fetchData()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败')
-    }
-  }
+    value = res.value
+  } catch { return }
+  try { await rejectCourse(row.id, value || ''); ElMessage.success('驳回成功'); fetchData() }
+  catch { ElMessage.error('驳回失败') }
 }
 
 const handlePublish = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定发布该课程?', '提示', { type: 'warning' })
-    await updateCourseStatus(row.id, 4)
-    ElMessage.success('发布成功')
-    fetchData()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败')
-    }
-  }
+  try { await ElMessageBox.confirm('确定发布该课程?', '提示', { type: 'warning' }) } catch { return }
+  try { await updateCourseStatus(row.id, 4); ElMessage.success('发布成功'); fetchData() }
+  catch { ElMessage.error('发布失败') }
 }
 
 const handleUnpublish = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定下架该课程?', '提示', { type: 'warning' })
-    await updateCourseStatus(row.id, 5)
-    ElMessage.success('下架成功')
-    fetchData()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败')
-    }
-  }
+  try { await ElMessageBox.confirm('确定下架该课程?', '提示', { type: 'warning' }) } catch { return }
+  try { await updateCourseStatus(row.id, 5); ElMessage.success('下架成功'); fetchData() }
+  catch { ElMessage.error('下架失败') }
 }
 
 const handleDelete = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定删除该课程?', '提示', { type: 'warning' })
-    await deleteCourse(row.id)
-    ElMessage.success('删除成功')
-    fetchData()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
-  }
+  try { await ElMessageBox.confirm('确定删除该课程?', '提示', { type: 'warning' }) } catch { return }
+  try { await deleteCourse(row.id); ElMessage.success('删除成功'); fetchData() }
+  catch { ElMessage.error('删除失败') }
 }
 
 const handleCopy = async (row) => {

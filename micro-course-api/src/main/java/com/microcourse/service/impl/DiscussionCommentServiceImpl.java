@@ -142,7 +142,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         if (!comment.getUserId().equals(userId) && !isAdminOrTeacher) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        comment.setStatus(0);
+        comment.setStatus(3); // 3 = DELETED，区别于 PENDING(0)
         commentRepository.updateById(comment);
         // 原子递减帖子评论数
         if (comment.getPostId() != null) {

@@ -469,7 +469,7 @@ async function handleConfirmImport() {
     }
     fetchData()
   } catch (err) {
-    ElMessage.error(err.message || '导入失败，请检查文件格式')
+    ElMessage.error('导入失败，请检查文件格式')
     importResult.value = {
       successCount: 0,
       failCount: 0,

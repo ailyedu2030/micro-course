@@ -80,6 +80,15 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(rollbackFor = Exception.class)
     public LoginResponse login(LoginRequest request) {
         try {
+            // Step 0: IP 级别防暴 — 同一 IP 连续失败 20 次封禁 15 分钟
+            String clientIp = IpUtil.getClientIp();
+            if (clientIp != null) {
+                int ipFailureCount = getLoginFailureCount("ip:" + clientIp);
+                if (ipFailureCount >= 20) {
+                    throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+                }
+            }
+
             // Step 1: 检查登录失败次数
             int failureCount = getLoginFailureCount(request.getUsername());
             if (failureCount >= 5) {
@@ -90,12 +99,14 @@ public class AuthServiceImpl implements AuthService {
             User user = userRepository.findByUsername(request.getUsername())
                     .orElseThrow(() -> {
                         incrLoginFailureQuietly(request.getUsername());
+                        if (clientIp != null) incrLoginFailureQuietly("ip:" + clientIp);
                         return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
                     });
 
             // Step 3: 验证密码
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 incrLoginFailureQuietly(request.getUsername());
+                if (clientIp != null) incrLoginFailureQuietly("ip:" + clientIp);
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
 
@@ -112,6 +123,9 @@ public class AuthServiceImpl implements AuthService {
 
             // Step 5: 登录成功，清除失败计数
             clearLoginFailureQuietly(request.getUsername());
+            if (clientIp != null) {
+                clearLoginFailureQuietly("ip:" + clientIp);
+            }
 
             // Step 6: 生成 JWT
             String accessToken = jwtUtil.generateToken(
@@ -143,7 +157,7 @@ public class AuthServiceImpl implements AuthService {
             throw e;
         } catch (Exception e) {
             log.error("Login error for user: {}", request.getUsername(), e);
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "登录服务异常，请稍后重试");
         }
     }
 
@@ -169,6 +183,17 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse refresh(String refreshToken) {
+        // Step 0: IP 级别防刷新 — 同一 IP 每小时最多刷新 20 次
+        String clientIp = IpUtil.getClientIp();
+        if (clientIp != null) {
+            int refreshCount = getLoginFailureCount("refresh:" + clientIp);
+            if (refreshCount >= 20) {
+                throw new BusinessException(ErrorCode.TOKEN_INVALID);
+            }
+        }
+        // Step 0.5: 记录 refresh 尝试
+        if (clientIp != null) incrLoginFailureQuietly("refresh:" + clientIp);
+
         // Step 1: 验证 refreshToken 有效性
         if (!jwtUtil.validateRefreshToken(refreshToken)) {
             throw new BusinessException(ErrorCode.TOKEN_INVALID);

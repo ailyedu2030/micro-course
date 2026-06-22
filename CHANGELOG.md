@@ -2,6 +2,67 @@
 
 All notable changes to the 微课管理平台 (Micro-Course Management Platform) are documented here.
 
+## [v1.17.0] — 2026-06-22
+
+> 十轮穷举交叉验证收官 · 81 项 P0-P3 修复 · 全栈质量门禁零缺陷
+
+### P0 阻塞修复 (25 项)
+- **Entity 注解补齐** — `NarrationSetting.@TableId` 缺失导致 MyBatis-Plus CRUD 崩溃；`@Version` 补齐 `Question`/`Exercise`/`CourseChapter`；`@TableField` 补齐 `Lesson`/`CourseChapter`/`NarrationSetting`
+- **运行期 SQL 崩溃** — `Course.tags` 字段无对应 DB 列 (`@TableField(exist=false)`)；`CourseReview.rating` Short 不匹配 V71 改列 INTEGER
+- **事务缺失导致数据不一致** — `VideoTranscodeServiceImpl` 4 次 DB 写无事务；`TtsServiceImpl`/`NarrationServiceImpl` @Async 自调用 @Transactional 不生效
+- **登录认证缺陷** — 登录成功后 JWT 生成/DB 操作失败误报"用户名或密码错误"；refreshToken 前端未持久化导致每 2h 强制退出；`/api/auth/me` 非 401 失败陷入无限重定向循环
+- **Docker 基础设施** — `VIDEO_SIGN_SECRET` 静默回退到 `JWT_SECRET` 密钥复用；`DEEPSEEK_API_KEY` 未传入容器 AI 功能静默损坏
+- **外部支付回调阻塞** — `OrderController.paymentCallback` 要求 ADMIN JWT 导致外部支付网关永远 403
+- **学习进度数据丢失** — `VideoPlayer` 进度保存/上报失败无声
+- **讨论区无选课检查** — STUDENT 可在任意课程发帖
+
+### P1 关键修复 (29 项)
+- **内存泄漏** — `TeacherWorkspace.vue` setInterval 组件卸载后持续运行；`useSlideManager.js` 轮询永不停止
+- **信息泄漏** — `GlobalExceptionHandler` 泄漏内部字段名/参数名/URL；`SlideServiceImpl` 将 `e.getMessage()` 写入数据库
+- **IDOR** — `TtsController.getAudio` 缺少选课/所有者检查，任何认证用户可听任意课程音频
+- **密钥复用** — 视频签名密钥回退到 JWT 密钥 (docker-compose 移除 fallback)
+- **N+1 查询** — `QuestionServiceImpl.toBaseVO` 每行 3 次 `selectById` (课程/用户/分类)
+- **数据覆盖** — `AdminSettings` 加载 CAS/系统配置失败后表单可编辑 → 保存默认值覆盖真实配置
+- **表单加载竞态** — `UserForm` 编辑模式加载完成前即可编辑 → 保存时覆盖用户为空白
+- **DELETE 评论状态错误** — `status=0`(PENDING) 而非 DELETED，与待审核评论混同
+- **驳回流程吞异常** — `CourseApproval.handleReject` 真实 API 失败被 `catch { /* cancel */ }` 吞掉
+- **通用错误消息丢弃后端原因** — `CourseList` 6 处 `ElMessage.error('操作失败')` 覆盖具体原因
+- **HSTS 缺失** — Nginx + Spring Security 均未配置 HSTS
+- **CSP 安全头** — `script-src` 包含 `unsafe-inline` `unsafe-eval` 减弱 XSS 防护
+- **教学班满员检查** — `EnrollmentServiceImpl.enroll()` 缺少 `maxStudents` 校验
+- **登录服务异常误报** — 非 `BusinessException` 统一转为 "用户名或密码错误"
+
+### P2 体验提升 (13 项)
+- **CSS 设计令牌补齐** — `--space-0` ~ `--space-3.5`, `--space-12` 等半单位间距变量
+- **nginx Permissions-Policy** — 限制摄像头/麦克风/地理位置等权限
+- **退出登录清购物车** — `localStorage.removeItem('micro_course_cart')`
+- **匿名标志重置** — `DiscussionView.resetDetail` 恢复 `replyAnonymous` 默认值
+- **设置页 Toast 防抖** — `Settings.vue` 每个开关 @change 触发 toast → 2s 防抖去重
+- **表单加载锁定** — 多个表单 `v-loading` 加载完成前不可编辑
+- **确认弹窗分离** — `BundleList`/`ReviewsManagement`/`Layout`/`CourseList` confirm 与 mutation 分离
+- **搜索结果空状态** — `LearningCenter.vue` 两处 `v-else` + `<el-empty>`
+- **幻灯片加载失败重试** — 加载错误提示 + 重试按钮
+
+### P3 维护性 (14 项)
+- **`serialVersionUID` 补齐** — `ExerciseChapter`/`QuestionChapter`
+- **`BundleCreateRequest` 校验注解** — `@NotBlank`/`@NotNull`
+- **`Badge.java` + `BadgeRepository.java` 死代码删除**
+- **API import 路径统一** — `lesson.js`/`order.js` 统一为相对路径
+- **`getLessons` 死代码清除** — 前端 `lesson.js` 中无对应后端端点的函数
+- **`.env` 默认 URL 清除** — 移除 `localhost:8080` 硬编码默认值
+- **数据字典与实际 SQL 对齐** — `certificates`/`lessons`/`grades`/`course_chapters` 表字段修正
+
+### Quality Gates
+```
+mvn compile:            0 ERROR   ✅
+npm run build:          0 ERROR   ✅
+precheck.sh:            13/13     ✅
+Backend tests:          228/228   ✅
+Frontend lint:          0 errors  ✅
+```
+
+---
+
 ## [v1.16.0] — 2026-06-22
 
 > 全量交叉验证收官 · CI/CD 零警告流水线 · 228/228 tests pass · GitHub Actions 全绿

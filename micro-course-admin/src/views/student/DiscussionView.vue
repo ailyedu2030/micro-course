@@ -342,6 +342,7 @@ const resetDetail = () => {
   currentPost.value = null
   comments.value = []
   replyContent.value = ''
+  replyAnonymous.value = false
 }
 
 const handleReply = async ({ parentId, content }) => {

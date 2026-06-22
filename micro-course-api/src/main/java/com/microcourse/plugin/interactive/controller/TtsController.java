@@ -1,8 +1,16 @@
 package com.microcourse.plugin.interactive.controller;
 
 import com.microcourse.dto.R;
+import com.microcourse.entity.Course;
+import com.microcourse.entity.Enrollment;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.service.TtsService;
+import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.util.SecurityUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -21,12 +29,16 @@ import java.util.concurrent.TimeUnit;
 public class TtsController {
 
     private final TtsService ttsService;
+    private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
 
-    public TtsController(TtsService ttsService) {
+    public TtsController(TtsService ttsService, CourseRepository courseRepository, EnrollmentRepository enrollmentRepository) {
         this.ttsService = ttsService;
+        this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @PostMapping("/pages/{pageNumber}/audio/generate")
@@ -47,6 +59,7 @@ public class TtsController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> getAudio(@PathVariable Long courseId,
                                             @PathVariable Integer pageNumber) {
+        verifyAccess(courseId);
         try {
             Path audioPath = Paths.get(storagePath, String.valueOf(courseId),
                     "audio", "page_" + pageNumber + ".mp3");
@@ -57,7 +70,26 @@ public class TtsController {
                             CacheControl.maxAge(1, TimeUnit.HOURS).getHeaderValue())
                     .body(audioBytes);
         } catch (IOException e) {
-            return ResponseEntity.notFound().build();
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件未找到");
         }
+    }
+
+    private void verifyAccess(Long courseId) {
+        if (SecurityUtil.hasRole("ADMIN") || SecurityUtil.hasRole("ACADEMIC")) return;
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (SecurityUtil.hasRole("TEACHER")) {
+            if (!course.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+            return;
+        }
+        // STUDENT: must be enrolled
+        long count = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
+                        .eq(Enrollment::getCourseId, courseId)
+                        .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
+        if (count == 0) throw new BusinessException(ErrorCode.NO_PERMISSION);
     }
 }

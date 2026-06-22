@@ -44,6 +44,7 @@ public class Course {
     @TableField("is_recommended")
     private Boolean isRecommended;
 
+    @TableField(exist = false)
     private String tags;
 
     private String courseType;

@@ -22,19 +22,24 @@ public class NarrationSettingServiceImpl implements NarrationSettingService {
 
     @Override
     @Transactional(readOnly = true)
-    public NarrationSetting getByCourseId(Long courseId) {
+    public NarrationSettingVO getByCourseId(Long courseId) {
         LambdaQueryWrapper<NarrationSetting> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(NarrationSetting::getCourseId, courseId);
         NarrationSetting setting = repository.selectOne(wrapper);
         if (setting == null) {
             setting = createDefault(courseId);
         }
-        return setting;
+        return toVO(setting);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public NarrationSetting save(Long courseId, NarrationSetting setting) {
+    public NarrationSettingVO save(Long courseId, NarrationSettingRequest request) {
+        NarrationSetting setting = new NarrationSetting();
+        setting.setSpeakerIdentity(request.getSpeakerIdentity());
+        setting.setTargetAudience(request.getTargetAudience());
+        setting.setSpeakingStyle(request.getSpeakingStyle());
+        setting.setTotalDurationMinutes(request.getTotalDurationMinutes());
         setting.setUpdatedAt(LocalDateTime.now());
 
         LambdaQueryWrapper<NarrationSetting> wrapper = new LambdaQueryWrapper<>();
@@ -51,13 +56,16 @@ public class NarrationSettingServiceImpl implements NarrationSettingService {
             setting.setUpdatedAt(LocalDateTime.now());
             repository.insert(setting);
         }
-        return setting;
+        return toVO(setting);
     }
 
     @Override
     @Transactional(readOnly = true)
     public String buildSystemPrompt(Long courseId) {
-        NarrationSetting setting = getByCourseId(courseId);
+        NarrationSetting setting = repository.selectOne(new LambdaQueryWrapper<NarrationSetting>().eq(NarrationSetting::getCourseId, courseId));
+        if (setting == null) {
+            setting = createDefault(courseId);
+        }
         StringBuilder sb = new StringBuilder();
         sb.append("你是一位经验丰富的").append(setting.getSpeakerIdentity()).append("。");
         sb.append("根据幻灯片内容生成适合口头讲述的讲解稿。");

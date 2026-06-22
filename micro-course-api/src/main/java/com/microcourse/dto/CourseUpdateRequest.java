@@ -1,9 +1,11 @@
 package com.microcourse.dto;
 
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 public class CourseUpdateRequest {
 
+    @Size(max = 200, message = "课程标题不能超过200字")
     private String title;
     private Long categoryId;
     private Long teacherId;

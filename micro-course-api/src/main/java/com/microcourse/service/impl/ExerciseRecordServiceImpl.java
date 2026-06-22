@@ -193,7 +193,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
 
         // 9. 同步更新 grades 表
         Grade grade = new Grade();
-        grade.setStudentId(request.getUserId());
+        grade.setUserId(request.getUserId());
         grade.setExerciseId(request.getExerciseId());
         grade.setCourseId(exercise.getCourseId());
         grade.setScore(BigDecimal.valueOf(totalScore));
@@ -211,7 +211,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         // 极端并发再兜底捕获 DuplicateKeyException，确保边界 case 友好处理、绝不抛 500 给用户。
         boolean gradeExists = gradeRepository.selectCount(
                 new LambdaQueryWrapper<Grade>()
-                        .eq(Grade::getStudentId, request.getUserId())
+                        .eq(Grade::getUserId, request.getUserId())
                         .eq(Grade::getCourseId, exercise.getCourseId())
                         .eq(Grade::getExerciseId, request.getExerciseId())
                         .eq(Grade::getAttemptNo, attemptNo)) > 0;

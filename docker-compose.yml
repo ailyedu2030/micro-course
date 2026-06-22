@@ -47,10 +47,10 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-7200000}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
-      VIDEO_SIGN_SECRET: ${VIDEO_SIGN_SECRET:-${JWT_SECRET}}
+      VIDEO_SIGN_SECRET: ${VIDEO_SIGN_SECRET}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:80,http://127.0.0.1:80}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
     volumes:
-      - video_data:/data/videos
       - uploads_data:/app/uploads
     ports:
       - "8080:8080"
@@ -74,5 +74,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  video_data:
+
   uploads_data:

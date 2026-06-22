@@ -209,9 +209,11 @@ async function handleCommand(cmd) {
   if (cmd === 'logout') {
     try {
       await ElMessageBox.confirm('确定退出登录?', '提示', { type: 'warning' })
+    } catch { return }
+    try {
       await userStore.logout()
       router.push('/login')
-    } catch { /* user cancel */ }
+    } catch { ElMessage.error('退出失败') }
   } else if (cmd === 'profile') {
     router.push('/profile')
   } else if (cmd === 'settings') {

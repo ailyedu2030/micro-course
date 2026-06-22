@@ -8,7 +8,7 @@ public class GradeVO {
     private Long id;
     private Long courseId;
     private String courseName;
-    private Long studentId;
+    private Long userId;
     private String studentName;
     private Long exerciseId;
     private String exerciseTitle;
@@ -33,8 +33,8 @@ public class GradeVO {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public String getCourseName() { return courseName; }
     public void setCourseName(String courseName) { this.courseName = courseName; }
-    public Long getStudentId() { return studentId; }
-    public void setStudentId(Long studentId) { this.studentId = studentId; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
     public String getStudentName() { return studentName; }
     public void setStudentName(String studentName) { this.studentName = studentName; }
     public Long getExerciseId() { return exerciseId; }

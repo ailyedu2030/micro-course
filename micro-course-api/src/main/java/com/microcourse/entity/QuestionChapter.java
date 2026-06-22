@@ -6,6 +6,7 @@ import java.io.Serializable;
 
 @TableName("question_chapters")
 public class QuestionChapter implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     @TableField("question_id")
     private Long questionId;

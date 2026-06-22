@@ -267,6 +267,7 @@ function resetForm() {
   form.linkUrl = ''
   form.sortOrder = 0
   form.enabled = true
+  form._rawFile = null
 }
 
 // 取消并重置校验

@@ -1,4 +1,4 @@
-import { reportError } from '../api/error-report'
+import { reportError as reportErrorApi } from '../api/error-report'
 
 let reportedErrors = new Set()
 const MAX_STACK_LENGTH = 500
@@ -13,7 +13,7 @@ export function initErrorReporting() {
     reportedErrors.add(key)
     if (reportedErrors.size > 100) reportedErrors.clear()
 
-    reportError({
+    reportErrorApi({
       message: String(message).slice(0, 200),
       stack: error?.stack?.slice(0, MAX_STACK_LENGTH) || '',
       url: source || window.location.href,
@@ -32,7 +32,7 @@ export function initErrorReporting() {
     reportedErrors.add(key)
     if (reportedErrors.size > 100) reportedErrors.clear()
 
-    reportError({
+    reportErrorApi({
       message: '[Promise] ' + String(message).slice(0, 200),
       stack: reason?.stack?.slice(0, MAX_STACK_LENGTH) || '',
       url: window.location.href,
@@ -40,4 +40,19 @@ export function initErrorReporting() {
       col: 0
     }).catch(() => {})
   })
+}
+
+export function reportError(err) {
+  const message = err?.message || String(err)
+  const key = 'VUE:' + message
+  if (reportedErrors.has(key)) return
+  reportedErrors.add(key)
+  if (reportedErrors.size > 100) reportedErrors.clear()
+  reportErrorApi({
+    message: String(message).slice(0, 200),
+    stack: err?.stack?.slice(0, MAX_STACK_LENGTH) || '',
+    url: window.location.href,
+    line: 0,
+    col: 0
+  }).catch(() => {})
 }

@@ -114,6 +114,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (course.getStatus() == null || course.getStatus() != CourseStatus.PUBLISHED.getCode()) {
             throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "课程未发布，无法选课");
         }
+        // 课程人数上限检查
+        if (course.getMaxStudents() != null && course.getMaxStudents() > 0
+                && course.getStudentCount() != null && course.getStudentCount() >= course.getMaxStudents()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程选课人数已满");
+        }
         // SECURITY: 付费课程必须通过订单支付，不能直接选课
         if (course.getPrice() != null && course.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0
                 && Boolean.FALSE.equals(course.getIsFree())) {

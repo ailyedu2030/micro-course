@@ -61,7 +61,6 @@ public class OrderController {
     }
 
     @PostMapping("/callback")
-    @PreAuthorize("hasAnyRole('ADMIN')")
     public R<Void> paymentCallback(@RequestBody Map<String, String> params) {
         orderService.paymentCallback(params);
         return R.ok();

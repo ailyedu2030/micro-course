@@ -129,7 +129,7 @@ size="small" type="success" :loading="ttsLoading[idx]"
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowDown, UploadFilled } from '@element-plus/icons-vue'
@@ -155,6 +155,7 @@ const ttsLoading = ref({})
 const aiExerciseLoading = ref(false)
 const exercises = ref([])
 const pollTimer = ref(null)
+const simTimer = ref(null)
 
 function toggleOpen(idx) {
   const s = new Set(openPages.value)
@@ -214,7 +215,7 @@ async function uploadFile(file) {
   }
   rendering.value = true
   renderProgress.value = 0
-  const sim = setInterval(() => { renderProgress.value = Math.min(renderProgress.value + 5, 90) }, 2000)
+  simTimer.value = setInterval(() => { renderProgress.value = Math.min(renderProgress.value + 5, 90) }, 2000)
   try {
     await uploadSlide(courseId.value, file)
     pollTimer.value = setInterval(async () => {
@@ -222,23 +223,22 @@ async function uploadFile(file) {
         const s = await getSlides(courseId.value)
         slide.value = s.data
         if (s.data?.status === 2) {
-          clearInterval(pollTimer.value); clearInterval(sim)
+          clearInterval(pollTimer.value); clearInterval(simTimer.value)
           rendering.value = false
           renderProgress.value = 100
           await loadSlides()
           ElMessage.success('课件渲染完成')
         } else if (s.data?.status === 3) {
-          clearInterval(pollTimer.value); clearInterval(sim)
+          clearInterval(pollTimer.value); clearInterval(simTimer.value)
           rendering.value = false
           ElMessage.error('渲染失败')
         }
       } catch {}
     }, 3000)
   } catch (e) {
-    clearInterval(sim)
+    clearInterval(simTimer.value)
     rendering.value = false
-    const msg = e?.response?.data?.message || e?.message || '上传失败'
-    ElMessage.error(msg)
+    ElMessage.error('上传失败，请稍后重试')
   }
 }
 
@@ -287,7 +287,10 @@ async function saveNarration(page) {
   try {
     await updateNarration(courseId.value, page.pageNumber, page.narrationScript || '')
     page.narrationStatus = 'TEACHER_EDITED'
-  } catch {}
+  } catch (e) {
+    ElMessage.error('保存讲述稿失败')
+    console.warn('[TeacherWorkspace] saveNarration failed', e)
+  }
 }
 
 async function generateOneAudio(idx) {
@@ -303,6 +306,7 @@ async function generateOneAudio(idx) {
 
 function addExercise() {
   exercises.value.push({ type: 'SINGLE', content: '' })
+  ElMessage.info('练习暂存于本地，请到练习管理页完成创建')
 }
 
 function removeExercise(idx) {
@@ -323,6 +327,11 @@ function onNarrationSettingsSaved() {
 }
 
 onMounted(() => loadCourse())
+
+onUnmounted(() => {
+  if (pollTimer.value) clearInterval(pollTimer.value)
+  if (simTimer.value) clearInterval(simTimer.value)
+})
 </script>
 
 <style scoped>

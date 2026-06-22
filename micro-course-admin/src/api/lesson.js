@@ -1,8 +1,4 @@
-import request from '@/utils/request'
-
-export function getLessons(params) {
-  return request({ method: 'GET', url: '/lessons', params })
-}
+import request from '../utils/request'
 
 export function getLessonByChapter(chapterId) {
   return request({ method: 'GET', url: `/lessons/chapter/${chapterId}` })

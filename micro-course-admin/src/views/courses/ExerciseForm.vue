@@ -364,20 +364,21 @@ const handleSubmit = async () => {
     if (!valid) return
     submitLoading.value = true
     try {
-      let exerciseId = exerciseId.value
+      const exId = exerciseId.value
       if (isEdit.value) {
-        await updateExercise(exerciseId, formData)
+        await updateExercise(exId, formData)
         ElMessage.success('编辑成功')
       } else {
         const { data } = await createExercise(formData)
-        exerciseId = data.id
+        router.back()
         ElMessage.success('创建成功')
+        return
       }
       // 自动保存已选的随机题目
       if (exerciseQuestions.value.length > 0) {
         const qIds = exerciseQuestions.value.map(q => q.id).filter(Boolean)
         if (qIds.length > 0) {
-          await addQuestionsToExercise(exerciseId, { questionIds: qIds })
+          await addQuestionsToExercise(exId, { questionIds: qIds })
         }
       }
       router.back()

@@ -1,24 +1,45 @@
 package com.microcourse.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import java.time.LocalDateTime;
 
 @TableName("lessons")
 public class Lesson {
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    @TableField("chapter_id")
     private Long chapterId;
+
+    @TableField("course_id")
     private Long courseId;
+
     private String title;
+
+    @TableField("lesson_type")
     private String lessonType;
+
+    @TableField("sort_order")
     private Integer sortOrder;
+
     private Integer duration;
     private Boolean visible;
     @Version
     private Integer version;
+
+    @TableField("created_at")
     private LocalDateTime createdAt;
+
+    @TableField("updated_at")
     private LocalDateTime updatedAt;
+
     @TableLogic(value = "null", delval = "now()")
+    @TableField("deleted_at")
     private LocalDateTime deletedAt;
 
     public Lesson() {}

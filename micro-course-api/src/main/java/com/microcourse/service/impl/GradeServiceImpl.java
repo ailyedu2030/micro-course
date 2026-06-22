@@ -57,7 +57,7 @@ public class GradeServiceImpl implements GradeService {
             wrapper.eq(Grade::getCourseId, courseId);
         }
         if (studentId != null) {
-            wrapper.eq(Grade::getStudentId, studentId);
+            wrapper.eq(Grade::getUserId, studentId);
         }
 
         // P0-9: TEACHER 数据隔离 — 只能看到自己授课课程的成绩
@@ -85,7 +85,7 @@ public class GradeServiceImpl implements GradeService {
     @Transactional(readOnly = true)
     public PageResult<GradeVO> pageByStudent(Long studentId, Long enrollmentId, Long courseId, int page, int size) {
         LambdaQueryWrapper<Grade> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Grade::getStudentId, studentId);
+        wrapper.eq(Grade::getUserId, studentId);
         if (enrollmentId != null) {
             // enrollmentId not directly in grades table — use courseId as proxy when provided
         }
@@ -111,7 +111,7 @@ public class GradeServiceImpl implements GradeService {
         if (grade.getCourseId() != null) {
             Course course = courseRepository.selectById(grade.getCourseId());
             if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())
-                    && !SecurityUtil.getCurrentUserId().equals(grade.getStudentId())) {
+                    && !SecurityUtil.getCurrentUserId().equals(grade.getUserId())) {
                 throw new BusinessException(ErrorCode.NO_PERMISSION);
             }
         }
@@ -133,7 +133,7 @@ public class GradeServiceImpl implements GradeService {
         // P1: 重复提交防护 — 同一课程+学生+练习只允许一条成绩
         LambdaQueryWrapper<Grade> dupWrapper = new LambdaQueryWrapper<>();
         dupWrapper.eq(Grade::getCourseId, request.getCourseId())
-                  .eq(Grade::getStudentId, request.getStudentId())
+                  .eq(Grade::getUserId, request.getUserId())
                   .isNull(Grade::getDeletedAt);
         if (request.getExerciseId() != null) {
             dupWrapper.eq(Grade::getExerciseId, request.getExerciseId());
@@ -146,7 +146,7 @@ public class GradeServiceImpl implements GradeService {
 
         Grade grade = new Grade();
         grade.setCourseId(request.getCourseId());
-        grade.setStudentId(request.getStudentId());
+        grade.setUserId(request.getUserId());
         grade.setExerciseId(request.getExerciseId());
         grade.setScore(request.getScore());
         grade.setTotalScore(request.getTotalScore());
@@ -247,7 +247,7 @@ public class GradeServiceImpl implements GradeService {
         // 3. 查找是否已有成绩记录（同课程+同学生，无 exerciseId）
         LambdaQueryWrapper<Grade> existWrapper = new LambdaQueryWrapper<>();
         existWrapper.eq(Grade::getCourseId, courseId)
-                    .eq(Grade::getStudentId, studentId)
+                    .eq(Grade::getUserId, studentId)
                     .isNull(Grade::getExerciseId)
                     .isNull(Grade::getDeletedAt);
         Grade grade = gradeRepository.selectOne(existWrapper);
@@ -266,7 +266,7 @@ public class GradeServiceImpl implements GradeService {
             // 新建记录
             grade = new Grade();
             grade.setCourseId(courseId);
-            grade.setStudentId(studentId);
+            grade.setUserId(studentId);
             grade.setScore(request.getScore());
             grade.setComment(safeComment);
             grade.setGradedBy(teacherId);
@@ -417,7 +417,7 @@ public class GradeServiceImpl implements GradeService {
             gradeRepository.updateById(grade);
         } else {
             Grade ng = new Grade();
-            ng.setStudentId(record.getUserId());
+            ng.setUserId(record.getUserId());
             ng.setExerciseId(record.getExerciseId());
             ng.setCourseId(exercise.getCourseId());
             ng.setScore(BigDecimal.valueOf(total));
@@ -440,7 +440,7 @@ public class GradeServiceImpl implements GradeService {
      */
     private Grade findGradeForRecord(ExerciseRecord record, Long courseId) {
         LambdaQueryWrapper<Grade> exact = new LambdaQueryWrapper<>();
-        exact.eq(Grade::getStudentId, record.getUserId())
+        exact.eq(Grade::getUserId, record.getUserId())
              .eq(Grade::getExerciseId, record.getExerciseId())
              .isNull(Grade::getDeletedAt);
         if (courseId != null) {
@@ -454,7 +454,7 @@ public class GradeServiceImpl implements GradeService {
             return grade;
         }
         LambdaQueryWrapper<Grade> fallback = new LambdaQueryWrapper<>();
-        fallback.eq(Grade::getStudentId, record.getUserId())
+        fallback.eq(Grade::getUserId, record.getUserId())
                 .eq(Grade::getExerciseId, record.getExerciseId())
                 .isNull(Grade::getDeletedAt)
                 .orderByDesc(Grade::getAttemptNo);
@@ -543,7 +543,7 @@ public class GradeServiceImpl implements GradeService {
         Set<Long> exerciseIds = new HashSet<>();
         for (Grade g : grades) {
             if (g.getCourseId() != null) courseIds.add(g.getCourseId());
-            if (g.getStudentId() != null) userIds.add(g.getStudentId());
+            if (g.getUserId() != null) userIds.add(g.getUserId());
             if (g.getGradedBy() != null) userIds.add(g.getGradedBy());
             if (g.getExerciseId() != null) exerciseIds.add(g.getExerciseId());
         }
@@ -563,7 +563,7 @@ public class GradeServiceImpl implements GradeService {
             GradeVO vo = new GradeVO();
             vo.setId(grade.getId());
             vo.setCourseId(grade.getCourseId());
-            vo.setStudentId(grade.getStudentId());
+            vo.setUserId(grade.getUserId());
             vo.setExerciseId(grade.getExerciseId());
             vo.setScore(grade.getScore());
             vo.setTotalScore(grade.getTotalScore());
@@ -580,7 +580,7 @@ public class GradeServiceImpl implements GradeService {
             if (course != null) {
                 vo.setCourseName(course.getTitle());
             }
-            User student = userMap.get(grade.getStudentId());
+            User student = userMap.get(grade.getUserId());
             if (student != null) {
                 vo.setStudentName(student.getRealName() != null ? student.getRealName() : student.getUsername());
             }
