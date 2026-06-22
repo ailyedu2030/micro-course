@@ -24,6 +24,7 @@ import com.microcourse.repository.QuestionRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.QuestionService;
 import com.microcourse.util.SecurityUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -52,6 +53,9 @@ public class QuestionServiceImpl implements QuestionService {
     private final QuestionChapterRepository questionChapterRepository;
     private final CourseChapterRepository courseChapterRepository;
 
+    /** Self-injection for @Transactional proxy access in batch operations */
+    private QuestionServiceImpl self;
+
     public QuestionServiceImpl(QuestionRepository questionRepository,
                               CourseRepository courseRepository,
                               UserRepository userRepository,
@@ -64,6 +68,11 @@ public class QuestionServiceImpl implements QuestionService {
         this.categoryRepository = categoryRepository;
         this.questionChapterRepository = questionChapterRepository;
         this.courseChapterRepository = courseChapterRepository;
+    }
+
+    @Autowired
+    public void setSelf(QuestionServiceImpl questionServiceImpl) {
+        this.self = questionServiceImpl;
     }
 
     @Override
@@ -275,9 +284,8 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public BatchImportResultVO batchImport(MultipartFile file, Long courseId) {
-        // 验证课程存在
+        // Step 0: 权限预检（非事务）
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
@@ -300,17 +308,15 @@ public class QuestionServiceImpl implements QuestionService {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "无权向该课程导入题目");
         }
 
-        // 获取当前教师 ID
         Long teacherId = SecurityUtil.getCurrentUserId();
         if (teacherId == null) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
+        // Step 1: 解析 Excel + 逐行校验（非事务，仅构建 Question 对象不入库）
         List<BatchImportResultVO.ImportErrorItem> errors = new ArrayList<>();
-        int successCount = 0;
-        int failCount = 0;
+        List<Question> questionsToInsert = new ArrayList<>();
 
-        // 使用 Hutool ExcelReader 解析
         cn.hutool.poi.excel.ExcelReader reader = null;
         try {
             reader = cn.hutool.poi.excel.ExcelUtil.getReader(file.getInputStream(), 0);
@@ -319,67 +325,59 @@ public class QuestionServiceImpl implements QuestionService {
             // 第一行是表头，跳过
             for (int i = 1; i < rows.size(); i++) {
                 List<Object> row = rows.get(i);
-                try {
-                    // 期望列：questionType, content, options, answer, partialScore, explanation, difficulty
-                    // 列索引：0=questionType, 1=content, 2=options, 3=answer, 4=partialScore, 5=explanation, 6=difficulty
-                    if (row.size() < 4) {
-                        errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", "数据列数不足，至少需要 4 列"));
-                        failCount++;
-                        continue;
-                    }
+                int rowNum = i + 1;
 
-                    String questionType = row.get(0) != null ? row.get(0).toString() : null;
-                    String content = row.get(1) != null ? row.get(1).toString() : null;
-                    String options = row.size() > 2 && row.get(2) != null ? row.get(2).toString() : null;
-                    String answer = row.size() > 3 && row.get(3) != null ? row.get(3).toString() : null;
-                    String partialScore = row.size() > 4 && row.get(4) != null ? row.get(4).toString() : null;
-                    String explanation = row.size() > 5 && row.get(5) != null ? row.get(5).toString() : null;
-                    Integer difficulty = row.size() > 6 && row.get(6) != null ? Integer.parseInt(row.get(6).toString()) : 1;
-
-                    // 校验必填
-                    if (questionType == null || questionType.trim().isEmpty()) {
-                        errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", "题目类型不能为空"));
-                        failCount++;
-                        continue;
-                    }
-                    if (content == null || content.trim().isEmpty()) {
-                        errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", "题目内容不能为空"));
-                        failCount++;
-                        continue;
-                    }
-                    if (answer == null || answer.trim().isEmpty()) {
-                        errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", "答案不能为空"));
-                        failCount++;
-                        continue;
-                    }
-
-                    Question question = new Question();
-                    question.setCourseId(courseId);
-                    question.setTeacherId(teacherId);
-                    question.setQuestionType(questionType.trim().toUpperCase());
-                    question.setContent(content.trim());
-                    question.setOptions(options != null ? options.trim() : null);
-                    question.setAnswer(answer.trim());
-                    question.setPartialScore(partialScore);
-                    question.setExplanation(explanation != null ? explanation.trim() : null);
-                    question.setDifficulty(difficulty);
-                    question.setStatus(1);
-                    question.setVersion(0);
-                    question.setCreatedAt(LocalDateTime.now());
-                    question.setUpdatedAt(LocalDateTime.now());
-
-                    questionRepository.insert(question);
-                    successCount++;
-                } catch (Exception e) {
-                    // ERR-005 修复:记录真实异常原因,运维可溯源
-                    log.warn("[Question] 批量导入第 {} 行失败", i + 1, e);
-                    String cause = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-                    errors.add(new BatchImportResultVO.ImportErrorItem(i + 1, "", cause));
-                    failCount++;
+                if (row.size() < 4) {
+                    errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, "", "数据列数不足，至少需要 4 列"));
+                    continue;
                 }
+
+                String questionType = row.get(0) != null ? row.get(0).toString() : null;
+                String content = row.get(1) != null ? row.get(1).toString() : null;
+                String options = row.size() > 2 && row.get(2) != null ? row.get(2).toString() : null;
+                String answer = row.size() > 3 && row.get(3) != null ? row.get(3).toString() : null;
+                String partialScore = row.size() > 4 && row.get(4) != null ? row.get(4).toString() : null;
+                String explanation = row.size() > 5 && row.get(5) != null ? row.get(5).toString() : null;
+                Integer difficulty;
+                try {
+                    difficulty = row.size() > 6 && row.get(6) != null ? Integer.parseInt(row.get(6).toString()) : 1;
+                } catch (NumberFormatException e) {
+                    errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, "", "难度值不是有效数字"));
+                    continue;
+                }
+
+                // 校验必填
+                if (questionType == null || questionType.trim().isEmpty()) {
+                    errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, "", "题目类型不能为空"));
+                    continue;
+                }
+                if (content == null || content.trim().isEmpty()) {
+                    errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, "", "题目内容不能为空"));
+                    continue;
+                }
+                if (answer == null || answer.trim().isEmpty()) {
+                    errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, "", "答案不能为空"));
+                    continue;
+                }
+
+                Question question = new Question();
+                question.setCourseId(courseId);
+                question.setTeacherId(teacherId);
+                question.setQuestionType(questionType.trim().toUpperCase());
+                question.setContent(content.trim());
+                question.setOptions(options != null ? options.trim() : null);
+                question.setAnswer(answer.trim());
+                question.setPartialScore(partialScore);
+                question.setExplanation(explanation != null ? explanation.trim() : null);
+                question.setDifficulty(difficulty);
+                question.setStatus(1);
+                question.setVersion(0);
+                question.setCreatedAt(LocalDateTime.now());
+                question.setUpdatedAt(LocalDateTime.now());
+
+                questionsToInsert.add(question);
             }
         } catch (Exception e) {
-            // 透传原始异常 cause 便于追踪
             log.error("[Question] Excel 解析失败", e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Excel 文件解析失败，请检查文件格式和内容是否正确", e);
         } finally {
@@ -388,11 +386,52 @@ public class QuestionServiceImpl implements QuestionService {
             }
         }
 
+        // Step 2: 分批入库（每 100 行一个独立事务，长事务修复 DB-P0-05）
+        int total = questionsToInsert.size();
+        int successCount = 0;
+        int failedCount = errors.size();
+
+        final int batchSize = 100;
+        for (int i = 0; i < total; i += batchSize) {
+            int end = Math.min(i + batchSize, total);
+            List<Question> chunk = questionsToInsert.subList(i, end);
+            try {
+                // 通过 self 代理调用以触发 @Transactional
+                if (self != null) {
+                    self.batchInsertQuestionsTransactional(chunk);
+                } else {
+                    batchInsertQuestionsTransactional(chunk);
+                }
+                successCount += chunk.size();
+            } catch (Exception e) {
+                failedCount += chunk.size();
+                log.error("[Question] 批量入库失败 range=[{}-{}), 原因={}", i, end, e.getMessage(), e);
+                for (Question q : chunk) {
+                    errors.add(new BatchImportResultVO.ImportErrorItem(
+                            0, "", "入库失败: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName())));
+                }
+            }
+        }
+
         BatchImportResultVO result = new BatchImportResultVO();
         result.setSuccessCount(successCount);
-        result.setFailCount(failCount);
+        result.setFailCount(failedCount);
         result.setErrors(errors);
         return result;
+    }
+
+    /**
+     * 批量插入题目（单批次，由 AOP 代理调用以确保 @Transactional 生效）。
+     * 调用方负责通过 self 代理调用本方法以触发事务拦截器。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    protected void batchInsertQuestionsTransactional(List<Question> questions) {
+        if (questions.isEmpty()) {
+            return;
+        }
+        for (Question question : questions) {
+            questionRepository.insert(question);
+        }
     }
 
     private QuestionVO toBaseVO(Question question,

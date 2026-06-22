@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -38,6 +39,9 @@ public class ExerciseRecord {
     @TableField("submitted_at")
     private LocalDateTime submittedAt;
 
+    @Version
+    private Integer version;
+
     @TableLogic(value = "null", delval = "now()")
     private LocalDateTime deletedAt;
 
@@ -53,6 +57,8 @@ public class ExerciseRecord {
     public void setAttemptNo(Integer attemptNo) { this.attemptNo = attemptNo; }
     public Integer getScore() { return score; }
     public void setScore(Integer score) { this.score = score; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
     public Integer getTotalScore() { return totalScore; }
     public void setTotalScore(Integer totalScore) { this.totalScore = totalScore; }
     public Boolean getPassed() { return passed; }

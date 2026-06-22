@@ -32,6 +32,7 @@ import com.microcourse.service.UserService;
 import com.microcourse.util.IpUtil;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,6 +67,9 @@ public class UserServiceImpl implements UserService {
     private final RedisUtil redisUtil;
     private final OperationLogService operationLogService;
 
+    /** Self-injection for @Transactional proxy access in batch operations */
+    private UserServiceImpl self;
+
 
     public UserServiceImpl(UserRepository userRepository,
                            BCryptPasswordEncoder passwordEncoder,
@@ -81,6 +85,11 @@ public class UserServiceImpl implements UserService {
         this.classesRepository = classesRepository;
         this.redisUtil = redisUtil;
         this.operationLogService = operationLogService;
+    }
+
+    @Autowired
+    public void setSelf(UserServiceImpl userServiceImpl) {
+        this.self = userServiceImpl;
     }
 
     @Override
@@ -408,11 +417,10 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public BatchImportResultVO batchImportUsers(MultipartFile file) {
         List<BatchImportResultVO.ImportErrorItem> errors = new ArrayList<>();
 
-        // Step 1: 解析 Excel
+        // Step 1: 解析 Excel（非事务）
         UserBatchImportListener listener = new UserBatchImportListener();
         try {
             EasyExcel.read(file.getInputStream(), UserBatchImportDTO.class, listener).sheet().doRead();
@@ -429,7 +437,7 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件中无有效数据行");
         }
 
-        // Step 2: P0-2 预加载院系/专业/班级 name→id 映射
+        // Step 2: P0-2 预加载院系/专业/班级 name→id 映射（非事务，只读查询）
         Map<String, Long> deptNameMap = buildDepartmentNameMap();
         Map<String, Long> majorNameMap = buildMajorNameMap();
         Map<String, Long> classNameMap = buildClassNameMap();
@@ -443,7 +451,6 @@ public class UserServiceImpl implements UserService {
 
         // Step 4: 逐行校验、构建 User 实体
         List<User> usersToInsert = new ArrayList<>();
-        int successCount = 0;
 
         for (int i = 0; i < rows.size(); i++) {
             UserBatchImportDTO row = rows.get(i);
@@ -468,26 +475,40 @@ public class UserServiceImpl implements UserService {
             User user = buildUserFromRow(row, rowNum, deptNameMap, majorNameMap, classNameMap, errors);
             if (user != null) {
                 usersToInsert.add(user);
-                successCount++;
             }
         }
 
-        // Step 5: P1-3 批量插入
-        // Round 11-1 数据隔离：批量导入必须满足原子性（全有或全无）。方法级 @Transactional
-        // 仅在抛出异常时回滚，而逐行校验失败是被收集进 errors 而非抛异常，故需显式守门：
-        // 任一行校验失败 → 不插入任何用户，避免"部分导入"造成脏数据与后续清理困难。
-        // 合法输入（errors 为空）行为完全不变，successCount 即全部导入行数（UX 零退化）。
-        if (errors.isEmpty()) {
-            batchInsertUsers(usersToInsert);
-        } else {
-            successCount = 0;
-        }
+        // Step 5: 分批入库（每 100 行一个独立事务，长事务修复 DB-P0-04）
+        int total = usersToInsert.size();
+        int successCount = 0;
+        int failedCount = errors.size();
 
-        int failCount = errors.size();
+        final int batchSize = 100;
+        for (int i = 0; i < total; i += batchSize) {
+            int end = Math.min(i + batchSize, total);
+            List<User> chunk = usersToInsert.subList(i, end);
+            try {
+                // 通过 self 代理调用以触发 @Transactional
+                if (self != null) {
+                    self.batchInsertUsersTransactional(chunk);
+                } else {
+                    batchInsertUsersTransactional(chunk);
+                }
+                successCount += chunk.size();
+            } catch (Exception e) {
+                // 该批次失败时所有用户计入失败，后续批次继续尝试
+                failedCount += chunk.size();
+                log.error("[UserImport] 批量入库失败 range=[{}-{}), 原因={}", i, end, e.getMessage(), e);
+                for (User u : chunk) {
+                    errors.add(new BatchImportResultVO.ImportErrorItem(
+                            0, u.getUsername(), "入库失败: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName())));
+                }
+            }
+        }
 
         BatchImportResultVO result = new BatchImportResultVO();
         result.setSuccessCount(successCount);
-        result.setFailCount(failCount);
+        result.setFailCount(failedCount);
         result.setErrors(errors);
         return result;
     }
@@ -611,17 +632,17 @@ public class UserServiceImpl implements UserService {
         return user;
     }
 
-    /** P1-3: 批量插入用户（分批，每批 100 条） */
-    private void batchInsertUsers(List<User> users) {
+    /**
+     * P1-3: 批量插入用户（单批次，由 AOP 代理调用以确保 @Transactional 生效）。
+     * 每批最多 100 条，调用方负责通过 self 代理调用本方法以触发事务拦截器。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    protected void batchInsertUsersTransactional(List<User> users) {
         if (users.isEmpty()) {
             return;
         }
-        int batchSize = 100;
-        for (int i = 0; i < users.size(); i += batchSize) {
-            List<User> batch = users.subList(i, Math.min(i + batchSize, users.size()));
-            for (User user : batch) {
-                userRepository.insert(user);
-            }
+        for (User user : users) {
+            userRepository.insert(user);
         }
     }
 
