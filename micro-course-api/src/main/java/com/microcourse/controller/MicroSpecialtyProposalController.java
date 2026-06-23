@@ -48,10 +48,11 @@ public class MicroSpecialtyProposalController {
     /** 所有待审申报 */
     @GetMapping
     @PreAuthorize("hasRole('ACADEMIC')")
-    public R<PageResult<?>> getAllPendingProposals(
+    public R<PageResult<?>> listAllPending(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        PageResult<?> result = proposalService.getAllPendingProposals(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        PageResult<?> result = proposalService.getAllPendingProposals(page, size, status);
         return R.ok(result);
     }
 

@@ -80,12 +80,17 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
     }
 
     @Override
-    public PageResult<?> getAllPendingProposals(int page, int size) {
+    public PageResult<?> getAllPendingProposals(int page, int size, String status) {
+        LambdaQueryWrapper<MicroSpecialtyProposal> wrapper = new LambdaQueryWrapper<>();
+        // status=null 或 "ALL" 表示不按状态过滤，显示全部
+        if (status != null && !"ALL".equals(status)) {
+            wrapper.eq(MicroSpecialtyProposal::getStatus, status);
+        } else if (status == null || "ALL".equals(status)) {
+            // 不加 status 过滤条件
+        }
+        wrapper.orderByDesc(MicroSpecialtyProposal::getCreatedAt);
         IPage<MicroSpecialtyProposal> ipage = proposalRepository.selectPage(
-                new Page<>(page + 1, size),
-                new LambdaQueryWrapper<MicroSpecialtyProposal>()
-                        .eq(MicroSpecialtyProposal::getStatus, "PENDING_REVIEW")
-                        .orderByDesc(MicroSpecialtyProposal::getCreatedAt));
+                new Page<>(page + 1, size), wrapper);
         return PageResult.of(ipage);
     }
 

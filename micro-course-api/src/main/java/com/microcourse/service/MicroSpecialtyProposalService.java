@@ -16,8 +16,8 @@ public interface MicroSpecialtyProposalService {
     /** 我的申报列表 */
     PageResult<?> getMyProposals(int page, int size);
 
-    /** 所有待审申报（ACADEMIC） */
-    PageResult<?> getAllPendingProposals(int page, int size);
+    /** 所有待审申报（ACADEMIC，status=null/ALL 表示全部状态） */
+    PageResult<?> getAllPendingProposals(int page, int size, String status);
 
     /** 批准申报 → 创建 DRAFT + LEAD INVITED */
     MicroSpecialtyVO approveProposal(Long proposalId);
