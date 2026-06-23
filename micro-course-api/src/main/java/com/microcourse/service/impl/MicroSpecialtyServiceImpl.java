@@ -142,6 +142,18 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         if (params != null && params.containsKey("featured") && Boolean.parseBoolean(params.get("featured").toString())) {
             wrapper.ne(MicroSpecialty::getFeaturedStatus, "NONE");
         }
+        // Teacher role filter
+        Long teacherId = SecurityUtil.getCurrentUserId();
+        if (teacherId != null && params != null && params.containsKey("role")) {
+            String roleFilter = (String) params.get("role");
+            if ("leading".equals(roleFilter)) {
+                wrapper.inSql(MicroSpecialty::getId,
+                    "SELECT micro_specialty_id FROM micro_specialty_teachers WHERE teacher_id = " + teacherId + " AND role = 'LEAD'");
+            } else if ("participating".equals(roleFilter)) {
+                wrapper.inSql(MicroSpecialty::getId,
+                    "SELECT micro_specialty_id FROM micro_specialty_teachers WHERE teacher_id = " + teacherId + " AND role IN ('LEAD','MEMBER','ASSISTANT')");
+            }
+        }
         wrapper.orderByDesc(MicroSpecialty::getCreatedAt);
 
         IPage<MicroSpecialty> ipage = msRepository.selectPage(new Page<>(page + 1, size), wrapper);
@@ -1240,6 +1252,24 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId())
                         .eq(MicroSpecialtyEnrollment::getStatus, "PENDING"));
         vo.setPendingEnrollCount(pendingCount.intValue());
+
+        // Set teacher role for current user in this micro-specialty
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (currentUserId != null) {
+            MicroSpecialtyTeacher teacher = msTeacherRepository.selectOne(
+                    new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                            .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, ms.getId())
+                            .eq(MicroSpecialtyTeacher::getTeacherId, currentUserId));
+            if (teacher != null) {
+                vo.setRole(teacher.getRole());
+            }
+        }
+
+        // Count total enrollments
+        Long totalEnrollments = msEnrollmentRepository.selectCount(
+                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                        .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId()));
+        vo.setTotalEnrollments(totalEnrollments.intValue());
     }
 
     private MicroSpecialtyCourseVO toCourseVO(MicroSpecialtyCourse item) {

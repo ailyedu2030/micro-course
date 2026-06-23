@@ -61,6 +61,9 @@
                  <span>{{ item.totalEnrollments || 0 }} 人选修</span>
                  <span>{{ item.courseCount || 0 }} 门课</span>
                </div>
+                               <div class="card-actions">
+                  <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">查看详情</el-button>
+                </div>
              </div>
            </div>
          </div>

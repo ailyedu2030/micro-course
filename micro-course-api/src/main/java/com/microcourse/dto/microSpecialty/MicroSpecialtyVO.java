@@ -48,6 +48,8 @@ public class MicroSpecialtyVO {
     private LocalDateTime updatedAt;
     private Integer pendingEnrollCount;
     private Integer courseCount;
+    private String role;
+    private Integer totalEnrollments;
 
     public MicroSpecialtyVO() {}
 
@@ -169,5 +171,11 @@ public class MicroSpecialtyVO {
     public void setPendingEnrollCount(Integer pendingEnrollCount) { this.pendingEnrollCount = pendingEnrollCount; }
 
     public Integer getCourseCount() { return courseCount; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+
+    public Integer getTotalEnrollments() { return totalEnrollments; }
+    public void setTotalEnrollments(Integer totalEnrollments) { this.totalEnrollments = totalEnrollments; }
     public void setCourseCount(Integer courseCount) { this.courseCount = courseCount; }
 }

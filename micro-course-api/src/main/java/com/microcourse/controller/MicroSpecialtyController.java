@@ -56,13 +56,15 @@ public class MicroSpecialtyController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String featuredStatus,
             @RequestParam(required = false) Boolean isGoldFeatured,
-            @RequestParam(required = false) Boolean featured) {
+            @RequestParam(required = false) Boolean featured,
+            @RequestParam(required = false) String role) {
         Map<String, Object> params = new HashMap<>();
         params.put("keyword", keyword);
         params.put("status", status);
         if (featuredStatus != null) params.put("featuredStatus", featuredStatus);
         if (isGoldFeatured != null) params.put("isGoldFeatured", isGoldFeatured);
         if (featured != null) params.put("featured", featured);
+        if (role != null) params.put("role", role);
         return R.ok(microSpecialtyService.page(page, size, params));
     }
 
