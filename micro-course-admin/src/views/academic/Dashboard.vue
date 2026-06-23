@@ -315,9 +315,9 @@ function debounce(fn, delay = 200) {
 }
 
 // P1-8: 学期选择器
-const now = new Date()
-const currentYear = now.getFullYear()
-const currentMonth = now.getMonth() + 1
+const _now = new Date()
+const currentYear = _now.getFullYear()
+const currentMonth = _now.getMonth() + 1
 const selectedSemester = ref('')
 const semesterOptions = computed(() => {
   const semesters = []
