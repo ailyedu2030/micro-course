@@ -80,6 +80,23 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DepartmentVO create(DepartmentCreateRequest request) {
+        // 检查院系名称唯一性
+        if (request.getName() != null && !request.getName().isBlank()) {
+            long nameCount = departmentRepository.selectCount(
+                    new LambdaQueryWrapper<Department>()
+                            .eq(Department::getName, request.getName()));
+            if (nameCount > 0) {
+                throw new BusinessException(ErrorCode.DEPARTMENT_NAME_EXISTS);
+            }
+        }
+        if (request.getCode() != null && !request.getCode().isBlank()) {
+            long codeCount = departmentRepository.selectCount(
+                    new LambdaQueryWrapper<Department>()
+                            .eq(Department::getCode, request.getCode()));
+            if (codeCount > 0) {
+                throw new BusinessException(ErrorCode.DEPARTMENT_CODE_EXISTS);
+            }
+        }
         Department department = new Department();
         department.setName(request.getName());
         department.setCode(request.getCode());

@@ -10,6 +10,8 @@ public enum ErrorCode {
     OLD_PASSWORD_INCORRECT(1007, "旧密码错误", 400),
     DEPARTMENT_NOT_FOUND(2001, "院系不存在", 404),
     DEPARTMENT_HAS_MAJORS(2002, "院系下存在专业，无法删除", 400),
+    DEPARTMENT_NAME_EXISTS(2003, "院系名称已存在", 400),
+    DEPARTMENT_CODE_EXISTS(2004, "院系编码已存在", 400),
     MAJOR_NOT_FOUND(3001, "专业不存在", 404),
     MAJOR_HAS_CLASSES(3002, "专业下存在班级，无法删除", 409),
     CLASS_NOT_FOUND(4001, "班级不存在", 404),
