@@ -30,14 +30,17 @@
             <el-option v-for="c in colleges" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="培养目标" prop="objectives">
-          <el-input v-model="form.objectives" type="textarea" :rows="3" placeholder="描述培养目标与预期成果" />
+        <el-form-item label="培养目标" prop="trainingObjective">
+          <el-input v-model="form.trainingObjective" type="textarea" :rows="3" placeholder="描述培养目标与预期成果" />
         </el-form-item>
         <el-form-item label="建议学期">
           <el-input v-model="form.semester" placeholder="如 2025-2026-1" />
         </el-form-item>
         <el-form-item label="准入门槛">
           <el-input v-model="form.prerequisites" type="textarea" :rows="2" placeholder="选课前提条件（可选）" />
+        </el-form-item>
+        <el-form-item label="总学分" prop="credits">
+          <el-input-number v-model="form.credits" :min="0" :max="100" placeholder="总学分" />
         </el-form-item>
       </el-form>
       <div class="submit-bar">
@@ -59,12 +62,12 @@ const error = ref(false)
 const loading = ref(false)
 const submitting = ref(false)
 const formRef = ref(null)
-const form = ref({ title: '', description: '', offerDepartmentId: null, objectives: '', semester: '', prerequisites: '' })
+const form = ref({ title: '', description: '', offerDepartmentId: null, trainingObjective: '', semester: '', prerequisites: '', credits: null })
 const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
   description: [{ required: true, message: '请输入说明', trigger: 'blur' }],
   offerDepartmentId: [{ required: true, message: '请选择学院', trigger: 'change' }],
-  objectives: [{ required: true, message: '请输入培养目标', trigger: 'blur' }]
+  trainingObjective: [{ required: true, message: '请输入培养目标', trigger: 'blur' }]
 }
 const colleges = ref([])
 

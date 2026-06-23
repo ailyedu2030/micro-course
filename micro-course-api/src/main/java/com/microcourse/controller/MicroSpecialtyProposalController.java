@@ -30,9 +30,9 @@ public class MicroSpecialtyProposalController {
     /** 教师提交申报 */
     @PostMapping
     @PreAuthorize("hasRole('TEACHER')")
-    public R<Void> submitProposal(@Valid @RequestBody MicroSpecialtyProposalRequest request) {
-        proposalService.submitProposal(request);
-        return R.ok();
+    public R<Long> submitProposal(@Valid @RequestBody MicroSpecialtyProposalRequest request) {
+        Long proposalId = proposalService.submitProposal(request);
+        return R.ok(proposalId);
     }
 
     /** 我的申报列表 */

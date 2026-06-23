@@ -11,7 +11,7 @@ import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
 public interface MicroSpecialtyProposalService {
 
     /** 教师提交申报 */
-    void submitProposal(MicroSpecialtyProposalRequest request);
+    Long submitProposal(MicroSpecialtyProposalRequest request);
 
     /** 我的申报列表 */
     PageResult<?> getMyProposals(int page, int size);

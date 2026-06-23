@@ -50,7 +50,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void submitProposal(MicroSpecialtyProposalRequest request) {
+    public Long submitProposal(MicroSpecialtyProposalRequest request) {
         Long userId = SecurityUtil.getCurrentUserId();
 
         MicroSpecialtyProposal proposal = new MicroSpecialtyProposal();
@@ -65,6 +65,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         proposal.setCreatedAt(LocalDateTime.now());
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.insert(proposal);
+        return proposal.getId();
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.microcourse.dto.microSpecialty;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 
 public class MicroSpecialtyProposalRequest {
 
@@ -15,6 +16,7 @@ public class MicroSpecialtyProposalRequest {
     private String trainingObjective;
     private String semester;
     private Integer maxStudents;
+    private BigDecimal credits;
 
     public MicroSpecialtyProposalRequest() {}
 
@@ -35,4 +37,7 @@ public class MicroSpecialtyProposalRequest {
 
     public Integer getMaxStudents() { return maxStudents; }
     public void setMaxStudents(Integer maxStudents) { this.maxStudents = maxStudents; }
+
+    public BigDecimal getCredits() { return credits; }
+    public void setCredits(BigDecimal credits) { this.credits = credits; }
 }
