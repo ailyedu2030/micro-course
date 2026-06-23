@@ -194,7 +194,7 @@ public class MicroSpecialtyController {
 
     /** 获取课程列表 */
     @GetMapping("/{id}/courses")
-    @PreAuthorize("permitAll()")
+    @PreAuthorize("isAuthenticated()")
     public R<List<MicroSpecialtyCourseVO>> listCourses(@PathVariable Long id) {
         List<MicroSpecialtyCourseVO> courses = microSpecialtyService.listCourses(id);
         return R.ok(courses);
