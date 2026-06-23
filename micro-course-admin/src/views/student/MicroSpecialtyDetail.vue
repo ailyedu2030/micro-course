@@ -431,7 +431,8 @@ const statusTagType = computed(() => {
     DRAFT: 'info',
     PENDING_REVIEW: 'warning',
     APPROVED: 'success',
-    ARCHIVED: 'info'
+    ARCHIVED: 'info',
+    CANCELLED: 'danger'
   }
   return map[ms.value.status] || 'info'
 })
