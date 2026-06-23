@@ -143,15 +143,19 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void leaveTeam(Long msId) {
-        Long userId = SecurityUtil.getCurrentUserId();
-
-        MicroSpecialtyTeacher record = teacherRepository.selectOne(
-                new LambdaQueryWrapper<MicroSpecialtyTeacher>()
-                        .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
-                        .eq(MicroSpecialtyTeacher::getTeacherId, userId)
-                        .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
+    public void leaveTeam(Long inviteId) {
+        // §7.4 端点对齐 spec：用教师记录 ID（inviteId）直接查找
+        MicroSpecialtyTeacher record = teacherRepository.selectById(inviteId);
         if (record == null) throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND);
+
+        // 校验本人操作
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!record.getTeacherId().equals(userId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅本人可操作退出团队");
+        }
+        if (!"ACTIVE".equals(record.getInviteStatus())) {
+            throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND, "当前状态不可退出");
+        }
 
         teacherRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
@@ -160,11 +164,14 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                         .set(MicroSpecialtyTeacher::getLeftAt, LocalDateTime.now()));
 
         // 通知 LEAD
+        Long msId = record.getMicroSpecialtyId();
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms != null && ms.getLeadTeacherId() != null) {
             User leavingUser = userRepository.selectById(userId);
             notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_TEAM_LEFT,
-                    "团队成员退出", (leavingUser != null ? leavingUser.getRealName() : "教师") + " 已退出团队", msId);
+                    "教师退出团队",
+                    "教师 " + (leavingUser != null ? leavingUser.getRealName() : "") + " 已退出微专业团队",
+                    msId);
         }
     }
 
@@ -206,15 +213,13 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reinviteTeacher(Long msId, Long teacherId, String role, String responsibility, Long courseId) {
-        // 查找 REMOVED/DECLINED 记录复用（§2.3）
-        MicroSpecialtyTeacher record = teacherRepository.selectOne(
-                new LambdaQueryWrapper<MicroSpecialtyTeacher>()
-                        .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
-                        .eq(MicroSpecialtyTeacher::getTeacherId, teacherId)
-                        .in(MicroSpecialtyTeacher::getInviteStatus, "DECLINED", "REMOVED")
-                        .last("LIMIT 1"));
-        if (record == null) throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND, "无可复用的教师记录");
+    public void reinviteTeacher(Long inviteId, String role, String responsibility, Long courseId) {
+        // §7.4 端点对齐 spec：用教师记录 ID 直接查找复用的 DECLINED/REMOVED 记录（§2.3）
+        MicroSpecialtyTeacher record = teacherRepository.selectById(inviteId);
+        if (record == null) throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND);
+        if (!"DECLINED".equals(record.getInviteStatus()) && !"REMOVED".equals(record.getInviteStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已拒绝或已移除的记录可重新邀请");
+        }
 
         teacherRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
@@ -228,8 +233,9 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                         .set(MicroSpecialtyTeacher::getInviteExpiresAt, LocalDateTime.now().plusDays(7))
                         .set(MicroSpecialtyTeacher::getRespondedAt, null));
 
+        Long msId = record.getMicroSpecialtyId();
         MicroSpecialty ms = msRepository.selectById(msId);
-        notificationService.notifyAsync(teacherId, NotificationType.MS_INVITE_TEAM,
+        notificationService.notifyAsync(record.getTeacherId(), NotificationType.MS_INVITE_TEAM,
                 "重新邀请", "您被重新邀请加入微专业《" + (ms != null ? ms.getTitle() : "") + "》团队", msId);
     }
 

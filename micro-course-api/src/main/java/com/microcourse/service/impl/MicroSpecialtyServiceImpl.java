@@ -613,6 +613,12 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        // §9.11 编辑范围：RECRUITING 后不允许添加课程（仅可排序）
+        String s = ms.getStatus();
+        if ("RECRUITING".equals(s) || "COMPLETED".equals(s) || "CANCELLED".equals(s) || "ARCHIVED".equals(s)) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前微专业状态不允许添加课程");
+        }
+
         MicroSpecialtyCourse item = new MicroSpecialtyCourse();
         item.setMicroSpecialtyId(msId);
         item.setCourseId(request.getCourseId());

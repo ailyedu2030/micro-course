@@ -50,11 +50,11 @@ public class MicroSpecialtyTeacherController {
         return R.ok();
     }
 
-    /** 主动退出团队 → REMOVED */
-    @PostMapping("/{msId}/leave")
+    /** 主动退出团队 → REMOVED（§7.4 端点对齐 spec） */
+    @PostMapping("/{inviteId}/leave")
     @PreAuthorize("hasRole('TEACHER')")
-    public R<Void> leaveTeam(@PathVariable Long msId) {
-        inviteService.leaveTeam(msId);
+    public R<Void> leaveTeam(@PathVariable Long inviteId) {
+        inviteService.leaveTeam(inviteId);
         return R.ok();
     }
 
@@ -71,14 +71,11 @@ public class MicroSpecialtyTeacherController {
         return R.ok();
     }
 
-    /** 重新邀请 */
-    @PostMapping("/{msId}/reinvite")
+    /** 重新邀请（§7.4 端点对齐 spec：/{inviteId}/reinvite，复用 DECLINED/REMOVED 记录） */
+    @PostMapping("/{inviteId}/reinvite")
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
-    public R<Void> reinviteTeacher(@PathVariable Long msId,
+    public R<Void> reinviteTeacher(@PathVariable Long inviteId,
                                     @RequestBody Map<String, Object> body) {
-        Long teacherId = body.get("teacherId") != null
-                ? ((Number) body.get("teacherId")).longValue()
-                : null;
         String role = body.get("role") instanceof String
                 ? (String) body.get("role") : null;
         String responsibility = body.get("responsibility") instanceof String
@@ -86,7 +83,7 @@ public class MicroSpecialtyTeacherController {
         Long courseId = body.get("courseId") != null
                 ? ((Number) body.get("courseId")).longValue()
                 : null;
-        inviteService.reinviteTeacher(msId, teacherId, role, responsibility, courseId);
+        inviteService.reinviteTeacher(inviteId, role, responsibility, courseId);
         return R.ok();
     }
 }

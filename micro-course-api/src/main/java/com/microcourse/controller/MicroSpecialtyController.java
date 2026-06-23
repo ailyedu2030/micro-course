@@ -12,7 +12,9 @@ import com.microcourse.dto.microSpecialty.MicroSpecialtyStatsVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyUpdateRequest;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
+import com.microcourse.service.MicroSpecialtyEnrollmentService;
 import com.microcourse.service.MicroSpecialtyService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,9 +35,12 @@ import java.util.Map;
 public class MicroSpecialtyController {
 
     private final MicroSpecialtyService microSpecialtyService;
+    private final MicroSpecialtyEnrollmentService msEnrollmentService;
 
-    public MicroSpecialtyController(MicroSpecialtyService microSpecialtyService) {
+    public MicroSpecialtyController(MicroSpecialtyService microSpecialtyService,
+                                     MicroSpecialtyEnrollmentService msEnrollmentService) {
         this.microSpecialtyService = microSpecialtyService;
+        this.msEnrollmentService = msEnrollmentService;
     }
 
     // ==================== 查询 ====================
@@ -74,6 +79,18 @@ public class MicroSpecialtyController {
     public R<MicroSpecialtyStatsVO> stats(@PathVariable Long id) {
         MicroSpecialtyStatsVO vo = microSpecialtyService.stats(id);
         return R.ok(vo);
+    }
+
+    /** 修读名单（§7.5 端点对齐 spec）*/
+    @GetMapping("/{id}/enrollments")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    public R<PageResult<MicroSpecialtyEnrollmentVO>> listEnrollments(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        PageResult<MicroSpecialtyEnrollmentVO> result = msEnrollmentService.listEnrollments(id, page, size, status);
+        return R.ok(result);
     }
 
     // ==================== CUD ====================
@@ -226,15 +243,6 @@ public class MicroSpecialtyController {
                                   @PathVariable Long teacherId) {
         microSpecialtyService.removeTeacher(id, teacherId);
         return R.ok();
-    }
-
-    /** 重新邀请 */
-    @PostMapping("/{id}/teachers/{teacherId}/reinvite")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
-    public R<MicroSpecialtyTeacherVO> reinviteTeacher(@PathVariable Long id,
-                                                       @PathVariable Long teacherId) {
-        MicroSpecialtyTeacherVO vo = microSpecialtyService.reinviteTeacher(id, teacherId);
-        return R.ok(vo);
     }
 
     // ==================== LEAD 继任 ====================

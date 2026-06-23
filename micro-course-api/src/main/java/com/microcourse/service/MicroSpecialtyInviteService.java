@@ -24,7 +24,8 @@ public interface MicroSpecialtyInviteService {
     void reviewCrossDept(Long inviteId, boolean approve, String reason);
 
     /** 重新邀请（复用 REMOVED/DECLINED 记录重置状态） */
-    void reinviteTeacher(Long msId, Long teacherId, String role, String responsibility, Long courseId);
+    /** 重新邀请（§7.4 端点对齐 spec：用 inviteId 复用 DECLINED/REMOVED 记录） */
+    void reinviteTeacher(Long inviteId, String role, String responsibility, Long courseId);
 
     /** 每小时扫 INVITED 过期 → DECLINED + 通知 */
     int scanExpired();

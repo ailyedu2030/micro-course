@@ -27,8 +27,12 @@ public class CertificateController {
 
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public R<List<CertificateVO>> getMyCertificates() {
+    public R<List<CertificateVO>> getMyCertificates(
+            @RequestParam(name = "type", required = false) String type) {
         Long userId = SecurityUtil.getCurrentUserId();
+        if (type != null && !type.isBlank()) {
+            return R.ok(certificateService.getMyCertificates(userId, type));
+        }
         return R.ok(certificateService.getMyCertificates(userId));
     }
 
