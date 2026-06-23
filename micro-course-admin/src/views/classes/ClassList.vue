@@ -245,11 +245,13 @@ const handleDelete = async (row) => {
     ElMessage.success('删除成功')
     fetchData()
   } catch (error) {
-    const code = error.response?.data?.code
-    if (code === 3003 || code === 409) {
-      ElMessage.error('该班级下存在学生，无法删除')
+    const msg = error.response?.data?.message
+    if (error.response?.data?.code === 4002) {
+      ElMessage.error(msg || '该班级下存在学生，无法删除')
+    } else if (error.response?.status === 409) {
+      ElMessage.error(msg || '该班级下存在关联数据，无法删除')
     } else {
-      ElMessage.error('删除失败')
+      ElMessage.error(msg || '删除失败')
     }
   }
 }
