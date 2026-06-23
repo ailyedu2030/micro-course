@@ -29,8 +29,9 @@ public class MicroSpecialtyTeacherController {
     @PreAuthorize("hasRole('TEACHER')")
     public R<PageResult<?>> getPendingInvites(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        PageResult<?> result = inviteService.getPendingInvites(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        PageResult<?> result = inviteService.getPendingInvites(page, size, status);
         return R.ok(result);
     }
 
@@ -73,7 +74,7 @@ public class MicroSpecialtyTeacherController {
 
     /** 重新邀请（§7.4 端点对齐 spec：/{inviteId}/reinvite，复用 DECLINED/REMOVED 记录） */
     @PostMapping("/{inviteId}/reinvite")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('TEACHER')")
     public R<Void> reinviteTeacher(@PathVariable Long inviteId,
                                     @RequestBody Map<String, Object> body) {
         String role = body.get("role") instanceof String

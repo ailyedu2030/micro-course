@@ -5,13 +5,47 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
-import com.microcourse.dto.microSpecialty.*;
-import com.microcourse.entity.*;
-import com.microcourse.enums.*;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyCourseRequest;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyCourseVO;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyCreateRequest;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyDetailVO;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyLeadTransferRequest;
+import com.microcourse.dto.microSpecialty.MicroSpecialtySquareVO;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyStatsVO;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherRequest;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherVO;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyUpdateRequest;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
+import com.microcourse.entity.Course;
+import com.microcourse.entity.Department;
+import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.entity.MicroSpecialtyCourse;
+import com.microcourse.entity.MicroSpecialtyEnrollment;
+import com.microcourse.entity.MicroSpecialtyFeaturedAudit;
+import com.microcourse.entity.MicroSpecialtyProposal;
+import com.microcourse.entity.MicroSpecialtyTeacher;
+import com.microcourse.entity.User;
+import com.microcourse.enums.NotificationType;
+import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.*;
-import com.microcourse.service.*;
+import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.DepartmentRepository;
+import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.MicroSpecialtyCourseRepository;
+import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
+import com.microcourse.repository.MicroSpecialtyFeaturedAuditRepository;
+import com.microcourse.repository.MicroSpecialtyProposalRepository;
+import com.microcourse.repository.MicroSpecialtyRepository;
+import com.microcourse.repository.MicroSpecialtyTeacherRepository;
+import com.microcourse.repository.UserRepository;
+import com.microcourse.service.AdminSettingService;
+import com.microcourse.service.MicroSpecialtyEnrollmentService;
+import com.microcourse.service.MicroSpecialtyFeaturedService;
+import com.microcourse.service.MicroSpecialtyQualityScoreService;
+import com.microcourse.service.MicroSpecialtyService;
+import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,6 +78,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     private final AdminSettingService adminSettingService;
     private final MicroSpecialtyFeaturedAuditRepository msFeaturedAuditRepository;
     private final MicroSpecialtyFeaturedService featuredService;
+    private final DepartmentRepository departmentRepository;
+    private final CourseRepository courseRepository;
 
     public MicroSpecialtyServiceImpl(MicroSpecialtyRepository msRepository,
                                      MicroSpecialtyCourseRepository msCourseRepository,
@@ -57,7 +93,9 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                                      MicroSpecialtyQualityScoreService qualityScoreService,
                                      AdminSettingService adminSettingService,
                                      MicroSpecialtyFeaturedAuditRepository msFeaturedAuditRepository,
-                                     MicroSpecialtyFeaturedService featuredService) {
+                                     @Lazy MicroSpecialtyFeaturedService featuredService,
+                                     DepartmentRepository departmentRepository,
+                                     CourseRepository courseRepository) {
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
         this.msTeacherRepository = msTeacherRepository;
@@ -71,13 +109,18 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         this.adminSettingService = adminSettingService;
         this.msFeaturedAuditRepository = msFeaturedAuditRepository;
         this.featuredService = featuredService;
+        this.departmentRepository = departmentRepository;
+        this.courseRepository = courseRepository;
     }
 
     // ====== 查询 ======
 
     @Override
-    public PageResult<MicroSpecialtyVO> page(int page, int size, String keyword, String status) {
+    public PageResult<MicroSpecialtyVO> page(int page, int size, Map<String, Object> params) {
         LambdaQueryWrapper<MicroSpecialty> wrapper = new LambdaQueryWrapper<>();
+
+        String keyword = params != null ? (String) params.get("keyword") : null;
+        String status = params != null ? (String) params.get("status") : null;
 
         // 学生只能看 RECRUITING 状态的微专业
         if (!SecurityUtil.isAdminOrAcademic()) {
@@ -87,6 +130,17 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         }
         if (keyword != null && !keyword.isEmpty()) {
             wrapper.like(MicroSpecialty::getTitle, keyword);
+        }
+        // Featured / gold featured filters
+        if (params != null && params.containsKey("featuredStatus")) {
+            wrapper.eq(MicroSpecialty::getFeaturedStatus, params.get("featuredStatus").toString());
+        }
+        if (params != null && params.containsKey("isGoldFeatured")) {
+            boolean isGold = Boolean.parseBoolean(params.get("isGoldFeatured").toString());
+            wrapper.eq(MicroSpecialty::getIsGoldFeatured, isGold);
+        }
+        if (params != null && params.containsKey("featured") && Boolean.parseBoolean(params.get("featured").toString())) {
+            wrapper.ne(MicroSpecialty::getFeaturedStatus, "NONE");
         }
         wrapper.orderByDesc(MicroSpecialty::getCreatedAt);
 
@@ -169,27 +223,44 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         vo.setIsNew(isNewlyCreated(ms));
         if (ms.getLeadTeacherId() != null) {
             User lead = userRepository.selectById(ms.getLeadTeacherId());
-            if (lead != null) vo.setLeadTeacherName(lead.getRealName());
+            if (lead != null) {
+                vo.setLeadTeacherName(lead.getRealName());
+            } else {
+                vo.setLeadTeacherName("—");
+            }
         }
+        // Query department name
+        if (ms.getOfferDepartmentId() != null) {
+            Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());
+            if (dept != null) {
+                vo.setDepartmentName(dept.getName());
+            }
+        }
+        // Count courses
+        Long courseCount = msCourseRepository.selectCount(
+                new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, ms.getId()));
+        vo.setCourseCount(courseCount.intValue());
         return vo;
     }
 
     /**
-     * G3: 7 天保护期判断
-     * 读取 admin_settings 中微专业 NEW 角标保护期配置（默认 7 天，可配置）
+     * G3: 7 天保护期判断。
+     * 读取 admin_settings 中微专业 NEW 角标保护期配置 key="micro_specialty.new_protection_days"，
+     * 若未配置或解析失败则使用默认值 7 天。
      */
     private boolean isNewlyCreated(MicroSpecialty ms) {
         if (ms.getApprovedAt() == null) return false;
+        int protectionDays = 7; // 默认 7 天
         try {
-            int protectionDays = 7;
-            try {
-                String configVal = adminSettingService.getByKey("micro_specialty.new_protection_days");
-                if (configVal != null && !configVal.isEmpty()) {
-                    protectionDays = Integer.parseInt(configVal);
-                }
-            } catch (Exception ignore) {
-                // AdminSetting 不存在或字段缺失，保留默认 7
+            String setting = adminSettingService.getByKey("micro_specialty.new_protection_days");
+            if (setting != null && !setting.isEmpty()) {
+                protectionDays = Integer.parseInt(setting);
             }
+        } catch (Exception e) {
+            log.warn("读取新微专业保护期配置失败，使用默认值 7 天: {}", e.getMessage());
+        }
+        try {
             return ms.getApprovedAt().plusDays(protectionDays).isAfter(LocalDateTime.now());
         } catch (Exception e) {
             return false;
@@ -201,13 +272,25 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        // 非管理员/教务/创建者/负责人不可查看 DRAFT / CANCELLED
+        String status = ms.getStatus();
+        Long userId = SecurityUtil.getCurrentUserId();
+        boolean isAdminOrAcademic = SecurityUtil.isAdminOrAcademic();
+        boolean isCreator = ms.getCreatorId().equals(userId);
+        if (("DRAFT".equals(status) || "CANCELLED".equals(status))
+                && !isAdminOrAcademic && !isCreator && !isLeadOf(id, userId)) {
+            throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        }
+
         MicroSpecialtyDetailVO detail = new MicroSpecialtyDetailVO();
         copyToVO(ms, detail);
 
         // 预加载部门名、教师名
         if (ms.getOfferDepartmentId() != null) {
-            User deptUser = userRepository.selectById(ms.getOfferDepartmentId());
-            // department name lookup via Department entity would be ideal; fallback to deptId as-is
+            Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());
+            if (dept != null) {
+                detail.setDepartmentName(dept.getName());
+            }
         }
         if (ms.getLeadTeacherId() != null) {
             User lead = userRepository.selectById(ms.getLeadTeacherId());
@@ -273,6 +356,23 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         vo.setCompletionRate(activeTotal > 0
                 ? BigDecimal.valueOf(completedCount).divide(BigDecimal.valueOf(activeTotal), 4, java.math.RoundingMode.HALF_UP)
                 : BigDecimal.ZERO);
+
+        // 计算平均成绩（来自已完成且已评分的报名记录）
+        List<MicroSpecialtyEnrollment> completedEnrollments = msEnrollmentRepository.selectList(
+                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                        .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId())
+                        .eq(MicroSpecialtyEnrollment::getStatus, "COMPLETED")
+                        .isNotNull(MicroSpecialtyEnrollment::getFinalScore));
+        if (!completedEnrollments.isEmpty()) {
+            double avg = completedEnrollments.stream()
+                    .mapToDouble(e -> e.getFinalScore() != null ? e.getFinalScore().doubleValue() : 0.0)
+                    .average().orElse(0.0);
+            vo.setAverageScore(BigDecimal.valueOf(avg));
+        }
+
+        // 计算质量分
+        vo.setQualityScore(qualityScoreService.calculate(ms.getId()));
+
         return vo;
     }
 
@@ -334,7 +434,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
-        int oldVersion = ms.getVersion();
+        Long dbVersion = (long) ms.getVersion();
 
         // 状态编辑范围校验（§9.11）
         String status = ms.getStatus();
@@ -344,23 +444,26 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         requireLeadOf(id);
 
-        if (request.getTitle() != null) ms.setTitle(request.getTitle());
-        if (request.getSubtitle() != null) ms.setSubtitle(request.getSubtitle());
-        if (request.getCoverUrl() != null) ms.setCoverUrl(request.getCoverUrl());
-        if (request.getDescription() != null) ms.setDescription(request.getDescription());
-        if (request.getTargetAudience() != null) ms.setTargetAudience(request.getTargetAudience());
-        if (request.getTrainingObjective() != null) ms.setTrainingObjective(request.getTrainingObjective());
-        if (request.getAdmissionRequirement() != null) ms.setAdmissionRequirement(request.getAdmissionRequirement());
-        if (request.getCompletionRule() != null) ms.setCompletionRule(request.getCompletionRule());
-        if (request.getSemester() != null) ms.setSemester(request.getSemester());
-        if (request.getMaxStudents() != null) ms.setMaxStudents(request.getMaxStudents());
-        ms.setUpdatedAt(LocalDateTime.now());
-        ms.setVersion(oldVersion + 1);
+        LambdaUpdateWrapper<MicroSpecialty> uw = new LambdaUpdateWrapper<MicroSpecialty>()
+                .eq(MicroSpecialty::getId, id)
+                .eq(MicroSpecialty::getVersion, dbVersion)
+                .setSql("version = version + 1");
+        if (request.getTitle() != null) uw.set(MicroSpecialty::getTitle, request.getTitle());
+        if (request.getSubtitle() != null) uw.set(MicroSpecialty::getSubtitle, request.getSubtitle());
+        if (request.getCoverUrl() != null) uw.set(MicroSpecialty::getCoverUrl, request.getCoverUrl());
+        if (request.getDescription() != null) uw.set(MicroSpecialty::getDescription, request.getDescription());
+        if (request.getTargetAudience() != null) uw.set(MicroSpecialty::getTargetAudience, request.getTargetAudience());
+        if (request.getTrainingObjective() != null) uw.set(MicroSpecialty::getTrainingObjective, request.getTrainingObjective());
+        if (request.getAdmissionRequirement() != null) uw.set(MicroSpecialty::getAdmissionRequirement, request.getAdmissionRequirement());
+        if (request.getCompletionRule() != null) uw.set(MicroSpecialty::getCompletionRule, request.getCompletionRule());
+        if (request.getSemester() != null) uw.set(MicroSpecialty::getSemester, request.getSemester());
+        if (request.getMaxStudents() != null) uw.set(MicroSpecialty::getMaxStudents, request.getMaxStudents());
+        uw.set(MicroSpecialty::getUpdatedAt, LocalDateTime.now());
 
-        int affected = msRepository.updateById(ms);
+        int affected = msRepository.update(null, uw);
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
-        return toVO(ms);
+        return toVO(msRepository.selectById(id));
     }
 
     @Override
@@ -376,7 +479,15 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         if (!"DRAFT".equals(s) && !"REJECTED".equals(s) && !"ARCHIVED".equals(s)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前状态不允许删除");
         }
-        msRepository.deleteById(id);
+        LambdaUpdateWrapper<MicroSpecialty> uw = new LambdaUpdateWrapper<MicroSpecialty>()
+                .eq(MicroSpecialty::getId, id)
+                .eq(MicroSpecialty::getVersion, ms.getVersion())
+                .set(MicroSpecialty::getDeletedAt, LocalDateTime.now())
+                .setSql("version = version + 1");
+        int affected = msRepository.update(null, uw);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
     }
 
     // ====== 状态流转 ======
@@ -598,7 +709,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, id)
                         .in(MicroSpecialtyEnrollment::getStatus, "PENDING", "APPROVED", "IN_PROGRESS"));
         for (MicroSpecialtyEnrollment en : enrollments) {
-            msEnrollmentRepository.update(null,
+            int enAffected = msEnrollmentRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                             .eq(MicroSpecialtyEnrollment::getId, en.getId())
                             .eq(MicroSpecialtyEnrollment::getVersion, en.getVersion())
@@ -606,6 +717,9 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                             .set(MicroSpecialtyEnrollment::getDropReason, "SPECIALTY_CANCELLED")
                             .set(MicroSpecialtyEnrollment::getDroppedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            if (enAffected == 0) {
+                log.warn("cancel() 级联 DROPPED 跳过: enrollment.id={} 已被其他操作修改", en.getId());
+            }
         }
 
         // 课程级 enrollment 级联清理：对于 COMPLETED 以外的课程级 enrollment 做软删除
@@ -619,8 +733,14 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                                 .eq(Enrollment::getCourseId, mc.getCourseId())
                                 .eq(Enrollment::getUserId, en.getUserId())
                                 .ne(Enrollment::getEnrollmentStatus, "COMPLETED"));
-                if (courseEn != null) {
-                    enrollmentRepository.deleteById(courseEn.getId());
+                if (courseEn != null && !"CANCELLED".equals(courseEn.getEnrollmentStatus())) {
+                    // Mark as CANCELLED instead of hard delete
+                    enrollmentRepository.update(null,
+                            new LambdaUpdateWrapper<Enrollment>()
+                                    .eq(Enrollment::getId, courseEn.getId())
+                                    .set(Enrollment::getEnrollmentStatus, "CANCELLED")
+                                    .set(Enrollment::getUpdatedAt, LocalDateTime.now())
+                                    .setSql("version = version + 1"));
                 }
             }
         }
@@ -728,21 +848,55 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         // §9.11 编辑范围校验
         String s = ms.getStatus();
-        if ("RECRUITING".equals(s) || "COMPLETED".equals(s) || "CANCELLED".equals(s) || "ARCHIVED".equals(s)) {
+
+        // RECRUITING: only allow sort_order modification (version 乐观锁保护)
+        if ("RECRUITING".equals(s)) {
+            MicroSpecialtyCourse recItem = msCourseRepository.selectById(itemId);
+            if (recItem == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+            int recVersion = recItem.getVersion();
+            LambdaUpdateWrapper<MicroSpecialtyCourse> uw = new LambdaUpdateWrapper<MicroSpecialtyCourse>()
+                    .eq(MicroSpecialtyCourse::getId, itemId)
+                    .eq(MicroSpecialtyCourse::getMicroSpecialtyId, msId)
+                    .eq(MicroSpecialtyCourse::getVersion, recVersion);
+            if (request.getSortOrder() != null) {
+                uw.set(MicroSpecialtyCourse::getSortOrder, request.getSortOrder());
+            }
+            uw.setSql("version = version + 1");
+            int affected = msCourseRepository.update(null, uw);
+            if (affected == 0) {
+                throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+            }
+            return toCourseVO(msCourseRepository.selectById(itemId));
+        }
+
+        if ("COMPLETED".equals(s) || "CANCELLED".equals(s) || "ARCHIVED".equals(s)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前微专业状态不允许修改课程");
         }
 
         MicroSpecialtyCourse item = msCourseRepository.selectById(itemId);
         if (item == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        int oldVersion = item.getVersion();
         if (request.getSortOrder() != null) item.setSortOrder(request.getSortOrder());
         if (request.getIsRequired() != null) item.setIsRequired(request.getIsRequired());
         if (request.getCredits() != null) item.setCredits(request.getCredits());
         if (request.getHours() != null) item.setHours(request.getHours());
         if (request.getMinScore() != null) item.setMinScore(request.getMinScore());
         if (request.getRecommendedSemester() != null) item.setRecommendedSemester(request.getRecommendedSemester());
-        msCourseRepository.updateById(item);
-        return toCourseVO(item);
+
+        LambdaUpdateWrapper<MicroSpecialtyCourse> uw = new LambdaUpdateWrapper<MicroSpecialtyCourse>()
+                .eq(MicroSpecialtyCourse::getId, itemId)
+                .eq(MicroSpecialtyCourse::getVersion, oldVersion)
+                .setSql("version = version + 1");
+        if (request.getSortOrder() != null) uw.set(MicroSpecialtyCourse::getSortOrder, request.getSortOrder());
+        if (request.getIsRequired() != null) uw.set(MicroSpecialtyCourse::getIsRequired, request.getIsRequired());
+        if (request.getCredits() != null) uw.set(MicroSpecialtyCourse::getCredits, request.getCredits());
+        if (request.getHours() != null) uw.set(MicroSpecialtyCourse::getHours, request.getHours());
+        if (request.getMinScore() != null) uw.set(MicroSpecialtyCourse::getMinScore, request.getMinScore());
+        if (request.getRecommendedSemester() != null) uw.set(MicroSpecialtyCourse::getRecommendedSemester, request.getRecommendedSemester());
+        int affected = msCourseRepository.update(null, uw);
+        if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        return toCourseVO(msCourseRepository.selectById(itemId));
     }
 
     @Override
@@ -759,7 +913,12 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前微专业状态不允许移除课程");
         }
 
-        msCourseRepository.deleteById(itemId);
+        MicroSpecialtyCourse item = msCourseRepository.selectById(itemId);
+        if (item == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        int affected = msCourseRepository.delete(new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                .eq(MicroSpecialtyCourse::getId, itemId)
+                .eq(MicroSpecialtyCourse::getVersion, item.getVersion()));
+        if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
     }
 
     // ====== 教师团队 ======
@@ -780,6 +939,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         requireLeadOf(msId);
+        checkNotTerminal(ms);
 
         // 检查是否已存在有效记录
         Long existCount = msTeacherRepository.selectCount(
@@ -813,20 +973,25 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     public void removeTeacher(Long msId, Long teacherId) {
         requireLeadOf(msId);
 
-        Long existCount = msTeacherRepository.selectCount(
+        MicroSpecialty ms = msRepository.selectById(msId);
+        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        checkNotTerminal(ms);
+
+        MicroSpecialtyTeacher teacher = msTeacherRepository.selectOne(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
                         .eq(MicroSpecialtyTeacher::getTeacherId, teacherId)
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
-        if (existCount == 0) throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND);
+        if (teacher == null) throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND);
 
-        msTeacherRepository.update(null,
-                new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
-                        .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
-                        .eq(MicroSpecialtyTeacher::getTeacherId, teacherId)
-                        .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE")
-                        .set(MicroSpecialtyTeacher::getInviteStatus, "REMOVED")
-                        .set(MicroSpecialtyTeacher::getLeftAt, LocalDateTime.now()));
+        LambdaUpdateWrapper<MicroSpecialtyTeacher> wrapper = new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
+                .eq(MicroSpecialtyTeacher::getId, teacher.getId())
+                .eq(MicroSpecialtyTeacher::getVersion, teacher.getVersion())
+                .setSql("version = version + 1")
+                .set(MicroSpecialtyTeacher::getInviteStatus, "REMOVED")
+                .set(MicroSpecialtyTeacher::getLeftAt, LocalDateTime.now());
+        int affected = msTeacherRepository.update(null, wrapper);
+        if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
         notificationService.notifyAsync(teacherId, NotificationType.MS_TEAM_REMOVED,
                 "已被移出微专业团队", "您已被移出微专业团队", msId);
@@ -860,7 +1025,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
         if (oldLead != null) {
             int oldLeadVersion = oldLead.getVersion() != null ? oldLead.getVersion() : 0;
-            msTeacherRepository.update(null,
+            int affected1 = msTeacherRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                             .eq(MicroSpecialtyTeacher::getId, oldLead.getId())
                             .eq(MicroSpecialtyTeacher::getRole, "LEAD")
@@ -868,6 +1033,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                             .set(MicroSpecialtyTeacher::getRole, "MEMBER")
                             .set(MicroSpecialtyTeacher::getLeftAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            if (affected1 == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
         }
 
         // 2. 新 LEAD 是否已在团队（乐观锁）
@@ -878,13 +1044,14 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
         if (newLeadRecord != null) {
             int newLeadVersion = newLeadRecord.getVersion() != null ? newLeadRecord.getVersion() : 0;
-            msTeacherRepository.update(null,
+            int affected2 = msTeacherRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                             .eq(MicroSpecialtyTeacher::getId, newLeadRecord.getId())
                             .eq(MicroSpecialtyTeacher::getVersion, newLeadVersion)
                             .set(MicroSpecialtyTeacher::getRole, "LEAD")
                             .set(MicroSpecialtyTeacher::getJoinedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            if (affected2 == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
         } else {
             newLeadRecord = new MicroSpecialtyTeacher();
             newLeadRecord.setMicroSpecialtyId(msId);
@@ -897,13 +1064,14 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         }
 
         // 3. 更新主表 lead_teacher_id
-        msRepository.update(null,
+        int affected3 = msRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
                         .eq(MicroSpecialty::getVersion, oldVersion)
                         .set(MicroSpecialty::getLeadTeacherId, newLeadId)
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
+        if (affected3 == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
         // 4. 通知
         if (oldLead != null) {
@@ -970,10 +1138,11 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     }
 
     /** 校验当前用户是否为微专业负责人或系统管理员 */
-    private void requireLeadOf(Long msId) {
+    @Override
+    public void requireLeadOf(Long msId) {
         Long userId = SecurityUtil.getCurrentUserId();
         if (!isLeadOf(msId, userId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可执行此操作");
+            throw new BusinessException(ErrorCode.MS_FORBIDDEN, "您不是该微专业的LEAD，无权操作");
         }
     }
 
@@ -981,7 +1150,14 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     private void requireOwnerOrLead(Long msId) {
         Long userId = SecurityUtil.getCurrentUserId();
         if (!isOwnerOrLead(msId, userId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权操作此微专业");
+            throw new BusinessException(ErrorCode.MS_FORBIDDEN, "无权操作此微专业");
+        }
+    }
+
+    /** 校验微专业是否为终态（CANCELLED/ARCHIVED），终态不允许教师邀请/移除操作 */
+    private void checkNotTerminal(MicroSpecialty ms) {
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
     }
 
@@ -1026,19 +1202,72 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         vo.setClosedAt(ms.getClosedAt());
         vo.setCreatorId(ms.getCreatorId());
         vo.setCreatedAt(ms.getCreatedAt());
+        vo.setUpdatedAt(ms.getUpdatedAt());
+        vo.setFeaturedApplyAt(ms.getFeaturedApplyAt());
+        vo.setFeaturedApplyReason(ms.getFeaturedApplyReason());
+
+        // Set department name
+        Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());
+        if (dept != null) {
+            vo.setDepartmentName(dept.getName());
+        }
+
+        // Set lead teacher name
+        if (ms.getLeadTeacherId() != null) {
+            User leadUser = userRepository.selectById(ms.getLeadTeacherId());
+            if (leadUser != null) {
+                vo.setLeadTeacherName(leadUser.getRealName());
+            }
+        }
+
+        // Set creator name
+        if (ms.getCreatorId() != null) {
+            User creatorUser = userRepository.selectById(ms.getCreatorId());
+            if (creatorUser != null) {
+                vo.setCreatorName(creatorUser.getRealName());
+            }
+        }
+
+        // Count courses
+        Long courseCount = msCourseRepository.selectCount(
+                new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, ms.getId()));
+        vo.setCourseCount(courseCount.intValue());
+
+        // Count pending enrollments (待审报名)
+        Long pendingCount = msEnrollmentRepository.selectCount(
+                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                        .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId())
+                        .eq(MicroSpecialtyEnrollment::getStatus, "PENDING"));
+        vo.setPendingEnrollCount(pendingCount.intValue());
     }
 
-    private MicroSpecialtyCourseVO toCourseVO(MicroSpecialtyCourse c) {
+    private MicroSpecialtyCourseVO toCourseVO(MicroSpecialtyCourse item) {
         MicroSpecialtyCourseVO vo = new MicroSpecialtyCourseVO();
-        vo.setId(c.getId());
-        vo.setMicroSpecialtyId(c.getMicroSpecialtyId());
-        vo.setCourseId(c.getCourseId());
-        vo.setSortOrder(c.getSortOrder());
-        vo.setIsRequired(c.getIsRequired());
-        vo.setCredits(c.getCredits());
-        vo.setHours(c.getHours());
-        vo.setMinScore(c.getMinScore());
-        vo.setRecommendedSemester(c.getRecommendedSemester());
+        vo.setId(item.getId());
+        vo.setMicroSpecialtyId(item.getMicroSpecialtyId());
+        vo.setCourseId(item.getCourseId());
+        vo.setSortOrder(item.getSortOrder());
+        vo.setIsRequired(item.getIsRequired());
+        vo.setCredits(item.getCredits());
+        vo.setHours(item.getHours());
+        vo.setMinScore(item.getMinScore());
+        vo.setRecommendedSemester(item.getRecommendedSemester());
+        // Query course details
+        if (item.getCourseId() != null) {
+            Course course = courseRepository.selectById(item.getCourseId());
+            if (course != null) {
+                vo.setCourseTitle(course.getTitle());
+                vo.setCourseType(course.getCourseType());
+                // set teacher name from course
+                if (course.getTeacherId() != null) {
+                    User teacher = userRepository.selectById(course.getTeacherId());
+                    if (teacher != null) {
+                        vo.setTeacherName(teacher.getRealName());
+                    }
+                }
+            }
+        }
         return vo;
     }
 
@@ -1048,6 +1277,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         vo.setMicroSpecialtyId(t.getMicroSpecialtyId());
         vo.setTeacherId(t.getTeacherId());
         vo.setRoleLabel(t.getRole());
+        vo.setRole(t.getRole());
         vo.setCourseId(t.getCourseId());
         vo.setResponsibility(t.getResponsibility());
         vo.setInviteStatus(t.getInviteStatus());
@@ -1057,6 +1287,13 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
             if (u != null) {
                 vo.setTeacherName(u.getRealName());
                 vo.setTeacherAvatar(u.getAvatar());
+            }
+        }
+        // Query course title for this teacher's assignment
+        if (t.getCourseId() != null) {
+            Course course = courseRepository.selectById(t.getCourseId());
+            if (course != null) {
+                vo.setCourseTitle(course.getTitle());
             }
         }
         return vo;

@@ -12,6 +12,9 @@
     </el-tabs>
 
     <el-card shadow="never">
+      <el-alert v-if="error" title="加载失败" type="error" show-icon :closable="false" class="mg-bottom-12">
+        <template #default><el-button size="small" @click="fetchData">重试</el-button></template>
+      </el-alert>
       <el-table v-loading="loading" :data="items" stripe border>
         <template #empty><el-empty description="暂无待审核微专业" /></template>
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
@@ -32,7 +35,7 @@
               <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
               <el-button size="small" @click="handleCancel(row)">取消</el-button>
             </template>
-            <el-button v-else size="small" type="info" @click="handleArchive(row)">归档</el-button>
+            <el-button v-if="row.status === 'COMPLETED'" size="small" type="info" @click="handleArchive(row)">归档</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -76,22 +79,27 @@ const rejectVisible = ref(false)
 const rejectReason = ref('')
 const rejectTarget = ref(null)
 
-const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', PUBLISHED: '已发布', OPEN: '开课中', CLOSED: '已结业', REJECTED: '已驳回', CANCELLED: '已取消', ARCHIVED: '已归档' }
-const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', PUBLISHED: 'success', OPEN: '', CLOSED: 'info', REJECTED: 'danger', CANCELLED: 'danger', ARCHIVED: 'info' }
-const statusLabel = (s) => statusMap[s] || s
-const statusType = (s) => statusTypeMap[s] || 'info'
+const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', RECRUITING: '招生中', COMPLETED: '已结业', REJECTED: '已驳回', CANCELLED: '已取消', ARCHIVED: '已归档' }
+const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', RECRUITING: '', COMPLETED: 'info', REJECTED: 'danger', CANCELLED: 'danger', ARCHIVED: 'info' }
+const error = ref(false)
 
 const fetchData = async () => {
   loading.value = true
+  error.value = false
   try {
     const params = { page: page.value, size: size.value }
     if (activeTab.value === 'PENDING') params.status = 'PENDING_REVIEW'
     const { data } = await getMicroSpecialtyList(params)
     items.value = data.items || data || []
     total.value = data.totalElements || 0
-  } catch { ElMessage.error('加载失败') }
+  } catch {
+    error.value = true
+    ElMessage.error('加载失败')
+  }
   finally { loading.value = false }
 }
+const statusLabel = (s) => statusMap[s] || s
+const statusType = (s) => statusTypeMap[s] || 'info'
 
 const handleApprove = async (row) => {
   actingId.value = row.id
@@ -126,6 +134,7 @@ onMounted(fetchData)
 <style scoped>
 .ms-review { padding: var(--space-4); max-width: 1200px; margin: 0 auto; }
 .mg-bottom-16 { margin-bottom: var(--space-4); }
+.mg-bottom-12 { margin-bottom: var(--space-3); }
 .mg-top-12 { margin-top: var(--space-3); }
 .pagination { display: flex; justify-content: flex-end; }
 </style>

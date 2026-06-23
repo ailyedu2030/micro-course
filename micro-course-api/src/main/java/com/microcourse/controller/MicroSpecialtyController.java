@@ -21,6 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,9 +53,17 @@ public class MicroSpecialtyController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String status) {
-        PageResult<MicroSpecialtyVO> result = microSpecialtyService.page(page, size, keyword, status);
-        return R.ok(result);
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String featuredStatus,
+            @RequestParam(required = false) Boolean isGoldFeatured,
+            @RequestParam(required = false) Boolean featured) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("keyword", keyword);
+        params.put("status", status);
+        if (featuredStatus != null) params.put("featuredStatus", featuredStatus);
+        if (isGoldFeatured != null) params.put("isGoldFeatured", isGoldFeatured);
+        if (featured != null) params.put("featured", featured);
+        return R.ok(microSpecialtyService.page(page, size, params));
     }
 
     /** 课程广场专区 */
@@ -105,7 +114,7 @@ public class MicroSpecialtyController {
 
     /** 更新基本信息 */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('TEACHER')")
     public R<MicroSpecialtyVO> update(@PathVariable Long id,
                                        @Valid @RequestBody MicroSpecialtyUpdateRequest request) {
         MicroSpecialtyVO vo = microSpecialtyService.update(id, request);
@@ -124,7 +133,7 @@ public class MicroSpecialtyController {
 
     /** 提交审核 */
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('TEACHER')")
     public R<Void> submit(@PathVariable Long id) {
         microSpecialtyService.submit(id);
         return R.ok();
@@ -149,7 +158,7 @@ public class MicroSpecialtyController {
 
     /** 开课 */
     @PostMapping("/{id}/open")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('TEACHER')")
     public R<Void> open(@PathVariable Long id) {
         microSpecialtyService.open(id);
         return R.ok();
@@ -157,7 +166,7 @@ public class MicroSpecialtyController {
 
     /** 结业 */
     @PostMapping("/{id}/close")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('TEACHER')")
     public R<Void> close(@PathVariable Long id) {
         microSpecialtyService.close(id);
         return R.ok();
@@ -165,7 +174,7 @@ public class MicroSpecialtyController {
 
     /** 强制取消 */
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    @PreAuthorize("hasRole('ACADEMIC')")
     public R<Void> cancel(@PathVariable Long id) {
         microSpecialtyService.cancel(id);
         return R.ok();
@@ -191,7 +200,7 @@ public class MicroSpecialtyController {
 
     /** 添加课程 */
     @PostMapping("/{id}/courses")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('TEACHER')")
     public R<MicroSpecialtyCourseVO> addCourse(@PathVariable Long id,
                                                 @Valid @RequestBody MicroSpecialtyCourseRequest request) {
         MicroSpecialtyCourseVO vo = microSpecialtyService.addCourse(id, request);
@@ -200,7 +209,7 @@ public class MicroSpecialtyController {
 
     /** 更新课程编排 */
     @PutMapping("/{id}/courses/{itemId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('TEACHER')")
     public R<MicroSpecialtyCourseVO> updateCourseItem(@PathVariable Long id,
                                                        @PathVariable Long itemId,
                                                        @Valid @RequestBody MicroSpecialtyCourseRequest request) {
@@ -210,7 +219,7 @@ public class MicroSpecialtyController {
 
     /** 移除课程 */
     @DeleteMapping("/{id}/courses/{itemId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('TEACHER')")
     public R<Void> removeCourse(@PathVariable Long id,
                                  @PathVariable Long itemId) {
         microSpecialtyService.removeCourse(id, itemId);
@@ -229,7 +238,7 @@ public class MicroSpecialtyController {
 
     /** 发送邀请 */
     @PostMapping("/{id}/teachers")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('TEACHER')")
     public R<MicroSpecialtyTeacherVO> inviteTeacher(@PathVariable Long id,
                                                      @Valid @RequestBody MicroSpecialtyTeacherRequest request) {
         MicroSpecialtyTeacherVO vo = microSpecialtyService.inviteTeacher(id, request);
@@ -238,7 +247,7 @@ public class MicroSpecialtyController {
 
     /** 移除教师 */
     @DeleteMapping("/{id}/teachers/{teacherId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> removeTeacher(@PathVariable Long id,
                                   @PathVariable Long teacherId) {
         microSpecialtyService.removeTeacher(id, teacherId);

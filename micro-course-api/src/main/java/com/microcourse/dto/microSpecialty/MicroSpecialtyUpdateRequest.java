@@ -1,11 +1,17 @@
 package com.microcourse.dto.microSpecialty;
 
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
 import java.math.BigDecimal;
 
 public class MicroSpecialtyUpdateRequest {
 
+    @Size(max = 200, message = "微专业名称最多200个字符")
     private String title;
+    @Size(max = 500, message = "副标题最多500个字符")
     private String subtitle;
+    @Size(max = 500, message = "封面URL最多500个字符")
     private String coverUrl;
     private String description;
     private Long offerDepartmentId;
@@ -13,6 +19,7 @@ public class MicroSpecialtyUpdateRequest {
     private String targetAudience;
     private String trainingObjective;
     private String admissionRequirement;
+    @Pattern(regexp = "^(ALL_REQUIRED|CREDITS_MIN|MIXED)$", message = "完成规则值无效")
     private String completionRule;
     private BigDecimal totalCredits;
     private Integer totalHours;
@@ -21,6 +28,7 @@ public class MicroSpecialtyUpdateRequest {
     private BigDecimal minCredits;
     private Integer maxStudents;
     private Integer studentCount;
+    @Size(max = 20, message = "学期最多20个字符")
     private String semester;
 
     public MicroSpecialtyUpdateRequest() {}

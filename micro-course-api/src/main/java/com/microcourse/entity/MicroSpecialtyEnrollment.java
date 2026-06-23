@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -35,7 +36,11 @@ public class MicroSpecialtyEnrollment {
     private String dropReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    @Version
     private Integer version;
+    /** 报名失败原因（仅前端展示，不入库） */
+    @TableField(exist = false)
+    private String failReason;
 
     public MicroSpecialtyEnrollment() {}
 
@@ -85,4 +90,6 @@ public class MicroSpecialtyEnrollment {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
+    public String getFailReason() { return failReason; }
+    public void setFailReason(String failReason) { this.failReason = failReason; }
 }

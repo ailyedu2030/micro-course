@@ -7,8 +7,25 @@
     <el-page-header @back="$router.back()" content="我的申报" class="mg-bottom-16" />
 
     <el-card shadow="never">
+      <el-result
+        v-if="error"
+        icon="error"
+        title="加载失败"
+        sub-title="请稍后重试"
+      >
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重试</el-button>
+        </template>
+      </el-result>
+      <template v-else>
       <el-table v-loading="loading" :data="proposals" stripe border>
-        <template #empty><el-empty description="暂无申报记录" /></template>
+        <template #empty>
+          <el-empty description="暂未提交申报">
+            <template #default>
+              <el-button type="primary" @click="$router.push('/teacher/micro-specialties/proposals')">提交申报</el-button>
+            </template>
+          </el-empty>
+        </template>
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
         <el-table-column prop="collegeName" label="学院" width="120" />
         <el-table-column prop="semester" label="建议学期" width="120" />
@@ -18,7 +35,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="提交时间" width="130" align="center">
-          <template #default="{ row }">{{ row.createdAt?.slice(0, 10) || '-' }}</template>
+          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="{ row }">
@@ -28,7 +45,7 @@
             <template v-else-if="row.status === 'REJECTED'">
               <el-button size="small" type="warning" @click="handleEdit(row)">编辑重提</el-button>
             </template>
-            <template v-else-if="row.status === 'PENDING'">
+            <template v-else-if="row.status === 'PENDING_REVIEW'">
               <el-button size="small" type="danger" @click="handleWithdraw(row)">撤回</el-button>
             </template>
             <span v-else class="no-action">-</span>
@@ -45,6 +62,7 @@
           @current-change="fetchData"
         />
       </div>
+      </template>
     </el-card>
 
     <!-- 编辑重提 Dialog -->
@@ -77,6 +95,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMyProposals, withdrawProposal, resubmitProposal } from '@/api/microSpecialty'
 
 const loading = ref(false)
+const error = ref(false)
 const proposals = ref([])
 const page = ref(0)
 const size = ref(20)
@@ -93,18 +112,20 @@ const editRules = {
 }
 const editingId = ref(null)
 
-const statusMap = { PENDING: '待审', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回' }
-const statusTypeMap = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', WITHDRAWN: 'info' }
+const statusMap = { PENDING_REVIEW: '审核中', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回' }
+const statusTypeMap = { PENDING_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger', WITHDRAWN: 'info' }
 const statusLabel = (s) => statusMap[s] || s
 const statusType = (s) => statusTypeMap[s] || 'info'
+const formatTime = (t) => t ? new Date(t).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
 
 const fetchData = async () => {
+  error.value = false
   loading.value = true
   try {
     const { data } = await getMyProposals({ page: page.value, size: size.value })
     proposals.value = data.items || data || []
     total.value = data.totalElements || 0
-  } catch { ElMessage.error('加载失败') }
+  } catch { error.value = true }
   finally { loading.value = false }
 }
 

@@ -87,22 +87,21 @@ const routes = [
   { path: '/student/orders', name: 'StudentOrders', component: () => import('../views/student/MyOrders.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '订单', menuIcon: 'Wallet', menuOrder: 5 } },
   { path: '/student/checkout', name: 'StudentCheckout', component: () => import('../views/student/Checkout.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Phase 14: 微专业路由
-  // Phase 14: 微专业路由
-  { path: '/student/micro-specialties/:id', name: 'StudentMicroSpecialtyDetail', component: () => import('../views/student/MicroSpecialtyDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
-  { path: '/student/my-micro-specialties', name: 'StudentMyMicroSpecialties', component: () => import('../views/student/MyMicroSpecialties.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '微专业', menuIcon: 'Medal', menuOrder: 6 } },
-  { path: '/teacher/micro-specialties', name: 'TeacherMicroSpecialtyList', component: () => import('../views/teacher/MicroSpecialtyList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
-  { path: '/teacher/micro-specialties/:id/manage', name: 'TeacherMicroSpecialtyManage', component: () => import('../views/teacher/MicroSpecialtyManage.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
-  { path: '/teacher/micro-specialties/:id/courses', name: 'TeacherMicroSpecialtyCourseEdit', component: () => import('../views/teacher/MicroSpecialtyCourseEdit.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
-  { path: '/teacher/micro-specialties/:id/team', name: 'TeacherMicroSpecialtyTeamEdit', component: () => import('../views/teacher/MicroSpecialtyTeamEdit.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
-  { path: '/teacher/micro-specialties/invites', name: 'TeacherMicroSpecialtyInvites', component: () => import('../views/teacher/MicroSpecialtyInvites.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
-  { path: '/teacher/micro-specialties/proposals', name: 'TeacherMicroSpecialtyProposal', component: () => import('../views/teacher/MicroSpecialtyProposal.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
-  { path: '/teacher/micro-specialties/my-proposals', name: 'TeacherMyProposals', component: () => import('../views/teacher/MyProposals.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
-  { path: '/academic/micro-specialties/review', name: 'AcademicMicroSpecialtyReview', component: () => import('../views/academic/MicroSpecialtyReview.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/proposals', name: 'AcademicMicroSpecialtyProposalReview', component: () => import('../views/academic/MicroSpecialtyProposalReview.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/featured', name: 'AcademicMicroSpecialtyFeaturedReview', component: () => import('../views/academic/MicroSpecialtyFeaturedReview.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/cross-dept', name: 'AcademicMicroSpecialtyCrossDeptReview', component: () => import('../views/academic/MicroSpecialtyCrossDeptReview.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/class-import', name: 'AcademicMicroSpecialtyClassImport', component: () => import('../views/academic/MicroSpecialtyClassImport.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/gold', name: 'AcademicMicroSpecialtyGoldManage', component: () => import('../views/academic/MicroSpecialtyGoldManage.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/student/micro-specialties/:id', name: 'StudentMicroSpecialtyDetail', component: () => import('../views/student/MicroSpecialtyDetail.vue'), meta: { title: '微专业详情', requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/my-micro-specialties', name: 'StudentMyMicroSpecialties', component: () => import('../views/student/MyMicroSpecialties.vue'), meta: { title: '我的微专业', requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '微专业', menuIcon: 'Medal', menuOrder: 6 } },
+  { path: '/teacher/micro-specialties', name: 'TeacherMicroSpecialtyList', component: () => import('../views/teacher/MicroSpecialtyList.vue'), meta: { title: '微专业管理', requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
+  { path: '/teacher/micro-specialties/:id/manage', name: 'TeacherMicroSpecialtyManage', component: () => import('../views/teacher/MicroSpecialtyManage.vue'), meta: { title: '微专业工作台', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
+  { path: '/teacher/micro-specialties/:id/courses', name: 'TeacherMicroSpecialtyCourseEdit', component: () => import('../views/teacher/MicroSpecialtyCourseEdit.vue'), meta: { title: '课程编排', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
+  { path: '/teacher/micro-specialties/:id/team', name: 'TeacherMicroSpecialtyTeamEdit', component: () => import('../views/teacher/MicroSpecialtyTeamEdit.vue'), meta: { title: '团队管理', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
+  { path: '/teacher/micro-specialties/invites', name: 'TeacherMicroSpecialtyInvites', component: () => import('../views/teacher/MicroSpecialtyInvites.vue'), meta: { title: '邀请列表', requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/micro-specialties/proposals', name: 'TeacherMicroSpecialtyProposal', component: () => import('../views/teacher/MicroSpecialtyProposal.vue'), meta: { title: '微专业申报', requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/micro-specialties/my-proposals', name: 'TeacherMyProposals', component: () => import('../views/teacher/MyProposals.vue'), meta: { title: '我的申报', requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/academic/micro-specialties/review', name: 'AcademicMicroSpecialtyReview', component: () => import('../views/academic/MicroSpecialtyReview.vue'), meta: { title: '微专业审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/proposals', name: 'AcademicMicroSpecialtyProposalReview', component: () => import('../views/academic/MicroSpecialtyProposalReview.vue'), meta: { title: '申报审批', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/featured', name: 'AcademicMicroSpecialtyFeaturedReview', component: () => import('../views/academic/MicroSpecialtyFeaturedReview.vue'), meta: { title: '金标审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/cross-dept', name: 'AcademicMicroSpecialtyCrossDeptReview', component: () => import('../views/academic/MicroSpecialtyCrossDeptReview.vue'), meta: { title: '跨学院审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/class-import', name: 'AcademicMicroSpecialtyClassImport', component: () => import('../views/academic/MicroSpecialtyClassImport.vue'), meta: { title: '班级导入', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/gold', name: 'AcademicMicroSpecialtyGoldManage', component: () => import('../views/academic/MicroSpecialtyGoldManage.vue'), meta: { title: '金标管理', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/student/redirect', redirect: '/student/courses', meta: { requiresAuth: false } },
   { path: '/student/chapters/:chapterId/exercises', name: 'StudentExerciseTake', component: () => import('../views/student/ExerciseTake.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/discussions', name: 'StudentDiscussion', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
@@ -181,6 +180,15 @@ router.beforeEach(async (to, from, next) => {
       return next(getRoleHomePage(userRole))
     }
   }
+
+  // Phase 2: requiresLead 路由前置检查 — LEAD-only 路由仅限 TEACHER 角色
+  // 微专业负责人限定页面：真正的鉴权在后端 Service 层的 isLeadOf，此处仅做角色粗筛
+  if (to.meta.requiresLead) {
+    if (userRole !== 'TEACHER') {
+      return next(getRoleHomePage(userRole))
+    }
+  }
+
   next()
 })
 

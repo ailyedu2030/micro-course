@@ -19,6 +19,7 @@ public class MicroSpecialtyFeaturedVO {
     private String status;
     private Boolean isGoldFeatured;
     private BigDecimal qualityScore;
+    private Boolean isNew;
 
     public MicroSpecialtyFeaturedVO() {}
 
@@ -57,4 +58,7 @@ public class MicroSpecialtyFeaturedVO {
 
     public BigDecimal getQualityScore() { return qualityScore; }
     public void setQualityScore(BigDecimal qualityScore) { this.qualityScore = qualityScore; }
+
+    public Boolean getIsNew() { return isNew; }
+    public void setIsNew(Boolean isNew) { this.isNew = isNew; }
 }

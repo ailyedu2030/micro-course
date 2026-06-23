@@ -18,6 +18,7 @@ public class MicroSpecialtyTeacherVO {
     private String responsibility;
     private String inviteStatus;
     private LocalDateTime inviteExpiresAt;
+    private String role;
 
     public MicroSpecialtyTeacherVO() {}
 
@@ -53,4 +54,7 @@ public class MicroSpecialtyTeacherVO {
 
     public LocalDateTime getInviteExpiresAt() { return inviteExpiresAt; }
     public void setInviteExpiresAt(LocalDateTime inviteExpiresAt) { this.inviteExpiresAt = inviteExpiresAt; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 }

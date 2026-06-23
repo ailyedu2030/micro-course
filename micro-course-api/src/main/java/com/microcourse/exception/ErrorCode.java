@@ -86,7 +86,14 @@ public enum ErrorCode {
     MS_CONCURRENT_MODIFICATION(17010, "数据已被其他操作修改，请刷新重试", 409),
     MS_DUPLICATE_TEACHER(17011, "教师已在微专业团队中", 409),
     MS_LEAD_TRANSFER_INVALID(17012, "指定的新负责人不存在或不可用", 400),
-    MS_ENROLLMENT_CLOSED(17013, "微专业已结束，无法操作", 400);
+    MS_ENROLLMENT_CLOSED(17013, "微专业已结束，无法操作", 400),
+    MS_INVITE_EXPIRED(17014, "邀请已过期", 400),
+    MS_COURSE_ALREADY_EXISTS(17015, "课程已编排在该微专业中", 409),
+    MS_PROPOSAL_NOT_FOUND(17016, "申报书不存在", 404),
+    MS_TEAM_LEAD_CANNOT_LEAVE(17017, "负责人不能直接退出团队，请使用LEAD继任功能", 400),
+    MS_MAX_STUDENTS_REACHED(17018, "微专业报名人数已达上限", 400),
+    MS_TERMINAL_STATUS(17019, "微专业已处于终态，无法操作", 400),
+    MS_ENROLLMENT_STATUS_INVALID(17020, "修读记录状态不允许此操作", 400);
 
     private final int code;
     private final String message;

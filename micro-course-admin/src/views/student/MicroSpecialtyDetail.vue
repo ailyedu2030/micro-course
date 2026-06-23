@@ -127,6 +127,15 @@
             <el-empty v-else-if="!courses.length" description="暂无课程安排" />
             <!-- Course List (with requirements summary) -->
             <template v-else>
+              <!-- 不合格课程提示 -->
+              <el-alert
+                v-if="focusFailed"
+                type="warning"
+                title="以下是未通过考核的课程，请重新修读"
+                :closable="false"
+                show-icon
+                class="mg-bottom-12"
+              />
               <!-- 修读要求汇总卡片 -->
               <div class="ms-requirements-card">
                 <div class="ms-req-item">
@@ -179,6 +188,7 @@
                 <div class="ms-course-status">
                   <el-tag v-if="item.enrollmentStatus === 'ENROLLED'" type="success" size="small">已修读</el-tag>
                   <el-tag v-else-if="item.enrollmentStatus === 'IN_PROGRESS'" type="warning" size="small">进行中</el-tag>
+                  <el-tag v-else-if="item.enrollmentStatus === 'FAILED'" type="danger" size="small">未通过</el-tag>
                 </div>
                 <el-icon class="ms-go-icon"><ArrowRight /></el-icon>
               </div>
@@ -225,7 +235,7 @@
             </div>
           </el-tab-pane>
 
-          <el-tab-pane label="详细介绍" name="desc">
+           <el-tab-pane label="详细介绍" name="desc">
             <div class="ms-desc-content">
               <p v-if="ms.objectives" class="ms-desc-section">
                 <strong>培养目标</strong>
@@ -235,11 +245,23 @@
                 <strong>项目介绍</strong>
                 <span>{{ ms.description }}</span>
               </p>
+              <p v-if="ms.targetAudience" class="ms-desc-section">
+                <strong>面向人群</strong>
+                <span>{{ ms.targetAudience }}</span>
+              </p>
+              <p v-if="ms.admissionRequirement" class="ms-desc-section">
+                <strong>入学要求</strong>
+                <span>{{ ms.admissionRequirement }}</span>
+              </p>
+              <p v-if="ms.completionRule" class="ms-desc-section">
+                <strong>结业规则</strong>
+                <span>{{ ms.completionRule }}</span>
+              </p>
               <p v-if="ms.requirements" class="ms-desc-section">
                 <strong>报名要求</strong>
                 <span>{{ ms.requirements }}</span>
               </p>
-              <el-empty v-if="!ms.objectives && !ms.description && !ms.requirements" description="暂无详细介绍" />
+              <el-empty v-if="!ms.objectives && !ms.description && !ms.targetAudience && !ms.admissionRequirement && !ms.completionRule && !ms.requirements" description="暂无详细介绍" />
             </div>
           </el-tab-pane>
         </el-tabs>
@@ -258,9 +280,9 @@
             <el-button v-if="!isLoggedIn" type="primary" size="large" @click="goLogin">
               请先登录
             </el-button>
-            <!-- FAILED / DROPPED / REJECTED → 重新申请 -->
+            <!-- FAILED / REJECTED → 重新申请 -->
             <el-button
-              v-else-if="['FAILED', 'DROPPED', 'REJECTED'].includes(enrollmentStatus)"
+              v-else-if="['FAILED', 'REJECTED'].includes(enrollmentStatus)"
               type="primary"
               size="large"
               :loading="reapplyLoading"
@@ -268,9 +290,17 @@
             >
               重新申请
             </el-button>
+            <!-- PENDING → 审核中 -->
+            <el-button
+              v-else-if="enrollmentStatus === 'PENDING'"
+              size="large"
+              disabled
+            >
+              审核中
+            </el-button>
             <!-- 已报名/进行中 -->
             <el-button
-              v-else-if="['ENROLLED', 'IN_PROGRESS'].includes(enrollmentStatus)"
+              v-else-if="['APPROVED', 'IN_PROGRESS'].includes(enrollmentStatus)"
               size="large"
               disabled
             >
@@ -285,9 +315,18 @@
             >
               已结业
             </el-button>
+            <!-- CERTIFIED 已认证 -->
+            <el-button
+              v-else-if="enrollmentStatus === 'CERTIFIED'"
+              type="success"
+              size="large"
+              disabled
+            >
+              已认证
+            </el-button>
             <!-- 已报名但已退出 -->
             <el-button
-              v-else-if="enrollmentStatus === 'WITHDRAWN'"
+              v-else-if="enrollmentStatus === 'DROPPED'"
               type="primary"
               size="large"
               :loading="reapplyLoading"
@@ -340,7 +379,9 @@ const ms = ref(null)
 const stats = ref(null)
 const loading = ref(false)
 const error = ref(false)
-const activeTab = ref('courses')
+const activeTab = ref(route.query.tab || 'courses')
+const focusFailed = ref(route.query.focus === 'failed')
+const gotoFirst = ref(route.query.goto === 'first')
 
 // Courses tab
 const courses = ref([])
@@ -353,6 +394,7 @@ const teachersLoading = ref(false)
 const teachersError = ref(false)
 
 // Enrollment
+const enrollmentId = ref(null)
 const enrollmentStatus = ref(null)
 const applyLoading = ref(false)
 const reapplyLoading = ref(false)
@@ -361,18 +403,16 @@ const isLoggedIn = computed(() => !!userStore.token)
 
 const canEnroll = computed(() => {
   if (!ms.value) return false
-  return ms.value.status === 'OPEN' || ms.value.status === 'RECRUITING'
+  return ms.value.status === 'RECRUITING'
 })
 
 const statusLabel = computed(() => {
   if (!ms.value) return ''
   const map = {
     DRAFT: '草稿',
-    PENDING: '审核中',
+    PENDING_REVIEW: '审核中',
     APPROVED: '已通过',
     REJECTED: '已驳回',
-    OPEN: '招生中',
-    CLOSED: '已截止',
     ARCHIVED: '已归档',
     RECRUITING: '招生中',
     COMPLETED: '已结业'
@@ -383,13 +423,11 @@ const statusLabel = computed(() => {
 const statusTagType = computed(() => {
   if (!ms.value) return 'info'
   const map = {
-    OPEN: 'success',
     RECRUITING: 'success',
-    CLOSED: 'warning',
     COMPLETED: 'info',
     REJECTED: 'danger',
     DRAFT: 'info',
-    PENDING: 'warning',
+    PENDING_REVIEW: 'warning',
     APPROVED: 'success',
     ARCHIVED: 'info'
   }
@@ -422,6 +460,14 @@ const fetchCourses = async () => {
   try {
     const { data } = await getCourses(msId.value)
     courses.value = data || []
+    // Auto-navigate to first course if ?goto=first
+    if (gotoFirst.value && courses.value.length > 0) {
+      gotoFirst.value = false
+      const first = courses.value[0]
+      if (first && first.courseId) {
+        router.push(`/student/courses/${first.courseId}`)
+      }
+    }
   } catch (e) {
     console.error('[MSDetail] 加载课程失败:', e)
     coursesError.value = true
@@ -455,6 +501,7 @@ const checkEnrollment = async () => {
       e => String(e.microSpecialtyId) === String(msId.value)
     )
     if (found) {
+      enrollmentId.value = found.id
       enrollmentStatus.value = found.status
     }
   } catch (e) {
@@ -473,7 +520,7 @@ const handleApply = async () => {
     applyLoading.value = true
     await applyEnrollment({ microSpecialtyId: msId.value })
     ElMessage.success('报名成功')
-    enrollmentStatus.value = 'ENROLLED'
+    enrollmentStatus.value = 'PENDING'
   } catch (e) {
     if (e !== 'cancel') {
       console.error('[MSDetail] 报名失败:', e)
@@ -493,7 +540,7 @@ const handleReapply = async () => {
       { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
     )
     reapplyLoading.value = true
-    await reapplyEnrollment(msId.value)
+    await reapplyEnrollment(enrollmentId.value)
     ElMessage.success('已重新申请')
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
@@ -515,7 +562,7 @@ const courseClickable = computed(() => {
   // 未登录或未报名 → 不可点击（提示先报名）
   if (!isLoggedIn.value || !enrollmentStatus.value) return false
   // 已报名/进行中/已结业 → 可点击
-  const allowed = ['PENDING', 'APPROVED', 'ENROLLED', 'IN_PROGRESS', 'COMPLETED', 'CERTIFIED']
+  const allowed = ['PENDING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CERTIFIED']
   return allowed.includes(enrollmentStatus.value)
 })
 
@@ -593,6 +640,7 @@ onMounted(async () => {
 .ms-detail-error {
   padding: 80px 0;
 }
+.mg-bottom-12 { margin-bottom: var(--space-3); }
 /* Page Header */
 .ms-page-header {
   margin-bottom: var(--space-4);

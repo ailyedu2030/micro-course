@@ -2,7 +2,7 @@
 
 > 定位：Phase 3 Mid-Level 设计文档 → Phase 5 TDD 执行准入
 > 范围：微专业全场景——立项、教师团队、课程编排、修读、证书、广场展示
-> 覆盖：5 张新表 + 3 张扩展、**52 个 API**、16 页面、**6 个状态机（含 LEAD 继任/编辑范围）**、**23 个通知类型**
+> 覆盖：5 张新表 + 3 张扩展、**51 个 API**、16 页面、**5 个状态机（含 LEAD 继任）**、**23 个通知类型**
 > 逻辑闭环声明：每项"触发"必有"响应"，每项"变更"必有"通知"，每个"状态"必有"终点"
 > 基线版本：v3.2-gapfix（经 4 轮审查修复全部 16+ 断裂点）
 > **修复说明**：v1.0 审查发现 16 个断裂点（6P0+5P1+5P2），本版已全部修复。核心变更：REJECTED 可重提/reapply/reinvite 三重新机制 + LEAD 继任 + CANCELLED 级联 + 前置条件检查 + 已修学分认可 + 通知补齐 6 种。
@@ -48,7 +48,7 @@
 │  MyProposals                MicroSpecialtyCrossDeptReview    │
 │  MicroSpecialtyInvites                                        │
 ├──────────────────────────────────────────────────────────────┤
-│  API 层: 52 个 REST 端点 /api/micro-specialties*             │
+│  API 层: 51 个 REST 端点 /api/micro-specialties*             │
 ├──────────────────────────────────────────────────────────────┤
 │  服务层:                                                     │
 │  MicroSpecialtyService / MicroSpecialtyEnrollmentService     │
@@ -785,7 +785,7 @@ avgRating = AVG(course_reviews.rating WHERE course IN (ms courses))
 | POST | `/api/micro-specialties/{id}/archive` | ACADEMIC | 归档（COMPLETED→ARCHIVED，通知 LEAD） |
 | POST | `/api/micro-specialties/{id}/transfer-leadership` | ACADEMIC | LEAD 继任：指定新 LEAD（事务内转移，自动调整 role 和 lead_teacher_id） |
 
-### 7.2 申报（5 个）
+### 7.2 申报（7 个）
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
@@ -806,7 +806,7 @@ avgRating = AVG(course_reviews.rating WHERE course IN (ms courses))
 | PUT | `/api/micro-specialties/{id}/courses/{itemId}` | LEAD | 更新排序/必修/学分 |
 | DELETE | `/api/micro-specialties/{id}/courses/{itemId}` | LEAD | 移除课程 |
 
-### 7.4 教师团队（8 个）
+### 7.4 教师团队（9 个）
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
@@ -833,7 +833,7 @@ avgRating = AVG(course_reviews.rating WHERE course IN (ms courses))
 | POST | `/api/micro-specialty-enrollments/{id}/drop` | STUDENT(本人)/ADMIN | 退出修读（级联清除课程级 enrollment，STUDENT 本人+ADMIN 可操作） |
 | POST | `/api/micro-specialty-enrollments/{id}/reapply` | STUDENT(本人) | 重新申请（REJECTED/DROPPED/FAILED→PENDING，本人操作） |
 
-### 7.6 置顶（5 个）
+### 7.6 置顶（6 个）
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
@@ -1352,7 +1352,7 @@ Controller 层调用模式:
 | C11.1 | archive API 已增加 | ✅ | §7.1 |
 | C11.2 | leave API 已增加（教师主动退出）| ✅ | §7.4 |
 | C11.3 | unset-featured API 已增加（取消置顶）| ✅ | §7.6 |
-| C11.4 | API 统计数统一为 52 个（文档所有 3 处一致）| ✅ | §1 |
+| C11.4 | API 统计数统一为 51 个（§7.1 14 + §7.2 7 + §7.3 4 + §7.4 9 + §7.5 8 + §7.6 6 + §7.7 3 = 51；不含复用的 /api/certificates/my?type=MICRO_SPECIALTY 现有端点）| ✅ | §1 |
 | C11.5 | 证书路径修正为 /my?type= | ✅ | §7.7 |
 | C11.6 | 全部权限标注含（本人）约束（drop/reapply/accept/decline）| ✅ | §7.4/§7.5 |
 | C11.7 | class-import 权限含 ADMIN | ✅ | §7.5 |

@@ -7,10 +7,20 @@
     <el-page-header @back="$router.back()" :content="'课程编排 · ' + (detail?.title || '')" class="mg-bottom-16" />
 
     <div v-loading="loading">
-      <el-empty v-if="!loading && !detail" description="微专业不存在" />
+      <el-result
+        v-if="error"
+        icon="error"
+        title="加载失败"
+        sub-title="请稍后重试"
+      >
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重试</el-button>
+        </template>
+      </el-result>
+      <el-empty v-else-if="!loading && !detail" description="微专业不存在" />
 
       <div v-if="detail">
-        <el-card shadow="never" class="mg-bottom-16">
+        <el-card shadow="never" class="mg-bottom-16" v-loading="coursesLoading">
           <template #header>
             <div class="card-header">
               <span>课程列表（{{ courses.length }} 门）</span>
@@ -18,7 +28,7 @@
             </div>
           </template>
           <el-table :data="courses" stripe border>
-            <template #empty><el-empty description="暂无课程" /></template>
+            <template #empty><el-empty description="暂未编排课程" /></template>
             <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
             <el-table-column prop="courseTitle" label="课程名称" min-width="200" show-overflow-tooltip />
             <el-table-column label="必修/选修" width="100" align="center">
@@ -27,9 +37,9 @@
                 <el-tag v-else type="info" size="small">选修</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="credit" label="学分" width="80" align="center" />
+            <el-table-column prop="credits" label="学分" width="80" align="center" />
             <el-table-column prop="hours" label="学时" width="80" align="center" />
-            <el-table-column prop="passScore" label="通过分" width="90" align="center" />
+            <el-table-column prop="minScore" label="通过分" width="90" align="center" />
             <el-table-column label="操作" width="160" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button size="small" @click="showEditItem(row)">编辑</el-button>
@@ -43,7 +53,7 @@
 
     <!-- 添加课程 Dialog -->
     <el-dialog v-model="addVisible" title="添加课程" width="560px" @closed="resetAddForm">
-      <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="100px">
+      <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="100px" @submit.prevent>
         <el-form-item label="选择课程" prop="courseId">
           <el-select v-model="addForm.courseId" filterable placeholder="搜索课程" class="full-width">
             <el-option v-for="c in availableCourses" :key="c.id" :label="c.title" :value="c.id" />
@@ -56,13 +66,13 @@
           <el-switch v-model="addForm.isRequired" />
         </el-form-item>
         <el-form-item label="学分">
-          <el-input-number v-model="addForm.credit" :min="0" :precision="1" />
+          <el-input-number v-model="addForm.credits" :min="0" :precision="1" />
         </el-form-item>
         <el-form-item label="学时">
           <el-input-number v-model="addForm.hours" :min="0" />
         </el-form-item>
         <el-form-item label="通过分">
-          <el-input-number v-model="addForm.passScore" :min="0" :max="100" />
+          <el-input-number v-model="addForm.minScore" :min="0" :max="100" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -73,7 +83,7 @@
 
     <!-- 编辑课程项 Dialog -->
     <el-dialog v-model="editVisible" title="编辑课程" width="480px" @closed="resetEditForm">
-      <el-form ref="editFormRef" :model="editForm" label-width="100px">
+      <el-form ref="editFormRef" :model="editForm" label-width="100px" @submit.prevent>
         <el-form-item label="排序">
           <el-input-number v-model="editForm.sortOrder" :min="0" />
         </el-form-item>
@@ -81,13 +91,13 @@
           <el-switch v-model="editForm.isRequired" />
         </el-form-item>
         <el-form-item label="学分">
-          <el-input-number v-model="editForm.credit" :min="0" :precision="1" />
+          <el-input-number v-model="editForm.credits" :min="0" :precision="1" />
         </el-form-item>
         <el-form-item label="学时">
           <el-input-number v-model="editForm.hours" :min="0" />
         </el-form-item>
         <el-form-item label="通过分">
-          <el-input-number v-model="editForm.passScore" :min="0" :max="100" />
+          <el-input-number v-model="editForm.minScore" :min="0" :max="100" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -107,13 +117,15 @@ import { getMicroSpecialtyDetail, getCourses, addCourse, updateCourseItem, remov
 const route = useRoute()
 const msId = computed(() => route.params.id)
 const loading = ref(true)
+const error = ref(false)
+const coursesLoading = ref(false)
 const detail = ref(null)
 const courses = ref([])
 
 const addVisible = ref(false)
 const adding = ref(false)
 const addFormRef = ref(null)
-const addForm = ref({ courseId: null, sortOrder: 0, isRequired: true, credit: 2, hours: 32, passScore: 60 })
+const addForm = ref({ courseId: null, sortOrder: 0, isRequired: true, credits: 2, hours: 32, minScore: 60 })
 const addRules = { courseId: [{ required: true, message: '请选择课程', trigger: 'change' }] }
 const availableCourses = ref([])
 
@@ -124,18 +136,21 @@ const editForm = ref({})
 const editingItem = ref(null)
 
 const fetchData = async () => {
+  error.value = false
   loading.value = true
+  coursesLoading.value = true
   try {
     const { data: d } = await getMicroSpecialtyDetail(msId.value)
     detail.value = d
     const { data: c } = await getCourses(msId.value)
     courses.value = c.items || c || []
-  } catch { ElMessage.error('加载失败') }
-  finally { loading.value = false }
+  } catch { error.value = true }
+  finally { loading.value = false; coursesLoading.value = false }
 }
 
 const showAddDialog = () => {
-  addForm.value = { courseId: null, sortOrder: courses.value.length + 1, isRequired: true, credit: 2, hours: 32, passScore: 60 }
+  const maxOrder = courses.value.length > 0 ? Math.max(...courses.value.map(c => c.sortOrder || 0)) : 0
+  addForm.value = { courseId: null, sortOrder: maxOrder + 1, isRequired: true, credits: 2, hours: 32, minScore: 60 }
   availableCourses.value = []
   addVisible.value = true
 }
@@ -152,7 +167,7 @@ const handleAdd = async () => {
 
 const showEditItem = (row) => {
   editingItem.value = row
-  editForm.value = { sortOrder: row.sortOrder, isRequired: row.isRequired, credit: row.credit, hours: row.hours, passScore: row.passScore }
+  editForm.value = { sortOrder: row.sortOrder, isRequired: row.isRequired, credits: row.credits, hours: row.hours, minScore: row.minScore }
   editVisible.value = true
 }
 const resetEditForm = () => { editFormRef.value?.clearValidate() }

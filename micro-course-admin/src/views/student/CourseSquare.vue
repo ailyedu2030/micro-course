@@ -34,6 +34,15 @@
       <div class="ms-zone-header">
         <div class="ms-zone-title-row">
           <h2 class="ms-zone-title">🎯 微专业 · 学校重点培养项目</h2>
+          <el-link
+            v-if="userRole === 'ACADEMIC'"
+            type="primary"
+            :underline="false"
+            class="ms-gold-manage-link"
+            @click="$router.push('/academic/micro-specialties/gold')"
+          >
+            金标管理 →
+          </el-link>
           <el-button
             v-if="hasMSData"
             size="small"
@@ -148,9 +157,17 @@
       :close-on-click-modal="true"
       class="ms-all-dialog"
     >
+      <div class="ms-all-filter-bar mg-bottom-12">
+        <el-radio-group v-model="dialogFilter" size="small">
+          <el-radio-button label="">全部</el-radio-button>
+          <el-radio-button label="RECRUITING">招生中</el-radio-button>
+          <el-radio-button label="APPROVED">报名中</el-radio-button>
+          <el-radio-button label="COMPLETED">已结业</el-radio-button>
+        </el-radio-group>
+      </div>
       <div v-loading="allMSLoading" class="ms-all-grid">
         <div
-          v-for="item in allMSList"
+          v-for="item in filteredAllMS"
           :key="'all-ms-' + item.id"
           class="ms-all-card"
           role="button"
@@ -467,9 +484,19 @@ import { getCategories } from '@/api/course-category'
 import { getBundles } from '@/api/bundle'
 import { getSquareData, getMicroSpecialtyList } from '@/api/microSpecialty'
 import { usePluginStore } from '@/store/plugins'
+import { useUserStore } from '@/store/user'
 
 const router = useRouter()
 const pluginStore = usePluginStore()
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
+
+// Phase 2: 错误消息常量
+const ERROR_MESSAGES = {
+  LOAD_FAILED: '加载失败，请稍后重试',
+  NETWORK_ERROR: '网络错误，请检查连接',
+  AUTH_FAILED: '登录已过期，请重新登录'
+}
 
 // 状态
 const loading = ref(false)
@@ -487,11 +514,16 @@ const msError = ref(false)
 const goldFeatured = ref([])
 const featured = ref([])
 const recruiting = ref([])
-const hasMSData = computed(() => goldFeatured.value.length > 0 || featured.value.length > 0)
+const hasMSData = computed(() => goldFeatured.value?.length > 0 || featured.value?.length > 0 || recruiting.value?.length > 0)
 // 全部微专业弹窗
 const showAllMS = ref(false)
 const allMSList = ref([])
 const allMSLoading = ref(false)
+const dialogFilter = ref('')
+const filteredAllMS = computed(() => {
+  if (!dialogFilter.value) return allMSList.value
+  return allMSList.value.filter(item => item.status === dialogFilter.value)
+})
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(12)
@@ -547,7 +579,7 @@ const fetchCategories = async () => {
     categoryList.value = data?.items || data || []
   } catch (e) {
     console.warn('[CourseSquare] 分类加载失败:', e)
-    ElMessage.warning('分类加载失败')
+    ElMessage.warning(ERROR_MESSAGES.LOAD_FAILED)
   } finally {
     categoriesLoading.value = false
   }
@@ -573,7 +605,7 @@ const fetchCourses = async () => {
   } catch (e) {
     console.error('[CourseSquare] 课程加载失败:', e)
     error.value = true
-    ElMessage.error('课程加载失败，请稍后重试')
+    ElMessage.error(ERROR_MESSAGES.LOAD_FAILED)
   } finally {
     loading.value = false
   }
@@ -590,7 +622,7 @@ const fetchSideCourses = async () => {
     newestCourses.value = (newestRes.data?.items || []).slice(0, 5)
   } catch (e) {
     console.warn('[CourseSquare] 侧栏数据加载失败:', e)
-    ElMessage.warning('侧栏数据加载失败')
+    ElMessage.warning(ERROR_MESSAGES.LOAD_FAILED)
   }
 }
 
@@ -602,7 +634,7 @@ const loadRecommended = async () => {
   } catch (e) {
     console.warn('[CourseSquare] 推荐课程加载失败:', e)
     recommendedCourses.value = []
-    ElMessage.warning('推荐课程加载失败')
+    ElMessage.warning(ERROR_MESSAGES.LOAD_FAILED)
   }
 }
 
@@ -678,7 +710,7 @@ const goMSDetail = (id) => {
 const fetchAllMS = async () => {
   allMSLoading.value = true
   try {
-    const { data } = await getMicroSpecialtyList({ page: 0, size: 50, status: 'OPEN' })
+    const { data } = await getMicroSpecialtyList({ page: 0, size: 50 })
     allMSList.value = data?.items || []
   } catch (e) {
     console.warn('[CourseSquare] 全部微专业加载失败:', e)
@@ -694,7 +726,7 @@ const loadBundles = async () => {
     bundles.value = data.items || []
   } catch (e) {
     console.warn('[CourseSquare] 加载套餐列表失败', e)
-    ElMessage.warning('推荐课程加载失败')
+    ElMessage.warning(ERROR_MESSAGES.LOAD_FAILED)
   }
 }
 
@@ -1111,6 +1143,12 @@ onMounted(async () => {
   font-weight: var(--weight-medium);
   flex-shrink: 0;
 }
+.ms-gold-manage-link {
+  color: #fbbf24 !important;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  flex-shrink: 0;
+}
 .ms-view-all-btn:hover {
   color: #fff !important;
   background: rgba(255, 255, 255, 0.12) !important;
@@ -1296,11 +1334,11 @@ onMounted(async () => {
   outline: none;
   scroll-snap-align: start;
   box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
-  transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .ms-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 .ms-card:focus-visible {
   outline: 2px solid #fff;
@@ -1460,6 +1498,8 @@ onMounted(async () => {
 :deep(html) { scroll-behavior: smooth; }
 :deep(button:focus-visible), :deep(input:focus-visible), :deep([tabindex]:focus-visible) { outline: 2px solid var(--role-primary); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+.mg-bottom-12 { margin-bottom: var(--space-3); }
+.ms-all-filter-bar { display: flex; justify-content: center; }
 
 /* ==========================================================================
    H5

@@ -15,8 +15,11 @@
     />
 
     <el-card shadow="never">
+      <el-alert v-if="error" title="加载失败" type="error" show-icon :closable="false" class="mg-bottom-12">
+        <template #default><el-button size="small" @click="fetchMicroSpecialties">重试</el-button></template>
+      </el-alert>
       <el-table v-loading="loading" :data="items" stripe border>
-        <template #empty><el-empty description="暂无微专业" /></template>
+        <template #empty><el-empty description="暂无微专业可设金标" /></template>
         <el-table-column prop="title" label="微专业" min-width="200" show-overflow-tooltip />
         <el-table-column prop="collegeName" label="学院" width="120" />
         <el-table-column label="当前金标" width="120" align="center">
@@ -55,7 +58,7 @@
           :page-size="size"
           :total="total"
           layout="total, prev, pager, next"
-          @current-change="fetchData"
+          @current-change="fetchMicroSpecialties"
         />
       </div>
     </el-card>
@@ -73,39 +76,52 @@ const items = ref([])
 const page = ref(0)
 const size = ref(20)
 const total = ref(0)
+const error = ref(false)
 
 const goldCount = computed(() => items.value.filter(i => i.isGoldFeatured).length)
 
-const fetchData = async () => {
+const fetchMicroSpecialties = async () => {
   loading.value = true
+  error.value = false
   try {
-    const { data } = await getMicroSpecialtyList({ page: page.value, size: size.value, featured: true })
-    items.value = data.items || data || []
-    total.value = data.totalElements || 0
-  } catch { ElMessage.error('加载失败') }
-  finally { loading.value = false }
+    const res = await getMicroSpecialtyList({
+      isGoldFeatured: false,
+      page: 0,
+      size: 100
+    })
+    // Filter for RECRUITING status
+    items.value = (res.data.items || res.data || [])
+      .filter(item => item.status === 'RECRUITING')
+    total.value = res.data.totalElements || 0
+  } catch (e) {
+    error.value = true
+    ElMessage.error('获取微专业列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleSetGold = async (row) => {
   actingId.value = row.id
-  try { await setGoldFeatured(row.id); ElMessage.success('已设为金标'); fetchData() }
+  try { await setGoldFeatured(row.id); ElMessage.success('已设为金标'); fetchMicroSpecialties() }
   catch { ElMessage.error('操作失败') }
   finally { actingId.value = null }
 }
 
 const handleUnsetGold = async (row) => {
   actingId.value = row.id
-  try { await unsetGoldFeatured(row.id); ElMessage.success('已取消金标'); fetchData() }
+  try { await unsetGoldFeatured(row.id); ElMessage.success('已取消金标'); fetchMicroSpecialties() }
   catch { ElMessage.error('操作失败') }
   finally { actingId.value = null }
 }
 
-onMounted(fetchData)
+onMounted(fetchMicroSpecialties)
 </script>
 
 <style scoped>
 .ms-gold { padding: var(--space-4); max-width: 1200px; margin: 0 auto; }
 .mg-bottom-16 { margin-bottom: var(--space-4); }
+.mg-bottom-12 { margin-bottom: var(--space-3); }
 .mg-top-12 { margin-top: var(--space-3); }
 .pagination { display: flex; justify-content: flex-end; }
 .no-tag { color: var(--el-text-color-placeholder); }

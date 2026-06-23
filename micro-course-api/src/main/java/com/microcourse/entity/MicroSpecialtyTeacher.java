@@ -3,6 +3,7 @@ package com.microcourse.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import java.time.LocalDateTime;
 
 @TableName("micro_specialty_teachers")
@@ -22,6 +23,7 @@ public class MicroSpecialtyTeacher {
     private LocalDateTime joinedAt;
     private LocalDateTime leftAt;
     private LocalDateTime createdAt;
+    @Version
     private Integer version;
 
     public MicroSpecialtyTeacher() {}

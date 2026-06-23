@@ -6,12 +6,17 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyProposalRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
-import com.microcourse.entity.*;
-import com.microcourse.enums.*;
+import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.entity.MicroSpecialtyProposal;
+import com.microcourse.entity.MicroSpecialtyTeacher;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.*;
-import com.microcourse.service.*;
+import com.microcourse.repository.MicroSpecialtyProposalRepository;
+import com.microcourse.repository.MicroSpecialtyRepository;
+import com.microcourse.repository.MicroSpecialtyTeacherRepository;
+import com.microcourse.service.MicroSpecialtyProposalService;
+import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +92,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
     @Transactional(rollbackFor = Exception.class)
     public MicroSpecialtyVO approveProposal(Long proposalId) {
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
 
         if (!"PENDING_REVIEW".equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可批准");
@@ -157,7 +162,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
     @Transactional(rollbackFor = Exception.class)
     public void rejectProposal(Long proposalId, String reason) {
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
 
         if (!"PENDING_REVIEW".equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可驳回");
@@ -178,7 +183,12 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
     @Transactional(rollbackFor = Exception.class)
     public void withdrawProposal(Long proposalId) {
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!proposal.getProposerId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
 
         if (!"PENDING_REVIEW".equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可撤回");
@@ -193,7 +203,12 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
     @Transactional(rollbackFor = Exception.class)
     public void resubmitProposal(Long proposalId, MicroSpecialtyProposalRequest request) {
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!proposal.getProposerId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
 
         if (!"REJECTED".equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已驳回状态可重提");

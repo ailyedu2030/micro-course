@@ -7,7 +7,17 @@
     <el-page-header @back="$router.back()" :content="detail?.title || '微专业管理'" class="mg-bottom-16" />
 
     <div v-loading="loading">
-      <el-empty v-if="!loading && !detail" description="微专业不存在" />
+      <el-result
+        v-if="error"
+        icon="error"
+        title="加载失败"
+        sub-title="请稍后重试"
+      >
+        <template #extra>
+          <el-button type="primary" @click="fetchDetail">重试</el-button>
+        </template>
+      </el-result>
+      <el-empty v-else-if="!loading && !detail" description="微专业不存在" />
 
       <div v-if="detail" class="manage-body">
         <el-card shadow="never" class="mg-bottom-16">
@@ -36,10 +46,10 @@
                   <el-input v-model="form.description" type="textarea" :rows="2" />
                 </el-form-item>
                 <el-form-item label="培养目标">
-                  <el-input v-model="form.objectives" type="textarea" :rows="2" />
+                  <el-input v-model="form.trainingObjective" type="textarea" :rows="2" />
                 </el-form-item>
                 <el-form-item label="准入门槛">
-                  <el-input v-model="form.prerequisites" type="textarea" :rows="2" />
+                  <el-input v-model="form.admissionRequirement" type="textarea" :rows="2" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -49,7 +59,7 @@
         <el-card v-if="detail.stats" shadow="never" class="mg-bottom-16">
           <template #header><span>数据概览</span></template>
           <el-row :gutter="16">
-            <el-col :span="6"><el-statistic title="选课人数" :value="detail.stats.enrollmentCount || 0" /></el-col>
+            <el-col :span="6"><el-statistic title="选课人数" :value="detail.stats.totalEnrollments || 0" /></el-col>
             <el-col :span="6"><el-statistic title="课程数" :value="detail.stats.courseCount || 0" /></el-col>
             <el-col :span="6"><el-statistic title="完成人数" :value="detail.stats.completedCount || 0" /></el-col>
             <el-col :span="6"><el-statistic title="待审报名" :value="detail.stats.pendingEnrollmentCount || 0" /></el-col>
@@ -61,8 +71,8 @@
           <el-button v-if="showSubmit" type="success" :loading="submitting" @click="handleSubmit">提交审核</el-button>
           <el-button v-if="showOpen" type="warning" :loading="actioning" @click="handleOpen">开课</el-button>
           <el-button v-if="showClose" type="danger" :loading="actioning" @click="handleClose">结业</el-button>
-          <el-button v-if="showCancel" @click="handleCancel">取消</el-button>
           <el-button @click="showFeaturedDialog">申请置顶</el-button>
+          <el-button v-if="userStore.role === 'ACADEMIC'" type="danger" :loading="actioning" @click="handleCancel">取消微专业</el-button>
         </div>
       </div>
     </div>
@@ -85,12 +95,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import { getMicroSpecialtyDetail, updateMicroSpecialty, submitMicroSpecialty, openMicroSpecialty, closeMicroSpecialty, cancelMicroSpecialty, applyFeatured, getStats } from '@/api/microSpecialty'
 
 const route = useRoute()
+const userStore = useUserStore()
 const msId = computed(() => route.params.id)
 const loading = ref(true)
+const error = ref(false)
 const saving = ref(false)
 const submitting = ref(false)
 const actioning = ref(false)
@@ -105,11 +118,11 @@ const featuredForm = ref({ reason: '' })
 
 const status = computed(() => detail.value?.status)
 const showSubmit = computed(() => ['DRAFT', 'REJECTED'].includes(status.value))
-const showOpen = computed(() => status.value === 'PENDING_REVIEW' || status.value === 'PUBLISHED')
-const showClose = computed(() => status.value === 'OPEN')
-const showCancel = computed(() => ['DRAFT', 'PENDING_REVIEW'].includes(status.value))
+const showOpen = computed(() => status.value === 'APPROVED')
+const showClose = computed(() => status.value === 'RECRUITING')
 
 const fetchDetail = async () => {
+  error.value = false
   loading.value = true
   try {
     const { data: d } = await getMicroSpecialtyDetail(msId.value)
@@ -119,7 +132,7 @@ const fetchDetail = async () => {
       const { data: stats } = await getStats(msId.value)
       detail.value = { ...detail.value, stats }
     } catch { /* stats optional */ }
-  } catch { ElMessage.error('加载失败') }
+  } catch { error.value = true }
   finally { loading.value = false }
 }
 
@@ -157,6 +170,8 @@ const handleClose = async () => {
 }
 
 const handleCancel = async () => {
+  try { await ElMessageBox.confirm('确定取消该微专业？此操作不可恢复。', '确认', { type: 'warning' }) }
+  catch { return }
   actioning.value = true
   try { await cancelMicroSpecialty(msId.value); ElMessage.success('已取消'); fetchDetail() }
   catch { ElMessage.error('操作失败') }

@@ -3,6 +3,7 @@ package com.microcourse.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -19,6 +20,8 @@ public class MicroSpecialtyCourse {
     private BigDecimal minScore;
     private String recommendedSemester;
     private LocalDateTime createdAt;
+    @Version
+    private Integer version;
 
     public MicroSpecialtyCourse() {}
 
@@ -42,4 +45,6 @@ public class MicroSpecialtyCourse {
     public void setRecommendedSemester(String recommendedSemester) { this.recommendedSemester = recommendedSemester; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
 }

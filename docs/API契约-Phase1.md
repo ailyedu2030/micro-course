@@ -1578,4 +1578,4 @@
 ### POST /api/micro-specialties/{id}/transfer-leadership
 LEAD 继任转移。ACADEMIC 权限。
 
-完整 API 请参考 docs/开发规划/phase14-micro-specialty-spec.md §7（32 个端点，含主表 14+、申报 7、课程编排 4、教师 8、修读 8、置顶 6、统计证书 3）。
+完整 API 请参考 docs/开发规划/phase14-micro-specialty-spec.md §7（51 个端点，含主表 14+、申报 7、课程编排 4、教师 9、修读 8、置顶 6、统计证书 3）。

@@ -6,7 +6,18 @@
   <div class="ms-list-page">
     <el-page-header @back="$router.back()" content="微专业" class="mg-bottom-16" />
 
-    <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+    <el-result
+      v-if="error"
+      icon="error"
+      title="加载失败"
+      sub-title="请稍后重试"
+    >
+      <template #extra>
+        <el-button type="primary" @click="fetchList(activeTab)">重试</el-button>
+      </template>
+    </el-result>
+
+    <el-tabs v-else v-model="activeTab" @tab-change="handleTabChange">
       <el-tab-pane label="我负责的" name="leading">
         <div v-loading="loading" class="card-grid">
           <el-empty v-if="!loading && list.length === 0" description="暂无负责的微专业" />
@@ -18,53 +29,63 @@
                 <el-tag :type="statusType(item.status)" size="small">{{ statusLabel(item.status) }}</el-tag>
               </div>
               <div class="card-meta">
-                <span>{{ item.collegeName || '-' }}</span>
-                <span>{{ item.enrollmentCount || 0 }} 人选修</span>
-                <span>{{ item.courseCount || 0 }} 门课</span>
-              </div>
-              <div class="card-actions">
-                <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">管理</el-button>
-                <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/courses`)">编排课程</el-button>
-                <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/team`)">团队</el-button>
-              </div>
-              <el-badge v-if="item.pendingEnrollmentCount" :value="item.pendingEnrollmentCount" class="pending-badge">
-                <el-button size="small" type="warning" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">待审报名</el-button>
-              </el-badge>
-            </div>
-          </div>
-        </div>
-      </el-tab-pane>
+                 <span>{{ item.departmentName || '-' }}</span>
+                 <span>{{ item.totalEnrollments || 0 }} 人选修</span>
+                 <span>{{ item.courseCount || 0 }} 门课</span>
+               </div>
+               <div class="card-actions">
+                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">管理</el-button>
+                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/courses`)">编排课程</el-button>
+                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/team`)">团队</el-button>
+               </div>
+               <el-badge v-if="item.pendingEnrollmentCount" :value="item.pendingEnrollmentCount" class="pending-badge">
+                 <el-button size="small" type="warning" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">待审报名</el-button>
+               </el-badge>
+             </div>
+           </div>
+         </div>
+       </el-tab-pane>
 
-      <el-tab-pane label="我参与的" name="participating">
-        <div v-loading="loading" class="card-grid">
-          <el-empty v-if="!loading && list.length === 0" description="暂无参与的微专业" />
-          <div v-for="item in list" :key="item.id" class="ms-card">
-            <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
-            <div class="card-body">
-              <div class="card-header-row">
-                <span class="card-title">{{ item.title }}</span>
-                <el-tag :type="statusType(item.status)" size="small">{{ statusLabel(item.status) }}</el-tag>
-              </div>
-              <div class="card-meta">
-                <span>{{ item.collegeName || '-' }}</span>
-                <span>{{ item.enrollmentCount || 0 }} 人选修</span>
-                <span>{{ item.courseCount || 0 }} 门课</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </el-tab-pane>
+       <el-tab-pane label="我参与的" name="participating">
+         <div v-loading="loading" class="card-grid">
+           <el-empty v-if="!loading && list.length === 0" description="暂无参与的微专业" />
+           <div v-for="item in list" :key="item.id" class="ms-card">
+             <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
+             <div class="card-body">
+               <div class="card-header-row">
+                 <span class="card-title">{{ item.title }}</span>
+                 <el-tag :type="statusType(item.status)" size="small">{{ statusLabel(item.status) }}</el-tag>
+               </div>
+               <div class="card-meta">
+                 <span>{{ item.departmentName || '-' }}</span>
+                 <span>{{ item.totalEnrollments || 0 }} 人选修</span>
+                 <span>{{ item.courseCount || 0 }} 门课</span>
+               </div>
+             </div>
+           </div>
+         </div>
+       </el-tab-pane>
 
       <el-tab-pane name="invites">
         <template #label>
           <span>待处理邀请 <el-badge v-if="pendingInviteCount" :value="pendingInviteCount" class="tab-badge" /></span>
         </template>
         <div v-loading="inviteLoading" class="invite-section">
-          <el-empty v-if="!inviteLoading && invites.length === 0" description="暂无待处理邀请" />
+          <el-result
+            v-if="inviteError"
+            icon="error"
+            title="加载失败"
+            sub-title="请稍后重试"
+          >
+            <template #extra>
+              <el-button type="primary" @click="fetchInvites">重试</el-button>
+            </template>
+          </el-result>
+          <el-empty v-else-if="!inviteLoading && invites.length === 0" description="暂无待处理邀请" />
           <div v-for="inv in invites" :key="inv.id" class="invite-card">
             <div class="invite-info">
               <span class="invite-ms">{{ inv.microSpecialtyTitle }}</span>
-              <span class="invite-role">{{ inv.role }}</span>
+               <span class="invite-role">{{ roleMap[inv.role] || inv.role || '教师' }}</span>
               <span class="invite-from">来自 {{ inv.inviterName }}</span>
               <span class="invite-deadline" :class="{ 'expiring': inv.expiring }">
                 {{ inv.deadlineText }}
@@ -81,7 +102,7 @@
 
     <div class="action-bar mg-top-16">
       <el-button type="primary" @click="$router.push('/teacher/micro-specialties/proposals')">提交申报</el-button>
-      <el-button @click="showCreateDialog">创建微专业</el-button>
+      <el-button v-if="userStore.role === 'ACADEMIC'" @click="showCreateDialog">创建微专业</el-button>
     </div>
 
     <!-- 创建微专业 Dialog -->
@@ -116,15 +137,21 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import { getMicroSpecialtyList, createMicroSpecialty } from '@/api/microSpecialty'
 import { getPendingInvites, acceptInvite, declineInvite } from '@/api/microSpecialty'
 
+const userStore = useUserStore()
 const activeTab = ref('leading')
 const loading = ref(false)
 const inviteLoading = ref(false)
+const error = ref(false)
+const inviteError = ref(false)
 const list = ref([])
 const invites = ref([])
 const pendingInviteCount = ref(0)
+
+const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
 
 const createVisible = ref(false)
 const creating = ref(false)
@@ -133,28 +160,30 @@ const createForm = ref({ title: '', subtitle: '', description: '', collegeId: nu
 const createRules = { title: [{ required: true, message: '请输入标题', trigger: 'blur' }], collegeId: [{ required: true, message: '请选择学院', trigger: 'change' }] }
 const colleges = ref([])
 
-const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', PUBLISHED: '已发布', OPEN: '开课中', CLOSED: '已结业', REJECTED: '已驳回', CANCELLED: '已取消', ARCHIVED: '已归档' }
-const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', PUBLISHED: 'success', OPEN: '', CLOSED: 'info', REJECTED: 'danger', CANCELLED: 'danger', ARCHIVED: 'info' }
+const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', RECRUITING: '招生中', COMPLETED: '已结业', REJECTED: '已驳回', CANCELLED: '已取消', ARCHIVED: '已归档' }
+const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', RECRUITING: '', COMPLETED: 'info', REJECTED: 'danger', CANCELLED: 'danger', ARCHIVED: 'info' }
 const statusLabel = (s) => statusMap[s] || s
 const statusType = (s) => statusTypeMap[s] || 'info'
 
 const fetchList = async (role) => {
+  error.value = false
   loading.value = true
   try {
     const { data } = await getMicroSpecialtyList({ role, page: 0, size: 50 })
     list.value = data.items || data || []
-  } catch { ElMessage.error('加载列表失败') }
+  } catch { error.value = true }
   finally { loading.value = false }
 }
 
 const fetchInvites = async () => {
+  inviteError.value = false
   inviteLoading.value = true
   try {
     const { data } = await getPendingInvites()
     const items = data.items || data || []
     const now = Date.now()
     invites.value = items.map(i => {
-      const deadline = i.deadline ? new Date(i.deadline).getTime() : null
+      const deadline = i.inviteExpiresAt ? new Date(i.inviteExpiresAt).getTime() : null
       const remaining = deadline ? Math.max(0, Math.ceil((deadline - now) / 86400000)) : null
       return {
         ...i,
@@ -163,7 +192,7 @@ const fetchInvites = async () => {
       }
     })
     pendingInviteCount.value = invites.value.filter(i => i.deadlineText !== '已过期').length
-  } catch { ElMessage.error('加载邀请失败') }
+  } catch { inviteError.value = true }
   finally { inviteLoading.value = false }
 }
 

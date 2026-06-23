@@ -12,13 +12,23 @@
     </el-tabs>
 
     <div v-loading="loading" class="invite-list">
-      <el-empty v-if="!loading && items.length === 0" :description="activeTab === 'pending' ? '暂无待处理邀请' : '暂无归档邀请'" />
+      <el-result
+        v-if="error"
+        icon="error"
+        title="加载失败"
+        sub-title="请稍后重试"
+      >
+        <template #extra>
+          <el-button type="primary" @click="fetchData(activeTab)">重试</el-button>
+        </template>
+      </el-result>
+      <el-empty v-else-if="!loading && items.length === 0" :description="activeTab === 'pending' ? '暂无待处理邀请' : '暂无归档邀请'" />
 
       <div v-for="inv in items" :key="inv.id" class="invite-row">
         <div class="invite-main">
           <div class="invite-header">
             <span class="invite-ms">{{ inv.microSpecialtyTitle }}</span>
-            <el-tag size="small">{{ inv.role || '教师' }}</el-tag>
+            <el-tag size="small">{{ roleMap[inv.role] || inv.role || '教师' }}</el-tag>
           </div>
           <div class="invite-detail">
             <span>邀请人：{{ inv.inviterName }}</span>
@@ -34,7 +44,7 @@
             <el-button size="small" @click="handleDecline(inv)">拒绝</el-button>
           </div>
           <div v-else class="invite-result">
-            <el-tag v-if="inv.status === 'ACCEPTED'" type="success" size="small">已接受</el-tag>
+            <el-tag v-if="inv.status === 'ACTIVE'" type="success" size="small">已接受</el-tag>
             <el-tag v-else-if="inv.status === 'DECLINED'" type="danger" size="small">已拒绝</el-tag>
             <el-tag v-else type="info" size="small">已过期</el-tag>
           </div>
@@ -49,27 +59,31 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPendingInvites, acceptInvite, declineInvite } from '@/api/microSpecialty'
 
+const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
+
 const activeTab = ref('pending')
 const loading = ref(false)
+const error = ref(false)
 const items = ref([])
 
 const fetchData = async (tab) => {
+  error.value = false
   loading.value = true
   try {
-    const { data } = await getPendingInvites({ status: tab === 'archived' ? 'ALL' : 'PENDING' })
+    const { data } = await getPendingInvites({ status: tab === 'archived' ? 'ALL' : 'INVITED' })
     let list = data.items || data || []
     const now = Date.now()
     list = list.map(i => {
-      const dl = i.deadline ? new Date(i.deadline).getTime() : null
+      const dl = i.inviteExpiresAt ? new Date(i.inviteExpiresAt).getTime() : null
       const remMs = dl ? Math.max(0, dl - now) : 0
       const remDays = Math.floor(remMs / 86400000)
       const remHours = Math.floor((remMs % 86400000) / 3600000)
       return { ...i, expiring: remMs > 0 && remMs < 3 * 86400000, deadlineText: dl ? (remMs > 0 ? `剩余${remDays} 天 ${remHours} 小时` : '已过期') : '' }
     })
-    if (tab === 'pending') list = list.filter(i => i.status === 'PENDING')
-    else list = list.filter(i => i.status !== 'PENDING')
+    if (tab === 'pending') list = list.filter(i => i.status === 'INVITED')
+    else list = list.filter(i => i.status !== 'INVITED')
     items.value = list
-  } catch { ElMessage.error('加载失败') }
+  } catch { error.value = true }
   finally { loading.value = false }
 }
 
@@ -96,6 +110,11 @@ onMounted(() => fetchData('pending'))
 .invite-list { min-height: 200px; }
 .invite-row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-3); border-bottom: 1px solid var(--el-border-color-lighter); transition: background var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier); }
 .invite-row:hover { background: var(--el-fill-color-light); }
+/* Phase 2: 键盘焦点可访问性 */
+.invite-row:focus-within {
+  background: #f5f7fa;
+  outline: 2px solid #409eff;
+}
 .invite-main { flex: 1; }
 .invite-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1); }
 .invite-ms { font-weight: 600; font-size: var(--el-font-size-base); }

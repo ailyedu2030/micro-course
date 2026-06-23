@@ -9,7 +9,10 @@ import com.microcourse.dto.PageResult;
 public interface MicroSpecialtyInviteService {
 
     /** 我的待处理邀请列表 */
-    PageResult<?> getPendingInvites(int page, int size);
+    PageResult<?> getPendingInvites(int page, int size, String status);
+
+    /** 跨学院待审批邀请列表（PENDING_ACADEMIC） */
+    PageResult<?> getPendingCrossDeptInvites(int page, int size);
 
     /** 接受邀请 → ACTIVE 或 PENDING_ACADEMIC（跨学院） */
     void acceptInvite(Long inviteId);
@@ -18,7 +21,7 @@ public interface MicroSpecialtyInviteService {
     void declineInvite(Long inviteId);
 
     /** 主动退出团队 → REMOVED */
-    void leaveTeam(Long msId);
+    void leaveTeam(Long inviteId);
 
     /** 跨学院审批（ACADEMIC） */
     void reviewCrossDept(Long inviteId, boolean approve, String reason);

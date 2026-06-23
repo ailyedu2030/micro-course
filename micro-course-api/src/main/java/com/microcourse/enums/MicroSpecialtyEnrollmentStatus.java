@@ -6,7 +6,9 @@ public enum MicroSpecialtyEnrollmentStatus {
     IN_PROGRESS(2, "进行中"),
     COMPLETED(3, "已完成"),
     DROPPED(4, "已退课"),
-    FAILED(5, "未通过");
+    FAILED(5, "未通过"),
+    REJECTED(6, "已驳回"),
+    CERTIFIED(7, "已颁证");
 
     private final int code;
     private final String description;

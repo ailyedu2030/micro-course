@@ -111,6 +111,11 @@ public class SecurityConfig {
                         // 非敏感元数据，权限矩阵 v2.0 定义为「所有用户（含未登录）」。Controller 内白名单
                         // 严格限定可返回键，CAS/上传上限等敏感配置永不暴露。须先于通配 authenticated。
                         .requestMatchers("GET", "/api/system-configs/public").permitAll()
+                        // Phase 14: 微专业公共端点 - 课程广场和详情页无需登录
+                        .requestMatchers("GET", "/api/micro-specialties/square").permitAll()
+                        .requestMatchers("GET", "/api/micro-specialties/{id}").permitAll()
+                        .requestMatchers("GET", "/api/micro-specialties/{id}/courses").permitAll()
+                        .requestMatchers("GET", "/api/micro-specialties/{id}/teachers").permitAll()
                         // 前端错误自动上报 —— 需登录态。Controller 仅落日志、不返回敏感数据、不写库。
                         // 权限由 Controller 上的 @PreAuthorize("isAuthenticated()") 控制
                         .requestMatchers("GET", "/api/departments/**").authenticated()

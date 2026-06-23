@@ -5,12 +5,18 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
-import com.microcourse.entity.*;
-import com.microcourse.enums.*;
+import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.entity.MicroSpecialtyTeacher;
+import com.microcourse.entity.User;
+import com.microcourse.enums.NotificationType;
+import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.*;
-import com.microcourse.service.*;
+import com.microcourse.repository.MicroSpecialtyRepository;
+import com.microcourse.repository.MicroSpecialtyTeacherRepository;
+import com.microcourse.repository.UserRepository;
+import com.microcourse.service.MicroSpecialtyInviteService;
+import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,13 +49,27 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
     }
 
     @Override
-    public PageResult<?> getPendingInvites(int page, int size) {
+    public PageResult<?> getPendingInvites(int page, int size, String status) {
         Long userId = SecurityUtil.getCurrentUserId();
+        LambdaQueryWrapper<MicroSpecialtyTeacher> wrapper = new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                .eq(MicroSpecialtyTeacher::getTeacherId, userId);
+        if (status != null && !status.isEmpty()) {
+            wrapper.eq(MicroSpecialtyTeacher::getInviteStatus, status);
+        } else {
+            wrapper.eq(MicroSpecialtyTeacher::getInviteStatus, "INVITED");
+        }
+        wrapper.orderByDesc(MicroSpecialtyTeacher::getInvitedAt);
+        IPage<MicroSpecialtyTeacher> ipage = teacherRepository.selectPage(
+                new Page<>(page + 1, size), wrapper);
+        return PageResult.of(ipage);
+    }
+
+    @Override
+    public PageResult<?> getPendingCrossDeptInvites(int page, int size) {
         IPage<MicroSpecialtyTeacher> ipage = teacherRepository.selectPage(
                 new Page<>(page + 1, size),
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
-                        .eq(MicroSpecialtyTeacher::getTeacherId, userId)
-                        .eq(MicroSpecialtyTeacher::getInviteStatus, "INVITED")
+                        .eq(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC")
                         .orderByDesc(MicroSpecialtyTeacher::getInvitedAt));
         return PageResult.of(ipage);
     }
@@ -74,10 +94,15 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
 
         // 过期校验
         if (record.getInviteExpiresAt() != null && record.getInviteExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "邀请已过期");
+            throw new BusinessException(ErrorCode.MS_INVITE_EXPIRED, "邀请已过期");
         }
 
         MicroSpecialty ms = msRepository.selectById(record.getMicroSpecialtyId());
+
+        // 终态检查
+        if (ms != null && ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus()))) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
 
         // 跨学院检测（§9.4）
         User invitedUser = userRepository.selectById(userId);
@@ -117,9 +142,17 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
 
             // 如果是 LEAD 角色，双重确认更新 lead_teacher_id
             if ("LEAD".equals(record.getRole()) && ms != null) {
-                ms.setLeadTeacherId(userId);
-                ms.setUpdatedAt(LocalDateTime.now());
-                msRepository.updateById(ms);
+                int msVersion = ms.getVersion() != null ? ms.getVersion() : 0;
+                int msAffected = msRepository.update(null,
+                        new LambdaUpdateWrapper<MicroSpecialty>()
+                                .eq(MicroSpecialty::getId, ms.getId())
+                                .eq(MicroSpecialty::getVersion, msVersion)
+                                .set(MicroSpecialty::getLeadTeacherId, userId)
+                                .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
+                                .setSql("version = version + 1"));
+                if (msAffected == 0) {
+                    throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+                }
             }
         }
 
@@ -149,11 +182,17 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "邀请已处理");
         }
 
-        teacherRepository.update(null,
+        int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
+        int affected = teacherRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getId, inviteId)
+                        .eq(MicroSpecialtyTeacher::getVersion, oldVersion)
                         .set(MicroSpecialtyTeacher::getInviteStatus, "DECLINED")
-                        .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now()));
+                        .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
     }
 
     @Override
@@ -171,12 +210,22 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         if (!"ACTIVE".equals(record.getInviteStatus())) {
             throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND, "当前状态不可退出");
         }
+        // 负责人不能直接退出
+        if ("LEAD".equals(record.getRole())) {
+            throw new BusinessException(ErrorCode.MS_TEAM_LEAD_CANNOT_LEAVE);
+        }
 
-        teacherRepository.update(null,
+        int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
+        int affected = teacherRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getId, record.getId())
+                        .eq(MicroSpecialtyTeacher::getVersion, oldVersion)
                         .set(MicroSpecialtyTeacher::getInviteStatus, "REMOVED")
-                        .set(MicroSpecialtyTeacher::getLeftAt, LocalDateTime.now()));
+                        .set(MicroSpecialtyTeacher::getLeftAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
 
         // 通知 LEAD
         Long msId = record.getMicroSpecialtyId();
@@ -201,20 +250,39 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         }
 
         String newStatus = approve ? "ACTIVE" : "REJECTED";
-        teacherRepository.update(null,
+        int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
+        int affected = teacherRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getId, inviteId)
+                        .eq(MicroSpecialtyTeacher::getVersion, oldVersion)
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC")
                         .set(MicroSpecialtyTeacher::getInviteStatus, newStatus)
-                        .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now()));
+                        .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
 
         MicroSpecialty ms = msRepository.selectById(record.getMicroSpecialtyId());
 
+        // 终态检查
+        if (ms != null && ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus()))) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+
         // 如果是 LEAD 且批准，更新 lead_teacher_id
         if (approve && "LEAD".equals(record.getRole()) && ms != null) {
-            ms.setLeadTeacherId(record.getTeacherId());
-            ms.setUpdatedAt(LocalDateTime.now());
-            msRepository.updateById(ms);
+            int msVersion = ms.getVersion() != null ? ms.getVersion() : 0;
+            int msAffected = msRepository.update(null,
+                    new LambdaUpdateWrapper<MicroSpecialty>()
+                            .eq(MicroSpecialty::getId, ms.getId())
+                            .eq(MicroSpecialty::getVersion, msVersion)
+                            .set(MicroSpecialty::getLeadTeacherId, record.getTeacherId())
+                            .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
+                            .setSql("version = version + 1"));
+            if (msAffected == 0) {
+                throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+            }
         }
 
         // 通知被邀请教师
@@ -236,9 +304,18 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已拒绝或已移除的记录可重新邀请");
         }
 
-        teacherRepository.update(null,
+        // 校验当前用户是否为该微专业负责人
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        MicroSpecialty msForCheck = msRepository.selectById(record.getMicroSpecialtyId());
+        if (msForCheck != null && !currentUserId.equals(msForCheck.getLeadTeacherId()) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可执行此操作");
+        }
+
+        int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
+        int affected = teacherRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getId, record.getId())
+                        .eq(MicroSpecialtyTeacher::getVersion, oldVersion)
                         .set(MicroSpecialtyTeacher::getInviteStatus, "INVITED")
                         .set(MicroSpecialtyTeacher::getRole, role)
                         .set(MicroSpecialtyTeacher::getResponsibility, responsibility)
@@ -246,7 +323,11 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                         .set(MicroSpecialtyTeacher::getInvitedBy, SecurityUtil.getCurrentUserId())
                         .set(MicroSpecialtyTeacher::getInvitedAt, LocalDateTime.now())
                         .set(MicroSpecialtyTeacher::getInviteExpiresAt, LocalDateTime.now().plusDays(7))
-                        .set(MicroSpecialtyTeacher::getRespondedAt, null));
+                        .set(MicroSpecialtyTeacher::getRespondedAt, null)
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
 
         Long msId = record.getMicroSpecialtyId();
         MicroSpecialty ms = msRepository.selectById(msId);
@@ -259,11 +340,12 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
     public int scanExpired() {
         int totalExpired = 0;
 
-        // 分批扫 INVITED 过期（§9.3）
+        // 分批扫 INVITED 过期（§9.3），按过期时间升序确保先到期的优先处理
         List<MicroSpecialtyTeacher> expiredList = teacherRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "INVITED")
-                        .lt(MicroSpecialtyTeacher::getInviteExpiresAt, LocalDateTime.now()));
+                        .lt(MicroSpecialtyTeacher::getInviteExpiresAt, LocalDateTime.now())
+                        .orderByAsc(MicroSpecialtyTeacher::getInviteExpiresAt));
 
         for (int i = 0; i < expiredList.size(); i += BATCH_SIZE) {
             int end = Math.min(i + BATCH_SIZE, expiredList.size());
@@ -272,9 +354,11 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                 int affected = teacherRepository.update(null,
                         new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                                 .eq(MicroSpecialtyTeacher::getId, record.getId())
+                                .eq(MicroSpecialtyTeacher::getVersion, record.getVersion())
                                 .eq(MicroSpecialtyTeacher::getInviteStatus, "INVITED")
                                 .set(MicroSpecialtyTeacher::getInviteStatus, "DECLINED")
-                                .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now()));
+                                .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now())
+                                .setSql("version = version + 1"));
                 if (affected > 0) {
                     totalExpired++;
                     // 通知 LEAD + ACADEMIC
@@ -299,11 +383,12 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
             }
         }
 
-        // PENDING_ACADEMIC 超过 14 天通知 ACADEMIC（P1-1 修复）
+        // PENDING_ACADEMIC 超过 14 天通知 ACADEMIC（P1-1 修复），按响应时间升序确保最早滞留的优先通知
         List<MicroSpecialtyTeacher> staleList = teacherRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC")
-                        .lt(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now().minusDays(14)));
+                        .lt(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now().minusDays(14))
+                        .orderByAsc(MicroSpecialtyTeacher::getRespondedAt));
         if (!staleList.isEmpty()) {
             List<User> academicUsers = userRepository.selectList(
                     new LambdaQueryWrapper<User>().eq(User::getRole, UserRole.ACADEMIC));

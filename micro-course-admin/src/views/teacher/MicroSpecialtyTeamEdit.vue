@@ -7,7 +7,17 @@
     <el-page-header @back="$router.back()" :content="'教师团队 · ' + (detail?.title || '')" class="mg-bottom-16" />
 
     <div v-loading="loading">
-      <el-empty v-if="!loading && !detail" description="微专业不存在" />
+      <el-result
+        v-if="error"
+        icon="error"
+        title="加载失败"
+        sub-title="请稍后重试"
+      >
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重试</el-button>
+        </template>
+      </el-result>
+      <el-empty v-else-if="!loading && !detail" description="微专业不存在" />
 
       <div v-if="detail">
         <el-card shadow="never">
@@ -18,26 +28,26 @@
             </div>
           </template>
           <el-table :data="teachers" stripe border>
-            <template #empty><el-empty description="暂无团队成员" /></template>
+            <template #empty><el-empty description="暂未邀请教师" /></template>
             <el-table-column prop="teacherName" label="姓名" width="120" />
             <el-table-column prop="role" label="角色" width="120">
-              <template #default="{ row }"><el-tag size="small">{{ row.role || '教师' }}</el-tag></template>
+              <template #default="{ row }"><el-tag size="small">{{ roleMap[row.role] || row.role || '教师' }}</el-tag></template>
             </el-table-column>
             <el-table-column prop="courseTitle" label="归属课程" min-width="160" show-overflow-tooltip>
               <template #default="{ row }">{{ row.courseTitle || '-' }}</template>
             </el-table-column>
             <el-table-column label="邀请状态" width="130" align="center">
               <template #default="{ row }">
-                <el-tag v-if="row.inviteStatus === 'PENDING'" type="warning" size="small">待响应</el-tag>
-                <el-tag v-else-if="row.inviteStatus === 'ACCEPTED'" type="success" size="small">已接受</el-tag>
+                <el-tag v-if="row.inviteStatus === 'INVITED'" type="warning" size="small">待响应</el-tag>
+                <el-tag v-else-if="row.inviteStatus === 'ACTIVE'" type="success" size="small">已接受</el-tag>
                 <el-tag v-else-if="row.inviteStatus === 'DECLINED'" type="danger" size="small">已拒绝</el-tag>
-                <el-tag v-else-if="row.inviteStatus === 'EXPIRED'" type="info" size="small">已过期</el-tag>
+                <el-tag v-else-if="row.inviteStatus === 'REMOVED'" type="info" size="small">已移除</el-tag>
                 <el-tag v-else size="small">{{ row.inviteStatus || '-' }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column label="倒计时" width="100" align="center">
               <template #default="{ row }">
-                <span v-if="row.inviteStatus === 'PENDING'" :class="{ 'expiring': row.expiring }">
+                <span v-if="row.inviteStatus === 'INVITED'" :class="{ 'expiring': row.expiring }">
                   {{ row.deadlineText || '-' }}
                 </span>
                 <span v-else>-</span>
@@ -46,7 +56,7 @@
             <el-table-column label="操作" width="180" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button size="small" type="danger" @click="handleRemove(row)">移除</el-button>
-                <el-button v-if="row.inviteStatus === 'EXPIRED' || row.inviteStatus === 'DECLINED'" size="small" @click="handleReinvite(row)">重邀</el-button>
+                <el-button v-if="row.inviteStatus === 'DECLINED' || row.inviteStatus === 'REMOVED'" size="small" @click="handleReinvite(row)">重邀</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -64,9 +74,9 @@
         </el-form-item>
         <el-form-item label="角色">
           <el-select v-model="inviteForm.role" class="full-width">
-            <el-option label="主讲教师" value="主讲教师" />
-            <el-option label="辅导教师" value="辅导教师" />
-            <el-option label="课程教师" value="课程教师" />
+            <el-option label="负责人" value="LEAD" />
+            <el-option label="团队成员" value="MEMBER" />
+            <el-option label="助教" value="ASSISTANT" />
           </el-select>
         </el-form-item>
         <el-form-item label="归属课程">
@@ -89,9 +99,12 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyDetail, getTeachers, inviteTeacher, removeTeacher, reinviteTeacher, getCourses } from '@/api/microSpecialty'
 
+const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
+
 const route = useRoute()
 const msId = computed(() => route.params.id)
 const loading = ref(true)
+const error = ref(false)
 const detail = ref(null)
 const teachers = ref([])
 const courseOptions = ref([])
@@ -99,11 +112,12 @@ const courseOptions = ref([])
 const inviteVisible = ref(false)
 const inviting = ref(false)
 const inviteFormRef = ref(null)
-const inviteForm = ref({ teacherId: null, role: '课程教师', courseId: null })
+const inviteForm = ref({ teacherId: null, role: 'MEMBER', courseId: null })
 const inviteRules = { teacherId: [{ required: true, message: '请选择教师', trigger: 'change' }] }
 const teacherOptions = ref([])
 
 const fetchData = async () => {
+  error.value = false
   loading.value = true
   try {
     const { data: d } = await getMicroSpecialtyDetail(msId.value)
@@ -112,18 +126,18 @@ const fetchData = async () => {
     const items = t.items || t || []
     const now = Date.now()
     teachers.value = items.map(i => {
-      const dl = i.deadline ? new Date(i.deadline).getTime() : null
+      const dl = i.inviteExpiresAt ? new Date(i.inviteExpiresAt).getTime() : null
       const rem = dl ? Math.max(0, Math.ceil((dl - now) / 86400000)) : null
-      return { ...i, expiring: i.inviteStatus === 'PENDING' && rem !== null && rem < 3, deadlineText: dl ? (rem > 0 ? `剩余${rem}天` : '已过期') : '' }
+      return { ...i, expiring: i.inviteStatus === 'INVITED' && rem !== null && rem < 3, deadlineText: dl ? (rem > 0 ? `剩余${rem}天` : '已过期') : '' }
     })
     // Load courses for invite dialog
     try { const { data: cc } = await getCourses(msId.value); courseOptions.value = cc.items || cc || [] } catch { /* skip */ }
-  } catch { ElMessage.error('加载失败') }
+  } catch { error.value = true }
   finally { loading.value = false }
 }
 
 const showInviteDialog = () => {
-  inviteForm.value = { teacherId: null, role: '课程教师', courseId: null }
+  inviteForm.value = { teacherId: null, role: 'MEMBER', courseId: null }
   inviteVisible.value = true
 }
 const resetInviteForm = () => { inviteFormRef.value?.clearValidate() }

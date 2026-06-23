@@ -6,15 +6,32 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
-import com.microcourse.entity.*;
-import com.microcourse.enums.*;
+import com.microcourse.entity.Classes;
+import com.microcourse.entity.Course;
+import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.entity.MicroSpecialtyCourse;
+import com.microcourse.entity.MicroSpecialtyEnrollment;
+import com.microcourse.entity.User;
+import com.microcourse.enums.NotificationType;
+import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.dto.EnrollmentCreateRequest;
-import com.microcourse.repository.*;
-import com.microcourse.service.*;
-import com.microcourse.util.SecurityUtil;
+import com.microcourse.repository.ClassesRepository;
+import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.MicroSpecialtyCourseRepository;
+import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
+import com.microcourse.repository.MicroSpecialtyRepository;
+import com.microcourse.repository.MicroSpecialtyTeacherRepository;
+import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CertificateService;
+import com.microcourse.service.EnrollmentService;
+import com.microcourse.service.MicroSpecialtyEnrollmentService;
+import com.microcourse.service.MicroSpecialtyService;
+import com.microcourse.service.NotificationService;
+import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -45,6 +62,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     private final EnrollmentService enrollmentService;
     private final MicroSpecialtyService msService;
     private final CertificateService certificateService;
+    private final ClassesRepository classRepository;
 
     public MicroSpecialtyEnrollmentServiceImpl(MicroSpecialtyEnrollmentRepository enrollmentRepository,
                                                MicroSpecialtyRepository msRepository,
@@ -56,7 +74,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                                                NotificationService notificationService,
                                                EnrollmentService enrollmentService,
                                                @Lazy MicroSpecialtyService msService,
-                                               CertificateService certificateService) {
+                                               CertificateService certificateService,
+                                               ClassesRepository classRepository) {
         this.enrollmentRepository = enrollmentRepository;
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
@@ -68,6 +87,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         this.enrollmentService = enrollmentService;
         this.msService = msService;
         this.certificateService = certificateService;
+        this.classRepository = classRepository;
     }
 
     @Override
@@ -78,6 +98,12 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
 
         if (!"RECRUITING".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_ENROLLMENT_CLOSED);
+        }
+
+        // Fix 2: 人数上限校验
+        if (ms.getMaxStudents() != null && ms.getMaxStudents() > 0
+                && ms.getStudentCount() != null && ms.getStudentCount() >= ms.getMaxStudents()) {
+            throw new BusinessException(ErrorCode.MS_MAX_STUDENTS_REACHED);
         }
 
         Long userId = SecurityUtil.getCurrentUserId();
@@ -146,6 +172,11 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
         MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
+        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        // Fix 1: 微专业终态校验
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
 
         // 自动 enroll 必修课（§9.5）
         List<MicroSpecialtyCourse> requiredCourses = msCourseRepository.selectList(
@@ -220,25 +251,33 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             }
         }
 
-        // §9.10: 持久化已认可学分统计到 DB（无需乐观锁，主状态已在前面通过乐观锁锁定）
-        enrollmentRepository.update(null,
+        // Fix 3: 持久化已认可学分统计到 DB（版本锁，防止并发覆盖）
+        int affected2 = enrollmentRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                         .eq(MicroSpecialtyEnrollment::getId, id)
+                        .eq(MicroSpecialtyEnrollment::getVersion, oldVersion + 1)
                         .set(MicroSpecialtyEnrollment::getCoursesCompleted, en.getCoursesCompleted())
                         .set(MicroSpecialtyEnrollment::getCreditsEarned, en.getCreditsEarned())
                         .set(MicroSpecialtyEnrollment::getCoursesRequired, en.getCoursesRequired())
-                        .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now()));
+                        .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected2 == 0) {
+            log.warn("第二段学分统计 UPDATE 版本冲突: enrollmentId={}, expectedVersion={}", id, oldVersion + 1);
+        }
 
-        // 更新 student_count（乐观锁）
+        // Fix 5: 更新 student_count（乐观锁 + affected 校验）
         if (ms != null) {
             int msOldVersion = ms.getVersion();
-            msRepository.update(null,
+            int msAffected = msRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialty>()
                             .eq(MicroSpecialty::getId, ms.getId())
                             .eq(MicroSpecialty::getVersion, msOldVersion)
                             .setSql("student_count = COALESCE(student_count, 0) + 1")
                             .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            if (msAffected == 0) {
+                throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+            }
         }
 
         // 通知学生
@@ -254,6 +293,13 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     public void reject(Long id, String reason) {
         MicroSpecialtyEnrollment en = enrollmentRepository.selectById(id);
         if (en == null) throw new BusinessException(ErrorCode.MS_ENROLLMENT_NOT_FOUND);
+
+        // Fix 1: 微专业终态校验
+        MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
+        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
 
         // 校验操作用户是该微专业的负责人
         Long userId = SecurityUtil.getCurrentUserId();
@@ -530,13 +576,17 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         // student_count 防负（复用上方已加载的 ms）
         if (ms != null && ms.getStudentCount() != null && ms.getStudentCount() > 0) {
             int msOldVersion = ms.getVersion();
-            msRepository.update(null,
+            int msAffected = msRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialty>()
                             .eq(MicroSpecialty::getId, ms.getId())
                             .eq(MicroSpecialty::getVersion, msOldVersion)
                             .setSql("student_count = student_count - 1")
                             .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            // Fix 5: affected == 0 校验
+            if (msAffected == 0) {
+                throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+            }
         }
 
         // 级联删除课程级 enrollment
@@ -591,6 +641,11 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
         MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
+        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        // Fix 1: 微专业终态校验
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
 
         // 通知 LEAD
         if (ms != null && ms.getLeadTeacherId() != null) {
@@ -626,6 +681,12 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         }
         wrapper.orderByDesc(MicroSpecialtyEnrollment::getCreatedAt);
 
+        // Fix 4: 权限校验——仅负责人或管理员/教务处可查看报名列表
+        if (!SecurityUtil.isAdminOrAcademic()) {
+            msService.requireLeadOf(msId);
+        }
+
+        // page 参数为 0-based（前端约定），MyBatis-Plus 使用 1-based，需 +1 转换
         IPage<MicroSpecialtyEnrollment> ipage = enrollmentRepository.selectPage(new Page<>(page + 1, size), wrapper);
         MicroSpecialty ms = msRepository.selectById(msId);
 
@@ -639,6 +700,11 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     public void issueCertificate(Long enrollmentId) {
         MicroSpecialtyEnrollment en = enrollmentRepository.selectById(enrollmentId);
         if (en == null) throw new BusinessException(ErrorCode.MS_ENROLLMENT_NOT_FOUND);
+
+        // Fix 4: 权限校验——仅负责人或管理员/教务处可颁发证书
+        if (!SecurityUtil.isAdminOrAcademic()) {
+            msService.requireLeadOf(en.getMicroSpecialtyId());
+        }
 
         if (!"COMPLETED".equals(en.getStatus())) {
             throw new BusinessException(ErrorCode.MS_CERT_NOT_READY);
@@ -665,6 +731,17 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .setSql("version = version + 1"));
     }
 
+    /**
+     * 聚合单个修读记录的进度（供 cron 调用）。
+     *
+     * <p>自动转换: APPROVED → IN_PROGRESS（version 乐观锁保护）。
+     * <p>判定完成: 根据 spec §6.8 公式计算 progress/creditsEarned/coursesCompleted/finalScore/finalGrade，
+     *   按 completionRule 判定 COMPLETED 或 FAILED。
+     * <p>颁发证书: COMPLETED → issueCertificate（幂等）。
+     * <p>并发安全: 每次 UPDATE 都带 version 条件；rows==0 时仅 log warn 不抛异常（cron 容错）。
+     *
+     * @param enrollmentId 修读记录 ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void aggregateProgress(Long enrollmentId) {
@@ -822,7 +899,9 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                             .set(MicroSpecialtyEnrollment::getCompletedAt, LocalDateTime.now())
                             .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
-            if (affected > 0) {
+            if (affected == 0) {
+                log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (COMPLETED)", enrollmentId);
+            } else {
                 notificationService.notifyAsync(en.getUserId(), NotificationType.MS_COMPLETED,
                         "微专业已结业", "恭喜！您已完成微专业《" + ms.getTitle() + "》的全部要求", en.getMicroSpecialtyId());
                 // 自动颁发证书
@@ -832,13 +911,16 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             // P0-5: 检查是否可以判定为 FAILED（§9.2.e 步）
             // 所有必修课均已评分 且 没有一门通过 → FAILED
             if (allCoursesGraded && !anyPassed) {
-                enrollmentRepository.update(null,
+                int failedAffected = enrollmentRepository.update(null,
                         new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                                 .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
                                 .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
                                 .set(MicroSpecialtyEnrollment::getStatus, "FAILED")
                                 .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                                 .setSql("version = version + 1"));
+                if (failedAffected == 0) {
+                    log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (FAILED)", enrollmentId);
+                }
 
                 String failedList = failedCourseNames.isEmpty() ? "无" : String.join("、", failedCourseNames);
                 notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_FAILED,
@@ -849,7 +931,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             }
 
             // 仅更新进度
-            enrollmentRepository.update(null,
+            int progressAffected = enrollmentRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                             .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
                             .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
@@ -859,6 +941,9 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                             .set(MicroSpecialtyEnrollment::getFinalScore, BigDecimal.valueOf(finalScore))
                             .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            if (progressAffected == 0) {
+                log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (progress update)", enrollmentId);
+            }
         }
     }
 
@@ -870,6 +955,14 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         vo.setSource(en.getSource());
         vo.setClassId(en.getClassId());
         vo.setStatus(en.getStatus());
+
+        // Set class name
+        if (en.getClassId() != null) {
+            Classes clazz = classRepository.selectById(en.getClassId());
+            if (clazz != null) {
+                vo.setClassName(clazz.getName());
+            }
+        }
         vo.setProgress(en.getProgress());
         vo.setCreditsEarned(en.getCreditsEarned());
         vo.setCoursesCompleted(en.getCoursesCompleted());
@@ -884,6 +977,10 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         vo.setCompletedAt(en.getCompletedAt());
         vo.setDroppedAt(en.getDroppedAt());
         vo.setDropReason(en.getDropReason());
+
+        if ("FAILED".equals(en.getStatus())) {
+            vo.setFailReason(en.getDropReason());
+        }
 
         if (ms != null) {
             vo.setMicroSpecialtyTitle(ms.getTitle());

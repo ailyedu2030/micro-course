@@ -43,6 +43,11 @@ public class MicroSpecialtyVO {
     private Long creatorId;
     private String creatorName;
     private LocalDateTime createdAt;
+    private LocalDateTime featuredApplyAt;
+    private String featuredApplyReason;
+    private LocalDateTime updatedAt;
+    private Integer pendingEnrollCount;
+    private Integer courseCount;
 
     public MicroSpecialtyVO() {}
 
@@ -150,4 +155,19 @@ public class MicroSpecialtyVO {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getFeaturedApplyAt() { return featuredApplyAt; }
+    public void setFeaturedApplyAt(LocalDateTime featuredApplyAt) { this.featuredApplyAt = featuredApplyAt; }
+
+    public String getFeaturedApplyReason() { return featuredApplyReason; }
+    public void setFeaturedApplyReason(String featuredApplyReason) { this.featuredApplyReason = featuredApplyReason; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Integer getPendingEnrollCount() { return pendingEnrollCount; }
+    public void setPendingEnrollCount(Integer pendingEnrollCount) { this.pendingEnrollCount = pendingEnrollCount; }
+
+    public Integer getCourseCount() { return courseCount; }
+    public void setCourseCount(Integer courseCount) { this.courseCount = courseCount; }
 }

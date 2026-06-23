@@ -2,15 +2,19 @@ package com.microcourse.dto.microSpecialty;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
 public class MicroSpecialtyCreateRequest {
 
     @NotBlank(message = "微专业代码不能为空")
+    @Size(max = 30, message = "微专业代码最多30个字符")
     private String code;
 
     @NotBlank(message = "微专业名称不能为空")
+    @Size(max = 200, message = "微专业名称最多200个字符")
     private String title;
 
     @NotNull(message = "开课学院不能为空")
@@ -19,12 +23,15 @@ public class MicroSpecialtyCreateRequest {
     @NotNull(message = "负责人不能为空")
     private Long leadTeacherId;
 
+    @Size(max = 500, message = "副标题最多500个字符")
     private String subtitle;
+    @Size(max = 500, message = "封面URL最多500个字符")
     private String coverUrl;
     private String description;
     private String targetAudience;
     private String trainingObjective;
     private String admissionRequirement;
+    @Pattern(regexp = "^(ALL_REQUIRED|CREDITS_MIN|MIXED)$", message = "完成规则值无效")
     private String completionRule;
     private BigDecimal totalCredits;
     private Integer totalHours;
@@ -32,6 +39,7 @@ public class MicroSpecialtyCreateRequest {
     private Integer electiveCourseCount;
     private BigDecimal minCredits;
     private Integer maxStudents;
+    @Size(max = 20, message = "学期最多20个字符")
     private String semester;
 
     public MicroSpecialtyCreateRequest() {}

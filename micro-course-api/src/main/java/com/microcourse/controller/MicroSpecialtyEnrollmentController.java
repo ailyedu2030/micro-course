@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -30,10 +31,10 @@ public class MicroSpecialtyEnrollmentController {
     @PostMapping("/apply")
     @PreAuthorize("hasRole('STUDENT')")
     public R<MicroSpecialtyEnrollmentVO> apply(@RequestBody Map<String, Object> body) {
-        Long msId = body.get("msId") != null
-                ? ((Number) body.get("msId")).longValue()
+        Long microSpecialtyId = body.get("microSpecialtyId") != null
+                ? ((Number) body.get("microSpecialtyId")).longValue()
                 : null;
-        MicroSpecialtyEnrollmentVO vo = enrollmentService.apply(msId);
+        MicroSpecialtyEnrollmentVO vo = enrollmentService.apply(microSpecialtyId);
         return R.ok(vo);
     }
 
@@ -58,14 +59,32 @@ public class MicroSpecialtyEnrollmentController {
     @PostMapping("/class-import")
     @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
     public R<Integer> classImport(@RequestBody Map<String, Object> body) {
-        Long msId = body.get("msId") != null
-                ? ((Number) body.get("msId")).longValue()
+        Long microSpecialtyId = body.get("microSpecialtyId") != null
+                ? ((Number) body.get("microSpecialtyId")).longValue()
                 : null;
-        Long classId = body.get("classId") != null
-                ? ((Number) body.get("classId")).longValue()
-                : null;
-        int count = enrollmentService.classImport(msId, classId);
-        return R.ok(count);
+        // Parse classIds from request body
+        Object classIdsObj = body.get("classIds");
+        List<Long> classIds = new ArrayList<>();
+        if (classIdsObj instanceof List) {
+            for (Object id : (List<?>) classIdsObj) {
+                classIds.add(Long.valueOf(id.toString()));
+            }
+        }
+        // Support single classId as fallback
+        if (classIds.isEmpty() && body.containsKey("classId")) {
+            Object singleId = body.get("classId");
+            if (singleId instanceof Number) {
+                classIds.add(((Number) singleId).longValue());
+            } else if (singleId != null) {
+                classIds.add(Long.valueOf(singleId.toString()));
+            }
+        }
+        // Process each classId in a loop
+        int totalCount = 0;
+        for (Long classId : classIds) {
+            totalCount += enrollmentService.classImport(microSpecialtyId, classId);
+        }
+        return R.ok(totalCount);
     }
 
     /** 退出修读 */

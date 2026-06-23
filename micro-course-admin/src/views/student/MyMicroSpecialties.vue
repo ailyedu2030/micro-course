@@ -12,27 +12,13 @@
     </nav>
 
     <!-- Loading -->
-    <div v-if="loading" v-loading="loading" class="my-ms-loading">
-      <el-row :gutter="16">
-        <el-col v-for="n in 3" :key="n" :span="8">
-          <el-skeleton animated>
-            <template #template>
-              <div class="sk-stat-card">
-                <el-skeleton-item variant="text" style="width: 40%; height: 14px;" />
-                <el-skeleton-item variant="text" style="width: 60%; height: 28px; margin-top: 12px;" />
-              </div>
-            </template>
-          </el-skeleton>
-        </el-col>
-      </el-row>
-      <div style="margin-top: 24px;">
-        <el-skeleton :count="3" animated />
-      </div>
-    </div>
+    <el-skeleton v-if="loading" :rows="6" animated class="my-ms-loading" />
 
+    <!-- Content wrapper -->
+    <template v-else>
     <!-- Error -->
     <el-result
-      v-else-if="error"
+      v-if="error"
       icon="error"
       title="加载失败"
       sub-title="网络异常，请稍后重试"
@@ -135,7 +121,7 @@
                 <el-progress
                   :percentage="item.progress || 0"
                   :stroke-width="6"
-                  :show-text="false"
+                  :show-text="true"
                   class="ms-progress-bar"
                 />
                 <span class="ms-progress-text">
@@ -157,8 +143,8 @@
             <!-- Actions -->
             <div class="ms-item-actions">
               <!-- IN_PROGRESS / ENROLLED -->
-              <template v-if="['IN_PROGRESS', 'ENROLLED'].includes(item.status)">
-                <el-button size="small" type="primary" @click.stop="goDetail(item.microSpecialtyId)">
+              <template v-if="['IN_PROGRESS', 'APPROVED'].includes(item.status)">
+                <el-button size="small" type="primary" @click.stop="goContinueLearning(item)">
                   继续学习
                 </el-button>
                 <el-button
@@ -174,7 +160,7 @@
               <!-- COMPLETED -->
               <template v-else-if="item.status === 'COMPLETED'">
                 <el-button
-                  v-if="item.certificateUrl"
+                  v-if="item.certificateId"
                   size="small"
                   type="success"
                   @click.stop="viewCertificate(item)"
@@ -198,6 +184,7 @@
                 <el-button
                   size="small"
                   type="primary"
+                  :loading="reapplying === item.id"
                   @click.stop="handleReapply(item)"
                 >
                   重新申请
@@ -213,10 +200,11 @@
               </template>
 
               <!-- DROPPED / REJECTED / WITHDRAWN -->
-              <template v-else-if="['DROPPED', 'REJECTED', 'WITHDRAWN'].includes(item.status)">
+              <template v-else-if="['DROPPED', 'REJECTED'].includes(item.status)">
                 <el-button
                   size="small"
                   type="primary"
+                  :loading="reapplying === item.id"
                   @click.stop="handleReapply(item)"
                 >
                   重新申请
@@ -242,6 +230,7 @@
         </el-card>
       </div>
     </template>
+    </template>
   </div>
 </template>
 
@@ -261,11 +250,12 @@ const router = useRouter()
 const loading = ref(false)
 const error = ref(false)
 const enrollments = ref([])
+const reapplying = ref(null) // enrollment ID being reapplied, for loading state
 
 const stats = computed(() => {
   const result = { enrolled: 0, inProgress: 0, completed: 0 }
   for (const e of enrollments.value) {
-    if (['ENROLLED', 'PENDING'].includes(e.status)) result.enrolled++
+    if (['APPROVED', 'PENDING'].includes(e.status)) result.enrolled++
     if (e.status === 'IN_PROGRESS') result.inProgress++
     if (e.status === 'COMPLETED') result.completed++
   }
@@ -274,13 +264,13 @@ const stats = computed(() => {
 
 const STATUS_MAP = {
   PENDING: { label: '审核中', type: 'warning' },
-  ENROLLED: { label: '已报名', type: '' },
+  APPROVED: { label: '已报名', type: '' },
   IN_PROGRESS: { label: '进行中', type: 'primary' },
   COMPLETED: { label: '已结业', type: 'success' },
+  CERTIFIED: { label: '已认证', type: 'success' },
   FAILED: { label: '未通过', type: 'danger' },
   DROPPED: { label: '已退出', type: 'info' },
-  REJECTED: { label: '已驳回', type: 'danger' },
-  WITHDRAWN: { label: '已撤回', type: 'info' }
+  REJECTED: { label: '已驳回', type: 'danger' }
 }
 
 const getStatusLabel = (s) => STATUS_MAP[s]?.label || s || '—'
@@ -305,6 +295,11 @@ const goDetail = (id) => {
   router.push(`/student/micro-specialties/${id}`)
 }
 
+const goContinueLearning = (item) => {
+  if (!item.microSpecialtyId) return
+  router.push(`/student/micro-specialties/${item.microSpecialtyId}?tab=courses&goto=first`)
+}
+
 const handleDrop = async (item) => {
   try {
     await ElMessageBox.confirm(
@@ -324,13 +319,14 @@ const handleDrop = async (item) => {
 }
 
 const handleReapply = async (item) => {
+  reapplying.value = item.id
   try {
     await ElMessageBox.confirm(
       '确认重新申请该微专业？',
       '重新申请',
       { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
     )
-    await reapplyEnrollment(item.microSpecialtyId || item.id)
+    await reapplyEnrollment(item.id || item.microSpecialtyId)
     ElMessage.success('已重新申请')
     await fetchData()
   } catch (e) {
@@ -338,18 +334,21 @@ const handleReapply = async (item) => {
       console.error('[MyMS] 重新申请失败:', e)
       ElMessage.error(e?.response?.data?.message || '操作失败')
     }
+  } finally {
+    reapplying.value = null
   }
 }
 
 const viewCertificate = (item) => {
-  if (item.certificateUrl) {
-    window.open(item.certificateUrl, '_blank')
+  if (item.certificateId) {
+    // Open certificate download/view using certificate ID
+    window.open(`/api/certificates/${item.certificateId}/download`, '_blank')
   }
 }
 
 const handleViewFailedCourses = (item) => {
   // Navigate to detail page with failed courses tab
-  router.push(`/student/micro-specialties/${item.microSpecialtyId}?tab=courses`)
+  router.push(`/student/micro-specialties/${item.microSpecialtyId}?tab=courses&focus=failed`)
 }
 
 const contactAcademic = () => {
@@ -369,6 +368,11 @@ onMounted(() => fetchData())
   margin: 0 auto;
   padding: var(--space-4) var(--space-6) var(--space-8);
   min-height: 100dvh;
+}
+/* Phase 2: 键盘可访问性 — 按钮焦点样式 */
+.el-button:focus-visible {
+  outline: 2px solid #409eff;
+  outline-offset: 2px;
 }
 /* Breadcrumb */
 .page-breadcrumb {

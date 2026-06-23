@@ -207,21 +207,30 @@ public class CertificateServiceImpl implements CertificateService {
             throw new BusinessException(ErrorCode.MS_CERT_NOT_READY);
         }
 
-        String certCode = generateMicroSpecialtyCertCode(ms.getCode(), userId);
-
-        Certificate cert = new Certificate();
-        cert.setUserId(userId);
-        cert.setCertType("MICRO_SPECIALTY");
-        cert.setMicroSpecialtyId(microSpecialtyId);
-        cert.setCertCode(certCode);
-        cert.setIssuedAt(LocalDateTime.now());
-        try {
-            certificateRepository.insert(cert);
-        } catch (org.springframework.dao.DuplicateKeyException e) {
-            log.warn("[Certificate] 并发签发微专业证书命中唯一冲突,降级查询 userId={} microSpecialtyId={}", userId, microSpecialtyId);
-            Certificate retry = certificateRepository.selectOne(existingWrapper);
-            if (retry != null) return convertMicroSpecialtyToVO(retry);
-            throw e;
+        // Retry loop for cert code generation (max 3 attempts)
+        String certCode = null;
+        Certificate cert = null;
+        for (int i = 0; i < 3; i++) {
+            certCode = generateMicroSpecialtyCertCode(ms.getCode(), userId);
+            cert = new Certificate();
+            cert.setUserId(userId);
+            cert.setCertType("MICRO_SPECIALTY");
+            cert.setMicroSpecialtyId(microSpecialtyId);
+            cert.setCertCode(certCode);
+            cert.setIssuedAt(LocalDateTime.now());
+            try {
+                certificateRepository.insert(cert);
+                break; // success
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                if (i == 2) {
+                    // last attempt failed, fallback to existing record
+                    log.warn("[Certificate] 并发签发微专业证书命中唯一冲突,降级查询 userId={} microSpecialtyId={}", userId, microSpecialtyId);
+                    Certificate retry = certificateRepository.selectOne(existingWrapper);
+                    if (retry != null) return convertMicroSpecialtyToVO(retry);
+                    throw e;
+                }
+                // continue to regenerate certCode
+            }
         }
 
         // 回写 enrollment.certificate_id
@@ -246,7 +255,8 @@ public class CertificateServiceImpl implements CertificateService {
     public boolean hasCertificate(Long userId, Long courseId) {
         LambdaQueryWrapper<Certificate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Certificate::getUserId, userId)
-                .eq(Certificate::getCourseId, courseId);
+                .eq(Certificate::getCourseId, courseId)
+                .eq(Certificate::getCertType, "COURSE");
         return certificateRepository.selectCount(wrapper) > 0;
     }
 
@@ -259,6 +269,16 @@ public class CertificateServiceImpl implements CertificateService {
         Certificate cert = certificateRepository.selectById(certificateId);
         if (cert == null) {
             throw new BusinessException(ErrorCode.CERTIFICATE_NOT_FOUND);
+        }
+
+        if ("MICRO_SPECIALTY".equals(cert.getCertType())) {
+            // handle micro-specialty certificate - get micro specialty info
+            MicroSpecialty ms = null;
+            if (cert.getMicroSpecialtyId() != null) {
+                ms = microSpecialtyRepository.selectById(cert.getMicroSpecialtyId());
+                if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+            }
+            return generateMicroSpecialtyPdf(cert, ms);
         }
 
         Course courseEntity = courseRepository.selectById(cert.getCourseId());
@@ -315,6 +335,89 @@ public class CertificateServiceImpl implements CertificateService {
             Paragraph coursePara = new Paragraph(courseName, courseFont);
             coursePara.setAlignment(Element.ALIGN_CENTER);
             doc.add(coursePara);
+
+            doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            String issuedDate = cert.getIssuedAt() != null
+                    ? cert.getIssuedAt().format(formatter) : LocalDateTime.now().format(formatter);
+            Paragraph date = new Paragraph("Issued on: " + issuedDate, bodyFont);
+            date.setAlignment(Element.ALIGN_CENTER);
+            doc.add(date);
+
+            doc.add(new Paragraph(" "));
+
+            Paragraph code = new Paragraph("Certificate No: " + cert.getCertCode(), certCodeFont);
+            code.setAlignment(Element.ALIGN_CENTER);
+            doc.add(code);
+        } finally {
+            doc.close();
+        }
+        return out.toByteArray();
+    }
+
+    private byte[] generateMicroSpecialtyPdf(Certificate cert, MicroSpecialty ms) {
+        User user = userRepository.selectById(cert.getUserId());
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document doc = new Document(PageSize.A4.rotate(), 60, 60, 60, 60);
+        PdfWriter.getInstance(doc, out);
+        try {
+            doc.open();
+
+            Font titleFont = new Font(Font.HELVETICA, 28, Font.BOLD, new Color(51, 102, 153));
+            Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, Color.DARK_GRAY);
+            Font nameFont = new Font(Font.HELVETICA, 22, Font.BOLD, new Color(0, 0, 0));
+            Font bodyFont = new Font(Font.HELVETICA, 14, Font.NORMAL, Color.BLACK);
+            Font certCodeFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.GRAY);
+
+            Paragraph title = new Paragraph("微课平台微专业结业证书", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            doc.add(title);
+
+            doc.add(new Paragraph(" "));
+
+            Paragraph subtitle = new Paragraph("Micro-Specialty Certificate of Completion", subtitleFont);
+            subtitle.setAlignment(Element.ALIGN_CENTER);
+            doc.add(subtitle);
+
+            doc.add(new Paragraph(" "));
+            doc.add(new Paragraph(" "));
+
+            Paragraph certify = new Paragraph("This is to certify that", bodyFont);
+            certify.setAlignment(Element.ALIGN_CENTER);
+            doc.add(certify);
+
+            doc.add(new Paragraph(" "));
+
+            String studentName = user != null && user.getRealName() != null
+                    ? user.getRealName() : "Student";
+            Paragraph name = new Paragraph(studentName, nameFont);
+            name.setAlignment(Element.ALIGN_CENTER);
+            doc.add(name);
+
+            doc.add(new Paragraph(" "));
+
+            Paragraph completed = new Paragraph("has successfully completed the Micro-Specialty", bodyFont);
+            completed.setAlignment(Element.ALIGN_CENTER);
+            doc.add(completed);
+
+            doc.add(new Paragraph(" "));
+
+            String msName = ms != null && ms.getTitle() != null
+                    ? ms.getTitle() : "Unknown Micro-Specialty";
+            Font msFont = new Font(Font.HELVETICA, 18, Font.BOLD, new Color(0, 102, 51));
+            Paragraph msPara = new Paragraph(msName, msFont);
+            msPara.setAlignment(Element.ALIGN_CENTER);
+            doc.add(msPara);
+
+            if (ms != null && ms.getTotalCredits() != null) {
+                doc.add(new Paragraph(" "));
+                Paragraph credits = new Paragraph("Total Credits: " + ms.getTotalCredits().toString(), bodyFont);
+                credits.setAlignment(Element.ALIGN_CENTER);
+                doc.add(credits);
+            }
 
             doc.add(new Paragraph(" "));
             doc.add(new Paragraph(" "));

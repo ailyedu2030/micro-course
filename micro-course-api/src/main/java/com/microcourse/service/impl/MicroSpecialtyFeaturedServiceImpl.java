@@ -2,12 +2,14 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.microcourse.entity.*;
-import com.microcourse.enums.*;
+import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.*;
-import com.microcourse.service.*;
+import com.microcourse.repository.MicroSpecialtyRepository;
+import com.microcourse.service.MicroSpecialtyFeaturedService;
+import com.microcourse.service.MicroSpecialtyService;
+import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,18 +25,31 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
 
     private final MicroSpecialtyRepository msRepository;
     private final NotificationService notificationService;
+    private final MicroSpecialtyService msService;
 
     public MicroSpecialtyFeaturedServiceImpl(MicroSpecialtyRepository msRepository,
-                                             NotificationService notificationService) {
+                                              NotificationService notificationService,
+                                              MicroSpecialtyService msService) {
         this.msRepository = msRepository;
         this.notificationService = notificationService;
+        this.msService = msService;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void applyFeatured(Long msId, String reason) {
+        // 检查当前用户是否为微专业负责人
+        if (!msService.isLeadOf(msId, SecurityUtil.getCurrentUserId()) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可执行此操作");
+        }
+
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+
+        // 终态检查
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
 
         if (!"RECRUITING".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅招生中状态可申请置顶");
@@ -46,7 +61,7 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         }
 
         int oldVersion = ms.getVersion();
-        msRepository.update(null,
+        int affected = msRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
                         .eq(MicroSpecialty::getVersion, oldVersion)
@@ -55,6 +70,9 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
                         .set(MicroSpecialty::getFeaturedApplyReason, reason)
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
     }
 
     @Override
@@ -63,12 +81,17 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        // 终态检查
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+
         if (!"PENDING".equals(ms.getFeaturedStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可审批置顶");
         }
 
         int oldVersion = ms.getVersion();
-        msRepository.update(null,
+        int affected = msRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
                         .eq(MicroSpecialty::getVersion, oldVersion)
@@ -79,6 +102,9 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
                         .set(MicroSpecialty::getFeaturedApprovedAt, LocalDateTime.now())
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
 
         if (ms.getLeadTeacherId() != null) {
             notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_FEATURED_APPROVED,
@@ -92,12 +118,17 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        // 终态检查
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+
         if (!"PENDING".equals(ms.getFeaturedStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可驳回置顶");
         }
 
         int oldVersion = ms.getVersion();
-        msRepository.update(null,
+        int affected = msRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
                         .eq(MicroSpecialty::getVersion, oldVersion)
@@ -105,6 +136,9 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
                         .set(MicroSpecialty::getFeaturedStatus, "REJECTED")
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
 
         if (ms.getLeadTeacherId() != null) {
             notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_FEATURED_REJECTED,
@@ -118,12 +152,17 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        // 终态检查
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+
         if (!"APPROVED".equals(ms.getFeaturedStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已通过状态可取消置顶");
         }
 
         int oldVersion = ms.getVersion();
-        msRepository.update(null,
+        int affected = msRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
                         .eq(MicroSpecialty::getVersion, oldVersion)
@@ -132,6 +171,9 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
                         .set(MicroSpecialty::getIsFeatured, false)
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
     }
 
     @Override
@@ -140,6 +182,11 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        // 终态检查
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+
         // 全校金标数量 < 2（§9 铁律）
         long currentGold = msRepository.selectCount(
                 new LambdaQueryWrapper<MicroSpecialty>()
@@ -147,7 +194,7 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         if (currentGold >= 2) throw new BusinessException(ErrorCode.MS_GOLD_LIMIT);
 
         int oldVersion = ms.getVersion();
-        msRepository.update(null,
+        int affected = msRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
                         .eq(MicroSpecialty::getVersion, oldVersion)
@@ -156,6 +203,9 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
                         .set(MicroSpecialty::getGoldFeaturedAt, LocalDateTime.now())
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
     }
 
     @Override
@@ -164,8 +214,13 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        // 终态检查
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+
         int oldVersion = ms.getVersion();
-        msRepository.update(null,
+        int affected = msRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
                         .eq(MicroSpecialty::getVersion, oldVersion)
@@ -174,5 +229,8 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
                         .set(MicroSpecialty::getGoldFeaturedAt, null)
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
     }
 }

@@ -198,24 +198,27 @@ public class MicroSpecialtyQualityScoreServiceImpl implements MicroSpecialtyQual
 
             // completionRate / avgRating
             List<Long> courseIds = msCourseMap.getOrDefault(msId, Collections.emptyList());
-            BigDecimal completionRate = BigDecimal.ZERO;
+
+            // Global ratio: SUM(completed) / MAX(SUM(total), 1)
+            long totalCompleted = 0;
+            long totalInProgressOrCompleted = 0;
+            for (Long courseId : courseIds) {
+                totalCompleted += completedMap.getOrDefault(courseId, 0L);
+                totalInProgressOrCompleted += inProgressOrCompletedMap.getOrDefault(courseId, 0L);
+            }
+            BigDecimal completionRate = totalInProgressOrCompleted > 0
+                    ? BigDecimal.valueOf((double) totalCompleted / totalInProgressOrCompleted)
+                            .setScale(4, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+
             BigDecimal avgRatingSum = BigDecimal.ZERO;
             int ratingCount = 0;
             for (Long courseId : courseIds) {
-                long completed = completedMap.getOrDefault(courseId, 0L);
-                long inProgressOrCompleted = inProgressOrCompletedMap.getOrDefault(courseId, 0L);
-                if (inProgressOrCompleted > 0) {
-                    completionRate = completionRate.add(
-                            BigDecimal.valueOf(completed).divide(BigDecimal.valueOf(inProgressOrCompleted), 4, RoundingMode.HALF_UP));
-                }
                 BigDecimal rating = ratingMap.get(courseId);
                 if (rating != null && rating.compareTo(BigDecimal.ZERO) > 0) {
                     avgRatingSum = avgRatingSum.add(rating);
                     ratingCount++;
                 }
-            }
-            if (!courseIds.isEmpty()) {
-                completionRate = completionRate.divide(BigDecimal.valueOf(courseIds.size()), 4, RoundingMode.HALF_UP);
             }
             BigDecimal avgRating = ratingCount > 0
                     ? avgRatingSum.divide(BigDecimal.valueOf(ratingCount), 4, RoundingMode.HALF_UP)

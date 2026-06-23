@@ -1,17 +1,20 @@
 package com.microcourse.scheduled;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.microcourse.entity.*;
-import com.microcourse.enums.*;
-import com.microcourse.repository.*;
-import com.microcourse.service.*;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.entity.MicroSpecialtyEnrollment;
+import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
+import com.microcourse.repository.MicroSpecialtyRepository;
+import com.microcourse.service.MicroSpecialtyEnrollmentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 微专业进度聚合定时任务。
@@ -26,19 +29,25 @@ public class MicroSpecialtyProgressAggregator {
 
     private final MicroSpecialtyEnrollmentRepository enrollmentRepository;
     private final MicroSpecialtyEnrollmentService enrollmentService;
+    private final MicroSpecialtyRepository msRepository;
 
     public MicroSpecialtyProgressAggregator(MicroSpecialtyEnrollmentRepository enrollmentRepository,
-                                            MicroSpecialtyEnrollmentService enrollmentService) {
+                                            MicroSpecialtyEnrollmentService enrollmentService,
+                                            MicroSpecialtyRepository msRepository) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentService = enrollmentService;
+        this.msRepository = msRepository;
     }
 
     /**
      * 每日凌晨 2:00 聚合所有进行中的修读记录进度。
      * 分批处理，乐观锁保护，进度数据写入 enrollment 表。
+     *
+     * <p>注意：本方法故意不加 @Transactional。
+     * 每个 enrollment 通过 enrollmentService.aggregateProgress() 独立事务处理，
+     * 避免大批量处理导致事务过大，以及死锁风险。
      */
     @Scheduled(cron = "0 0 2 * * ?")
-    @Transactional(rollbackFor = Exception.class)
     public void aggregateAll() {
         log.info("[MS-Progress] 开始聚合微专业进度");
 
@@ -46,6 +55,7 @@ public class MicroSpecialtyProgressAggregator {
         int totalProcessed = 0;
         int completed = 0;
         int failed = 0;
+        Set<Long> affectedMsIds = new HashSet<>();
 
         while (true) {
             // 分批查 IN_PROGRESS 和 APPROVED enrollment
@@ -59,18 +69,22 @@ public class MicroSpecialtyProgressAggregator {
 
             for (MicroSpecialtyEnrollment en : batch) {
                 try {
-                    // 首次处理 APPROVED → 自动转为 IN_PROGRESS
+                    // 首次处理 APPROVED → 自动转为 IN_PROGRESS（version 乐观锁）
                     if ("APPROVED".equals(en.getStatus())) {
                         enrollmentRepository.update(null,
                                 new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                                         .eq(MicroSpecialtyEnrollment::getId, en.getId())
                                         .eq(MicroSpecialtyEnrollment::getStatus, "APPROVED")
+                                        .eq(MicroSpecialtyEnrollment::getVersion, en.getVersion())
                                         .set(MicroSpecialtyEnrollment::getStatus, "IN_PROGRESS")
                                         .setSql("version = version + 1"));
                     }
 
                     enrollmentService.aggregateProgress(en.getId());
                     totalProcessed++;
+                    if (en.getMicroSpecialtyId() != null) {
+                        affectedMsIds.add(en.getMicroSpecialtyId());
+                    }
 
                     // 检查是否刚完成
                     MicroSpecialtyEnrollment updated = enrollmentRepository.selectById(en.getId());
@@ -78,11 +92,6 @@ public class MicroSpecialtyProgressAggregator {
                         if ("COMPLETED".equals(updated.getStatus())) completed++;
                         if ("FAILED".equals(updated.getStatus())) {
                             failed++;
-                            // 通知学生
-                            MicroSpecialty ms = null;
-                            if (updated.getMicroSpecialtyId() != null) {
-                                ms = new MicroSpecialty(); // just placeholder
-                            }
                             // notification handled by aggregateProgress internally
                         }
                     }
@@ -93,6 +102,22 @@ public class MicroSpecialtyProgressAggregator {
 
             offset += BATCH_SIZE;
             if (batch.size() < BATCH_SIZE) break;
+        }
+
+        // Recalculate student_count for all affected micro specialties
+        for (Long msId : affectedMsIds) {
+            try {
+                Long count = enrollmentRepository.selectCount(
+                        new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                                .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
+                                .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
+                LambdaUpdateWrapper<MicroSpecialty> uw = new LambdaUpdateWrapper<MicroSpecialty>()
+                        .eq(MicroSpecialty::getId, msId)
+                        .set(MicroSpecialty::getStudentCount, count.intValue());
+                msRepository.update(null, uw);
+            } catch (Exception e) {
+                log.warn("[MS-Progress] student_count recalibration failed msId={}: {}", msId, e.getMessage());
+            }
         }
 
         log.info("[MS-Progress] 聚合完成: total={}, completed={}, failed={}", totalProcessed, completed, failed);

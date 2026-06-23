@@ -32,6 +32,7 @@ public class MicroSpecialtyEnrollmentVO {
     private LocalDateTime completedAt;
     private LocalDateTime droppedAt;
     private String dropReason;
+    private String failReason;
 
     public MicroSpecialtyEnrollmentVO() {}
 
@@ -106,4 +107,15 @@ public class MicroSpecialtyEnrollmentVO {
 
     public String getDropReason() { return dropReason; }
     public void setDropReason(String dropReason) { this.dropReason = dropReason; }
+
+    public String getFailReason() { return failReason; }
+    public void setFailReason(String failReason) { this.failReason = failReason; }
+
+    /** Transient: compute certificate download URL from certificateId. */
+    public String getCertificateUrl() {
+        if (certificateId != null) {
+            return "/api/certificates/" + certificateId + "/download";
+        }
+        return null;
+    }
 }
