@@ -119,12 +119,25 @@ plugin:
       page-image-width: 1920
       thumbnail-width: 320
     deepseek:
-      api-key: ${DEEPSEEK_API_KEY}
-      model: deepseek-chat
-      base-url: https://api.deepseek.com
+      # LLM 配置（OpenAI 兼容 API）
+      # 默认用 DeepSeek 云端，可改用本地 Ollama：
+      #   api-key: ollama
+      #   model: qwen2.5:7b
+      #   base-url: http://localhost:11434/v1
+      api-key: ${LLM_API_KEY:${DEEPSEEK_API_KEY}}
+      model: ${LLM_MODEL:deepseek-chat}
+      base-url: ${LLM_BASE_URL:https://api.deepseek.com}
     minimax:
       tts-model: speech-2.8-hd
-      tts-voice: Chinese_female_narrator
+      # Qwen3-TTS 0.6B CustomVoice 预定义声音 ID：
+      #   女声: vivian（年轻甜美）, serena（成熟温暖）
+      #   男声: dylan（青年清朗）, ryan（成熟沉稳）, eric（活泼）, aiden（阳光）, uncle_fu（中文地道）
+      #   其他: ono_anna（日语）, sohee（韩语）
+      tts-voice: ${TTS_VOICE:vivian}
+    # TTS 本地服务配置（Qwen3-TTS 0.6B CustomVoice）
+    tts:
+      local-url: ${TTS_LOCAL_URL:http://127.0.0.1:8000}
+      timeout-seconds: ${TTS_TIMEOUT_SECONDS:300}
 
 # J9-01: 支付模式配置 — mock 模式（默认）dev 可用，生产部署时设为 real
 payment:

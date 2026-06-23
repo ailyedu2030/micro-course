@@ -136,7 +136,7 @@ import {
   School, User, Notebook, VideoCamera, Film, FolderOpened, List, VideoPlay,
   Tickets, Document, Edit, UserFilled, DataAnalysis, Finished, ChatLineSquare,
   Star, Setting, Odometer, Clock, Tools, SwitchButton, Sunny, Moon,
-  TrendCharts, PictureFilled, Menu
+  TrendCharts, PictureFilled, Menu, Medal
 } from '@element-plus/icons-vue'
 import { menuConfig } from '@/config/menuConfig'
 import { ElMessageBox } from 'element-plus'
@@ -151,7 +151,7 @@ const iconMap = {
   Grid, OfficeBuilding, Reading, School, User, Notebook, VideoCamera, Film,
   FolderOpened, List, VideoPlay, Tickets, Document, Edit, UserFilled,
   DataAnalysis, Finished, ChatLineSquare, Star, Setting, Odometer, Clock,
-  Tools, Bell, TrendCharts, PictureFilled, Microphone, Menu
+  Tools, Bell,   TrendCharts, PictureFilled, Microphone, Menu, Medal
 }
 
 // 当前角色菜单（从配置中读取）

@@ -68,6 +68,19 @@ const ADMIN = [
     ],
   },
   {
+    group: '微专业管理',
+    icon: 'Medal',
+    children: [
+      { label: '微专业列表', path: '/teacher/micro-specialties', icon: 'Grid' },
+      { label: '微专业审核', path: '/academic/micro-specialties/review', icon: 'Edit' },
+      { label: '申报审批', path: '/academic/micro-specialties/proposals', icon: 'Document' },
+      { label: '金标审核', path: '/academic/micro-specialties/featured', icon: 'Star' },
+      { label: '跨学院审核', path: '/academic/micro-specialties/cross-dept', icon: 'School' },
+      { label: '金标管理', path: '/academic/micro-specialties/gold', icon: 'DataAnalysis' },
+      { label: '班级导入', path: '/academic/micro-specialties/class-import', icon: 'UserFilled' },
+    ],
+  },
+  {
     group: '系统管理',
     icon: 'Setting',
     children: [
@@ -114,6 +127,18 @@ const ACADEMIC = [
       { label: '成绩汇总', path: '/teacher/grades', icon: 'Finished' },
       { label: '评价管理', path: '/reviews', icon: 'ChatLineSquare' },
       { label: '讨论管理', path: '/discussions', icon: 'ChatLineSquare' },
+    ],
+  },
+  {
+    group: '微专业管理',
+    icon: 'Medal',
+    children: [
+      { label: '微专业审核', path: '/academic/micro-specialties/review', icon: 'Edit' },
+      { label: '申报审批', path: '/academic/micro-specialties/proposals', icon: 'Document' },
+      { label: '金标审核', path: '/academic/micro-specialties/featured', icon: 'Star' },
+      { label: '跨学院审核', path: '/academic/micro-specialties/cross-dept', icon: 'School' },
+      { label: '金标管理', path: '/academic/micro-specialties/gold', icon: 'DataAnalysis' },
+      { label: '班级导入', path: '/academic/micro-specialties/class-import', icon: 'UserFilled' },
     ],
   },
   {
@@ -173,6 +198,16 @@ const TEACHER = [
     children: [
       { label: '题库管理', path: '/teacher/questions', icon: 'Document' },
       { label: '练习管理', path: '/teacher/exercises', icon: 'Edit' },
+    ],
+  },
+  {
+    group: '微专业管理',
+    icon: 'Medal',
+    children: [
+      { label: '我的微专业', path: '/teacher/micro-specialties', icon: 'Grid' },
+      { label: '微专业申报', path: '/teacher/micro-specialties/proposals', icon: 'Edit' },
+      { label: '我的申报', path: '/teacher/micro-specialties/my-proposals', icon: 'Document' },
+      { label: '邀请列表', path: '/teacher/micro-specialties/invites', icon: 'UserFilled' },
     ],
   },
 ]

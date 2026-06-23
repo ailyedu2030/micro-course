@@ -1,0 +1,56 @@
+{
+  "ticket_id": "M1-04",
+  "round": 1,
+  "module": "M1",
+  "title": "学生申请修读",
+  "agent_role": "auditor",
+  "context": {
+    "spec_section": "phase14 spec §1.2-1.5 (工单 M1-04)",
+    "spec_doc": "docs/开发规划/phase14-audit-fix-spec.md",
+    "audit_spec": "docs/开发规划/phase14-audit-fix-spec.md",
+    "related_files": [
+      "micro-course-api/src/main/java/com/microcourse/controller/MicroSpecialtyEnrollmentController.java",
+      "micro-course-api/src/main/java/com/microcourse/service/impl/MicroSpecialtyEnrollmentServiceImpl.java",
+      "micro-course-admin/src/views/student/MicroSpecialtyDetail.vue"
+    ]
+  },
+  "allowed_files": [],
+  "forbidden_files": [
+    "**/test/**",
+    "docs/**",
+    "package.json",
+    "package-lock.json",
+    "pom.xml",
+    "**/*.md",
+    "**/entity/**",
+    "**/mapper/**",
+    "**/config/**",
+    "**/migration/**"
+  ],
+  "deliverables": [
+    "JSON 报告（按 spec §4.1 schema）"
+  ],
+  "acceptance": {
+    "must_pass": [
+      "POST /apply 端点 isAuthenticated()",
+      "重复申请（PENDING/APPROVED/IN_PROGRESS）→ 400 + 友好错误",
+      "已 CANCELLED 微专业申请 → 403 + 友好错误",
+      "成功后通知 LEAD",
+      "前端按钮 loading 态 + 成功 toast + 跳转到我的微专业",
+      "Service 层事务正确（@Transactional + rollbackFor）",
+      "并发幂等（防重复创建）"
+    ],
+    "edge_cases": []
+  },
+  "steps": [
+    "step 1: 读 phase14 spec 中 M1-04 对应章节",
+    "step 2: 读后端相关文件（如有）",
+    "step 3: 读前端相关文件（如有）",
+    "step 4: 列出 P0/P1/P2/P3 问题"
+  ],
+  "budget": {
+    "max_files_to_read": 8,
+    "max_tokens_estimate": 30000,
+    "max_runtime_minutes": 8
+  }
+}

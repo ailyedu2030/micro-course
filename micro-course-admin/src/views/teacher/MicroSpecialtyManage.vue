@@ -20,6 +20,14 @@
       <el-empty v-else-if="!loading && !detail" description="微专业不存在" />
 
       <div v-if="detail" class="manage-body">
+        <div class="nav-bar mg-bottom-16">
+          <el-button type="primary" @click="$router.push(`/teacher/micro-specialties/${detail.id}/courses`)">
+            课程编排
+          </el-button>
+          <el-button @click="$router.push(`/teacher/micro-specialties/${detail.id}/team`)">
+            团队管理
+          </el-button>
+        </div>
         <el-card shadow="never" class="mg-bottom-16">
           <template #header><span>基本信息</span></template>
           <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" class="info-form">
@@ -195,4 +203,5 @@ onMounted(fetchDetail)
 .manage-body { min-height: 300px; }
 .info-form { max-width: 100%; }
 .action-bar { display: flex; gap: var(--space-2); justify-content: flex-end; padding-top: var(--space-4); border-top: 1px solid var(--el-border-color-lighter); }
+.nav-bar { display: flex; gap: var(--space-2); }
 </style>
