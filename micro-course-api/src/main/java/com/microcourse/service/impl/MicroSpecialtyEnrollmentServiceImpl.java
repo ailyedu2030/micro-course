@@ -917,7 +917,11 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                 notificationService.notifyAsync(en.getUserId(), NotificationType.MS_COMPLETED,
                         "微专业已结业", "恭喜！您已完成微专业《" + ms.getTitle() + "》的全部要求", en.getMicroSpecialtyId());
                 // 自动颁发证书
-                issueCertificate(enrollmentId);
+                try {
+                    issueCertificate(enrollmentId);
+                } catch (Exception e) {
+                    log.error("颁发证书失败: enrollmentId={}", enrollmentId, e);
+                }
             }
         } else {
             // P0-5: 检查是否可以判定为 FAILED（§9.2.e 步）

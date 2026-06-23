@@ -158,7 +158,7 @@
               </template>
 
               <!-- COMPLETED -->
-              <template v-else-if="item.status === 'COMPLETED'">
+              <template v-else-if="item.status === 'CERTIFIED'">
                 <el-button
                   v-if="item.certificateId"
                   size="small"
