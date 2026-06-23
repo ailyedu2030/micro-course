@@ -122,12 +122,18 @@ public class DepartmentServiceImpl implements DepartmentService {
         if (department == null) {
             throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
         }
-        long count = majorRepository.selectCount(
-                new LambdaQueryWrapper<Major>()
-                        .eq(Major::getDepartmentId, id)
-        );
-        if (count > 0) {
+        // 检查 FK 引用：majors / classes / users
+        long majorCount = majorRepository.selectCount(
+                new LambdaQueryWrapper<Major>().eq(Major::getDepartmentId, id));
+        if (majorCount > 0) {
             throw new BusinessException(ErrorCode.DEPARTMENT_HAS_MAJORS);
+        }
+        // 直接 FK 引用：users.department_id
+        long userCount = userRepository.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getDepartmentId, id));
+        if (userCount > 0) {
+            throw new BusinessException(ErrorCode.DEPARTMENT_HAS_MAJORS,
+                    "院系下存在用户，无法删除。请先转移或删除用户");
         }
         departmentRepository.deleteById(id);
     }

@@ -206,8 +206,8 @@ const handleDelete = async (row) => {
     const code = error.response?.data?.code
     if (code === 2002) {
       ElMessage.error('该院系下存在专业，无法删除')
-    } else if (code === 409) {
-      ElMessage.error('该院系下存在关联数据，无法删除')
+    } else if (error.response?.status === 400) {
+      ElMessage.error(error.response?.data?.message || '该院系下存在关联数据，无法删除')
     } else {
       ElMessage.error('删除失败')
     }
