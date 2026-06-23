@@ -13,6 +13,7 @@ import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyCourse;
 import com.microcourse.entity.MicroSpecialtyEnrollment;
 import com.microcourse.entity.User;
+import com.microcourse.entity.Department;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
@@ -26,6 +27,7 @@ import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
 import com.microcourse.repository.MicroSpecialtyTeacherRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.service.CertificateService;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.MicroSpecialtyEnrollmentService;
@@ -63,6 +65,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     private final MicroSpecialtyService msService;
     private final CertificateService certificateService;
     private final ClassesRepository classRepository;
+    private final DepartmentRepository departmentRepository;
 
     public MicroSpecialtyEnrollmentServiceImpl(MicroSpecialtyEnrollmentRepository enrollmentRepository,
                                                MicroSpecialtyRepository msRepository,
@@ -75,7 +78,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                                                EnrollmentService enrollmentService,
                                                @Lazy MicroSpecialtyService msService,
                                                CertificateService certificateService,
-                                               ClassesRepository classRepository) {
+                                               ClassesRepository classRepository,
+                                               DepartmentRepository departmentRepository) {
         this.enrollmentRepository = enrollmentRepository;
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
@@ -88,6 +92,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         this.msService = msService;
         this.certificateService = certificateService;
         this.classRepository = classRepository;
+        this.departmentRepository = departmentRepository;
     }
 
     @Override
@@ -985,6 +990,13 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         if (ms != null) {
             vo.setMicroSpecialtyTitle(ms.getTitle());
             vo.setCoverUrl(ms.getCoverUrl());
+            // Look up department name for the offering department
+            if (ms.getOfferDepartmentId() != null) {
+                Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());
+                if (dept != null) {
+                    vo.setDepartmentName(dept.getName());
+                }
+            }
         }
         if (en.getUserId() != null) {
             User user = userRepository.selectById(en.getUserId());
