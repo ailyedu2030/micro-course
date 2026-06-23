@@ -402,7 +402,8 @@ const reapplyLoading = ref(false)
 const isLoggedIn = computed(() => !!userStore.token)
 
 const canEnroll = computed(() => {
-  if (!ms.value) return false
+  if (!ms.value || !isLoggedIn.value) return false
+  if (enrollmentStatus.value) return false // 已有报名记录
   return ms.value.status === 'RECRUITING'
 })
 
@@ -415,7 +416,8 @@ const statusLabel = computed(() => {
     REJECTED: '已驳回',
     ARCHIVED: '已归档',
     RECRUITING: '招生中',
-    COMPLETED: '已结业'
+    COMPLETED: '已结业',
+    CANCELLED: '已取消'
   }
   return map[ms.value.status] || ms.value.status || '—'
 })
@@ -439,12 +441,11 @@ const fetchDetail = async () => {
   loading.value = true
   error.value = false
   try {
-    const [detailRes, statsRes] = await Promise.all([
-      getMicroSpecialtyDetail(msId.value),
-      getStats(msId.value).catch(() => ({ data: null }))
-    ])
+    const detailRes = await getMicroSpecialtyDetail(msId.value)
     ms.value = detailRes.data
-    stats.value = statsRes.data
+    if (isLoggedIn.value) {
+      getStats(msId.value).then(r => { stats.value = r.data }).catch(() => {})
+    }
   } catch (e) {
     console.error('[MSDetail] 加载详情失败:', e)
     error.value = true
