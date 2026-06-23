@@ -54,9 +54,13 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         LambdaQueryWrapper<MicroSpecialtyTeacher> wrapper = new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                 .eq(MicroSpecialtyTeacher::getTeacherId, userId);
         if (status != null && !status.isEmpty()) {
-            wrapper.eq(MicroSpecialtyTeacher::getInviteStatus, status);
+            if ("PENDING".equals(status)) {
+                wrapper.in(MicroSpecialtyTeacher::getInviteStatus, "INVITED", "PENDING_ACADEMIC");
+            } else {
+                wrapper.eq(MicroSpecialtyTeacher::getInviteStatus, status);
+            }
         } else {
-            wrapper.eq(MicroSpecialtyTeacher::getInviteStatus, "INVITED");
+            wrapper.in(MicroSpecialtyTeacher::getInviteStatus, "INVITED", "PENDING_ACADEMIC");
         }
         wrapper.orderByDesc(MicroSpecialtyTeacher::getInvitedAt);
         IPage<MicroSpecialtyTeacher> ipage = teacherRepository.selectPage(
@@ -249,6 +253,13 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "非跨学院待审状态");
         }
 
+        MicroSpecialty ms = msRepository.selectById(record.getMicroSpecialtyId());
+
+        // 终态检查 (先于 DB 更新)
+        if (ms != null && ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus()))) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+
         String newStatus = approve ? "ACTIVE" : "REJECTED";
         int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
         int affected = teacherRepository.update(null,
@@ -261,13 +272,6 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                         .setSql("version = version + 1"));
         if (affected == 0) {
             throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
-        }
-
-        MicroSpecialty ms = msRepository.selectById(record.getMicroSpecialtyId());
-
-        // 终态检查
-        if (ms != null && ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus()))) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
 
         // 如果是 LEAD 且批准，更新 lead_teacher_id

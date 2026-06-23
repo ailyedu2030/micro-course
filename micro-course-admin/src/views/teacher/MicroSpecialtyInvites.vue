@@ -43,10 +43,13 @@
             <el-button size="small" type="primary" @click="handleAccept(inv)">接受</el-button>
             <el-button size="small" @click="handleDecline(inv)">拒绝</el-button>
           </div>
-          <div v-else class="invite-result">
+          <div v-else class="invite-result" style="display:flex;align-items:center;gap:8px;">
             <el-tag v-if="inv.status === 'ACTIVE'" type="success" size="small">已接受</el-tag>
             <el-tag v-else-if="inv.status === 'DECLINED'" type="danger" size="small">已拒绝</el-tag>
+            <el-tag v-else-if="inv.status === 'REMOVED'" type="warning" size="small">已移除</el-tag>
+            <el-tag v-else-if="inv.status === 'PENDING_ACADEMIC'" type="warning" size="small">跨学院审批中</el-tag>
             <el-tag v-else type="info" size="small">已过期</el-tag>
+            <el-button v-if="inv.status === 'ACTIVE'" size="small" type="danger" plain @click="handleLeave(inv)">退出团队</el-button>
           </div>
         </div>
       </div>
@@ -57,7 +60,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPendingInvites, acceptInvite, declineInvite } from '@/api/microSpecialty'
+import { getPendingInvites, acceptInvite, declineInvite, leaveTeam } from '@/api/microSpecialty'
 
 const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
 
@@ -70,7 +73,7 @@ const fetchData = async (tab) => {
   error.value = false
   loading.value = true
   try {
-    const { data } = await getPendingInvites({ status: tab === 'archived' ? 'ALL' : 'INVITED' })
+    const { data } = await getPendingInvites({ status: tab === 'archived' ? 'ALL' : 'PENDING' })
     let list = data.items || data || []
     const now = Date.now()
     list = list.map(i => {
@@ -80,8 +83,8 @@ const fetchData = async (tab) => {
       const remHours = Math.floor((remMs % 86400000) / 3600000)
       return { ...i, expiring: remMs > 0 && remMs < 3 * 86400000, deadlineText: dl ? (remMs > 0 ? `剩余${remDays} 天 ${remHours} 小时` : '已过期') : '' }
     })
-    if (tab === 'pending') list = list.filter(i => i.status === 'INVITED')
-    else list = list.filter(i => i.status !== 'INVITED')
+    if (tab === 'pending') list = list.filter(i => i.status === 'INVITED' || i.status === 'PENDING_ACADEMIC')
+    else list = list.filter(i => i.status !== 'INVITED' && i.status !== 'PENDING_ACADEMIC')
     items.value = list
   } catch { error.value = true }
   finally { loading.value = false }
@@ -98,6 +101,13 @@ const handleDecline = async (inv) => {
   try { await ElMessageBox.confirm('确定拒绝该邀请？', '提示', { type: 'warning' }) }
   catch { return }
   try { await declineInvite(inv.id); ElMessage.success('已拒绝'); fetchData(activeTab.value) }
+  catch { ElMessage.error('操作失败') }
+}
+
+const handleLeave = async (inv) => {
+  try { await ElMessageBox.confirm('确定退出该微专业团队？', '提示', { type: 'warning' }) }
+  catch { return }
+  try { await leaveTeam(inv.id); ElMessage.success('已退出'); fetchData(activeTab.value) }
   catch { ElMessage.error('操作失败') }
 }
 
