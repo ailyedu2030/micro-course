@@ -315,11 +315,11 @@ function debounce(fn, delay = 200) {
 }
 
 // P1-8: 学期选择器
+const now = new Date()
+const currentYear = now.getFullYear()
+const currentMonth = now.getMonth() + 1
 const selectedSemester = ref('')
 const semesterOptions = computed(() => {
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth() + 1
   const semesters = []
   for (let year = currentYear - 1; year <= currentYear + 1; year++) {
     semesters.push({ label: `${year}-${year + 1} 第一学期`, value: `${year}-1` })
