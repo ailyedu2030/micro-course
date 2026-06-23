@@ -93,7 +93,7 @@ const handleImport = async () => {
   importing.value = true
   try {
     const { data } = await classImport({ microSpecialtyId: form.value.microSpecialtyId, classIds: form.value.classIds })
-    result.value = data
+    result.value = typeof data === 'number' ? { successCount: data, skipCount: 0, pendingCount: 0, errors: [] } : data
     ElMessage.success('导入完成')
   } catch { ElMessage.error('导入失败') }
   finally { importing.value = false }

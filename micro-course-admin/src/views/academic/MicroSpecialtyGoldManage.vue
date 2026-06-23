@@ -85,7 +85,8 @@ const fetchMicroSpecialties = async () => {
   error.value = false
   try {
     const res = await getMicroSpecialtyList({
-      isGoldFeatured: false,
+      // 移除 isGoldFeatured=false 过滤, 需要拿全量 RECRUITING 数据来统计金标数量
+
       page: 0,
       size: 100
     })
