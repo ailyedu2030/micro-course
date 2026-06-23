@@ -594,6 +594,14 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             }
         }
 
+        // 通知 LEAD 和 student
+        if (ms != null && ms.getLeadTeacherId() != null) {
+            notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_ENROLLMENT_DROPPED,
+                    "学生已退出微专业", "学生已退出《" + ms.getTitle() + "》", en.getMicroSpecialtyId());
+        }
+        notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_DROPPED,
+                "已退出微专业", "您已退出微专业《" + ms.getTitle() + "》", en.getMicroSpecialtyId());
+
         // 级联删除课程级 enrollment
         if (cascade) {
             List<MicroSpecialtyCourse> msCourses = msCourseRepository.selectList(
