@@ -159,7 +159,7 @@ const handleRemove = async (row) => {
 }
 
 const handleReinvite = async (row) => {
-  try { await reinviteTeacher(row.id || row.inviteId); ElMessage.success('已重新邀请'); fetchData() }
+  try {       await reinviteTeacher(row.id || row.inviteId, {}); ElMessage.success('已重新邀请'); fetchData() }
   catch { ElMessage.error('重邀失败') }
 }
 
