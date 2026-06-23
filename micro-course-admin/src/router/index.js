@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { isAuthenticated } from '../utils/auth'
+import { isAuthenticated, removeToken } from '../utils/auth'
 import { useUserStore } from '../store/user'
 import { ElMessage } from 'element-plus'
 import NProgress from 'nprogress'
@@ -88,7 +88,7 @@ const routes = [
   { path: '/student/checkout', name: 'StudentCheckout', component: () => import('../views/student/Checkout.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Phase 14: 微专业路由
   { path: '/student/micro-specialties/:id', name: 'StudentMicroSpecialtyDetail', component: () => import('../views/student/MicroSpecialtyDetail.vue'), meta: { title: '微专业详情', requiresAuth: true, roles: ['STUDENT'] } },
-  { path: '/student/my-micro-specialties', name: 'StudentMyMicroSpecialties', component: () => import('../views/student/MyMicroSpecialties.vue'), meta: { title: '我的微专业', requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '微专业', menuIcon: 'Medal', menuOrder: 5 } },
+  { path: '/student/my-micro-specialties', name: 'StudentMyMicroSpecialties', component: () => import('../views/student/MyMicroSpecialties.vue'), meta: { title: '我的微专业', requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/teacher/micro-specialties', name: 'TeacherMicroSpecialtyList', component: () => import('../views/teacher/MicroSpecialtyList.vue'), meta: { title: '微专业管理', requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/micro-specialties/:id/manage', name: 'TeacherMicroSpecialtyManage', component: () => import('../views/teacher/MicroSpecialtyManage.vue'), meta: { title: '微专业工作台', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
   { path: '/teacher/micro-specialties/:id/courses', name: 'TeacherMicroSpecialtyCourseEdit', component: () => import('../views/teacher/MicroSpecialtyCourseEdit.vue'), meta: { title: '课程编排', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
