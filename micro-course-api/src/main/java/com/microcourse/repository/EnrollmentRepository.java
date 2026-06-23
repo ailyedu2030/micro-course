@@ -6,6 +6,9 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.List;
+import java.util.Map;
+
 @Mapper
 public interface EnrollmentRepository extends BaseMapper<Enrollment> {
 
@@ -33,4 +36,31 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
             + "  AND final_score IS NOT NULL "
             + "  AND deleted_at IS NULL")
     Double avgScoreByCourseId(@Param("courseId") Long courseId);
+
+    /**
+     * Phase 14: 批量统计多门课程已完成选课数（按 course_id 分组）
+     * 返回 List of Map, 格式: [{course_id: Long, cnt: Long}, ...]
+     */
+    @Select("<script>" +
+            "SELECT course_id, COUNT(*) AS cnt FROM enrollments " +
+            "WHERE deleted_at IS NULL AND status = 'COMPLETED' AND course_id IN " +
+            "<foreach collection='courseIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            " GROUP BY course_id" +
+            "</script>")
+    List<Map<String, Object>> countCompletedByCourseIds(@Param("courseIds") List<Long> courseIds);
+
+    /**
+     * Phase 14: 批量统计多门课程进行中+已完成选课数（按 course_id 分组）
+     */
+    @Select("<script>" +
+            "SELECT course_id, COUNT(*) AS cnt FROM enrollments " +
+            "WHERE deleted_at IS NULL AND status IN ('IN_PROGRESS','COMPLETED') AND course_id IN " +
+            "<foreach collection='courseIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            " GROUP BY course_id" +
+            "</script>")
+    List<Map<String, Object>> countInProgressOrCompletedByCourseIds(@Param("courseIds") List<Long> courseIds);
 }

@@ -38,6 +38,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
     private final MicroSpecialtyEnrollmentService msEnrollmentService;
+    private final MicroSpecialtyQualityScoreService qualityScoreService;
+    private final AdminSettingService adminSettingService;
 
     public MicroSpecialtyServiceImpl(MicroSpecialtyRepository msRepository,
                                      MicroSpecialtyCourseRepository msCourseRepository,
@@ -47,7 +49,9 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                                      UserRepository userRepository,
                                      EnrollmentRepository enrollmentRepository,
                                      NotificationService notificationService,
-                                     @Lazy MicroSpecialtyEnrollmentService msEnrollmentService) {
+                                     @Lazy MicroSpecialtyEnrollmentService msEnrollmentService,
+                                     MicroSpecialtyQualityScoreService qualityScoreService,
+                                     AdminSettingService adminSettingService) {
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
         this.msTeacherRepository = msTeacherRepository;
@@ -57,6 +61,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         this.enrollmentRepository = enrollmentRepository;
         this.notificationService = notificationService;
         this.msEnrollmentService = msEnrollmentService;
+        this.qualityScoreService = qualityScoreService;
+        this.adminSettingService = adminSettingService;
     }
 
     // ====== 查询 ======
@@ -107,7 +113,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .orderByDesc(MicroSpecialty::getApprovedAt));
         result.setFeatured(featuredList.stream().map(this::toFeaturedVO).collect(Collectors.toList()));
 
-        // 普通招生中（排除已置顶的）
+        // 普通招生中（排除已置顶的）— 修复 G1：按质量分降序排序（次按 approvedAt DESC）
         List<MicroSpecialty> recruitingList = msRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getStatus, "RECRUITING")
@@ -117,6 +123,24 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .and(w -> w.eq(MicroSpecialty::getIsGoldFeatured, false)
                                 .or().isNull(MicroSpecialty::getIsGoldFeatured))
                         .orderByDesc(MicroSpecialty::getApprovedAt));
+        // G1: 用质量分降序重排（次按 approvedAt DESC）
+        List<Long> recruitingIds = recruitingList.stream().map(MicroSpecialty::getId).collect(Collectors.toList());
+        Map<Long, BigDecimal> scoreMap = qualityScoreService.calculateBatch(recruitingIds);
+        recruitingList = recruitingList.stream()
+                .sorted((a, b) -> {
+                    BigDecimal sa = scoreMap.getOrDefault(a.getId(), BigDecimal.ZERO);
+                    BigDecimal sb = scoreMap.getOrDefault(b.getId(), BigDecimal.ZERO);
+                    int cmp = sb.compareTo(sa); // 质量分 DESC
+                    if (cmp != 0) return cmp;
+                    // 次按 approvedAt DESC
+                    LocalDateTime ta = a.getApprovedAt();
+                    LocalDateTime tb = b.getApprovedAt();
+                    if (ta == null && tb == null) return 0;
+                    if (ta == null) return 1;
+                    if (tb == null) return -1;
+                    return tb.compareTo(ta);
+                })
+                .collect(Collectors.toList());
         result.setRecruiting(recruitingList.stream().map(this::toFeaturedVO).collect(Collectors.toList()));
 
         return result;
@@ -131,11 +155,37 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         vo.setStudentCount(ms.getStudentCount());
         vo.setStatus(ms.getStatus());
         vo.setIsGoldFeatured(ms.getIsGoldFeatured());
+        // G1: 设置质量分
+        vo.setQualityScore(qualityScoreService.calculate(ms.getId()));
+        // G3: 7 天保护期内显示 NEW 角标
+        vo.setIsNew(isNewlyCreated(ms));
         if (ms.getLeadTeacherId() != null) {
             User lead = userRepository.selectById(ms.getLeadTeacherId());
             if (lead != null) vo.setLeadTeacherName(lead.getRealName());
         }
         return vo;
+    }
+
+    /**
+     * G3: 7 天保护期判断
+     * 读取 admin_settings 中微专业 NEW 角标保护期配置（默认 7 天，可配置）
+     */
+    private boolean isNewlyCreated(MicroSpecialty ms) {
+        if (ms.getApprovedAt() == null) return false;
+        try {
+            int protectionDays = 7;
+            try {
+                String configVal = adminSettingService.getByKey("micro_specialty.new_protection_days");
+                if (configVal != null && !configVal.isEmpty()) {
+                    protectionDays = Integer.parseInt(configVal);
+                }
+            } catch (Exception ignore) {
+                // AdminSetting 不存在或字段缺失，保留默认 7
+            }
+            return ms.getApprovedAt().plusDays(protectionDays).isAfter(LocalDateTime.now());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override

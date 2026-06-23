@@ -38,6 +38,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     private final MicroSpecialtyCourseRepository msCourseRepository;
     private final MicroSpecialtyTeacherRepository msTeacherRepository;
     private final EnrollmentRepository courseEnrollmentRepository;
+    private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final EnrollmentService enrollmentService;
@@ -48,6 +49,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                                                MicroSpecialtyCourseRepository msCourseRepository,
                                                MicroSpecialtyTeacherRepository msTeacherRepository,
                                                EnrollmentRepository courseEnrollmentRepository,
+                                               CourseRepository courseRepository,
                                                UserRepository userRepository,
                                                NotificationService notificationService,
                                                EnrollmentService enrollmentService,
@@ -57,6 +59,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         this.msCourseRepository = msCourseRepository;
         this.msTeacherRepository = msTeacherRepository;
         this.courseEnrollmentRepository = courseEnrollmentRepository;
+        this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.enrollmentService = enrollmentService;
@@ -232,8 +235,19 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         Set<Long> existingUserIds = existingList.stream()
                 .map(MicroSpecialtyEnrollment::getUserId).collect(Collectors.toSet());
 
+        // G2: 加载微专业的所有课程（必修 + 选修），用于自动 enroll
+        List<MicroSpecialtyCourse> msCourses = msCourseRepository.selectList(
+                new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, msId));
+        List<Long> courseIds = msCourses.stream()
+                .map(MicroSpecialtyCourse::getCourseId).collect(Collectors.toList());
+
         int imported = 0;
+        int totalPendingCount = 0;
+        int studentsWithPending = 0;
         List<MicroSpecialtyEnrollment> batch = new ArrayList<>(BATCH_SIZE);
+        // 收集每个新生的 (userId, pendingCoursesJson)，待主 enrollment 写入后回写
+        Map<Long, List<PendingCourseItem>> pendingByUser = new HashMap<>();
 
         for (User student : students) {
             if (existingUserIds.contains(student.getId())) continue;
@@ -249,10 +263,45 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             en.setProgress(BigDecimal.ZERO);
             en.setCreditsEarned(BigDecimal.ZERO);
             en.setCoursesCompleted(0);
-            en.setCoursesRequired(0);
+            en.setCoursesRequired(msCourses.size());
             en.setCreatedAt(LocalDateTime.now());
             en.setUpdatedAt(LocalDateTime.now());
             en.setVersion(0);
+
+            // G2: 逐门课程前置检查（自动 enroll）
+            List<PendingCourseItem> pending = new ArrayList<>();
+            for (Long courseId : courseIds) {
+                try {
+                    EnrollmentCreateRequest req = new EnrollmentCreateRequest();
+                    req.setUserId(student.getId());
+                    req.setCourseId(courseId);
+                    req.setSourceChannel("MICRO_SPECIALTY");
+                    enrollmentService.enroll(req);
+                } catch (BusinessException e) {
+                    // 不可自动 enroll，记录到 pendingCourses（不抛，不阻断主流程）
+                    Course course = courseRepository.selectById(courseId);
+                    String courseName = (course != null) ? course.getTitle() : ("课程#" + courseId);
+                    pending.add(new PendingCourseItem(courseId, courseName, e.getMessage()));
+                    log.info("[MS classImport] student={} course={} -> pending: {}",
+                            student.getId(), courseId, e.getMessage());
+                } catch (Exception e) {
+                    Course course = courseRepository.selectById(courseId);
+                    String courseName = (course != null) ? course.getTitle() : ("课程#" + courseId);
+                    pending.add(new PendingCourseItem(courseId, courseName,
+                            e.getMessage() != null ? e.getMessage() : "未知错误"));
+                    log.warn("[MS classImport] student={} course={} unexpected: {}",
+                            student.getId(), courseId, e.getMessage());
+                }
+            }
+
+            if (!pending.isEmpty()) {
+                String json = toPendingJson(pending);
+                en.setPendingCourses(json);
+                pendingByUser.put(student.getId(), pending);
+                totalPendingCount += pending.size();
+                studentsWithPending++;
+            }
+
             batch.add(en);
 
             if (batch.size() >= BATCH_SIZE) {
@@ -274,24 +323,102 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         // 更新 student_count
         if (imported > 0) {
             int oldVersion = ms.getVersion();
-            msRepository.update(null,
+            int affected = msRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialty>()
                             .eq(MicroSpecialty::getId, msId)
                             .eq(MicroSpecialty::getVersion, oldVersion)
                             .setSql("student_count = COALESCE(student_count, 0) + " + imported)
                             .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            if (affected == 0) {
+                throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION,
+                        "微专业状态已被并发修改，请重试");
+            }
         }
 
-        // 通知学生
+        // 通知学生（含 pendingCourses 提示）
         for (User student : students) {
-            if (!existingUserIds.contains(student.getId())) {
-                notificationService.notifyAsync(student.getId(), NotificationType.MS_ENROLLMENT_AUTO_ENROLL,
-                        "已加入微专业", "您已被批量导入微专业《" + ms.getTitle() + "》", msId);
+            if (existingUserIds.contains(student.getId())) continue;
+            List<PendingCourseItem> pending = pendingByUser.get(student.getId());
+            String tip = "";
+            if (pending != null && !pending.isEmpty()) {
+                tip = "，其中 " + pending.size() + " 门课程需您或负责人后续处理（前置/容量/已选）";
+            }
+            notificationService.notifyAsync(student.getId(), NotificationType.MS_ENROLLMENT_AUTO_ENROLL,
+                    "已加入微专业",
+                    "您已被批量导入微专业《" + ms.getTitle() + "》" + tip,
+                    msId);
+        }
+
+        // 通知 LEAD（项目总负责要求 §9.1 step 8）
+        if (ms.getLeadTeacherId() != null) {
+            notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_INVITE_LEAD,
+                    "班级导入完成",
+                    String.format("班级已成功导入 %d 名学生（%d 门课程需人工处理）",
+                            imported, totalPendingCount),
+                    msId);
+        }
+
+        // 如果 >10% 的学生有 pending，额外通知 ACADEMIC
+        if (imported > 0 && (studentsWithPending * 10 > imported)) {
+            // 通过 UserRepository 查 ACADEMIC 角色
+            List<User> academicUsers = userRepository.selectList(
+                    new LambdaQueryWrapper<User>().eq(User::getRole, UserRole.ACADEMIC));
+            for (User au : academicUsers) {
+                notificationService.notifyAsync(au.getId(), NotificationType.MS_INVITE_LEAD,
+                        "微专业班级导入预警",
+                        String.format("微专业《%s》班级导入中 %d/%d 学生存在待处理课程，建议关注",
+                                ms.getTitle(), studentsWithPending, imported),
+                        msId);
             }
         }
 
         return imported;
+    }
+
+    /** G2: pendingCourses 内部数据结构（DTO 序列化为 JSON） */
+    private static class PendingCourseItem {
+        Long courseId;
+        String courseName;
+        String reason;
+        PendingCourseItem(Long courseId, String courseName, String reason) {
+            this.courseId = courseId; this.courseName = courseName; this.reason = reason;
+        }
+    }
+
+    /** G2: List<PendingCourseItem> → JSON 字符串（轻量手写避免引入 Jackson 依赖问题） */
+    private String toPendingJson(List<PendingCourseItem> list) {
+        if (list == null || list.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < list.size(); i++) {
+            PendingCourseItem p = list.get(i);
+            if (i > 0) sb.append(",");
+            sb.append("{\"courseId\":").append(p.courseId)
+              .append(",\"courseName\":").append(jsonEscape(p.courseName))
+              .append(",\"reason\":").append(jsonEscape(p.reason)).append("}");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private String jsonEscape(String s) {
+        if (s == null) return "\"\"";
+        StringBuilder sb = new StringBuilder("\"");
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '"': sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                default:
+                    if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+                    else sb.append(c);
+            }
+        }
+        sb.append("\"");
+        return sb.toString();
     }
 
     @Override
@@ -549,6 +676,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         vo.setFinalGrade(en.getFinalGrade());
         vo.setCertificateId(en.getCertificateId());
         vo.setCanDownloadCert(en.getCertificateId() != null);
+        vo.setPendingCourses(en.getPendingCourses());   // G2
         vo.setAppliedAt(en.getAppliedAt());
         vo.setApprovedAt(en.getApprovedAt());
         vo.setCompletedAt(en.getCompletedAt());

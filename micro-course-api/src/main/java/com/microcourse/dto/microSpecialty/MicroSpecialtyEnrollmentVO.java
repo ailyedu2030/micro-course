@@ -26,6 +26,7 @@ public class MicroSpecialtyEnrollmentVO {
     private String finalGrade;
     private Long certificateId;
     private Boolean canDownloadCert;
+    private String pendingCourses;       // G2: JSON 数组字符串
     private LocalDateTime appliedAt;
     private LocalDateTime approvedAt;
     private LocalDateTime completedAt;
@@ -87,6 +88,9 @@ public class MicroSpecialtyEnrollmentVO {
 
     public Boolean getCanDownloadCert() { return canDownloadCert; }
     public void setCanDownloadCert(Boolean canDownloadCert) { this.canDownloadCert = canDownloadCert; }
+
+    public String getPendingCourses() { return pendingCourses; }
+    public void setPendingCourses(String pendingCourses) { this.pendingCourses = pendingCourses; }
 
     public LocalDateTime getAppliedAt() { return appliedAt; }
     public void setAppliedAt(LocalDateTime appliedAt) { this.appliedAt = appliedAt; }

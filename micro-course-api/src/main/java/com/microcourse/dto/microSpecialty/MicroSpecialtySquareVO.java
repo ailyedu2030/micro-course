@@ -37,6 +37,7 @@ public class MicroSpecialtySquareVO {
         private Integer studentCount;
         private String status;
         private Boolean isGoldFeatured;
+        private Boolean isNew;          // G3: 7 天保护期内显示 NEW 角标
         private BigDecimal qualityScore;
 
         public FeaturedVO() {}
@@ -73,6 +74,9 @@ public class MicroSpecialtySquareVO {
 
         public Boolean getIsGoldFeatured() { return isGoldFeatured; }
         public void setIsGoldFeatured(Boolean isGoldFeatured) { this.isGoldFeatured = isGoldFeatured; }
+
+        public Boolean getIsNew() { return isNew; }
+        public void setIsNew(Boolean isNew) { this.isNew = isNew; }
 
         public BigDecimal getQualityScore() { return qualityScore; }
         public void setQualityScore(BigDecimal qualityScore) { this.qualityScore = qualityScore; }

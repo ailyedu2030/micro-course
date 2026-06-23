@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.microcourse.entity.CourseReview;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.math.BigDecimal;
@@ -48,4 +49,18 @@ public interface CourseReviewRepository extends BaseMapper<CourseReview> {
      */
     @Select("SELECT COALESCE(AVG(rating), 0) FROM course_reviews WHERE course_id = #{courseId} AND deleted_at IS NULL")
     BigDecimal selectAvgRatingByCourseId(Long courseId);
+
+    /**
+     * Phase 14: 批量查询多门课程的平均评分（单条聚合 SQL）
+     * 返回 List of Map, 格式: [{course_id: Long, avg_rating: BigDecimal}, ...]
+     */
+    @Select("<script>" +
+            "SELECT course_id, COALESCE(AVG(rating), 0) AS avg_rating FROM course_reviews " +
+            "WHERE deleted_at IS NULL AND course_id IN " +
+            "<foreach collection='courseIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            " GROUP BY course_id" +
+            "</script>")
+    List<Map<String, Object>> avgRatingByCourseIds(@Param("courseIds") List<Long> courseIds);
 }
