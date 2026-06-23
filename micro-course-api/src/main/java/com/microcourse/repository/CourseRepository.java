@@ -84,7 +84,7 @@ public interface CourseRepository extends BaseMapper<Course> {
             "    COALESCE(AVG(er.score * 100.0 / NULLIF(er.total_score, 0)), 0) AS accuracy_rate " +
             "  FROM courses c " +
             "  LEFT JOIN enrollments e2 ON e2.course_id = c.id AND e2.deleted_at IS NULL " +
-            "  LEFT JOIN exercise_records er ON er.user_id = e2.user_id AND er.deleted_at IS NULL " +
+            "  LEFT JOIN exercise_records er ON er.user_id = e2.user_id " +
             "  WHERE c.status = 2 AND c.deleted_at IS NULL " +
             "  GROUP BY c.id" +
             ") AS course_stats ON course_stats.course_id = c.id " +
@@ -106,7 +106,7 @@ public interface CourseRepository extends BaseMapper<Course> {
             "FROM courses c " +
             "LEFT JOIN users u ON u.id = c.teacher_id AND u.deleted_at IS NULL " +
             "LEFT JOIN enrollments e ON e.course_id = c.id AND e.deleted_at IS NULL " +
-            "LEFT JOIN exercise_records er ON er.user_id = e.user_id AND er.deleted_at IS NULL " +
+            "LEFT JOIN exercise_records er ON er.user_id = e.user_id " +
             "WHERE c.offer_department_id = #{departmentId} AND c.status = 2 AND c.deleted_at IS NULL " +
             "GROUP BY c.id, c.title, u.real_name " +
             "ORDER BY c.created_at DESC")

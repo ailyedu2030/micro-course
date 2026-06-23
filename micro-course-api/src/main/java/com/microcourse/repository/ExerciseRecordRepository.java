@@ -13,6 +13,6 @@ public interface ExerciseRecordRepository extends BaseMapper<ExerciseRecord> {
      */
     @Select("SELECT COALESCE(AVG(score * 100.0 / NULLIF(total_score, 0)), 0) " +
             "FROM exercise_records " +
-            "WHERE deleted_at IS NULL AND total_score > 0")
+            "WHERE total_score > 0")
     Double selectAvgAccuracyRate();
 }
