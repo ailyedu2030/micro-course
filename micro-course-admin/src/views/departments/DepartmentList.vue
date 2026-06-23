@@ -209,7 +209,7 @@ const handleDelete = async (row) => {
     } else if (error.response?.status === 400) {
       ElMessage.error(error.response?.data?.message || '该院系下存在关联数据，无法删除')
     } else {
-      ElMessage.error('删除失败')
+      ElMessage.error(error?.response?.data?.message || '删除失败')
     }
   }
 }
@@ -229,8 +229,8 @@ const handleSubmit = async () => {
       }
       dialogVisible.value = false
       fetchData()
-    } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+    } catch (e) {
+      ElMessage.error(e?.response?.data?.message || (isEdit.value ? '编辑失败' : '创建失败'))
     } finally {
       submitLoading.value = false
     }
