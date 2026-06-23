@@ -664,7 +664,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_ENROLLMENT_REAPPLIED,
                     "学生重新申请微专业", "学生重新申请加入《" + ms.getTitle() + "》", en.getMicroSpecialtyId());
         }
-        notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_REAPPLIED,
+        notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_PENDING,
                 "重新申请已提交", "您的微专业重新申请已提交，请等待审批", en.getMicroSpecialtyId());
 
         en.setStatus("PENDING");
@@ -944,6 +944,22 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         "您未通过微专业《" + ms.getTitle() + "》的结业考核。不合格课程：" + failedList,
                         en.getMicroSpecialtyId());
                 return;
+            }
+
+            // P0 FIX: APPROVED → IN_PROGRESS 自动转换 (学生首门必修课学习时触发)
+            if ("APPROVED".equals(en.getStatus()) && coursesCompleted > 0) {
+                int approvedAffected = enrollmentRepository.update(null,
+                        new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
+                                .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
+                                .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
+                                .set(MicroSpecialtyEnrollment::getStatus, "IN_PROGRESS")
+                                .setSql("version = version + 1"));
+                if (approvedAffected == 0) {
+                    log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (APPROVED→IN_PROGRESS)", enrollmentId);
+                } else {
+                    en.setStatus("IN_PROGRESS");
+                    log.info("enrollment.id={} APPROVED → IN_PROGRESS", enrollmentId);
+                }
             }
 
             // 仅更新进度

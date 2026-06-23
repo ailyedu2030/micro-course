@@ -257,7 +257,7 @@ const stats = computed(() => {
   for (const e of enrollments.value) {
     if (['APPROVED', 'PENDING'].includes(e.status)) result.enrolled++
     if (e.status === 'IN_PROGRESS') result.inProgress++
-    if (e.status === 'COMPLETED') result.completed++
+    if (e.status === 'COMPLETED' || e.status === 'CERTIFIED') result.completed++
   }
   return result
 })
