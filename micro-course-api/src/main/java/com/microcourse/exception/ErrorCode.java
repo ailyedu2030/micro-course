@@ -77,7 +77,7 @@ public enum ErrorCode {
     MS_NOT_FOUND(17001, "微专业不存在", 404),
     MS_FORBIDDEN(17002, "无权限操作该微专业", 403),
     MS_STATUS_INVALID(17003, "微专业状态不允许此操作", 400),
-    MS_DUPLICATE_ENROLL(17004, "已报名该微专业", 409),
+    MS_DUPLICATE_ENROLL(17004, "已报名该微专业", 400),
     MS_LEAD_REQUIRED(17005, "微专业负责人尚未确认", 400),
     MS_CERT_NOT_READY(17006, "未满足微专业结业条件", 400),
     MS_ENROLLMENT_NOT_FOUND(17007, "微专业修读记录不存在", 404),

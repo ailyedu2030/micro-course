@@ -326,7 +326,7 @@ const handleReapply = async (item) => {
       '重新申请',
       { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
     )
-    await reapplyEnrollment(item.id || item.microSpecialtyId)
+    await reapplyEnrollment(item.id)
     ElMessage.success('已重新申请')
     await fetchData()
   } catch (e) {

@@ -630,6 +630,12 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已驳回/已退出/未通过状态可重新申请");
         }
 
+        MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
+        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+
         int oldVersion = en.getVersion();
         int affected = enrollmentRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
@@ -645,15 +651,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .setSql("version = version + 1"));
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
-        MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
-        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
-        // Fix 1: 微专业终态校验
-        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
-        }
-
         // 通知 LEAD
-        if (ms != null && ms.getLeadTeacherId() != null) {
+        if (ms.getLeadTeacherId() != null) {
             notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_ENROLLMENT_REAPPLIED,
                     "学生重新申请微专业", "学生重新申请加入《" + ms.getTitle() + "》", en.getMicroSpecialtyId());
         }
