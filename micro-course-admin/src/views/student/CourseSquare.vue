@@ -32,7 +32,19 @@
     <!-- ============ 微专业专区 ============ -->
     <section class="micro-specialty-zone" aria-label="微专业专区">
       <div class="ms-zone-header">
-        <h2 class="ms-zone-title">🎯 微专业 · 学校重点培养项目</h2>
+        <div class="ms-zone-title-row">
+          <h2 class="ms-zone-title">🎯 微专业 · 学校重点培养项目</h2>
+          <el-button
+            v-if="hasMSData"
+            size="small"
+            text
+            type="primary"
+            class="ms-view-all-btn"
+            @click="showAllMS = true; fetchAllMS()"
+          >
+            查看更多 →
+          </el-button>
+        </div>
         <p class="ms-zone-desc">修读多门课程获得微专业结业证书</p>
       </div>
 
@@ -127,6 +139,46 @@
         </div>
       </template>
     </section>
+
+    <!-- 全部微专业弹窗 -->
+    <el-dialog
+      v-model="showAllMS"
+      title="全部微专业"
+      width="900px"
+      :close-on-click-modal="true"
+      class="ms-all-dialog"
+    >
+      <div v-loading="allMSLoading" class="ms-all-grid">
+        <div
+          v-for="item in allMSList"
+          :key="'all-ms-' + item.id"
+          class="ms-all-card"
+          role="button"
+          tabindex="0"
+          @click="showAllMS = false; goMSDetail(item.id)"
+          @keydown.enter="showAllMS = false; goMSDetail(item.id)"
+        >
+          <div class="ms-all-cover">
+            <img
+              v-if="item.coverUrl"
+              :src="item.coverUrl"
+              :alt="item.title"
+              loading="lazy"
+              class="ms-all-cover-img"
+            />
+            <div v-else class="ms-all-cover-placeholder">
+              <el-icon :size="24"><Notebook /></el-icon>
+            </div>
+          </div>
+          <div class="ms-all-info">
+            <h4 class="ms-all-title">{{ item.title }}</h4>
+            <p class="ms-all-dept">{{ item.departmentName || '—' }}</p>
+            <p class="ms-all-stats">{{ item.totalCredits || 0 }} 学分 · {{ item.courseCount || 0 }} 门课</p>
+          </div>
+        </div>
+      </div>
+      <el-empty v-if="!allMSLoading && !allMSList.length" description="暂无微专业" />
+    </el-dialog>
 
     <!-- ============ 筛选卡 (悬浮在 Hero 下方) ============ -->
     <div class="filter-bar">
@@ -413,7 +465,7 @@ import {
 import { getCourses } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 import { getBundles } from '@/api/bundle'
-import { getSquareData } from '@/api/microSpecialty'
+import { getSquareData, getMicroSpecialtyList } from '@/api/microSpecialty'
 import { usePluginStore } from '@/store/plugins'
 
 const router = useRouter()
@@ -436,6 +488,10 @@ const goldFeatured = ref([])
 const featured = ref([])
 const recruiting = ref([])
 const hasMSData = computed(() => goldFeatured.value.length > 0 || featured.value.length > 0)
+// 全部微专业弹窗
+const showAllMS = ref(false)
+const allMSList = ref([])
+const allMSLoading = ref(false)
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(12)
@@ -617,6 +673,19 @@ const fetchMicroSpecialties = async () => {
 const goMSDetail = (id) => {
   if (!id) return
   router.push(`/student/micro-specialties/${id}`)
+}
+
+const fetchAllMS = async () => {
+  allMSLoading.value = true
+  try {
+    const { data } = await getMicroSpecialtyList({ page: 0, size: 50, status: 'OPEN' })
+    allMSList.value = data?.items || []
+  } catch (e) {
+    console.warn('[CourseSquare] 全部微专业加载失败:', e)
+    allMSList.value = []
+  } finally {
+    allMSLoading.value = false
+  }
 }
 
 const loadBundles = async () => {
@@ -1024,12 +1093,27 @@ onMounted(async () => {
   margin-bottom: 24px;
   text-align: center;
 }
+.ms-zone-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
 .ms-zone-title {
   font-size: 22px;
   font-weight: var(--weight-bold);
   color: #fff;
   margin: 0 0 8px;
   letter-spacing: var(--tracking-tight);
+}
+.ms-view-all-btn {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: var(--weight-medium);
+  flex-shrink: 0;
+}
+.ms-view-all-btn:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
 }
 .ms-zone-desc {
   font-size: 14px;
@@ -1293,6 +1377,80 @@ onMounted(async () => {
   margin: 0;
   font-size: var(--text-xs);
   color: var(--el-text-color-secondary);
+  font-weight: var(--weight-medium);
+}
+
+/* 全部微专业弹窗 */
+.ms-all-dialog :deep(.el-dialog__header) {
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  padding: 20px 24px 16px;
+}
+.ms-all-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  min-height: 200px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.ms-all-card {
+  background: var(--el-bg-color-overlay);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  outline: none;
+  box-shadow: var(--shadow-tinted-sm);
+  transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out);
+}
+.ms-all-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-tinted-md);
+}
+.ms-all-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+}
+.ms-all-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+.ms-all-card:hover .ms-all-cover-img {
+  transform: scale(1.05);
+}
+.ms-all-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a5b4fc;
+}
+.ms-all-info {
+  padding: 12px 14px;
+}
+.ms-all-title {
+  margin: 0 0 4px;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ms-all-dept {
+  margin: 0 0 4px;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+.ms-all-stats {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-regular);
   font-weight: var(--weight-medium);
 }
 

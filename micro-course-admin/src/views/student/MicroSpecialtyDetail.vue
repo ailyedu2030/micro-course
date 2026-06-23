@@ -131,11 +131,15 @@
                 v-for="(item, i) in courses"
                 :key="item.id"
                 class="ms-course-item"
-                :class="{ 'ms-course-item--required': item.isRequired }"
-                role="button"
-                tabindex="0"
+                :class="{
+                  'ms-course-item--required': item.isRequired,
+                  'ms-course-item--disabled': !courseClickable
+                }"
+                :role="courseClickable ? 'button' : undefined"
+                :tabindex="courseClickable ? 0 : undefined"
+                :aria-disabled="!courseClickable"
                 @click="goCourse(item.courseId)"
-                @keydown.enter="goCourse(item.courseId)"
+                @keydown.enter="courseClickable && goCourse(item.courseId)"
               >
                 <span class="ms-course-order">{{ i + 1 }}</span>
                 <div class="ms-course-info">
@@ -477,8 +481,35 @@ const handleReapply = async () => {
   }
 }
 
+// 课程是否可点击：取决于 enrollment 状态
+const courseClickable = computed(() => {
+  // 未登录或未报名 → 不可点击（提示先报名）
+  if (!isLoggedIn.value || !enrollmentStatus.value) return false
+  // 已报名/进行中/已结业 → 可点击
+  const allowed = ['PENDING', 'APPROVED', 'ENROLLED', 'IN_PROGRESS', 'COMPLETED', 'CERTIFIED']
+  return allowed.includes(enrollmentStatus.value)
+})
+
 const goCourse = (courseId) => {
   if (!courseId) return
+  if (!isLoggedIn.value) {
+    ElMessage.warning('请先登录再学习课程')
+    goLogin()
+    return
+  }
+  if (!enrollmentStatus.value) {
+    ElMessage.warning('请先报名微专业再学习课程')
+    return
+  }
+  if (!courseClickable.value) {
+    const tipMap = {
+      DROPPED: '你已退出该微专业，需重新申请',
+      REJECTED: '你的报名已被驳回，需重新申请',
+      FAILED: '该微专业未通过，需重新申请'
+    }
+    ElMessage.warning(tipMap[enrollmentStatus.value] || '当前状态不可访问课程')
+    return
+  }
   router.push(`/student/courses/${courseId}`)
 }
 
@@ -655,6 +686,14 @@ onMounted(async () => {
 }
 .ms-course-item--required {
   border-left: 3px solid var(--el-color-danger);
+}
+.ms-course-item--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+.ms-course-item--disabled:hover {
+  background: transparent;
 }
 .ms-course-order {
   width: 28px;

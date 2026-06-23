@@ -249,7 +249,7 @@ public class MicroSpecialtyController {
 
     /** LEAD 继任 */
     @PostMapping("/{id}/transfer-leadership")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasRole('ACADEMIC')")
     public R<Void> transferLeadership(@PathVariable Long id,
                                        @Valid @RequestBody MicroSpecialtyLeadTransferRequest request) {
         microSpecialtyService.transferLeadership(id, request);

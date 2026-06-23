@@ -202,6 +202,14 @@
                 >
                   重新申请
                 </el-button>
+                <el-button
+                  size="small"
+                  type="warning"
+                  plain
+                  @click.stop="contactAcademic"
+                >
+                  联系教务处
+                </el-button>
               </template>
 
               <!-- DROPPED / REJECTED / WITHDRAWN -->
@@ -342,6 +350,14 @@ const viewCertificate = (item) => {
 const handleViewFailedCourses = (item) => {
   // Navigate to detail page with failed courses tab
   router.push(`/student/micro-specialties/${item.microSpecialtyId}?tab=courses`)
+}
+
+const contactAcademic = () => {
+  ElMessageBox.alert(
+    '如有疑问，请联系教务处：\n电话：010-12345678\n邮箱：academic@example.edu.cn\n办公时间：周一至周五 9:00-17:00',
+    '联系教务处',
+    { confirmButtonText: '知道了', type: 'info' }
+  )
 }
 
 onMounted(() => fetchData())

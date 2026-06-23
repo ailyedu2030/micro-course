@@ -1,8 +1,10 @@
 package com.microcourse.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import java.time.LocalDateTime;
 
 @TableName("micro_specialty_featured_audit")
@@ -12,7 +14,9 @@ public class MicroSpecialtyFeaturedAudit {
     private Long microSpecialtyId;
     private Long operatorId;
     private String action;
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private String beforeValue;
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private String afterValue;
     private String reason;
     private LocalDateTime createdAt;

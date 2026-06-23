@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -24,7 +25,7 @@ public class MicroSpecialtyEnrollment {
     private String finalGrade;
     private Long certificateId;
     /** G2: 班级导入时，前置课未通过/容量满/时间冲突/已存在等不能 enroll 的课程。结构 [{courseId, courseName, reason}]，JSON 字符串 */
-    @TableField("pending_courses")
+    @TableField(value = "pending_courses", typeHandler = JacksonTypeHandler.class)
     private String pendingCourses;
     private LocalDateTime appliedAt;
     private LocalDateTime approvedAt;

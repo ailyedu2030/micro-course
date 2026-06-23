@@ -122,7 +122,7 @@ export function issueCertificate(id) {
 }
 
 export function getEnrollmentList(msId, params) {
-  return request({ method: 'GET', url: `/micro-specialty-enrollments/micro-specialties/${msId}/enrollments`, params })
+  return request({ method: 'GET', url: `/micro-specialties/${msId}/enrollments`, params })
 }
 
 // ========== 申报 ==========
@@ -167,8 +167,8 @@ export function declineInvite(inviteId) {
   return request({ method: 'POST', url: `/micro-specialty-teachers/${inviteId}/decline` })
 }
 
-export function reinviteTeacher(inviteId) {
-  return request({ method: 'POST', url: `/micro-specialty-teachers/${inviteId}/reinvite` })
+export function reinviteTeacher(inviteId, data) {
+  return request({ method: 'POST', url: `/micro-specialty-teachers/${inviteId}/reinvite`, data: data || {} })
 }
 
 export function leaveTeam(inviteId) {
@@ -188,8 +188,8 @@ export function approveFeatured(id) {
   return request({ method: 'POST', url: `/micro-specialties/${id}/approve-featured` })
 }
 
-export function rejectFeatured(id) {
-  return request({ method: 'POST', url: `/micro-specialties/${id}/reject-featured` })
+export function rejectFeatured(id, reason) {
+  return request({ method: 'POST', url: `/micro-specialties/${id}/reject-featured`, data: { reason: reason || '' } })
 }
 
 export function setGoldFeatured(id) {

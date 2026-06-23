@@ -93,8 +93,14 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                             .set(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC")
                             .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now()));
 
-            notificationService.notifyAsync(0L, NotificationType.MS_INVITE_CROSS_DEPT,
-                    "跨学院邀请待审批", invitedUser.getRealName() + " 接受邀请需要跨学院审批", ms != null ? ms.getId() : null);
+            // P0-2 修复：通知所有 ACADEMIC 角色用户（而非非法 userId 0L）
+            List<User> academicUsers = userRepository.selectList(
+                    new LambdaQueryWrapper<User>().eq(User::getRole, UserRole.ACADEMIC));
+            for (User au : academicUsers) {
+                notificationService.notifyAsync(au.getId(), NotificationType.MS_INVITE_CROSS_DEPT,
+                        "跨学院邀请待审批", invitedUser.getRealName() + " 接受邀请需要跨学院审批",
+                        ms != null ? ms.getId() : null);
+            }
         } else {
             teacherRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
@@ -113,8 +119,11 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
 
         // 通知邀请人
         if (record.getInvitedBy() != null) {
-            notificationService.notifyAsync(record.getInvitedBy(), NotificationType.MS_INVITE_TEAM,
-                    "邀请已接受", "教师已接受邀请", ms != null ? ms.getId() : null);
+            User inviteeUser = userRepository.selectById(userId);
+            notificationService.notifyAsync(record.getInvitedBy(), NotificationType.MS_INVITE_ACCEPTED,
+                    "邀请已接受",
+                    (inviteeUser != null ? inviteeUser.getRealName() : "教师") + " 已接受邀请",
+                    ms != null ? ms.getId() : null);
         }
     }
 
@@ -268,21 +277,40 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                         notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_INVITE_EXPIRED,
                                 "邀请已过期", "微专业《" + ms.getTitle() + "》教师邀请已过期", ms.getId());
                     }
-                    // 若角色=LEAD，额外告警
+                    // 若角色=LEAD，额外通知 ACADEMIC（P1-1 修复）
                     if ("LEAD".equals(record.getRole())) {
-                        log.warn("[MS] LEAD邀请过期: msId={}, teacherId={}", record.getMicroSpecialtyId(), record.getTeacherId());
+                        List<User> academicUsers = userRepository.selectList(
+                                new LambdaQueryWrapper<User>().eq(User::getRole, UserRole.ACADEMIC));
+                        for (User au : academicUsers) {
+                            notificationService.notifyAsync(au.getId(), NotificationType.MS_INVITE_EXPIRED,
+                                    "微专业负责人邀请过期",
+                                    (ms != null ? "微专业《" + ms.getTitle() + "》" : "微专业")
+                                            + "负责人邀请已过期，请关注",
+                                    ms != null ? ms.getId() : null);
+                        }
                     }
                 }
             }
         }
 
-        // PENDING_ACADEMIC 超过 14 天告警
+        // PENDING_ACADEMIC 超过 14 天通知 ACADEMIC（P1-1 修复）
         List<MicroSpecialtyTeacher> staleList = teacherRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC")
                         .lt(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now().minusDays(14)));
         if (!staleList.isEmpty()) {
-            log.warn("[MS] PENDING_ACADEMIC 超14天未处理: count={}", staleList.size());
+            List<User> academicUsers = userRepository.selectList(
+                    new LambdaQueryWrapper<User>().eq(User::getRole, UserRole.ACADEMIC));
+            for (MicroSpecialtyTeacher stale : staleList) {
+                MicroSpecialty ms = msRepository.selectById(stale.getMicroSpecialtyId());
+                for (User au : academicUsers) {
+                    notificationService.notifyAsync(au.getId(), NotificationType.MS_INVITE_EXPIRED,
+                            "跨学院审批超时未处理",
+                            (ms != null ? "微专业《" + ms.getTitle() + "》" : "微专业")
+                                    + "跨学院邀请审批超过 14 天未处理，请及时审批",
+                            ms != null ? ms.getId() : null);
+                }
+            }
         }
 
         return totalExpired;

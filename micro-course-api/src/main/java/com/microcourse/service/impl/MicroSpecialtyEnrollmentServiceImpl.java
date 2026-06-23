@@ -14,6 +14,7 @@ import com.microcourse.dto.EnrollmentCreateRequest;
 import com.microcourse.repository.*;
 import com.microcourse.service.*;
 import com.microcourse.util.SecurityUtil;
+import com.microcourse.service.CertificateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -43,6 +44,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     private final NotificationService notificationService;
     private final EnrollmentService enrollmentService;
     private final MicroSpecialtyService msService;
+    private final CertificateService certificateService;
 
     public MicroSpecialtyEnrollmentServiceImpl(MicroSpecialtyEnrollmentRepository enrollmentRepository,
                                                MicroSpecialtyRepository msRepository,
@@ -53,7 +55,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                                                UserRepository userRepository,
                                                NotificationService notificationService,
                                                EnrollmentService enrollmentService,
-                                               @Lazy MicroSpecialtyService msService) {
+                                               @Lazy MicroSpecialtyService msService,
+                                               CertificateService certificateService) {
         this.enrollmentRepository = enrollmentRepository;
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
@@ -64,6 +67,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         this.notificationService = notificationService;
         this.enrollmentService = enrollmentService;
         this.msService = msService;
+        this.certificateService = certificateService;
     }
 
     @Override
@@ -105,7 +109,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         if (ms.getLeadTeacherId() != null) {
             User student = userRepository.selectById(userId);
             String studentName = student != null ? student.getRealName() : "学生";
-            notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_INVITE_TEAM,
+            notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_ENROLLMENT_PENDING,
                     "微专业报名申请", studentName + " 申请加入《" + ms.getTitle() + "》", msId);
         }
 
@@ -128,7 +132,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .eq(MicroSpecialtyEnrollment::getId, id)
                         .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
                         .eq(MicroSpecialtyEnrollment::getStatus, "PENDING")
-                        .set(MicroSpecialtyEnrollment::getStatus, "APPROVED")
+                        .set(MicroSpecialtyEnrollment::getStatus, "IN_PROGRESS")
                         .set(MicroSpecialtyEnrollment::getApprovedAt, LocalDateTime.now())
                         .set(MicroSpecialtyEnrollment::getApprovedBy, SecurityUtil.getCurrentUserId())
                         .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
@@ -180,7 +184,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_APPROVED,
                 "报名已通过", "您的微专业报名已通过", en.getMicroSpecialtyId());
 
-        en.setStatus("APPROVED");
+        en.setStatus("IN_PROGRESS");
         return toVO(en, ms);
     }
 
@@ -213,7 +217,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int classImport(Long msId, Long classId) {
-        MicroSpecialty ms = msRepository.selectById(msId);
+        MicroSpecialty ms = msRepository.selectForUpdate(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         if (!"RECRUITING".equals(ms.getStatus())) {
@@ -352,7 +356,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
 
         // 通知 LEAD（项目总负责要求 §9.1 step 8）
         if (ms.getLeadTeacherId() != null) {
-            notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_INVITE_LEAD,
+            notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_ENROLLMENT_AUTO_ENROLL,
                     "班级导入完成",
                     String.format("班级已成功导入 %d 名学生（%d 门课程需人工处理）",
                             imported, totalPendingCount),
@@ -365,7 +369,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             List<User> academicUsers = userRepository.selectList(
                     new LambdaQueryWrapper<User>().eq(User::getRole, UserRole.ACADEMIC));
             for (User au : academicUsers) {
-                notificationService.notifyAsync(au.getId(), NotificationType.MS_INVITE_LEAD,
+                notificationService.notifyAsync(au.getId(), NotificationType.MS_ENROLLMENT_AUTO_ENROLL,
                         "微专业班级导入预警",
                         String.format("微专业《%s》班级导入中 %d/%d 学生存在待处理课程，建议关注",
                                 ms.getTitle(), studentsWithPending, imported),
@@ -456,6 +460,23 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                             .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
         }
+
+        // 级联删除课程级 enrollment
+        if (cascade) {
+            List<MicroSpecialtyCourse> msCourses = msCourseRepository.selectList(
+                    new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                            .eq(MicroSpecialtyCourse::getMicroSpecialtyId, en.getMicroSpecialtyId()));
+            for (MicroSpecialtyCourse mc : msCourses) {
+                Enrollment courseEn = courseEnrollmentRepository.selectOne(
+                        new LambdaQueryWrapper<Enrollment>()
+                                .eq(Enrollment::getCourseId, mc.getCourseId())
+                                .eq(Enrollment::getUserId, en.getUserId())
+                                .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
+                if (courseEn != null) {
+                    courseEnrollmentRepository.deleteById(courseEn.getId());
+                }
+            }
+        }
     }
 
     @Override
@@ -542,15 +563,13 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         // 幂等检查：已发过证书
         if (en.getCertificateId() != null) return;
 
-        MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
-        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        // P0-1 修复：委托 CertificateService 创建证书记录（写入 certificates 表，含通知）
+        certificateService.issueMicroSpecialtyCertificate(en.getUserId(), en.getMicroSpecialtyId(), enrollmentId);
 
-        // 生成证书编号：MS-{code}-{userId}-{yyyyMM}-{randomHex(4)}（§9.6）
-        String yearMonth = String.format("%tY%<tm", LocalDateTime.now());
-        String certCode = "MS-" + ms.getCode() + "-" + en.getUserId() + "-" + yearMonth + "-"
-                + String.format("%04x", RANDOM.nextInt(0x10000));
+        // 重新读取 enrollment（certificateService 已更新 certificateId + version）
+        en = enrollmentRepository.selectById(enrollmentId);
 
-        // 回写 enrollment
+        // 更新状态为 CERTIFIED
         int oldVersion = en.getVersion();
         enrollmentRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
@@ -560,9 +579,6 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .set(MicroSpecialtyEnrollment::getStatus, "CERTIFIED")
                         .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
-
-        notificationService.notifyAsync(en.getUserId(), NotificationType.MS_CERTIFICATE_ISSUED,
-                "微专业证书已颁发", "恭喜！您已获得微专业《" + ms.getTitle() + "》结业证书", en.getMicroSpecialtyId());
     }
 
     @Override
@@ -582,6 +598,12 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .eq(MicroSpecialtyCourse::getMicroSpecialtyId, en.getMicroSpecialtyId())
                         .eq(MicroSpecialtyCourse::getIsRequired, true));
 
+        // P0-11: 获取所有选修课
+        List<MicroSpecialtyCourse> electiveCourses = msCourseRepository.selectList(
+                new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, en.getMicroSpecialtyId())
+                        .eq(MicroSpecialtyCourse::getIsRequired, false));
+
         int coursesCompleted = 0;
         double totalRequiredScore = 0;
         int requiredCount = 0;
@@ -589,26 +611,73 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         int electivePassedCount = 0;
         BigDecimal creditsEarned = BigDecimal.ZERO;
 
+        // P1-11: progress = AVG(每门必修课 enrollment.progress × 100)
+        double totalProgress = 0;
+        int progressCount = 0;
+
+        // P0-5: FAILED 判定数据
+        boolean allCoursesGraded = !requiredCourses.isEmpty();
+        boolean anyPassed = false;
+        List<String> failedCourseNames = new ArrayList<>();
+
+        // 预加载课程名称（用于 FAILED 通知）
+        Set<Long> allCourseIds = new HashSet<>();
+        for (MicroSpecialtyCourse mc : requiredCourses) allCourseIds.add(mc.getCourseId());
+        for (MicroSpecialtyCourse mc : electiveCourses) allCourseIds.add(mc.getCourseId());
+        Map<Long, String> courseNameMap = new HashMap<>();
+        if (!allCourseIds.isEmpty()) {
+            List<Course> courses = courseRepository.selectBatchIds(allCourseIds);
+            for (Course c : courses) courseNameMap.put(c.getId(), c.getTitle());
+        }
+
+        // 必修课处理
         for (MicroSpecialtyCourse mc : requiredCourses) {
             Enrollment courseEn = courseEnrollmentRepository.selectOne(
                     new LambdaQueryWrapper<Enrollment>()
                             .eq(Enrollment::getCourseId, mc.getCourseId())
                             .eq(Enrollment::getUserId, en.getUserId())
                             .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
-            if (courseEn != null && courseEn.getFinalScore() != null) {
-                BigDecimal minScore = mc.getMinScore() != null ? mc.getMinScore() : BigDecimal.valueOf(60);
-                if (courseEn.getFinalScore().compareTo(minScore) >= 0) {
-                    coursesCompleted++;
-                    creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
+            if (courseEn != null) {
+                // P1-11: 收集课程级 progress
+                if (courseEn.getProgress() != null) {
+                    totalProgress += courseEn.getProgress() * 100.0;
+                    progressCount++;
                 }
-                totalRequiredScore += courseEn.getFinalScore().doubleValue();
-                requiredCount++;
+                if (courseEn.getFinalScore() != null) {
+                    BigDecimal minScore = mc.getMinScore() != null ? mc.getMinScore() : BigDecimal.valueOf(60);
+                    boolean passed = courseEn.getFinalScore().compareTo(minScore) >= 0;
+                    if (passed) {
+                        coursesCompleted++;
+                        creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
+                        anyPassed = true;
+                    } else {
+                        String name = courseNameMap.getOrDefault(mc.getCourseId(), "课程#" + mc.getCourseId());
+                        failedCourseNames.add(name);
+                    }
+                    totalRequiredScore += courseEn.getFinalScore().doubleValue();
+                    requiredCount++;
+                }
+            } else {
+                allCoursesGraded = false;
             }
         }
 
-        // 计算进度
-        double progress = requiredCourses.isEmpty() ? 100.0
-                : (double) coursesCompleted / requiredCourses.size() * 100.0;
+        // P0-11: 选修课处理
+        for (MicroSpecialtyCourse mc : electiveCourses) {
+            Enrollment courseEn = courseEnrollmentRepository.selectOne(
+                    new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getCourseId, mc.getCourseId())
+                            .eq(Enrollment::getUserId, en.getUserId())
+                            .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
+            if (courseEn != null && courseEn.getFinalScore() != null) {
+                totalElectiveScore += courseEn.getFinalScore().doubleValue();
+                electivePassedCount++;
+                creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
+            }
+        }
+
+        // 计算进度（P1-11）
+        double progress = progressCount > 0 ? totalProgress / progressCount : 0;
         double avgRequired = requiredCount > 0 ? totalRequiredScore / requiredCount : 0;
         double avgElective = electivePassedCount > 0 ? totalElectiveScore / electivePassedCount : 0;
         double finalScore = avgRequired * 0.7 + avgElective * 0.3;
@@ -629,6 +698,13 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         int oldVersion = en.getVersion();
 
         if (isCompleted) {
+            // P0-12: 计算 final_grade（§6.8）
+            String finalGrade;
+            if (finalScore >= 90) finalGrade = "EXCELLENT";
+            else if (finalScore >= 75) finalGrade = "GOOD";
+            else if (finalScore >= 60) finalGrade = "PASS";
+            else finalGrade = "FAIL";
+
             int affected = enrollmentRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                             .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
@@ -638,14 +714,36 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                             .set(MicroSpecialtyEnrollment::getCreditsEarned, creditsEarned)
                             .set(MicroSpecialtyEnrollment::getCoursesCompleted, coursesCompleted)
                             .set(MicroSpecialtyEnrollment::getFinalScore, BigDecimal.valueOf(finalScore))
+                            .set(MicroSpecialtyEnrollment::getFinalGrade, finalGrade)
                             .set(MicroSpecialtyEnrollment::getCompletedAt, LocalDateTime.now())
                             .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
             if (affected > 0) {
+                notificationService.notifyAsync(en.getUserId(), NotificationType.MS_COMPLETED,
+                        "微专业已结业", "恭喜！您已完成微专业《" + ms.getTitle() + "》的全部要求", en.getMicroSpecialtyId());
                 // 自动颁发证书
                 issueCertificate(enrollmentId);
             }
         } else {
+            // P0-5: 检查是否可以判定为 FAILED（§9.2.e 步）
+            // 所有必修课均已评分 且 没有一门通过 → FAILED
+            if (allCoursesGraded && !anyPassed) {
+                enrollmentRepository.update(null,
+                        new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
+                                .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
+                                .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
+                                .set(MicroSpecialtyEnrollment::getStatus, "FAILED")
+                                .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
+                                .setSql("version = version + 1"));
+
+                String failedList = failedCourseNames.isEmpty() ? "无" : String.join("、", failedCourseNames);
+                notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_FAILED,
+                        "微专业未通过",
+                        "您未通过微专业《" + ms.getTitle() + "》的结业考核。不合格课程：" + failedList,
+                        en.getMicroSpecialtyId());
+                return;
+            }
+
             // 仅更新进度
             enrollmentRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
