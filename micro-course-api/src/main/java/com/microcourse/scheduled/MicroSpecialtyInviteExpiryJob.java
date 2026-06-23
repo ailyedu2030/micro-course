@@ -93,16 +93,13 @@ public class MicroSpecialtyInviteExpiryJob {
                                 ms.getId());
                     }
 
-                    // P0-4: 如果过期的是 LEAD → 额外通知 ACADEMIC
-                    if ("LEAD".equals(record.getRole())) {
-                        for (Long auId : academicUserIds) {
-                            notificationService.notifyAsync(auId,
-                                    NotificationType.MS_INVITE_EXPIRED,
-                                    "微专业负责人邀请过期",
-                                    (ms != null ? "微专业《" + ms.getTitle() + "》" : "微专业")
-                                            + "负责人邀请已过期，请关注",
-                                    ms != null ? ms.getId() : null);
-                        }
+                    // P1-3 修复：所有过期记录都通知 ACADEMIC（不仅是 LEAD 过期）
+                    for (Long auId : academicUserIds) {
+                        notificationService.notifyAsync(auId,
+                                NotificationType.MS_INVITE_EXPIRED,
+                                "邀请已过期",
+                                (ms != null ? "微专业《" + ms.getTitle() + "》" : "微专业") + "教师邀请已过期，请关注",
+                                ms != null ? ms.getId() : null);
                     }
                 }
             }

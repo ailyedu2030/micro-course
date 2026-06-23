@@ -94,9 +94,6 @@ public interface MicroSpecialtyService {
     /** 移除教师 */
     void removeTeacher(Long msId, Long teacherId);
 
-    /** 重新邀请（复用 REMOVED/DECLINED 记录） */
-    MicroSpecialtyTeacherVO reinviteTeacher(Long msId, Long teacherId);
-
     // ====== LEAD 继任 ======
 
     /** LEAD 继任：指定新 LEAD（事务内转移） */

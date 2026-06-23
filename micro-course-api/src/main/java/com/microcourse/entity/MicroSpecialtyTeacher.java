@@ -22,6 +22,7 @@ public class MicroSpecialtyTeacher {
     private LocalDateTime joinedAt;
     private LocalDateTime leftAt;
     private LocalDateTime createdAt;
+    private Integer version;
 
     public MicroSpecialtyTeacher() {}
 
@@ -53,4 +54,6 @@ public class MicroSpecialtyTeacher {
     public void setLeftAt(LocalDateTime leftAt) { this.leftAt = leftAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
 }

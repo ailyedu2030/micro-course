@@ -125,8 +125,32 @@
             </el-result>
             <!-- Empty -->
             <el-empty v-else-if="!courses.length" description="暂无课程安排" />
-            <!-- Course List -->
-            <div v-else class="ms-course-list">
+            <!-- Course List (with requirements summary) -->
+            <template v-else>
+              <!-- 修读要求汇总卡片 -->
+              <div class="ms-requirements-card">
+                <div class="ms-req-item">
+                  <span class="ms-req-label">必修</span>
+                  <span class="ms-req-value ms-req-value--required">{{ requiredCount }} 门</span>
+                </div>
+                <div class="ms-req-item">
+                  <span class="ms-req-label">选修</span>
+                  <span class="ms-req-value">{{ electiveCount }} 门</span>
+                </div>
+                <div class="ms-req-item">
+                  <span class="ms-req-label">总学分</span>
+                  <span class="ms-req-value">{{ ms.totalCredits || 0 }} 分</span>
+                </div>
+                <div v-if="ms.completionRule" class="ms-req-item ms-req-item--full">
+                  <span class="ms-req-label">通过条件</span>
+                  <span class="ms-req-value">{{ ms.completionRule }}</span>
+                </div>
+                <div v-if="ms.semester" class="ms-req-item">
+                  <span class="ms-req-label">建议学期</span>
+                  <span class="ms-req-value">{{ ms.semester }}</span>
+                </div>
+              </div>
+              <div class="ms-course-list">
               <div
                 v-for="(item, i) in courses"
                 :key="item.id"
@@ -159,6 +183,7 @@
                 <el-icon class="ms-go-icon"><ArrowRight /></el-icon>
               </div>
             </div>
+            </template>
           </el-tab-pane>
 
           <el-tab-pane label="教师团队" name="teachers">
@@ -481,6 +506,10 @@ const handleReapply = async () => {
   }
 }
 
+// 修读要求统计
+const requiredCount = computed(() => courses.value.filter(c => c.isRequired).length)
+const electiveCount = computed(() => courses.value.filter(c => !c.isRequired).length)
+
 // 课程是否可点击：取决于 enrollment 状态
 const courseClickable = computed(() => {
   // 未登录或未报名 → 不可点击（提示先报名）
@@ -663,6 +692,37 @@ onMounted(async () => {
   padding: var(--space-4);
 }
 /* Course List */
+.ms-requirements-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  background: linear-gradient(135deg, var(--el-color-primary-light-9), var(--el-color-primary-light-8));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--el-color-primary-light-7);
+}
+.ms-req-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 80px;
+}
+.ms-req-item--full {
+  flex-basis: 100%;
+}
+.ms-req-label {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+.ms-req-value {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+}
+.ms-req-value--required {
+  color: var(--el-color-danger);
+}
 .ms-course-list {
   display: flex;
   flex-direction: column;

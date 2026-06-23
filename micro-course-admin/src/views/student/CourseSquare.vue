@@ -74,7 +74,7 @@
       </el-result>
 
       <!-- Empty -->
-      <el-empty v-else-if="!hasMSData" class="ms-empty" description="暂无微专业项目" />
+      <el-empty v-else-if="!hasMSData" class="ms-empty" description="暂无微专业项目，敬请期待" />
 
       <!-- Has Data -->
       <template v-else>

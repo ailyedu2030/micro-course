@@ -122,6 +122,12 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         MicroSpecialtyEnrollment en = enrollmentRepository.selectById(id);
         if (en == null) throw new BusinessException(ErrorCode.MS_ENROLLMENT_NOT_FOUND);
 
+        // 校验操作用户是该微专业的负责人
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!msService.isLeadOf(en.getMicroSpecialtyId(), userId) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可审批报名");
+        }
+
         if (!"PENDING".equals(en.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可审批");
         }
@@ -132,7 +138,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .eq(MicroSpecialtyEnrollment::getId, id)
                         .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
                         .eq(MicroSpecialtyEnrollment::getStatus, "PENDING")
-                        .set(MicroSpecialtyEnrollment::getStatus, "IN_PROGRESS")
+                        .set(MicroSpecialtyEnrollment::getStatus, "APPROVED")
                         .set(MicroSpecialtyEnrollment::getApprovedAt, LocalDateTime.now())
                         .set(MicroSpecialtyEnrollment::getApprovedBy, SecurityUtil.getCurrentUserId())
                         .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
@@ -147,26 +153,81 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .eq(MicroSpecialtyCourse::getMicroSpecialtyId, en.getMicroSpecialtyId())
                         .eq(MicroSpecialtyCourse::getIsRequired, true));
 
+        // 自动 enroll 必修课（§9.5），失败课程计入 pendingCourses
+        List<Map<String, Object>> pendingList = new ArrayList<>();
+
         for (MicroSpecialtyCourse mc : requiredCourses) {
             try {
-                // 检查是否已有有效课程选课
-                Long existingEnroll = courseEnrollmentRepository.selectCount(
+                // §9.10: 检查是否已有有效课程选课（含已通过的旧成绩）
+                Enrollment existingEnroll = courseEnrollmentRepository.selectOne(
                         new LambdaQueryWrapper<Enrollment>()
                                 .eq(Enrollment::getCourseId, mc.getCourseId())
                                 .eq(Enrollment::getUserId, en.getUserId())
                                 .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
-                if (existingEnroll == 0) {
+
+                BigDecimal minScore = mc.getMinScore() != null ? mc.getMinScore() : BigDecimal.valueOf(60);
+                boolean alreadyPassed = existingEnroll != null
+                        && existingEnroll.getFinalScore() != null
+                        && existingEnroll.getFinalScore().compareTo(minScore) >= 0;
+
+                if (alreadyPassed) {
+                    // §9.10: 已修课程学分认可 → 计入完成统计，跳过 enroll
+                    en.setCoursesCompleted(en.getCoursesCompleted() != null ? en.getCoursesCompleted() + 1 : 1);
+                    en.setCreditsEarned((en.getCreditsEarned() != null ? en.getCreditsEarned() : BigDecimal.ZERO)
+                            .add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO));
+                } else if (existingEnroll == null) {
+                    // 没有选课记录 → 自动 enroll
                     EnrollmentCreateRequest enrollReq = new EnrollmentCreateRequest();
                     enrollReq.setCourseId(mc.getCourseId());
                     enrollReq.setUserId(en.getUserId());
                     enrollReq.setSourceChannel("MICRO_SPECIALTY_AUTO");
                     enrollmentService.enroll(enrollReq);
                 }
+                // else: 已有选课但未通过 → 保留现有选课，不重复 enroll
+
                 en.setCoursesRequired(en.getCoursesRequired() != null ? en.getCoursesRequired() + 1 : 1);
+            } catch (BusinessException e) {
+                // 不可自动 enroll（前置/容量/冲突等），记录到 pendingCourses
+                Course c = courseRepository.selectById(mc.getCourseId());
+                Map<String, Object> item = new HashMap<>();
+                item.put("courseId", mc.getCourseId());
+                item.put("courseName", c != null ? c.getTitle() : "课程#" + mc.getCourseId());
+                item.put("reason", e.getMessage());
+                pendingList.add(item);
+                log.info("[MS approve] student={} course={} -> pending: {}",
+                        en.getUserId(), mc.getCourseId(), e.getMessage());
             } catch (Exception e) {
+                Course c = courseRepository.selectById(mc.getCourseId());
+                Map<String, Object> item = new HashMap<>();
+                item.put("courseId", mc.getCourseId());
+                item.put("courseName", c != null ? c.getTitle() : "课程#" + mc.getCourseId());
+                item.put("reason", e.getMessage() != null ? e.getMessage() : "未知错误");
+                pendingList.add(item);
                 log.warn("自动 enroll 课程失败: courseId={}, userId={}", mc.getCourseId(), en.getUserId(), e);
             }
         }
+
+        // 持久化 pendingCourses（如有失败课程）
+        if (!pendingList.isEmpty()) {
+            try {
+                String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(pendingList);
+                enrollmentRepository.update(null,
+                        new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
+                                .eq(MicroSpecialtyEnrollment::getId, id)
+                                .set(MicroSpecialtyEnrollment::getPendingCourses, json));
+            } catch (Exception e) {
+                log.warn("持久化 pendingCourses 失败: enrollmentId={}", id, e);
+            }
+        }
+
+        // §9.10: 持久化已认可学分统计到 DB（无需乐观锁，主状态已在前面通过乐观锁锁定）
+        enrollmentRepository.update(null,
+                new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
+                        .eq(MicroSpecialtyEnrollment::getId, id)
+                        .set(MicroSpecialtyEnrollment::getCoursesCompleted, en.getCoursesCompleted())
+                        .set(MicroSpecialtyEnrollment::getCreditsEarned, en.getCreditsEarned())
+                        .set(MicroSpecialtyEnrollment::getCoursesRequired, en.getCoursesRequired())
+                        .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now()));
 
         // 更新 student_count（乐观锁）
         if (ms != null) {
@@ -184,7 +245,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_APPROVED,
                 "报名已通过", "您的微专业报名已通过", en.getMicroSpecialtyId());
 
-        en.setStatus("IN_PROGRESS");
+        en.setStatus("APPROVED");
         return toVO(en, ms);
     }
 
@@ -193,6 +254,12 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     public void reject(Long id, String reason) {
         MicroSpecialtyEnrollment en = enrollmentRepository.selectById(id);
         if (en == null) throw new BusinessException(ErrorCode.MS_ENROLLMENT_NOT_FOUND);
+
+        // 校验操作用户是该微专业的负责人
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!msService.isLeadOf(en.getMicroSpecialtyId(), userId) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可驳回报名");
+        }
 
         if (!"PENDING".equals(en.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可驳回");
@@ -436,6 +503,18 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前状态不允许退出");
         }
 
+        // 微专业终态校验
+        MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
+        if (ms != null && ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus()))) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已取消或归档，无法退出修读");
+        }
+
+        // IDOR 校验：仅本人或 ADMIN 可退出
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!en.getUserId().equals(userId) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅本人可操作退出");
+        }
+
         int oldVersion = en.getVersion();
         int affected = enrollmentRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
@@ -448,8 +527,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .setSql("version = version + 1"));
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
-        // student_count 防负
-        MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
+        // student_count 防负（复用上方已加载的 ms）
         if (ms != null && ms.getStudentCount() != null && ms.getStudentCount() > 0) {
             int msOldVersion = ms.getVersion();
             msRepository.update(null,
@@ -484,6 +562,12 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     public MicroSpecialtyEnrollmentVO reapply(Long id) {
         MicroSpecialtyEnrollment en = enrollmentRepository.selectById(id);
         if (en == null) throw new BusinessException(ErrorCode.MS_ENROLLMENT_NOT_FOUND);
+
+        // IDOR 校验：仅本人可操作
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!en.getUserId().equals(userId) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅本人可重新申请");
+        }
 
         // 仅 REJECTED/DROPPED/FAILED → PENDING（§2.2）
         String currentStatus = en.getStatus();
@@ -658,7 +742,27 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                     requiredCount++;
                 }
             } else {
-                allCoursesGraded = false;
+                // §9.10: 无 active enrollment 时，检查历史选课中是否有已通过成绩
+                Enrollment historyEn = courseEnrollmentRepository.selectOne(
+                        new LambdaQueryWrapper<Enrollment>()
+                                .eq(Enrollment::getCourseId, mc.getCourseId())
+                                .eq(Enrollment::getUserId, en.getUserId()));
+                if (historyEn != null && historyEn.getFinalScore() != null) {
+                    BigDecimal minScore = mc.getMinScore() != null ? mc.getMinScore() : BigDecimal.valueOf(60);
+                    boolean passed = historyEn.getFinalScore().compareTo(minScore) >= 0;
+                    if (passed) {
+                        coursesCompleted++;
+                        creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
+                        anyPassed = true;
+                    } else {
+                        String name = courseNameMap.getOrDefault(mc.getCourseId(), "课程#" + mc.getCourseId());
+                        failedCourseNames.add(name);
+                    }
+                    totalRequiredScore += historyEn.getFinalScore().doubleValue();
+                    requiredCount++;
+                } else {
+                    allCoursesGraded = false;
+                }
             }
         }
 

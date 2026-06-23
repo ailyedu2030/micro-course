@@ -96,18 +96,6 @@ public class MicroSpecialtyEnrollmentController {
         return R.ok(list);
     }
 
-    /** 微专业修读名单 */
-    @GetMapping("/by-specialty/{msId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
-    public R<PageResult<MicroSpecialtyEnrollmentVO>> listEnrollments(
-            @PathVariable Long msId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String status) {
-        PageResult<MicroSpecialtyEnrollmentVO> result = enrollmentService.listEnrollments(msId, page, size, status);
-        return R.ok(result);
-    }
-
     /** 手动颁发证书 */
     @PostMapping("/{id}/issue-certificate")
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")

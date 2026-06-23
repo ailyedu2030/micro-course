@@ -1,7 +1,7 @@
 import request from '../utils/request'
 
-export function getMyCertificates() {
-  return request({ method: 'GET', url: '/certificates/my' })
+export function getMyCertificates(params) {
+  return request({ method: 'GET', url: '/certificates/my', params })
 }
 
 export function downloadCertificate(certificateId) {

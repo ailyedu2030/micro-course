@@ -87,11 +87,14 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         }
 
         if (isCrossDept) {
+            int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
             teacherRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                             .eq(MicroSpecialtyTeacher::getId, inviteId)
+                            .eq(MicroSpecialtyTeacher::getVersion, oldVersion)
                             .set(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC")
-                            .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now()));
+                            .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now())
+                            .setSql("version = version + 1"));
 
             // P0-2 修复：通知所有 ACADEMIC 角色用户（而非非法 userId 0L）
             List<User> academicUsers = userRepository.selectList(
@@ -102,12 +105,15 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                         ms != null ? ms.getId() : null);
             }
         } else {
+            int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
             teacherRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                             .eq(MicroSpecialtyTeacher::getId, inviteId)
+                            .eq(MicroSpecialtyTeacher::getVersion, oldVersion)
                             .set(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE")
                             .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now())
-                            .set(MicroSpecialtyTeacher::getJoinedAt, LocalDateTime.now()));
+                            .set(MicroSpecialtyTeacher::getJoinedAt, LocalDateTime.now())
+                            .setSql("version = version + 1"));
 
             // 如果是 LEAD 角色，双重确认更新 lead_teacher_id
             if ("LEAD".equals(record.getRole()) && ms != null) {

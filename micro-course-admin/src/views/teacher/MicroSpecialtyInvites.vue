@@ -61,8 +61,10 @@ const fetchData = async (tab) => {
     const now = Date.now()
     list = list.map(i => {
       const dl = i.deadline ? new Date(i.deadline).getTime() : null
-      const rem = dl ? Math.max(0, Math.ceil((dl - now) / 86400000)) : null
-      return { ...i, expiring: rem !== null && rem < 3, deadlineText: dl ? (rem > 0 ? `剩余${rem}天` : '已过期') : '' }
+      const remMs = dl ? Math.max(0, dl - now) : 0
+      const remDays = Math.floor(remMs / 86400000)
+      const remHours = Math.floor((remMs % 86400000) / 3600000)
+      return { ...i, expiring: remMs > 0 && remMs < 3 * 86400000, deadlineText: dl ? (remMs > 0 ? `剩余${remDays} 天 ${remHours} 小时` : '已过期') : '' }
     })
     if (tab === 'pending') list = list.filter(i => i.status === 'PENDING')
     else list = list.filter(i => i.status !== 'PENDING')

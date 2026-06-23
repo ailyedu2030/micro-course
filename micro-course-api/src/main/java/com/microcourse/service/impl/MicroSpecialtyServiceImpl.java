@@ -342,6 +342,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前状态不允许编辑");
         }
 
+        requireLeadOf(id);
+
         if (request.getTitle() != null) ms.setTitle(request.getTitle());
         if (request.getSubtitle() != null) ms.setSubtitle(request.getSubtitle());
         if (request.getCoverUrl() != null) ms.setCoverUrl(request.getCoverUrl());
@@ -367,6 +369,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        requireOwnerOrLead(id);
+
         // 仅 DRAFT/REJECTED/ARCHIVED 可删除
         String s = ms.getStatus();
         if (!"DRAFT".equals(s) && !"REJECTED".equals(s) && !"ARCHIVED".equals(s)) {
@@ -382,6 +386,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     public void submit(Long id) {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+
+        requireLeadOf(id);
 
         String currentStatus = ms.getStatus();
         // §2.1: DRAFT/REJECTED → PENDING_REVIEW
@@ -486,6 +492,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        requireLeadOf(id);
+
         if (!"APPROVED".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已通过状态可开课");
         }
@@ -519,6 +527,16 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
             notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_OPENED,
                     "微专业已开课", "微专业《" + ms.getTitle() + "》已开放报名", id);
         }
+
+        // P1-9: 通知所有已报名学生
+        List<MicroSpecialtyEnrollment> enrolledStudents = msEnrollmentRepository.selectList(
+                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                        .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, id)
+                        .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
+        for (MicroSpecialtyEnrollment en : enrolledStudents) {
+            notificationService.notifyAsync(en.getUserId(), NotificationType.MS_OPENED,
+                    "微专业已开课", "您修读的微专业《" + ms.getTitle() + "》已开放报名", id);
+        }
     }
 
     @Override
@@ -526,6 +544,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     public void close(Long id) {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+
+        requireLeadOf(id);
 
         if (!"RECRUITING".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅招生中状态可结业");
@@ -676,6 +696,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        requireLeadOf(msId);
+
         // §9.11 编辑范围：RECRUITING 后不允许添加课程（仅可排序）
         String s = ms.getStatus();
         if ("RECRUITING".equals(s) || "COMPLETED".equals(s) || "CANCELLED".equals(s) || "ARCHIVED".equals(s)) {
@@ -702,6 +724,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        requireLeadOf(msId);
+
         // §9.11 编辑范围校验
         String s = ms.getStatus();
         if ("RECRUITING".equals(s) || "COMPLETED".equals(s) || "CANCELLED".equals(s) || "ARCHIVED".equals(s)) {
@@ -726,6 +750,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     public void removeCourse(Long msId, Long itemId) {
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+
+        requireLeadOf(msId);
 
         // §9.11 编辑范围校验
         String s = ms.getStatus();
@@ -752,6 +778,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     public MicroSpecialtyTeacherVO inviteTeacher(Long msId, MicroSpecialtyTeacherRequest request) {
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+
+        requireLeadOf(msId);
 
         // 检查是否已存在有效记录
         Long existCount = msTeacherRepository.selectCount(
@@ -783,6 +811,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void removeTeacher(Long msId, Long teacherId) {
+        requireLeadOf(msId);
+
         Long existCount = msTeacherRepository.selectCount(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
@@ -800,31 +830,6 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         notificationService.notifyAsync(teacherId, NotificationType.MS_TEAM_REMOVED,
                 "已被移出微专业团队", "您已被移出微专业团队", msId);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public MicroSpecialtyTeacherVO reinviteTeacher(Long msId, Long teacherId) {
-        // 查找 REMOVED/DECLINED 记录复用
-        MicroSpecialtyTeacher record = msTeacherRepository.selectOne(
-                new LambdaQueryWrapper<MicroSpecialtyTeacher>()
-                        .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
-                        .eq(MicroSpecialtyTeacher::getTeacherId, teacherId)
-                        .in(MicroSpecialtyTeacher::getInviteStatus, "DECLINED", "REMOVED")
-                        .last("LIMIT 1"));
-
-        if (record == null) throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND, "无可复用的教师记录");
-
-        int oldVersion = 0;
-        msTeacherRepository.update(null,
-                new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
-                        .eq(MicroSpecialtyTeacher::getId, record.getId())
-                        .set(MicroSpecialtyTeacher::getInviteStatus, "INVITED")
-                        .set(MicroSpecialtyTeacher::getInvitedAt, LocalDateTime.now())
-                        .set(MicroSpecialtyTeacher::getInviteExpiresAt, LocalDateTime.now().plusDays(7))
-                        .set(MicroSpecialtyTeacher::getInvitedBy, SecurityUtil.getCurrentUserId()));
-
-        return toTeacherVO(record);
     }
 
     // ====== LEAD 继任（§9.7） ======
@@ -847,33 +852,39 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         int oldVersion = ms.getVersion();
 
-        // 1. 原 LEAD 降为 MEMBER
+        // 1. 原 LEAD 降为 MEMBER（乐观锁）
         MicroSpecialtyTeacher oldLead = msTeacherRepository.selectOne(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
                         .eq(MicroSpecialtyTeacher::getRole, "LEAD")
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
         if (oldLead != null) {
+            int oldLeadVersion = oldLead.getVersion() != null ? oldLead.getVersion() : 0;
             msTeacherRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                             .eq(MicroSpecialtyTeacher::getId, oldLead.getId())
                             .eq(MicroSpecialtyTeacher::getRole, "LEAD")
+                            .eq(MicroSpecialtyTeacher::getVersion, oldLeadVersion)
                             .set(MicroSpecialtyTeacher::getRole, "MEMBER")
-                            .set(MicroSpecialtyTeacher::getLeftAt, LocalDateTime.now()));
+                            .set(MicroSpecialtyTeacher::getLeftAt, LocalDateTime.now())
+                            .setSql("version = version + 1"));
         }
 
-        // 2. 新 LEAD 是否已在团队
+        // 2. 新 LEAD 是否已在团队（乐观锁）
         MicroSpecialtyTeacher newLeadRecord = msTeacherRepository.selectOne(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
                         .eq(MicroSpecialtyTeacher::getTeacherId, newLeadId)
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
         if (newLeadRecord != null) {
+            int newLeadVersion = newLeadRecord.getVersion() != null ? newLeadRecord.getVersion() : 0;
             msTeacherRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                             .eq(MicroSpecialtyTeacher::getId, newLeadRecord.getId())
+                            .eq(MicroSpecialtyTeacher::getVersion, newLeadVersion)
                             .set(MicroSpecialtyTeacher::getRole, "LEAD")
-                            .set(MicroSpecialtyTeacher::getJoinedAt, LocalDateTime.now()));
+                            .set(MicroSpecialtyTeacher::getJoinedAt, LocalDateTime.now())
+                            .setSql("version = version + 1"));
         } else {
             newLeadRecord = new MicroSpecialtyTeacher();
             newLeadRecord.setMicroSpecialtyId(msId);
@@ -956,6 +967,22 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         if (isLeadOf(msId, userId)) return true;
         MicroSpecialty ms = msRepository.selectById(msId);
         return ms != null && userId.equals(ms.getCreatorId());
+    }
+
+    /** 校验当前用户是否为微专业负责人或系统管理员 */
+    private void requireLeadOf(Long msId) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!isLeadOf(msId, userId) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可执行此操作");
+        }
+    }
+
+    /** 校验当前用户是否为微专业负责人/创建者或系统管理员 */
+    private void requireOwnerOrLead(Long msId) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!isOwnerOrLead(msId, userId) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权操作此微专业");
+        }
     }
 
     // ====== 转换方法 ======
