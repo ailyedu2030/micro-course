@@ -246,6 +246,13 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         if (tc == null) {
             throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
         }
+        // FK 检查：有学生时禁止删除
+        long studentCount = teachingClassStudentRepository.selectCount(
+                new LambdaQueryWrapper<TeachingClassStudent>()
+                        .eq(TeachingClassStudent::getClassId, id));
+        if (studentCount > 0) {
+            throw new BusinessException(ErrorCode.CLASS_HAS_STUDENTS);
+        }
         classScheduleRepository.deleteByClassId(id);
         teachingClassRepository.deleteById(id);
     }
