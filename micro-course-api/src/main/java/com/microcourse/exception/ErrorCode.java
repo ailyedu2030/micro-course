@@ -8,6 +8,7 @@ public enum ErrorCode {
     TOKEN_INVALID(1005, "Token 格式错误", 401),
     LOGIN_LOCKED(1006, "登录失败次数过多，账号已锁定", 423),
     OLD_PASSWORD_INCORRECT(1007, "旧密码错误", 400),
+    SERVICE_UNAVAILABLE(1008, "服务暂时不可用，请稍后重试", 503),
     DEPARTMENT_NOT_FOUND(2001, "院系不存在", 404),
     DEPARTMENT_HAS_MAJORS(2002, "院系下存在专业，无法删除", 400),
     DEPARTMENT_NAME_EXISTS(2003, "院系名称已存在", 400),

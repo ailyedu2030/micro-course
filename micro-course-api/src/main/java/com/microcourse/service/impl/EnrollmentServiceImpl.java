@@ -70,6 +70,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final NotificationService notificationService;
+    private final com.microcourse.metrics.EnrollmentMetrics metrics;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
                                  EnrollmentHistoryRepository enrollmentHistoryRepository,
@@ -82,7 +83,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                  BadgeService badgeService,
                                  OrderRepository orderRepository,
                                  OrderService orderService,
-                                 NotificationService notificationService) {
+                                 NotificationService notificationService,
+                                 com.microcourse.metrics.EnrollmentMetrics metrics) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentHistoryRepository = enrollmentHistoryRepository;
         this.courseRepository = courseRepository;
@@ -95,11 +97,34 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.notificationService = notificationService;
+        this.metrics = metrics;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public EnrollmentVO enroll(EnrollmentCreateRequest request) {
+        // ★ 业务逻辑审计 P0-2 增强：可观测性 — Timer 记录完整耗时（含行级锁）
+        io.micrometer.core.instrument.Timer.Sample sample = io.micrometer.core.instrument.Timer.start();
+        boolean success = false;
+        try {
+            EnrollmentVO result = doEnroll(request);
+            success = true;
+            return result;
+        } finally {
+            sample.stop(metrics.enrollTimer());
+            if (success) {
+                metrics.recordSuccess();
+            } else {
+                metrics.recordError();
+            }
+        }
+    }
+
+    private EnrollmentVO doEnroll(EnrollmentCreateRequest request) {
+        // ★ 业务逻辑审计 P0-3 增强：功能开关（紧急回滚）
+        if (!com.microcourse.config.EnrollmentFeatureFlag.isDynamicallyEnabled()) {
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "选课服务暂时不可用，请稍后重试");
+        }
         // 幂等性优先检查：已选过则直接返回
         LambdaQueryWrapper<Enrollment> existingWrapper = new LambdaQueryWrapper<>();
         existingWrapper.eq(Enrollment::getUserId, request.getUserId())
@@ -165,6 +190,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             // ★ 业务逻辑审计 P1 修复：课程满员 → 自动入候补队列
             // 使用行级锁后的 studentCount/maxStudents（不是 course.getXxx()，那个是锁前的）
             if (maxStudents != null && maxStudents > 0 && studentCount >= maxStudents) {
+                metrics.recordOvercapacityPrevented();  // P0-1 修复生效证据：容量被保护
                 int waitlistInserted = enrollmentRepository.atomicInsertIfEnrollable(
                         request.getUserId(),
                         request.getCourseId(),
@@ -185,6 +211,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                 "您已进入《" + course.getTitle() + "》的候补队列，当前位置 #" + position,
                                 course.getId());
                         recordHistory(waitlistEnrollment.getId(), null, EnrollmentStatus.WAITLIST, request.getUserId(), "WAITLIST");
+                        metrics.recordWaitlist();
                         return convertToVO(waitlistEnrollment);
                     }
                 }

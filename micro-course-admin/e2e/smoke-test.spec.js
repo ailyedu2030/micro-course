@@ -502,4 +502,22 @@ test.describe('Order & TeachingClass State Machine', () => {
     // isValidTransition(from=0, to=0) 返回 false → INVALID_TRANSITION
     expect(res.status()).toBe(400)
   })
+
+  // ── Prometheus 可观测性 ──
+  test('OBS-1: 选课指标可被 Prometheus 抓取', async ({ page }) => {
+    const res = await page.request.get(`${API}/actuator/prometheus`)
+    expect(res.status()).toBe(200)
+    const text = await res.text()
+    // 业务指标必须可见
+    expect(text).toContain('enrollment_total')
+    expect(text).toContain('enrollment_duration_seconds')
+    expect(text).toContain('enrollment_overcapacity_prevented_total')
+  })
+
+  test('OBS-2: 行级锁 P99 监控点存在', async ({ page }) => {
+    const res = await page.request.get(`${API}/actuator/prometheus`)
+    const text = await res.text()
+    // enrollment_duration_seconds_count 监控总调用次数
+    expect(text).toMatch(/enrollment_duration_seconds_count/)
+  })
 })
