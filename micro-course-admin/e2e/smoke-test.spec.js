@@ -681,4 +681,51 @@ test.describe('Order & TeachingClass State Machine', () => {
     expect(reEnrData.id).not.toBe(enrId)  // 新 ID, 不是旧的
     console.log(`  ✓ 退课后重新选课成功: 新 enrollmentId=${reEnrData.id}`)
   })
+
+  // 客户体验修复 v1.7.0: H5 移动端退课按钮 (P0-UX-U4 mobile variant)
+  test('DROP-2: H5 移动端 (375px) 也应有退课按钮', async ({ browser }) => {
+    // 1. student 登录
+    const ctx = await browser.newContext({ viewport: { width: 375, height: 812 } })  // iPhone 12
+    const page = await ctx.newPage()
+    await page.goto('http://localhost:5173/login')
+    await page.fill('input[placeholder*="用户名"]', 'student')
+    await page.fill('input[placeholder*="密码"]', '123456')
+    await page.click('button:has-text("登 录")')
+    await page.waitForURL(/\/student/, { timeout: 10000 })
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1500)
+
+    // 2. 进入我的课程
+    await page.goto('http://localhost:5173/student/my-courses')
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(2000)
+
+    // 3. 切换到"进行中" Tab
+    const inProgressTab = page.locator('text=进行中').first()
+    if (await inProgressTab.count() > 0) {
+      await inProgressTab.click()
+      await page.waitForTimeout(1000)
+    }
+
+    // 4. 验证 H5 布局下退课按钮存在
+    const dropBtn = page.locator('button:has-text("退课")')
+    const dropCount = await dropBtn.count()
+    expect(dropCount).toBeGreaterThan(0)
+    console.log(`  ✓ H5 移动端 (375px) 找到 ${dropCount} 个退课按钮`)
+
+    // 5. 验证按钮可点击 (不真退)
+    if (dropCount > 0) {
+      await dropBtn.first().click()
+      await page.waitForTimeout(800)
+      const confirmBtn = page.locator('.el-message-box button:has-text("确认退课")')
+      const confirmExists = await confirmBtn.count()
+      if (confirmExists > 0) {
+        console.log('  ✓ H5 点击退课 → 弹确认框正常')
+        await page.locator('.el-message-box button:has-text("取消")').click()
+        await page.waitForTimeout(500)
+      }
+    }
+
+    await ctx.close()
+  })
 })

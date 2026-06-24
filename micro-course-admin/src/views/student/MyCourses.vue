@@ -440,15 +440,29 @@
               {{ formatTime(activeTab === 'completed' ? course.completedAt : (course.lastWatchAt || course.enrolledAt)) }}
             </p>
 
-            <!-- 按钮 -->
-            <el-button
-              :type="activeTab === 'in-progress' ? 'primary' : 'default'"
-              size="small"
-              class="h5-action-btn"
-              @click.stop="handleContinue(course.courseId)"
-            >
-              {{ activeTab === 'in-progress' ? '继续学习' : activeTab === 'completed' ? '查看详情' : '开始学习' }}
-            </el-button>
+            <!-- 按钮组: 主按钮 + 退课 (仅进行中) -->
+            <div class="h5-action-row">
+              <el-button
+                :type="activeTab === 'in-progress' ? 'primary' : 'default'"
+                size="small"
+                class="h5-action-btn"
+                @click.stop="handleContinue(course.courseId)"
+              >
+                {{ activeTab === 'in-progress' ? '继续学习' : activeTab === 'completed' ? '查看详情' : '开始学习' }}
+              </el-button>
+              <!-- 客户体验修复 v1.7.0: H5 也加退课按钮 (P0-UX-U4 mobile variant) -->
+              <el-button
+                v-if="activeTab === 'in-progress'"
+                size="small"
+                plain
+                type="danger"
+                class="h5-dropout-btn"
+                aria-label="退课"
+                @click.stop="handleDropOut(course)"
+              >
+                退课
+              </el-button>
+            </div>
           </div>
         </el-card>
       </div>
@@ -1257,6 +1271,22 @@ const handleDropOut = async (course) => {
 .h5-action-btn {
   width: 100%;
   cursor: pointer;
+}
+
+/* 客户体验修复 v1.7.0: H5 退课按钮 + 主按钮并排 */
+.h5-action-row {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: center;
+}
+
+.h5-action-row .h5-action-btn {
+  flex: 1;  /* 主按钮占主要宽度 */
+}
+
+.h5-action-row .h5-dropout-btn {
+  flex: 0 0 auto;  /* 退课按钮固定宽度 */
+  min-width: 64px;
 }
 
 /* P2-6: H5 底部安全区——适配 iPhone 等圆角底部设备 */
