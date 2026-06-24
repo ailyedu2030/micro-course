@@ -14,6 +14,7 @@ public class MicroSpecialtyProposalRequest {
 
     private String description;
     private String trainingObjective;
+    private String prerequisites;
     private String semester;
     private Integer maxStudents;
     private BigDecimal credits;
@@ -31,6 +32,9 @@ public class MicroSpecialtyProposalRequest {
 
     public String getTrainingObjective() { return trainingObjective; }
     public void setTrainingObjective(String trainingObjective) { this.trainingObjective = trainingObjective; }
+
+    public String getPrerequisites() { return prerequisites; }
+    public void setPrerequisites(String prerequisites) { this.prerequisites = prerequisites; }
 
     public String getSemester() { return semester; }
     public void setSemester(String semester) { this.semester = semester; }

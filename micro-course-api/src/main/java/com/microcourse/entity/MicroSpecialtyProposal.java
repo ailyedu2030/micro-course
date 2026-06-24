@@ -15,6 +15,7 @@ public class MicroSpecialtyProposal {
     private String description;
     private Long offerDepartmentId;
     private String trainingObjective;
+    private String prerequisites;
     private String semester;
     private Integer maxStudents;
     private String status;
@@ -41,6 +42,8 @@ public class MicroSpecialtyProposal {
     public void setOfferDepartmentId(Long offerDepartmentId) { this.offerDepartmentId = offerDepartmentId; }
     public String getTrainingObjective() { return trainingObjective; }
     public void setTrainingObjective(String trainingObjective) { this.trainingObjective = trainingObjective; }
+    public String getPrerequisites() { return prerequisites; }
+    public void setPrerequisites(String prerequisites) { this.prerequisites = prerequisites; }
     public String getSemester() { return semester; }
     public void setSemester(String semester) { this.semester = semester; }
     public Integer getMaxStudents() { return maxStudents; }

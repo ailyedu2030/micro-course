@@ -59,6 +59,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         proposal.setDescription(request.getDescription());
         proposal.setOfferDepartmentId(request.getOfferDepartmentId());
         proposal.setTrainingObjective(request.getTrainingObjective());
+        proposal.setPrerequisites(request.getPrerequisites());
         proposal.setSemester(request.getSemester());
         proposal.setMaxStudents(request.getMaxStudents());
         proposal.setStatus("PENDING_REVIEW");
@@ -223,6 +224,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         if (request.getTitle() != null) proposal.setTitle(request.getTitle());
         if (request.getDescription() != null) proposal.setDescription(request.getDescription());
         if (request.getTrainingObjective() != null) proposal.setTrainingObjective(request.getTrainingObjective());
+        if (request.getPrerequisites() != null) proposal.setPrerequisites(request.getPrerequisites());
         if (request.getSemester() != null) proposal.setSemester(request.getSemester());
         if (request.getMaxStudents() != null) proposal.setMaxStudents(request.getMaxStudents());
 
