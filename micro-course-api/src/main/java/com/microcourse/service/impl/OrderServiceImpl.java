@@ -225,17 +225,19 @@ public class OrderServiceImpl implements OrderService {
         if (!SecurityUtil.isOwnerOrAdmin(order.getUserId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        if (!"PENDING".equals(order.getStatus())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "只能取消待支付订单");
+        // 业务逻辑审计 P1 修复：使用 canTransitionTo 白名单替代字符串等值校验
+        OrderStatus currentStatus = OrderStatus.fromValue(order.getStatus());
+        if (currentStatus == null || !currentStatus.canTransitionTo(OrderStatus.CANCELLED)) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "订单当前状态不可取消");
         }
-        order.setStatus("CANCELLED");
+        order.setStatus(OrderStatus.CANCELLED.getValue());
         order.setUpdatedAt(LocalDateTime.now());
         // 用 CAS 更新防止并发
         int affected = orderRepository.update(null,
                 new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
                         .eq(Order::getId, orderId)
-                        .eq(Order::getStatus, "PENDING")
-                        .set(Order::getStatus, "CANCELLED")
+                        .eq(Order::getStatus, OrderStatus.PENDING.getValue())
+                        .set(Order::getStatus, OrderStatus.CANCELLED.getValue())
                         .set(Order::getUpdatedAt, LocalDateTime.now()));
         if (affected == 0) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更");
         return toVO(orderRepository.selectById(orderId));
@@ -256,8 +258,10 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        if (!"PAID".equals(order.getStatus())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅已支付订单可退款");
+        // 业务逻辑审计 P1 修复：使用 canTransitionTo 白名单替代字符串等值校验
+        OrderStatus currentStatus = OrderStatus.fromValue(order.getStatus());
+        if (currentStatus == null || !currentStatus.canTransitionTo(OrderStatus.REFUNDED)) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "订单当前状态不可退款");
         }
 
         // CAS 乐观锁更新状态 PAID → REFUNDED
