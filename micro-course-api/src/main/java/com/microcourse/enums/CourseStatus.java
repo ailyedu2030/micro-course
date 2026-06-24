@@ -77,4 +77,16 @@ public enum CourseStatus {
                 return false;
         }
     }
+
+    /**
+     * ★ 客户体验修复 v1.7.0: 课程是否可被学生选课/购买。
+     * <p>P0 生产 bug: 5 门核心 seed 课程卡在 APPROVED (status=2),但 published_at 已设置、
+     * 学生已实际在学,UI 课程广场也展示为可购买。旧 API 检查 == PUBLISHED (4) 直接拒绝,
+     * 导致 ¥9.99 付费课程"立即购买"按钮点了弹"课程未发布"。</p>
+     * <p>修复: 定义"可被选课"=APPROVED (管理员已通过) || PUBLISHED (教师已发布)。
+     * 业务上,管理员通过后即使教师没点"正式发布",课程也已经具备所有选课条件。</p>
+     */
+    public boolean isSelectable() {
+        return this == APPROVED || this == PUBLISHED;
+    }
 }

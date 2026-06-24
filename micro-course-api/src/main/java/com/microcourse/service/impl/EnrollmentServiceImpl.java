@@ -154,16 +154,19 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (isDeleted) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
         }
-        if (lockedStatus == null || lockedStatus != CourseStatus.PUBLISHED.getCode()) {
+        if (lockedStatus == null || !CourseStatus.fromCode(lockedStatus).isSelectable()) {
             throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "课程未发布，无法选课");
         }
 
-        // SECURITY: 付费课程必须通过订单支付，不能直接选课
+        // SECURITY: 付费课程必须通过订单支付,不能直接选课
+        // v1.7.0 P0 修复: sourceChannel='PAYMENT' 表示这是订单支付后的自动选课,跳过付费检查
+        // 旧逻辑会把"支付后自动选课"也卡住,造成订单支付 500 (死锁: pay→enroll→reject)
         Course course = courseRepository.selectById(request.getCourseId());  // 拿到完整 entity
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (course.getPrice() != null && course.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0
+        if (!"PAYMENT".equals(request.getSourceChannel())
+                && course.getPrice() != null && course.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0
                 && Boolean.FALSE.equals(course.getIsFree())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程为付费课程，请先购买");
         }

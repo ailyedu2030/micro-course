@@ -80,7 +80,9 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
             "(user_id, course_id, enrollment_status, source_channel, progress, completed, enrolled_at, updated_at, version) " +
             "SELECT #{userId}, #{courseId}, #{status}, #{sourceChannel}, 0, false, NOW(), NOW(), 0 " +
             "FROM courses c " +
-            "WHERE c.id = #{courseId} AND c.deleted_at IS NULL AND c.status = 4 " +
+            // 客户体验修复 v1.7.0: 接受 status IN (2,4) — APPROVED(2) 管理员已通过 + PUBLISHED(4) 教师已发布
+            // 旧硬编码 status=4 会卡死所有 5 门核心 seed 课程(状态=2,published_at 已设)
+            "WHERE c.id = #{courseId} AND c.deleted_at IS NULL AND c.status IN (2, 4) " +
             "  AND (c.max_students IS NULL OR c.max_students = 0 " +
             "       OR COALESCE(c.student_count, 0) < c.max_students) " +
             "  AND NOT EXISTS (SELECT 1 FROM enrollments e " +
@@ -99,7 +101,8 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
             "(user_id, course_id, enrollment_status, source_channel, progress, completed, enrolled_at, updated_at, version) " +
             "SELECT #{userId}, #{courseId}, #{status}, #{sourceChannel}, 0, false, NOW(), NOW(), 0 " +
             "FROM courses c " +
-            "WHERE c.id = #{courseId} AND c.deleted_at IS NULL AND c.status = 4 " +
+            // 客户体验修复 v1.7.0: 与 atomicInsertIfCapacity 保持一致
+            "WHERE c.id = #{courseId} AND c.deleted_at IS NULL AND c.status IN (2, 4) " +
             "  AND NOT EXISTS (SELECT 1 FROM enrollments e " +
             "                  WHERE e.user_id = #{userId} AND e.course_id = #{courseId})")
     int atomicInsertIfEnrollable(@Param("userId") Long userId,

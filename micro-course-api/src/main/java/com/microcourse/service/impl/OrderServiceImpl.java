@@ -80,8 +80,9 @@ public class OrderServiceImpl implements OrderService {
     public OrderVO createOrder(Long userId, Long courseId, Long bundleId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        // SECURITY: 只有已发布的课程才能被购买
-        if (course.getStatus() == null || course.getStatus() != com.microcourse.enums.CourseStatus.PUBLISHED.getCode()) {
+        // SECURITY: 课程需要可被选课 (APPROVED 管理员通过 OR PUBLISHED 教师已发布)
+        // v1.7.0: 旧版检查 == PUBLISHED(4) 误伤 status=2 的 seed 课程,导致"¥9.99 课程不能购买"
+        if (course.getStatus() == null || !com.microcourse.enums.CourseStatus.fromCode(course.getStatus()).isSelectable()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程未发布，无法购买");
         }
 
