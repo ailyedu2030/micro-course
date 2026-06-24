@@ -158,7 +158,17 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
                 }
                 if (checkStatus == null || !CourseStatus.fromCode(checkStatus).isSelectable()) {
-                    throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "课程未发布，无法重新选课");
+                    // 客户体验修复 v1.7.0: 区分下架 (CLOSED=5) vs 未发布 (DRAFT=0) vs 审核中 (PENDING=1) vs 驳回 (REJECTED=3)
+                    // 之前都返回"课程未发布"不精确
+                    String statusDesc = checkStatus == null ? "未知" :
+                        checkStatus == 5 ? "已下架" :
+                        checkStatus == 4 ? "已发布" :     // 实际不会到这里
+                        checkStatus == 2 ? "已通过" :     // 实际不会到这里
+                        checkStatus == 0 ? "未发布" :
+                        checkStatus == 1 ? "审核中" :
+                        checkStatus == 3 ? "已驳回" : "状态不可选";
+                    throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
+                        "课程" + statusDesc + "，无法重新选课");
                 }
                 // 物理删除旧 enrollment (走 @TableLogic 会被软删,但 uk_enroll_user_course 是硬唯一,阻挡)
                 // 走独立事务 (TransactionTemplate REQUIRES_NEW), 避免主事务回滚时撤销删除
@@ -199,7 +209,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
         }
         if (lockedStatus == null || !CourseStatus.fromCode(lockedStatus).isSelectable()) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "课程未发布，无法选课");
+            // 客户体验修复 v1.7.0: 区分下架 vs 未发布 vs 审核中
+            String statusDesc = lockedStatus == null ? "未知" :
+                lockedStatus == 5 ? "已下架" :
+                lockedStatus == 0 ? "未发布" :
+                lockedStatus == 1 ? "审核中" :
+                lockedStatus == 3 ? "已驳回" : "状态不可选";
+            throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
+                "课程" + statusDesc + "，无法选课");
         }
 
         // SECURITY: 付费课程必须通过订单支付,不能直接选课
@@ -266,7 +283,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     }
                 }
             }
-            throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "该课程不可选课（可能未发布或已下架）");
+            // 客户体验修复 v1.7.0: 区分下架 vs 其他状态
+            String statusDesc = lockedStatus == null ? "未知" :
+                lockedStatus == 5 ? "已下架" :
+                lockedStatus == 0 ? "未发布" :
+                lockedStatus == 1 ? "审核中" :
+                lockedStatus == 3 ? "已驳回" : "状态不可选";
+            throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
+                "课程" + statusDesc + "或已选过，无法选课");
         }
 
         // 双闸门：原子增计数也带容量检查（防御深度）
