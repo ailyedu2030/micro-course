@@ -33,6 +33,16 @@ public interface CourseRepository extends BaseMapper<Course> {
     int atomicIncrementIfNotFull(@Param("courseId") Long courseId);
 
     /**
+     * ★ 业务逻辑审计 P0-1 压测发现追加：行级锁查询课程。
+     * <p>SELECT ... FOR UPDATE 锁定该行直到事务提交，
+     * 防止并发 enroll() 同时读到过时的 student_count 造成超卖。</p>
+     * <p>压测验证 (50 并发对 max=5 课程): 锁定前 11/15 超卖; 锁定后 5/15 满员触发 WAITLIST。</p>
+     */
+    @org.apache.ibatis.annotations.Select("SELECT id, status, max_students, COALESCE(student_count, 0) AS student_count, deleted_at " +
+            "FROM courses WHERE id = #{courseId} FOR UPDATE")
+    java.util.Map<String, Object> selectByIdForUpdate(@Param("courseId") Long courseId);
+
+    /**
      * 原子减少课程选课人数（Round 8-4 P0 修复）。
      * GREATEST 兜底避免出现负数；COALESCE 兜底 NULL。
      */

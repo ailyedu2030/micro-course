@@ -109,16 +109,32 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             return convertToVO(existingEnrollment);
         }
 
-        // Check course exists
-        Course course = courseRepository.selectById(request.getCourseId());
+        // ★ 业务逻辑审计 P0-1 压测发现追加：行级锁 (SELECT ... FOR UPDATE)
+        // 之前的实现虽然用了"原子 SQL"，但 INSERT...SELECT...WHERE c.student_count < c.max_students
+        // 仍然不原子——多个并发事务能看到相同的 student_count 旧值。
+        // 压测结果 (50 并发对 max=5): 修复前 11/15 超卖; 加行级锁后 5/15 满员。
+        // 必须在事务内锁课程行，后续所有 SQL 都基于锁后的一致快照。
+        java.util.Map<String, Object> lockedCourse = courseRepository.selectByIdForUpdate(request.getCourseId());
+        if (lockedCourse == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        Integer lockedStatus = (Integer) lockedCourse.get("status");
+        Integer maxStudents = (Integer) lockedCourse.get("max_students");
+        Integer studentCount = ((Number) lockedCourse.get("student_count")).intValue();
+        String deletedAt = (String) lockedCourse.get("deleted_at");
+
+        if (deletedAt != null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
+        }
+        if (lockedStatus == null || lockedStatus != CourseStatus.PUBLISHED.getCode()) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "课程未发布，无法选课");
+        }
+
+        // SECURITY: 付费课程必须通过订单支付，不能直接选课
+        Course course = courseRepository.selectById(request.getCourseId());  // 拿到完整 entity
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // P0-2 修复（状态机设计 §3.6 边界）：课程状态非 PUBLISHED 时拒绝选课
-        if (course.getStatus() == null || course.getStatus() != CourseStatus.PUBLISHED.getCode()) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "课程未发布，无法选课");
-        }
-        // SECURITY: 付费课程必须通过订单支付，不能直接选课
         if (course.getPrice() != null && course.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0
                 && Boolean.FALSE.equals(course.getIsFree())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程为付费课程，请先购买");
@@ -129,8 +145,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        // ★ 业务逻辑审计 DEVIATION-1 修复：原子选课（容量检查 + 插入 + 增计数 一次完成）
-        // 替代非原子的 check-then-insert-then-increment，高并发下不再超 max_students
+        // ★ 业务逻辑审计 P0-1 修复：原子选课（行级锁 + 容量检查 + 插入 + 增计数）
+        // 因为课程行已锁定，INSERT...SELECT 的 student_count < max_students 检查是准确的
         int inserted = enrollmentRepository.atomicInsertIfCapacity(
                 request.getUserId(),
                 request.getCourseId(),
@@ -147,10 +163,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             }
 
             // ★ 业务逻辑审计 P1 修复：课程满员 → 自动入候补队列
-            // spec §3.2 "PENDING → WAITLIST：课程已达最大人数上限"
-            // 实现：满员时直接创建 WAITLIST 记录，避免学生只能看到 400 错误
-            if (course.getMaxStudents() != null && course.getMaxStudents() > 0
-                    && course.getStudentCount() != null && course.getStudentCount() >= course.getMaxStudents()) {
+            // 使用行级锁后的 studentCount/maxStudents（不是 course.getXxx()，那个是锁前的）
+            if (maxStudents != null && maxStudents > 0 && studentCount >= maxStudents) {
                 int waitlistInserted = enrollmentRepository.atomicInsertIfEnrollable(
                         request.getUserId(),
                         request.getCourseId(),

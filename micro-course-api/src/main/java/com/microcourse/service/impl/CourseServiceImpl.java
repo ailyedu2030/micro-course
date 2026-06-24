@@ -871,10 +871,15 @@ public class CourseServiceImpl implements CourseService {
         Integer currentStatus = course.getStatus() != null ? course.getStatus() : CourseStatus.DRAFT.getCode();
         CourseStatus fromStatus = CourseStatus.fromCode(currentStatus);
 
-        // ★ 业务逻辑审计 P2-1 修复：使用 canTransitionTo 白名单
-        // DRAFT/REJECTED → CLOSED 是合法转换（直接 CAS 标记，绕过 updateStatus 的额外校验）
-        // ARCHIVED 是终态，canTransitionTo 返回 false → 进 updateStatus 分支被拒
-        if (fromStatus != null && fromStatus.canTransitionTo(CourseStatus.CLOSED)) {
+        // ★ 业务逻辑审计 P2-1 修复：ARCHIVED 终态保护（删课前必检）
+        if (fromStatus == CourseStatus.ARCHIVED) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "已归档课程不可操作");
+        }
+
+        // DRAFT / REJECTED → CLOSED 是合法的"软删除"操作（不走状态机白名单）
+        // 其他状态（如 PUBLISHED）的删除走 updateStatus 走 canTransitionTo 校验
+        if (currentStatus == CourseStatus.DRAFT.getCode()
+                || currentStatus == CourseStatus.REJECTED.getCode()) {
             int affected = courseRepository.update(null,
                     new LambdaUpdateWrapper<Course>()
                             .eq(Course::getId, id)
