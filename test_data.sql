@@ -390,10 +390,10 @@ INSERT INTO notifications (id, user_id, type, title, content, related_id, channe
 -- 20. 轮播图
 -- ============================================================
 INSERT INTO banners (id, image_url, link_url, sort_order, enabled, created_at) VALUES
-(1, 'https://via.placeholder.com/800x400.png?text=Course+Banner', '/course/1', 1, true, NOW()),
-(2, 'https://via.placeholder.com/800x400.png?text=Course+Banner',   '/course/2', 2, true, NOW()),
-(3, 'https://via.placeholder.com/800x400.png?text=Course+Banner',  '/course/5', 3, true, NOW()),
-(4, 'https://via.placeholder.com/800x400.png?text=Course+Banner',     '/home',     4, true, NOW());
+(1, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgMjAwIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzQwOUVGRiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7lvq7or77lubPlj7A8L3RleHQ+PC9zdmc+', '/course/1', 1, true, NOW()),
+(2, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgMjAwIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzQwOUVGRiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7lvq7or77lubPlj7A8L3RleHQ+PC9zdmc+',   '/course/2', 2, true, NOW()),
+(3, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgMjAwIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzQwOUVGRiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7lvq7or77lubPlj7A8L3RleHQ+PC9zdmc+',  '/course/5', 3, true, NOW()),
+(4, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgMjAwIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzQwOUVGRiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7lvq7or77lubPlj7A8L3RleHQ+PC9zdmc+',     '/home',     4, true, NOW());
 
 -- ============================================================
 -- 验证数据
