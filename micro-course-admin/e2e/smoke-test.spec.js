@@ -282,3 +282,59 @@ test.describe('CRUD Full Chain', () => {
     expect(vBody.data.status).toBe(5) // CLOSED = 5
   })
 })
+
+// ══════════════════════════════════════════════════════════════
+// 6. 状态机行为测试（防再发 — 锁定业务逻辑）
+// ══════════════════════════════════════════════════════════════
+test.describe('Course State Machine Behavior', () => {
+  let errs, token, cid
+
+  test.beforeEach(async ({ page }) => {
+    errs = watchErrors(page)
+    token = await apiToken(page)
+    // Create a fresh course for each test
+    const c = await page.request.post(`${API}/api/courses`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      data: { title: 'SM-TEST-' + Date.now(), categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', description: 'State machine test' }
+    })
+    const body = await c.json()
+    cid = body.data.id
+  })
+  test.afterEach(() => { expect(errs).toEqual([]) })
+
+  test('SM-1: DRAFT → PENDING_REVIEW', async ({ page }) => {
+    const res = await page.request.post(`${API}/api/courses/${cid}/submit-review`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    // May fail if pre-conditions not met (no cover/chapters), but should not be 500
+    expect(res.status()).toBeLessThan(500)
+  })
+
+  test('SM-2: CLOSED→DRAFT 应被拒绝（DEVIATION-1 修复验证）', async ({ page }) => {
+    // Delete to set CLOSED
+    await page.request.delete(`${API}/api/courses/${cid}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    // Try to update status to DRAFT
+    const res = await page.request.put(`${API}/api/courses/${cid}/status`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      data: { status: 0 }
+    })
+    // Should fail with invalid transition
+    expect(res.status()).toBe(400)
+  })
+
+  test('SM-3: 空标题提交审核应被拒绝', async ({ page }) => {
+    const c = await page.request.post(`${API}/api/courses`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      data: { title: '', categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO' }
+    })
+    // Should fail validation
+    expect(c.status()).toBe(400)
+  })
+
+  test('SM-4: 无 token 访问应 401', async ({ page }) => {
+    const res = await page.request.get(`${API}/api/courses/${cid}`)
+    expect(res.status()).toBe(401)
+  })
+})

@@ -176,8 +176,8 @@ public class CourseController {
         if (reason == null || reason.isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因不能为空");
         }
-        if (reason.trim().length() < 5) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因过短，至少需要5个字符");
+        if (reason.trim().length() < 10) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因过短，至少需要10个字符");
         }
         courseService.reject(id, reason);
         return R.ok();
