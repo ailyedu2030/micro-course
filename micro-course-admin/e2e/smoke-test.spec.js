@@ -667,5 +667,18 @@ test.describe('Order & TeachingClass State Machine', () => {
     const stillEnrolled = afterList.find(e => e.id === enrId)
     expect(stillEnrolled).toBeUndefined()
     console.log(`  ✓ "我的选课"已不含此 enrollment (总选课数 ${afterList.length})`)
+
+    // 5. 关键: 退课后可重新选课 (v1.7.0 P0 修复)
+    // 之前: UNIQUE(user_id, course_id) 阻挡, 重选返回旧 CANCELLED
+    // 现在: 物理删旧 enrollment + partial unique 释放, 重选创建新 ENROLLED
+    const reEnr = await page.request.post(`${API}/api/enrollments`, {
+      headers: { 'Authorization': `Bearer ${studentToken}` },
+      data: { courseId: cid }
+    })
+    expect(reEnr.status()).toBe(200)
+    const reEnrData = (await reEnr.json()).data
+    expect(reEnrData.enrollmentStatus).toBe('ENROLLED')
+    expect(reEnrData.id).not.toBe(enrId)  // 新 ID, 不是旧的
+    console.log(`  ✓ 退课后重新选课成功: 新 enrollmentId=${reEnrData.id}`)
   })
 })

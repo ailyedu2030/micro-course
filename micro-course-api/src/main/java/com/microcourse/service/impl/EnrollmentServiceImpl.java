@@ -71,6 +71,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final OrderService orderService;
     private final NotificationService notificationService;
     private final com.microcourse.metrics.EnrollmentMetrics metrics;
+    private final org.springframework.transaction.support.TransactionTemplate txTemplate;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
                                  EnrollmentHistoryRepository enrollmentHistoryRepository,
@@ -84,7 +85,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                  OrderRepository orderRepository,
                                  OrderService orderService,
                                  NotificationService notificationService,
-                                 com.microcourse.metrics.EnrollmentMetrics metrics) {
+                                 com.microcourse.metrics.EnrollmentMetrics metrics,
+                                 org.springframework.transaction.PlatformTransactionManager txManager) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentHistoryRepository = enrollmentHistoryRepository;
         this.courseRepository = courseRepository;
@@ -98,6 +100,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         this.orderService = orderService;
         this.notificationService = notificationService;
         this.metrics = metrics;
+        this.txTemplate = new org.springframework.transaction.support.TransactionTemplate(txManager);
+        // ★ 客户体验修复 v1.7.0: 软删旧 CANCELLED enrollment 必须走 REQUIRES_NEW,
+        // 否则默认 REQUIRED 会加入主 enroll() 事务, 主事务异常回滚时撤销删除
+        this.txTemplate.setPropagationBehavior(
+            org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.txTemplate.setName("reenroll-soft-delete-tx");
     }
 
     @Override
@@ -131,7 +139,43 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 .eq(Enrollment::getCourseId, request.getCourseId());
         Enrollment existingEnrollment = enrollmentRepository.selectOne(existingWrapper);
         if (existingEnrollment != null) {
-            return convertToVO(existingEnrollment);
+            // 客户体验修复 v1.7.0: 退课后重新选课
+            // 问题: UNIQUE(user_id, course_id) WHERE deleted_at IS NULL 约束 + 软删的 CANCELLED 记录阻挡新 ENROLLED
+            // 解决: 用 @TableLogic 软删除 (deleted_at = NOW()) 旧 CANCELLED 记录
+            //      partial unique index 释放后, 走正常 enroll 流程
+            // 状态机: CANCELLED 是终态, 不能状态转换, 所以不能 updateById. 改用 deleteById 触发 @TableLogic
+            if (EnrollmentStatus.CANCELLED.getValue().equals(existingEnrollment.getEnrollmentStatus())) {
+                log.info("退课后重新选课: userId={}, courseId={}, 软删旧 enrollmentId={}",
+                    request.getUserId(), request.getCourseId(), existingEnrollment.getId());
+                // 检查课程是否仍可选
+                java.util.Map<String, Object> lockedCourseCheck = courseRepository.selectByIdForUpdate(request.getCourseId());
+                if (lockedCourseCheck == null) {
+                    throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+                }
+                Integer checkStatus = (Integer) lockedCourseCheck.get("status");
+                Object checkDeletedAt = lockedCourseCheck.get("deleted_at");
+                if (checkDeletedAt != null) {
+                    throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
+                }
+                if (checkStatus == null || !CourseStatus.fromCode(checkStatus).isSelectable()) {
+                    throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "课程未发布，无法重新选课");
+                }
+                // 物理删除旧 enrollment (走 @TableLogic 会被软删,但 uk_enroll_user_course 是硬唯一,阻挡)
+                // 走独立事务 (TransactionTemplate REQUIRES_NEW), 避免主事务回滚时撤销删除
+                final Long eid = existingEnrollment.getId();
+                Integer deleted = txTemplate.execute(status -> enrollmentRepository.physicalDeleteById(eid));
+                if (deleted == null || deleted == 0) {
+                    log.warn("删旧 CANCELLED 失败: enrollmentId={}", eid);
+                } else {
+                    log.info("退课后重新选课-物理删成功: enrollmentId={}", eid);
+                }
+                // 注意: cancelEnrollment 已 atomicDecrementStudentCount, 这里不要再 +1
+                // 走下面的正常 enroll 流程会自动 +1
+                // 不 return, 继续走下面的正常 enroll 流程
+            } else {
+                // 其他状态 (APPROVED/ENROLLED/IN_PROGRESS/COMPLETED/WAITLIST) 幂等返回
+                return convertToVO(existingEnrollment);
+            }
         }
 
         // ★ 业务逻辑审计 P0-1 压测发现追加：行级锁 (SELECT ... FOR UPDATE)
@@ -921,6 +965,19 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         log.info("候补晋升完成: courseId={}, userId={}, enrollmentId={}",
                 courseId, next.getUserId(), next.getId());
+    }
+
+    /**
+     * 客户体验修复 v1.7.0: 软删除旧 CANCELLED enrollment (REQUIRES_NEW 独立事务)
+     * <p>原因: 在 enroll() 主事务中删除旧记录, 如果后续 atomicInsertIfCapacity 失败,
+     * 整个事务回滚, 软删除也被撤销, 导致 partial unique 索引继续阻挡新插入。
+     * 拆为独立事务, 保证删除了就是删除了, 主事务失败不会回滚这次删除。</p>
+     */
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW,
+            rollbackFor = Exception.class)
+    public int softDeleteCancelledEnrollment(Long enrollmentId) {
+        return enrollmentRepository.deleteById(enrollmentId);
     }
 
     private void recordHistory(Long enrollmentId, EnrollmentStatus fromStatus,

@@ -65,6 +65,14 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
     List<Map<String, Object>> countInProgressOrCompletedByCourseIds(@Param("courseIds") List<Long> courseIds);
 
     /**
+     * 客户体验修复 v1.7.0: 物理删除 (绕过 @TableLogic 软删)
+     * 退课后重新选课场景: 旧 CANCELLED 记录软删后, 硬唯一 uk_enroll_user_course (无 WHERE) 仍阻挡
+     * → 必须物理删除 (历史在 enrollment_histories 表保留)
+     */
+    @org.apache.ibatis.annotations.Delete("DELETE FROM enrollments WHERE id = #{id}")
+    int physicalDeleteById(@Param("id") Long id);
+
+    /**
      * ★ 业务逻辑审计 DEVIATION-1 修复：原子容量检查 + 插入。
      * <p>原实现的 check-then-insert 是非原子的，高并发下可能超 max_students 上限。
      * 本方法在单条 INSERT ... SELECT ... WHERE 中同时检查：</p>
@@ -86,7 +94,9 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
             "  AND (c.max_students IS NULL OR c.max_students = 0 " +
             "       OR COALESCE(c.student_count, 0) < c.max_students) " +
             "  AND NOT EXISTS (SELECT 1 FROM enrollments e " +
-            "                  WHERE e.user_id = #{userId} AND e.course_id = #{courseId})")
+            // 客户体验修复 v1.7.0: NOT EXISTS 必须过滤 deleted_at IS NULL, 否则软删的 CANCELLED 记录阻挡新 ENROLLED
+            "                  WHERE e.user_id = #{userId} AND e.course_id = #{courseId} " +
+            "                    AND e.deleted_at IS NULL)")
     int atomicInsertIfCapacity(@Param("userId") Long userId,
                                @Param("courseId") Long courseId,
                                @Param("status") String status,
@@ -101,10 +111,11 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
             "(user_id, course_id, enrollment_status, source_channel, progress, completed, enrolled_at, updated_at, version) " +
             "SELECT #{userId}, #{courseId}, #{status}, #{sourceChannel}, 0, false, NOW(), NOW(), 0 " +
             "FROM courses c " +
-            // 客户体验修复 v1.7.0: 与 atomicInsertIfCapacity 保持一致
+            // 客户体验修复 v1.7.0: 与 atomicInsertIfCapacity 保持一致, NOT EXISTS 过滤 deleted_at IS NULL
             "WHERE c.id = #{courseId} AND c.deleted_at IS NULL AND c.status IN (2, 4) " +
             "  AND NOT EXISTS (SELECT 1 FROM enrollments e " +
-            "                  WHERE e.user_id = #{userId} AND e.course_id = #{courseId})")
+            "                  WHERE e.user_id = #{userId} AND e.course_id = #{courseId} " +
+            "                    AND e.deleted_at IS NULL)")
     int atomicInsertIfEnrollable(@Param("userId") Long userId,
                                  @Param("courseId") Long courseId,
                                  @Param("status") String status,
