@@ -16,6 +16,8 @@ public enum NotificationType {
     COURSE_APPROVED("COURSE_APPROVED", "课程已通过"),
     COURSE_REJECTED("COURSE_REJECTED", "课程被驳回"),
     COURSE_PUBLISHED("COURSE_PUBLISHED", "课程已上架"),
+    // 客户体验修复 v1.7.0: 课程下架通知 (P1 perf 优化 - 用异步批量替换同步循环)
+    COURSE_UNPUBLISHED("COURSE_UNPUBLISHED", "课程已下架"),
     VIDEO_TRANSCODED("VIDEO_TRANSCODED", "视频转码完成"),
     DISCUSSION_REPLY("DISCUSSION_REPLY", "讨论区有新回复"),
 

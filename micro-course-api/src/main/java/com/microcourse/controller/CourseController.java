@@ -344,6 +344,9 @@ public class CourseController {
 
     /**
      * 客户体验修复 v1.7.0: 课程下架后通知所有在学学生 (U20)
+     * v1.7.0 性能优化 (P1 perf): 改用异步批量,避免串行循环阻塞 HTTP 响应
+     * - 之前: 200 学生 = 620ms 同步阻塞
+     * - 现在: HTTP 立即返回, 后台异步发送
      * 失败不影响主流程,只记日志
      */
     private void notifyCourseUnpublished(Long courseId, String courseTitle) {
@@ -353,24 +356,18 @@ public class CourseController {
         }
         String title = "课程下架通知";
         String content = String.format("您正在学习的《%s》已下架,如有疑问请联系管理员。", courseTitle);
-        int sent = 0;
+        // 异步批量发送 (notifyAsync 内部 REQUIRES_NEW + 失败重试,主线程不阻塞)
         for (Long userId : userIds) {
             try {
-                NotificationCreateRequest req = new NotificationCreateRequest();
-                req.setUserId(userId);
-                req.setType("COURSE_UNPUBLISHED");
-                req.setTitle(title);
-                req.setContent(content);
-                req.setRelatedId(courseId);
-                req.setChannel("IN_APP");
-                notificationService.send(req, SecurityUtil.getCurrentUserId());
-                sent++;
+                notificationService.notifyAsync(userId,
+                    com.microcourse.enums.NotificationType.COURSE_UNPUBLISHED,
+                    title, content, courseId);
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(CourseController.class)
                     .debug("单条下架通知失败: userId={}, err={}", userId, e.getMessage());
             }
         }
         org.slf4j.LoggerFactory.getLogger(CourseController.class)
-            .info("课程下架通知已发: courseId={}, 收件人数={}, 成功={}", courseId, userIds.size(), sent);
+            .info("课程下架通知已派发 (异步): courseId={}, 收件人数={}", courseId, userIds.size());
     }
 }
