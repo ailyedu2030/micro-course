@@ -5,11 +5,24 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication
+/**
+ * 微课平台后端入口。
+ *
+ * <p>排除 {@link UserDetailsServiceAutoConfiguration}：
+ *   本项目使用纯 JWT 认证（{@code JwtAuthenticationFilter} + {@code JwtTokenProvider}），
+ *   不实现 Spring Security 的 {@code UserDetailsService}。Spring Boot 默认会在缺少该
+ *   Bean 时自动生成 'Using generated security password' 警告，并暴露一个默认的 'user'
+ *   账号。这既会污染启动日志，也会带来潜在的安全混淆（默认账号密码泄露给客户端）。
+ *   显式排除可让启动更干净，也明确表达「本项目不使用 Form Login」。
+ *
+ * @author 总工程师
+ */
+@SpringBootApplication(exclude = { UserDetailsServiceAutoConfiguration.class })
 @EnableScheduling
 public class MicroCourseApplication {
 
