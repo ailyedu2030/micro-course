@@ -20,7 +20,17 @@
     <el-tabs v-else v-model="activeTab" @tab-change="handleTabChange">
       <el-tab-pane label="我负责的" name="leading">
         <div v-loading="loading" class="card-grid">
-          <el-empty v-if="!loading && list.length === 0" description="暂无负责的微专业" />
+          <el-empty v-if="!loading && list.length === 0" description="暂无负责的微专业">
+            <template #image><el-icon :size="64" style="color: var(--el-text-color-placeholder);"><Notebook /></el-icon></template>
+            <p class="empty-guide">微专业课程管理流程：</p>
+            <ol class="empty-steps">
+              <li>在「<el-link type="primary" @click="$router.push('/teacher/micro-specialties/proposals')">微专业申报</el-link>」提交申报材料</li>
+              <li>教务处审核通过后，微专业将出现在本列表</li>
+              <li>点击卡片上的「编排课程」添加课程并指派授课教师</li>
+              <li>点击「团队」邀请其他教师并分配归属课程</li>
+            </ol>
+            <el-button type="primary" class="mg-top-12" @click="$router.push('/teacher/micro-specialties/proposals')">立即申报微专业</el-button>
+          </el-empty>
           <div v-for="item in list" :key="item.id" class="ms-card">
             <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
             <div class="card-body">
@@ -143,6 +153,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getMicroSpecialtyList, createMicroSpecialty } from '@/api/microSpecialty'
 import { getPendingInvites, acceptInvite, declineInvite } from '@/api/microSpecialty'
+import { Notebook } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const activeTab = ref('leading')
@@ -249,6 +260,10 @@ onMounted(() => fetchList('leading'))
 .card-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .pending-badge { margin-top: var(--space-2); }
 .action-bar { display: flex; gap: var(--space-2); justify-content: flex-end; }
+.empty-guide { margin: var(--space-4) 0 var(--space-2); font-weight: var(--weight-medium); color: var(--el-text-color-primary); }
+.empty-steps { text-align: left; max-width: 420px; margin: 0 auto; line-height: 2.2; color: var(--el-text-color-secondary); font-size: var(--text-sm); }
+.empty-steps li { list-style: decimal; margin-left: var(--space-5); }
+.mg-top-12 { margin-top: var(--space-4); }
 .tab-badge { margin-left: var(--space-1); }
 .invite-section { min-height: 200px; }
 .invite-card { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3); border-bottom: 1px solid var(--el-border-color-lighter); }

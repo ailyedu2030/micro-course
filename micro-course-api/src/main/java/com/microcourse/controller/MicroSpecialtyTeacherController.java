@@ -24,7 +24,7 @@ public class MicroSpecialtyTeacherController {
         this.inviteService = inviteService;
     }
 
-    /** 我的待处理邀请列表 */
+    /** 我的待处理邀请列表（TEACHER） */
     @GetMapping("/pending-invites")
     @PreAuthorize("hasRole('TEACHER')")
     public R<PageResult<?>> getPendingInvites(
@@ -32,6 +32,16 @@ public class MicroSpecialtyTeacherController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String status) {
         PageResult<?> result = inviteService.getPendingInvites(page, size, status);
+        return R.ok(result);
+    }
+
+    /** 跨学院待审批邀请列表（ACADEMIC） */
+    @GetMapping("/pending-cross-dept-invites")
+    @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
+    public R<PageResult<?>> getPendingCrossDeptInvites(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        PageResult<?> result = inviteService.getPendingCrossDeptInvites(page, size);
         return R.ok(result);
     }
 

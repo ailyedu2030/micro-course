@@ -31,6 +31,12 @@
             <template #empty><el-empty description="暂未编排课程" /></template>
             <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
             <el-table-column prop="courseTitle" label="课程名称" min-width="200" show-overflow-tooltip />
+            <el-table-column label="授课教师" width="140" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span v-if="getTeacherName(row.courseId)">{{ getTeacherName(row.courseId) }}</span>
+                <span v-else class="no-teacher">未指定</span>
+              </template>
+            </el-table-column>
             <el-table-column label="必修/选修" width="100" align="center">
               <template #default="{ row }">
                 <el-tag v-if="row.isRequired" type="danger" size="small">必修</el-tag>
@@ -40,9 +46,10 @@
             <el-table-column prop="credits" label="学分" width="80" align="center" />
             <el-table-column prop="hours" label="学时" width="80" align="center" />
             <el-table-column prop="minScore" label="通过分" width="90" align="center" />
-            <el-table-column label="操作" width="160" align="center" fixed="right">
+            <el-table-column label="操作" width="200" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button size="small" @click="showEditItem(row)">编辑</el-button>
+                <el-button size="small" @click="showAssignTeacher(row)">指派教师</el-button>
                 <el-button size="small" type="danger" @click="handleRemove(row)">删除</el-button>
               </template>
             </el-table-column>
@@ -81,6 +88,25 @@
       </template>
     </el-dialog>
 
+    <!-- 指派教师 Dialog -->
+    <el-dialog v-model="assignVisible" title="指派教师" width="480px" @closed="resetAssignForm">
+      <el-form ref="assignFormRef" :model="assignForm" :rules="assignRules" label-width="100px">
+        <el-form-item label="课程">
+          <span class="assign-course-name">{{ assignCourse?.courseTitle || '' }}</span>
+        </el-form-item>
+        <el-form-item label="授课教师" prop="teacherId">
+          <el-select v-model="assignForm.teacherId" filterable placeholder="选择教师" class="full-width" clearable>
+            <el-option v-for="t in availableTeachers" :key="t.teacherId" :label="t.teacherName" :value="t.teacherId" />
+          </el-select>
+        </el-form-item>
+        <div class="assign-hint">仅显示已接受的团队成员。如列表为空，请先在"团队管理"中邀请教师。</div>
+      </el-form>
+      <template #footer>
+        <el-button @click="assignVisible = false">取消</el-button>
+        <el-button type="primary" :loading="assigning" @click="handleAssignTeacher">确认</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 编辑课程项 Dialog -->
     <el-dialog v-model="editVisible" title="编辑课程" width="480px" @closed="resetEditForm">
       <el-form ref="editFormRef" :model="editForm" label-width="100px" @submit.prevent>
@@ -112,7 +138,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getMicroSpecialtyDetail, getCourses, addCourse, updateCourseItem, removeCourse } from '@/api/microSpecialty'
+import { getMicroSpecialtyDetail, getCourses, addCourse, updateCourseItem, removeCourse, getTeachers, inviteTeacher } from '@/api/microSpecialty'
 
 const route = useRoute()
 const msId = computed(() => route.params.id)
@@ -135,15 +161,32 @@ const editFormRef = ref(null)
 const editForm = ref({})
 const editingItem = ref(null)
 
+// 指派教师
+const assignVisible = ref(false)
+const assigning = ref(false)
+const assignCourse = ref(null)
+const assignForm = ref({ teacherId: null })
+const teachers = ref([])
+
+function getTeacherName(courseId) {
+  const t = teachers.value.find(t => t.courseId === Number(courseId) && t.inviteStatus === 'ACTIVE')
+  return t?.teacherName || null
+}
+
 const fetchData = async () => {
   error.value = false
   loading.value = true
   coursesLoading.value = true
   try {
-    const { data: d } = await getMicroSpecialtyDetail(msId.value)
-    detail.value = d
-    const { data: c } = await getCourses(msId.value)
-    courses.value = c.items || c || []
+    const [dRes, cRes, tRes] = await Promise.all([
+      getMicroSpecialtyDetail(msId.value),
+      getCourses(msId.value),
+      getTeachers(msId.value)
+    ])
+    detail.value = dRes.data
+    courses.value = (cRes.data?.items || cRes.data || [])
+    const rawTeachers = tRes.data?.items || tRes.data || []
+    teachers.value = rawTeachers
   } catch { error.value = true }
   finally { loading.value = false; coursesLoading.value = false }
 }
@@ -186,6 +229,43 @@ const handleRemove = async (row) => {
   catch { ElMessage.error('移除失败') }
 }
 
+// 指派教师
+const assignFormRef = ref(null)
+const assignRules = { teacherId: [{ required: true, message: '请选择教师', trigger: 'change' }] }
+
+const availableTeachers = computed(() =>
+  teachers.value.filter(t => t.inviteStatus === 'ACTIVE' && t.role !== 'LEAD')
+)
+
+function showAssignTeacher(row) {
+  assignCourse.value = row
+  const existing = teachers.value.find(t => t.courseId === Number(row.courseId) && t.inviteStatus === 'ACTIVE')
+  assignForm.value = { teacherId: existing?.teacherId || null }
+  assignVisible.value = true
+}
+function resetAssignForm() {
+  assignFormRef.value?.clearValidate()
+  assignCourse.value = null
+  assignForm.value = { teacherId: null }
+}
+
+const handleAssignTeacher = async () => {
+  if (!assignFormRef.value) return
+  try { await assignFormRef.value.validate() } catch { return }
+  assigning.value = true
+  try {
+    await inviteTeacher(msId.value, {
+      teacherId: assignForm.value.teacherId,
+      role: 'MEMBER',
+      courseId: Number(assignCourse.value.courseId)
+    })
+    ElMessage.success('教师已指派')
+    assignVisible.value = false
+    fetchData()
+  } catch { ElMessage.error('指派失败') }
+  finally { assigning.value = false }
+}
+
 onMounted(fetchData)
 </script>
 
@@ -194,4 +274,7 @@ onMounted(fetchData)
 .mg-bottom-16 { margin-bottom: var(--space-4); }
 .full-width { width: 100%; }
 .card-header { display: flex; align-items: center; justify-content: space-between; }
+.no-teacher { color: var(--el-text-color-placeholder); font-size: var(--text-sm); }
+.assign-course-name { font-weight: var(--weight-medium); }
+.assign-hint { margin: var(--space-2) 0 0; font-size: var(--text-xs); color: var(--el-text-color-secondary); padding-left: 100px; }
 </style>

@@ -159,6 +159,10 @@ export function getPendingInvites(params) {
   return request({ method: 'GET', url: '/micro-specialty-teachers/pending-invites', params })
 }
 
+export function getPendingCrossDeptInvites(params) {
+  return request({ method: 'GET', url: '/micro-specialty-teachers/pending-cross-dept-invites', params })
+}
+
 export function acceptInvite(inviteId) {
   return request({ method: 'POST', url: `/micro-specialty-teachers/${inviteId}/accept` })
 }

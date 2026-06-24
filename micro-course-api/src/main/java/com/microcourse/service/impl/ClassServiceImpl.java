@@ -81,6 +81,14 @@ public class ClassServiceImpl implements ClassService {
                 throw new BusinessException(ErrorCode.USER_NOT_FOUND);
             }
         }
+        // 检查班级名称唯一性
+        if (request.getName() != null && !request.getName().isBlank()) {
+            long nameCount = classesRepository.selectCount(
+                    new LambdaQueryWrapper<Classes>().eq(Classes::getName, request.getName()));
+            if (nameCount > 0) {
+                throw new BusinessException(ErrorCode.CLASS_NAME_EXISTS);
+            }
+        }
         Classes classes = new Classes();
         classes.setName(request.getName());
         classes.setMajorId(request.getMajorId());

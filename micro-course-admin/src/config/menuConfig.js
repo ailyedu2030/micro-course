@@ -5,20 +5,18 @@
  * 结构: { group, icon, children: [{ label, path, icon }] }
  *
  * 设计原则:
- * - ADMIN: 全功能覆盖 + 熔断入口（内容管理组）
- * - ACADEMIC: 基础数据编辑 + 课程监控 + 教务管理
- * - TEACHER: 按创作工作流分6组，解决当前11项一锅粥
- *
- * 注: 菜单配置不替代路由守卫 meta.roles，后者是第二道防线。
- *     ADMIN 可通过 URL 直访未在菜单展示的页面。
+ * - 按业务域分组，避免单组超过 6 项
+ * - 三角色分组命名对齐（如统一"数据看板"不出现"驾驶舱总览"）
+ * - 评价管理归入教务（偏教学反馈），章节/视频/题库/练习归入内容资源
+ * - 操作日志归入系统管理
  */
 
 const ADMIN = [
   {
-    group: '数据总览',
+    group: '数据看板',
     icon: 'DataAnalysis',
     children: [
-      { label: '数据看板', path: '/admin/dashboard', icon: 'Odometer' },
+      { label: '数据总览', path: '/admin/dashboard', icon: 'Odometer' },
       { label: '教务驾驶舱', path: '/academic/dashboard', icon: 'DataAnalysis' },
       { label: '教师看板', path: '/teacher/dashboard', icon: 'TrendCharts' },
     ],
@@ -43,12 +41,11 @@ const ADMIN = [
       { label: '标签管理', path: '/tags', icon: 'List' },
       { label: '课程套餐', path: '/bundles', icon: 'Tickets' },
       { label: '轮播图管理', path: '/admin/banners', icon: 'PictureFilled' },
-      { label: '评价管理', path: '/reviews', icon: 'ChatLineSquare' },
     ],
   },
   {
-    group: '内容管理',
-    icon: 'Edit',
+    group: '内容资源',
+    icon: 'VideoPlay',
     children: [
       { label: '章节管理', path: '/chapters', icon: 'List' },
       { label: '视频管理', path: '/videos', icon: 'VideoPlay' },
@@ -64,6 +61,7 @@ const ADMIN = [
       { label: '选课管理', path: '/enrollments', icon: 'Tickets' },
       { label: '成绩汇总', path: '/teacher/grades', icon: 'Finished' },
       { label: '学员管理', path: '/teacher/students', icon: 'School' },
+      { label: '评价管理', path: '/reviews', icon: 'ChatLineSquare' },
       { label: '讨论管理', path: '/discussions', icon: 'ChatLineSquare' },
     ],
   },
@@ -87,13 +85,14 @@ const ADMIN = [
       { label: '系统设置', path: '/admin/settings', icon: 'Tools' },
       { label: '操作日志', path: '/admin/logs', icon: 'Clock' },
       { label: '通知管理', path: '/notifications', icon: 'Bell' },
+      { label: '学习数据分析', path: '/academic/stats', icon: 'TrendCharts' },
     ],
   },
 ]
 
 const ACADEMIC = [
   {
-    group: '教务驾驶舱',
+    group: '数据看板',
     icon: 'DataAnalysis',
     children: [
       { label: '驾驶舱总览', path: '/academic/dashboard', icon: 'Odometer' },
@@ -142,8 +141,8 @@ const ACADEMIC = [
     ],
   },
   {
-    group: '运营监控',
-    icon: 'DataAnalysis',
+    group: '系统管理',
+    icon: 'Setting',
     children: [
       { label: '操作日志', path: '/admin/logs', icon: 'Clock' },
       { label: '学习数据分析', path: '/academic/stats', icon: 'TrendCharts' },
@@ -166,12 +165,6 @@ const TEACHER = [
       { label: '我的课程', path: '/teacher/courses', icon: 'VideoCamera' },
       { label: '课程套餐', path: '/bundles', icon: 'Tickets' },
       { label: '收藏管理', path: '/teacher/favorites', icon: 'Star' },
-    ],
-  },
-  {
-    group: '教学资源',
-    icon: 'VideoPlay',
-    children: [
       { label: '章节管理', path: '/chapters', icon: 'List' },
       { label: '视频管理', path: '/teacher/videos', icon: 'VideoPlay' },
     ],
@@ -183,12 +176,6 @@ const TEACHER = [
       { label: '学员列表', path: '/teacher/students', icon: 'School' },
       { label: '成绩管理', path: '/teacher/grades', icon: 'Finished' },
       { label: '我的教学班', path: '/teacher/teaching-classes', icon: 'Reading' },
-    ],
-  },
-  {
-    group: '互动管理',
-    icon: 'ChatLineSquare',
-    children: [
       { label: '讨论区', path: '/teacher/discussions', icon: 'ChatLineSquare' },
     ],
   },

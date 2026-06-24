@@ -1,0 +1,109 @@
+- generic [ref=e69]:
+  - banner [ref=e70]:
+    - generic [ref=e72] [cursor=pointer]:
+      - img [ref=e74]
+      - generic [ref=e76]: 微课平台
+    - navigation "主导航" [ref=e77]:
+      - link "广场" [ref=e78] [cursor=pointer]:
+        - /url: /student/courses
+        - img [ref=e80]
+        - generic [ref=e82]: 广场
+      - link "我的课程" [ref=e83] [cursor=pointer]:
+        - /url: /student/my-courses
+        - img [ref=e85]
+        - generic [ref=e88]: 我的课程
+      - link "消息" [ref=e89] [cursor=pointer]:
+        - /url: /student/notifications
+        - img [ref=e91]
+        - generic [ref=e95]: 消息
+      - link "我的" [ref=e96] [cursor=pointer]:
+        - /url: /student/profile
+        - img [ref=e98]
+        - generic [ref=e100]: 我的
+      - link "微专业" [ref=e101] [cursor=pointer]:
+        - /url: /student/my-micro-specialties
+        - img [ref=e103]
+        - generic [ref=e105]: 微专业
+      - link "订单" [ref=e106] [cursor=pointer]:
+        - /url: /student/orders
+        - img [ref=e108]
+        - generic [ref=e110]: 订单
+    - generic [ref=e111]:
+      - generic [ref=e113]:
+        - img [ref=e116]
+        - textbox "搜索课程..." [ref=e118]
+      - button "购物车" [ref=e121] [cursor=pointer]:
+        - img [ref=e123]
+      - button "通知中心" [ref=e126] [cursor=pointer]:
+        - img [ref=e128]
+      - button "学生" [ref=e133] [cursor=pointer]:
+        - img [ref=e135]
+        - generic [ref=e137]: 学生
+        - img [ref=e139]
+  - main [ref=e141]:
+    - generic [ref=e143]:
+      - navigation "面包屑" [ref=e144]:
+        - img [ref=e146]
+        - generic [ref=e148]: /
+        - generic [ref=e149]: 课程广场
+      - region "课程发现" [ref=e150]:
+        - generic [ref=e151]:
+          - heading "发现优质课程" [level=1] [ref=e152]
+          - paragraph [ref=e153]: 开启你的学习之旅
+      - region "微专业专区" [ref=e154]:
+        - generic [ref=e155]:
+          - heading "🎯 微专业 · 学校重点培养项目" [level=2] [ref=e157]
+          - paragraph [ref=e158]: 修读多门课程获得微专业结业证书
+        - generic [ref=e159]:
+          - img [ref=e161]
+          - paragraph [ref=e178]: 暂无微专业项目，敬请期待
+      - generic [ref=e182]:
+        - generic [ref=e184]:
+          - img [ref=e187]
+          - textbox "搜索关键词" [ref=e189]:
+            - /placeholder: 搜索课程名称或教师
+        - generic [ref=e192] [cursor=pointer]:
+          - generic
+          - img [ref=e198]
+        - radiogroup "课程分类" [ref=e201]:
+          - generic [ref=e202]
+          - generic [ref=e205]
+          - generic [ref=e208]
+          - generic [ref=e211]
+          - generic [ref=e214]
+          - generic [ref=e217]
+        - button "搜索课程" [ref=e220] [cursor=pointer]:
+          - img [ref=e222]
+          - generic [ref=e224]: 搜索
+        - button "重置" [ref=e225] [cursor=pointer]:
+          - img [ref=e227]
+          - generic [ref=e229]: 重置
+      - generic [ref=e230]:
+        - heading "精选推荐" [level=2] [ref=e232]
+        - generic [ref=e234]:
+          - button "推荐课程 数据结构与算法" [ref=e236] [cursor=pointer]
+          - button "推荐课程 Web应用开发" [ref=e261] [cursor=pointer]
+          - button "推荐课程 Java程序设计基础" [ref=e286] [cursor=pointer]
+      - generic [ref=e310]:
+        - heading "全部课程" [level=2] [ref=e312]
+        - generic [ref=e313]:
+          - generic [ref=e314]
+          - generic "分页导航" [ref=e462]
+      - generic [ref=e483]:
+        - generic [ref=e484]:
+          - heading "热门课程" [level=2] [ref=e485]
+          - button "查看全部 →" [ref=e486] [cursor=pointer]
+        - generic [ref=e491]:
+          - button "热门第 1 名：Java程序设计基础" [ref=e492]
+          - button "热门第 2 名：数据库系统原理" [ref=e506]
+          - button "热门第 3 名：数据结构与算法" [ref=e520]
+          - button "热门第 4 名：Web应用开发" [ref=e534]
+          - button "热门第 5 名：机器学习基础" [ref=e548]
+      - generic [ref=e562]:
+        - heading "最新课程" [level=2] [ref=e564]
+        - generic [ref=e565]:
+          - button "最新课程：数据结构与算法" [ref=e566] [cursor=pointer]
+          - button "最新课程：数据库系统原理" [ref=e574] [cursor=pointer]
+          - button "最新课程：Web应用开发" [ref=e582] [cursor=pointer]
+          - button "最新课程：机器学习基础" [ref=e590] [cursor=pointer]
+          - button "最新课程：Java程序设计基础" [ref=e598] [cursor=pointer]

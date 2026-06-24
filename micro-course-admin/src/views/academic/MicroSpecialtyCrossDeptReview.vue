@@ -70,7 +70,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPendingInvites, reviewCrossDept } from '@/api/microSpecialty'
+import { getPendingCrossDeptInvites, reviewCrossDept } from '@/api/microSpecialty'
 
 const activeTab = ref('PENDING')
 const loading = ref(false)
@@ -94,9 +94,9 @@ const fetchData = async () => {
   loading.value = true
   error.value = false
   try {
-    const params = { page: page.value, size: size.value, crossDept: true }
+    const params = { page: page.value, size: size.value }
     if (activeTab.value === 'PENDING') params.inviteStatus = 'PENDING_ACADEMIC'
-    const { data } = await getPendingInvites(params)
+    const { data } = await getPendingCrossDeptInvites(params)
     items.value = data.items || data || []
     total.value = data.totalElements || 0
   } catch {
