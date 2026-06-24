@@ -168,14 +168,23 @@ public class VideoController {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法创建存储目录");
         }
 
-        Path targetPath = Paths.get(baseDir, tempFileName);
+        Path targetPath = Paths.get(baseDir, tempFileName).toAbsolutePath();
 
-        // P1-4 修复：同步执行文件传输（MultipartFile 的临时文件在请求结束后会被清理）
+        // 客户体验修复 v1.7.0: 用 Files.copy(inputStream, targetPath) 替代 file.transferTo()
+        // 旧实现用 transferTo 在 Spring Boot JAR 模式下会把文件保存到 Tomcat work dir (/private/var/...)
+        // 而不是配置的 uploadDir,造成"文件保存失败"500 错误,教师无法上传视频
         try {
-            file.transferTo(targetPath.toFile());
+            // 确保父目录存在 (绝对路径)
+            Path parent = targetPath.getParent();
+            if (parent != null && !Files.exists(parent)) {
+                Files.createDirectories(parent);
+            }
+            try (java.io.InputStream in = file.getInputStream()) {
+                Files.copy(in, targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
-            log.error("[VideoUpload] 文件保存失败 courseId={}, filename={}", courseId, originalFilename, e);
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件保存失败");
+            log.error("[VideoUpload] 文件保存失败 courseId={}, filename={}, target={}", courseId, originalFilename, targetPath, e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件保存失败: " + e.getMessage());
         }
 
         // P2: 计算 MD5 并检查重复
@@ -196,10 +205,12 @@ public class VideoController {
         video.setCourseId(courseId);
         video.setTitle(originalFilename != null ? originalFilename : "未命名视频");
         video.setFileName(originalFilename != null ? originalFilename : "video.mp4");
+        // 客户体验修复 v1.7.0: URL 必须存为 web 路径(浏览器能访问),不是磁盘绝对路径
+        // WebMvcConfig 映射 /api/files/** → file:./uploads/,所以 url 应是 /api/files/videos/{courseId}/{filename}
+        video.setUrl("/api/files/videos/" + courseId + "/" + tempFileName);
         video.setFileSize(file.getSize());
         video.setFileMd5(md5);
         video.setMimeType(file.getContentType());
-        video.setUrl(targetPath.toString());
         video.setOriginalPath(targetPath.toString());
         video.setStatus(VideoStatus.UPLOADING.getCode());
         video.setProgress(0);
