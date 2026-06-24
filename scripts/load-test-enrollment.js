@@ -123,6 +123,15 @@ async function getDbStats(courseId) {
   return r.rows
 }
 
+// 检查 PG 最大连接数（用单连接查询）
+async function getPgMaxConn() {
+  const pg = new Client({ host: 'localhost', database: 'micro_course', user: 'postgres', password: process.env.PG_PASSWORD || 'postgres' })
+  await pg.connect()
+  const r = await pg.query("SHOW max_connections")
+  await pg.end()
+  return r.rows[0].max_connections
+}
+
 async function main() {
   const courseId = process.env.COURSE_ID ? parseInt(process.env.COURSE_ID) : null
   const N = parseInt(process.env.N || '50')
@@ -144,16 +153,20 @@ async function main() {
 
   console.log(`\n[Load Test] ${N} 个学生并发选课 (max_students=${maxStudents})...`)
 
-  // 获取 N 个学生 (直到拿到能登录的)
-  const usersRes = await axios.get(`${API}/api/users?role=STUDENT&size=200`, {
+  // 获取 N 个学生 (优先用 loadtest 账号)
+  const usersRes = await axios.get(`${API}/api/users?size=300&role=STUDENT`, {
     baseURL: API, headers: { 'Authorization': `Bearer ${adminToken}` }
   })
   const allStudents = usersRes.data.data.items
-  console.log(`可用学生总数: ${allStudents.length}`)
+  // 优先 loadtest_* 账号
+  const loadtest = allStudents.filter(s => s.username.startsWith('loadtest_'))
+  const normal = allStudents.filter(s => !s.username.startsWith('loadtest_'))
+  const candidate = [...loadtest, ...normal].slice(0, N)
+  console.log(`可用学生总数: ${allStudents.length} (loadtest: ${loadtest.length}, normal: ${normal.length})`)
 
   // 逐个登录直到拿到 N 个 token
   const tokens = []
-  for (const s of allStudents) {
+  for (const s of candidate) {
     if (tokens.length >= N) break
     const t = await login(s.username, '123456')
     if (t) tokens.push({ userId: s.id, username: s.username, token: t })
