@@ -59,8 +59,11 @@ spring:
   # 文件上传：最大 2GB（P0: 之前错误地放在 springdoc: 下，导致 Spring Boot 使用默认 1MB）
   servlet:
     multipart:
-      max-file-size: 60MB
-      max-request-size: 60MB
+      # 视频上传允许最大 2GB (VideoController.MAX_FILE_SIZE)
+      # 之前 60MB 太低: 1 小时 720p 视频至少 450MB
+      # 但要注意: nginx/proxy 也要同步调大,否则会被前置层拦截
+      max-file-size: 2GB
+      max-request-size: 2GB
 
   # 静态资源映射 - 头像文件 + 封面文件访问
   web:
