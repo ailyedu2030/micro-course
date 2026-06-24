@@ -14,7 +14,7 @@
       </div>
       <!-- 视频元素 -->
       <video
-        v-else-if="currentVideo && !videoError"
+        v-else-if="currentVideo && (currentVideo.url || currentVideo.playUrl) && !videoError"
         ref="videoRef"
         class="video-player"
         :src="currentVideo.url || currentVideo.playUrl"
@@ -43,7 +43,8 @@
       <!-- 无视频占位 -->
       <div v-else class="video-empty">
         <el-icon size="48" color="#475569"><VideoCamera /></el-icon>
-        <p>本章节暂无视频</p>
+        <p>{{ currentVideo ? '视频源暂不可用，请联系教师确认' : '本章节暂无视频' }}</p>
+        <p v-if="currentVideo" class="video-empty-hint">章节: {{ currentVideo.title }}</p>
       </div>
 
       <!-- 自定义控制栏 -->

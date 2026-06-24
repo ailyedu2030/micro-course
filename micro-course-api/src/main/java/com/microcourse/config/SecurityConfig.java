@@ -133,6 +133,10 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/files/avatars/**").permitAll()
                         // 公开轮播图
                         .requestMatchers("GET", "/api/files/banners/**").permitAll()
+                        // 客户体验修复 v1.7.0: 视频文件公开 (HTML5 <video> 元素无法携带 Authorization header)
+                        // 安全模型: 课程本身受 @PreAuthorize 保护,未选课学生看不到播放入口
+                        // 视频文件 URL 一旦泄露也可访问,接受此 trade-off (业界标准,如 Coursera/慕课网)
+                        .requestMatchers("GET", "/api/files/videos/**").permitAll()
                         // 平台 Logo/系统资源（前瞻白名单）
                         .requestMatchers("GET", "/api/files/system/**").permitAll()
                         // 其他文件（slides 课件、attachments 附件等私有资源）：需登录 + Controller 层 owner 校验
