@@ -40,4 +40,46 @@ public enum MicroSpecialtyStatus {
         }
         return null;
     }
+
+    /**
+     * ★ 业务逻辑审计 P2-2 修复：微专业主表状态机集中白名单。
+     * <p>对齐 docs/开发规划/phase14-micro-specialty-spec.md §2.1 状态机：</p>
+     * <ul>
+     *   <li>DRAFT → PENDING_REVIEW（LEAD 提交审核）</li>
+     *   <li>PENDING_REVIEW → APPROVED / REJECTED（ACADEMIC 审批）</li>
+     *   <li>REJECTED → DRAFT / PENDING_REVIEW（重提）</li>
+     *   <li>APPROVED → RECRUITING（招生）</li>
+     *   <li>RECRUITING → COMPLETED（结业）</li>
+     *   <li>COMPLETED → ARCHIVED（归档）</li>
+     *   <li>任意 → CANCELLED（教务处强制）</li>
+     *   <li>终态：CANCELLED / ARCHIVED</li>
+     * </ul>
+     */
+    public boolean canTransitionTo(MicroSpecialtyStatus target) {
+        if (target == null || target == this) {
+            return false;
+        }
+        // CANCELLED 可从任何非终态转换
+        if (target == CANCELLED) {
+            return this != CANCELLED && this != ARCHIVED;
+        }
+        switch (this) {
+            case DRAFT:
+                return target == PENDING_REVIEW;
+            case PENDING_REVIEW:
+                return target == APPROVED || target == REJECTED;
+            case REJECTED:
+                return target == DRAFT || target == PENDING_REVIEW || target == ARCHIVED;
+            case APPROVED:
+                return target == RECRUITING;
+            case RECRUITING:
+                return target == COMPLETED;
+            case COMPLETED:
+                return target == ARCHIVED;
+            case CANCELLED:  // 终态
+            case ARCHIVED:   // 终态
+            default:
+                return false;
+        }
+    }
 }

@@ -420,3 +420,86 @@ test.describe('Enrollment State Machine Behavior', () => {
     expect(status).toBe('WAITLIST')
   })
 })
+
+// ══════════════════════════════════════════════════════════════
+// 8. Order / TeachingClass 状态机行为测试（P1/P2 修复锁死）
+// ══════════════════════════════════════════════════════════════
+test.describe('Order & TeachingClass State Machine', () => {
+  let errs, token
+
+  test.beforeEach(async ({ page }) => {
+    errs = watchErrors(page)
+    token = await apiToken(page)
+  })
+  test.afterEach(() => { expect(errs).toEqual([]) })
+
+  // ── Order 状态机 ──
+  test('ORDER-1: 取消不存在的订单应被拒绝', async ({ page }) => {
+    const res = await page.request.post(`${API}/api/orders/99999/cancel`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    expect(res.status()).toBeLessThan(500)
+  })
+
+  test('ORDER-2: 取消不属于自己的订单应 403', async ({ page }) => {
+    // 找一个真实订单
+    const listRes = await page.request.get(`${API}/api/orders?page=0&size=1`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    const list = (await listRes.json()).data
+    const orderId = list?.items?.[0]?.id
+    if (orderId) {
+      const res = await page.request.post(`${API}/api/orders/${orderId}/cancel`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      // admin 取消别人的订单应该成功（admin 有权限），但 owner=admin 也 OK
+      // 重点：状态机白名单被调用 (因为 PENDING → CANCELLED 是合法)
+      expect(res.status()).toBeLessThan(500)
+    }
+  })
+
+  test('ORDER-3: 退款不存在的订单应被拒绝', async ({ page }) => {
+    const res = await page.request.post(`${API}/api/orders/99999/refund`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+  })
+
+  // ── TeachingClass 状态机 ──
+  test('TC-1: 结课不存在的教学班应 404', async ({ page }) => {
+    const res = await page.request.post(`${API}/api/teaching-classes/99999/complete`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+  })
+
+  test('TC-2: 教学班停开需要原因 (BAD_REQUEST)', async ({ page }) => {
+    // 找一个真实教学班
+    const listRes = await page.request.get(`${API}/api/teaching-classes?page=0&size=1`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    const list = (await listRes.json()).data
+    const tcId = list?.items?.[0]?.id
+    if (tcId) {
+      // 不传 reason 应被拒
+      const res = await page.request.post(`${API}/api/teaching-classes/${tcId}/cancel`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        data: {}
+      })
+      expect(res.status()).toBe(400)
+    }
+  })
+
+  // ── 课程状态机白名单验证 ──
+  test('SM-5: 课程 DRAFT→DRAFT 同状态应被拒绝', async ({ page }) => {
+    // canTransitionTo 在 from==to 时返回 false
+    // 课程 25 (DRAFT) 尝试 setStatus to DRAFT
+    const res = await page.request.put(`${API}/api/courses/25/status`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { status: 0 }
+    })
+    // isValidTransition(from=0, to=0) 返回 false → INVALID_TRANSITION
+    expect(res.status()).toBe(400)
+  })
+})

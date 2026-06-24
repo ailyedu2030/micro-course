@@ -39,4 +39,42 @@ public enum CourseStatus {
         }
         return null;
     }
+
+    /**
+     * ★ 业务逻辑审计 P2-1 修复：课程状态机集中白名单。
+     * <p>对齐 docs/状态机设计.md §2.2 状态转换图：</p>
+     * <ul>
+     *   <li>DRAFT → PENDING_REVIEW（教师提交审核）</li>
+     *   <li>PENDING_REVIEW → APPROVED / REJECTED（管理员）</li>
+     *   <li>REJECTED → DRAFT / PENDING_REVIEW（教师修改后重提或保存）</li>
+     *   <li>APPROVED → PUBLISHED（教师发布）</li>
+     *   <li>PUBLISHED → CLOSED / ARCHIVED</li>
+     *   <li>CLOSED → PUBLISHED / ARCHIVED（重新上架或归档）</li>
+     *   <li>ARCHIVED = 终态</li>
+     * </ul>
+     * <p>注：原实现 {@code CourseServiceImpl.isValidTransition()} 是私有散落校验，
+     * 现在统一到枚举，业务方法直接调用此方法。</p>
+     */
+    public boolean canTransitionTo(CourseStatus target) {
+        if (target == null || target == this) {
+            return false;
+        }
+        switch (this) {
+            case DRAFT:
+                return target == PENDING_REVIEW;
+            case PENDING_REVIEW:
+                return target == APPROVED || target == REJECTED;
+            case APPROVED:
+                return target == PUBLISHED;
+            case PUBLISHED:
+                return target == CLOSED || target == ARCHIVED;
+            case CLOSED:
+                return target == PUBLISHED || target == ARCHIVED;
+            case REJECTED:
+                return target == DRAFT || target == PENDING_REVIEW || target == ARCHIVED;
+            case ARCHIVED:  // 终态
+            default:
+                return false;
+        }
+    }
 }

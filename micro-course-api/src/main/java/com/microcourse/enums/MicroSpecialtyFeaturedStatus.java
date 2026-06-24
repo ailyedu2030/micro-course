@@ -36,4 +36,24 @@ public enum MicroSpecialtyFeaturedStatus {
         }
         return null;
     }
+
+    /**
+     * ★ 业务逻辑审计 P2-2 修复：微专业置顶审批状态机集中白名单。
+     */
+    public boolean canTransitionTo(MicroSpecialtyFeaturedStatus target) {
+        if (target == null || target == this) {
+            return false;
+        }
+        switch (this) {
+            case NONE:
+                return target == PENDING;
+            case PENDING:
+                return target == APPROVED || target == REJECTED;
+            case REJECTED:
+                return target == PENDING;  // 可重新申请
+            case APPROVED:  // 终态（除非主动取消置顶）
+            default:
+                return false;
+        }
+    }
 }

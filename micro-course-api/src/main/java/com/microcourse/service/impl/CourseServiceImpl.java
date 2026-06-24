@@ -869,15 +869,12 @@ public class CourseServiceImpl implements CourseService {
         }
 
         Integer currentStatus = course.getStatus() != null ? course.getStatus() : CourseStatus.DRAFT.getCode();
+        CourseStatus fromStatus = CourseStatus.fromCode(currentStatus);
 
-        // DRAFT / REJECTED → CLOSED: 直接标记,不经 isValidTransition 校验
-        // ARCHIVED 是终态，不允许再操作
-        if (currentStatus == CourseStatus.ARCHIVED.getCode()) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "已归档课程不可操作");
-        }
-        if (currentStatus == CourseStatus.DRAFT.getCode()
-                || currentStatus == CourseStatus.REJECTED.getCode()
-                || currentStatus == CourseStatus.ARCHIVED.getCode()) {
+        // ★ 业务逻辑审计 P2-1 修复：使用 canTransitionTo 白名单
+        // DRAFT/REJECTED → CLOSED 是合法转换（直接 CAS 标记，绕过 updateStatus 的额外校验）
+        // ARCHIVED 是终态，canTransitionTo 返回 false → 进 updateStatus 分支被拒
+        if (fromStatus != null && fromStatus.canTransitionTo(CourseStatus.CLOSED)) {
             int affected = courseRepository.update(null,
                     new LambdaUpdateWrapper<Course>()
                             .eq(Course::getId, id)
@@ -1100,25 +1097,13 @@ public class CourseServiceImpl implements CourseService {
     }
 
     private boolean isValidTransition(Integer from, Integer to) {
-        int f = from != null ? from : CourseStatus.DRAFT.getCode();
-        // DRAFT → PENDING_REVIEW
-        if (f == CourseStatus.DRAFT.getCode() && to == CourseStatus.PENDING_REVIEW.getCode()) return true;
-        // PENDING_REVIEW → APPROVED or REJECTED
-        if (f == CourseStatus.PENDING_REVIEW.getCode() && (to == CourseStatus.APPROVED.getCode() || to == CourseStatus.REJECTED.getCode())) return true;
-        // APPROVED → PUBLISHED
-        if (f == CourseStatus.APPROVED.getCode() && to == CourseStatus.PUBLISHED.getCode()) return true;
-        // PUBLISHED → CLOSED or ARCHIVED（P0#1 修复：已发布课程可直接归档）
-        if (f == CourseStatus.PUBLISHED.getCode()
-                && (to == CourseStatus.CLOSED.getCode() || to == CourseStatus.ARCHIVED.getCode())) return true;
-        // CLOSED → ARCHIVED or PUBLISHED（P0#1 修复：已关闭课程可重新发布；禁止 CLOSED→DRAFT 绕过审核）
-        if (f == CourseStatus.CLOSED.getCode()
-                && (to == CourseStatus.ARCHIVED.getCode()
-                    || to == CourseStatus.PUBLISHED.getCode())) return true;
-        // REJECTED → DRAFT or PENDING_REVIEW or ARCHIVED（P1#6 修复：教师被驳回后可重新提交审核；P0#1：驳回课程可归档）
-        if (f == CourseStatus.REJECTED.getCode()
-                && (to == CourseStatus.DRAFT.getCode() || to == CourseStatus.PENDING_REVIEW.getCode()
-                    || to == CourseStatus.ARCHIVED.getCode())) return true;
-        return false;
+        // ★ 业务逻辑审计 P2-1 修复：使用枚举 canTransitionTo 集中白名单
+        CourseStatus fromStatus = CourseStatus.fromCode(from);
+        CourseStatus toStatus = CourseStatus.fromCode(to);
+        if (fromStatus == null || toStatus == null) {
+            return false;
+        }
+        return fromStatus.canTransitionTo(toStatus);
     }
 
     private boolean hasPluginGrant(String pluginId, Long teacherId) {

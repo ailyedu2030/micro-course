@@ -28,6 +28,33 @@ public enum VideoStatus {
         return label;
     }
 
+    /**
+     * ★ 业务逻辑审计 P2-3 修复：视频转码状态机集中白名单。
+     * <p>对齐 docs/状态机设计.md §7.2 状态转换图：</p>
+     * <ul>
+     *   <li>UPLOADING → TRANSCODING / FAILED</li>
+     *   <li>TRANSCODING → COMPLETED / FAILED（COMPLETED=READY 就绪）</li>
+     *   <li>FAILED → TRANSCODING（重试）</li>
+     *   <li>COMPLETED = 终态</li>
+     * </ul>
+     */
+    public boolean canTransitionTo(VideoStatus target) {
+        if (target == null || target == this) {
+            return false;
+        }
+        switch (this) {
+            case UPLOADING:
+                return target == TRANSCODING || target == FAILED;
+            case TRANSCODING:
+                return target == COMPLETED || target == FAILED;
+            case FAILED:
+                return target == TRANSCODING;
+            case COMPLETED:  // 终态
+            default:
+                return false;
+        }
+    }
+
     public static VideoStatus fromCode(int code) {
         for (VideoStatus s : values()) {
             if (s.code == code) {

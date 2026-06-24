@@ -40,4 +40,37 @@ public enum MicroSpecialtyEnrollmentStatus {
         }
         return null;
     }
+
+    /**
+     * ★ 业务逻辑审计 P2-2 修复：微专业修读状态机集中白名单。
+     * <p>对齐 docs/开发规划/phase14-micro-specialty-spec.md §2.2 状态机：</p>
+     * <ul>
+     *   <li>PENDING → APPROVED / REJECTED</li>
+     *   <li>APPROVED → IN_PROGRESS（开课）/ DROPPED（学生退）</li>
+     *   <li>IN_PROGRESS → COMPLETED / FAILED / DROPPED</li>
+     *   <li>COMPLETED → CERTIFIED（颁证）</li>
+     *   <li>终态：REJECTED / FAILED / DROPPED / CERTIFIED</li>
+     * </ul>
+     */
+    public boolean canTransitionTo(MicroSpecialtyEnrollmentStatus target) {
+        if (target == null || target == this) {
+            return false;
+        }
+        switch (this) {
+            case PENDING:
+                return target == APPROVED || target == REJECTED;
+            case APPROVED:
+                return target == IN_PROGRESS || target == DROPPED;
+            case IN_PROGRESS:
+                return target == COMPLETED || target == FAILED || target == DROPPED;
+            case COMPLETED:
+                return target == CERTIFIED;
+            case REJECTED:   // 终态
+            case FAILED:     // 终态
+            case DROPPED:    // 终态
+            case CERTIFIED:  // 终态
+            default:
+                return false;
+        }
+    }
 }
