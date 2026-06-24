@@ -84,7 +84,7 @@
 
 | 功能 | 实现文件 | API 依赖 | 验收 |
 |------|---------|---------|------|
-| 通知列表 | `src/views/student/NotificationView.vue` | GET /api/notifications | 已读/未读区分 |
+| 通知列表 | `src/views/notifications/NotificationList.vue` | GET /api/notifications | 已读/未读区分 |
 | 轮询更新 | `src/store/notification.js` | GET /api/notifications/unread-count | 30s轮询 |
 
 ### 5.9 学生个人中心（3 功能）
