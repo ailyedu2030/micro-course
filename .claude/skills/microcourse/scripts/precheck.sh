@@ -310,6 +310,46 @@ check_jwt_claims
 check_lombok_import
 check_field_contract
 
+# ----------------------------------------------------------------------------
+# 15. .bak 文件残留（表面修复残留的标记）
+# ----------------------------------------------------------------------------
+check_bak_files() {
+    local hits
+    # .bak 文件应在所有目录（包括 .gitignore 标记的）中全部清除
+    hits=$(find "$ROOT" -name "*.bak" -not -path "*/.git/*" -not -path "*/.audit-cache/*" -not -path "*/node_modules/*" -not -path "*/target/*" 2>/dev/null \
+        | wc -l | tr -d ' ')
+    if [ "$hits" -gt 0 ]; then
+        FAILS+=("[BAK] 发现 $hits 个 .bak 备份文件残留，请清理后再提交")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# 16. 禁止在 doc/commit 中使用无证据断言
+# ----------------------------------------------------------------------------
+check_no_evidence_claims() {
+    # 仅检查最近 3 次 commit 的 body
+    local hits=0
+    local msgs
+    msgs=$(git log -3 --format="%B" 2>/dev/null || true)
+    for pattern in "应该没问题" "大概没问题" "看起来没问题" "我相信" "应该是正确的"; do
+        if echo "$msgs" | grep -q "$pattern"; then
+            hits=$((hits+1))
+        fi
+    done
+    if [ "$hits" -gt 0 ]; then
+        FAILS+=("[BIAS] 近 3 次 commit 含无证据断言（$hits 处），违反 AGENTS.md 纪律 1")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+check_bak_files
+check_no_evidence_claims
+
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC}"
 echo "------------------------------------------------------------"
