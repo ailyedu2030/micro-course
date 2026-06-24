@@ -512,7 +512,7 @@ test.describe('Order & TeachingClass State Machine', () => {
     const adminToken = token
     const c = await page.request.post(`${API}/api/courses`, {
       headers: { 'Authorization': `Bearer ${adminToken}` },
-      data: { title: `PROMO-${Date.now()}`, categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', maxStudents: 1, description: 'x', summary: 'x' }  // 不设 coverUrl,前端 coverHelper 兜底
+      data: { title: `PROMO-${Date.now()}`, categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', maxStudents: 1, description: 'x', summary: 'x', coverUrl: '/api/files/covers/course_107_1782163392123.jpg' }  // 用真实存在的封面文件,避免 submit 报"课程必须设置封面"
     })
     const cid = (await c.json()).data.id
     // 通过 PSQL 命令行添加章节+视频
