@@ -316,7 +316,7 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
 
         // PENDING_REVIEW → REJECTED（驳回原因须 >= 5 字符）
         Map<String, Object> reject = new LinkedHashMap<>();
-        reject.put("reason", "内容不完整需补充");
+        reject.put("reason", "内容不完整需补充课程详细信息");
         mockMvc.perform(post("/api/courses/" + courseId + "/reject")
                         .header("Authorization", admin)
                         .contentType(MediaType.APPLICATION_JSON)
