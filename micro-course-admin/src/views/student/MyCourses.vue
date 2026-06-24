@@ -210,16 +210,27 @@
                     </span>
                   </div>
 
-                  <!-- 操作按钮 -->
-                  <div class="card-actions">
-                    <el-button
-                      :type="activeTab === 'in-progress' ? 'primary' : 'default'"
-                      size="small"
-                      @click.stop="handleContinue(course.courseId)"
-                    >
-                      {{ activeTab === 'in-progress' ? '继续学习' : activeTab === 'completed' ? '查看详情' : '开始学习' }}
-                    </el-button>
-                  </div>
+                   <!-- 操作按钮 -->
+                   <div class="card-actions">
+                     <el-button
+                       :type="activeTab === 'in-progress' ? 'primary' : 'default'"
+                       size="small"
+                       @click.stop="handleContinue(course.courseId)"
+                     >
+                       {{ activeTab === 'in-progress' ? '继续学习' : activeTab === 'completed' ? '查看详情' : '开始学习' }}
+                     </el-button>
+                     <!-- 客户体验修复 v1.7.0: 添加退课按钮 (P0-UX-U4) -->
+                     <el-button
+                       v-if="activeTab === 'in-progress'"
+                       size="small"
+                       type="danger"
+                       plain
+                       @click.stop="handleDropOut(course)"
+                       aria-label="退课"
+                     >
+                       退课
+                     </el-button>
+                   </div>
                 </div>
               </el-card>
             </el-col>
@@ -451,7 +462,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Reading,
   CircleCheck,
@@ -463,7 +474,7 @@ import {
   Warning
 } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
-import { getMyEnrollments } from '../../api/enrollment'
+import { getMyEnrollments, cancelEnrollment } from '../../api/enrollment'
 import { getCompletion, getLearningProgress } from '../../api/learning-progress'
 import { getChapters } from '../../api/chapter'
 import { getMyFavorites } from '../../api/favorite'
@@ -763,6 +774,28 @@ const handlePageChange = () => {
 
 const handleContinue = (courseId) => {
   router.push(`/student/learning?courseId=${courseId}`)
+}
+
+// 客户体验修复 v1.7.0: 退课处理 (P0-UX-U4)
+// course 对象来自 API 返回的选课记录,course.id = enrollmentId
+const handleDropOut = async (course) => {
+  if (!course || !course.id) {
+    ElMessage.error('退课失败:缺少选课记录 ID')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确定退选《${course.courseTitle || '课程'}》吗?退课后将清除学习进度,此操作不可撤销。`,
+      '退课确认',
+      { confirmButtonText: '确认退课', cancelButtonText: '取消', type: 'warning' }
+    )
+    await cancelEnrollment(course.id)
+    ElMessage.success('退课成功')
+    await fetchEnrollments()
+  } catch (e) {
+    if (e === 'cancel' || e?.message === 'cancel') return
+    ElMessage.error('退课失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
+  }
 }
 </script>
 
