@@ -22,6 +22,17 @@ public interface CourseRepository extends BaseMapper<Course> {
     int atomicIncrementStudentCount(@Param("courseId") Long courseId);
 
     /**
+     * ★ 业务逻辑审计 DEVIATION-1 修复：原子容量保护增计数。
+     * <p>仅当未达 max_students 上限或不限人数（max=0）时增 1，否则返回 0（不入账）。
+     * 与 {@link com.microcourse.repository.EnrollmentRepository#atomicInsertIfCapacity} 配合实现"插入+计数"双闸门。</p>
+     */
+    @Update("UPDATE courses SET student_count = COALESCE(student_count, 0) + 1, " +
+            "updated_at = CURRENT_TIMESTAMP " +
+            "WHERE id = #{courseId} AND deleted_at IS NULL " +
+            "  AND (max_students IS NULL OR max_students = 0 OR COALESCE(student_count, 0) < max_students)")
+    int atomicIncrementIfNotFull(@Param("courseId") Long courseId);
+
+    /**
      * 原子减少课程选课人数（Round 8-4 P0 修复）。
      * GREATEST 兜底避免出现负数；COALESCE 兜底 NULL。
      */

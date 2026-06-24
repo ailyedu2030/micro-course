@@ -63,4 +63,30 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
             " GROUP BY course_id" +
             "</script>")
     List<Map<String, Object>> countInProgressOrCompletedByCourseIds(@Param("courseIds") List<Long> courseIds);
+
+    /**
+     * ★ 业务逻辑审计 DEVIATION-1 修复：原子容量检查 + 插入。
+     * <p>原实现的 check-then-insert 是非原子的，高并发下可能超 max_students 上限。
+     * 本方法在单条 INSERT ... SELECT ... WHERE 中同时检查：</p>
+     * <ol>
+     *   <li>课程存在且未删除 (c.deleted_at IS NULL)</li>
+     *   <li>课程状态为 PUBLISHED (c.status = 4)</li>
+     *   <li>学生不存在重复选课（同 user_id+course_id 在同事务中）</li>
+     *   <li>未达人数上限 (max_students = 0 OR student_count < max_students)</li>
+     * </ol>
+     * <p>返回 0 表示不满足条件（满员/已选/未发布），由调用方转 WAITLIST 或抛异常。</p>
+     */
+    @org.apache.ibatis.annotations.Insert("INSERT INTO enrollments " +
+            "(user_id, course_id, enrollment_status, source_channel, progress, completed, enrolled_at, updated_at, version) " +
+            "SELECT #{userId}, #{courseId}, #{status}, #{sourceChannel}, 0, false, NOW(), NOW(), 0 " +
+            "FROM courses c " +
+            "WHERE c.id = #{courseId} AND c.deleted_at IS NULL AND c.status = 4 " +
+            "  AND (c.max_students IS NULL OR c.max_students = 0 " +
+            "       OR COALESCE(c.student_count, 0) < c.max_students) " +
+            "  AND NOT EXISTS (SELECT 1 FROM enrollments e " +
+            "                  WHERE e.user_id = #{userId} AND e.course_id = #{courseId})")
+    int atomicInsertIfCapacity(@Param("userId") Long userId,
+                               @Param("courseId") Long courseId,
+                               @Param("status") String status,
+                               @Param("sourceChannel") String sourceChannel);
 }

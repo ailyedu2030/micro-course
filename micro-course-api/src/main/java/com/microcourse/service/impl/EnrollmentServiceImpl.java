@@ -118,11 +118,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (course.getStatus() == null || course.getStatus() != CourseStatus.PUBLISHED.getCode()) {
             throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "课程未发布，无法选课");
         }
-        // 课程人数上限检查
-        if (course.getMaxStudents() != null && course.getMaxStudents() > 0
-                && course.getStudentCount() != null && course.getStudentCount() >= course.getMaxStudents()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程选课人数已满");
-        }
         // SECURITY: 付费课程必须通过订单支付，不能直接选课
         if (course.getPrice() != null && course.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0
                 && Boolean.FALSE.equals(course.getIsFree())) {
@@ -134,43 +129,48 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        Enrollment enrollment = new Enrollment();
-        enrollment.setCourseId(request.getCourseId());
-        enrollment.setUserId(request.getUserId());
-        enrollment.setSourceChannel(request.getSourceChannel());
-        // P0-2 兼容性：写入历史等价值 "ENROLLED"（≡ APPROVED），保持 API/前端无感；
-        // 内部状态机逻辑统一通过 EnrollmentStatus.fromString 归一处理。
-        enrollment.setEnrollmentStatus(EnrollmentStatus.LEGACY_ENROLLED_VALUE);
-        enrollment.setProgress(0.0);
-        enrollment.setCompleted(false);
-        enrollment.setEnrolledAt(LocalDateTime.now());
-        enrollment.setUpdatedAt(LocalDateTime.now());
+        // ★ 业务逻辑审计 DEVIATION-1 修复：原子选课（容量检查 + 插入 + 增计数 一次完成）
+        // 替代非原子的 check-then-insert-then-increment，高并发下不再超 max_students
+        int inserted = enrollmentRepository.atomicInsertIfCapacity(
+                request.getUserId(),
+                request.getCourseId(),
+                EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                request.getSourceChannel());
 
-        try {
-            enrollmentRepository.insert(enrollment);
-        } catch (DuplicateKeyException e) {
-            // 并发场景下 check-then-insert 幂等兜底
-            LambdaQueryWrapper<Enrollment> retryWrapper = new LambdaQueryWrapper<>();
-            retryWrapper.eq(Enrollment::getUserId, request.getUserId())
-                    .eq(Enrollment::getCourseId, request.getCourseId());
-            Enrollment existing = enrollmentRepository.selectOne(retryWrapper);
-            if (existing != null) return convertToVO(existing);
-            throw e;
+        if (inserted == 0) {
+            // 区分"已选过"vs"课程满员"
+            Enrollment existing = enrollmentRepository.selectOne(new LambdaQueryWrapper<Enrollment>()
+                    .eq(Enrollment::getUserId, request.getUserId())
+                    .eq(Enrollment::getCourseId, request.getCourseId()));
+            if (existing != null) {
+                return convertToVO(existing);
+            }
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程选课人数已满");
         }
+
+        // 双闸门：原子增计数也带容量检查（防御深度）
+        courseRepository.atomicIncrementIfNotFull(request.getCourseId());
+
+        // 查询刚插入的 enrollment
+        Enrollment newEnrollment = enrollmentRepository.selectOne(new LambdaQueryWrapper<Enrollment>()
+                .eq(Enrollment::getUserId, request.getUserId())
+                .eq(Enrollment::getCourseId, request.getCourseId()));
+        if (newEnrollment == null) {
+            // 极端边缘情况：原子插入成功但 select 失败
+            throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND, "选课记录异常，请联系管理员");
+        }
+
         // P0-2 修复（审计空洞）：选课成功后写入 enrollment_histories 审计轨迹。
-        // new_status 记录契约规范值 APPROVED（数据字典允许值），operator 为选课学生本人。
-        recordHistory(enrollment.getId(), null, EnrollmentStatus.APPROVED, request.getUserId(), "ENROLL");
-        // ★ Round 8-4 修复(P0)：原子同步 courses.student_count（仅真正新建选课时 +1）。
-        // 前置 existing 短路 / DuplicateKey 幂等分支均已 return，不会到达此处，避免重复计数。
-        courseRepository.atomicIncrementStudentCount(request.getCourseId());
-        // Phase B-2 (P0-7)：选课成功后异步通知学生，@Async 不阻塞选课主流程，失败不影响选课结果
+        recordHistory(newEnrollment.getId(), null, EnrollmentStatus.APPROVED, request.getUserId(), "ENROLL");
+
+        // Phase B-2 (P0-7)：选课成功后异步通知学生
         notificationService.notifyAsync(
                 request.getUserId(),
                 NotificationType.ENROLLMENT_SUCCESS,
                 "选课成功",
                 "您已成功选课《" + course.getTitle() + "》，开始学习吧！",
                 course.getId());
-        return convertToVO(enrollment);
+        return convertToVO(newEnrollment);
     }
 
     @Override
