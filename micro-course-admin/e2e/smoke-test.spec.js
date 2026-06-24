@@ -640,7 +640,7 @@ test.describe('Order & TeachingClass State Machine', () => {
     await page.fill('input[placeholder*="密码"]', 'student123')
     await page.click('button:has-text("登 录")')
     await page.waitForURL(/\/student/, { timeout: 10000 })
-    const studentToken = await page.evaluate(() => sessionStorage.getItem('micro_course_token'))
+    const studentToken = await page.evaluate(() => localStorage.getItem('micro_course_token'))
 
     const enrRes = await page.request.post(`${API}/api/enrollments`, {
       headers: { 'Authorization': `Bearer ${studentToken}` },
