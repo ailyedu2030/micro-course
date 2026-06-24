@@ -21,9 +21,6 @@ public class Classes {
 
     private String grade;
 
-    @TableField("counselor_id")
-    private Long counselorId;
-
     @TableField("sort_order")
     private Integer sortOrder;
 
@@ -38,13 +35,12 @@ public class Classes {
 
     public Classes() {}
 
-    public Classes(Long id, String name, Long majorId, String grade, Long counselorId,
+    public Classes(Long id, String name, Long majorId, String grade,
                    Integer sortOrder, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.majorId = majorId;
         this.grade = grade;
-        this.counselorId = counselorId;
         this.sortOrder = sortOrder;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -58,8 +54,6 @@ public class Classes {
     public void setMajorId(Long majorId) { this.majorId = majorId; }
     public String getGrade() { return grade; }
     public void setGrade(String grade) { this.grade = grade; }
-    public Long getCounselorId() { return counselorId; }
-    public void setCounselorId(Long counselorId) { this.counselorId = counselorId; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
     public LocalDateTime getCreatedAt() { return createdAt; }

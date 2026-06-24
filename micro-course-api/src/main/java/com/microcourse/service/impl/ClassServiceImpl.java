@@ -72,15 +72,6 @@ public class ClassServiceImpl implements ClassService {
         if (major == null) {
             throw new BusinessException(ErrorCode.MAJOR_NOT_FOUND);
         }
-        if (request.getCounselorId() != null) {
-            User counselor = userRepository.selectById(request.getCounselorId());
-            if (counselor == null) {
-                throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-            }
-            if (counselor.getRole() != UserRole.TEACHER) {
-                throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-            }
-        }
         // 检查班级名称唯一性
         if (request.getName() != null && !request.getName().isBlank()) {
             long nameCount = classesRepository.selectCount(
@@ -93,7 +84,6 @@ public class ClassServiceImpl implements ClassService {
         classes.setName(request.getName());
         classes.setMajorId(request.getMajorId());
         classes.setGrade(request.getGrade());
-        classes.setCounselorId(request.getCounselorId());
         classes.setSortOrder(request.getSortOrder());
         classes.setCreatedAt(LocalDateTime.now());
         classes.setUpdatedAt(LocalDateTime.now());
@@ -116,9 +106,6 @@ public class ClassServiceImpl implements ClassService {
         }
         if (request.getGrade() != null) {
             classes.setGrade(request.getGrade());
-        }
-        if (request.getCounselorId() != null) {
-            classes.setCounselorId(request.getCounselorId());
         }
         if (request.getSortOrder() != null) {
             classes.setSortOrder(request.getSortOrder());
@@ -182,7 +169,6 @@ public class ClassServiceImpl implements ClassService {
         vo.setName(classes.getName());
         vo.setMajorId(classes.getMajorId());
         vo.setGrade(classes.getGrade());
-        vo.setCounselorId(classes.getCounselorId());
         vo.setSortOrder(classes.getSortOrder());
         vo.setCreatedAt(classes.getCreatedAt());
 
@@ -191,12 +177,6 @@ public class ClassServiceImpl implements ClassService {
             vo.setMajorName(major.getName());
         }
 
-        if (classes.getCounselorId() != null) {
-            User counselor = userRepository.selectById(classes.getCounselorId());
-            if (counselor != null) {
-                vo.setCounselorName(counselor.getRealName());
-            }
-        }
         return vo;
     }
 }
