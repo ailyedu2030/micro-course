@@ -265,6 +265,27 @@ check_lombok_import() {
 }
 
 # ----------------------------------------------------------------------------
+# 14. 字段契约完整性（防止前端字段孤儿再发）
+# ----------------------------------------------------------------------------
+check_field_contract() {
+    local scanner="$ROOT/scripts/field-contract-scanner.py"
+    if [ ! -f "$scanner" ]; then
+        PASS=$((PASS+1))
+        return
+    fi
+    local result
+    result=$(python3 "$scanner" 2>&1)
+    local orphan_count
+    orphan_count=$(echo "$result" | grep -oE '可疑孤儿: [0-9]+' | grep -oE '[0-9]+')
+    if [ -n "$orphan_count" ] && [ "$orphan_count" -gt 0 ]; then
+        FAILS+=("[FIELD] 检测到 $orphan_count 个可疑前端孤儿字段 — 运行 python3 scripts/field-contract-scanner.py 查看详情")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+# ----------------------------------------------------------------------------
 # 主流程
 # ----------------------------------------------------------------------------
 echo "============================================================"
@@ -287,6 +308,7 @@ check_error_code_enum
 check_preauthorize
 check_jwt_claims
 check_lombok_import
+check_field_contract
 
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC}"
