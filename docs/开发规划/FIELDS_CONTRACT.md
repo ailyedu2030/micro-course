@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 59 | Vue 视图数: 50 | Controller 数: 50 | API 文件数: 40
+> 实体数: 59 | Vue 视图数: 50 | Controller 数: 51 | API 文件数: 41
 
 ---
 
@@ -330,6 +330,8 @@
 | Auth | /api/auth | 9 | - |
 
 | Badge | /api/badges | 3 | - |
+
+| BannerPublic | /api/banners | 1 | - |
 
 | Certificate | /api/certificates | 4 | - |
 

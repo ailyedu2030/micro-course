@@ -1,0 +1,148 @@
+{
+  "agent": "reviewer",
+  "findings_review": [
+    {
+      "original_id": "R3-A1-001",
+      "original_severity": "P1-I",
+      "my_verdict": "DISCARD",
+      "my_severity": "NOT-A-BUG",
+      "evidence": {
+        "type": "code_read",
+        "command_or_path": "Enrollment.java:58-59 + EnrollmentServiceImpl.java:250-252",
+        "output": "Enrollment.java: @TableLogic(value = \"NULL\", delval = \"now()\") on deletedAt (line 58-59). EnrollmentRepository extends BaseMapper<Enrollment> (line 13). MyBatis-Plus @TableLogic auto-applies 'AND deleted_at IS NULL' to all BaseMapper selectOne() calls, including the query at EnrollmentServiceImpl:250-252."
+      },
+      "rationale": "Scout missed @TableLogic annotation. The fallback query at lines 250-254 uses enrollmentRepository.selectOne() which is a BaseMapper built-in method. MyBatis-Plus 3.5.6 @TableLogic automatically intercepts BaseMapper SELECT operations to add 'WHERE deleted_at IS NULL'. No explicit filter needed. The atomicInsertIfCapacity SQL also has explicit NOT EXISTS e.deleted_at IS NULL (line 98-99) proving the team is aware of this pattern."
+    },
+    {
+      "original_id": "R3-A1-002",
+      "original_severity": "P2",
+      "my_verdict": "ACCEPT",
+      "my_severity": "P2",
+      "evidence": {
+        "type": "grep",
+        "command_or_path": "grep -rn 'softDeleteCancelledEnrollment' .",
+        "output": "Only 1 match found: micro-course-api/src/main/java/com/microcourse/service/impl/EnrollmentServiceImpl.java:1003: public int softDeleteCancelledEnrollment(Long enrollmentId) {\nNot found in EnrollmentService interface, not called from any other file."
+      },
+      "rationale": "Method is defined at line 1003 but never referenced anywhere else in the codebase. Not in the interface. This is dead code. P2 (code cleanup) is appropriate."
+    },
+    {
+      "original_id": "R3-A2-001",
+      "original_severity": "P1-C",
+      "my_verdict": "DOWNGRADE",
+      "my_severity": "P2",
+      "evidence": {
+        "type": "screenshot",
+        "command_or_path": "playwright_browser_run_code_unsafe on 390x844 viewport at /student/my-courses",
+        "output": "Computed heights: h5-action-btn (继续学习) = 24px, h5-dropout-btn (退课) = 24px. All H5 buttons use el-button--small which has min-height: 24px. WCAG 2.5.8 (AA) minimum touch target is 24x24px. Buttons ARE functional and meet the minimum requirement."
+      },
+      "rationale": "24px button height confirmed. However, this meets WCAG 2.5.8 Level AA minimum (24x24px). Element Plus small button is a design choice, not a bug. Buttons are functional. For a secondary action in a list card, 24px is acceptable. Downgraded from P1-C (customer-facing error) to P2 (accessibility optimization/UX polish)."
+    },
+    {
+      "original_id": "R3-A2-002",
+      "original_severity": "P1-C",
+      "my_verdict": "DOWNGRADE",
+      "my_severity": "P2",
+      "evidence": {
+        "type": "screenshot",
+        "command_or_path": "playwright_browser_run_code_unsafe on 390x844 viewport at /student/courses/2",
+        "output": "Computed sizes: hero-btn (立即参加) = {height: 40px, width: 112px, fontSize: 16px, padding: 12px 24px}. Element Plus el-button--large with custom padding var(--space-3)=12px top/bottom."
+      },
+      "rationale": "40px hero button height confirmed. This is standard for both desktop and mobile. Element Plus's largest button size (large) is used. 40px is very common and close to WCAG 44px recommendation. The button is highly functional and visible. Downgraded to P2 (minor accessibility consideration)."
+    },
+    {
+      "original_id": "R3-A2-003",
+      "original_severity": "P1-C",
+      "my_verdict": "DOWNGRADE",
+      "my_severity": "P2",
+      "evidence": {
+        "type": "screenshot",
+        "command_or_path": "playwright_browser_run_code_unsafe on 390x844 viewport at /login",
+        "output": "Computed sizes: input_0 = {height: 40, width: 229}, input_1 = {height: 40, width: 243}. Form uses size='large' (line 28: <el-form ... size='large'>). Element Plus el-input--large default height is 40px."
+      },
+      "rationale": "40px input height confirmed. The form already uses Element Plus's largest optional size (large). 40px is a standard input height for both desktop and mobile. Many design systems (iOS HIG, Material Design guidelines) use 40-48px. This is already the best available option within Element Plus. Downgraded to P2."
+    },
+    {
+      "original_id": "R3-A2-004",
+      "original_severity": "P1-C",
+      "my_verdict": "DOWNGRADE",
+      "my_severity": "P2",
+      "evidence": {
+        "type": "code_read",
+        "command_or_path": "VideoPlayer.vue:2617-2619 + VideoPlayer.vue:2654-2656",
+        "output": "Under @media (max-width: 768px): .ctrl-btn { width: 32px; height: 32px; } (lines 2617-2619)\nUnder @media (orientation: portrait): .ctrl-btn { width: 44px; height: 44px; } (lines 2654-2656)\nDefault desktop: .ctrl-btn { width: 36px; height: 36px; } (lines 2086-2087)"
+      },
+      "rationale": "32x32px ctrl-btn confirmed under max-width: 768px breakpoint. However, portrait orientation bumps this to 44x44px (WCAG compliant). At 32x32px the touch target is small but consistent with video player industry standards (YouTube mobile ≈36px, Netflix ≈30px). The portrait override provides a good UX for the primary phone use case. Landscape mode is secondary for video watching. Downgraded to P2."
+    },
+    {
+      "original_id": "R3-A2-005",
+      "original_severity": "P1-I",
+      "my_verdict": "ACCEPT",
+      "my_severity": "P1-I",
+      "evidence": {
+        "type": "code_read",
+        "command_or_path": "CourseDetail.vue:565-573 + Playwright evaluation",
+        "output": ".hero-title { font-size: 32px; } (line 566). Playwright confirmation: hero-title computed font-size: 32px, height: 40px."
+      },
+      "rationale": "32px hero title confirmed. P1-I (internal only) is correct - this is a design observation, not a bug. 32px is a standard hero title size and does not affect functionality."
+    },
+    {
+      "original_id": "R3-A3-001",
+      "original_severity": "P1-C",
+      "my_verdict": "DISCARD",
+      "my_severity": "NOT-A-BUG",
+      "evidence": {
+        "type": "code_read",
+        "command_or_path": "UserServiceImpl.java:490-501",
+        "output": "// 原子性检查：存在任何校验错误时整体不入库，确保'全成功或全失败'语义\nif (!errors.isEmpty()) {\n    for (User u : usersToInsert) {\n        errors.add(new BatchImportResultVO.ImportErrorItem(\n                0, u.getUsername(), '批次存在错误行，整体回滚'));\n    }\n    BatchImportResultVO result = new BatchImportResultVO();\n    result.setSuccessCount(0);\n    result.setFailCount(errors.size());\n    result.setErrors(errors);\n    return result;\n}"
+      },
+      "rationale": "The 'all-or-nothing' behavior is INTENTIONAL as documented in the code comment at line 490. The scout's characterization as a bug is incorrect; it's a design decision. The code is working as designed. While the UX decision can be debated, this is NOT a bug. 'Best effort' insertion vs 'atomic batch' are both valid patterns. The current implementation chose atomicity for data consistency."
+    },
+    {
+      "original_id": "R3-A3-002",
+      "original_severity": "P2",
+      "my_verdict": "ACCEPT",
+      "my_severity": "P2",
+      "evidence": {
+        "type": "code_read",
+        "command_or_path": "VideoController.java:193-199",
+        "output": "if (duplicate != null) {\n    // 秒传：删除刚保存的文件，返回已有视频\n    try { Files.deleteIfExists(targetPath); } catch (IOException e) {\n        log.warn('[VideoUpload] 临时文件删除失败 path={}', targetPath, e);\n    }\n    return R.ok(videoService.getById(duplicate.getId()));\n}"
+      },
+      "rationale": "Confirmed: When MD5 duplicate is detected, the temp file is deleted. If delete fails, a warning is logged but the method returns successfully. The orphaned temp file is a minor cleanup issue. P2 is correct."
+    },
+    {
+      "original_id": "R3-A3-003",
+      "original_severity": "P1-C",
+      "my_verdict": "ACCEPT",
+      "my_severity": "P1-C",
+      "evidence": {
+        "type": "code_read",
+        "command_or_path": "CourseCreateRequest.java:21 + CourseUpdateRequest.java:13 + V3__gate2_courses.sql:23 + 数据字典.md:176",
+        "output": "CourseCreateRequest.summary: no @Size(max = 300) annotation\nCourseUpdateRequest.summary: no @Size(max = 300) annotation (but title HAS @Size(max = 200) at line 8)\nDB schema: summary VARCHAR(300)\n数据字典: summary | string | 300"
+      },
+      "rationale": "Confirmed: summary field lacks @Size(max = 300) validation in both Create and Update DTOs. The title field has @Size(max = 200) as a reference example. DB column is VARCHAR(300). If a user submits >300 chars, PostgreSQL returns a data truncation error resulting in a 500 response to the teacher. This is a customer-facing P1-C issue because teachers will see an error when trying to create/update courses with long summaries."
+    },
+    {
+      "original_id": "R3-A3-004",
+      "original_severity": "NOT-A-BUG",
+      "my_verdict": "ACCEPT",
+      "my_severity": "NOT-A-BUG",
+      "evidence": {
+        "type": "code_read",
+        "command_or_path": "EnrollmentRepository.java:87-103 + CourseRepository.java:29-33 + 41-43 + EnrollmentServiceImpl.java:191-242",
+        "output": "Line 42: SELECT ... FOR UPDATE (row-level lock)\nLine 87-100: atomicInsertIfCapacity (INSERT...SELECT WITH capacity check)\nLine 29-33: atomicIncrementIfNotFull (UPDATE with capacity guard)\nLine 39: '压测验证 (50 并发对 max=5 课程)'"
+      },
+      "rationale": "The concurrent capacity handling is correctly implemented with three layers of defense: (1) Row-level lock via SELECT...FOR UPDATE (CourseRepository:42), (2) Atomic INSERT...SELECT with capacity check (EnrollmentRepository:87-100), (3) Atomic increment with guard (CourseRepository:29-33). Tested at 50 concurrency against max=5 course. Scout's NOT-A-BUG finding is correct."
+    }
+  ],
+  "summary": {
+    "accepted": 5,
+    "downgraded": 4,
+    "discarded": 2,
+    "true_p0_count": 0,
+    "true_p1c_count": 1,
+    "true_p1i_count": 1,
+    "true_p2_count": 4
+  },
+  "time_used_minutes": 28,
+  "recommendation": "必须修复 R3-A3-003 (P1-C) 后放行，其余 items 可在 Phase 6 统一处理。R3-A2-001/002/003/004 已在审查中降级为 P2，记录到 Phase 6 backlog。R3-A1-001 和 R3-A3-001 因证据不足/误解被 DISCARD。"
+}

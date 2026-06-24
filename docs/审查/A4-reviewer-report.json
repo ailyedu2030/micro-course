@@ -1,0 +1,157 @@
+{
+  "agent": "A4-reviewer",
+  "task": "Round 4 全链路闭环审计 · 独立交叉验证",
+  "timestamp": "2026-06-25",
+  "methodology": {
+    "p0": "独立验证（grep + read + code trace）",
+    "p1c": "独立验证（grep + read + code trace）",
+    "p1i": "抽样验证（grep 确认）"
+  },
+  "findings_review": [
+    {
+      "original_id": "A2-P0-1",
+      "original_severity": "P0",
+      "my_verdict": "CONFIRMED",
+      "my_severity": "P0",
+      "title": "学生端 BundleSquare.vue 路由缺失",
+      "evidence": {
+        "type": "grep + read",
+        "grep_command": "grep -rn 'BundleSquare' micro-course-admin/src/router/index.js",
+        "grep_output": "无匹配结果",
+        "file_check": "src/views/student/BundleSquare.vue 文件存在（grep 行 85 有 console.error），但无路由引用",
+        "code_analysis": "router/index.js 行 71-114 列出所有学生路由，无 /student/bundles"
+      },
+      "impact_analysis": "学生点击课程套件链接 → 404。文件已存在但无法访问",
+      "fix_recommendation": "在 router/index.js 学生路由段添加：\n{ path: '/student/bundles', name: 'StudentBundleSquare', component: () => import('../views/student/BundleSquare.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },\n{ path: '/student/bundles/:id', name: 'StudentBundleDetail', component: () => import('../views/student/BundleDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } }"
+    },
+    {
+      "original_id": "A2-P0-2",
+      "original_severity": "P0",
+      "my_verdict": "CONFIRMED",
+      "my_severity": "P0",
+      "title": "学生端 BundleDetail.vue 路由缺失",
+      "evidence": {
+        "type": "grep + read",
+        "grep_command": "grep -rn 'BundleDetail' micro-course-admin/src/router/index.js",
+        "grep_output": "无匹配结果",
+        "file_check": "src/views/student/BundleDetail.vue 文件存在（glob 确认），但无路由引用",
+        "code_analysis": "BundleDetail.vue 已实现完整详情页（导入 getMyEnrollments、套件状态判断），但无路由映射"
+      },
+      "impact_analysis": "学生点击套件详情 → 404。页面代码已编写但永远无法被访问",
+      "fix_recommendation": "与 A2-P0-1 同，添加 '/student/bundles/:id' 路由"
+    },
+    {
+      "original_id": "A3-P0-1",
+      "original_severity": "P0",
+      "my_verdict": "CONFIRMED",
+      "my_severity": "P0",
+      "title": "Banner 管理无学生端展示",
+      "evidence": {
+        "type": "grep + read + cross-validate",
+        "grep_1": "grep -rn 'banner' micro-course-admin/src/views/student/",
+        "grep_1_output": "仅 MicroSpecialtyDetail.vue 有 CSS 'ms-banner' 类名（微专业封面，非全局轮播）。其余 21 个学生页面无 banner",
+        "grep_2": "grep -rn 'GET.*banners' micro-course-admin/src/api/",
+        "grep_2_output": "仅 admin-banner.js 有 GET /admin/banners，无公开 GET /api/banners",
+        "grep_3": "ls micro-course-api/src/main/java/com/microcourse/controller/*Banner*.java",
+        "grep_3_output": "仅 AdminBannerController.java (/api/admin/banners)，无学生端公开 BannerController",
+        "service_check": "BannerService.list() @Cacheable('banners') 返回 enabled=true banners，但无学生端 Controller 调用它",
+        "security_check": "SecurityConfig 行 135 允许公开 GET /api/files/banners/**（图片文件），但无 API 提供 banner 列表路径"
+      },
+      "impact_analysis": "管理员配置的 Banner 永远不在学生端显示。完整的 '管理端可配→学生端不见' 断裂",
+      "fix_recommendation": "后端：创建公开 BannerController（如 GET /api/banners）调用 BannerService.list()。前端：创建 BannerCarousel.vue 放在 CourseSquare.vue"
+    },
+    {
+      "original_id": "A3-P1-C-1",
+      "original_severity": "P1-C",
+      "my_verdict": "DISCARD",
+      "my_severity": "NOT-A-BUG",
+      "title": "退款触发候补晋升（声称：退款人不占名额）",
+      "evidence": {
+        "type": "read + code trace",
+        "trace_chain": "OrderServiceImpl.refund():298 → EnrollmentServiceImpl.cancelEnrollment():645 → promoteFirstWaitlistToEnrolled():677",
+        "wasEnrolled": "cancelEnrollment 行 666: wasEnrolled=true 因为退款学生原状态 APPROVED（非 WAITLIST 非 CANCELLED）",
+        "spec_citation": "spec §3.2: 'WAITLIST → APPROVED: 有人退课 → 按候补顺序自动录取'",
+        "circular_safety": "refund() 先改 order 为 REFUNDED(行 273)；cancelEnrollment 内部查 PAID order(行 685) 找不到，不递归"
+      },
+      "finding_refutation": "退款人 WAS 已选课（APPROVED），占用一个名额。退出后释放名额 → 候补晋升正确。原报告 '退款人不占名额' 分析错误"
+    },
+    {
+      "original_id": "A3-P1-C-2",
+      "original_severity": "P1-C",
+      "my_verdict": "DOWNGRADE",
+      "my_severity": "P1-I",
+      "title": "选课成功后不自动跳转/刷新",
+      "evidence": {
+        "type": "read",
+        "code": "CourseDetail.vue 行 386-404",
+        "behavior": "handleEnroll() 设置 isEnrolled.value=true + ElMessage.success()。模板行 78-88: v-if='isEnrolled' 显示 '继续学习' 按钮替代 '立即参加'"
+      },
+      "downgrade_reason": "此为 UX 设计选择。学生看到按钮从 '立即参加' → '继续学习'，UI 状态正确切换，无需强制跳转。客户不可感知为问题。P1-C → P1-I"
+    },
+    {
+      "original_id": "A3-P1-C-3",
+      "original_severity": "P1-C",
+      "my_verdict": "DISCARD",
+      "my_severity": "NOT-A-BUG",
+      "title": "驳回无通知（声称 reject() 未调用 notifyAsync）",
+      "evidence": {
+        "type": "read",
+        "file": "CourseServiceImpl.java",
+        "lines": "769-775",
+        "code": "if (course.getTeacherId() != null) {\n    notificationService.notifyAsync(\n        course.getTeacherId(),\n        NotificationType.COURSE_REJECTED,\n        '课程被驳回',\n        '您的课程《' + course.getTitle() + '》被驳回，原因：' + (safeReason != null ? safeReason : '未填写'),\n        id);\n}"
+      },
+      "finding_refutation": "reject() 行 769-775 明确调用了 notificationService.notifyAsync()。原报告 claim 不成立"
+    },
+    {
+      "original_id": "A3-P1-C-4",
+      "original_severity": "P1-C",
+      "my_verdict": "DISCARD",
+      "my_severity": "NOT-A-BUG",
+      "title": "支付后我的课程显示旧数据",
+      "evidence": {
+        "type": "read + code trace",
+        "checkout": "Checkout.vue 行 121: setTimeout(() => router.push('/student/my-courses'), 1500)",
+        "my_courses": "MyCourses.vue 行 520: onMounted 调用 fetchEnrollments()",
+        "pay_sync": "OrderServiceImpl.pay() 行 186: autoEnroll(userId, courseId) 同步创建 enrollment，行 192-204 才标记 PAID。enrollment 在 pay() 返回前已创建",
+        "no_keepalive": "grep 确认前端无 <keep-alive> 包裹学生路由"
+      },
+      "finding_refutation": "pay() 内先 autoEnroll 再标记 PAID（同步）。跳转后 MyCourses 重新挂载，onMounted 重新 fetch。无缓存旧数据问题"
+    }
+  ],
+  "p1i_notes": [
+    {
+      "original_id": "A1-P1-I-1",
+      "title": "counselor_id 数据字典漂移",
+      "verdict": "CONFIRMED - P1-I",
+      "evidence": "数据字典 classes 表有 counselor_id（docs/数据字典.md 行 144），Classes.java entity 无 counselorId 字段"
+    },
+    {
+      "original_id": "A1-P1-I-2",
+      "title": "course_type 缺失数据字典",
+      "verdict": "CONFIRMED - P1-I",
+      "evidence": "Course.java 有 courseType/price/isFree，数据字典有 price/is_free 但 courses 表 section 缺 course_type"
+    },
+    {
+      "original_id": "A2-P1-I-1",
+      "title": "教师端讨论页复用学生组件",
+      "verdict": "CONFIRMED - P1-I",
+      "evidence": "/teacher/discussions 复用 src/views/student/DiscussionView.vue"
+    }
+  ],
+  "summary": {
+    "p0_confirmed": 3,
+    "p0_downgraded": 0,
+    "p0_discarded": 0,
+    "p1c_confirmed": 0,
+    "p1c_downgraded": 1,
+    "p1c_discarded": 3
+  },
+  "closure_score_breakdown": {
+    "p0_correctness": "3/3 确认正确",
+    "p1c_correctness": "1/4 确认（但为降级非保持），75% FP rate",
+    "false_positive_rate": "3/4 P1-C 为 false positive"
+  },
+  "overall_closure_score": 6,
+  "recommendation": "必须修复后放行",
+  "rationale": "3 个 P0 阻塞项（A2-P0-1 / A2-P0-2 路由缺失 + A3-P0-1 banner 展示断裂）必须修复。P1-C 全部澄清（3 DISCARD + 1 DOWNGRADE），不增加修复负担。P1-I 登记 deferred-items.md"
+}

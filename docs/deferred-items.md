@@ -97,6 +97,64 @@
 | R5c | 2 | 2 | 6 | 2 |
 | 合计 | 6 | 8 | 25 | 17 |
 
-*最后更新：2026-06-25*
-*评估人：总工程师*
+*最后更新：2026-06-25*  
+*评估人：总工程师*  
 *下次清理：v1.8.0 发布前*
+
+---
+
+## Round 3 (2026-06-25) Agent Team 新增条目
+
+> 4-Agent 并行（regression/mobile/edge-case/reviewer）+ 总工程师亲自验证。
+> scout 报 11 条 → reviewer 反证 2 条 + 总工程师亲自验证 4 条 → 最终 7 条真问题。
+> 误报率 36%（vs Round 1 的 71%，证明 Agent Team SOP 改进有效）。
+
+### 本轮已修复（必须在 v1.7.0 灰度前修）
+
+| 编号 | 来源 | 问题 | 根因 | 修复 | Commit |
+|------|------|------|------|------|--------|
+| **P1-C-R3-001** | A3 edge-case-scout | summary 字段 >300 字触发 PostgreSQL VARCHAR(300) 截断 → 500 错误 | CourseCreateRequest 和 CourseUpdateRequest 的 summary 字段无 @Size 校验（虽然 file import 了 Size） | 加 `@Size(max = 300, message = "课程简介不能超过300字")` | 待提交 |
+
+**横向扫描**：grep 所有 DTO 字段，summary 是唯一缺 @Size 校验的。其他 VARCHAR 字段（title 已 max=200）均有校验。
+
+### Round 3 新登记 P1-I（内部仅见，不阻塞）
+
+| # | 来源 | 描述 | 文件 | 理由 | 目标版本 |
+|---|------|------|------|------|---------|
+| 26 | R3-A2 mobile-scout | CourseDetail Hero 标题在 iPhone (375px) 视口下 32px 偏大 | CourseDetail.vue:565-573 | 字号偏大但不阻塞阅读 | v1.8.0 |
+
+### Round 3 新登记 P2（代码整洁）
+
+| # | 来源 | 描述 | 文件 | 目标版本 |
+|---|------|------|------|---------|
+| 20 | R3-A1 regression-scout | softDeleteCancelledEnrollment 死代码（定义但从未调用） | EnrollmentServiceImpl.java:967-976, 1003 | v1.8.0 |
+| 21 | R3-A2 mobile-scout | MyCourses H5 退课/主按钮 el-button size=small 高度 24px（设计选择，非 bug） | MyCourses.vue:1271-1290 | v1.9.0 |
+| 22 | R3-A2 mobile-scout | CourseDetail Hero 主按钮高度 40px（桌面端标准，移动端可用） | CourseDetail.vue:596-607 | v1.9.0 |
+| 23 | R3-A2 mobile-scout | Login 表单输入框 40px（Element Plus large 最大） | Login.vue:28-54 | v1.9.0 |
+| 24 | R3-A2 mobile-scout | VideoPlayer 横屏控制按钮 32x32px（行业标准） | VideoPlayer.vue:2617-2625 | v1.9.0 |
+| 25 | R3-A3 edge-case-scout | 视频 MD5 重复时 temp 文件删除失败静默残留 | VideoController.java:193-199 | v1.8.0 |
+
+### Round 3 NOT-A-BUG 反证结论（误报登记）
+
+| scout 报告 | reviewer 反证 | 根因 |
+|-----------|------------|------|
+| R3-A1-001 (P1-I) EnrollmentServiceImpl fallback 查询缺 deleted_at IS NULL | NOT-A-BUG | `@TableLogic` 注解自动追加 deleted_at IS NULL 过滤（scout 漏看 MyBatis-Plus 行为） |
+| R3-A3-001 (P1-C) 批量导入 1 行错误全部 1000 行回滚 | NOT-A-BUG | 注释明确"原子性检查...全成功或全失败语义"——是业务规则不是 bug（产品决策） |
+| R3-A3-004 (NOT-A-BUG) 50 并发容量 1 课程 | 已反证 | 行级锁 + atomicInsertIfCapacity + atomicIncrementIfNotFull 三闸门已防御超卖 |
+
+### Round 3 统计
+
+| 维度 | scout 报 | 总工程师签字 | 真问题 |
+|------|---------|-------------|--------|
+| 真 P0 | 0 | 0 | 0 |
+| 真 P1-C | 2 | 1 | 1（已修） |
+| 真 P1-I | 1 | 1 | 1 |
+| 真 P2 | 4 | 5 | 5 |
+| NOT-A-BUG | 1 | 3 | 3 |
+| **误报率** | - | - | **36%** |
+
+---
+
+*最后更新：2026-06-25 22:54 (Round 3 完成)*  
+*评估人：总工程师（亲自验证 R3-A1-001/R3-A2-001/R3-A3-001/R3-A3-003）*  
+*下次清理：v1.7.0 灰度结束 + R3-A3-003 修复 commit 后*
