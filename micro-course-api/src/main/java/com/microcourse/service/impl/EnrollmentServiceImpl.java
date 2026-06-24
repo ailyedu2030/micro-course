@@ -138,14 +138,44 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 request.getSourceChannel());
 
         if (inserted == 0) {
-            // 区分"已选过"vs"课程满员"
+            // 区分"已选过"vs"课程满员"vs"课程不可选"
             Enrollment existing = enrollmentRepository.selectOne(new LambdaQueryWrapper<Enrollment>()
                     .eq(Enrollment::getUserId, request.getUserId())
                     .eq(Enrollment::getCourseId, request.getCourseId()));
             if (existing != null) {
                 return convertToVO(existing);
             }
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程选课人数已满");
+
+            // ★ 业务逻辑审计 P1 修复：课程满员 → 自动入候补队列
+            // spec §3.2 "PENDING → WAITLIST：课程已达最大人数上限"
+            // 实现：满员时直接创建 WAITLIST 记录，避免学生只能看到 400 错误
+            if (course.getMaxStudents() != null && course.getMaxStudents() > 0
+                    && course.getStudentCount() != null && course.getStudentCount() >= course.getMaxStudents()) {
+                int waitlistInserted = enrollmentRepository.atomicInsertIfEnrollable(
+                        request.getUserId(),
+                        request.getCourseId(),
+                        EnrollmentStatus.WAITLIST.getValue(),
+                        request.getSourceChannel());
+                if (waitlistInserted > 0) {
+                    // 计算候补位置
+                    int position = enrollmentRepository.countWaitlistByCourseId(request.getCourseId());
+                    Enrollment waitlistEnrollment = enrollmentRepository.selectOne(new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, request.getUserId())
+                            .eq(Enrollment::getCourseId, request.getCourseId()));
+                    if (waitlistEnrollment != null) {
+                        // 通知学生入候补
+                        notificationService.notifyAsync(
+                                request.getUserId(),
+                                NotificationType.ENROLLMENT_WAITLIST,
+                                "已进入候补队列",
+                                "您已进入《" + course.getTitle() + "》的候补队列，当前位置 #" + position,
+                                course.getId());
+                        recordHistory(waitlistEnrollment.getId(), null, EnrollmentStatus.WAITLIST, request.getUserId(), "WAITLIST");
+                        return convertToVO(waitlistEnrollment);
+                    }
+                }
+            }
+            throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED, "该课程不可选课（可能未发布或已下架）");
         }
 
         // 双闸门：原子增计数也带容量检查（防御深度）

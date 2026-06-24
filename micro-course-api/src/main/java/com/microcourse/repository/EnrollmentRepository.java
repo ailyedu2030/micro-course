@@ -89,4 +89,28 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
                                @Param("courseId") Long courseId,
                                @Param("status") String status,
                                @Param("sourceChannel") String sourceChannel);
+
+    /**
+     * ★ 业务逻辑审计 P1 修复：候补队列插入（绕过容量检查，但保证不重复）。
+     * <p>当课程已满员时调用此方法创建 WAITLIST 记录。
+     * 仍受 UNIQUE(user_id, course_id) 约束和 NOT EXISTS 防止重复。</p>
+     */
+    @org.apache.ibatis.annotations.Insert("INSERT INTO enrollments " +
+            "(user_id, course_id, enrollment_status, source_channel, progress, completed, enrolled_at, updated_at, version) " +
+            "SELECT #{userId}, #{courseId}, #{status}, #{sourceChannel}, 0, false, NOW(), NOW(), 0 " +
+            "FROM courses c " +
+            "WHERE c.id = #{courseId} AND c.deleted_at IS NULL AND c.status = 4 " +
+            "  AND NOT EXISTS (SELECT 1 FROM enrollments e " +
+            "                  WHERE e.user_id = #{userId} AND e.course_id = #{courseId})")
+    int atomicInsertIfEnrollable(@Param("userId") Long userId,
+                                 @Param("courseId") Long courseId,
+                                 @Param("status") String status,
+                                 @Param("sourceChannel") String sourceChannel);
+
+    /**
+     * 统计某课程 WAITLIST 状态的学生数（用于计算候补位置）
+     */
+    @org.apache.ibatis.annotations.Select("SELECT COUNT(*) FROM enrollments " +
+            "WHERE course_id = #{courseId} AND enrollment_status = 'WAITLIST'")
+    int countWaitlistByCourseId(@Param("courseId") Long courseId);
 }

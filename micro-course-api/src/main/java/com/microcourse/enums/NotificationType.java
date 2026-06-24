@@ -11,6 +11,7 @@ package com.microcourse.enums;
 public enum NotificationType {
 
     ENROLLMENT_SUCCESS("ENROLLMENT_SUCCESS", "选课成功"),
+    ENROLLMENT_WAITLIST("ENROLLMENT_WAITLIST", "已进入候补队列"),
     EXERCISE_GRADED("EXERCISE_GRADED", "作业已批改"),
     COURSE_APPROVED("COURSE_APPROVED", "课程已通过"),
     COURSE_REJECTED("COURSE_REJECTED", "课程被驳回"),

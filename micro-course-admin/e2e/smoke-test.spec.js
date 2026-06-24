@@ -398,4 +398,25 @@ test.describe('Enrollment State Machine Behavior', () => {
     expect(res.status()).toBeGreaterThanOrEqual(400)
     expect(res.status()).toBeLessThan(500)
   })
+
+  test('ENROLL-5: 满员课程应自动入候补队列 (DEVIATION-2 修复验证)', async ({ page }) => {
+    // Course 25 is PUBLISHED with max=2, count=2 (已满员)
+    // 第三个学生应进入候补（不是 400 错误）
+    // 用 student14 自己的 token（id=20），因为他没在 course 25 里
+    const sLogin = await page.request.post(`${API}/api/auth/login`, {
+      data: { username: 'student14', password: '123456' }
+    })
+    const stoken = (await sLogin.json()).data.accessToken
+    const res = await page.request.post(`${API}/api/enrollments`, {
+      headers: { 'Authorization': `Bearer ${stoken}` },
+      data: { courseId: 25 }
+    })
+    // 期望: 200 + enrollment_status=WAITLIST
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(body.code).toBe(200)
+    // 业务逻辑审计 P1 修复验证: enrollment_status 应为 WAITLIST (不是 ENROLLED)
+    const status = body.data?.enrollmentStatus || body.data?.enrollment_status
+    expect(status).toBe('WAITLIST')
+  })
 })
