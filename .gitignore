@@ -117,3 +117,4 @@ page-state.yml
 console-errors-all.log
 *.log
 dump.rdb
+backups/
