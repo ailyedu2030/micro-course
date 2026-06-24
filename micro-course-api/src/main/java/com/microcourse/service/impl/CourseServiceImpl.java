@@ -856,6 +856,14 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
+        // FK 检查：有选课记录时禁止关闭
+        long enrollCount = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getCourseId, id));
+        if (enrollCount > 0) {
+            throw new BusinessException(ErrorCode.COURSE_HAS_ENROLLMENTS);
+        }
+
         Integer currentStatus = course.getStatus() != null ? course.getStatus() : CourseStatus.DRAFT.getCode();
 
         // DRAFT / REJECTED / ARCHIVED → CLOSED: 直接标记,不经 isValidTransition 校验
