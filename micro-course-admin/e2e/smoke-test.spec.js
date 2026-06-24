@@ -613,4 +613,59 @@ test.describe('Order & TeachingClass State Machine', () => {
       headers: { 'Authorization': `Bearer ${adminToken}` }
     })
   })
+
+  // 客户体验修复 v1.7.0: 学生退课全流程 (P0-UX-U4)
+  test('DROP-1: 学生退课应可成功, 课程从"进行中"列表移除', async ({ page }) => {
+    const adminToken = token
+
+    // 1. admin 创建一个 max=1 的测试课程
+    const c = await page.request.post(`${API}/api/courses`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` },
+      data: { title: `DROP-${Date.now()}`, categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', maxStudents: 1, description: 'x', summary: 'x', coverUrl: '/api/files/covers/course_107_1782163392123.jpg' }
+    })
+    const cid = (await c.json()).data.id
+    // 加章节 + 视频 (提交要求至少一个章节 + 一个视频)
+    try {
+      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO course_chapters (course_id, title, sort_order, chapter_type, created_at, updated_at) VALUES (${cid}, 'Ch', 99, 'VIDEO', NOW(), NOW())"`)
+      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO videos (course_id, chapter_id, title, status, created_at, updated_at) VALUES (${cid}, (SELECT id FROM course_chapters WHERE course_id=${cid} LIMIT 1), 'L', 2, NOW(), NOW())"`)
+    } catch (e) { /* ignore */ }
+    // 提交/审核/发布
+    await page.request.post(`${API}/api/courses/${cid}/submit`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    await page.request.post(`${API}/api/courses/${cid}/approve`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    await page.request.post(`${API}/api/courses/${cid}/publish`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+
+    // 2. student 登录 + 选课
+    await page.goto('http://localhost:5173/login')
+    await page.fill('input[placeholder*="用户名"]', 'student')
+    await page.fill('input[placeholder*="密码"]', '123456')
+    await page.click('button:has-text("登 录")')
+    await page.waitForURL(/\/student/, { timeout: 10000 })
+    const studentToken = await page.evaluate(() => sessionStorage.getItem('micro_course_token'))
+
+    const enrRes = await page.request.post(`${API}/api/enrollments`, {
+      headers: { 'Authorization': `Bearer ${studentToken}` },
+      data: { courseId: cid }
+    })
+    expect(enrRes.status()).toBe(200)
+    const newEnr = await enrRes.json()
+    const enrId = newEnr.data.id
+    console.log(`  ✓ 创建课程 ${cid} 并选课, enrollmentId=${enrId}`)
+
+    // 3. 调用退课 API
+    const delRes = await page.request.delete(`${API}/api/enrollments/${enrId}`, {
+      headers: { 'Authorization': `Bearer ${studentToken}` }
+    })
+    expect(delRes.status()).toBe(200)
+    console.log(`  ✓ 退课成功`)
+
+    // 4. 验证选课列表中已无此 enrollment (CANCELLED 状态被过滤)
+    const afterRes = await page.request.get(`${API}/api/enrollments/my`, {
+      headers: { 'Authorization': `Bearer ${studentToken}` }
+    })
+    const after = await afterRes.json()
+    const afterList = Array.isArray(after.data) ? after.data : (after.data?.items || [])
+    const stillEnrolled = afterList.find(e => e.id === enrId)
+    expect(stillEnrolled).toBeUndefined()
+    console.log(`  ✓ "我的选课"已不含此 enrollment (总选课数 ${afterList.length})`)
+  })
 })
