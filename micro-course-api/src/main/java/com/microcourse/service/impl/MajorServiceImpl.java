@@ -67,9 +67,24 @@ public class MajorServiceImpl implements MajorService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public MajorVO create(MajorCreateRequest request) {
+     public MajorVO create(MajorCreateRequest request) {
         if (departmentRepository.selectById(request.getDepartmentId()) == null) {
             throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+        }
+        // 检查专业名称唯一性
+        if (request.getName() != null && !request.getName().isBlank()) {
+            long nameCount = majorRepository.selectCount(
+                    new LambdaQueryWrapper<Major>().eq(Major::getName, request.getName()));
+            if (nameCount > 0) {
+                throw new BusinessException(ErrorCode.MAJOR_NAME_EXISTS);
+            }
+        }
+        if (request.getCode() != null && !request.getCode().isBlank()) {
+            long codeCount = majorRepository.selectCount(
+                    new LambdaQueryWrapper<Major>().eq(Major::getCode, request.getCode()));
+            if (codeCount > 0) {
+                throw new BusinessException(ErrorCode.MAJOR_CODE_EXISTS);
+            }
         }
         Major major = new Major();
         major.setName(request.getName());
