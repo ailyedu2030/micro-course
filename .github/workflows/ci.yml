@@ -214,9 +214,9 @@ jobs:
           # 启动后端
           cd micro-course-api
           java -jar target/micro-course-api-1.0.0.jar > /tmp/backend.log 2>&1 &
-          # 启动前端 (用 vite preview 而不是 dev, 模拟生产)
+          # 启动前端 (用 vite dev 而非 preview, dev 内置 /api 代理 → backend:8080)
           cd ../micro-course-admin
-          npx vite preview --port 5173 --host 0.0.0.0 > /tmp/frontend.log 2>&1 &
+          npx vite --port 5173 --host 0.0.0.0 > /tmp/frontend.log 2>&1 &
           # 等待就绪
           for i in {1..60}; do
             if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}' | grep -q 200; then
