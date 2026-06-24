@@ -7,8 +7,15 @@
 #
 # 用法: bash scripts/clean-bad-urls.sh
 set -e
-export $(cat micro-course-api/.env | xargs)
-PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U "$DB_USERNAME" -d "$DB_NAME" <<SQL
+# 从 micro-course-api/.env 读 DB 配置,支持注释和空格
+DB_HOST=$(grep '^DB_HOST=' micro-course-api/.env | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs)
+DB_PORT=$(grep '^DB_PORT=' micro-course-api/.env | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs)
+DB_NAME=$(grep '^DB_NAME=' micro-course-api/.env | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs)
+DB_USERNAME=$(grep '^DB_USERNAME=' micro-course-api/.env | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs)
+DB_PASSWORD=$(grep '^DB_PASSWORD=' micro-course-api/.env | cut -d= -f2- | tr -d '"' | tr -d "'" | xargs)
+[ -z "$DB_PORT" ] && DB_PORT=5432
+export PGPASSWORD="$DB_PASSWORD"
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME" -d "$DB_NAME" <<SQL
 -- 统计
 SELECT 'cover_url' AS field, COUNT(*) AS bad_count
   FROM courses
@@ -22,7 +29,7 @@ echo ""
 echo "执行清理? (y/N)"
 read -r ans
 if [ "$ans" = "y" ]; then
-  PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U "$DB_USERNAME" -d "$DB_NAME" <<SQL
+  psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME" -d "$DB_NAME" <<SQL
 UPDATE courses SET cover_url = NULL
   WHERE cover_url IS NOT NULL AND cover_url NOT LIKE '/api/files/%';
 UPDATE users SET avatar_url = NULL
