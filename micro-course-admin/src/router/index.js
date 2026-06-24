@@ -114,10 +114,22 @@ const routes = [
   { path: '/student/courses/:courseId/slides/player', name: 'StudentSlidePlayer', component: () => import('../views/student/SlidePlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // P1-4: 404 通配路由 — 根据角色重定向到对应首页
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue'), beforeEnter: (to, from, next) => {
+    // 客户体验修复 v1.7.0: 未知路径不再静默重定向,先弹 toast 提示再重定向
+    // 旧逻辑: 用户输错 URL → 静默跳首页 → 不知道发生了什么 → 困惑
+    // 新逻辑: 显示"页面不存在" 2s → 然后回到角色首页 (体验更可理解)
     try {
       const userStore = useUserStore()
-      if (userStore.role) return next(getRoleHomePage(userStore.role))
-    } catch { /* store 未初始化，显示 404 页面 */ }
+      if (userStore.role) {
+        // 动态 import 避免循环依赖
+        import('element-plus').then(({ ElMessage }) => {
+          ElMessage.warning({
+            message: `页面 "${to.path}" 不存在,已为您跳转到首页`,
+            duration: 2000
+          })
+        })
+        return next(getRoleHomePage(userStore.role))
+      }
+    } catch { /* store 未初始化,显示 404 页面 */ }
     next()
   } },
 ]
