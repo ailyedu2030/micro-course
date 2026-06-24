@@ -1287,6 +1287,12 @@ const handleDropOut = async (course) => {
 .h5-action-row .h5-dropout-btn {
   flex: 0 0 auto;  /* 退课按钮固定宽度 */
   min-width: 64px;
+  min-height: 44px;  /* P1-C 修复: Apple HIG 44px 最小触控目标 */
+}
+
+/* P1-C 修复 Round 3: iPhone 用户点错问题 (客户体验报告 P1-4) */
+.h5-action-row .el-button {
+  min-height: 44px;
 }
 
 /* P2-6: H5 底部安全区——适配 iPhone 等圆角底部设备 */

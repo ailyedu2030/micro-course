@@ -2,6 +2,7 @@ package com.microcourse.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
@@ -18,6 +19,7 @@ public class CourseCreateRequest {
 
     private String subtitle;
 
+    @Size(max = 300, message = "课程简介不能超过300字")
     private String summary;
 
     private String coverUrl;

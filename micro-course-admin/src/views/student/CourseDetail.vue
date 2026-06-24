@@ -390,14 +390,14 @@ const handleEnroll = async () => {
   try {
     if (course.value.price && !course.value.isFree) {
       const { data: order } = await createOrder({ courseId: courseId.value })
-      if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); return }
+      if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); router.push('/student/my-courses'); return }
       await ElMessageBox.confirm(`确认支付 ¥${course.value.price}？`, '确认支付', { confirmButtonText: '支付', cancelButtonText: '取消', type: 'info' })
-      await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功')
+      await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功'); router.push('/student/my-courses')
       return
     }
     // 免费课程：增加确认环节
     await ElMessageBox.confirm('确认加入学习？', '加入课程', { confirmButtonText: '确认加入', cancelButtonText: '取消', type: 'info' })
-    await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true
+    await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push('/student/my-courses')
   } catch (e) {
     if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
   } finally { enrollLoading.value = false }
@@ -600,6 +600,10 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   font-size: var(--text-md);
   border-radius: var(--radius-md);
   transition: all var(--duration-base) var(--ease-out);
+  min-height: 44px;  /* P1-C 修复 Round 3: 移动端 Apple HIG 44px 触控目标 */
+}
+.hero-actions .el-button {
+  min-height: 44px;  /* P1-C 修复: iPhone 用户点错 (客户体验报告 P1-4) */
 }
 .hero-actions .el-button--primary:hover {
   transform: translateY(-1px);

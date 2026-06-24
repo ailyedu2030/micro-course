@@ -10,6 +10,8 @@ public class CourseUpdateRequest {
     private Long categoryId;
     private Long teacherId;
     private String subtitle;
+
+    @Size(max = 300, message = "课程简介不能超过300字")
     private String summary;
     private String coverUrl;
     private Long offerDepartmentId;
