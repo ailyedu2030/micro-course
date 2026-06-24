@@ -211,12 +211,42 @@ jobs:
 
       - name: Start services
         run: |
-          # 1. 加载测试数据 (15 student, multiple teacher, 测试课程/部门等)
-          #    test_data.sql 路径: 仓库根目录/test_data.sql
-          #    注意: p0-seed.sql 只有 2 个用户(student, p0_teacher), e2e 需要 student3/5 等
+          # ===== 关键修复 (v1.7.0 e2e 修复): 启动顺序 =====
+          # 1. 先启动 backend 让 Flyway 创建所有 schema (V1-V89 migrations)
+          # 2. 等待 backend ready (确保 schema 完整)
+          # 3. 停止 backend (释放连接池,避免 Hikari 持有 schema 元数据缓存)
+          # 4. 加载 test_data.sql (此时所有表已存在)
+          # 5. 同步 PostgreSQL sequences (test_data.sql 用显式 ID, 导致序列落后于 MAX(id))
+          # 6. 重新启动 backend (Flyway 不会再跑,数据已就位)
+          # 7. 启动前端 (vite dev)
+          #
+          # 旧顺序 (test_data.sql 在 backend 前) 导致:
+          #   - test_data.sql 引用 learning_progress/notifications 等 V15+ 创建的表
+          #   - 这些表尚未存在 → 整个 transaction aborted → 所有 INSERT 失败
+          #   - CI run 28134906354 e2e fail: 'relation learning_progress does not exist'
+
+          # 1. 启动 backend (Flyway 跑 V1-V89)
+          cd micro-course-api
+          java -jar target/micro-course-api-1.0.0.jar > /tmp/backend.log 2>&1 &
+          BACKEND_PID=$!
+          cd ..
+          # 2. 等待 backend ready
+          for i in {1..90}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}' | grep -q 200; then
+              echo "Backend ready after ${i}s (Flyway migrations applied)"
+              break
+            fi
+            sleep 1
+          done
+          # 3. 停止 backend (让 psql 独占 DB,避免 Hikari 连接池持有元数据缓存)
+          kill $BACKEND_PID 2>/dev/null
+          wait $BACKEND_PID 2>/dev/null
+          sleep 3
+
+          # 4. 加载测试数据 (现在所有表已存在,Flyway schema_history 保留)
           PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course \
-            -f test_data.sql 2>&1 | tail -5
-          # 2. 同步 PostgreSQL sequences (test_data.sql 用显式 ID, 导致序列落后于 MAX(id))
+            -f test_data.sql 2>&1 | tail -10
+          # 5. 同步 PostgreSQL sequences (test_data.sql 用显式 ID, 导致序列落后于 MAX(id))
           #    不同步会导致 POST 课程/选课时报 duplicate key value violates unique constraint
           PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
@@ -237,16 +267,20 @@ jobs:
           END $$;
           SQL
           echo "=== Seed loaded + sequences synced ==="
-          # 启动后端
+
+          # 6. 重新启动 backend (Flyway 不会再跑,数据已就位)
           cd micro-course-api
           java -jar target/micro-course-api-1.0.0.jar > /tmp/backend.log 2>&1 &
-          # 启动前端 (用 vite dev 而非 preview, dev 内置 /api 代理 → backend:8080)
-          cd ../micro-course-admin
+          BACKEND_PID=$!
+          cd ..
+          # 7. 启动前端 (vite dev 而非 preview, dev 内置 /api 代理 → backend:8080)
+          cd micro-course-admin
           npx vite --port 5173 --host 0.0.0.0 > /tmp/frontend.log 2>&1 &
-          # 等待就绪
+          cd ..
+          # 8. 等待 backend + frontend ready
           for i in {1..60}; do
             if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}' | grep -q 200; then
-              echo "Backend ready after ${i}s"
+              echo "Backend ready after ${i}s (post-seed)"
               break
             fi
             sleep 1
