@@ -53,8 +53,8 @@
       </div>
     </div>
 
-    <!-- ============ 精选推荐 (横滑) ============ -->
-    <section v-if="recommendedCourses.length > 0" class="section">
+    <!-- ============ 精选推荐 (横滑) — 仅在无搜索时显示,避免与搜索结果混淆 ============ -->
+    <section v-if="recommendedCourses.length > 0 && !isSearchActive" class="section">
       <header class="section-header">
         <h2 class="section-title">精选推荐</h2>
       </header>
@@ -209,8 +209,8 @@ v-model:current-page="page" v-model:page-size="size" :total="totalElements"
       </div>
     </section>
 
-    <!-- ============ 课程套件 ============ -->
-    <section v-if="bundles.length > 0" class="section">
+    <!-- ============ 课程套件 — 同样在搜索时隐藏 ============ -->
+    <section v-if="bundles.length > 0 && !isSearchActive" class="section">
       <header class="section-header">
         <h2 class="section-title">课程套件</h2>
         <el-button text type="primary" @click="goBundles">查看全部 →</el-button>
@@ -228,8 +228,8 @@ v-model:current-page="page" v-model:page-size="size" :total="totalElements"
       </div>
     </section>
 
-    <!-- ============ 微专业 (仅当有数据时显示) ============ -->
-    <section v-if="hasMSData" class="section micro-specialty-section" aria-label="微专业">
+    <!-- ============ 微专业 (仅当有数据时显示,搜索时也隐藏) ============ -->
+    <section v-if="hasMSData && !isSearchActive" class="section micro-specialty-section" aria-label="微专业">
       <header class="section-header">
         <h2 class="section-title">微专业</h2>
         <el-button text type="primary" @click="showAllMS = true; fetchAllMS()">查看更多 →</el-button>
