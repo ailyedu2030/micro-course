@@ -637,7 +637,7 @@ test.describe('Order & TeachingClass State Machine', () => {
     // 2. student 登录 + 选课
     await page.goto('http://localhost:5173/login')
     await page.fill('input[placeholder*="用户名"]', 'student')
-    await page.fill('input[placeholder*="密码"]', '123456')
+    await page.fill('input[placeholder*="密码"]', 'student123')
     await page.click('button:has-text("登 录")')
     await page.waitForURL(/\/student/, { timeout: 10000 })
     const studentToken = await page.evaluate(() => sessionStorage.getItem('micro_course_token'))
@@ -689,7 +689,7 @@ test.describe('Order & TeachingClass State Machine', () => {
     const page = await ctx.newPage()
     await page.goto('http://localhost:5173/login')
     await page.fill('input[placeholder*="用户名"]', 'student')
-    await page.fill('input[placeholder*="密码"]', '123456')
+    await page.fill('input[placeholder*="密码"]', 'student123')
     await page.click('button:has-text("登 录")')
     await page.waitForURL(/\/student/, { timeout: 10000 })
     await page.waitForLoadState('networkidle')
