@@ -211,6 +211,12 @@ jobs:
 
       - name: Start services
         run: |
+          # 1. 加载测试数据 (15 student, multiple teacher, 测试课程/部门等)
+          #    test_data.sql 路径: 仓库根目录/test_data.sql
+          #    注意: p0-seed.sql 只有 2 个用户(student, p0_teacher), e2e 需要 student3/5 等
+          PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course \
+            -f test_data.sql 2>&1 | tail -5
+          echo "=== Seed loaded ==="
           # 启动后端
           cd micro-course-api
           java -jar target/micro-course-api-1.0.0.jar > /tmp/backend.log 2>&1 &

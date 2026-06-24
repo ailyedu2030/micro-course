@@ -19,9 +19,9 @@ import { writeFileSync, unlinkSync } from 'fs';
 
 const API = 'http://localhost:8080';
 const USERNAME = 'student';
-const PASSWORD_OLD = '123456';
+const PASSWORD_OLD = 'student123';
 const PASSWORD_NEW_TEMP = 'abcdef123456';
-// 当前 student 密码 "123456" 的 bcrypt 哈希 (10 轮)
+// 当前 student 密码 "student123" 的 bcrypt 哈希 (10 轮)
 // 注意:必须用 SQL 文件 (无 shell 转义) 执行,否则 "$2" "$10" 会被 psql 当作 PREPARE 位置参数
 const PASSWORD_OLD_BCRYPT = '$2b$10$ssnz4a4zXYDdDfBM4NvRi.3mngDq4hikZe6SzheP7OzSP5WrA1Pku';
 
