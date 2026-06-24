@@ -216,7 +216,27 @@ jobs:
           #    注意: p0-seed.sql 只有 2 个用户(student, p0_teacher), e2e 需要 student3/5 等
           PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course \
             -f test_data.sql 2>&1 | tail -5
-          echo "=== Seed loaded ==="
+          # 2. 同步 PostgreSQL sequences (test_data.sql 用显式 ID, 导致序列落后于 MAX(id))
+          #    不同步会导致 POST 课程/选课时报 duplicate key value violates unique constraint
+          PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+              r record;
+          BEGIN
+              FOR r IN
+                  SELECT
+                      table_schema, table_name, column_name,
+                      pg_get_serial_sequence(format('%I.%I', table_schema, table_name), column_name) AS seq
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND column_default LIKE 'nextval%'
+              LOOP
+                  EXECUTE format('SELECT setval(%L, COALESCE((SELECT MAX(%I) FROM %I.%I), 1))',
+                      r.seq, r.column_name, r.table_schema, r.table_name);
+              END LOOP;
+          END $$;
+          SQL
+          echo "=== Seed loaded + sequences synced ==="
           # 启动后端
           cd micro-course-api
           java -jar target/micro-course-api-1.0.0.jar > /tmp/backend.log 2>&1 &
