@@ -491,6 +491,14 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         if (!"DRAFT".equals(s) && !"REJECTED".equals(s) && !"ARCHIVED".equals(s)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前状态不允许删除");
         }
+        // FK 业务检查：有选课记录时禁止删除
+        long enrollCount = msEnrollmentRepository.selectCount(
+                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                        .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, id));
+        if (enrollCount > 0) {
+            throw new BusinessException(ErrorCode.MS_FORBIDDEN,
+                    "该微专业已有选课记录，无法删除。请先取消微专业");
+        }
         LambdaUpdateWrapper<MicroSpecialty> uw = new LambdaUpdateWrapper<MicroSpecialty>()
                 .eq(MicroSpecialty::getId, id)
                 .eq(MicroSpecialty::getVersion, ms.getVersion())
