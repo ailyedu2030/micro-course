@@ -118,7 +118,7 @@ test.describe('TEACHER Core Flow', () => {
 
   test.beforeEach(async ({ page }) => {
     errs = watchErrors(page)
-    await uiLogin(page, 'teacher', '123456')
+    await uiLogin(page, 'teacher', 'student123')
   })
   test.afterEach(() => { expect(errs).toEqual([]) })
 
@@ -160,7 +160,7 @@ test.describe('STUDENT Core Flow', () => {
   test.afterEach(() => { expect(errs).toEqual([]) })
 
   test('P9 课程广场', async ({ page }) => {
-    await page.goto(BASE + '/courses/market')
+    await page.goto(BASE + '/student/courses')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
     const txt = await page.locator('body').textContent()
@@ -201,7 +201,7 @@ test.describe('Edge Case & Security', () => {
   test('E2 超长标题 → <500', async ({ page }) => {
     const res = await page.request.post(`${API}/api/courses`, {
       headers: { 'Authorization': `Bearer ${token}` },
-      data: { title: 'A'.repeat(5000), categoryId: 1, teacherId: 3, courseType: 'VIDEO' }
+      data: { title: 'A'.repeat(5000), categoryId: 1, teacherId: 6, courseType: 'VIDEO' }
     })
     expect(res.status()).toBeLessThan(500)
   })
@@ -253,7 +253,7 @@ test.describe('CRUD Full Chain', () => {
     // CREATE
     const c = await page.request.post(`${API}/api/courses`, {
       headers: { 'Authorization': `Bearer ${token}` },
-      data: { title: 'E2E-TEST-' + Date.now(), categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', description: 'E2E test' }
+      data: { title: 'E2E-TEST-' + Date.now(), categoryId: 1, teacherId: 6, difficulty: 1, courseType: 'VIDEO', description: 'E2E test' }
     })
     expect(c.status()).toBe(200)
     const cBody = await c.json()
@@ -297,7 +297,7 @@ test.describe('Course State Machine Behavior', () => {
     // Create a fresh course for each test
     const c = await page.request.post(`${API}/api/courses`, {
       headers: { 'Authorization': `Bearer ${token}` },
-      data: { title: 'SM-TEST-' + Date.now(), categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', description: 'State machine test' }
+      data: { title: 'SM-TEST-' + Date.now(), categoryId: 1, teacherId: 6, difficulty: 1, courseType: 'VIDEO', description: 'State machine test' }
     })
     const body = await c.json()
     cid = body.data.id
@@ -329,7 +329,7 @@ test.describe('Course State Machine Behavior', () => {
   test('SM-3: 空标题提交审核应被拒绝', async ({ page }) => {
     const c = await page.request.post(`${API}/api/courses`, {
       headers: { 'Authorization': `Bearer ${token}` },
-      data: { title: '', categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO' }
+      data: { title: '', categoryId: 1, teacherId: 6, difficulty: 1, courseType: 'VIDEO' }
     })
     // Should fail validation
     expect(c.status()).toBe(400)
@@ -512,7 +512,7 @@ test.describe('Order & TeachingClass State Machine', () => {
     const adminToken = token
     const c = await page.request.post(`${API}/api/courses`, {
       headers: { 'Authorization': `Bearer ${adminToken}` },
-      data: { title: `PROMO-${Date.now()}`, categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', maxStudents: 1, description: 'x', summary: 'x', coverUrl: '/api/files/covers/course_107_1782163392123.jpg' }  // 用真实存在的封面文件,避免 submit 报"课程必须设置封面"
+      data: { title: `PROMO-${Date.now()}`, categoryId: 1, teacherId: 6, difficulty: 1, courseType: 'VIDEO', maxStudents: 1, description: 'x', summary: 'x', coverUrl: '/api/files/covers/course_107_1782163392123.jpg' }  // 用真实存在的封面文件,避免 submit 报"课程必须设置封面"
     })
     const cid = (await c.json()).data.id
     // 通过 PSQL 命令行添加章节+视频
@@ -621,7 +621,7 @@ test.describe('Order & TeachingClass State Machine', () => {
     // 1. admin 创建一个 max=1 的测试课程
     const c = await page.request.post(`${API}/api/courses`, {
       headers: { 'Authorization': `Bearer ${adminToken}` },
-      data: { title: `DROP-${Date.now()}`, categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', maxStudents: 1, description: 'x', summary: 'x', coverUrl: '/api/files/covers/course_107_1782163392123.jpg' }
+      data: { title: `DROP-${Date.now()}`, categoryId: 1, teacherId: 6, difficulty: 1, courseType: 'VIDEO', maxStudents: 1, description: 'x', summary: 'x', coverUrl: '/api/files/covers/course_107_1782163392123.jpg' }
     })
     const cid = (await c.json()).data.id
     // 加章节 + 视频 (提交要求至少一个章节 + 一个视频)
