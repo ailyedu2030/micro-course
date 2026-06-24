@@ -97,7 +97,7 @@ public class AuthController {
         return R.ok();
     }
 
-    @PostMapping("/avatar")
+    @PostMapping("/me/avatar")
     @PreAuthorize("isAuthenticated()")
     public R<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
         String avatarUrl = authService.uploadAvatar(file);

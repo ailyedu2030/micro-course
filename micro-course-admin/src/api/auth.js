@@ -9,6 +9,6 @@ export function changePassword(data) { return request({ method: 'PUT', url: '/au
 export function uploadAvatar(file) {
   const formData = new FormData()
   formData.append('file', file)
-  return request({ method: 'POST', url: '/auth/avatar', data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
+  return request({ method: 'POST', url: '/auth/me/avatar', data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
 }
 export function casLogin(ticket, state) { return request({ method: 'GET', url: `/auth/cas?ticket=${encodeURIComponent(ticket)}&state=${encodeURIComponent(state || '')}` }) }

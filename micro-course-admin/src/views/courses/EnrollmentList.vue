@@ -16,10 +16,10 @@
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="学员">
-          <el-input v-model="searchForm.studentName" placeholder="学员姓名" clearable class="filter-input-w140" />
+          <el-input v-model="searchForm.studentName" placeholder="学员姓名" clearable @clear="handleSearch" class="filter-input-w140" />
         </el-form-item>
         <el-form-item label="课程">
-          <el-input v-model="searchForm.courseName" placeholder="课程名称" clearable class="filter-input-w180" />
+          <el-input v-model="searchForm.courseName" placeholder="课程名称" clearable @clear="handleSearch" class="filter-input-w180" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120">

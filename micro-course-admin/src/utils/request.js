@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '../router'
-import { getToken, setToken, removeToken } from './auth'
+import { getToken, setToken, removeToken, getRefreshToken, setRefreshToken, removeRefreshToken } from './auth'
 
 // P3-8: 提取硬编码配置为常量，便于统一调整
 const API_BASE_URL = '/api'
@@ -78,7 +78,7 @@ request.interceptors.response.use(response => {
   const config = error.config
 
   if (status === 401 && !config._retry && !config._skipAuth) {
-    const refreshToken = sessionStorage.getItem('micro_course_refresh_token')
+    const refreshToken = getRefreshToken()
     if (refreshToken) {
       if (isRefreshing) return Promise.reject(error)
       isRefreshing = true
@@ -88,14 +88,14 @@ request.interceptors.response.use(response => {
         const newRefreshToken = res.data?.data?.refreshToken
         if (newToken) {
           setToken(newToken)
-          sessionStorage.setItem('micro_course_refresh_token', newRefreshToken || '')
+          setRefreshToken(newRefreshToken || '')
           config.headers.Authorization = `Bearer ${newToken}`
           config._retry = true
           return request(config)
         }
       } catch {
         removeToken()
-        sessionStorage.removeItem('micro_course_refresh_token')
+        removeRefreshToken()
       } finally {
         isRefreshing = false
       }

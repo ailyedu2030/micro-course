@@ -149,7 +149,7 @@ public class DepartmentServiceImpl implements DepartmentService {
         long userCount = userRepository.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getDepartmentId, id));
         if (userCount > 0) {
-            throw new BusinessException(ErrorCode.DEPARTMENT_HAS_MAJORS,
+            throw new BusinessException(ErrorCode.DEPARTMENT_HAS_USERS,
                     "院系下存在用户，无法删除。请先转移或删除用户");
         }
         departmentRepository.deleteById(id);

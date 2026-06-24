@@ -58,10 +58,10 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch" aria-label="重置">
+          <el-button type="primary" @click="handleSearch" aria-label="搜索">
 <el-icon><Search /></el-icon>搜索
           </el-button>
-          <el-button @click="handleReset" aria-label="导出">
+          <el-button @click="handleReset" aria-label="重置">
 <el-icon><RefreshRight /></el-icon>重置
           </el-button>
         </el-form-item>

@@ -135,6 +135,7 @@ import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Reading } from '@element-plus/icons-vue'
 import { register as registerApi } from '@/api/auth'
+import { setToken, setRefreshToken } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -244,8 +245,8 @@ const handleRegister = async () => {
       })
       // 注册成功自动登录：保存 token 并跳转
       if (res.data && res.data.accessToken) {
-        localStorage.setItem('micro_course_token', res.data.accessToken)
-        localStorage.setItem('micro_course_refresh_token', res.data.refreshToken || '')
+        setToken(res.data.accessToken)
+        setRefreshToken(res.data.refreshToken || '')
         userStore.token = res.data.accessToken
         await userStore.getInfo()
         ElMessage.success('注册成功！欢迎你，' + (userStore.realName || registerForm.username))

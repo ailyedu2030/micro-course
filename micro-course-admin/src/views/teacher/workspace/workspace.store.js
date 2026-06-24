@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import request from '../../../utils/request'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   // === 选中状态 ===
@@ -62,10 +63,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         const url = entity.type === 'lesson' ? `/api/lessons/${entity.id}`
           : entity.type === 'chapter' ? `/api/chapters/${entity.id}`
           : `/api/courses/${entity.id}`
-        await fetch(url, {
+        await request({
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionStorage.getItem('micro_course_token') },
-          body: JSON.stringify(changes)
+          url,
+          data: changes
         })
       }
       dirtyQueue.value = []

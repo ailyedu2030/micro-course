@@ -1,12 +1,11 @@
 import { defineStore } from 'pinia'
 import { login as loginApi, getCurrentUser, logout as logoutApi, refreshToken as refreshTokenApi } from '../api/auth'
-import { setToken, getToken, removeToken } from '../utils/auth'
-import request from '../utils/request'
+import { setToken, getToken, removeToken, setRefreshToken, getRefreshToken, removeRefreshToken } from '../utils/auth'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    token: sessionStorage.getItem('micro_course_token') || '',
-    refreshToken: sessionStorage.getItem('micro_course_refresh_token') || '',
+    token: getToken() || '',
+    refreshToken: getRefreshToken() || '',
     userInfo: null
   }),
   getters: {
@@ -22,18 +21,15 @@ export const useUserStore = defineStore('user', {
       const token = res.data.accessToken
       const refreshToken = res.data.refreshToken
       setToken(token)
+      setRefreshToken(refreshToken)
       this.token = token
       this.refreshToken = refreshToken
-      sessionStorage.setItem('micro_course_refresh_token', refreshToken)
       await this.getInfo()
       return res
     },
     async getInfo() {
       const res = await getCurrentUser()
       this.userInfo = res.data
-      if (res.data?.role) {
-        sessionStorage.setItem('userRole', res.data.role)
-      }
       return res.data
     },
     async refreshAccessToken() {
@@ -42,9 +38,9 @@ export const useUserStore = defineStore('user', {
         const newToken = res.data.accessToken
         const newRefreshToken = res.data.refreshToken
         setToken(newToken)
+        setRefreshToken(newRefreshToken)
         this.token = newToken
         this.refreshToken = newRefreshToken
-        sessionStorage.setItem('micro_course_refresh_token', newRefreshToken)
         return newToken
       } catch {
         this.logout()
@@ -54,10 +50,8 @@ export const useUserStore = defineStore('user', {
     async logout() {
       try { await logoutApi() } catch (e) { console.warn(e); }
       removeToken()
-      sessionStorage.removeItem('userRole')
-      sessionStorage.removeItem('micro_course_refresh_token')
-      Object.keys(sessionStorage).filter(k => k.startsWith('micro_course_')).forEach(k => sessionStorage.removeItem(k))
-      localStorage.removeItem('micro_course_cart')
+      removeRefreshToken()
+      Object.keys(localStorage).filter(k => k.startsWith('micro_course_')).forEach(k => localStorage.removeItem(k))
       this.token = ''
       this.refreshToken = ''
       this.userInfo = null
