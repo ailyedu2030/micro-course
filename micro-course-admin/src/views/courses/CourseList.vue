@@ -145,8 +145,10 @@
             <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="教师ID" prop="teacherId">
-          <el-input v-model.number="formData.teacherId" placeholder="请输入教师ID" type="number" />
+        <el-form-item label="授课教师" prop="teacherId">
+          <el-select v-model="formData.teacherId" placeholder="请选择授课教师" class="full-width" filterable :disabled="userStore.role === 'TEACHER'">
+            <el-option v-for="t in teacherOptions" :key="t.id" :label="t.realName || t.username" :value="t.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
           <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入课程描述" />
@@ -191,6 +193,7 @@ import * as XLSX from 'xlsx'
 import { useUserStore } from '@/store/user'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse } from '@/api/course'
 import { getCategories } from '@/api/course-category'
+import { getUsers } from '@/api/user'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -203,6 +206,7 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 const categories = ref([])
+const teacherOptions = ref([])
 
 const searchForm = reactive({
   keyword: '',
@@ -231,7 +235,7 @@ const formData = reactive({
 const formRules = {
   title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  teacherId: [{ required: true, message: '请输入教师ID', trigger: 'blur' }]
+  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }]
 }
 
 const fetchCategories = async () => {
@@ -241,6 +245,12 @@ const fetchCategories = async () => {
   } catch {
     ElMessage.error('获取分类列表失败')
   }
+}
+const fetchTeachers = async () => {
+  try {
+    const { data } = await getUsers({ role: 'TEACHER', size: 1000 })
+    teacherOptions.value = data.items || []
+  } catch { teacherOptions.value = [] }
 }
 
 const fetchData = async () => {
@@ -326,12 +336,13 @@ const handleCreate = () => {
   isEdit.value = false
   formData.title = ''
   formData.categoryId = ''
-  formData.teacherId = ''
+  formData.teacherId = userStore.role === 'TEACHER' ? userStore.userId : ''
   formData.description = ''
   formData.creditHours = 1
   formData.semester = ''
   formData.difficulty = ''
   dialogVisible.value = true
+  fetchTeachers()
 }
 
 const handleEdit = (row) => {
