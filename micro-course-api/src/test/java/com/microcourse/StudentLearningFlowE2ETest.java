@@ -1,6 +1,7 @@
 package com.microcourse;
 
 import com.microcourse.enums.UserRole;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.util.JwtUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -357,7 +358,7 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"courseId\":" + COURSE_ID + ",\"videoProgress\":-1}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400));
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST_PARAM.getCode()));
     }
 
     // ============ 11 · 并发上报进度不重复（Round 8-1 并发安全守护） ============

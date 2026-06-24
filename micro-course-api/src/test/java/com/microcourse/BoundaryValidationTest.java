@@ -1,5 +1,6 @@
 package com.microcourse;
 
+import com.microcourse.exception.ErrorCode;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -93,7 +94,7 @@ class BoundaryValidationTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/exercise-records/submit").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST_PARAM.getCode()))
                 .andExpect(jsonPath("$.message").value(Matchers.containsString("答案长度不能超过")));
     }
 
@@ -107,7 +108,7 @@ class BoundaryValidationTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/exercise-records/submit").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST_PARAM.getCode()))
                 .andExpect(jsonPath("$.message").value(Matchers.containsString("时长不能为负数")));
     }
 
@@ -121,7 +122,7 @@ class BoundaryValidationTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/learning-progress/progress").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.code").value(ErrorCode.BAD_REQUEST_PARAM.getCode()))
                 .andExpect(jsonPath("$.message").value(Matchers.containsString("视频进度不能为负数")));
     }
 

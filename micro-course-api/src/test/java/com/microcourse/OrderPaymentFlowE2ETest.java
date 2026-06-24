@@ -2,6 +2,7 @@ package com.microcourse;
 
 import com.jayway.jsonpath.JsonPath;
 import com.microcourse.enums.UserRole;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.util.JwtUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -307,7 +308,7 @@ class OrderPaymentFlowE2ETest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/orders/" + orderId + "/cancel")
                         .header("Authorization", ctx.studentToken))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(9005));
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_STATUS_TRANSITION.getCode()));
 
         assertEquals("PAID", orderStatus(orderId), "尝试取消失败后订单仍应为 PAID");
     }
