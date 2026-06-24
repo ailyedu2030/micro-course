@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * 暴露给 Prometheus 抓取 → /actuator/prometheus
  *
  * 关键指标:
- * - enrollment_total{result="success|waitlist|error"}: 选课请求结果计数
+ * - enrollment_total{result="ok|waitlist|error"}: 选课请求结果计数
  * - enrollment_duration_seconds: 选课操作耗时（含行级锁）
  * - enrollment_lock_timeout_total: 行锁超时计数
  * - enrollment_overcapacity_prevented_total: 防止超卖次数（修复有效性的实时证据）
@@ -33,7 +33,7 @@ public class EnrollmentMetrics {
     public EnrollmentMetrics(MeterRegistry registry) {
         this.successCounter = Counter.builder("enrollment_total")
                 .description("Total enrollment operations")
-                .tag("result", "success")
+                .tag("result", "ok")
                 .register(registry);
         this.waitlistCounter = Counter.builder("enrollment_total")
                 .description("Total enrollment operations")
