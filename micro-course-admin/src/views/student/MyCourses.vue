@@ -124,14 +124,10 @@
                 <!-- 封面 -->
                 <div class="course-cover">
                   <img
-                    v-if="course.coverUrl"
-                    :src="course.coverUrl"
+                    :src="effectiveCover(course)"
                     :alt="course.courseTitle"
                     @error="handleImgError($event)"
                   />
-                  <div v-else class="cover-placeholder">
-                    <el-icon :size="40"><VideoPlay /></el-icon>
-                  </div>
                   <!-- P2-4: 进度标签——数据未加载完毕时不显示"未开始"，避免闪烁 -->
                   <el-tag
                     v-if="activeTab === 'in-progress' && (course.progress || 0) > 0"
@@ -349,14 +345,10 @@
           <!-- 封面 16:9 -->
           <div class="h5-course-cover">
             <img
-              v-if="course.coverUrl"
-              :src="course.coverUrl"
+              :src="effectiveCover(course)"
               :alt="course.courseTitle"
               @error="handleImgError($event)"
             />
-            <div v-else class="cover-placeholder">
-              <el-icon :size="32"><VideoPlay /></el-icon>
-            </div>
             <!-- P2-4: 进度标签——数据未加载完毕时不显示"未开始"，避免闪烁 -->
             <el-tag
               v-if="activeTab === 'in-progress' && (course.progress || 0) > 0"
@@ -476,6 +468,19 @@ import { getCompletion, getLearningProgress } from '../../api/learning-progress'
 import { getChapters } from '../../api/chapter'
 import { getMyFavorites } from '../../api/favorite'
 import { getCourseById } from '../../api/course'
+import { getDefaultCover } from '../../utils/coverHelper'
+
+// 客户体验修复 v1.7.0: 课程 coverUrl 通常为 null,用类别感知的 SVG 兜底,
+// 避免"千课一面"的全灰占位。effectiveCover 返回真实 URL 或生成的 data URI
+const effectiveCover = (course) => {
+  if (course?.coverUrl) return course.coverUrl
+  return getDefaultCover({
+    id: course?.courseId || course?.id,
+    title: course?.courseTitle || course?.title,
+    categoryId: course?.categoryId,
+    teacherName: course?.teacherName
+  })
+}
 
 const router = useRouter()
 const userStore = useUserStore()

@@ -146,9 +146,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         Integer lockedStatus = (Integer) lockedCourse.get("status");
         Integer maxStudents = (Integer) lockedCourse.get("max_students");
         Integer studentCount = ((Number) lockedCourse.get("student_count")).intValue();
-        String deletedAt = (String) lockedCourse.get("deleted_at");
+        // P0 修复 v1.7.0: deleted_at 是 timestamp 列,不能直接 cast String;判断 null 即可
+        // 软删除的课程在 SELECT 时已经被 deleted_at IS NULL 过滤掉,这里只是兜底二次校验
+        Object deletedAtRaw = lockedCourse.get("deleted_at");
+        boolean isDeleted = deletedAtRaw != null;
 
-        if (deletedAt != null) {
+        if (isDeleted) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
         }
         if (lockedStatus == null || lockedStatus != CourseStatus.PUBLISHED.getCode()) {

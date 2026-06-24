@@ -138,6 +138,38 @@
       <span>统计数据加载失败，请刷新重试</span>
     </div>
 
+    <!-- 客户体验修复 v1.7.0: 教师快捷操作区,让"创建课程"等核心入口一目了然 -->
+    <div class="quick-actions">
+      <router-link to="/teacher/courses" class="quick-action-card" aria-label="创建新课程">
+        <div class="qa-icon qa-icon-primary"><el-icon :size="22"><Plus /></el-icon></div>
+        <div class="qa-info">
+          <div class="qa-title">创建课程</div>
+          <div class="qa-desc">新建课程、编辑章节、添加视频</div>
+        </div>
+      </router-link>
+      <router-link to="/teacher/teaching-classes" class="quick-action-card" aria-label="管理教学班">
+        <div class="qa-icon qa-icon-success"><el-icon :size="22"><OfficeBuilding /></el-icon></div>
+        <div class="qa-info">
+          <div class="qa-title">教学班</div>
+          <div class="qa-desc">开班、结课、查看学员</div>
+        </div>
+      </router-link>
+      <router-link to="/teacher/students" class="quick-action-card" aria-label="查看学员列表">
+        <div class="qa-icon qa-icon-warning"><el-icon :size="22"><User /></el-icon></div>
+        <div class="qa-info">
+          <div class="qa-title">学员管理</div>
+          <div class="qa-desc">学员成绩、批改作业</div>
+        </div>
+      </router-link>
+      <router-link to="/teacher/questions" class="quick-action-card" aria-label="回复学员提问">
+        <div class="qa-icon qa-icon-info"><el-icon :size="22"><ChatDotRound /></el-icon></div>
+        <div class="qa-info">
+          <div class="qa-title">学员提问</div>
+          <div class="qa-desc">答疑、互动讨论</div>
+        </div>
+      </router-link>
+    </div>
+
     <!-- 中部主体区：左侧图表 + 右侧待办通知 -->
     <el-row :gutter="16" class="main-row">
       <!-- 左侧图表 -->
@@ -282,7 +314,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star } from '@element-plus/icons-vue'
+import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star, Plus, OfficeBuilding, ChatDotRound } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useUserStore } from '@/store/user'
 import { getStats, getStudentActivity, getPendingTasks, getNotifications, getMyCourses } from '@/api/teacher'
@@ -650,6 +682,60 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
+}
+
+/* 客户体验修复 v1.7.0: 教师快捷操作区,把"创建课程"等核心入口放在第一屏 */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+.quick-action-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--el-bg-color-overlay);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-tinted-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: all var(--duration-base) var(--ease-out);
+  cursor: pointer;
+  outline: none;
+}
+.quick-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-tinted-md);
+  color: var(--el-color-primary);
+}
+.quick-action-card:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
+.qa-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qa-icon-primary { background: var(--el-color-primary-light-9); color: var(--el-color-primary); }
+.qa-icon-success { background: var(--el-color-success-light-9); color: var(--el-color-success); }
+.qa-icon-warning { background: var(--el-color-warning-light-9); color: var(--el-color-warning); }
+.qa-icon-info { background: var(--el-color-info-light-9); color: var(--el-color-info); }
+.qa-info { min-width: 0; }
+.qa-title { font-size: var(--text-base); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); margin-bottom: 2px; }
+.qa-desc { font-size: var(--text-xs); color: var(--el-text-color-secondary); }
+@media (max-width: 600px) {
+  .quick-actions { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+  .qa-title { font-size: var(--text-sm); }
+}
+@media (max-width: 380px) {
+  .quick-actions { grid-template-columns: 1fr; }
 }
 
 /* stat-card — 着色阴影 + 更精细的悬停 */

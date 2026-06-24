@@ -345,6 +345,7 @@ import { getBundles } from '@/api/bundle'
 import { getSquareData, getMicroSpecialtyList } from '@/api/microSpecialty'
 import { usePluginStore } from '@/store/plugins'
 import { useUserStore } from '@/store/user'
+import { getDefaultCover } from '@/utils/coverHelper'
 
 const router = useRouter()
 const pluginStore = usePluginStore()
@@ -463,7 +464,11 @@ const fetchCourses = async () => {
     if (searchForm.difficulty) params.difficulty = searchForm.difficulty
 
     const { data } = await getCourses(params)
-    courseList.value = data?.items || []
+    // 兜底: 数据库 coverUrl 通常为 null, 用类别感知的默认封面补全
+    courseList.value = (data?.items || []).map(c => ({
+      ...c,
+      coverUrl: c.coverUrl || getDefaultCover(c)
+    }))
     totalElements.value = data?.totalElements || 0
   } catch (e) {
     console.error('[CourseSquare] 课程加载失败:', e)
@@ -493,7 +498,10 @@ const fetchSideCourses = async () => {
 const loadRecommended = async () => {
   try {
     const { data } = await getCourses({ recommended: true, size: 8, status: 2 })
-    recommendedCourses.value = data?.items || []
+    recommendedCourses.value = (data?.items || []).map(c => ({
+      ...c,
+      coverUrl: c.coverUrl || getDefaultCover(c)
+    }))
   } catch (e) {
     console.warn('[CourseSquare] 推荐课程加载失败:', e)
     recommendedCourses.value = []
@@ -961,6 +969,14 @@ onMounted(async () => {
   .hero-title { font-size: 22px; }
   .hero-section { padding: var(--space-4); }
   .course-square { padding: var(--space-3); }
+  /* 客户体验修复 v1.7.0: 移动端禁用负 margin 扩展,防止横向滚动 */
+  .rec-scroll-wrap { margin: 0 !important; padding: 0 !important; }
+  /* 移动端分类筛选改为多行展示,避免单行横向溢出 */
+  .filter-row { flex-direction: column; align-items: stretch; }
+  .difficulty-select { width: 100% !important; }
+  .category-scroll { min-width: 0 !important; width: 100%; }
+  .category-chip-group { flex-wrap: wrap; }
+  .reset-btn { align-self: flex-end; }
 }
 
 @media (max-width: 480px) {

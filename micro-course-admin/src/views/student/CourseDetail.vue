@@ -245,6 +245,7 @@ import { getVideos } from '@/api/video'
 import { enroll as enrollApi, getMyEnrollments, getCourseRanking } from '@/api/enrollment'
 import { useCartStore } from '@/store/cart'
 import { createOrder, payOrder } from '@/api/order'
+import { getDefaultCover } from '@/utils/coverHelper'
 import { createReview, getReviews } from '@/api/course-review'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { useUserStore } from '@/store/user'
@@ -342,12 +343,28 @@ onBeforeUnmount(() => { window.removeEventListener('resize', handleResize); if (
 const defaultCoverUrl = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="280" height="180" fill="%23e0e0e0"><rect width="280" height="180" rx="8"/><text x="140" y="95" text-anchor="middle" fill="%23999" font-size="16">暂无封面</text></svg>')
 const handleCoverError = (e) => { e.target.src = defaultCoverUrl }
 
-const formatDuration = (m) => { if (!m && m !== 0) return '-'; const h = Math.floor(m/60); const s = m%60; return h===0 ? `${s}m` : s===0 ? `${h}h` : `${h}h${s}m` }
+// 课程章节时长格式化: 数据库存的是 **秒** (10800 = 3h, 14400 = 4h),前端曾误按分钟处理
+// 导致显示 "180h 240h" 这种离谱值,真实时长只有几小时。修复: 改用 /3600 换算。
+const formatDuration = (seconds) => {
+  if (!seconds && seconds !== 0) return '-'
+  const totalMin = Math.floor(seconds / 60)  // 先转分钟
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return h === 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h${m}m`
+}
 const formatTime = (t) => { if (!t) return ''; const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
 
 const fetchCourse = async () => {
   if (!courseId.value) return; courseLoading.value = true
-  try { const { data } = await getCourseById(courseId.value); course.value = data || {}; if (!data?.id) courseNotFound.value = true }
+  try { 
+    const { data } = await getCourseById(courseId.value)
+    course.value = data || {}
+    // 客户体验修复 v1.7.0: 课程 coverUrl 通常为 null,补上类别感知默认封面
+    if (course.value && !course.value.coverUrl) {
+      course.value.coverUrl = getDefaultCover(course.value)
+    }
+    if (!data?.id) courseNotFound.value = true 
+  }
   catch (e) { if (e.response?.status === 404) courseNotFound.value = true; else ElMessage.error('获取课程信息失败') }
   finally { courseLoading.value = false }
 }

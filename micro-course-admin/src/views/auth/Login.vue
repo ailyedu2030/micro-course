@@ -209,7 +209,8 @@ const handleLogin = async () => {
     loading.value = true
     try {
       await userStore.login(form)
-      ElMessage.success('登录成功')
+      // 客户体验修复 v1.7.0: 短时长 1.5s,避免 toast 滞留挡住导航
+      ElMessage.success({ message: '登录成功', duration: 1500 })
       const redirect = route.query.redirect
       if (redirect) {
         router.push(redirect)
