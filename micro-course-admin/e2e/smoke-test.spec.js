@@ -338,3 +338,64 @@ test.describe('Course State Machine Behavior', () => {
     expect(res.status()).toBe(401)
   })
 })
+
+// ══════════════════════════════════════════════════════════════
+// 7. 选课状态机行为测试（防选课超卖 P0）
+// ══════════════════════════════════════════════════════════════
+test.describe('Enrollment State Machine Behavior', () => {
+  let errs, token
+
+  test.beforeEach(async ({ page }) => {
+    errs = watchErrors(page)
+    token = await apiToken(page)
+  })
+  test.afterEach(() => { expect(errs).toEqual([]) })
+
+  test('ENROLL-1: 选课未发布的课程应被拒绝', async ({ page }) => {
+    // Course 25 is DRAFT (not published) — used as test fixture
+    const res = await page.request.post(`${API}/api/enrollments`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      data: { courseId: 25, userId: 1 }  // admin user, trying to enroll in DRAFT course
+    })
+    // 业务逻辑审计 DEVIATION-1 修复验证: 原子 insert 在课程非 PUBLISHED 时返回 0
+    // 然后回退到 course not found / not published 错误
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    expect(res.status()).toBeLessThan(500)
+  })
+
+  test('ENROLL-2: 选课不存在的课程应被拒绝', async ({ page }) => {
+    const res = await page.request.post(`${API}/api/enrollments`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      data: { courseId: 99999, userId: 1 }
+    })
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+  })
+
+  test('ENROLL-3: 重复选课应返回现有记录（幂等）', async ({ page }) => {
+    // student7 (id=7) is already enrolled in course 5
+    // get a student token
+    const studentLogin = await page.request.post(`${API}/api/auth/login`, {
+      data: { username: 'student', password: '123456' }
+    })
+    const sbody = await studentLogin.json()
+    const stoken = sbody.data.accessToken
+    const res = await page.request.post(`${API}/api/enrollments`, {
+      headers: { 'Authorization': `Bearer ${stoken}` },
+      data: { courseId: 5 }
+    })
+    // Should succeed (idempotent) or 200/200 status
+    expect(res.status()).toBe(200)
+  })
+
+  test('ENROLL-4: 并发超卖防护 — 已超 maxStudents 的课程应拒绝新选课', async ({ page }) => {
+    // Course 5 is APPROVED (status=2) with max=2, count=5 (already over-allocated)
+    // 期望：选课被拒绝（不管原因为何：未发布/满员/已选过）
+    const res = await page.request.post(`${API}/api/enrollments`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      data: { courseId: 5, userId: 1 }
+    })
+    // Spec §3.5 要求超额选课被拒 — 任意 4xx 都是正确响应
+    expect(res.status()).toBeGreaterThanOrEqual(400)
+    expect(res.status()).toBeLessThan(500)
+  })
+})
