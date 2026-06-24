@@ -5,9 +5,11 @@ import com.microcourse.dto.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.enums.CourseStatus;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.security.RequireRole;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
+import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -28,11 +30,17 @@ public class CourseController {
 
     private final CourseService courseService;
     private final EnrollmentService enrollmentService;
+    private final NotificationService notificationService;
+    private final EnrollmentRepository enrollmentRepository;
 
     public CourseController(CourseService courseService,
-                            EnrollmentService enrollmentService) {
+                            EnrollmentService enrollmentService,
+                            NotificationService notificationService,
+                            EnrollmentRepository enrollmentRepository) {
         this.courseService = courseService;
         this.enrollmentService = enrollmentService;
+        this.notificationService = notificationService;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @GetMapping
@@ -256,7 +264,18 @@ public class CourseController {
     @PreAuthorize("hasRole('ADMIN')")
     @AuditedLog("课程下架")
     public R<Void> unpublish(@PathVariable Long id) {
+        // 客户体验修复 v1.7.0: 下架前先取课程信息,下架后通知所有在学学生 (U20)
+        CourseVO before = courseService.getById(id);
         courseService.updateStatus(id, CourseStatus.CLOSED.getCode());
+        if (before != null) {
+            try {
+                notifyCourseUnpublished(id, before.getTitle());
+            } catch (Exception e) {
+                // 通知失败不影响主流程,只记录日志
+                org.slf4j.LoggerFactory.getLogger(CourseController.class)
+                    .warn("课程下架通知失败: courseId={}, err={}", id, e.getMessage());
+            }
+        }
         return R.ok();
     }
 
@@ -321,5 +340,37 @@ public class CourseController {
         } catch (java.io.IOException e) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取封面文件");
         }
+    }
+
+    /**
+     * 客户体验修复 v1.7.0: 课程下架后通知所有在学学生 (U20)
+     * 失败不影响主流程,只记日志
+     */
+    private void notifyCourseUnpublished(Long courseId, String courseTitle) {
+        List<Long> userIds = enrollmentRepository.findActiveUserIdsByCourseId(courseId);
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        String title = "课程下架通知";
+        String content = String.format("您正在学习的《%s》已下架,如有疑问请联系管理员。", courseTitle);
+        int sent = 0;
+        for (Long userId : userIds) {
+            try {
+                NotificationCreateRequest req = new NotificationCreateRequest();
+                req.setUserId(userId);
+                req.setType("COURSE_UNPUBLISHED");
+                req.setTitle(title);
+                req.setContent(content);
+                req.setRelatedId(courseId);
+                req.setChannel("IN_APP");
+                notificationService.send(req, SecurityUtil.getCurrentUserId());
+                sent++;
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(CourseController.class)
+                    .debug("单条下架通知失败: userId={}, err={}", userId, e.getMessage());
+            }
+        }
+        org.slf4j.LoggerFactory.getLogger(CourseController.class)
+            .info("课程下架通知已发: courseId={}, 收件人数={}, 成功={}", courseId, userIds.size(), sent);
     }
 }

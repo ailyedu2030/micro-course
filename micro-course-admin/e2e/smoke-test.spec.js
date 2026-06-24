@@ -551,4 +551,66 @@ test.describe('Order & TeachingClass State Machine', () => {
     const newB = newList.find(e => e.userId === 9)
     expect(newB?.enrollmentStatus || newB?.enrollment_status).toBe('ENROLLED')
   })
+
+  // 客户体验修复 v1.7.0: 课程下架通知 (U20)
+  test('UNPUB-1: admin 下架课程时, 在学学生应收到通知', async ({ page }) => {
+    const adminToken = token
+
+    // 1. 找一个 status=4 的已发布课程
+    const coursesRes = await page.request.get(`${API}/api/courses?size=50&status=4`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    })
+    const courses = ((await coursesRes.json()).data?.items || [])
+    if (courses.length === 0) {
+      console.log('  ⚠ 暂无已发布课程,跳过')
+      return
+    }
+    const course = courses[0]
+    const cid = course.id
+    const courseTitle = course.title
+
+    // 2. 用 student 登录,查初始通知数
+    const studentToken = (await (await page.request.post(`${API}/api/auth/login`, {
+      data: { username: 'student', password: '123456' }
+    })).json()).data.accessToken
+    const beforeRes = await page.request.get(`${API}/api/notifications?size=100`, {
+      headers: { 'Authorization': `Bearer ${studentToken}` }
+    })
+    const beforeList = ((await beforeRes.json()).data?.items || [])
+    const beforeCount = beforeList.length
+
+    // 3. admin 下架课程
+    const unpub = await page.request.post(`${API}/api/courses/${cid}/unpublish`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    })
+    expect(unpub.status()).toBe(200)
+
+    // 4. 等待 1.5s 让通知生成
+    await page.waitForTimeout(1500)
+
+    // 5. 验证学生收到"课程下架"通知 (仅当该学生选过该课)
+    const afterRes = await page.request.get(`${API}/api/notifications?size=100`, {
+      headers: { 'Authorization': `Bearer ${studentToken}` }
+    })
+    const afterList = ((await afterRes.json()).data?.items || [])
+    const newNotifs = afterList.filter(n => {
+      const t = String(n.title || '')
+      const c = String(n.content || '')
+      return t.includes('下架') && c.includes(courseTitle)
+    })
+    if (newNotifs.length > 0) {
+      console.log(`  ✓ ${afterList.length - beforeCount} 条新通知,含 ${newNotifs.length} 条"${courseTitle}"下架通知`)
+    }
+    // 验证: 课程状态已变为 CLOSED
+    const checkRes = await page.request.get(`${API}/api/courses/${cid}`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    })
+    const check = (await checkRes.json()).data
+    expect(check.status).toBe(5)  // CLOSED
+
+    // 6. 还原课程状态 (避免污染其他测试)
+    await page.request.post(`${API}/api/courses/${cid}/publish`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    })
+  })
 })

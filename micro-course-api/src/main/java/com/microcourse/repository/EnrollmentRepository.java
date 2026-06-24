@@ -116,4 +116,15 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
     @org.apache.ibatis.annotations.Select("SELECT COUNT(*) FROM enrollments " +
             "WHERE course_id = #{courseId} AND enrollment_status = 'WAITLIST'")
     int countWaitlistByCourseId(@Param("courseId") Long courseId);
+
+    /**
+     * 客户体验修复 v1.7.0: 找课程的有效选课学生 (用于下架通知)
+     * 返回所有 ENROLLED/IN_PROGRESS/COMPLETED 状态的学生 user_id
+     * (WAITLIST 已被拒, DROPPED/CANCELLED 已退出, 都不需要通知)
+     */
+    @org.apache.ibatis.annotations.Select("SELECT DISTINCT user_id FROM enrollments " +
+            "WHERE course_id = #{courseId} " +
+            "  AND deleted_at IS NULL " +
+            "  AND enrollment_status IN ('ENROLLED', 'IN_PROGRESS', 'COMPLETED')")
+    List<Long> findActiveUserIdsByCourseId(@Param("courseId") Long courseId);
 }
