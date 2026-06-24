@@ -601,6 +601,35 @@ public class AuthServiceImpl implements AuthService {
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.updateById(user);
+
+        // P0 安全修复 v1.7.0: 修改密码后立即失效当前 JWT,
+        // 防止攻击者持有的旧 token 在 2h 过期窗口内继续使用 → 账号接管风险
+        blacklistCurrentJwt();
+    }
+
+    /**
+     * 将当前请求的 JWT 加入 Redis 黑名单,TTL = token 剩余有效期。
+     * 下次该 token 命中 JwtAuthenticationFilter 时会被拒绝 (1004: token已失效)。
+     */
+    private void blacklistCurrentJwt() {
+        if (httpServletRequest == null) {
+            return;
+        }
+        String authHeader = httpServletRequest.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return;
+        }
+        String token = authHeader.substring(7);
+        try {
+            String jti = jwtUtil.getJtiFromToken(token);
+            long ttl = jwtUtil.getExpirationRemainingSeconds(token);
+            if (jti != null && ttl > 0) {
+                redisUtil.blacklistToken(jti, ttl);
+            }
+        } catch (Exception ex) {
+            // 黑名单失败不应阻塞密码修改结果,但需记录
+            log.warn("[Auth] 修改密码后失效旧 token 失败: {}", ex.getMessage());
+        }
     }
 
     @Override

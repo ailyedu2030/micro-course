@@ -151,7 +151,10 @@ public class SecurityConfig {
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // P1 修复 v1.7.0: 显式声明 BCrypt 强度为 10 (Spring Security 4+ 的默认值,
+        // 但显式写出可避免 JDK/Spring 升级时默认值变更带来的兼容性回归)。
+        // 强度 10 ≈ 2^10 = 1024 轮哈希,~100ms 每次,平衡安全与性能。
+        return new BCryptPasswordEncoder(10);
     }
 
     @Bean
