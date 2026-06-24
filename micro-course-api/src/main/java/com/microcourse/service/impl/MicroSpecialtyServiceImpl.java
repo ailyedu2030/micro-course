@@ -393,6 +393,12 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MicroSpecialtyVO create(MicroSpecialtyCreateRequest request) {
+        // P2-C: 校验 code 唯一性（DB 唯一索引 uk_ms_code 在微专业表上存在但会被吞为通用错误）
+        if (msRepository.selectCount(new LambdaQueryWrapper<MicroSpecialty>()
+                .eq(MicroSpecialty::getCode, request.getCode())
+                .isNull(MicroSpecialty::getDeletedAt)) > 0) {
+            throw new BusinessException(ErrorCode.MICRO_SPECIALTY_CODE_EXISTS);
+        }
         MicroSpecialty ms = new MicroSpecialty();
         ms.setCode(request.getCode());
         ms.setTitle(request.getTitle());

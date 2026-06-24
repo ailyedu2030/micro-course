@@ -102,7 +102,8 @@ public enum ErrorCode {
     MS_TEAM_LEAD_CANNOT_LEAVE(17017, "负责人不能直接退出团队，请使用LEAD继任功能", 400),
     MS_MAX_STUDENTS_REACHED(17018, "微专业报名人数已达上限", 400),
     MS_TERMINAL_STATUS(17019, "微专业已处于终态，无法操作", 400),
-    MS_ENROLLMENT_STATUS_INVALID(17020, "修读记录状态不允许此操作", 400);
+    MS_ENROLLMENT_STATUS_INVALID(17020, "修读记录状态不允许此操作", 400),
+    MICRO_SPECIALTY_CODE_EXISTS(17021, "微专业代码已存在", 400);
 
     private final int code;
     private final String message;
