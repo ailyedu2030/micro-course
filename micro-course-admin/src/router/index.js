@@ -72,6 +72,9 @@ const routes = [
   // 学生端路由
   { path: '/student/courses', name: 'StudentCourseSquare', component: () => import('../views/student/CourseSquare.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '广场', menuIcon: 'Grid', menuOrder: 1 } },
   { path: '/student/courses/:id', name: 'StudentCourseDetail', component: () => import('../views/student/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  // P0 闭环修复 Round 4: 学生端课程套件路由(原 BundleSquare/BundleDetail.vue 存在但无路由,学生点击 → 404)
+  { path: '/student/bundles', name: 'StudentBundleSquare', component: () => import('../views/student/BundleSquare.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/bundles/:id', name: 'StudentBundleDetail', component: () => import('../views/student/BundleDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/courses/:id/play/:videoId?', name: 'StudentVideoPlay', component: () => import('../views/student/VideoPlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], layout: 'video' } },
   { path: '/student/my-courses', name: 'StudentMyCourses', component: () => import('../views/student/MyCourses.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '我的课程', menuIcon: 'Reading', menuOrder: 2 } },
   // /student/training 保留为隐藏路由（训练中心），不显示在导航标签页

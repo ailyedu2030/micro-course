@@ -6,6 +6,21 @@
 <template>
   <div class="course-square fade-in">
 
+    <!-- ============ P0 闭环修复 Round 4: Banner 轮播（学生端首页） ============ -->
+    <section v-if="banners.length > 0" class="banner-section" aria-label="运营 Banner">
+      <div class="banner-track">
+        <a
+          v-for="banner in banners"
+          :key="banner.id"
+          :href="banner.linkUrl || '#'"
+          class="banner-item"
+          @click.prevent="handleBannerClick(banner)"
+        >
+          <img :src="banner.imageUrl" :alt="banner.title || 'banner'" class="banner-img" />
+        </a>
+      </div>
+    </section>
+
     <!-- ============ Hero + Search ============ -->
     <section class="hero-section" aria-label="课程发现">
       <div class="hero-content">
@@ -342,6 +357,7 @@ import {
 import { getCourses } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 import { getBundles } from '@/api/bundle'
+import { getActiveBanners } from '@/api/bannerPublic'
 import { getSquareData, getMicroSpecialtyList } from '@/api/microSpecialty'
 import { usePluginStore } from '@/store/plugins'
 import { useUserStore } from '@/store/user'
@@ -369,6 +385,28 @@ const hotCourses = ref([])
 const newestCourses = ref([])
 const recommendedCourses = ref([])
 const bundles = ref([])
+// P0 闭环修复 Round 4: 学生端首页 Banner 轮播
+const banners = ref([])
+
+const fetchBanners = async () => {
+  try {
+    const { data } = await getActiveBanners()
+    banners.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    // Banner 失败不阻塞页面
+    console.warn('[CourseSquare] Banner 加载失败:', e)
+    banners.value = []
+  }
+}
+
+const handleBannerClick = (banner) => {
+  if (!banner.linkUrl) return
+  if (/^https?:\/\//.test(banner.linkUrl)) {
+    window.open(banner.linkUrl, '_blank', 'noopener,noreferrer')
+  } else {
+    router.push(banner.linkUrl)
+  }
+}
 // 微专业专区
 const msLoading = ref(false)
 const msError = ref(false)
@@ -635,6 +673,7 @@ onMounted(async () => {
   loadRecommended()
   loadBundles()
   fetchMicroSpecialties()
+  fetchBanners()  // P0 闭环修复 Round 4: 学生端 Banner 轮播
 })
 </script>
 

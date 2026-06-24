@@ -116,6 +116,8 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/micro-specialties/{id}").permitAll()
                         .requestMatchers("GET", "/api/micro-specialties/{id}/courses").permitAll()
                         .requestMatchers("GET", "/api/micro-specialties/{id}/teachers").permitAll()
+                        // P0 闭环修复 Round 4: 公开 Banner API（学生端首页轮播）
+                        .requestMatchers("GET", "/api/banners").permitAll()
                         // 前端错误自动上报 —— 需登录态。Controller 仅落日志、不返回敏感数据、不写库。
                         // 权限由 Controller 上的 @PreAuthorize("isAuthenticated()") 控制
                         .requestMatchers("GET", "/api/departments/**").authenticated()
