@@ -156,6 +156,12 @@ public class TagServiceImpl implements TagService {
         if (tag == null) {
             throw new BusinessException(ErrorCode.TAG_NOT_FOUND);
         }
+        long refCount = courseTagRelationRepository.selectCount(
+                new LambdaQueryWrapper<CourseTagRelation>()
+                        .eq(CourseTagRelation::getTagId, id));
+        if (refCount > 0) {
+            throw new BusinessException(ErrorCode.TAG_IN_USE);
+        }
         tagRepository.deleteById(id);
     }
 
