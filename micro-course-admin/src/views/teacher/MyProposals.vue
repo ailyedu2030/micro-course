@@ -74,8 +74,8 @@
         <el-form-item label="说明" prop="description">
           <el-input v-model="editForm.description" type="textarea" :rows="3" />
         </el-form-item>
-        <el-form-item label="培养目标" prop="objectives">
-          <el-input v-model="editForm.objectives" type="textarea" :rows="2" />
+        <el-form-item label="培养目标" prop="trainingObjective">
+          <el-input v-model="editForm.trainingObjective" type="textarea" :rows="2" />
         </el-form-item>
         <el-form-item label="建议学期">
           <el-input v-model="editForm.semester" />
@@ -108,7 +108,7 @@ const editForm = ref({})
 const editRules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
   description: [{ required: true, message: '请输入说明', trigger: 'blur' }],
-  objectives: [{ required: true, message: '请输入培养目标', trigger: 'blur' }]
+  trainingObjective: [{ required: true, message: '请输入培养目标', trigger: 'blur' }]
 }
 const editingId = ref(null)
 
@@ -138,7 +138,7 @@ const handleWithdraw = async (row) => {
 
 const handleEdit = (row) => {
   editingId.value = row.id
-  editForm.value = { title: row.title, description: row.description, objectives: row.objectives, semester: row.semester }
+  editForm.value = { title: row.title, description: row.description, trainingObjective: row.trainingObjective, semester: row.semester }
   editVisible.value = true
 }
 const resetEditForm = () => { editFormRef.value?.clearValidate() }

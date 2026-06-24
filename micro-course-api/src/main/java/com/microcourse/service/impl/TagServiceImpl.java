@@ -63,6 +63,7 @@ public class TagServiceImpl implements TagService {
     public TagVO create(TagCreateRequest request) {
         Tag tag = new Tag();
         tag.setName(request.getName());
+        tag.setColor(request.getColor());
         tag.setCreatedAt(LocalDateTime.now());
         tagRepository.insert(tag);
         return convertToVO(tag);
@@ -145,6 +146,7 @@ public class TagServiceImpl implements TagService {
             throw new BusinessException(ErrorCode.TAG_NOT_FOUND);
         }
         tag.setName(request.getName());
+        tag.setColor(request.getColor());
         tagRepository.updateById(tag);
         return convertToVO(tag);
     }
@@ -169,6 +171,7 @@ public class TagServiceImpl implements TagService {
         TagVO vo = new TagVO();
         vo.setId(tag.getId());
         vo.setName(tag.getName());
+        vo.setColor(tag.getColor());
         vo.setCreatedAt(tag.getCreatedAt());
         return vo;
     }

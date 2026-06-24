@@ -130,8 +130,8 @@
         <el-form-item label="描述">
           <el-input v-model="createForm.description" type="textarea" :rows="3" />
         </el-form-item>
-        <el-form-item label="开课学院" prop="collegeId">
-          <el-select v-model="createForm.collegeId" placeholder="选择学院" class="full-width">
+        <el-form-item label="开课学院" prop="offerDepartmentId">
+          <el-select v-model="createForm.offerDepartmentId" placeholder="选择学院" class="full-width">
             <el-option v-for="c in colleges" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
@@ -153,6 +153,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getMicroSpecialtyList, createMicroSpecialty } from '@/api/microSpecialty'
 import { getPendingInvites, acceptInvite, declineInvite } from '@/api/microSpecialty'
+import { getDepartments } from '@/api/department'
 import { Notebook } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
@@ -170,8 +171,8 @@ const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教'
 const createVisible = ref(false)
 const creating = ref(false)
 const createFormRef = ref(null)
-const createForm = ref({ title: '', subtitle: '', description: '', collegeId: null, semester: '' })
-const createRules = { title: [{ required: true, message: '请输入标题', trigger: 'blur' }], collegeId: [{ required: true, message: '请选择学院', trigger: 'change' }] }
+const createForm = ref({ title: '', subtitle: '', description: '', offerDepartmentId: null, semester: '' })
+const createRules = { title: [{ required: true, message: '请输入标题', trigger: 'blur' }], offerDepartmentId: [{ required: true, message: '请选择学院', trigger: 'change' }] }
 const colleges = ref([])
 
 const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', RECRUITING: '招生中', COMPLETED: '已结业', REJECTED: '已驳回', CANCELLED: '已取消', ARCHIVED: '已归档' }
@@ -229,7 +230,7 @@ const handleDecline = async (inv) => {
 
 const showCreateDialog = () => { createVisible.value = true }
 const resetCreateForm = () => {
-  createForm.value = { title: '', subtitle: '', description: '', collegeId: null, semester: '' }
+  createForm.value = { title: '', subtitle: '', description: '', offerDepartmentId: null, semester: '' }
   createFormRef.value?.clearValidate()
 }
 const handleCreate = async () => {
@@ -241,7 +242,14 @@ const handleCreate = async () => {
   finally { creating.value = false }
 }
 
-onMounted(() => fetchList('leading'))
+const fetchColleges = async () => {
+  try {
+    const { data } = await getDepartments({ size: 1000 })
+    colleges.value = data.items || data || []
+  } catch { colleges.value = [] }
+}
+
+onMounted(() => { fetchList('leading'); fetchColleges() })
 </script>
 
 <style scoped>
