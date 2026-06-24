@@ -337,15 +337,15 @@ fi
 section "9. 资源限制"
 
 # 9.1 上传限制
-UPLOAD_LIMIT=$(grep "max-file-size:" micro-course-api/src/main/resources/application.yml | awk '{print $2}')
+UPLOAD_LIMIT=$(grep "max-file-size:" micro-course-api/src/main/resources/application.yml | head -1 | awk '{print $2}' | tr -d ':')
 if [ "$UPLOAD_LIMIT" = "2GB" ]; then
   log_pass "上传限制 $UPLOAD_LIMIT (生产建议根据磁盘调整)"
 else
   log_warn "上传限制 $UPLOAD_LIMIT (建议 2GB 或更高)"
 fi
 
-# 9.2 HikariCP 连接池
-HIKARI_POOL=$(grep -A 3 "hikari:" micro-course-api/src/main/resources/application.yml | grep "maximum-pool-size" | awk '{print $2}')
+# 9.2 HikariCP 连接池 (spring.datasource.hikari.maximum-pool-size)
+HIKARI_POOL=$(awk '/hikari:/,/^[a-zA-Z]/' micro-course-api/src/main/resources/application.yml | grep "maximum-pool-size" | awk '{print $2}' | tr -d ':' | head -1)
 if [ -n "$HIKARI_POOL" ] && [ "$HIKARI_POOL" -ge 200 ]; then
   log_pass "HikariCP pool: $HIKARI_POOL"
 else
