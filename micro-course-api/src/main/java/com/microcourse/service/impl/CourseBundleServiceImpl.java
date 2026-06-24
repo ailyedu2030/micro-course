@@ -177,10 +177,14 @@ public class CourseBundleServiceImpl implements CourseBundleService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        bundleRepository.deleteById(id);
+        if (bundleRepository.selectById(id) == null) {
+            throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND);
+        }
+        // 先删子表再删主表（避免 FK 约束冲突）
         LambdaQueryWrapper<CourseBundleItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseBundleItem::getBundleId, id);
         itemRepository.delete(wrapper);
+        bundleRepository.deleteById(id);
     }
 
     private BundleVO toVO(CourseBundle bundle) {
