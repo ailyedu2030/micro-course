@@ -13,11 +13,13 @@ spring:
     hikari:
       # P3-14 连接池监控：pool-name 作为 Micrometer hikaricp_* 指标的 pool 标签，便于多池区分
       pool-name: micro-course-pool
-      minimum-idle: 5
-      maximum-pool-size: 20
+      minimum-idle: 20
+      # ★ 业务逻辑审计 P0-1 压测发现：300 并发下 20 连接池耗尽
+      # PG max_connections=300，预留 50 给运维/管理连接，app 上限 250
+      maximum-pool-size: 250
       idle-timeout: 300000
       max-lifetime: 1800000
-      # ★ Round 9-2 修复：连接池满时 30s 等待对用户是灾难，降至 5s 快速失败
+      # ★ Round 9-2 修复：连接池满时 30s 等待对用户是灾难，降至 5s 快速失败（feature flag 兜底）
       connection-timeout: 5000
       # ★ Round 9-2 修复：60s 连接泄漏检测，及时暴露未归还连接
       leak-detection-threshold: 60000

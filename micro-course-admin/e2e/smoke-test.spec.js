@@ -9,6 +9,7 @@
  */
 
 import { test, expect } from '@playwright/test'
+import { execSync } from 'child_process'
 
 const BASE = 'http://localhost:5173'
 const API  = 'http://localhost:8080'
@@ -519,5 +520,50 @@ test.describe('Order & TeachingClass State Machine', () => {
     const text = await res.text()
     // enrollment_duration_seconds_count 监控总调用次数
     expect(text).toMatch(/enrollment_duration_seconds_count/)
+  })
+
+  test('PROMO-1: 学生退课后候补学生应自动晋升 (spec §3.2)', async ({ page }) => {
+    // 1. 创建一个 max=1 的测试课程
+    const adminToken = token
+    const c = await page.request.post(`${API}/api/courses`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` },
+      data: { title: `PROMO-${Date.now()}`, categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', maxStudents: 1, description: 'x', summary: 'x', coverUrl: 'http://x.com/c.jpg' }
+    })
+    const cid = (await c.json()).data.id
+    // 通过 PSQL 命令行添加章节+视频
+    try {
+      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO course_chapters (course_id, title, sort_order, chapter_type, created_at, updated_at) VALUES (${cid}, 'Ch', 99, 'VIDEO', NOW(), NOW())"`)
+      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO videos (course_id, chapter_id, title, status, created_at, updated_at) VALUES (${cid}, (SELECT id FROM course_chapters WHERE course_id=${cid} LIMIT 1), 'L', 2, NOW(), NOW())"`)
+    } catch (e) { /* chapter 99 may already exist */ }
+    await page.request.post(`${API}/api/courses/${cid}/submit`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    await page.request.post(`${API}/api/courses/${cid}/approve`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    await page.request.post(`${API}/api/courses/${cid}/publish`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+
+    // 2. 用户 A 选课 → ENROLLED
+    const tokenA = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student', password: '123456' } })).json()).data.accessToken
+    await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenA}` }, data: { courseId: cid } })
+
+    // 3. 用户 B/C 选课 → WAITLIST
+    const tokenB = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student3', password: '123456' } })).json()).data.accessToken
+    const tokenC = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student5', password: '123456' } })).json()).data.accessToken
+    const enB = await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenB}` }, data: { courseId: cid } })
+    const enC = await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenC}` }, data: { courseId: cid } })
+
+    // 4. 用户 A 退课 → 触发自动晋升 (admin 查课程的 enrollment 然后取消 A 的)
+    const allEnr = await page.request.get(`${API}/api/enrollments/course/${cid}`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    const allList = ((await allEnr.json()).data?.items || [])
+    const myAenr = allList.find(e => e.userId === 7)  // student id=7
+    if (myAenr) {
+      await page.request.delete(`${API}/api/enrollments/${myAenr.id}`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    }
+
+    // 5. 等待晋升
+    await page.waitForTimeout(2000)
+
+    // 6. 验证 B 晋升 (id=9 = student3)
+    const newEnr = await page.request.get(`${API}/api/enrollments/course/${cid}`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    const newList = ((await newEnr.json()).data?.items || [])
+    const newB = newList.find(e => e.userId === 9)
+    expect(newB?.enrollmentStatus || newB?.enrollment_status).toBe('ENROLLED')
   })
 })

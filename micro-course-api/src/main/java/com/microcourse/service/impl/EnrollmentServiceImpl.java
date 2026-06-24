@@ -569,7 +569,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancelEnrollment(Long id, Long currentUserId) {
-        Enrollment enrollment = enrollmentRepository.selectById(id);
+        Enrollment enrollment = enrollmentRepository.selectOne(
+                new LambdaQueryWrapper<Enrollment>().eq(Enrollment::getId, id));
         if (enrollment == null) {
             throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
         }
@@ -588,8 +589,18 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         // ★ Round 8-4 修复(P0)：原子同步 courses.student_count（仅状态从非取消→取消时 -1）。
         // 重复取消（fromStatus 已是 CANCELLED）幂等不重复扣减；GREATEST 兜底不会出现负数。
-        if (fromStatus != EnrollmentStatus.CANCELLED && enrollment.getCourseId() != null) {
+        boolean wasEnrolled = (fromStatus != EnrollmentStatus.CANCELLED
+                && fromStatus != EnrollmentStatus.WAITLIST);
+        if (wasEnrolled && enrollment.getCourseId() != null) {
             courseRepository.atomicDecrementStudentCount(enrollment.getCourseId());
+        }
+
+        // ★ 业务逻辑审计 P0-1 新发现：自动晋升候补
+        // spec §3.2: "WAITLIST → APPROVED: 有人退课 → 按候补顺序自动录取"
+        // 之前漏了！学生退课后,候补中的第一个学生没有自动 ENROLLED
+        // 现在：退课 → student_count-1 → 找 WAITLIST 最早一个 → 改 APPROVED
+        if (wasEnrolled && enrollment.getCourseId() != null) {
+            promoteFirstWaitlistToEnrolled(enrollment.getCourseId());
         }
 
         // 同步检查关联订单：若有 PAID 订单则标记为 REFUNDED 并记录日志
@@ -836,6 +847,76 @@ public class EnrollmentServiceImpl implements EnrollmentService {
      * @param operatorId   操作人 ID（可为 null，如系统/无认证上下文）
      * @param reason       变更动作/原因（ENROLL / CANCEL / STATUS_UPDATE ...）
      */
+    /**
+     * ★ 业务逻辑审计 P0-1 新增：候补自动晋升
+     * <p>当有学生退课腾出名额时,自动将候补队列中最早的 (FIFO) 一个学生从 WAITLIST 转为 APPROVED。</p>
+     * <p>spec §3.2: "WAITLIST → APPROVED: 有人退课 → 按候补顺序自动录取"</p>
+     * <p>实现要点:</p>
+     * <ol>
+     *   <li>行级锁: 重新锁 course 行,避免并发 cancel 造成双重晋升</li>
+     *   <li>只晋升一个学生 (不退课一人进课一人,而不是 N 个退课 N 个进)</li>
+     *   <li>通知: 给晋升学生发通知</li>
+     * </ol>
+     */
+    private void promoteFirstWaitlistToEnrolled(Long courseId) {
+        // 1. 重新锁 course 行 (与 enroll() 一致的事务隔离保证)
+        java.util.Map<String, Object> locked = courseRepository.selectByIdForUpdate(courseId);
+        if (locked == null) return;
+        Integer maxStudents = (Integer) locked.get("max_students");
+        Integer studentCount = ((Number) locked.get("student_count")).intValue();
+        if (maxStudents == null || maxStudents == 0) return;  // 不限人数 → 不需要晋升
+        if (studentCount >= maxStudents) return;  // 还有人占着,先不晋升
+
+        // 2. 找候补队列最早一个 (按 enrolled_at ASC,先来先进)
+        Enrollment next = enrollmentRepository.selectOne(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getCourseId, courseId)
+                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())
+                        .orderByAsc(Enrollment::getEnrolledAt)
+                        .last("LIMIT 1"));
+        if (next == null) return;  // 候补空
+
+        // 3. 状态机校验 (防御深度): WAITLIST → APPROVED 是合法
+        EnrollmentStatus fromStatus = EnrollmentStatus.WAITLIST;
+        if (!fromStatus.canTransitionTo(EnrollmentStatus.APPROVED)) {
+            log.error("候补晋升状态机不通过: WAITLIST→APPROVED");
+            return;
+        }
+
+        // 4. CAS 更新: 状态变更 + 增计数
+        int updated = enrollmentRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Enrollment>()
+                        .eq(Enrollment::getId, next.getId())
+                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())
+                        .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE)
+                        .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
+        if (updated == 0) {
+            log.warn("候补晋升 CAS 失败, id={} (并发取消冲突,下次重试)", next.getId());
+            return;
+        }
+
+        // 5. 增计数 (因晋升,student_count +1)
+        courseRepository.atomicIncrementIfNotFull(courseId);
+
+        // 6. 写历史
+        recordHistory(next.getId(), fromStatus, EnrollmentStatus.APPROVED, null, "WAITLIST_PROMOTE");
+
+        // 7. 通知晋升学生
+        try {
+            notificationService.notifyAsync(
+                    next.getUserId(),
+                    NotificationType.ENROLLMENT_SUCCESS,
+                    "候补录取通知",
+                    "您已从候补队列中被录取《课程 ID=" + courseId + "》,可开始学习。",
+                    courseId);
+        } catch (Exception e) {
+            log.warn("候补通知发送失败, id={}, userId={}", next.getId(), next.getUserId(), e);
+        }
+
+        log.info("候补晋升完成: courseId={}, userId={}, enrollmentId={}",
+                courseId, next.getUserId(), next.getId());
+    }
+
     private void recordHistory(Long enrollmentId, EnrollmentStatus fromStatus,
                                EnrollmentStatus toStatus, Long operatorId, String reason) {
         EnrollmentHistory history = new EnrollmentHistory();
