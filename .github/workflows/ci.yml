@@ -211,26 +211,33 @@ jobs:
 
       - name: Start services
         run: |
-          # ===== 关键修复 (v1.7.0 e2e 修复): 启动顺序 =====
-          # 1. 先启动 backend 让 Flyway 创建所有 schema (V1-V89 migrations)
-          # 2. 等待 backend ready (确保 schema 完整)
-          # 3. 停止 backend (释放连接池,避免 Hikari 持有 schema 元数据缓存)
+          # ===== v1.7.0 e2e 启动顺序 (Round 2 优化) =====
+          # 1. 启动 backend (Flyway 创建所有 schema, V1-V89 migrations)
+          # 2. 等待 backend ready
+          # 3. TRUNCATE 所有表 CASCADE (清空数据,保留 schema + reset sequences)
           # 4. 加载 test_data.sql (此时所有表已存在)
-          # 5. 同步 PostgreSQL sequences (test_data.sql 用显式 ID, 导致序列落后于 MAX(id))
-          # 6. 重新启动 backend (Flyway 不会再跑,数据已就位)
+          # 5. 同步 PostgreSQL sequences (确保 MAX(id) 与 sequence 一致)
+          # 6. 清 Redis 缓存 (banner 等)
           # 7. 启动前端 (vite dev)
           #
-          # 旧顺序 (test_data.sql 在 backend 前) 导致:
-          #   - test_data.sql 引用 learning_progress/notifications 等 V15+ 创建的表
-          #   - 这些表尚未存在 → 整个 transaction aborted → 所有 INSERT 失败
-          #   - CI run 28134906354 e2e fail: 'relation learning_progress does not exist'
+          # Round 1 失败原因 (CI run 28134906354):
+          #   test_data.sql 在 backend 启动前执行,引用 V15+ 创建的表 (learning_progress 等)
+          #   → 整个 transaction aborted → 所有 INSERT 失败
+          #
+          # Round 2 修复 (CI run 28136039320):
+          #   backend 启动 → Flyway → kill backend → test_data.sql → 重启 backend
+          #   但 kill 触发 SIGTERM (exit code 143) → 整个 shell 退出 → Start services 失败
+          #
+          # Round 3 最终方案 (本版本):
+          #   backend 启动 → Flyway → TRUNCATE (不清 schema, 不杀 backend) → test_data.sql
+          #   优势: 不杀 backend (避免 SIGTERM),不重置 schema (sequence 由 TRUNCATE...RESTART
+          #         IDENTITY 自动重置 1, 然后 load test_data.sql 用显式 ID 1..N, 再 sequence sync)
 
           # 1. 启动 backend (Flyway 跑 V1-V89)
           cd micro-course-api
           java -jar target/micro-course-api-1.0.0.jar > /tmp/backend.log 2>&1 &
-          BACKEND_PID=$!
           cd ..
-          # 2. 等待 backend ready
+          # 2. 等待 backend ready (确保 Flyway 完成)
           for i in {1..90}; do
             if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}' | grep -q 200; then
               echo "Backend ready after ${i}s (Flyway migrations applied)"
@@ -238,17 +245,24 @@ jobs:
             fi
             sleep 1
           done
-          # 3. 停止 backend (让 psql 独占 DB,避免 Hikari 连接池持有元数据缓存)
-          kill $BACKEND_PID 2>/dev/null
-          wait $BACKEND_PID 2>/dev/null
-          sleep 3
 
-          # 4. 加载测试数据 (现在所有表已存在,Flyway schema_history 保留)
+          # 3. TRUNCATE 所有表 (清数据,保留 schema,RESTART IDENTITY 重置 sequence)
+          PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
+          DO $$
+          DECLARE r RECORD;
+          BEGIN
+              FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename) LOOP
+                  EXECUTE format('TRUNCATE TABLE public.%I RESTART IDENTITY CASCADE', r.tablename);
+              END LOOP;
+          END $$;
+          SQL
+          echo "=== Tables truncated, sequences reset ==="
+
+          # 4. 加载测试数据 (所有表已存在)
           PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course \
             -f test_data.sql 2>&1 | tail -10
-          # 5. 同步 PostgreSQL sequences (test_data.sql 用显式 ID, 导致序列落后于 MAX(id))
-          #    不同步会导致 POST 课程/选课时报 duplicate key value violates unique constraint
-          PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -v ON_ERROR_STOP=1 <<'SQL'
+          # 5. 同步 PostgreSQL sequences (test_data.sql 用显式 ID, setval 到 MAX(id))
+          PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
           DO $$
           DECLARE
               r record;
@@ -268,27 +282,27 @@ jobs:
           SQL
           echo "=== Seed loaded + sequences synced ==="
 
-          # 6. 重新启动 backend (Flyway 不会再跑,数据已就位)
-          cd micro-course-api
-          java -jar target/micro-course-api-1.0.0.jar > /tmp/backend.log 2>&1 &
-          BACKEND_PID=$!
-          cd ..
+          # 6. 清 Redis 缓存 (BannerServiceImpl 用 @Cacheable,banner data URI 改了需清)
+          redis-cli -h localhost FLUSHDB >/dev/null
+          echo "=== Redis cache flushed ==="
+
           # 7. 启动前端 (vite dev 而非 preview, dev 内置 /api 代理 → backend:8080)
           cd micro-course-admin
           npx vite --port 5173 --host 0.0.0.0 > /tmp/frontend.log 2>&1 &
           cd ..
-          # 8. 等待 backend + frontend ready
-          for i in {1..60}; do
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}' | grep -q 200; then
-              echo "Backend ready after ${i}s (post-seed)"
+          # 8. 等待 frontend ready (backend 已经在运行)
+          sleep 3
+          for i in {1..30}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/ | grep -q 200; then
+              echo "Frontend ready after ${i}s"
               break
             fi
             sleep 1
           done
-          sleep 2
-          for i in {1..30}; do
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/ | grep -q 200; then
-              echo "Frontend ready after ${i}s"
+          # 9. 验证 backend 仍可用 (TRUNCATE 后连接池可能要重建)
+          for i in {1..10}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}' | grep -q 200; then
+              echo "Backend verified after truncate"
               break
             fi
             sleep 1
