@@ -46,19 +46,21 @@ INSERT INTO course_categories (id, name, parent_id, level, sort_order, created_a
 -- ============================================================
 -- 4. 班级 (9 = 3专业 × 3班)
 -- ============================================================
-INSERT INTO classes (id, name, major_id, grade, counselor_id, sort_order, created_at, updated_at) VALUES
+-- P0 修复 R3: classes 表 V89 已删 counselor_id 列,test_data.sql 此 INSERT 仍引用 → psql abort
+-- 修复: 删除 counselor_id 列 + 每行多余 NULL
+INSERT INTO classes (id, name, major_id, grade, sort_order, created_at, updated_at) VALUES
 -- 计算机科学与技术专业（大一/大二/大三）
-(1, '计算机2101班', 1, '2021', NULL, 1, NOW(), NOW()),
-(2, '计算机2201班', 1, '2022', NULL, 2, NOW(), NOW()),
-(3, '计算机2301班', 1, '2023', NULL, 3, NOW(), NOW()),
+(1, '计算机2101班', 1, '2021', 1, NOW(), NOW()),
+(2, '计算机2201班', 1, '2022', 2, NOW(), NOW()),
+(3, '计算机2301班', 1, '2023', 3, NOW(), NOW()),
 -- 软件工程专业
-(4, '软件2101班', 2, '2021', NULL, 1, NOW(), NOW()),
-(5, '软件2201班', 2, '2022', NULL, 2, NOW(), NOW()),
-(6, '软件2301班', 2, '2023', NULL, 3, NOW(), NOW()),
+(4, '软件2101班', 2, '2021', 1, NOW(), NOW()),
+(5, '软件2201班', 2, '2022', 2, NOW(), NOW()),
+(6, '软件2301班', 2, '2023', 3, NOW(), NOW()),
 -- 数据科学与大数据技术
-(7, '数据2101班', 4, '2021', NULL, 1, NOW(), NOW()),
-(8, '数据2201班', 4, '2022', NULL, 2, NOW(), NOW()),
-(9, '数据2301班', 4, '2023', NULL, 3, NOW(), NOW());
+(7, '数据2101班', 4, '2021', 1, NOW(), NOW()),
+(8, '数据2201班', 4, '2022', 2, NOW(), NOW()),
+(9, '数据2301班', 4, '2023', 3, NOW(), NOW());
 
 -- ============================================================
 -- 5. 用户

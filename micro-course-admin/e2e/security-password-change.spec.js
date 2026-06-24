@@ -22,8 +22,9 @@ const USERNAME = 'student';
 const PASSWORD_OLD = 'student123';
 const PASSWORD_NEW_TEMP = 'abcdef123456';
 // 当前 student 密码 "student123" 的 bcrypt 哈希 (10 轮)
+// 注: test_data.sql 用的是 $TdY... 这一组 hash (10 轮, student/student123)
 // 注意:必须用 SQL 文件 (无 shell 转义) 执行,否则 "$2" "$10" 会被 psql 当作 PREPARE 位置参数
-const PASSWORD_OLD_BCRYPT = '$2b$10$ssnz4a4zXYDdDfBM4NvRi.3mngDq4hikZe6SzheP7OzSP5WrA1Pku';
+const PASSWORD_OLD_BCRYPT = '$2b$10$TdY7auRUW6RLBf8lGevF7OKj5k9rMTGU8rhPVPfPFoTNtmBAGZyXa';
 
 function resetPassword() {
   // 写入临时 SQL 文件并用 psql -f 执行,避免 bash 单/双引号 + $2 $10 位置参数三重 escape 陷阱
