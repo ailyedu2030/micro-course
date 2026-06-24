@@ -22,12 +22,21 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-element-base': ['element-plus'],
-          'vendor-element-icons': ['@element-plus/icons-vue'],
-          'vendor-xlsx': ['xlsx'],
-          'vendor-video': ['./src/views/student/VideoPlayer.vue'],
-        }
+        manualChunks(id) {
+          // P1-C 修复：拆分 vendor chunk 降低首屏加载时间
+          // 客户可感知：chunk >400kB 在 3G 网络下加载 >2s
+          if (id.includes('node_modules/element-plus/es')) {
+            if (id.includes('/components/') || id.includes('/directives/')) return 'vendor-el-ui'
+            if (id.includes('/utils/') || id.includes('/hooks/') || id.includes('/locale/')) return 'vendor-el-utils'
+            return 'vendor-el-core'
+          }
+          if (id.includes('node_modules/@element-plus/icons-vue')) return 'vendor-el-icons'
+          if (id.includes('node_modules/xlsx')) return 'vendor-xlsx'
+          if (id.includes('node_modules/@vueuse')) return 'vendor-vueuse'
+          if (id.includes('node_modules/axios')) return 'vendor-axios'
+          // 视频播放器 lazy-load: 仅观看视频时加载
+          if (id.includes('VideoPlayer.vue') || id.includes('video.js') || id.includes('hls.js')) return 'vendor-video-player'
+        },
       }
     },
     chunkSizeWarningLimit: 400,

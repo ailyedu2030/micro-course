@@ -5,8 +5,7 @@
  -->
 <template>
   <div class="course-square fade-in">
-
-    <!-- ============ P0 闭环修复 Round 4: Banner 轮播（学生端首页） ============ -->
+<!-- ============ P0 闭环修复 Round 4: Banner 轮播（学生端首页） ============ -->
     <section v-if="banners.length > 0" class="banner-section" aria-label="运营 Banner">
       <div class="banner-track">
         <a
@@ -231,9 +230,11 @@ v-model:current-page="page" v-model:page-size="size" :total="totalElements"
         <el-button text type="primary" @click="goBundles">查看全部 →</el-button>
       </header>
       <div class="bundle-scroll">
-        <div v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
+        <div
+v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
           :aria-label="'课程套件：' + b.title" @click="goBundle(b.id)"
-          @keydown.enter="goBundle(b.id)" @keydown.space.prevent="goBundle(b.id)">
+          @keydown.enter="goBundle(b.id)" @keydown.space.prevent="goBundle(b.id)"
+>
           <div class="b-chip-icon"><el-icon :size="20"><FolderOpened /></el-icon></div>
           <div class="b-chip-info">
             <span class="b-chip-title">{{ b.title }}</span>
@@ -271,9 +272,11 @@ v-model:current-page="page" v-model:page-size="size" :total="totalElements"
       </el-result>
       <template v-else>
         <div v-if="goldFeatured.length" class="ms-gold-row">
-          <div v-for="item in goldFeatured" :key="'gold-'+item.id"
+          <div
+v-for="item in goldFeatured" :key="'gold-'+item.id"
             class="ms-gold-card" role="button" tabindex="0"
-            :aria-label="item.title" @click="goMSDetail(item.id)" @keydown.enter="goMSDetail(item.id)">
+            :aria-label="item.title" @click="goMSDetail(item.id)" @keydown.enter="goMSDetail(item.id)"
+>
             <span class="gold-badge">学校重点推荐</span>
             <div class="gold-cover">
               <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" loading="lazy" class="gold-cover-img" />
@@ -289,9 +292,11 @@ v-model:current-page="page" v-model:page-size="size" :total="totalElements"
         </div>
         <div v-if="featured.length" class="rec-scroll-wrap">
           <div class="rec-scroll">
-            <div v-for="item in featured" :key="'feat-'+item.id"
+            <div
+v-for="item in featured" :key="'feat-'+item.id"
               class="ms-card" role="button" tabindex="0"
-              :aria-label="item.title" @click="goMSDetail(item.id)" @keydown.enter="goMSDetail(item.id)">
+              :aria-label="item.title" @click="goMSDetail(item.id)" @keydown.enter="goMSDetail(item.id)"
+>
               <div class="ms-card-cover">
                 <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" loading="lazy" class="ms-cover-img" />
                 <div v-else class="ms-cover-placeholder"><el-icon :size="28"><Notebook /></el-icon></div>
@@ -308,8 +313,10 @@ v-model:current-page="page" v-model:page-size="size" :total="totalElements"
     </section>
 
     <!-- 全部微专业弹窗 -->
-    <el-dialog v-model="showAllMS" title="全部微专业" width="900px"
-      :close-on-click-modal="true" class="ms-all-dialog">
+    <el-dialog
+v-model="showAllMS" title="全部微专业" width="900px"
+      :close-on-click-modal="true" class="ms-all-dialog"
+>
       <div class="ms-all-filter-bar mg-bottom-12">
         <el-radio-group v-model="dialogFilter" size="small">
           <el-radio-button label="">全部</el-radio-button>
@@ -319,9 +326,11 @@ v-model:current-page="page" v-model:page-size="size" :total="totalElements"
         </el-radio-group>
       </div>
       <div v-loading="allMSLoading" class="ms-all-grid">
-        <div v-for="item in filteredAllMS" :key="'all-ms-' + item.id"
+        <div
+v-for="item in filteredAllMS" :key="'all-ms-' + item.id"
           class="ms-all-card" role="button" tabindex="0"
-          @click="showAllMS = false; goMSDetail(item.id)" @keydown.enter="showAllMS = false; goMSDetail(item.id)">
+          @click="showAllMS = false; goMSDetail(item.id)" @keydown.enter="showAllMS = false; goMSDetail(item.id)"
+>
           <div class="ms-all-cover">
             <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" loading="lazy" class="ms-all-cover-img" />
             <div v-else class="ms-all-cover-placeholder"><el-icon :size="24"><Notebook /></el-icon></div>

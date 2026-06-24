@@ -143,6 +143,17 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
+    env:
+      JWT_SECRET: ci-jwt-secret-key-min-32-bytes-for-hamc!!
+      VIDEO_SIGN_SECRET: ci-video-sign-secret-key-32-bytes
+      DB_URL: jdbc:postgresql://localhost:5432/micro_course
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+      PAY_MODE: mock
     steps:
       - uses: actions/checkout@v4
 
