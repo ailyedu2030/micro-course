@@ -402,10 +402,35 @@ test.describe('Enrollment State Machine Behavior', () => {
   })
 
   test('ENROLL-5: 满员课程应自动入候补队列 (DEVIATION-2 修复验证)', async ({ page }) => {
-    // 跳过原因: 由于依赖 SQL 状态,与其他 e2e 测试的 setup 链脆弱耦合。
-    // v1.7.0 已修真正的 P0 客户体验 bug (EnrollmentServiceImpl ClassCastException),
-    // 该 bug 在生产场景下会导致选课 500。回归覆盖已通过 300 并发压测 (max=50 0 错误) 验证。
-    test.skip(true, '依赖 SQL 状态,与 setup 链脆弱耦合,生产已通过压测覆盖')
+    // 创建独立测试课程 (maxStudents=1) 避免污染其他测试
+    const adminToken = token
+    const c = await page.request.post(`${API}/api/courses`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` },
+      data: { title: `ENROLL5-${Date.now()}`, categoryId: 1, teacherId: 3, difficulty: 1, courseType: 'VIDEO', maxStudents: 1, description: 'x', summary: 'x', coverUrl: '/api/files/covers/course_107_1782163392123.jpg' }
+    })
+    const cid = (await c.json()).data.id
+    // 加章节+视频 (满足提交要求)
+    try {
+      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO course_chapters (course_id, title, sort_order, chapter_type, created_at, updated_at) VALUES (${cid}, 'Ch', 99, 'VIDEO', NOW(), NOW())"`)
+      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO videos (course_id, chapter_id, title, status, created_at, updated_at) VALUES (${cid}, (SELECT id FROM course_chapters WHERE course_id=${cid} LIMIT 1), 'L', 2, NOW(), NOW())"`)
+    } catch (e) { /* chapter 99 may already exist */ }
+    // 提交/审核/发布
+    await page.request.post(`${API}/api/courses/${cid}/submit`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    await page.request.post(`${API}/api/courses/${cid}/approve`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    await page.request.post(`${API}/api/courses/${cid}/publish`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
+    // 学生 A 选课 (max=1, 第一个成功 → ENROLLED)
+    const tokenA = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student', password: 'student123' } })).json()).data.accessToken
+    const enrA = await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenA}` }, data: { courseId: cid } })
+    expect(enrA.status()).toBe(200)
+    const enrAData = (await enrA.json()).data
+    expect(enrAData.enrollmentStatus).toBe('ENROLLED')
+    // 学生 B 选课 (已满, 应自动入候补 → WAITLIST)
+    const tokenB = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student2', password: 'student123' } })).json()).data.accessToken
+    const enrB = await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenB}` }, data: { courseId: cid } })
+    expect(enrB.status()).toBe(200)
+    const enrBData = (await enrB.json()).data
+    // 候补状态: service 返回 WAITLIST (EnrollmentStatus.WAITLIST.getValue() = "WAITLIST")
+    expect(enrBData.enrollmentStatus).toBe('WAITLIST')
   })
 })
 
