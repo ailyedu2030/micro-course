@@ -38,13 +38,26 @@ async function uiLogin(page, username, password) {
   await page.waitForTimeout(2000)
 }
 
+/** 健壮登录: 多次重试,显式记录失败原因 (CI 上某些 login 偶发失败需 retry) */
+async function apiLogin(page, username, password) {
+  const maxRetries = 3
+  let lastBody = null
+  for (let i = 0; i < maxRetries; i++) {
+    const res = await page.request.post(`${API}/api/auth/login`, {
+      data: { username, password }
+    })
+    const body = await res.json()
+    lastBody = body
+    if (body?.data?.accessToken) return body.data.accessToken
+    console.log(`[apiLogin ${username}] attempt ${i+1}/${maxRetries}: status=${res.status()} code=${body?.code} msg=${body?.message}`)
+    if (i < maxRetries - 1) await new Promise(r => setTimeout(r, 300 * (i + 1)))
+  }
+  throw new Error(`apiLogin(${username}) failed after ${maxRetries} attempts. lastBody=${JSON.stringify(lastBody)}`)
+}
+
 /** 通过 page.request 获取 API token（绕过 CORS） */
 async function apiToken(page) {
-  const res = await page.request.post(`${API}/api/auth/login`, {
-    data: { username: 'admin', password: 'admin123' }
-  })
-  const body = await res.json()
-  return body.data.accessToken
+  return apiLogin(page, 'admin', 'admin123')
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -375,12 +388,8 @@ test.describe('Enrollment State Machine Behavior', () => {
 
   test('ENROLL-3: 重复选课应返回现有记录（幂等）', async ({ page }) => {
     // student7 (id=7) is already enrolled in course 5
-    // get a student token
-    const studentLogin = await page.request.post(`${API}/api/auth/login`, {
-      data: { username: 'student', password: 'student123' }
-    })
-    const sbody = await studentLogin.json()
-    const stoken = sbody.data.accessToken
+    // get a student token (用 robust helper, CI 上偶发重试)
+    const stoken = await apiLogin(page, 'student', 'student123')
     const res = await page.request.post(`${API}/api/enrollments`, {
       headers: { 'Authorization': `Bearer ${stoken}` },
       data: { courseId: 5 }
@@ -419,13 +428,13 @@ test.describe('Enrollment State Machine Behavior', () => {
     await page.request.post(`${API}/api/courses/${cid}/approve`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
     await page.request.post(`${API}/api/courses/${cid}/publish`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
     // 学生 A 选课 (max=1, 第一个成功 → ENROLLED)
-    const tokenA = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student', password: 'student123' } })).json()).data.accessToken
+    const tokenA = await apiLogin(page, 'student', 'student123')
     const enrA = await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenA}` }, data: { courseId: cid } })
     expect(enrA.status()).toBe(200)
     const enrAData = (await enrA.json()).data
     expect(enrAData.enrollmentStatus).toBe('ENROLLED')
     // 学生 B 选课 (已满, 应自动入候补 → WAITLIST)
-    const tokenB = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student2', password: 'student123' } })).json()).data.accessToken
+    const tokenB = await apiLogin(page, 'student2', 'student123')
     const enrB = await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenB}` }, data: { courseId: cid } })
     expect(enrB.status()).toBe(200)
     const enrBData = (await enrB.json()).data
@@ -550,12 +559,12 @@ test.describe('Order & TeachingClass State Machine', () => {
     await page.request.post(`${API}/api/courses/${cid}/publish`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
 
     // 2. 用户 A 选课 → ENROLLED
-    const tokenA = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student', password: 'student123' } })).json()).data.accessToken
+    const tokenA = await apiLogin(page, 'student', 'student123')
     await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenA}` }, data: { courseId: cid } })
 
     // 3. 用户 B/C 选课 → WAITLIST
-    const tokenB = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student3', password: 'student123' } })).json()).data.accessToken
-    const tokenC = (await (await page.request.post(`${API}/api/auth/login`, { data: { username: 'student5', password: 'student123' } })).json()).data.accessToken
+    const tokenB = await apiLogin(page, 'student3', 'student123')
+    const tokenC = await apiLogin(page, 'student5', 'student123')
     const enB = await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenB}` }, data: { courseId: cid } })
     const enC = await page.request.post(`${API}/api/enrollments`, { headers: { 'Authorization': `Bearer ${tokenC}` }, data: { courseId: cid } })
 
@@ -595,9 +604,7 @@ test.describe('Order & TeachingClass State Machine', () => {
     const courseTitle = course.title
 
     // 2. 用 student 登录,查初始通知数
-    const studentToken = (await (await page.request.post(`${API}/api/auth/login`, {
-      data: { username: 'student', password: 'student123' }
-    })).json()).data.accessToken
+    const studentToken = await apiLogin(page, 'student', 'student123')
     const beforeRes = await page.request.get(`${API}/api/notifications?size=100`, {
       headers: { 'Authorization': `Bearer ${studentToken}` }
     })
