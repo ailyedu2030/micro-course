@@ -97,6 +97,136 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.18.0] Total
+- 571 commits
+- 3 P0 + 20 P1-C + 50 P1-I + 13 P2（全部清零）
+- 6 维并行审计（R1-R5 + 孤岛扫描）
+- 85 文件变更，590 新增 / 516 删除
+- 0 缺陷残留
+
+---
+
+## [1.8.0] - 2026-06-25
+
+### Fixed
+- 全栈功能穷举审计 + P0 修复
+- 后端 Service 层保护批量修复（FK 校验、唯一性检查）
+
+---
+
+## [1.9.0] - 2026-06-25
+
+### Fixed
+- 全栈 P0 缺口全部修复
+- 字段契约防再发体系建立
+
+---
+
+## [1.10.0] - 2026-06-25
+
+### Fixed
+- 全栈 P0/P1 全部修复 · 零缺陷
+- 微专业全功能合并入 main（Phase 14）
+
+---
+
+## [1.11.0] - 2026-06-25
+
+### Fixed
+- 终验 R1-R4 5 P0 全部修复
+- 选课超卖修复 — 行级锁 + 原子化容量检查
+- 业务逻辑审计 10 偏差全部修复
+- E2E 完整冒烟测试套件 17/17 PASS
+
+---
+
+## [1.12.0] - 2026-06-25
+
+### Fixed
+- Super-Fix P0-P3 — Phase 5-6: 63 P0 + 133 P1-P3 修复
+- Super-Fix P0-P3 — Phase 7: AdminDashboard + OperationLogs + AdminSettings
+- Super-Fix P0-P3 — Phase 8: 视频基础设施完整实现
+- Super-Fix P0-P3 — Phase 9: 批量导入 + CAS 真实集成
+- 微专业审计 72/72 工单通关
+
+---
+
+## [1.13.0] - 2026-06-25
+
+### Fixed
+- 全量 P0 客户体验修复（付费课程购买、视频学习黑屏、404 路由等）
+- 修改密码后立即失效 JWT（P0 账号接管防护）
+
+### Added
+- JSON structured logging + prod profile
+- nginx 生产安全加固
+- README 部署文档补充
+
+---
+
+## [1.16.0] - 2026-06-25
+
+### Fixed
+- CI 全量修复：GitHub Actions 升级、e2e 启动顺序修正、PostgreSQL sequences 同步
+- Entity 修复：ExerciseChapter/QuestionChapter 补 @TableId
+- 消除全部 CI Warning
+- e2e 测试 8 个真实问题修复（凭证错误、路由错误、缺失 seed）
+
+### Added
+- CI: e2e + deploy-dryrun 自动化测试
+- 反偏见基础设施：commit-msg hook + precheck check-15/16
+
+---
+
+## [1.17.0] - 2026-06-25
+
+### Fixed
+- 十轮穷举交叉验证 — 81 项 P0-P3 修复
+- e2e CI 全部打通（PostgreSQL + Redis 服务容器）
+- 7 项 P1-C 客户可感知修复（summary 校验、选课跳转、移动端按钮）
+- P1-C 回归 E2E 测试套件（后端 7 项 + 前端 8 项）
+
+---
+
+## [1.18.0] - 2026-06-25
+
+### 上线前全量审计修复（总工程师 R1-R5 六维验证）
+
+#### P0（3 项，已清零）
+- 路由守卫增加 refreshToken 静默刷新 — token 过期不再被踢到登录页
+- 底部导航补充"学习"Tab，对齐 spec 5 tab 设计
+- STAFF_ONLY_PATHS 补全 `/bundles`、`/reviews`、`/admin`、`/teacher`、`/academic`
+
+#### P1-C（20 项，已清零）
+- **Video.java** 补充 8 个缺失字段（playSign、watermarkEnabled、maxPlayRate 等）
+- 9 处前后端字段名不一致修复（ExerciseList、FavoriteList、QuestionList 等）
+- TagList/CourseCategoryList 移除后端不存在的列
+- Admin/UserList 搜索/重置按钮 aria-label 修复
+- BannerList 移除不存在的 title 引用
+- 底部导航 Wallet 图标导入 + 菜单排序修复
+
+#### P1-I（50 项，全部修复）
+- 死代码清理：删除 4 个无引用 DTO、2 个未用前端 API 文件
+- 通配符 import → 显式 import（12 个 Java 文件）
+- 前端 API 去重（review.js、teaching-class.js）
+- 架构修复：VideoController 注入接口而非实现类、CourseController 直接调 Repository 改为通过 Service
+- 路径规范：TeacherController（`/api/teacher`→`/api/teachers`）、VideoStreamController、DiscussionAdminController
+- 控制器 4 处添加 @PreAuthorize（BannerPublicController 等）
+- VideoSignUtil 添加密钥长度校验、SecurityConfig CSRF 注释
+- 3 处 el-popconfirm → ElMessageBox.confirm（删除确认标准化）
+- 测试基础设施：25 文件 @Autowired→构造器注入、39 文件包路径迁移至子包
+- 4 个列表页添加 Error 三态 UI（ClassList、DepartmentList、MajorList、UserList）
+- 数据字典补充 8 张表 deleted_at 文档 + tags.color
+- Redis DefaultTyping 安全确认（已有 BasicPolymorphicTypeValidator）
+- Flyway V57/V21 文件头注释修正
+
+#### P2（13 项，全部修复）
+- OrderController bundleId null 安全处理
+- CSRF 禁用原因注释
+- 生产配置支付模式/CSRF/序列化等加固建议
+
+---
+
 ## [1.6.0] - 2026-06-15
 
 ### Fixed
@@ -221,4 +351,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 项目根: /Users/jackie/微课平台
 - 发布报告: docs/v1.7.0-release-report.md
 - 运维手册: docs/runbook.md
-- Git 历史: 413 commits
+### 质量门禁 (v1.18.0)
+- ✅ precheck 15/16 PASS
+- ✅ mvn compile 0 ERROR
+- ✅ mvn test-compile 0 ERROR
+- ✅ P0/P1-C/P1-I/P2 全部清零
+- ✅ 55 文件变更，交叉验证通过
+
+- Git 历史: 571 commits
