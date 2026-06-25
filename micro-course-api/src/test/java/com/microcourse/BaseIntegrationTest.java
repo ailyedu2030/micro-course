@@ -60,6 +60,42 @@ public abstract class BaseIntegrationTest {
         } catch (Exception ignored) {}
     }
 
+    /**
+     * CI 环境性 fallback — 防御性 p0 种子 (p0_teacher id=6, student id=7) UPSERT,
+     * 不依赖 @Sql(BEFORE_TEST_METHOD) 在 CI 共享 Context 下偶发不应用的问题。
+     * 用 JdbcTemplate.execute 走 Spring 管理的连接,确保提交而非回滚。
+     * 注意: 必须在父类 @BeforeEach 中调用,且不抛异常吞错。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    public void ensureP0SeedUsers() {
+        try {
+            org.springframework.jdbc.core.JdbcTemplate jdbc =
+                    applicationContext.getBean(org.springframework.jdbc.core.JdbcTemplate.class);
+            // p0_teacher (id=6)
+            jdbc.update("UPDATE users SET password = ?::text, status = 1, role = 'TEACHER', real_name = 'P0测试教师' "
+                    + "WHERE id = 6 AND (password IS NULL OR password != ?::text)",
+                    "$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK",
+                    "$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK");
+            // INSERT if not exists (separate from UPDATE)
+            jdbc.update("INSERT INTO users (id, username, password, real_name, role, status, cas_bound, created_at, updated_at) "
+                    + "SELECT 6, 'p0_teacher', ?::text, 'P0测试教师', 'TEACHER', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP "
+                    + "WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 6)",
+                    "$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK");
+            // student (id=7)
+            jdbc.update("UPDATE users SET password = ?::text, status = 1, role = 'STUDENT', real_name = 'P0测试学生' "
+                    + "WHERE id = 7 AND (password IS NULL OR password != ?::text)",
+                    "$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK",
+                    "$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK");
+            jdbc.update("INSERT INTO users (id, username, password, real_name, role, status, cas_bound, created_at, updated_at) "
+                    + "SELECT 7, 'student', ?::text, 'P0测试学生', 'STUDENT', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP "
+                    + "WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 7)",
+                    "$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK");
+        } catch (Exception e) {
+            // 不吞错:种子恢复失败是阻塞性问题,直接抛出
+            throw new RuntimeException("ensureP0SeedUsers failed: " + e.getMessage(), e);
+        }
+    }
+
     @AfterEach
     public void cleanupLoginCache() {
         cachedAdminToken = null;
