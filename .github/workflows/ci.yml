@@ -397,7 +397,6 @@ jobs:
         run: |
           cd micro-course-api
           mvn package -DskipTests -q
-          set -a; source ../.env; set +a
           java -jar target/micro-course-api-1.0.0.jar > /tmp/backend.log 2>&1 &
           # 等待就绪
           for i in {1..30}; do
