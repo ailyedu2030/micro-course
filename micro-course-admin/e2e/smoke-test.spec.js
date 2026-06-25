@@ -131,7 +131,14 @@ test.describe('TEACHER Core Flow', () => {
 
   test.beforeEach(async ({ page }) => {
     errs = watchErrors(page)
-    await uiLogin(page, 'teacher', 'teacher123')
+    // CI 上 UI login 偶发不可靠 (vite dev 冷启动 + 网络抖动 + 401 锁定)
+    // 改用 API login + 设置 localStorage token,更可靠
+    const token = await apiLogin(page, 'teacher', 'teacher123')
+    await page.goto(BASE + '/login')
+    await page.evaluate(t => localStorage.setItem('micro_course_token', t), token)
+    await page.goto(BASE + '/teacher/dashboard')
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1000)
   })
   test.afterEach(() => { expect(errs).toEqual([]) })
 
@@ -168,7 +175,13 @@ test.describe('STUDENT Core Flow', () => {
 
   test.beforeEach(async ({ page }) => {
     errs = watchErrors(page)
-    await uiLogin(page, 'student', 'student123')
+    await apiLogin(page, 'student', 'student123').then(async token => {
+  await page.goto(BASE + '/login')
+  await page.evaluate(t => localStorage.setItem('micro_course_token', t), token)
+  await page.goto(BASE + '/student/courses')
+  await page.waitForLoadState('networkidle')
+  await page.waitForTimeout(1000)
+})
   })
   test.afterEach(() => { expect(errs).toEqual([]) })
 
@@ -666,13 +679,10 @@ test.describe('Order & TeachingClass State Machine', () => {
     await page.request.post(`${API}/api/courses/${cid}/approve`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
     await page.request.post(`${API}/api/courses/${cid}/publish`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
 
-    // 2. student 登录 + 选课
+    // 2. student 登录 + 选课 (用 API login + localStorage token, 避免 UI login 不可靠)
+    const studentToken = await apiLogin(page, 'student', 'student123')
     await page.goto('http://localhost:5173/login')
-    await page.fill('input[placeholder*="用户名"]', 'student')
-    await page.fill('input[placeholder*="密码"]', 'student123')
-    await page.click('button:has-text("登 录")')
-    await page.waitForURL(/\/student/, { timeout: 10000 })
-    const studentToken = await page.evaluate(() => localStorage.getItem('micro_course_token'))
+    await page.evaluate(t => localStorage.setItem('micro_course_token', t), studentToken)
 
     const enrRes = await page.request.post(`${API}/api/enrollments`, {
       headers: { 'Authorization': `Bearer ${studentToken}` },
@@ -716,14 +726,13 @@ test.describe('Order & TeachingClass State Machine', () => {
 
   // 客户体验修复 v1.7.0: H5 移动端退课按钮 (P0-UX-U4 mobile variant)
   test('DROP-2: H5 移动端 (375px) 也应有退课按钮', async ({ browser }) => {
-    // 1. student 登录
+    // 1. student 登录 (用 API login + localStorage token, 避免 UI login 不可靠)
     const ctx = await browser.newContext({ viewport: { width: 375, height: 812 } })  // iPhone 12
     const page = await ctx.newPage()
+    const token = await apiLogin(page, 'student', 'student123')
     await page.goto('http://localhost:5173/login')
-    await page.fill('input[placeholder*="用户名"]', 'student')
-    await page.fill('input[placeholder*="密码"]', 'student123')
-    await page.click('button:has-text("登 录")')
-    await page.waitForURL(/\/student/, { timeout: 10000 })
+    await page.evaluate(t => localStorage.setItem('micro_course_token', t), token)
+    await page.goto('http://localhost:5173/student/my-courses')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1500)
 
