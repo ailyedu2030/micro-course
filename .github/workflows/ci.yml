@@ -332,6 +332,15 @@ jobs:
           path: micro-course-admin/playwright-report
           retention-days: 7
 
+      - name: Upload backend log (debug)
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: e2e-backend-log
+          path: /tmp/backend.log
+          retention-days: 7
+          if-no-files-found: ignore
+
   # ============================================================================
   # v1.7.0: 部署前 Dry-Run 检查
   # ============================================================================
