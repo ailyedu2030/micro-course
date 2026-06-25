@@ -281,6 +281,8 @@ jobs:
           END $$;
           SQL
           echo "=== Seed loaded + sequences synced ==="
+          # 诊断: 验证 test_data.sql 实际加载的 student 密码 hash
+          PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -c "SELECT id, username, substring(password, 1, 30) AS password_prefix, status FROM users WHERE username IN ('admin', 'teacher', 'student') ORDER BY id"
 
           # 6. 清 Redis 登录失败计数器 + banner 缓存
           #    AuthServiceImpl.login() 有防暴: 同 username 5 次失败 → 账号锁定 (LOGIN_LOCKED)
