@@ -282,11 +282,14 @@ jobs:
           SQL
           echo "=== Seed loaded + sequences synced ==="
 
-          # 6. Redis 缓存无需清空
-          #    BannerServiceImpl @Cacheable(value="banners", key="'list'", sync=true) 的缓存
-          #    是 backend JVM 本地内存,每次 CI run 启动新 backend JAR → 缓存为空
-          #    第一个 /api/banners 请求从 DB 读 → 自动缓存新 data URI
-          #    无需 redis-cli FLUSHDB (且 ubuntu runner 默认没装 redis-cli)"
+          # 6. 清 Redis 登录失败计数器 + banner 缓存
+          #    AuthServiceImpl.login() 有防暴: 同 username 5 次失败 → 账号锁定 (LOGIN_LOCKED)
+          #    e2e 测试如 UI login 失败 5 次 → 后续 API login 失败 → 测试失败
+          #    每次 CI run 开始清 Redis 计数器 + 旧 banner cache
+          #    apt-get install redis-tools 一次,后续用 redis-cli (比 Python RESP 协议稳定)
+          sudo apt-get install -y redis-tools > /dev/null 2>&1 || apt-get install -y redis-tools > /dev/null 2>&1 || true
+          redis-cli -h localhost FLUSHDB
+          echo "=== Redis FLUSHDB done ==="
 
           # 7. 启动前端 (vite dev 而非 preview, dev 内置 /api 代理 → backend:8080)
           cd micro-course-admin
