@@ -130,7 +130,8 @@ import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Grid, VideoPlay, DataLine, Bell, User, Star, Setting, Reading,
-  Microphone, Search, ArrowDown, ArrowLeft, SwitchButton, ShoppingCart
+  Microphone, Search, ArrowDown, ArrowLeft, SwitchButton, ShoppingCart,
+  Wallet
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useUserStore } from '../store/user'
