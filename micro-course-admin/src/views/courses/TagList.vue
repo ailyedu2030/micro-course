@@ -33,12 +33,6 @@
             <span class="color-value">{{ row.color || '#409eff' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="usageCount" label="使用次数" width="120" align="center">
-          <template #default="{ row }">
-            {{ row.usageCount ?? 0 }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
         <el-table-column label="操作" width="150" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>

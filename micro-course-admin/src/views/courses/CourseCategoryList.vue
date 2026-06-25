@@ -37,9 +37,7 @@
       <el-empty v-else-if="tableData.length === 0" description="暂无分类数据" />
       <el-table v-else :data="tableData" stripe border class="data-table" row-key="id" default-expand-all>
         <el-table-column prop="name" label="名称" min-width="180" />
-        <el-table-column prop="code" label="编码" width="150" />
         <el-table-column prop="sortOrder" label="排序" width="100" align="center" />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
         <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>

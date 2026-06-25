@@ -45,16 +45,16 @@
       <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="courseName" label="课程" min-width="120" />
-        <el-table-column prop="chapterName" label="章节" min-width="120" />
+        <el-table-column prop="courseTitle" label="课程" min-width="120" />
+        <el-table-column prop="chapterTitle" label="章节" min-width="120" />
         <el-table-column prop="questionCount" label="题目数" width="100" align="center">
           <template #default="{ row }">
             {{ row.questionCount ?? '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="duration" label="时长(分钟)" width="120" align="center">
+        <el-table-column prop="timeLimit" label="时长(分钟)" width="120" align="center">
           <template #default="{ row }">
-            {{ row.duration ? `${row.duration}分钟` : '-' }}
+            {{ row.timeLimit ? `${row.timeLimit}分钟` : '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="passScore" label="及格分数" width="100" align="center">

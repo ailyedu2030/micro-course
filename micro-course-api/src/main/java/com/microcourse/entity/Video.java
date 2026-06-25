@@ -46,6 +46,30 @@ public class Video {
     @TableField("cover_url")
     private String coverUrl;
 
+    @TableField("play_sign")
+    private String playSign;
+
+    @TableField("sign_expired_at")
+    private LocalDateTime signExpiredAt;
+
+    @TableField("watermark_enabled")
+    private Boolean watermarkEnabled;
+
+    @TableField("max_play_rate")
+    private Integer maxPlayRate;
+
+    @TableField("caption_url")
+    private String captionUrl;
+
+    @TableField("caption_language")
+    private String captionLanguage;
+
+    @TableField("audio_description_url")
+    private String audioDescriptionUrl;
+
+    @TableField("allow_download")
+    private Boolean allowDownload;
+
     private Integer status;
 
     private Integer progress;
@@ -98,6 +122,22 @@ public class Video {
     public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }
     public String getCoverUrl() { return coverUrl; }
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
+    public String getPlaySign() { return playSign; }
+    public void setPlaySign(String playSign) { this.playSign = playSign; }
+    public LocalDateTime getSignExpiredAt() { return signExpiredAt; }
+    public void setSignExpiredAt(LocalDateTime signExpiredAt) { this.signExpiredAt = signExpiredAt; }
+    public Boolean getWatermarkEnabled() { return watermarkEnabled; }
+    public void setWatermarkEnabled(Boolean watermarkEnabled) { this.watermarkEnabled = watermarkEnabled; }
+    public Integer getMaxPlayRate() { return maxPlayRate; }
+    public void setMaxPlayRate(Integer maxPlayRate) { this.maxPlayRate = maxPlayRate; }
+    public String getCaptionUrl() { return captionUrl; }
+    public void setCaptionUrl(String captionUrl) { this.captionUrl = captionUrl; }
+    public String getCaptionLanguage() { return captionLanguage; }
+    public void setCaptionLanguage(String captionLanguage) { this.captionLanguage = captionLanguage; }
+    public String getAudioDescriptionUrl() { return audioDescriptionUrl; }
+    public void setAudioDescriptionUrl(String audioDescriptionUrl) { this.audioDescriptionUrl = audioDescriptionUrl; }
+    public Boolean getAllowDownload() { return allowDownload; }
+    public void setAllowDownload(Boolean allowDownload) { this.allowDownload = allowDownload; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
     public Integer getProgress() { return progress; }

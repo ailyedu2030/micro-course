@@ -184,8 +184,8 @@
         <el-form-item label="分值" prop="score">
           <el-input-number v-model="formData.score" :min="0" :max="100" class="full-width" />
         </el-form-item>
-        <el-form-item label="答案解析" prop="analysis">
-          <el-input v-model="formData.analysis" type="textarea" :rows="2" placeholder="请输入答案解析" />
+        <el-form-item label="答案解析" prop="explanation">
+          <el-input v-model="formData.explanation" type="textarea" :rows="2" placeholder="请输入答案解析" />
         </el-form-item>
         <!-- 单选/多选选项编辑 -->
         <el-form-item v-if="formData.questionType === 'SINGLE_CHOICE' || formData.questionType === 'MULTIPLE_CHOICE'" label="选项" prop="options">
@@ -326,7 +326,7 @@ const formData = reactive({
   categoryId: '',
   content: '',
   score: 10,
-  analysis: '',
+  explanation: '',
   options: '',
   answer: '',
   partialScore: false,
@@ -412,7 +412,7 @@ const handleExportExcel = async () => {
       '题目内容': q.content,
       '分值': q.score,
       '正确答案': q.answer,
-      '答案解析': q.analysis || ''
+      '答案解析': q.explanation || ''
     }))
     const ws = XLSX.utils.json_to_sheet(exportData)
     const wb = XLSX.utils.book_new()
@@ -501,7 +501,7 @@ const handleCreate = () => {
   formData.categoryId = ''
   formData.content = ''
   formData.score = 10
-  formData.analysis = ''
+  formData.explanation = ''
   formData.options = ''
   formData.answer = ''
   formData.partialScore = false
@@ -521,7 +521,7 @@ const handleEdit = (row) => {
   formData.categoryId = row.categoryId
   formData.content = row.content
   formData.score = row.score || 10
-  formData.analysis = row.analysis || ''
+  formData.explanation = row.explanation || ''
   formData.answer = row.answer || ''
   formData.partialScore = !!row.partialScore
   formData.partialScoreRule = row.partialScoreRule || ''

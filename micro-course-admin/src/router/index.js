@@ -80,14 +80,15 @@ const routes = [
   // /student/training 保留为隐藏路由（训练中心），不显示在导航标签页
   { path: '/student/training', name: 'StudentTraining', component: () => import('../views/student/TrainingCenter.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Fix P1: /student/learning 路由 - 无 courseId 时显示学习中心，使用查询参数 ?courseId= 传递
-  { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningView.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningView.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '学习', menuIcon: 'DataLine', menuOrder: 3 } },
   { path: '/student/learning-stats', name: 'StudentLearningStats', component: () => import('../views/student/LearningCenter.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
-  { path: '/student/notifications', name: 'StudentNotifications', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '消息', menuIcon: 'Bell', menuOrder: 3 } },
+  { path: '/student/notifications', name: 'StudentNotifications', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '消息', menuIcon: 'Bell', menuOrder: 4 } },
   { path: '/student/announcements', redirect: '/student/notifications' },
   { path: '/student/exams', name: 'StudentExams', component: () => import('../views/student/Exams.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
-  { path: '/student/profile', name: 'StudentProfile', component: () => import('../views/student/Profile.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '我的', menuIcon: 'User', menuOrder: 4 } },
+  { path: '/student/profile', name: 'StudentProfile', component: () => import('../views/student/Profile.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '我的', menuIcon: 'User', menuOrder: 5 } },
   { path: '/student/report', name: 'StudentWeeklyReport', component: () => import('../views/student/WeeklyReport.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/orders', name: 'StudentOrders', component: () => import('../views/student/MyOrders.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '订单', menuIcon: 'Wallet', menuOrder: 6 } },
+  { path: '/student/learning-stats', name: 'StudentLearningStats', component: () => import('../views/student/LearningCenter.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '学习统计', menuIcon: 'DataLine', menuOrder: 7 } },
   { path: '/student/checkout', name: 'StudentCheckout', component: () => import('../views/student/Checkout.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Phase 14: 微专业路由
   { path: '/student/micro-specialties/:id', name: 'StudentMicroSpecialtyDetail', component: () => import('../views/student/MicroSpecialtyDetail.vue'), meta: { title: '微专业详情', requiresAuth: true, roles: ['STUDENT'] } },
@@ -150,7 +151,8 @@ const STAFF_ONLY_PATHS = [
   '/departments', '/majors', '/classes',
   '/courses', '/course-categories', '/tags', '/chapters', '/videos',
   '/enrollments', '/favorites', '/questions', '/exercises',
-  '/discussions', '/notifications', '/courses/review'
+  '/discussions', '/notifications', '/courses/review',
+  '/bundles', '/reviews', '/admin', '/teacher', '/academic'
 ]
 
 function isStaffOnlyPath(path) {
@@ -171,7 +173,19 @@ router.beforeEach(async (to, from, next) => {
       await userStore.getInfo()
       userRole = userStore.role || ''
     } catch (e) {
-      console.warn('[router] 获取用户信息失败, 清除登录态', e)
+      console.warn('[router] 获取用户信息失败, 尝试静默刷新', e)
+      try {
+        if (userStore.refreshToken) {
+          const newToken = await userStore.refreshAccessToken()
+          if (newToken) {
+            await userStore.getInfo()
+            userRole = userStore.role || ''
+            return
+          }
+        }
+      } catch (refreshError) {
+        console.warn('[router] 静默刷新失败, 清除登录态', refreshError)
+      }
       removeToken()
       sessionStorage.removeItem('userRole')
       localStorage.removeItem('micro_course_refresh_token')

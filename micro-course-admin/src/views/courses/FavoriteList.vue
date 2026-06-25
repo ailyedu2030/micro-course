@@ -43,11 +43,11 @@
         <el-table-column label="课程封面" width="90" align="center">
           <template #default="{ row }">
             <el-image
-              v-if="row.courseCoverUrl"
-              :src="row.courseCoverUrl"
+              v-if="row.coverUrl"
+              :src="row.coverUrl"
               fit="cover"
               class="table-thumb"
-              :preview-src-list="[row.courseCoverUrl]"
+              :preview-src-list="[row.coverUrl]"
               lazy
             />
             <span v-else class="no-thumb">—</span>

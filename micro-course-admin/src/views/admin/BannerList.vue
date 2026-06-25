@@ -52,7 +52,7 @@
               :src="row.imageUrl"
               fit="cover"
               class="banner-image"
-              :alt="row.title || '轮播图'"
+              alt="轮播图"
               :preview-src-list="[row.imageUrl]"
               preview-teleported
             >
@@ -145,7 +145,7 @@
               </div>
             </el-upload>
             <div v-if="form.imageUrl" class="image-actions">
-              <el-button type="danger" size="small" @click="handleRemoveImage" aria-label="删除">
+              <el-button type="danger" size="small" @click="handleRemoveImage">
 <el-icon><Delete /></el-icon>移除
               </el-button>
             </div>
@@ -337,7 +337,7 @@ async function handleConfirmSave() {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm(
-      `确定要删除轮播图「${row.title || row.id}」吗？`,
+      `确定要删除轮播图「${row.id}」吗？`,
       '删除确认',
       { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
     )

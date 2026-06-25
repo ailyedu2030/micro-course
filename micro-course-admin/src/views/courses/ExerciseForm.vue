@@ -171,9 +171,9 @@
         </div>
 
         <!-- 答案解析 -->
-        <div v-if="currentPreviewQuestion.analysis" class="preview-analysis">
+        <div v-if="currentPreviewQuestion.explanation" class="preview-analysis">
           <span class="analysis-label">答案解析：</span>
-          <span class="analysis-value">{{ currentPreviewQuestion.analysis }}</span>
+          <span class="analysis-value">{{ currentPreviewQuestion.explanation }}</span>
         </div>
       </div>
 
@@ -424,8 +424,8 @@ const fetchExercise = async () => {
       }
 
       // 加载已选题目的详细信息
-      if (data.questionDetails) {
-        exerciseQuestions.value = data.questionDetails
+      if (data.questions) {
+        exerciseQuestions.value = data.questions
       }
     }
   } catch {

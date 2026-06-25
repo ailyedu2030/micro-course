@@ -183,6 +183,7 @@ const ICON_MAP = {
   User,
   DataLine,
   Reading,
+  Wallet,
 }
 
 // P1-2: 从 router 动态读取 menuTab 标记的路由，无需二次硬编码过滤
