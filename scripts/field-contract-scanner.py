@@ -19,6 +19,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path("/Users/jackie/微课平台")
 ENTITY_DIR = PROJECT_ROOT / "micro-course-api/src/main/java/com/microcourse/entity"
+DTO_DIR = PROJECT_ROOT / "micro-course-api/src/main/java/com/microcourse/dto"
 VIEW_DIR = PROJECT_ROOT / "micro-course-admin/src/views"
 API_DIR = PROJECT_ROOT / "micro-course-admin/src/api"
 ROUTER_FILE = PROJECT_ROOT / "micro-course-admin/src/router/index.js"
@@ -30,7 +31,7 @@ CONTROLLER_DIR = PROJECT_ROOT / "micro-course-api/src/main/java/com/microcourse/
 def extract_entity_fields():
     """Return { EntityName: { fieldName: {type, comment, is_fk} } }"""
     entities = {}
-    for f in sorted(ENTITY_DIR.glob("*.java")):
+    for f in sorted(list(ENTITY_DIR.glob("*.java")) + list(DTO_DIR.glob("*.java"))):
         name = f.stem
         fields = {}
         content = f.read_text()
