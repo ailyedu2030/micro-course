@@ -32,12 +32,17 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>院系列表</span>
+          <span class="card-title">院系列表</span>
           <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增院系</el-button>
         </div>
       </template>
-      <el-skeleton v-if="loading" :rows="5" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无院系数据" :image-size="120" />
+      <el-skeleton v-if="loading" :rows="6" animated />
+      <el-result v-else-if="error" icon="error" title="数据加载失败" sub-title="请稍后重试">
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重试</el-button>
+        </template>
+      </el-result>
+      <el-empty v-else-if="!loading && tableData.length === 0" description="暂无院系数据" :image-size="120" />
       <el-table
         v-else
         :data="tableData"
@@ -103,6 +108,7 @@ const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
+const error = ref(false)
 const submitLoading = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
@@ -134,6 +140,7 @@ const formRules = {
 
 const fetchData = async () => {
   loading.value = true
+  error.value = false
   try {
     const params = {
       page: page.value - 1,
@@ -144,7 +151,8 @@ const fetchData = async () => {
     const { data } = await getDepartments(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch (error) {
+  } catch {
+    error.value = true
     ElMessage.error('获取院系列表失败')
   } finally {
     loading.value = false

@@ -60,7 +60,24 @@
           </div>
         </div>
       </template>
-      <el-table v-loading="loading" :aria-busy="loading" :data="tableData" stripe border class="data-table">
+      <el-skeleton v-if="loading" :rows="6" animated />
+      <el-result
+        v-else-if="error"
+        icon="error"
+        title="数据加载失败"
+        sub-title="请稍后重试"
+      >
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重试</el-button>
+        </template>
+      </el-result>
+      <el-empty
+        v-else-if="!loading && tableData.length === 0"
+        description="暂无用户数据"
+        :image-size="120"
+      />
+      <template v-else>
+        <el-table :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column label="头像" width="80" align="center">
           <template #default="{ row }">
@@ -106,16 +123,9 @@
         <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-popconfirm title="确定删除该用户？" @confirm="handleDelete(row)">
-              <template #reference>
-                <el-button type="danger" link size="small">删除</el-button>
-              </template>
-            </el-popconfirm>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
-        <template #empty>
-          <el-empty description="暂无用户数据" />
-        </template>
       </el-table>
       <div class="pagination-wrap">
         <el-pagination
@@ -126,8 +136,9 @@
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
           @current-change="handlePageChange" aria-label="分页导航"
-/>
+        />
       </div>
+      </template>
     </el-card>
 
     <!-- 编辑弹窗 -->
@@ -226,7 +237,7 @@
  */
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getUsers, updateUser, updateUserStatus, updateTeacherStatus, batchImportUsers, uploadAvatar } from '@/api/user'
@@ -239,6 +250,7 @@ const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
+const error = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
@@ -321,6 +333,7 @@ const fetchClasses = async (majorId) => {
 
 const fetchData = async () => {
   loading.value = true
+  error.value = false
   try {
     const params = {
       page: page.value - 1,
@@ -336,6 +349,7 @@ const fetchData = async () => {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
+    error.value = true
     ElMessage.error('获取用户列表失败')
   } finally {
     loading.value = false
@@ -440,11 +454,12 @@ const handleToggleStatus = async (row, newStatus) => {
 
 const handleDelete = async (row) => {
   try {
+    await ElMessageBox.confirm('确定删除该用户？', '提示', { type: 'warning' })
     await updateUserStatus(row.id, { status: 3 })
     ElMessage.success('删除成功')
     fetchData()
-  } catch {
-    ElMessage.error('删除失败')
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
   }
 }
 

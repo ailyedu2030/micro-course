@@ -44,7 +44,7 @@ public class Course {
     @TableField("is_recommended")
     private Boolean isRecommended;
 
-    @TableField(exist = false)
+    @TableField("tags")  // V23 migration: ALTER TABLE courses ADD COLUMN tags TEXT
     private String tags;
 
     private String courseType;

@@ -1,11 +1,17 @@
 package com.microcourse.controller;
 
 import com.microcourse.audit.AuditedLog;
-import com.microcourse.dto.*;
+import com.microcourse.dto.CourseCreateRequest;
+import com.microcourse.dto.CoursePageQuery;
+import com.microcourse.dto.CourseStatsVO;
+import com.microcourse.dto.CourseUpdateRequest;
+import com.microcourse.dto.CourseVO;
+import com.microcourse.dto.EnrollmentVO;
+import com.microcourse.dto.PageResult;
+import com.microcourse.dto.R;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.enums.CourseStatus;
-import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.security.RequireRole;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
@@ -31,16 +37,13 @@ public class CourseController {
     private final CourseService courseService;
     private final EnrollmentService enrollmentService;
     private final NotificationService notificationService;
-    private final EnrollmentRepository enrollmentRepository;
 
     public CourseController(CourseService courseService,
                             EnrollmentService enrollmentService,
-                            NotificationService notificationService,
-                            EnrollmentRepository enrollmentRepository) {
+                            NotificationService notificationService) {
         this.courseService = courseService;
         this.enrollmentService = enrollmentService;
         this.notificationService = notificationService;
-        this.enrollmentRepository = enrollmentRepository;
     }
 
     @GetMapping
@@ -350,7 +353,7 @@ public class CourseController {
      * 失败不影响主流程,只记日志
      */
     private void notifyCourseUnpublished(Long courseId, String courseTitle) {
-        List<Long> userIds = enrollmentRepository.findActiveUserIdsByCourseId(courseId);
+        List<Long> userIds = enrollmentService.findActiveUserIdsByCourseId(courseId);
         if (userIds == null || userIds.isEmpty()) {
             return;
         }

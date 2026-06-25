@@ -1,7 +1,14 @@
 package com.microcourse.controller;
 
 import com.microcourse.audit.AuditedLog;
-import com.microcourse.dto.*;
+import com.microcourse.dto.AddStudentRequest;
+import com.microcourse.dto.PageResult;
+import com.microcourse.dto.R;
+import com.microcourse.dto.TeachingClassCreateRequest;
+import com.microcourse.dto.TeachingClassStudentVO;
+import com.microcourse.dto.TeachingClassUpdateRequest;
+import com.microcourse.dto.TeachingClassVO;
+import com.microcourse.dto.UpdateStudentStatusRequest;
 import com.microcourse.service.TeachingClassService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;

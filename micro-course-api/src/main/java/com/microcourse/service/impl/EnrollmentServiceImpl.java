@@ -1063,6 +1063,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
      */
     @Override
     @Transactional(readOnly = true)
+    public List<Long> findActiveUserIdsByCourseId(Long courseId) {
+        return enrollmentRepository.findActiveUserIdsByCourseId(courseId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public EnrollmentVO getEnrollmentDetail(Long id) {
         Enrollment enrollment = enrollmentRepository.selectById(id);
         if (enrollment == null) {

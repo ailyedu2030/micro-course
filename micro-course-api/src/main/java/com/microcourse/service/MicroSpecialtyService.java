@@ -234,14 +234,18 @@ public interface MicroSpecialtyService {
      *
      * @param msId   微专业 ID
      * @param reason 申请理由
+     * @deprecated 使用 {@link MicroSpecialtyFeaturedService#applyFeatured} 直接调用
      */
+    @Deprecated
     void applyFeatured(Long msId, String reason);
 
     /**
      * ACADEMIC 批准置顶 → is_featured=TRUE。
      *
      * @param msId 微专业 ID
+     * @deprecated 使用 {@link MicroSpecialtyFeaturedService#approveFeatured} 直接调用
      */
+    @Deprecated
     void approveFeatured(Long msId);
 
     /**
@@ -249,14 +253,18 @@ public interface MicroSpecialtyService {
      *
      * @param msId   微专业 ID
      * @param reason 驳回原因
+     * @deprecated 使用 {@link MicroSpecialtyFeaturedService#rejectFeatured} 直接调用
      */
+    @Deprecated
     void rejectFeatured(Long msId, String reason);
 
     /**
      * ACADEMIC 取消置顶 → is_featured=FALSE。
      *
      * @param msId 微专业 ID
+     * @deprecated 使用 {@link MicroSpecialtyFeaturedService#unsetFeatured} 直接调用
      */
+    @Deprecated
     void unsetFeatured(Long msId);
 
     // ======================== 角色鉴权 ========================

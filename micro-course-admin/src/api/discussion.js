@@ -9,9 +9,9 @@ export function getComments(postId) { return request({ method:'GET', url:'/discu
 export function createComment(data) { return request({ method:'POST', url:'/discussions/comments', data }) }
 export function deleteComment(id) { return request({ method:'DELETE', url:`/discussions/comments/${id}` }) }
 export function likeComment(id) { return request({ method:'POST', url:`/discussions/comments/${id}/like` }) }
-export function getDiscussions(params) { return request({ method:'GET', url:'/discussions', params }) }
-export function getDiscussionById(id) { return request({ method:'GET', url:`/discussions/${id}` }) }
+export function getDiscussions(params) { return request({ method:'GET', url:'/admin/discussions', params }) }
+export function getDiscussionById(id) { return request({ method:'GET', url:`/admin/discussions/${id}` }) }
 export function getDiscussionReplies(postId) { return request({ method:'GET', url:'/discussions/comments', params:{postId} }) }
-export function approveDiscussion(id) { return request({ method:'PUT', url:`/discussions/${id}/approve` }) }
-export function rejectDiscussion(id) { return request({ method:'PUT', url:`/discussions/${id}/reject` }) }
-export function deleteDiscussion(id) { return request({ method:'DELETE', url:`/discussions/${id}` }) }
+export function approveDiscussion(id) { return request({ method:'PUT', url:`/admin/discussions/${id}/approve` }) }
+export function rejectDiscussion(id) { return request({ method:'PUT', url:`/admin/discussions/${id}/reject` }) }
+export function deleteDiscussion(id) { return request({ method:'DELETE', url:`/admin/discussions/${id}` }) }

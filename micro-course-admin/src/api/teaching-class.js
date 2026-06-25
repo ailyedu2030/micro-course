@@ -1,4 +1,5 @@
 import request from '../utils/request'
+import { getCourses } from './course'
 
 // 分页
 export function getTeachingClasses(params) {
@@ -45,7 +46,4 @@ export function updateStudentStatus(classId, userId, status) {
   return request({ method: 'PUT', url: `/teaching-classes/${classId}/students/${userId}`, data: { status } })
 }
 
-// 课程列表（教师端选择课程用）
-export function getCourses(params) {
-  return request({ method: 'GET', url: '/courses', params })
-}
+export { getCourses }

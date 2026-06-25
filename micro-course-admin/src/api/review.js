@@ -15,12 +15,9 @@ export function getReviews(params) { return request({ method:'GET', url:'/review
  */
 export function getCourseReviews(courseId, params) { return request({ method:'GET', url:`/courses/${courseId}/reviews`, params }) }
 
-/**
- * 创建课程评价
- * POST /api/courses/{courseId}/reviews
- */
-export function createReview(courseId, data) { return request({ method:'POST', url:`/courses/${courseId}/reviews`, data }) }
-export function getMyReviews(params) { return request({ method:'GET', url:'/reviews/my', params }) }
+// createReview, getMyReviews 由 course-review.js 统一管理，此处重新导出
+export { createReview, getMyReviews } from './course-review'
+
 export function approveReview(id) { return request({ method:'PUT', url:`/reviews/${id}/approve` }) }
 export function rejectReview(id) { return request({ method:'PUT', url:`/reviews/${id}/reject` }) }
 export function deleteReview(id) { return request({ method:'DELETE', url:`/reviews/${id}` }) }

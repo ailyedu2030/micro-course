@@ -50,4 +50,12 @@ public interface EnrollmentService {
      * @return 选课详情VO
      */
     EnrollmentVO getEnrollmentDetail(Long id);
+
+    /**
+     * 查询某课程下所有活跃选课学生的 userId 列表。
+     * 供通知/批量操作使用。
+     * @param courseId 课程 ID
+     * @return userId 列表
+     */
+    List<Long> findActiveUserIdsByCourseId(Long courseId);
 }

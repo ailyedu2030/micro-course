@@ -2,7 +2,7 @@ package com.microcourse.controller;
 
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.service.impl.VideoAccessServiceImpl;
+import com.microcourse.service.VideoAccessService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ import java.nio.file.Paths;
  * 同时代理 .m3u8 和 .ts 分片文件
  */
 @RestController
-@RequestMapping("/api/videos/stream")
+@RequestMapping("/api/video-stream")
 public class VideoStreamController {
 
     private static final Logger log = LoggerFactory.getLogger(VideoStreamController.class);
@@ -34,16 +34,16 @@ public class VideoStreamController {
     @Value("${video.storage-base-dir:/data/videos}")
     private String storageBaseDir;
 
-    private final VideoAccessServiceImpl videoAccessService;
+    private final VideoAccessService videoAccessService;
 
-    public VideoStreamController(VideoAccessServiceImpl videoAccessService) {
+    public VideoStreamController(VideoAccessService videoAccessService) {
         this.videoAccessService = videoAccessService;
     }
 
     /**
      * 流式返回 HLS 文件（.m3u8 / .ts）
      *
-     * 路径格式：/api/videos/stream/{courseId}/{videoId}/{filename}
+     * 路径格式：/api/video-stream/{courseId}/{videoId}/{filename}
      * filename 可以是 index.m3u8 或 segment0.ts 等
      */
     @GetMapping("/{courseId}/{videoId}/{filename}")
@@ -55,7 +55,7 @@ public class VideoStreamController {
 
         // ★ Round 8-1 修复：HLS 流式端点选课校验（仅 STUDENT；先于一切文件处理，未选课直接 403）
         if (SecurityUtil.hasRole("STUDENT")) {
-            VideoAccessServiceImpl.AccessResult access =
+            VideoAccessService.AccessResult access =
                     videoAccessService.checkVideoAccess(SecurityUtil.getCurrentUserId(), courseId);
             if (!access.allowed) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");

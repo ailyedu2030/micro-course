@@ -1,6 +1,10 @@
 package com.microcourse.service;
 
-import com.microcourse.dto.*;
+import com.microcourse.dto.PageResult;
+import com.microcourse.dto.TeachingClassCreateRequest;
+import com.microcourse.dto.TeachingClassStudentVO;
+import com.microcourse.dto.TeachingClassUpdateRequest;
+import com.microcourse.dto.TeachingClassVO;
 
 import java.util.List;
 

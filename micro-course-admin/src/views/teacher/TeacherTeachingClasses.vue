@@ -121,11 +121,7 @@
                           <el-button type="primary" link size="small" @click="handleChangeStatus(cls, row)">
                             修改状态
                           </el-button>
-                          <el-popconfirm title="确定移除该学生？" @confirm="handleRemoveStudent(cls, row)">
-                            <template #reference>
-                              <el-button type="danger" link size="small">移除</el-button>
-                            </template>
-                          </el-popconfirm>
+                          <el-button type="danger" link size="small" @click="handleRemoveStudent(cls, row)">移除</el-button>
                         </template>
                       </el-table-column>
                     </el-table>
@@ -195,7 +191,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, RefreshRight, ArrowRight, ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import {
@@ -443,14 +439,17 @@ async function confirmAddStudent() {
 // 移除学生
 async function handleRemoveStudent(cls, student) {
   try {
+    await ElMessageBox.confirm('确定移除该学生？', '提示', { type: 'warning' })
     await removeStudentFromClass(cls.id, student.id)
     ElMessage.success('移除成功')
     // 清除缓存以便刷新
     delete studentData[cls.id]
     await fetchStudents(cls)
-  } catch (error) {
-    console.error('[TeacherTeachingClasses] 移除学生失败', error)
-    ElMessage.error('移除失败')
+  } catch (e) {
+    if (e !== 'cancel') {
+      console.error('[TeacherTeachingClasses] 移除学生失败', e)
+      ElMessage.error('移除失败')
+    }
   }
 }
 

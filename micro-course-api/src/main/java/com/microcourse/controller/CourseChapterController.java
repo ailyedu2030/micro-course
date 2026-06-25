@@ -1,7 +1,12 @@
 package com.microcourse.controller;
 
 import com.microcourse.audit.AuditedLog;
-import com.microcourse.dto.*;
+import com.microcourse.dto.ChapterCreateRequest;
+import com.microcourse.dto.ChapterSortRequest;
+import com.microcourse.dto.ChapterUpdateRequest;
+import com.microcourse.dto.ChapterVO;
+import com.microcourse.dto.PageResult;
+import com.microcourse.dto.R;
 import com.microcourse.service.CourseChapterService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;

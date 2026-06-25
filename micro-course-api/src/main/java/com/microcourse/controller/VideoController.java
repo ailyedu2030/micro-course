@@ -15,7 +15,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.LearningProgressService;
 import com.microcourse.service.VideoService;
 import com.microcourse.service.VideoTranscodeService;
-import com.microcourse.service.impl.VideoAccessServiceImpl;
+import com.microcourse.service.VideoAccessService;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.VideoSignUtil;
 import jakarta.validation.Valid;
@@ -62,7 +62,7 @@ public class VideoController {
     private final VideoSignUtil videoSignUtil;
     private final Executor videoUploadExecutor;
     private final LearningProgressService learningProgressService;
-    private final VideoAccessServiceImpl videoAccessService;
+    private final VideoAccessService videoAccessService;
 
     /** P1-1: 上传目录从配置注入 */
     @Value("${video.upload-dir:uploads/videos}")
@@ -74,7 +74,7 @@ public class VideoController {
                           @org.springframework.beans.factory.annotation.Qualifier("videoUploadExecutor")
                           Executor videoUploadExecutor,
                           LearningProgressService learningProgressService,
-                          VideoAccessServiceImpl videoAccessService) {
+                          VideoAccessService videoAccessService) {
         this.videoService = videoService;
         this.videoTranscodeService = videoTranscodeService;
         this.videoSignUtil = videoSignUtil;
@@ -352,7 +352,7 @@ public class VideoController {
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
-        VideoAccessServiceImpl.AccessResult result =
+        VideoAccessService.AccessResult result =
                 videoAccessService.checkVideoAccess(SecurityUtil.getCurrentUserId(), video.getCourseId());
         if (!result.allowed) {
             throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
@@ -388,7 +388,7 @@ public class VideoController {
 
         // ★ Round 8-1 修复：选课校验（仅 STUDENT；先于签名校验，未选课直接 403 NOT_ENROLLED）
         if (SecurityUtil.hasRole("STUDENT")) {
-            VideoAccessServiceImpl.AccessResult access =
+            VideoAccessService.AccessResult access =
                     videoAccessService.checkVideoAccess(SecurityUtil.getCurrentUserId(), video.getCourseId());
             if (!access.allowed) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");

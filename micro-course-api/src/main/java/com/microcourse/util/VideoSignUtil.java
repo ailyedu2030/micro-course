@@ -28,7 +28,11 @@ public class VideoSignUtil {
 
     @PostConstruct
     void init() {
-        this.cachedKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalArgumentException("VIDEO_SIGN_SECRET 必须至少 32 字节");
+        }
+        this.cachedKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     /**

@@ -48,7 +48,9 @@ public class OrderController {
     @AuditedLog("创建订单")
     public R<OrderVO> createOrder(@RequestBody Map<String, Long> body) {
         Long userId = SecurityUtil.getCurrentUserId();
-        return R.ok(orderService.createOrder(userId, body.get("courseId"), body.get("bundleId")));
+        return R.ok(orderService.createOrder(userId,
+                body.get("courseId"),
+                body.getOrDefault("bundleId", null)));
     }
 
     @GetMapping("/{id}")

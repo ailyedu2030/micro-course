@@ -38,8 +38,13 @@
           <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增专业</el-button>
         </div>
       </template>
-      <el-skeleton v-if="loading" :rows="5" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无专业数据" :image-size="120" />
+      <el-skeleton v-if="loading" :rows="6" animated />
+      <el-result v-else-if="error" icon="error" title="数据加载失败" sub-title="请稍后重试">
+        <template #extra>
+          <el-button type="primary" @click="fetchData">重试</el-button>
+        </template>
+      </el-result>
+      <el-empty v-else-if="!loading && tableData.length === 0" description="暂无专业数据" :image-size="120" />
       <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="name" label="名称" min-width="150" />
@@ -104,6 +109,7 @@ const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
+const error = ref(false)
 const submitLoading = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
@@ -148,6 +154,7 @@ const fetchDepartments = async () => {
 
 const fetchData = async () => {
   loading.value = true
+  error.value = false
   try {
     const params = {
       page: page.value - 1,
@@ -159,6 +166,7 @@ const fetchData = async () => {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
+    error.value = true
     ElMessage.error('获取专业列表失败')
   } finally {
     loading.value = false

@@ -1,4 +1,4 @@
-package com.microcourse;
+package com.microcourse.fixtures;
 import org.apache.poi.xslf.usermodel.*;
 import java.awt.Color;
 import java.awt.Rectangle;

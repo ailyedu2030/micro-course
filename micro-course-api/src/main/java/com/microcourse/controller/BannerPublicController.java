@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.microcourse.dto.BannerVO;
 import com.microcourse.dto.R;
 import com.microcourse.service.BannerService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +22,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/banners")
+@PreAuthorize("permitAll()")
 public class BannerPublicController {
 
     private final BannerService bannerService;

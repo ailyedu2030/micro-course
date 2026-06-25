@@ -1,4 +1,4 @@
--- V51__fix_orders_bundle_fk.sql
+-- V57__fix_orders_bundle_fk.sql
 -- 修复 V50 bundle_id FK 指向错误的表: courses(id) → course_bundles(id)
 -- 同时为 orders 表增加 version 乐观锁字段
 

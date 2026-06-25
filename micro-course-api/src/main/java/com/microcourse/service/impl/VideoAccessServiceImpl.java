@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.service.VideoAccessService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,7 @@ import org.springframework.stereotype.Service;
  * 依赖通过构造器注入（不使用 @Autowired 字段注入）。</p>
  */
 @Service
-public class VideoAccessServiceImpl {
+public class VideoAccessServiceImpl implements VideoAccessService {
 
     private static final Logger log = LoggerFactory.getLogger(VideoAccessServiceImpl.class);
 
@@ -45,27 +46,28 @@ public class VideoAccessServiceImpl {
      *
      * @param userId   当前登录用户 ID（学生选课校验使用）
      * @param courseId 视频所属课程 ID
-     * @return {@link AccessResult}，包含允许/拒绝及原因
+     * @return {@link VideoAccessService.AccessResult}，包含允许/拒绝及原因
      */
-    public AccessResult checkVideoAccess(Long userId, Long courseId) {
+    @Override
+    public VideoAccessService.AccessResult checkVideoAccess(Long userId, Long courseId) {
         // 1. 管理员 / 教务：始终允许
         if (SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC")) {
-            return AccessResult.allowed("管理员/教务");
+            return VideoAccessService.AccessResult.allowed("管理员/教务");
         }
 
         // 2. 教师：放行（课主级校验由上传/管理链路负责，观看链路不误伤教师）
         if (SecurityUtil.hasRole("TEACHER")) {
-            return AccessResult.allowed("教师");
+            return VideoAccessService.AccessResult.allowed("教师");
         }
 
         // 3. 学生（及其余角色）：必须已选课
         if (isEnrolled(userId, courseId)) {
-            return AccessResult.allowed("已选课");
+            return VideoAccessService.AccessResult.allowed("已选课");
         }
         if (log.isDebugEnabled()) {
             log.debug("[VideoAccess] 拒绝访问：userId={} 未选课 courseId={}", userId, courseId);
         }
-        return AccessResult.denied("请先选课");
+        return VideoAccessService.AccessResult.denied("请先选课");
     }
 
     /**
@@ -74,6 +76,7 @@ public class VideoAccessServiceImpl {
      * <p>有效状态：{@code ENROLLED}（历史在读值）/ {@code APPROVED}（契约在读值）/ {@code COMPLETED}（已完成，允许复习）。
      * 逻辑删除（{@code deleted_at IS NULL}）由实体 {@code @TableLogic} 自动追加，无需手动拼接。</p>
      */
+    @Override
     public boolean isEnrolled(Long userId, Long courseId) {
         if (userId == null || courseId == null) {
             return false;
@@ -88,26 +91,5 @@ public class VideoAccessServiceImpl {
                                 EnrollmentStatus.COMPLETED.getValue())    // "COMPLETED"（允许复习）
         );
         return count != null && count > 0;
-    }
-
-    /**
-     * 访问判定结果（不可变值对象）。
-     */
-    public static class AccessResult {
-        public final boolean allowed;
-        public final String reason;
-
-        private AccessResult(boolean allowed, String reason) {
-            this.allowed = allowed;
-            this.reason = reason;
-        }
-
-        public static AccessResult allowed(String reason) {
-            return new AccessResult(true, reason);
-        }
-
-        public static AccessResult denied(String reason) {
-            return new AccessResult(false, reason);
-        }
     }
 }

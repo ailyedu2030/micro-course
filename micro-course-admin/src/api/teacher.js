@@ -10,7 +10,7 @@ import request from '../utils/request'
  * 响应: { courseCount, studentCount, pendingHomework, pendingQuestions }
  */
 export function getStats() {
-  return request({ method: 'GET', url: '/teacher/stats' })
+  return request({ method: 'GET', url: '/teachers/stats' })
 }
 
 /**
@@ -19,7 +19,7 @@ export function getStats() {
  * 响应: [{ date, studyMinutes, completionRate }]
  */
 export function getStudentActivity(days = 7) {
-  return request({ method: 'GET', url: '/teacher/student-activity', params: { days } })
+  return request({ method: 'GET', url: '/teachers/student-activity', params: { days } })
 }
 
 /**
@@ -28,7 +28,7 @@ export function getStudentActivity(days = 7) {
  * 响应: [{ id, type, title, createdAt }]
  */
 export function getPendingTasks(size = 5) {
-  return request({ method: 'GET', url: '/teacher/pending-tasks', params: { size } })
+  return request({ method: 'GET', url: '/teachers/pending-tasks', params: { size } })
 }
 
 /**
@@ -37,7 +37,7 @@ export function getPendingTasks(size = 5) {
  * 响应: [{ id, title, content, createdAt }]
  */
 export function getNotifications(size = 5) {
-  return request({ method: 'GET', url: '/teacher/notifications', params: { size } })
+  return request({ method: 'GET', url: '/teachers/notifications', params: { size } })
 }
 
 /**
@@ -46,5 +46,5 @@ export function getNotifications(size = 5) {
  * 响应: { items: [{ id, title, cover, studentCount, rating, status }] }
  */
 export function getMyCourses() {
-  return request({ method: 'GET', url: '/teacher/courses', params: { page: 0, size: 999 } })
+  return request({ method: 'GET', url: '/teachers/courses', params: { page: 0, size: 999 } })
 }
