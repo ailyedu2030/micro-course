@@ -363,13 +363,35 @@ jobs:
           sudo apt-get install -y postgresql-client redis-tools
 
       - name: Setup PostgreSQL service
-        uses: harmonips/postgres-setup-action@v1
-        with:
-          username: postgres
-          password: postgres
+        run: |
+          docker run -d --name pg-dryrun \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=micro_course \
+            -p 5432:5432 \
+            postgres:17
+          # 等待 PG ready
+          for i in {1..30}; do
+            if PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -c 'SELECT 1' >/dev/null 2>&1; then
+              echo "PostgreSQL ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
 
       - name: Setup Redis service
-        uses: ashleysgurung/redis-setup-action@v1
+        run: |
+          docker run -d --name redis-dryrun \
+            -p 6379:6379 \
+            redis:7
+          # 等待 Redis ready
+          for i in {1..30}; do
+            if redis-cli ping >/dev/null 2>&1; then
+              echo "Redis ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
 
       - name: Start backend
         run: |
