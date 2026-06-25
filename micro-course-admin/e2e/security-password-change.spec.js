@@ -32,7 +32,7 @@ function resetPassword() {
   const path = '/tmp/microcourse-reset-pwd.sql';
   writeFileSync(path, sql);
   try {
-    execSync(`PGPASSWORD="" psql -h localhost -U postgres -d micro_course -f ${path}`, {
+    execSync(`PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -f ${path}`, {
       stdio: 'ignore'
     });
   } catch (e) {
