@@ -411,8 +411,8 @@ test.describe('Enrollment State Machine Behavior', () => {
     const cid = (await c.json()).data.id
     // 加章节+视频 (满足提交要求)
     try {
-      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO course_chapters (course_id, title, sort_order, chapter_type, created_at, updated_at) VALUES (${cid}, 'Ch', 99, 'VIDEO', NOW(), NOW())"`)
-      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO videos (course_id, chapter_id, title, status, created_at, updated_at) VALUES (${cid}, (SELECT id FROM course_chapters WHERE course_id=${cid} LIMIT 1), 'L', 2, NOW(), NOW())"`)
+      execSync(`PGPASSWORD=postgres psql -U postgres -h localhost micro_course -c "INSERT INTO course_chapters (course_id, title, sort_order, chapter_type, created_at, updated_at) VALUES (${cid}, 'Ch', 99, 'VIDEO', NOW(), NOW())"`)
+      execSync(`PGPASSWORD=postgres psql -U postgres -h localhost micro_course -c "INSERT INTO videos (course_id, chapter_id, title, status, created_at, updated_at) VALUES (${cid}, (SELECT id FROM course_chapters WHERE course_id=${cid} LIMIT 1), 'L', 2, NOW(), NOW())"`)
     } catch (e) { /* chapter 99 may already exist */ }
     // 提交/审核/发布
     await page.request.post(`${API}/api/courses/${cid}/submit`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
@@ -542,8 +542,8 @@ test.describe('Order & TeachingClass State Machine', () => {
     const cid = (await c.json()).data.id
     // 通过 PSQL 命令行添加章节+视频
     try {
-      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO course_chapters (course_id, title, sort_order, chapter_type, created_at, updated_at) VALUES (${cid}, 'Ch', 99, 'VIDEO', NOW(), NOW())"`)
-      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO videos (course_id, chapter_id, title, status, created_at, updated_at) VALUES (${cid}, (SELECT id FROM course_chapters WHERE course_id=${cid} LIMIT 1), 'L', 2, NOW(), NOW())"`)
+      execSync(`PGPASSWORD=postgres psql -U postgres -h localhost micro_course -c "INSERT INTO course_chapters (course_id, title, sort_order, chapter_type, created_at, updated_at) VALUES (${cid}, 'Ch', 99, 'VIDEO', NOW(), NOW())"`)
+      execSync(`PGPASSWORD=postgres psql -U postgres -h localhost micro_course -c "INSERT INTO videos (course_id, chapter_id, title, status, created_at, updated_at) VALUES (${cid}, (SELECT id FROM course_chapters WHERE course_id=${cid} LIMIT 1), 'L', 2, NOW(), NOW())"`)
     } catch (e) { /* chapter 99 may already exist */ }
     await page.request.post(`${API}/api/courses/${cid}/submit`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
     await page.request.post(`${API}/api/courses/${cid}/approve`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
@@ -651,8 +651,8 @@ test.describe('Order & TeachingClass State Machine', () => {
     const cid = (await c.json()).data.id
     // 加章节 + 视频 (提交要求至少一个章节 + 一个视频)
     try {
-      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO course_chapters (course_id, title, sort_order, chapter_type, created_at, updated_at) VALUES (${cid}, 'Ch', 99, 'VIDEO', NOW(), NOW())"`)
-      execSync(`PGPASSWORD= psql -U postgres -h localhost micro_course -c "INSERT INTO videos (course_id, chapter_id, title, status, created_at, updated_at) VALUES (${cid}, (SELECT id FROM course_chapters WHERE course_id=${cid} LIMIT 1), 'L', 2, NOW(), NOW())"`)
+      execSync(`PGPASSWORD=postgres psql -U postgres -h localhost micro_course -c "INSERT INTO course_chapters (course_id, title, sort_order, chapter_type, created_at, updated_at) VALUES (${cid}, 'Ch', 99, 'VIDEO', NOW(), NOW())"`)
+      execSync(`PGPASSWORD=postgres psql -U postgres -h localhost micro_course -c "INSERT INTO videos (course_id, chapter_id, title, status, created_at, updated_at) VALUES (${cid}, (SELECT id FROM course_chapters WHERE course_id=${cid} LIMIT 1), 'L', 2, NOW(), NOW())"`)
     } catch (e) { /* ignore */ }
     // 提交/审核/发布
     await page.request.post(`${API}/api/courses/${cid}/submit`, { headers: { 'Authorization': `Bearer ${adminToken}` } })
