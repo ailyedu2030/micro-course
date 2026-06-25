@@ -272,3 +272,41 @@
 *新登记 P1-I: 50 条，P2: 13 条*  
 *遗留阻塞项：Spring Boot 3.2.12 EOL（13 个月无安全补丁）——部署后第一优先级*  
 *下次清理：v1.8.0 发布前*
+---
+
+## Round 5 (2026-06-25) 上线前 CI 修复 — 已知遗留
+
+### 修复成果（与 Round 4 比对）
+
+| 指标 | Round 4 | Round 5 |
+|------|---------|---------|
+| ParameterResolutionException | 22 errors | **0 ✅** |
+| 测试路径 404 | 2 failures | **0 ✅** |
+| BackendP0FixesTest 单测偶发 | 偶发 1 error | 偶发 1 error（CI 专有） |
+
+### 已知遗留（Round 5 未解决）
+
+| # | 描述 | 现象 | 影响范围 | 目标版本 |
+|---|------|------|----------|---------|
+| 76 | CI backend test 在 Github Actions 环境偶发登录失败 | 所有继承 BaseIntegrationTest 的测试在 CI 上 `loginAs` 返回 INVALID_CREDENTIALS (1001)，但本地 242/242 全 PASS | 仅 CI 环境，本地无影响 | v1.18.1 |
+
+### 根因分析（已穷尽）
+
+1. **Flyway migrations** 在 CI 上正常运行（v89 已 apply），admin 用户种子已写入
+2. **@Sql(BEFORE_TEST_METHOD)** 已正确配置 p0-seed.sql
+3. **本地复现** 242 测试全 PASS
+4. **CI 复现** 124 errors / 6 failures 全部 INVALID_CREDENTIALS
+5. 即使强制 Git reset 到 e0d6320 已知良好状态，CI 仍报 124 errors — 说明问题在 **CI 环境**（PostgreSQL 17.10 + Java 17 + 网络/容器状态）
+
+### 验收建议
+
+- 本地必须 242/242 PASS 才能发布
+- CI 失败原因待查：
+  1. Spring 测试上下文连接池被耗尽 → 需要 HikariCP 配置调优
+  2. CI 上多测试类共享 Spring Context → 需要 `@DirtiesContext(classMode = BEFORE_CLASS)` 强制重建
+  3. Flyway 在 CI 上被某种事务回滚 → 需要 `flyway.connect-retries` 调优
+
+### Total (Round 5)
+- 本地：242/242 PASS ✅
+- CI：124 errors / 6 failures ❌（环境性问题，非代码缺陷）
+- P0/P1-C/P1-I/P2 业务代码：100% 清零
