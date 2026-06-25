@@ -143,7 +143,7 @@ class VideoAccessControlTest extends BaseIntegrationTest {
     void studentNotEnrolledCannotStreamVideo() throws Exception {
         long videoId = insertVideo(2, 5); // course 2，未选
         // stream 端点选课校验位于路径/文件处理之前：未选课直接 403，不泄露文件是否存在
-        mockMvc.perform(get("/api/videos/stream/2/" + videoId + "/index.m3u8")
+        mockMvc.perform(get("/api/video-stream/2/" + videoId + "/index.m3u8")
                         .header("Authorization", studentToken()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(8005));

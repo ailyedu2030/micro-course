@@ -400,7 +400,7 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
     @Order(11)
     @DisplayName("11·教师查看自己的统计 → 200")
     void shouldAllowTeacherToViewOwnStats() throws Exception {
-        mockMvc.perform(get("/api/teacher/stats")
+        mockMvc.perform(get("/api/teachers/stats")
                         .header("Authorization", teacherBearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
