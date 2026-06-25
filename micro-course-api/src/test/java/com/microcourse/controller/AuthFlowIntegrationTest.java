@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Phase B-3 · 链路 1 · 登录鉴权集成测试（10 用例）。
@@ -48,15 +49,12 @@ class AuthFlowIntegrationTest extends BaseIntegrationTest {
     private static final String BCRYPT_STUDENT123 =
             "$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK";
 
-    private final JdbcTemplate jdbc;
-    private final JwtUtil jwtUtil;
-    private final RedisUtil redisUtil;
-
-    public AuthFlowIntegrationTest(JdbcTemplate jdbc, JwtUtil jwtUtil, RedisUtil redisUtil) {
-        this.jdbc = jdbc;
-        this.jwtUtil = jwtUtil;
-        this.redisUtil = redisUtil;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private JwtUtil jwtUtil;
+    @Autowired
+    private RedisUtil redisUtil;
 
     @Value("${jwt.secret}")
     private String jwtSecret;

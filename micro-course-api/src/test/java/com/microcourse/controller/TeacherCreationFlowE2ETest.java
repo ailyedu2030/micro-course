@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import org.springframework.mock.web.MockMultipartFile;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 教师完整创作流 E2E 测试（Round 10-2）。
@@ -75,15 +76,12 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
     private static final String P0_TEACHER_USERNAME = "p0_teacher";
     private static final String P0_TEACHER_PASSWORD = "student123";
 
-    private final JdbcTemplate jdbc;
-    private final JwtUtil jwtUtil;
-    private final ObjectMapper objectMapper;
-
-    TeacherCreationFlowE2ETest(JdbcTemplate jdbc, JwtUtil jwtUtil, ObjectMapper objectMapper) {
-        this.jdbc = jdbc;
-        this.jwtUtil = jwtUtil;
-        this.objectMapper = objectMapper;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private JwtUtil jwtUtil;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     // 定向清理跟踪表（FK 反向删除，幂等、不污染其它测试）
     private final List<Long> createdExerciseIds = new ArrayList<>();

@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Phase B-2 (P0-7) 通知矩阵接线集成测试（需 DB）。
@@ -46,24 +47,18 @@ class NotificationTriggerTest extends BaseIntegrationTest {
 
     private static final AtomicLong SEQ = new AtomicLong(System.nanoTime());
 
-    private final JdbcTemplate jdbcTemplate;
-    private final EnrollmentService enrollmentService;
-    private final CourseService courseService;
-    private final NotificationService notificationService;
-    private final NotificationRepository notificationRepository;
-    private final EnrollmentRepository enrollmentRepository;
-
-    public NotificationTriggerTest(JdbcTemplate jdbcTemplate, EnrollmentService enrollmentService,
-                                    CourseService courseService, NotificationService notificationService,
-                                    NotificationRepository notificationRepository,
-                                    EnrollmentRepository enrollmentRepository) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.enrollmentService = enrollmentService;
-        this.courseService = courseService;
-        this.notificationService = notificationService;
-        this.notificationRepository = notificationRepository;
-        this.enrollmentRepository = enrollmentRepository;
-    }
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private EnrollmentService enrollmentService;
+    @Autowired
+    private CourseService courseService;
+    @Autowired
+    private NotificationService notificationService;
+    @Autowired
+    private NotificationRepository notificationRepository;
+    @Autowired
+    private EnrollmentRepository enrollmentRepository;
 
     // --------- helpers ---------
 

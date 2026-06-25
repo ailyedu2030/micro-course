@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Phase B-3 · 链路 3 · 视频学习集成测试（6 用例）。
@@ -44,13 +45,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class VideoLearningFlowIntegrationTest extends BaseIntegrationTest {
 
-    private final JdbcTemplate jdbc;
-    private final JwtUtil jwtUtil;
-
-    VideoLearningFlowIntegrationTest(JdbcTemplate jdbc, JwtUtil jwtUtil) {
-        this.jdbc = jdbc;
-        this.jwtUtil = jwtUtil;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private JwtUtil jwtUtil;
 
     private final List<Long> createdVideoIds = new ArrayList<>();
     private final List<Long> createdUserIds = new ArrayList<>();

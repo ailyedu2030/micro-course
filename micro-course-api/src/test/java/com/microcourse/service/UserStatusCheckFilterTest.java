@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 8-2 商业致命 P0 修复测试：被禁用/删除用户的 JWT 在生命周期内不再有效。
@@ -53,17 +54,14 @@ class UserStatusCheckFilterTest extends BaseIntegrationTest {
 
     private static final AtomicLong SEQ = new AtomicLong(System.nanoTime());
 
-    private final JdbcTemplate jdbcTemplate;
-    private final JwtUtil jwtUtil;
-    private final RedisUtil redisUtil;
-    private final UserService userService;
-
-    UserStatusCheckFilterTest(JdbcTemplate jdbcTemplate, JwtUtil jwtUtil, RedisUtil redisUtil, UserService userService) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.jwtUtil = jwtUtil;
-        this.redisUtil = redisUtil;
-        this.userService = userService;
-    }
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private JwtUtil jwtUtil;
+    @Autowired
+    private RedisUtil redisUtil;
+    @Autowired
+    private UserService userService;
 
     /** 本类内旁路插入的测试用户 ID，@AfterEach 统一物理清理，避免污染共享种子库。 */
     private final List<Long> createdUserIds = new ArrayList<>();

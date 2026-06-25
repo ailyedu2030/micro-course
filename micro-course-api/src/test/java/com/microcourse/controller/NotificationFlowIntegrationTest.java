@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Phase B-3 · 链路 5 · 通知接收集成测试（6 用例）。
@@ -35,11 +36,8 @@ class NotificationFlowIntegrationTest extends BaseIntegrationTest {
     private static final long STUDENT_ID = 7L; // p0-seed student
     private static final long TEACHER_ID = 6L; // p0-seed p0_teacher
 
-    private final JdbcTemplate jdbc;
-
-    public NotificationFlowIntegrationTest(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private final List<Long> createdNotificationIds = new ArrayList<>();
 

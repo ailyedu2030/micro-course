@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 6 教学班状态机集成测试（需 DB）。
@@ -28,13 +29,10 @@ class TeachingClassStatusMachineTest extends BaseIntegrationTest {
 
     private static final AtomicLong SEQ = new AtomicLong(System.nanoTime());
 
-    private final JdbcTemplate jdbcTemplate;
-    private final TeachingClassService teachingClassService;
-
-    public TeachingClassStatusMachineTest(JdbcTemplate jdbcTemplate, TeachingClassService teachingClassService) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.teachingClassService = teachingClassService;
-    }
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private TeachingClassService teachingClassService;
 
     // --------- helpers ---------
 

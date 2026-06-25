@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * P0-2 选课状态机集成测试（需 DB）。
@@ -36,19 +37,14 @@ class EnrollmentStatusMachineTest extends BaseIntegrationTest {
 
     private static final AtomicLong SEQ = new AtomicLong(System.nanoTime());
 
-    private final JdbcTemplate jdbcTemplate;
-    private final EnrollmentService enrollmentService;
-    private final EnrollmentRepository enrollmentRepository;
-    private final EnrollmentHistoryRepository enrollmentHistoryRepository;
-
-    public EnrollmentStatusMachineTest(JdbcTemplate jdbcTemplate, EnrollmentService enrollmentService,
-                                        EnrollmentRepository enrollmentRepository,
-                                        EnrollmentHistoryRepository enrollmentHistoryRepository) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.enrollmentService = enrollmentService;
-        this.enrollmentRepository = enrollmentRepository;
-        this.enrollmentHistoryRepository = enrollmentHistoryRepository;
-    }
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private EnrollmentService enrollmentService;
+    @Autowired
+    private EnrollmentRepository enrollmentRepository;
+    @Autowired
+    private EnrollmentHistoryRepository enrollmentHistoryRepository;
 
     // --------- helpers ---------
 

@@ -29,6 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Phase B-3 · 链路 2 · 选课流程集成测试（8 用例）。
@@ -45,13 +46,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class EnrollmentFlowIntegrationTest extends BaseIntegrationTest {
 
-    private final JdbcTemplate jdbc;
-    private final JwtUtil jwtUtil;
-
-    EnrollmentFlowIntegrationTest(JdbcTemplate jdbc, JwtUtil jwtUtil) {
-        this.jdbc = jdbc;
-        this.jwtUtil = jwtUtil;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private JwtUtil jwtUtil;
 
     private final List<Long> createdUserIds = new ArrayList<>();
     private final List<Long> createdCourseIds = new ArrayList<>();

@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 6 用户状态机集成测试（需 DB）。
@@ -29,13 +30,10 @@ class UserStatusMachineTest extends BaseIntegrationTest {
 
     private static final AtomicLong SEQ = new AtomicLong(System.nanoTime());
 
-    private final JdbcTemplate jdbcTemplate;
-    private final UserService userService;
-
-    public UserStatusMachineTest(JdbcTemplate jdbcTemplate, UserService userService) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.userService = userService;
-    }
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private UserService userService;
 
     // --------- helpers ---------
 

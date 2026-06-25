@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 学生完整学习流 E2E 测试（Round 10-3）。
@@ -72,13 +73,10 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
     /** p0-seed 中 teacher 主键，作为自建课程/题目的 owner */
     private static final long TEACHER_ID = 6L;
 
-    private final JdbcTemplate jdbc;
-    private final JwtUtil jwtUtil;
-
-    StudentLearningFlowE2ETest(JdbcTemplate jdbc, JwtUtil jwtUtil) {
-        this.jdbc = jdbc;
-        this.jwtUtil = jwtUtil;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private JwtUtil jwtUtil;
 
     private final List<Long> createdVideoIds = new ArrayList<>();
     private final List<Long> createdCourseIds = new ArrayList<>();

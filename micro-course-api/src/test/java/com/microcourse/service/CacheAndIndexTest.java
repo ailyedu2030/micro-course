@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 9-2 · 缓存层验证（课程详情 / 课程统计 Redis 缓存 + 一致性 + 降级）。
@@ -39,15 +40,12 @@ class CacheAndIndexTest extends BaseIntegrationTest {
     private static final String COURSE_CACHE_PREFIX = "mc:course:detail:";
     private static final String COURSE_STATS_CACHE_PREFIX = "mc:course:stats:";
 
-    private final JdbcTemplate jdbc;
-    private final CourseService courseService;
-    private final RedisUtil redisUtil;
-
-    CacheAndIndexTest(JdbcTemplate jdbc, CourseService courseService, RedisUtil redisUtil) {
-        this.jdbc = jdbc;
-        this.courseService = courseService;
-        this.redisUtil = redisUtil;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private CourseService courseService;
+    @Autowired
+    private RedisUtil redisUtil;
 
     private final List<Long> createdUserIds = new ArrayList<>();
     private final List<Long> createdCourseIds = new ArrayList<>();

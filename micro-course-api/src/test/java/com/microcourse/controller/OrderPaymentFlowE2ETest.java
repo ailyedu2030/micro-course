@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 订单支付全链路 E2E 测试（Round 10-1 · 财务最高风险路径回归保护）。
@@ -67,13 +68,10 @@ class OrderPaymentFlowE2ETest extends BaseIntegrationTest {
     private static final String OCCUPYING_BCRYPT =
             "$2b$12$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuv"; // 占位哈希：本类全程用 JWT 直签，不走密码登录
 
-    private final JdbcTemplate jdbc;
-    private final JwtUtil jwtUtil;
-
-    OrderPaymentFlowE2ETest(JdbcTemplate jdbc, JwtUtil jwtUtil) {
-        this.jdbc = jdbc;
-        this.jwtUtil = jwtUtil;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private JwtUtil jwtUtil;
 
     private final List<Long> createdUserIds = new ArrayList<>();
     private final List<Long> createdCourseIds = new ArrayList<>();

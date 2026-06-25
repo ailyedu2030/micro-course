@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 9-3 · 边界 case + 输入验证（5 用例）。
@@ -37,11 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class BoundaryValidationTest extends BaseIntegrationTest {
 
-    private final JdbcTemplate jdbc;
-
-    BoundaryValidationTest(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private final List<Long> createdQuestionIds = new ArrayList<>();
     private final List<Long> createdExerciseIds = new ArrayList<>();

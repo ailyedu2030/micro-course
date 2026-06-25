@@ -41,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 8-4 · 4 个后端 P0 修复回归测试。
@@ -62,23 +63,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class BackendP0FixesTest extends BaseIntegrationTest {
 
-    private final LearningProgressService learningProgressService;
-    private final ExerciseRecordService exerciseRecordService;
-    private final EnrollmentService enrollmentService;
-    private final CourseRepository courseRepository;
-    private final DataSource dataSource;
-
-    BackendP0FixesTest(LearningProgressService learningProgressService,
-                       ExerciseRecordService exerciseRecordService,
-                       EnrollmentService enrollmentService,
-                       CourseRepository courseRepository,
-                       DataSource dataSource) {
-        this.learningProgressService = learningProgressService;
-        this.exerciseRecordService = exerciseRecordService;
-        this.enrollmentService = enrollmentService;
-        this.courseRepository = courseRepository;
-        this.dataSource = dataSource;
-    }
+    @Autowired
+    private LearningProgressService learningProgressService;
+    @Autowired
+    private ExerciseRecordService exerciseRecordService;
+    @Autowired
+    private EnrollmentService enrollmentService;
+    @Autowired
+    private CourseRepository courseRepository;
+    @Autowired
+    private DataSource dataSource;
 
     // ====================================================================
     // 任务 1 · TEACHER 课程列表隔离

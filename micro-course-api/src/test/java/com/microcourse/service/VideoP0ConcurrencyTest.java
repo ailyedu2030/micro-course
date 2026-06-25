@@ -12,6 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * P0 finding CON-002 回归测试:视频转码并发双 ffmpeg 防护。
@@ -32,11 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("quarantine")
 class VideoP0ConcurrencyTest extends BaseIntegrationTest {
 
-    private final VideoRepository videoRepository;
-
-    public VideoP0ConcurrencyTest(VideoRepository videoRepository) {
-        this.videoRepository = videoRepository;
-    }
+    @Autowired
+    private VideoRepository videoRepository;
 
     @Test
     @DisplayName("RED→GREEN: 并发两次 transcode 同一 videoId,只有一次真正进入 ffmpeg")

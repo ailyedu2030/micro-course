@@ -14,6 +14,7 @@ import java.util.List;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 8-1 · 视频访问选课控制集成测试（商业致命 P0 修复回归）。
@@ -29,11 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class VideoAccessControlTest extends BaseIntegrationTest {
 
-    private final JdbcTemplate jdbc;
-
-    public VideoAccessControlTest(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private final List<Long> createdVideoIds = new ArrayList<>();
 

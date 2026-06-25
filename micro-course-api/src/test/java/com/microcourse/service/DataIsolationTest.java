@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 11-1 数据隔离深度加强 —— 隐私脱敏 + 跨角色边界 回归测试。
@@ -55,13 +56,10 @@ class DataIsolationTest extends BaseIntegrationTest {
     private static final String MASKED_PHONE = "138****5678";
     private static final String MASKED_EMAIL = "i***@example.com";
 
-    private final JdbcTemplate jdbc;
-    private final RedisUtil redisUtil;
-
-    public DataIsolationTest(JdbcTemplate jdbc, RedisUtil redisUtil) {
-        this.jdbc = jdbc;
-        this.redisUtil = redisUtil;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private RedisUtil redisUtil;
 
     /**
      * 清除本类所用种子账号的登录失败计数（login:lock:*）。

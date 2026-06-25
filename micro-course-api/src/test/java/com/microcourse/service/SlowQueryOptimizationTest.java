@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 11-2 · 慢 SQL 深度优化验证。
@@ -47,18 +48,14 @@ import static org.mockito.Mockito.verify;
 @DisplayName("Round11-2 慢SQL优化")
 class SlowQueryOptimizationTest extends BaseIntegrationTest {
 
-    private final JdbcTemplate jdbc;
-    private final EnrollmentService enrollmentService;
-    private final TeacherService teacherService;
-    private final ExerciseService exerciseService;
-
-    public SlowQueryOptimizationTest(JdbcTemplate jdbc, EnrollmentService enrollmentService,
-                                      TeacherService teacherService, ExerciseService exerciseService) {
-        this.jdbc = jdbc;
-        this.enrollmentService = enrollmentService;
-        this.teacherService = teacherService;
-        this.exerciseService = exerciseService;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private EnrollmentService enrollmentService;
+    @Autowired
+    private TeacherService teacherService;
+    @Autowired
+    private ExerciseService exerciseService;
 
     @SpyBean
     private EnrollmentRepository enrollmentRepository;

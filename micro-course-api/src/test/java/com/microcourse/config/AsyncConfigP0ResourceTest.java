@@ -14,6 +14,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * P0 finding RES-001 + RES-002 回归测试:@Async 必须用有界线程池。
@@ -28,14 +29,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("RES-001/RES-002 异步线程池边界")
 class AsyncConfigP0ResourceTest extends BaseIntegrationTest {
 
-    private final ApplicationContext applicationContext;
-    private final Executor videoUploadExecutor;
-
-    public AsyncConfigP0ResourceTest(ApplicationContext applicationContext,
-                                      @Qualifier("videoUploadExecutor") Executor videoUploadExecutor) {
-        this.applicationContext = applicationContext;
-        this.videoUploadExecutor = videoUploadExecutor;
-    }
+    @Autowired
+    private ApplicationContext applicationContext;
+    @Autowired
+    @Qualifier("videoUploadExecutor")
+    private Executor videoUploadExecutor;
 
     @Test
     @DisplayName("GREEN: videoUploadExecutor 是 ThreadPoolTaskExecutor,有边界")

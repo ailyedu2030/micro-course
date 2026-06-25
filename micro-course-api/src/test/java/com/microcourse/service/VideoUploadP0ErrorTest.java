@@ -15,6 +15,7 @@ import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * P0 finding ERR-001 回归测试:异步文件传输失败必须 log + 更新状态为 FAILED。
@@ -34,11 +35,8 @@ import static org.mockito.Mockito.*;
 @Tag("quarantine")
 class VideoUploadP0ErrorTest extends BaseIntegrationTest {
 
-    private final VideoRepository videoRepository;
-
-    public VideoUploadP0ErrorTest(VideoRepository videoRepository) {
-        this.videoRepository = videoRepository;
-    }
+    @Autowired
+    private VideoRepository videoRepository;
 
     @Test
     @DisplayName("GREEN: VideoService 暴露 updateStatus 接口,FAILED=3 状态可写入")

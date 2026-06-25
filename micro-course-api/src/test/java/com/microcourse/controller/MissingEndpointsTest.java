@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 5-3 (P1-10) 剩余缺失端点补齐 —— 安全 + 可用性测试。
@@ -40,11 +41,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 public class MissingEndpointsTest extends BaseIntegrationTest {
 
-    private final JdbcTemplate jdbc;
-
-    public MissingEndpointsTest(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
 
     // ---------------- 正向：ADMIN 允许，期望非 5xx 且非 403 ----------------
 

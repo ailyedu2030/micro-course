@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 11-4 · 安全深度强化集成测试。
@@ -36,11 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("Round 11-4 安全深度强化")
 class SecurityHardeningTest extends BaseIntegrationTest {
 
-    private final RedisUtil redisUtil;
-
-    public SecurityHardeningTest(RedisUtil redisUtil) {
-        this.redisUtil = redisUtil;
-    }
+    @Autowired
+    private RedisUtil redisUtil;
 
     // ---------------- 1 · 登录限流 ----------------
     @Test

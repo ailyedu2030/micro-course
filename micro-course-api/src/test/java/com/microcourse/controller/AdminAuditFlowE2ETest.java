@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 管理员审核流 E2E 测试（Round 10-4）
@@ -55,11 +56,8 @@ class AdminAuditFlowE2ETest extends BaseIntegrationTest {
     /** p0-seed 课程分类（courses.category_id 的 NOT NULL FK）。 */
     private static final long CATEGORY_ID = 1L;
 
-    private final JdbcTemplate jdbc;
-
-    public AdminAuditFlowE2ETest(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
-    }
+    @Autowired
+    private JdbcTemplate jdbc;
 
     /** 本类测试期间动态创建的课程 ID，用于 @AfterEach 定向清理（含其审核日志与衍生通知）。 */
     private final List<Long> createdCourseIds = new ArrayList<>();
