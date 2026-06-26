@@ -991,19 +991,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 courseId, next.getUserId(), next.getId());
     }
 
-    /**
-     * 客户体验修复 v1.7.0: 软删除旧 CANCELLED enrollment (REQUIRES_NEW 独立事务)
-     * <p>原因: 在 enroll() 主事务中删除旧记录, 如果后续 atomicInsertIfCapacity 失败,
-     * 整个事务回滚, 软删除也被撤销, 导致 partial unique 索引继续阻挡新插入。
-     * 拆为独立事务, 保证删除了就是删除了, 主事务失败不会回滚这次删除。</p>
-     */
-    @org.springframework.transaction.annotation.Transactional(
-            propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW,
-            rollbackFor = Exception.class)
-    public int softDeleteCancelledEnrollment(Long enrollmentId) {
-        return enrollmentRepository.deleteById(enrollmentId);
-    }
-
     private void recordHistory(Long enrollmentId, EnrollmentStatus fromStatus,
                                EnrollmentStatus toStatus, Long operatorId, String reason) {
         EnrollmentHistory history = new EnrollmentHistory();

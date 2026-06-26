@@ -1108,32 +1108,6 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                 "您已成为微专业负责人", "您已被指定为微专业《" + ms.getTitle() + "》新负责人", msId);
     }
 
-    // ====== 置顶（委托 FeaturedService） ======
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void applyFeatured(Long msId, String reason) {
-        featuredService.applyFeatured(msId, reason);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void approveFeatured(Long msId) {
-        featuredService.approveFeatured(msId);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void rejectFeatured(Long msId, String reason) {
-        featuredService.rejectFeatured(msId, reason);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void unsetFeatured(Long msId) {
-        featuredService.unsetFeatured(msId);
-    }
-
     // ====== 角色鉴权（§9.12） ======
 
     @Override
