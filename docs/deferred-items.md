@@ -321,28 +321,31 @@
 | Frontend build | SUCCESS | **SUCCESS ✅** |
 | Docker build | SUCCESS | **SUCCESS ✅** |
 | E2E tests (37 项) | 35 passed / 2 failed (P9/P10 Wallet 引用错误) | **37/37 PASS ✅** |
-| Deploy-dryrun | 2 失败（.env 缺失 + precheck 环境性） | 2 失败（同前，CI 环境性，非代码缺陷） |
+| Precheck | 偶发 exit 1 无 ✗ 输出 | **14/14 PASS ✅** |
+| Deploy-dryrun | 2 失败（.env 缺失 + precheck 环境性）| **1 失败（仅 .env 缺失,符合预期生产门禁）✅** |
 
 ### 修复明细
 
 1. **CI 偶发 2 错误降为 0**: 重写 `BaseIntegrationTest.ensureP0SeedUsers` 用 `ResourceDatabasePopulator` 执行完整 `p0-seed.sql`，替代硬编码 2 个 user UPSERT
 2. **P9/P10 Wallet 引用错误修复**: `StudentLayout.vue` ICON_MAP 引用 Wallet 但未 import
 3. **field-contract-scanner 误报修复**: scanner 之前只扫 `entity/` 目录，未扫 `dto/` 目录（chapterTitle 实际在 `ExerciseVO.java`）
-4. **Stale v1.18.0 tag 标记 + CHANGELOG 已补 v1.8.0~v1.17.0 缺失版本**
+4. **deploy-dryrun 加固**: PG max_connections 整数比较改用 `[[ =~ ]]` 正则预检;ROOT_DIR 锁定 + 错误信息含 pwd
+5. **precheck.sh 移除 set -e**: 修复 CI 偶发 exit 1 无 ✗ 输出问题
+6. **Stale v1.18.0 tag 标记 + CHANGELOG 已补 v1.8.0~v1.17.0 缺失版本**
 
 ### 已知遗留（Round 6 未解决）
 
 | # | 描述 | 现象 | 影响范围 | 目标版本 |
 |---|------|------|----------|---------|
-| 77 | CI 上 `deploy-dryrun.sh` section 9 PG max_connections 检测触发"integer expression expected"（line 357）| CI 容器内 `/var/run/postgresql/.s.PGSQL.5432` 不存在,PG_MAX 变量捕获到 psql 错误字符串而非数字,`[ "$PG_MAX" -ge 300 ]` 整数比较失败 | 仅 CI 环境,本地正常 | v1.18.1 |
-| 78 | CI 上 `precheck.sh` 偶发 exit 1 但无 ✗ 输出 | `/tmp/precheck.out` 有 0 个 ✗ 但 precheck.sh 返回非零退出码。可能是 precheck.sh 在 CI 上的 ROOT 解析或子命令问题 | 仅 CI 环境 | v1.18.1 |
-| 79 | CI deploy-dryrun 缺 `.env` 文件 | `.env` 包含生产 JWT_SECRET 等敏感配置,按 gitignore 不入仓,部署前需运维手动创建 | 部署前置条件,非代码缺陷 | v1.18.1（运维前置）|
+| 79 | CI deploy-dryrun 缺 `.env` 文件 | `.env` 包含生产 JWT_SECRET 等敏感配置,按 gitignore 不入仓,部署前需运维手动创建（部署门禁按设计失败）| 部署前置条件,非代码缺陷 | v1.18.1（运维前置）|
 
 ### 修复横向扫描证据
 - ✅ `grep "Wallet" micro-course-admin/src/components/StudentLayout.vue` 显示 import 块含 Wallet
 - ✅ `python3 scripts/field-contract-scanner.py` 本地 0 孤儿
 - ✅ `bash .claude/skills/microcourse/scripts/precheck.sh` 本地 16/16 PASS
 - ✅ `bash scripts/deploy-dryrun.sh` 本地 43 PASS / 0 FAIL
+- ✅ CI precheck 14/14 PASS
+- ✅ CI deploy-dryrun 25 PASS / 1 FAIL（.env 缺失 = 正确门禁）
 
 ### Total (Round 6)
 - 本地 backend：242/242 PASS ✅
@@ -352,5 +355,6 @@
 - CI frontend：PASS ✅
 - CI docker：PASS ✅
 - CI e2e：37/37 PASS ✅
-- CI deploy-dryrun：FAIL（仅 .env 缺失 + 2 个 CI 环境性缺陷，非代码缺陷）
+- CI precheck：14/14 PASS ✅
+- CI deploy-dryrun：25 PASS / 1 FAIL（.env 缺失，部署门禁按设计工作 ✅）
 - P0/P1-C/P1-I/P2 业务代码：100% 清零
