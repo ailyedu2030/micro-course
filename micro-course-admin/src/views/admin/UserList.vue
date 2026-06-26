@@ -712,4 +712,25 @@ onMounted(() => {
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--el-border-color-lighter);
 }
+
+@media (max-width: 768px) {
+  .user-list-container {
+    padding: var(--space-3);
+  }
+  .toolbar {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .filter-input,
+  .filter-select {
+    width: 100%;
+  }
+  .data-table {
+    font-size: var(--text-sm);
+  }
+  .pagination-wrap {
+    padding: var(--space-3);
+    overflow-x: auto;
+  }
+}
 </style>

@@ -130,6 +130,7 @@ public class GlobalExceptionHandler {
         while (cause != null) {
             if (cause instanceof org.springframework.dao.DuplicateKeyException
                 || (cause.getMessage() != null && cause.getMessage().contains("duplicate key value"))) {
+                // E10: 重复键是客户端错误（非服务器故障），降为 WARN 避免混淆
                 log.warn("Duplicate key constraint violation: {}", cause.getMessage());
                 return ResponseEntity.status(409).body(R.fail(409, "数据已存在,操作冲突"));
             }

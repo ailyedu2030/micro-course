@@ -1,0 +1,52 @@
+/* common-table.css — Shared table/pagination/dialog styles for ClassList/DepartmentList/MajorList/UserList */
+.data-table {
+  width: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.data-table :deep(.el-table__header th) {
+  color: var(--el-text-color-primary);
+}
+
+.data-table :deep(.el-table__row:hover > td) {
+  background: var(--role-primary-light-9) !important;
+}
+
+.data-table :deep(.el-table__row) {
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.data-table :deep(.el-table__body tr) {
+  background: var(--el-fill-color-blank);
+}
+
+.data-table :deep(.el-table__body tr:hover > td) {
+  background: var(--role-primary-light-9) !important;
+}
+
+.pagination-wrap {
+  margin-top: var(--space-6);
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+:deep(.el-dialog) {
+  border-radius: var(--radius-lg);
+}
+
+:deep(.el-dialog__header) {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+:deep(.el-dialog__body) {
+  padding: var(--space-5);
+}
+
+:deep(.el-dialog__footer) {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--el-border-color-lighter);
+}

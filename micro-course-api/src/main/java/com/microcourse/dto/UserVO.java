@@ -12,6 +12,7 @@ public class UserVO {
     private String phone;
     private String gender;
     private String avatar;
+    // P1-I #10 fix: bio is a transient computed field (not stored in DB), populated by service layer
     private String bio;
     private UserRole role;
     private Long departmentId;

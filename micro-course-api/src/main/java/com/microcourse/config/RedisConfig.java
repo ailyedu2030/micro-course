@@ -52,12 +52,30 @@ public class RedisConfig {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
-        mapper.activateDefaultTyping(
-                BasicPolymorphicTypeValidator.builder()
-                        .allowIfBaseType(Object.class)
-                        .build(),
-                ObjectMapper.DefaultTyping.NON_FINAL
-        );
+        // P2 #30 fix: NON_FINAL with open base type (Object.class) allows arbitrary class
+        // deserialization - security risk (e.g., com.sun.rowset.JdbcRowSetImpl RCE payload).
+        // Fix: use a restrictive PolymorphicTypeValidator that only allows:
+        //   1. JDK built-in types (String, Number, Boolean, byte[])
+        //   2. Application DTOs in com.microcourse.dto.* package
+        // DTOs are trusted (we control them), but anything outside this whitelist
+        // (e.g., org.springframework., com.sun., java.util. arbitrary classes)
+        // is denied at deserialization time.
+        BasicPolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+                .allowIfBaseType(String.class)
+                .allowIfBaseType(Boolean.class)
+                .allowIfBaseType(Integer.class)
+                .allowIfBaseType(Long.class)
+                .allowIfBaseType(Double.class)
+                .allowIfBaseType(Float.class)
+                .allowIfBaseType(Number.class)
+                .allowIfBaseType(byte[].class)
+                .allowIfSubType("com.microcourse.dto.")
+                .allowIfSubType("com.microcourse.entity.")
+                .allowIfSubType("java.util.ArrayList")
+                .allowIfSubType("java.util.HashMap")
+                .allowIfSubType("java.util.LinkedList")
+                .build();
+        mapper.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL);
         return mapper;
     }
 }

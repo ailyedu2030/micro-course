@@ -13,6 +13,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.microcourse.dto.R;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,10 +34,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final RedisUtil redisUtil;
+    private final ObjectMapper objectMapper;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, RedisUtil redisUtil) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, RedisUtil redisUtil, ObjectMapper objectMapper) {
         this.jwtUtil = jwtUtil;
         this.redisUtil = redisUtil;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -90,11 +94,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * 写入符合 R<T> 契约格式的错误响应（含 timestamp）
+     * P2 #29 fix: 使用 ObjectMapper 序列化替代 String.format，避免特殊字符破坏 JSON 格式
      */
     private void writeErrorResponse(HttpServletResponse response, int code, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write(
-                String.format("{\"code\":%d,\"message\":\"%s\",\"timestamp\":%d}", code, message, System.currentTimeMillis()));
+        R<Void> error = R.fail(code, message);
+        response.getWriter().write(objectMapper.writeValueAsString(error));
     }
 }

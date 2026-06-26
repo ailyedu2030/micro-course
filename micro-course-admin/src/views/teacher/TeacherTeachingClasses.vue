@@ -199,10 +199,10 @@ import {
   getTeachingClassStudents,
   addStudentToClass,
   removeStudentFromClass,
-  updateStudentStatus,
-  getCourses
+  updateStudentStatus
 } from '@/api/teaching-class'
 import { getUsers } from '@/api/user'
+import { getCourses } from '@/api/course'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)

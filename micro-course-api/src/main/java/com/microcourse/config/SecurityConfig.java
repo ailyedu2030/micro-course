@@ -60,6 +60,7 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // CSRF 禁用原因：REST API 使用 JWT Bearer Token（Authorization header），不依赖 cookie-based 会话，无 CSRF 攻击面
+                // 重要：若未来引入 cookie-based 认证（如 CAS 单点登录），必须重新启用 CSRF 保护
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(headers -> headers
@@ -74,6 +75,8 @@ public class SecurityConfig {
                         //   - object-src 'none' / base-uri 'self' / form-action 'self'：纵深加固
                         .contentSecurityPolicy(csp -> csp.policyDirectives(
                                 "default-src 'self'; " +
+                                // P1-I #44 / P2 #28 fix: hls.js requires unsafe-eval/unsafe-inline for media handling (blob worker, HLS.js internals)
+                                // Vue CLI dev server also needs unsafe-inline; in production set script-src 'self' only and use nonce/hash
                                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
                                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                                 "img-src 'self' data: blob: https:; " +

@@ -1,6 +1,6 @@
 <template>
   <div class="slide-preview">
-    <el-button class="close-btn" @click="$emit('close')" circle>
+    <el-button class="close-btn" @click="$emit('close')" circle aria-label="关闭预览">
       <el-icon><Close /></el-icon>
     </el-button>
     <SlidePlayerCore :course-id="courseId" />

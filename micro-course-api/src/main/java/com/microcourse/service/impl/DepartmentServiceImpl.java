@@ -115,10 +115,27 @@ public class DepartmentServiceImpl implements DepartmentService {
         if (department == null) {
             throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
         }
-        if (request.getName() != null) {
+        // P1-I #11 fix: 检查唯一性约束（排除自身）
+        if (request.getName() != null && !request.getName().isBlank()
+                && !request.getName().equals(department.getName())) {
+            long nameCount = departmentRepository.selectCount(
+                    new LambdaQueryWrapper<Department>()
+                            .eq(Department::getName, request.getName())
+                            .ne(Department::getId, id));
+            if (nameCount > 0) {
+                throw new BusinessException(ErrorCode.DEPARTMENT_NAME_EXISTS);
+            }
             department.setName(request.getName());
         }
-        if (request.getCode() != null) {
+        if (request.getCode() != null && !request.getCode().isBlank()
+                && !request.getCode().equals(department.getCode())) {
+            long codeCount = departmentRepository.selectCount(
+                    new LambdaQueryWrapper<Department>()
+                            .eq(Department::getCode, request.getCode())
+                            .ne(Department::getId, id));
+            if (codeCount > 0) {
+                throw new BusinessException(ErrorCode.DEPARTMENT_CODE_EXISTS);
+            }
             department.setCode(request.getCode());
         }
         if (request.getParentId() != null) {

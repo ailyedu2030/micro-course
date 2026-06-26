@@ -26,7 +26,7 @@
           <span v-if="!item.isFree" class="price">¥{{ item.price }}</span>
           <span v-else class="free">免费</span>
         </div>
-        <el-button text type="danger" size="small" @click="store.removeItem(item.courseId)">
+        <el-button text type="danger" size="small" @click="store.removeItem(item.courseId)" aria-label="从购物车移除">
           <el-icon><Delete /></el-icon>
         </el-button>
       </div>
@@ -38,7 +38,7 @@
           <span class="total-label">合计</span>
           <span class="total-price">¥{{ store.totalPrice }}</span>
         </div>
-        <el-button type="primary" size="large" class="checkout-btn" @click="goCheckout" :disabled="!store.hasItems">
+        <el-button type="primary" size="large" class="checkout-btn" @click="goCheckout" :disabled="!store.hasItems" aria-label="去结算">
           去结算
         </el-button>
       </div>

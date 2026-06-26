@@ -582,4 +582,17 @@ onUnmounted(() => {
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--el-border-color-lighter);
 }
+
+@media (max-width: 768px) {
+  .banner-list-container {
+    padding: var(--space-3);
+  }
+  .toolbar {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .data-table {
+    font-size: var(--text-sm);
+  }
+}
 </style>

@@ -125,7 +125,7 @@
         <el-form-item label="上课时间表">
           <div class="schedule-list">
             <div v-for="(schedule, index) in formData.classSchedules" :key="index" class="schedule-row">
-              <el-select v-model="schedule.dayOfWeek" placeholder="星期" class="day-select">
+              <el-select v-model="schedule.dayOfWeek" placeholder="星期" class="day-select" aria-label="星期">
                 <el-option label="周一" :value="1" />
                 <el-option label="周二" :value="2" />
                 <el-option label="周三" :value="3" />
@@ -134,12 +134,12 @@
                 <el-option label="周六" :value="6" />
                 <el-option label="周日" :value="7" />
               </el-select>
-              <el-input-number v-model="schedule.startPeriod" :min="1" :max="12" class="period-input" title="开始节次" />
+              <el-input-number v-model="schedule.startPeriod" :min="1" :max="12" class="period-input" title="开始节次" aria-label="开始节次" />
               <span class="period-separator">至</span>
-              <el-input-number v-model="schedule.endPeriod" :min="1" :max="12" class="period-input" title="结束节次" />
-              <el-input v-model="schedule.startTime" placeholder="开始时间" class="time-input" />
-              <el-input v-model="schedule.endTime" placeholder="结束时间" class="time-input" />
-              <el-input v-model="schedule.location" placeholder="上课地点" class="location-input" />
+              <el-input-number v-model="schedule.endPeriod" :min="1" :max="12" class="period-input" title="结束节次" aria-label="结束节次" />
+              <el-input v-model="schedule.startTime" placeholder="开始时间" class="time-input" aria-label="开始时间" />
+              <el-input v-model="schedule.endTime" placeholder="结束时间" class="time-input" aria-label="结束时间" />
+              <el-input v-model="schedule.location" placeholder="上课地点" class="location-input" aria-label="上课地点" />
               <el-button type="danger" link @click="removeSchedule(index)" aria-label="删除">
 <el-icon><Delete /></el-icon>
               </el-button>
@@ -168,9 +168,9 @@ import {
   getTeachingClassById,
   createTeachingClass,
   updateTeachingClass,
-  deleteTeachingClass,
-  getCourses
+  deleteTeachingClass
 } from '@/api/teaching-class'
+import { getCourses } from '@/api/course'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)

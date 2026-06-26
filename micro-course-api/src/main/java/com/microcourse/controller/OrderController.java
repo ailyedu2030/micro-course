@@ -47,10 +47,12 @@ public class OrderController {
     @PreAuthorize("hasAnyRole('STUDENT')")
     @AuditedLog("创建订单")
     public R<OrderVO> createOrder(@RequestBody Map<String, Long> body) {
+        // P2 #32 fix: explicit null-safe access (Map.get returns null for missing key, getOrDefault handles both null value and missing key)
+        Long bundleId = body == null ? null : body.getOrDefault("bundleId", null);
         Long userId = SecurityUtil.getCurrentUserId();
         return R.ok(orderService.createOrder(userId,
-                body.get("courseId"),
-                body.getOrDefault("bundleId", null)));
+                body == null ? null : body.get("courseId"),
+                bundleId));
     }
 
     @GetMapping("/{id}")

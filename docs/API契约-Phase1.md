@@ -301,7 +301,7 @@
   "code": 200,
   "message": "ok",
   "data": {
-    "userId": 1,
+    "id": 1,
     "username": "zhangsan",
     "realName": "张*",
     "email": "j***@example.com",

@@ -48,7 +48,10 @@ export const useUserStore = defineStore('user', {
       }
     },
     async logout() {
-      try { await logoutApi() } catch (e) { console.warn(e); }
+      const token = getToken()
+      if (token) {
+        try { await logoutApi() } catch (e) { console.warn(e); }
+      }
       removeToken()
       removeRefreshToken()
       Object.keys(localStorage).filter(k => k.startsWith('micro_course_')).forEach(k => localStorage.removeItem(k))

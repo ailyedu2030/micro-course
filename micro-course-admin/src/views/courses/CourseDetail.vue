@@ -113,7 +113,7 @@
           >
             <el-button size="small">选择图片</el-button>
           </el-upload>
-          <img v-if="coverPreviewUrl" :src="coverPreviewUrl" class="cover-preview-img" />
+          <img v-if="coverPreviewUrl" :src="coverPreviewUrl" class="cover-preview-img" alt="课程封面预览" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>

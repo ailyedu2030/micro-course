@@ -24,12 +24,12 @@
 | API | 方法 | 路径 | 权限 |
 |-----|------|------|------|
 | 登录 | POST | `/api/auth/login` | 公开 |
-| 刷新 Token | POST | `/api/auth/refresh` | 已认证 |
+| 刷新 Token | POST | `/api/auth/refresh` | permitAll（见注） |
 | 登出 | POST | `/api/auth/logout` | 已认证 |
 | CAS 回调 | GET | `/api/auth/cas` | 公开 |
 | 当前用户 | GET | `/api/auth/me` | 已认证 |
 
-### 2.2 院系管理（5 个）
+> **注**：`/api/auth/refresh` 为 permitAll 是合理设计——refreshToken 本身作为凭证，若过期则需重新登录，无需额外身份验证。否则将陷入"先有 token 才能刷新"的死锁。
 
 | API | 方法 | 路径 | 权限 |
 |-----|------|------|------|
