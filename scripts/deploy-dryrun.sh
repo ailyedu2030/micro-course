@@ -7,6 +7,8 @@
 # 退出码: 0 = 通过, 1 = 有阻断项, 2 = 有警告
 # ════════════════════════════════════════════════════════════════
 set -e
+# 注: 严格模式可能因部分检查 (PG max_connections 等) 在 CI 环境无 psql 时触发副作用
+# 我们已用 [[ =~ ]] 数字正则判断避免 integer expression expected
 
 ENV="prod"
 for arg in "$@"; do
@@ -276,8 +278,13 @@ section "7. 质量门禁"
 if bash .claude/skills/microcourse/scripts/precheck.sh > /tmp/precheck.out 2>&1; then
   log_pass "precheck 14/14 通过"
 else
-  FAIL_PRE=$(grep -c "✗" /tmp/precheck.out 2>/dev/null || echo "?")
-  log_fail "precheck 失败 ($FAIL_PRE 项)"
+  # 退化路径: 当 /tmp/precheck.out 不存在或 precheck 异常退出时,显示更友好的错误
+  if [ ! -s /tmp/precheck.out ]; then
+    log_fail "precheck 失败 (脚本未产生输出,可能环境异常)"
+  else
+    FAIL_PRE=$(grep -c "✗" /tmp/precheck.out 2>/dev/null || echo "?")
+    log_fail "precheck 失败 ($FAIL_PRE 项,详情见 /tmp/precheck.out)"
+  fi
 fi
 
 # 7.2 编译
@@ -354,7 +361,8 @@ fi
 
 # 9.3 PG max_connections
 PG_MAX=$(PGPASSWORD="$PGPASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SHOW max_connections;" 2>&1 | tr -d ' ' | head -1)
-if [ -n "$PG_MAX" ] && [ "$PG_MAX" -ge 300 ]; then
+# 用正则判断是否为数字,避免 psql 错误信息导致 integer expression expected
+if [[ "$PG_MAX" =~ ^[0-9]+$ ]] && [ "$PG_MAX" -ge 300 ]; then
   log_pass "PG max_connections: $PG_MAX"
 else
   log_warn "PG max_connections: $PG_MAX (建议 ≥300)"
