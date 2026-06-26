@@ -20,6 +20,13 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
+    // P1-3: 生产构建自动去除 console.log/debug (保留 warn/error 便于线上排查)
+    // 客户体验: F12 看不到内部技术日志,减少信息泄露
+    // esbuild 内置 (无需安装 terser) — drop: ['console'] 但保留 warn/error
+    esbuild: {
+      drop: ['debugger'],
+      pure: ['console.log', 'console.debug', 'console.info']
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

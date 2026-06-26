@@ -5,13 +5,37 @@ import { getToken, setToken, removeToken, getRefreshToken, setRefreshToken, remo
 
 // P3-8: 提取硬编码配置为常量，便于统一调整
 const API_BASE_URL = '/api'
-const REQUEST_TIMEOUT = 60000 // 60s (文件上传可能较大)
+// P1-2: 超时按 HTTP 方法分级 — 客户体验:
+//   - GET  10s: 列表/详情查询,网络慢时 10s 足以感知问题
+//   - POST 30s: 提交表单/创建资源,服务端处理稍长
+//   - Upload 300s: 视频/文件上传,2GB 视频按 100Mbps ≈ 160s,给足余量
+const TIMEOUT_GET = 10000
+const TIMEOUT_POST = 30000
+const TIMEOUT_UPLOAD = 300000
+
+/**
+ * P1-2: 根据请求方法 + 是否 FormData 自动选择超时
+ * 客户体验: 之前所有请求统一 60s,网络故障时用户要等 60s 才看到错误
+ *          现在 GET 类 10s 即报错,减少用户等待焦虑
+ */
+function pickTimeout(config) {
+  // 显式指定 _timeout 优先
+  if (config._timeout) return config._timeout
+  // 上传类 (multipart/form-data) 给 300s
+  if (config.data instanceof FormData) return TIMEOUT_UPLOAD
+  // 按方法分级
+  if (config.method === 'get' || config.method === 'GET' || !config.method) return TIMEOUT_GET
+  if (config.method === 'post' || config.method === 'POST') return TIMEOUT_POST
+  if (config.method === 'put' || config.method === 'PUT' || config.method === 'patch' || config.method === 'PATCH') return TIMEOUT_POST
+  if (config.method === 'delete' || config.method === 'DELETE') return TIMEOUT_GET
+  return TIMEOUT_POST
+}
 
 let isRefreshing = false
 
 const request = axios.create({
   baseURL: API_BASE_URL,
-  timeout: REQUEST_TIMEOUT
+  timeout: TIMEOUT_GET  // 默认 GET 10s,实际请求会被 pickTimeout 覆盖
 })
 
 // D2: 全局上传进度管理器（可被外部组件 useUploadProgress 消费）
@@ -26,6 +50,9 @@ request.interceptors.request.use(config => {
   if (config._skipAuth) return config
   const token = getToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
+
+  // P1-2: 按方法 + 数据类型选择超时
+  config.timeout = pickTimeout(config)
 
   // D2: FormData 上传自动注入进度回调
   if (config.data instanceof FormData && !config.onUploadProgress) {
