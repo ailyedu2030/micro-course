@@ -46,7 +46,7 @@
             <el-skeleton-item variant="text" style="width: 100%; height: 40px; margin-top: var(--space-2);" />
           </template>
           <template #default>
-            <el-table :data="reviews" class="data-table review-table" stripe border>
+            <el-table v-loading="loading" :data="reviews" class="data-table review-table" stripe border>
               <el-table-column label="课程" min-width="180">
                 <template #default="{ row }">
                   <router-link :to="`/student/courses/${row.courseId}`" class="course-link">

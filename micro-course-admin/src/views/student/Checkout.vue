@@ -16,7 +16,7 @@
       <el-col :span="16">
         <el-card shadow="never" class="section-card">
           <template #header>确认订单</template>
-          <el-table :data="store.items" stripe border>
+          <el-table v-loading="loading" :data="store.items" stripe border>
             <el-table-column label="课程" min-width="200">
               <template #default="{ row }">
                 <div class="course-cell">
@@ -76,15 +76,20 @@ import { Wallet } from '@element-plus/icons-vue'
 const router = useRouter()
 const store = useCartStore()
 const userStore = useUserStore()
+const loading = ref(true)
 const submitting = ref(false)
 const paid = ref(false)
 const paymentMethod = ref('BALANCE')
 
 onMounted(() => {
   if (!store.hasItems) {
+    loading.value = false
     ElMessage.info('购物车为空')
     router.push('/student/courses')
+    return
   }
+  // 短暂 loading 状态让用户感知到加载
+  setTimeout(() => { loading.value = false }, 200)
 })
 
 async function handleSubmit() {

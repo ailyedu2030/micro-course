@@ -1,0 +1,119 @@
+/* ============================================================================
+ * Mobile Fixes · 移动端修复
+ * ----------------------------------------------------------------------------
+ * 客户体验第一原则 — 修复 iOS Safari 自动 zoom + 触摸友好
+ * ============================================================================ */
+
+/* P0-1: iOS Safari input 自动 zoom 修复
+ * ----------------------------------------------------------------------------
+ * 根因: iOS Safari 在 input/select/textarea font-size < 16px 时, 点击会强制
+ *       zoom in, 用户体验极差, 且无法手动 zoom out
+ * 修复: 移动端 (max-width: 768px) 强制表单元素 font-size >= 16px
+ *       同时通过 -webkit-text-size-adjust: 100% 禁用文字自动放大
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 768px) {
+  /* 所有表单元素 16px+ 防 iOS zoom */
+  input,
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="number"],
+  select,
+  textarea,
+  .el-input__inner,
+  .el-textarea__inner,
+  .el-select .el-input__inner {
+    font-size: 16px !important;
+  }
+
+  /* P1-I-3: 移动端 input padding 优化（44px iOS HIG 触摸目标）
+   * ----------------------------------------------------------------------------
+   * 根因: iOS Human Interface Guidelines 推荐 44pt 触摸目标
+   *       Element Plus 默认 input 高度 40px, 加上 padding 后触摸不友好
+   * 修复: 移动端 input 最小高度 44px, padding 加大
+   */
+  .el-input {
+    --el-input-height: 44px;
+  }
+
+  .el-input .el-input__inner {
+    padding-left: 12px;
+    padding-right: 12px;
+    min-height: 44px;
+  }
+
+  .el-textarea .el-textarea__inner {
+    padding: 12px;
+    min-height: 88px; /* 2 行触摸友好高度 */
+  }
+
+  /* 触摸按钮最低 44x44 */
+  .el-button {
+    min-height: 36px; /* 移动端按钮稍小但仍可点 */
+  }
+
+  /* 链接最小可点区域 */
+  a {
+    -webkit-tap-highlight-color: rgba(99, 102, 241, 0.1);
+  }
+
+  /* 防止 iOS Safari 长按选中 */
+  body {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* 但 input/textarea 内部允许选择 */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+}
+
+/* P0-2: 1024px 断点 — 平板/小 PC 适配
+ * ----------------------------------------------------------------------------
+ * 根因: 之前断点是 768px, 1024×768 屏幕 (iPad/小 PC) 仍用 PC 布局
+ *       6 tab 加上 logo+搜索+头像 ≈ 1000px, 1024 屏会挤压
+ * 修复: 1024px 以下使用 H5 模式 (hamburger menu)
+ *       768px 以下保持原 H5 模式 (底部 tab bar)
+ */
+@media (max-width: 1024px) and (min-width: 769px) {
+  /* 平板适配 - 缩小 padding */
+  .layout-content {
+    max-width: 100%;
+    padding: 0 16px;
+  }
+}
+
+/* P0-2: 1024px 断点 (学生端单独处理)
+ * ----------------------------------------------------------------------------
+ * 客户体验: 学生在 1024×768 屏上课, 6 tab 挤压影响操作
+ * 修复: 1024px 以下 student 端用 hamburger menu 而非平铺 6 tab
+ */
+@media (max-width: 1024px) {
+  /* StudentLayout 的 PC 端 header 在 1024 以下改为 hamburger 触发 */
+  .student-layout .layout-header--pc .header-nav {
+    /* 1024 以下隐藏平铺 nav, 改用 hamburger */
+    display: none !important;
+  }
+
+  .student-layout .layout-header--pc .hamburger-btn {
+    display: flex !important;
+  }
+
+  /* 搜索框在 1024 以下也隐藏（节省空间） */
+  .student-layout .layout-header--pc .header-search {
+    display: none !important;
+  }
+}

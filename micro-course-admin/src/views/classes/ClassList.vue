@@ -48,7 +48,7 @@
         </template>
       </el-result>
       <el-empty v-else-if="!loading && tableData.length === 0" description="暂无班级数据" :image-size="120" />
-      <el-table v-else :data="tableData" stripe border class="data-table">
+      <el-table v-loading="loading" v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="name" label="名称" min-width="150" />
         <el-table-column prop="majorName" label="所属专业" min-width="150" />

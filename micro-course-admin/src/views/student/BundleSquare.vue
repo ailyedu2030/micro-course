@@ -19,7 +19,7 @@
       class="bundle-error"
     >
       <template #extra>
-        <el-button type="primary" @click="fetchBundles">重试</el-button>
+        <el-button type="primary" :loading="loading" @click="fetchBundles">重试</el-button>
       </template>
     </el-result>
 

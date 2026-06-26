@@ -30,6 +30,31 @@
         </router-link>
       </nav>
 
+      <!-- P0-2: 1024px 以下 hamburger 按钮 (仅在 1024 以下显示) -->
+      <el-button
+        :icon="Menu"
+        circle
+        class="icon-btn hamburger-btn"
+        @click="hamburgerOpen = !hamburgerOpen"
+        aria-label="菜单"
+      />
+
+      <!-- P0-2: 1024px 以下汉堡菜单下拉 -->
+      <transition name="slide-down">
+        <div v-if="hamburgerOpen && isTablet" class="hamburger-dropdown" @click="hamburgerOpen = false">
+          <router-link
+            v-for="item in menuItems"
+            :key="item.path"
+            :to="item.path"
+            class="hamburger-item"
+            :class="{ 'is-active': isActive(item.path) }"
+          >
+            <el-icon :size="18"><component :is="item.icon" /></el-icon>
+            <span>{{ item.label }}</span>
+          </router-link>
+        </div>
+      </transition>
+
       <div class="header-right">
         <el-input
           v-model="searchKeyword"
@@ -131,7 +156,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   Grid, VideoPlay, DataLine, Bell, User, Star, Setting, Reading,
   Microphone, Search, ArrowDown, ArrowLeft, SwitchButton, ShoppingCart,
-  Wallet
+  Wallet, Menu
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useUserStore } from '../store/user'
@@ -157,14 +182,22 @@ const router = useRouter()
 // ---------------------------------------------------------------------------
 // 响应式
 // ---------------------------------------------------------------------------
+// P0-2: 1024px 断点 — 平板/小 PC 适配
+//   - isTablet (769-1024px): hamburger menu 模式
+//   - isMobile (≤768px): 底部 tab bar 模式
 // P2-1: resize 事件添加防抖，避免频繁触发响应式计算
 const isMobile = ref(window.innerWidth <= 768)
+const isTablet = ref(window.innerWidth <= 1024 && window.innerWidth > 768)
+const hamburgerOpen = ref(false)
 let resizeTimer = null
 
 function onResize() {
   clearTimeout(resizeTimer)
   resizeTimer = setTimeout(() => {
-    isMobile.value = window.innerWidth <= 768
+    const w = window.innerWidth
+    isMobile.value = w <= 768
+    isTablet.value = w <= 1024 && w > 768
+    if (!isTablet.value) hamburgerOpen.value = false
   }, 150)
 }
 
@@ -691,5 +724,58 @@ onUnmounted(() => notificationStore.stopPolling())
 
 :deep(.el-dropdown-menu__item .el-icon) {
   font-size: 16px;
+}
+
+/* P0-2: Hamburger button (default hidden, only show in tablet) */
+.hamburger-btn {
+  display: none;
+}
+
+/* P0-2: Hamburger dropdown panel */
+.hamburger-dropdown {
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  background: var(--card-bg, #fff);
+  border-top: 1px solid var(--card-border, #ebeef5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 999;
+  padding: 8px 0;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+
+.hamburger-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  color: var(--el-text-color-regular, #606266);
+  text-decoration: none;
+  font-size: 15px;
+  transition: background 0.15s;
+}
+
+.hamburger-item:hover {
+  background: var(--el-fill-color-light, #f5f7fa);
+}
+
+.hamburger-item.is-active {
+  background: var(--role-primary-light-9, #eef2ff);
+  color: var(--role-primary, #6366f1);
+  font-weight: 600;
+}
+
+/* P0-2: Slide down animation */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.2s ease;
+}
+
+.slide-down-enter-from,
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

@@ -20,7 +20,7 @@
 
       <el-skeleton v-if="loading" :rows="5" animated />
       <el-empty v-else-if="tableData.length === 0" description="暂无评价数据" :image-size="120" />
-      <el-table v-else :data="tableData" stripe border class="data-table">
+      <el-table v-loading="loading" v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="#" width="60" align="center" />
         <el-table-column prop="realName" label="用户" width="120" show-overflow-tooltip />
         <el-table-column label="评分" width="140" align="center">

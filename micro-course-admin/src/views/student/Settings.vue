@@ -149,7 +149,7 @@
       </div>
 
       <div v-if="!loading && !error" class="save-button-wrap">
-        <el-button type="primary" @click="handleSave" class="save-button">保存设置</el-button>
+        <el-button type="primary" :loading="!!saveTimer" @click="handleSave" class="save-button">保存设置</el-button>
       </div>
     </div>
 
@@ -175,7 +175,7 @@
       <!-- 加载失败 -->
       <el-result v-else-if="error" icon="error" title="加载失败" sub-title="设置加载异常">
         <template #extra>
-          <el-button type="primary" size="small" @click="loadSettings">重新加载</el-button>
+          <el-button type="primary" size="small" :loading="loading" @click="loadSettings">重新加载</el-button>
         </template>
       </el-result>
 
@@ -264,7 +264,7 @@
       </div>
 
       <div v-if="!loading && !error" class="save-button-wrap-h5">
-        <el-button type="primary" @click="handleSave" class="save-button-h5">保存设置</el-button>
+        <el-button type="primary" :loading="!!saveTimer" @click="handleSave" class="save-button-h5">保存设置</el-button>
       </div>
 
       <div class="safe-area-bottom"></div>

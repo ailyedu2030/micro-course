@@ -50,7 +50,7 @@
       />
 
       <!-- 数据表格 -->
-      <el-table v-else :data="tableData" stripe border class="data-table">
+      <el-table v-loading="loading" v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="教学班名称" min-width="150" show-overflow-tooltip />

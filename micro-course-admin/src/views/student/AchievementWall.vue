@@ -44,7 +44,7 @@
     <template v-else-if="error">
       <el-result icon="error" title="加载失败" sub-title="成就数据加载异常，请稍后重试">
         <template #extra>
-          <el-button type="primary" @click="fetchData">重新加载</el-button>
+          <el-button type="primary" :loading="loading" @click="fetchData">重新加载</el-button>
         </template>
       </el-result>
     </template>

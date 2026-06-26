@@ -94,7 +94,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<R<Void>> handleAccessDenied(AccessDeniedException e) {
+        // P1-I-1: 403 权限拒绝降为 INFO — 这是正常用户行为(尝试越权),非服务端错误
+        log.info("Access denied: {}", e.getMessage());
         return ResponseEntity.status(403).body(R.fail(ErrorCode.NO_PERMISSION.getCode(), "无权访问"));
+    }
+
+    /**
+     * P1-I-1: 401 未认证 — 常见于 token 过期,降为 INFO 而非 WARN
+     * 避免刷新 token 流程触发时刷屏告警
+     */
+    @ExceptionHandler(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class)
+    public ResponseEntity<R<Void>> handleAuthMissing(
+            org.springframework.security.authentication.AuthenticationCredentialsNotFoundException e) {
+        log.info("Auth credentials missing: {}", e.getMessage());
+        return ResponseEntity.status(401).body(R.fail(ErrorCode.TOKEN_EXPIRED.getCode(), "未登录或登录已过期"));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
