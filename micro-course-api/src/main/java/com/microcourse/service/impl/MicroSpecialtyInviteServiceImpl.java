@@ -16,6 +16,7 @@ import com.microcourse.repository.MicroSpecialtyRepository;
 import com.microcourse.repository.MicroSpecialtyTeacherRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.MicroSpecialtyInviteService;
+import com.microcourse.service.MicroSpecialtyService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
@@ -37,15 +38,18 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
     private final MicroSpecialtyRepository msRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final MicroSpecialtyService msService;
 
     public MicroSpecialtyInviteServiceImpl(MicroSpecialtyTeacherRepository teacherRepository,
                                            MicroSpecialtyRepository msRepository,
                                            UserRepository userRepository,
-                                           NotificationService notificationService) {
+                                           NotificationService notificationService,
+                                           MicroSpecialtyService msService) {
         this.teacherRepository = teacherRepository;
         this.msRepository = msRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.msService = msService;
     }
 
     @Override
@@ -309,9 +313,10 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         }
 
         // 校验当前用户是否为该微专业负责人
+        // 使用 isLeadOf() 从教师表 ACTIVE LEAD 查询（权威数据源），而非 ms.leadTeacherId 冗余字段
+        // leadTeacherId 可能在 LEAD 继任事务中存在短暂不一致窗口，isLeadOf() 直接查教师表更可靠
         Long currentUserId = SecurityUtil.getCurrentUserId();
-        MicroSpecialty msForCheck = msRepository.selectById(record.getMicroSpecialtyId());
-        if (msForCheck != null && !currentUserId.equals(msForCheck.getLeadTeacherId()) && !SecurityUtil.isAdmin()) {
+        if (!msService.isLeadOf(record.getMicroSpecialtyId(), currentUserId) && !SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可执行此操作");
         }
 

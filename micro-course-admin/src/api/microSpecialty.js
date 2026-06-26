@@ -212,3 +212,11 @@ export function unsetFeatured(id) {
 export function getStats(id) {
   return request({ method: 'GET', url: `/micro-specialties/${id}/stats` })
 }
+
+/**
+ * 获取当前用户在该微专业中的角色（用于前端路由守卫 requiresLead 校验）
+ * @returns {Promise<{code: number, data: {role: string|null}}>} role = "LEAD" | "MEMBER" | "ASSISTANT" | null
+ */
+export function getMyRole(id) {
+  return request({ method: 'GET', url: `/micro-specialties/${id}/my-role` })
+}

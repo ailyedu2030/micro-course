@@ -829,6 +829,20 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
     @Override
     public List<MicroSpecialtyCourseVO> listCourses(Long msId) {
+        // 信息泄露防护：公开端点不过滤 DRAFT/CANCELLED 状态（P2-1）
+        // 与 getDetail() L287-295 采用一致的过滤规则：非管理员/教务/创建者/负责人不可查看 DRAFT/CANCELLED 的课程编排
+        MicroSpecialty ms = msRepository.selectById(msId);
+        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        String status = ms.getStatus();
+        Long userId = SecurityUtil.getCurrentUserId();
+        // 未登录用户（SecurityConfig permitAll）userId 为 null，isAdminOrAcademic/isLeadOf 均返回 false
+        if (("DRAFT".equals(status) || "CANCELLED".equals(status))
+                && userId != null
+                && !SecurityUtil.isAdminOrAcademic()
+                && !userId.equals(ms.getCreatorId())
+                && !isLeadOf(msId, userId)) {
+            throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        }
         return msCourseRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyCourse>()
                         .eq(MicroSpecialtyCourse::getMicroSpecialtyId, msId)
@@ -951,10 +965,12 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
     @Override
     public List<MicroSpecialtyTeacherVO> listTeachers(Long msId) {
+        // 信息泄露防护：公开端点不再暴露 INVITED/PENDING_ACADEMIC 等中间态邀请（P2-2）
+        // 与 getDetail() 保持一致：仅返回 invite_status='ACTIVE' 的教师（已接受且未移除）
         List<MicroSpecialtyTeacher> teachers = msTeacherRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
-                        .notIn(MicroSpecialtyTeacher::getInviteStatus, "DECLINED", "REMOVED"));
+                        .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
         return teachers.stream().map(this::toTeacherVO).collect(Collectors.toList());
     }
 
@@ -1135,6 +1151,18 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         if (isLeadOf(msId, userId)) return true;
         MicroSpecialty ms = msRepository.selectById(msId);
         return ms != null && userId.equals(ms.getCreatorId());
+    }
+
+    @Override
+    public String getMyRole(Long msId) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (userId == null) return null;
+        MicroSpecialtyTeacher record = msTeacherRepository.selectOne(
+                new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                        .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
+                        .eq(MicroSpecialtyTeacher::getTeacherId, userId)
+                        .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
+        return record != null ? record.getRole() : null;
     }
 
     /** 校验当前用户是否为微专业负责人或系统管理员 */

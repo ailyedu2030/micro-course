@@ -263,4 +263,12 @@ public interface MicroSpecialtyService {
      * @return true 如果是 ACTIVE LEAD 或 micro_specialties.creator_id == userId
      */
     boolean isOwnerOrLead(Long msId, Long userId);
+
+    /**
+     * 获取当前用户在该微专业中的角色。
+     *
+     * @param msId 微专业 ID
+     * @return "LEAD" / "MEMBER" / "ASSISTANT" / null (无角色)
+     */
+    String getMyRole(Long msId);
 }

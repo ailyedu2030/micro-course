@@ -251,9 +251,19 @@ public class MicroSpecialtyController {
     @DeleteMapping("/{id}/teachers/{teacherId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> removeTeacher(@PathVariable Long id,
-                                  @PathVariable Long teacherId) {
+                                   @PathVariable Long teacherId) {
         microSpecialtyService.removeTeacher(id, teacherId);
         return R.ok();
+    }
+
+    /** 获取当前用户在该微专业中的角色（用于前端路由守卫 requiresLead 校验） */
+    @GetMapping("/{id}/my-role")
+    @PreAuthorize("isAuthenticated()")
+    public R<Map<String, String>> getMyRole(@PathVariable Long id) {
+        String role = microSpecialtyService.getMyRole(id);
+        Map<String, String> result = new HashMap<>();
+        result.put("role", role);
+        return R.ok(result);
     }
 
     // ==================== LEAD 继任 ====================

@@ -211,10 +211,25 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Phase 2: requiresLead 路由前置检查 — LEAD-only 路由仅限 TEACHER 角色
-  // 微专业负责人限定页面：真正的鉴权在后端 Service 层的 isLeadOf，此处仅做角色粗筛
+  // 微专业负责人限定页面：先做角色粗筛（TEACHER），再通过 my-role API 细粒度校验是否为该微专业 LEAD
+  // 若 API 调用失败（网络/服务异常），放行导航——后端 requireLeadOf() 提供最终防护
   if (to.meta.requiresLead) {
     if (userRole !== 'TEACHER') {
       return next(getRoleHomePage(userRole))
+    }
+    const msId = to.params.id
+    if (msId) {
+      try {
+        const { getMyRole } = await import('@/api/microSpecialty')
+        const res = await getMyRole(msId)
+        if (res.code === 200 && res.data.role !== 'LEAD') {
+          ElMessage.warning('您不是该微专业的负责人')
+          return next('/teacher/micro-specialties')
+        }
+      } catch (e) {
+        // API 调用失败：放行导航，后端 requireLeadOf() 提供最终防护
+        console.warn('[router] my-role 校验失败，放行导航（依赖后端防护）:', e)
+      }
     }
   }
 
