@@ -22,6 +22,8 @@ done
 PASS=0
 FAIL=0
 WARN=0
+# 锁定项目根,避免前面 cd 失败
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -275,15 +277,17 @@ fi
 section "7. 质量门禁"
 
 # 7.1 precheck
+# 强制 cd 到项目根 (避免前面 cd micro-course-api 后没回退)
+cd "$ROOT_DIR" 2>/dev/null || true
 if bash .claude/skills/microcourse/scripts/precheck.sh > /tmp/precheck.out 2>&1; then
   log_pass "precheck 14/14 通过"
 else
   # 退化路径: 当 /tmp/precheck.out 不存在或 precheck 异常退出时,显示更友好的错误
   if [ ! -s /tmp/precheck.out ]; then
-    log_fail "precheck 失败 (脚本未产生输出,可能环境异常)"
+    log_fail "precheck 失败 (脚本未产生输出,可能环境异常,当前目录=$(pwd))"
   else
     FAIL_PRE=$(grep -c "✗" /tmp/precheck.out 2>/dev/null || echo "?")
-    log_fail "precheck 失败 ($FAIL_PRE 项,详情见 /tmp/precheck.out)"
+    log_fail "precheck 失败 ($FAIL_PRE 项,详情见 /tmp/precheck.out,当前目录=$(pwd))"
   fi
 fi
 
