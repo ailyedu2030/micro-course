@@ -146,8 +146,8 @@
               @timeupdate="onTimeUpdate"
               @ended="onEnded"
               @error="onVideoError"
-              @waiting="isBuffering = true"
-              @playing="isBuffering = false"
+              @waiting="onBufferingStart"
+              @playing="onBufferingEnd"
               @progress="onProgress"
               @dblclick="togglePlay"
             ></video>
@@ -622,6 +622,51 @@ const isMobile = ref(window.innerWidth <= 768)
 const isPlaying = ref(false)
 const isBuffering = ref(false)
 const isMuted = ref(false)
+
+// P1-3: 视频缓冲超时提示 - 客户体验第一原则
+// 根因: 之前只显示 spinner,网差时用户不知道要等多久,容易误以为卡死退出
+// 修复: 缓冲 > 15s 提示网络问题,> 30s 提示重试
+let bufferingWatchdogTimer = null
+let bufferingToastShown = false
+function onBufferingStart() {
+  isBuffering.value = true
+  startBufferingWatchdog()
+}
+function onBufferingEnd() {
+  isBuffering.value = false
+  stopBufferingWatchdog()
+}
+function startBufferingWatchdog() {
+  stopBufferingWatchdog()
+  bufferingToastShown = false
+  bufferingWatchdogTimer = setTimeout(() => {
+    // 15s 仍在缓冲
+    if (isBuffering.value) {
+      ElMessage.warning({ message: '视频缓冲中,网络可能较慢,请稍候...', duration: 5000 })
+      bufferingToastShown = true
+    }
+  }, 15000)
+  setTimeout(() => {
+    // 30s 仍在缓冲 - 提供重试入口
+    if (isBuffering.value) {
+      ElMessageBox.confirm('视频缓冲超过 30 秒,可能是网络问题。是否重试?', '缓冲超时', {
+        confirmButtonText: '重试',
+        cancelButtonText: '继续等待',
+        type: 'warning'
+      }).then(() => {
+        retryHls()
+      }).catch(() => {
+        // 用户选择继续等待,不做处理
+      })
+    }
+  }, 30000)
+}
+function stopBufferingWatchdog() {
+  if (bufferingWatchdogTimer) {
+    clearTimeout(bufferingWatchdogTimer)
+    bufferingWatchdogTimer = null
+  }
+}
 const isFullscreen = ref(false)
 const isPip = ref(false)
 const isPipSupported = ref(false)
@@ -1510,6 +1555,8 @@ onBeforeUnmount(() => {
   }
   // P1-1: Stop progress reporting
   stopProgressReporting()
+  // P1-3: 清理缓冲 watchdog,避免内存泄漏
+  stopBufferingWatchdog()
   if (hideControlsTimer) {
     clearTimeout(hideControlsTimer)
     hideControlsTimer = null

@@ -113,8 +113,18 @@ const handleUpdateProfile = async () => {
   profileLoading.value = true
   try {
     await updateProfile(profileForm.value)
-    ElMessage.success('资料更新成功')
-    await userStore.getInfo()
+    // P0-2: 后端已更新成功,但前端 store 需刷新才能显示新数据
+    // 之前 getInfo 失败被 catch 吞掉,导致用户看到「成功」但页面是旧数据
+    // 修复: getInfo 失败时明确告知用户,避免数据不一致错觉
+    try {
+      await userStore.getInfo()
+      ElMessage.success('资料更新成功')
+    } catch (refreshErr) {
+      console.warn('[Profile] 后端已更新但本地刷新失败', refreshErr)
+      ElMessage.warning('资料已保存,但页面需手动刷新才能看到最新信息')
+      // 强制刷新页面,确保用户看到一致数据
+      setTimeout(() => window.location.reload(), 1500)
+    }
   } catch {
     // 拦截器已展示后端具体错误，此处不重复提示
   } finally {
