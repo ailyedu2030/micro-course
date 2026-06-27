@@ -399,6 +399,13 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         if (post == null || post.getStatus() == 0) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
         }
+        // R12 P1-C-6: 仅课程授课教师可置顶
+        if (post.getCourseId() != null && !SecurityUtil.isAdmin()) {
+            Course c = courseRepository.selectById(post.getCourseId());
+            if (c != null && !SecurityUtil.isOwnerOrAdmin(c.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
         post.setIsPinned(pinned);
         post.setUpdatedAt(LocalDateTime.now());
         postRepository.updateById(post);
@@ -410,6 +417,13 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null || post.getStatus() == 0) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        // R12 P1-C-6: 仅课程授课教师可设精华
+        if (post.getCourseId() != null && !SecurityUtil.isAdmin()) {
+            Course c = courseRepository.selectById(post.getCourseId());
+            if (c != null && !SecurityUtil.isOwnerOrAdmin(c.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
         }
         post.setIsEssence(essence);
         post.setUpdatedAt(LocalDateTime.now());

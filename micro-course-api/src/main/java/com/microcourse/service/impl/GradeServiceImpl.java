@@ -184,7 +184,16 @@ public class GradeServiceImpl implements GradeService {
         grade.setCreatedAt(LocalDateTime.now());
         grade.setUpdatedAt(LocalDateTime.now());
 
-        gradeRepository.insert(grade);
+        // R8 P1-C-1: 防并发重复插入（TOCTOU）
+        try {
+            gradeRepository.insert(grade);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            Grade existing = gradeRepository.selectOne(dupWrapper);
+            if (existing != null) {
+                return convertToVO(existing);
+            }
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "成绩记录已存在，请刷新后重试");
+        }
         return convertToVO(grade);
     }
 

@@ -102,6 +102,13 @@ public class NotificationServiceImpl implements NotificationService {
             if (enrollmentRepository.selectCount(enrollWrapper) == 0) {
                 throw new BusinessException(ErrorCode.NO_PERMISSION, "只能向自己课程中的学生发送通知");
             }
+            // R12 P1-C-8: 当指定 relatedId(courseId) 时，额外检查该课程是否为自己所授
+            if (request.getRelatedId() != null && request.getRelatedId() > 0) {
+                Course relatedCourse = courseRepository.selectById(request.getRelatedId());
+                if (relatedCourse != null && !relatedCourse.getTeacherId().equals(senderId)) {
+                    throw new BusinessException(ErrorCode.NO_PERMISSION, "无权发送关于其他教师课程的通知");
+                }
+            }
         }
 
         Notification notification = new Notification();
