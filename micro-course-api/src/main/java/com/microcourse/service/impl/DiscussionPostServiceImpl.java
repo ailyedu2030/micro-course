@@ -281,18 +281,28 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DiscussionPostVO create(PostCreateRequest req, Long userId) {
-        // 选课检查：STUDENT 只能发己选课程的讨论
+        // 1. 先解析 courseId：优先用请求中的，否则从 chapterId 反查
+        Long resolvedCourseId = req.getCourseId();
+        if (resolvedCourseId == null && req.getChapterId() != null) {
+            CourseChapter chapter = courseChapterRepository.selectById(req.getChapterId());
+            if (chapter != null) resolvedCourseId = chapter.getCourseId();
+        }
+
+        // 2. 选课检查：STUDENT 只能发己选课程的讨论
         if (SecurityUtil.hasRole("STUDENT")) {
+            if (resolvedCourseId == null) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法确定课程，请指定课程或章节");
+            }
             long enrolledCount = enrollmentRepository.selectCount(
                     new LambdaQueryWrapper<com.microcourse.entity.Enrollment>()
                             .eq(com.microcourse.entity.Enrollment::getUserId, userId)
-                            .eq(com.microcourse.entity.Enrollment::getCourseId, req.getCourseId()));
+                            .eq(com.microcourse.entity.Enrollment::getCourseId, resolvedCourseId));
             if (enrolledCount == 0) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再参与讨论");
             }
         }
 
-        // DISC-NEW-6 修复:发帖频率限制—30 秒内只能发一帖,防止刷帖
+        // 3. 发帖频率限制—30 秒内只能发一帖,防止刷帖
         DiscussionPost lastPost = postRepository.selectOne(
                 new LambdaQueryWrapper<DiscussionPost>()
                         .eq(DiscussionPost::getUserId, userId)
@@ -303,19 +313,16 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "发帖过于频繁,请 30 秒后再试");
         }
 
-        // Validate chapterId exists only when provided (FK constraint)
-        Long chapterCourseId = null;
+        // 4. 验证 chapterId 存在
         if (req.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(req.getChapterId());
             if (chapter == null) {
                 throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
             }
-            chapterCourseId = chapter.getCourseId();
         }
 
         DiscussionPost post = new DiscussionPost();
-        // R14 P1-C-2: 如果前端只传了 chapterId 没传 courseId，反查 chapter 的 courseId
-        post.setCourseId(req.getCourseId() != null ? req.getCourseId() : chapterCourseId);
+        post.setCourseId(resolvedCourseId);
         post.setChapterId(req.getChapterId());
         post.setUserId(userId);
         // P1 安全修复: XSS 净化 — 标题使用纯文本净化（不应含 HTML），内容允许安全标签
