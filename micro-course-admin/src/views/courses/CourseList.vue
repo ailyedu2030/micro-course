@@ -253,6 +253,8 @@ const fetchCategories = async () => {
   }
 }
 const fetchTeachers = async () => {
+  // TEACHER 角色无需下拉选自己（也无权限查用户列表）
+  if (userStore.role === 'TEACHER') { teacherOptions.value = []; return }
   try {
     const { data } = await getUsers({ role: 'TEACHER', size: 1000 })
     teacherOptions.value = data.items || []
