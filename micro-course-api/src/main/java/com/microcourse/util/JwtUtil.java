@@ -24,13 +24,13 @@ import java.util.UUID;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
+    @Value("${jwt.secret:}")
     private String secret;
 
-    @Value("${jwt.expiration}")
+    @Value("${jwt.expiration:7200000}")
     private Long expiration;
 
-    @Value("${jwt.refresh-expiration}")
+    @Value("${jwt.refresh-expiration:604800000}")
     private Long refreshExpiration;
 
     private SecretKey cachedKey;
@@ -40,10 +40,16 @@ public class JwtUtil {
 
     @PostConstruct
     void init() {
+        if (secret == null || secret.isEmpty()) {
+            // R8 修复 P0-1: 本地开发兜底密钥（生产必须通过 JWT_SECRET 环境变量显式设置）
+            // 仅用于 mvn spring-boot:run 本地启动场景，不应用于生产部署
+            secret = "dev-only-jwt-secret-key-min-32-bytes-please-change-in-prod";
+            System.err.println("[WARN] jwt.secret 未配置，使用本地开发兜底密钥（仅限开发环境）");
+        }
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
             throw new IllegalStateException(
-                    "jwt.secret 长度不足: 需要至少 32 字节 (HMAC-SHA256), 当前 " + keyBytes.length + " 字节");
+                    "jwt.secret 长度不足: 需要至少 32 字节 (HMAC-SHA256), 当前 " + keyBytes.length + "字节");
         }
         this.cachedKey = Keys.hmacShaKeyFor(keyBytes);
     }

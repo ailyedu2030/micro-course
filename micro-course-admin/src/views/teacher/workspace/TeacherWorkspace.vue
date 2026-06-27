@@ -31,7 +31,7 @@
 
       <!-- Step 1: Upload PPT -->
       <section v-if="!notInteractive" class="step-card">
-        <h2 class="step-title">📤 上传课件</h2>
+        <h2 class="step-title"><el-icon><UploadFilled /></el-icon> 上传课件</h2>
         <p class="step-desc">上传 PPT 文件，系统将自动提取内容生成课程大纲和讲述稿</p>
         <div v-if="!slide" class="upload-box">
           <div
@@ -45,7 +45,7 @@ class="native-upload-zone" @drop.prevent="onDrop" @dragover.prevent @click="$ref
           </div>
         </div>
         <div v-else-if="slide?.status === 2" class="file-info">
-          <p>✅ {{ slide.fileName }}（{{ pages.length }} 页）</p>
+          <p><el-icon style="color:var(--el-color-success)"><CircleCheckFilled /></el-icon> {{ slide.fileName }}（{{ pages.length }} 页）</p>
           <el-button size="small" @click="replacePPTX">替换文件</el-button>
         </div>
         <div v-else-if="slide && (slide.status === 0 || slide.status === 1)" class="file-info">
@@ -74,7 +74,7 @@ class="native-upload-zone" @drop.prevent="onDrop" @dragover.prevent @click="$ref
             </div>
             <div v-else-if="renderTimeoutLevel === 2" class="timeout-notice">
               <el-text type="warning" size="small">⏱ 已等待 {{ renderElapsed }} 秒，渲染仍在进行中。</el-text>
-              <el-button size="small" type="warning" plain class="timeout-btn" @click="viewBackendLogs">📋 查看后台日志</el-button>
+              <el-button size="small" type="warning" plain class="timeout-btn" @click="viewBackendLogs"><el-icon style="margin-right:4px"><CopyDocument /></el-icon>查看后台日志</el-button>
             </div>
             <div v-else-if="renderTimeoutLevel === 3" class="timeout-notice timeout-urgent">
               <el-text type="danger" size="small">⚠ 渲染已耗时 {{ renderElapsed }} 秒，可能存在问题。建议截图当前页面（含课程 ID：{{ courseId }}），联系管理员处理。</el-text>
@@ -101,7 +101,7 @@ class="native-upload-zone" @drop.prevent="onDrop" @dragover.prevent @click="$ref
         <div v-else-if="slide?.status === 3" class="render-failure">
           <el-result icon="error" title="课件渲染失败" :sub-title="slide.errorMessage || '请尝试重新上传'">
             <template #extra>
-              <el-button type="primary" size="small" @click="copyCourseId">📋 复制课程ID</el-button>
+              <el-button type="primary" size="small" @click="copyCourseId"><el-icon style="margin-right:4px"><CopyDocument /></el-icon>复制课程ID</el-button>
               <el-button size="small" @click="replacePPTX">重新上传</el-button>
               <p class="contact-admin">如问题持续，请联系管理员</p>
             </template>
@@ -118,7 +118,7 @@ class="native-upload-zone" @drop.prevent="onDrop" @dragover.prevent @click="$ref
 
       <!-- Step 2: Course Outline -->
       <section v-if="pages.length > 0" class="step-card">
-        <h2 class="step-title">📋 课程大纲</h2>
+        <h2 class="step-title"><el-icon><CopyDocument /></el-icon> 课程大纲</h2>
         <p class="step-desc">每个页面作为一个课时，可查看状态</p>
         <div v-for="(page, idx) in pages" :key="idx" class="outline-item">
           <span class="page-num">{{ idx + 1 }}</span>
@@ -132,9 +132,9 @@ class="native-upload-zone" @drop.prevent="onDrop" @dragover.prevent @click="$ref
       <!-- Step 3: AI Narration + Edit -->
       <section v-if="pages.length > 0" class="step-card">
         <div class="step-header">
-          <h2 class="step-title">🎙️ 讲述稿</h2>
+          <h2 class="step-title"><el-icon><Microphone /></el-icon> 讲述稿</h2>
           <div class="step-actions">
-            <el-button size="small" type="primary" :loading="aiGenerating" @click="handleGenerateAllNarrations">🤖 AI 生成全部</el-button>
+            <el-button size="small" type="primary" :loading="aiGenerating" @click="handleGenerateAllNarrations"><el-icon style="margin-right:4px"><MagicStick /></el-icon>AI 生成全部</el-button>
           </div>
         </div>
         <p class="step-desc">AI自动生成讲述稿，教师可逐页编辑确认</p>
@@ -157,13 +157,13 @@ v-model="page.narrationScript" type="textarea" :rows="4"
 />
               <div class="narration-actions">
                 <el-button size="small" :loading="aiLoading[idx]" @click="generateOneNarration(idx)">
-                  🤖 AI 生成本页
+                  <el-icon style="margin-right:4px"><MagicStick /></el-icon>AI 生成本页
                 </el-button>
                 <el-button
 size="small" type="success" :loading="ttsLoading[idx]"
                   :disabled="!page.narrationScript" @click="generateOneAudio(idx)"
 >
-                  🔊 生成音频
+                  <el-icon style="margin-right:4px"><Headset /></el-icon>生成音频
                 </el-button>
               </div>
             </div>
@@ -173,12 +173,12 @@ size="small" type="success" :loading="ttsLoading[idx]"
 
       <!-- Step 4: Exercises -->
       <section v-if="!notInteractive" class="step-card">
-        <h2 class="step-title">📝 练习</h2>
+        <h2 class="step-title"><el-icon><EditPen /></el-icon> 练习</h2>
         <p class="step-desc">手动添加练习题目，或指定类型由AI全量生成</p>
 
         <div class="exercise-controls">
-          <el-button size="small" @click="addExercise">➕ 添加题目</el-button>
-          <el-button size="small" type="primary" :loading="aiExerciseLoading">🤖 AI 生成练习</el-button>
+          <el-button size="small" @click="addExercise"><el-icon style="margin-right:4px"><Plus /></el-icon>添加题目</el-button>
+          <el-button size="small" type="primary" :loading="aiExerciseLoading"><el-icon style="margin-right:4px"><MagicStick /></el-icon>AI 生成练习</el-button>
         </div>
 
         <div v-for="(ex, idx) in exercises" :key="idx" class="exercise-item">
@@ -203,7 +203,7 @@ size="small" type="success" :loading="ttsLoading[idx]"
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, UploadFilled } from '@element-plus/icons-vue'
+import { ArrowDown, CircleCheckFilled, CopyDocument, EditPen, Headset, MagicStick, Microphone, Plus, UploadFilled } from '@element-plus/icons-vue'
 import { getCourseById, submitCourseForReview } from '@/api/course'
 import { getSlides, getSlidePages, uploadSlide, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio } from '@/plugins/interactive/api/slide'
 import NarrationSettingsDialog from '@/plugins/interactive/components/NarrationSettingsDialog.vue'

@@ -1,8 +1,11 @@
 package com.microcourse.security;
 
+import com.microcourse.dto.R;
 import com.microcourse.entity.User;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.util.RedisUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,10 +53,12 @@ public class UserStatusCheckFilter extends OncePerRequestFilter {
 
     private final UserRepository userRepository;
     private final RedisUtil redisUtil;
+    private final ObjectMapper objectMapper;
 
-    public UserStatusCheckFilter(UserRepository userRepository, RedisUtil redisUtil) {
+    public UserStatusCheckFilter(UserRepository userRepository, RedisUtil redisUtil, ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.redisUtil = redisUtil;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -72,14 +77,16 @@ public class UserStatusCheckFilter extends OncePerRequestFilter {
             Long userId = (Long) authentication.getPrincipal();
 
             String status = getUserStatus(userId);
-            if ("DISABLED".equals(status) || "DELETED".equals(status)) {
-                log.warn("禁用/删除用户尝试访问系统: userId={}, status={}", userId, status);
+            if ("DISABLED".equals(status)) {
+                log.warn("禁用用户尝试访问系统: userId={}", userId);
                 SecurityContextHolder.clearContext();
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write(
-                        "{\"code\":401,\"message\":\"账号已被禁用或删除\",\"timestamp\":"
-                                + System.currentTimeMillis() + "}");
+                writeErrorResponse(response, ErrorCode.ACCOUNT_DISABLED);
+                return;
+            }
+            if ("DELETED".equals(status)) {
+                log.warn("删除用户尝试访问系统: userId={}", userId);
+                SecurityContextHolder.clearContext();
+                writeErrorResponse(response, ErrorCode.ACCOUNT_DELETED);
                 return;
             }
         } catch (Exception e) {
@@ -140,5 +147,15 @@ public class UserStatusCheckFilter extends OncePerRequestFilter {
             default:
                 return "UNKNOWN";
         }
+    }
+
+    /**
+     * 写入符合 R&lt;T&gt; 契约格式的错误响应（含 timestamp）。
+     * 使用 ObjectMapper 序列化 R.fail(ErrorCode)，避免 String.format 拼接导致的特殊字符问题。
+     */
+    private void writeErrorResponse(HttpServletResponse response, ErrorCode errorCode) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(objectMapper.writeValueAsString(R.fail(errorCode)));
     }
 }

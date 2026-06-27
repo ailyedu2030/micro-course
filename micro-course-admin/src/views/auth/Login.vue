@@ -136,6 +136,7 @@ import { ElMessage } from 'element-plus'
 import { User, Lock, Reading } from '@element-plus/icons-vue'
 import { register as registerApi } from '@/api/auth'
 import { setToken, setRefreshToken } from '@/utils/auth'
+import { getRoleHomePage } from '@/router'
 
 const router = useRouter()
 const route = useRoute()
@@ -216,11 +217,8 @@ const handleLogin = async () => {
       if (redirect) {
         router.push(redirect)
       } else {
-        const role = userStore.role
-        if (role === 'STUDENT') router.push('/student/courses')
-        else if (role === 'TEACHER') router.push('/teacher/dashboard')
-        else if (role === 'ACADEMIC') router.push('/users')
-        else router.push('/admin/dashboard')
+        const home = getRoleHomePage(userStore.role)
+        router.push(home)
       }
     } catch (e) {
       // 拦截器已处理 401/500，这里兜底网络错误

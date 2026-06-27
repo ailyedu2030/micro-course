@@ -973,8 +973,8 @@ const ensureProgressRecord = async () => {
   }
 }
 
-const reportProgress = async () => {
-  if (isComponentUnmounted) return
+const reportProgress = async (force = false) => {
+  if (!force && isComponentUnmounted) return
   const video = videoRef.value
   if (!video || !video.duration || video.paused) return
   const current = video.currentTime
@@ -984,7 +984,7 @@ const reportProgress = async () => {
   lastReportedProgress = progressPercentVal
   try {
     const hasRecord = await ensureProgressRecord()
-    if (!hasRecord || isComponentUnmounted) return
+    if (!hasRecord || (!force && isComponentUnmounted)) return
     await updateLearningProgress(progressId.value, {
       videoPosition: Math.floor(current),
       videoProgress: Math.round(progressPercentVal)
@@ -1536,16 +1536,28 @@ watch(isPlaying, (playing) => {
   }
 })
 
-onBeforeUnmount(() => {
-  // P1-2: Mark unmounted to prevent async state updates
-  isComponentUnmounted = true
-
-  // Save final position
+onBeforeUnmount(async () => {
+  // P1-C #7: 先保存本地进度 → 上报服务端 → 最后标记卸载，避免竞态
   const video = videoRef.value
+
+  // 1. 先保存本地（同步，最快）
   if (video) {
     saveLocalPosition(video.currentTime)
-    reportProgress()
-    // Remove PiP event listeners
+  }
+
+  // 2. 上报服务端（force=true 跳过 isComponentUnmounted 检查，等待完成）
+  try {
+    await reportProgress(true)
+  } catch (e) {
+    console.warn('[VideoPlayer] final progress report failed:', e)
+  }
+
+  // 3. 标记卸载（在此之后所有异步尝试都会短路）
+  isComponentUnmounted = true
+
+  // 4. 清理定时器和资源
+  stopProgressReporting()
+  if (video) {
     video.removeEventListener('enterpictureinpicture', handlePipEnter)
     video.removeEventListener('leavepictureinpicture', handlePipLeave)
   }
@@ -1553,8 +1565,6 @@ onBeforeUnmount(() => {
     hlsInstance.value.destroy()
     hlsInstance.value = null
   }
-  // P1-1: Stop progress reporting
-  stopProgressReporting()
   // P1-3: 清理缓冲 watchdog,避免内存泄漏
   stopBufferingWatchdog()
   if (hideControlsTimer) {

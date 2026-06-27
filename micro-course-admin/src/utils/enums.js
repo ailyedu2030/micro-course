@@ -83,7 +83,9 @@ export const Gender = {
  */
 export async function syncEnumsFromBackend() {
   try {
-    const response = await fetch('/api/enums/export', {
+    // R7 横向扫描修复：与 request.js 保持一致，使用 VITE_API_BASE_URL（fallback /api）
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+    const response = await fetch(`${API_BASE_URL}/enums/export`, {
       headers: { Accept: 'application/json' }
     })
     if (!response.ok) {

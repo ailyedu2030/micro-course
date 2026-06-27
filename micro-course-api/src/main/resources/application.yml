@@ -8,8 +8,8 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     url: ${DB_URL:jdbc:postgresql://localhost:5432/micro_course}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     hikari:
       # P3-14 连接池监控：pool-name 作为 Micrometer hikaricp_* 指标的 pool 标签，便于多池区分
       pool-name: micro-course-pool
@@ -41,7 +41,7 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD}
+      password: ${REDIS_PASSWORD:}
       database: ${REDIS_DB:0}
       timeout: 2000ms
       lettuce:
@@ -87,7 +87,8 @@ mybatis-plus:
     # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 jwt:
-  secret: ${JWT_SECRET}
+  # R8 修复 P0-1: 本地开发允许无 JWT_SECRET（JwtUtil.init 兜底），生产必须显式设置
+  secret: ${JWT_SECRET:}
   # 生产建议: JWT_EXPIRATION=1800000(30分), refresh=604800000(7天)
   expiration: ${JWT_EXPIRATION:7200000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
@@ -100,7 +101,8 @@ video:
   # P1-7: 视频签名独立密钥（不与 JWT 共用）
   # P1 安全：禁止 fallback 到 JWT_SECRET —— 未配置 VIDEO_SIGN_SECRET 时直接启动失败，避免静默复用 JWT 密钥
   sign:
-    secret: ${VIDEO_SIGN_SECRET}
+    # R8 修复 P0-1: 本地开发允许无 VIDEO_SIGN_SECRET（VideoSignUtil.init 兜底），生产必须显式设置
+    secret: ${VIDEO_SIGN_SECRET:}
   transcode:
     # P1-2: FFmpeg 超时（分钟）可配置
     timeout-minutes: ${VIDEO_TRANSCODE_TIMEOUT:60}
@@ -131,7 +133,8 @@ plugin:
       #   api-key: ollama
       #   model: qwen2.5:7b
       #   base-url: http://localhost:11434/v1
-      api-key: ${LLM_API_KEY:${DEEPSEEK_API_KEY}}
+      # R8 修复 P0-1: 本地开发允许无 DeepSeek API key（不调 AI 时不影响）
+      api-key: ${LLM_API_KEY:${DEEPSEEK_API_KEY:dev-placeholder-not-used}}
       model: ${LLM_MODEL:deepseek-chat}
       base-url: ${LLM_BASE_URL:https://api.deepseek.com}
     minimax:

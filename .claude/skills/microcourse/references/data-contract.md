@@ -76,12 +76,11 @@
 | name | name | String | string | 50 | NOT NULL |
 | majorId | major_id | Long | number | - | FK→majors, NOT NULL |
 | grade | grade | String | string | 10 | NOT NULL |
-| counselorId | counselor_id | Long | number | - | FK→users |
 | sortOrder | sort_order | Integer | number | - | default 0 |
 | createdAt | created_at | LocalDateTime | string | - | NOT NULL |
 | updatedAt | updated_at | LocalDateTime | string | - | - |
 
-**索引**：idx_classes_major_grade (major_id + grade), idx_classes_name, idx_classes_counselor
+**索引**：idx_classes_major_grade (major_id + grade), idx_classes_name
 
 ---
 
@@ -112,9 +111,9 @@ department_id  ↔  departmentId
 
 ```
 departments (1) → majors (N) → classes (N) → users (N)
-                                    ↓
-                              counselorId → users.id
 ```
+
+> 注：原 `classes.counselorId → users.id` FK 已于 V89 迁移移除（`V89__drop_counselor_id.sql`），对应索引 `idx_classes_counselor` 一并删除。
 
 ### 2.5 状态机状态值（users.status）
 

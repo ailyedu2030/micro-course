@@ -138,7 +138,7 @@ const routes = [
   } },
 ]
 
-function getRoleHomePage(role) {
+export function getRoleHomePage(role) {
   if (role === 'STUDENT') return '/student/courses'
   if (role === 'TEACHER') return '/teacher/dashboard'
   if (role === 'ACADEMIC') return '/academic/dashboard'

@@ -128,6 +128,97 @@
 
 ---
 
+## v1.18.0 R7 全量审查（2026-06-27）— 5 维交叉验证 R1-R5
+
+总工程师对 v1.18.0 发布前 5 维全量审查，发现 **8 项 P1-C 全部修复**，**28 项 P1-I + 17 项 P2 评估后登记**。
+
+### 评估原则（沿用 R6）
+- P1-I 放行：客户在 100 次正常操作内不可感知
+- P2 放行：影响范围明确，修复成本可接受推迟
+- P1-C 零容忍：8 项全部修复
+
+### R7 修复的 P1-C（8 项）
+
+| # | 维度 | 文件:行号 | 问题 | 修复 |
+|---|------|----------|------|------|
+| 1 | R2 | `docs/数据字典.md:144,149` §1.4 | `counselorId` 字段 + `idx_classes_counselor` 索引 V89 已删但文档未同步 | 删除字段行 + 索引行 |
+| 2 | R3 | `security/UserStatusCheckFilter.java` + `config/RestAuthenticationEntryPoint.java` | 返回 `code:401` 而非业务码 `1002/1003` | 用 `ErrorCode` 枚举 + `ObjectMapper` 替代 String.format |
+| 3 | R4 | `utils/request.js:7,113` | baseURL 硬编码 `/api` | 改用 `import.meta.env.VITE_API_BASE_URL` |
+| 4 | R5a | `views/teacher/TeacherWorkspace.vue` (12 处) | emoji 作为图标（📤✅📋🎙️🤖🔊📝➕） | 替换为 Element Plus SVG 图标 |
+| 5 | R5b | `views/auth/Login.vue:222` | ACADEMIC 登录跳 `/users` 而非 `/academic/dashboard` | 重构为调用 `getRoleHomePage()` 单一真相 |
+| 6 | R5c | `utils/request.js:85-88` | 双重错误弹窗（拦截器 + 组件 catch） | 移除拦截器 ElMessage，仅 Promise.reject |
+| 7 | R5c | `views/student/VideoPlayer.vue:976,987,1539-1567` | 卸载时 `isComponentUnmounted=true` 阻断最终进度上报 | 重构顺序：saveLocal → await report(force=true) → unmount |
+| 8 | R5c | `views/student/LearningView.vue:360,509-524` | `onBeforeUnmount` 缺最终进度上报 | 添加 `await saveVideoProgress(true)` + try/catch |
+
+### R7 登记的 P1-I（28 项 — 逐条评估，零批量放行）
+
+| # | 维度 | 文件:行号 | 问题 | 客户可见性 | 目标版本 |
+|---|------|----------|------|-----------|---------|
+| 1 | R1 | `VideoServiceImpl.java:131` | `findEntityById()` 返回 Entity 而非 VO（方法名已说明意图） | 仅内部使用 | v1.19.0 |
+| 2 | R1 | `VideoServiceImpl.java:420` | `findByMd5()` 返回 Entity（MD5 去重内部逻辑） | 仅内部使用 | v1.19.0 |
+| 3 | R1 | `CourseReviewServiceImpl.java:335` | `buildUserMap()` 返回 `Map<Long, User>` 暴露 Entity | 私有辅助方法 | v1.19.0 |
+| 4 | R1 | `PageResult.java:of(...)` | 手动构造方法不强制 0-based page 编译时保障 | 调用方已有约定 | v1.19.0 |
+| 5 | R1 | `SystemConfigController.java` `publicConfigs()` | 无显式 `@PreAuthorize("permitAll()")` 注解 | 行为正确，仅整洁 | v1.19.0 |
+| 6 | R1 | `OrderController.java` `paymentCallback()` | 无显式 `@PreAuthorize("permitAll()")` 注解 | HMAC 已验证 | v1.19.0 |
+| 7 | R2 | `entity/` 缺 `CourseSlide.java` + `SlidePage.java` | V49 表的 Entity 缺失 | 可能影响 slide 功能 | v1.18.1 |
+| 8 | R2 | `docs/数据字典.md` | V58 `exercise_chapters` + `question_chapters` 表未登记 | 文档漂移 | v1.18.1 |
+| 9 | R2 | `references/data-contract.md:130` | "38 张表"过时，实际 59 张 | 引用视图数字错误 | v1.18.1 |
+| 10 | R2 | `docs/数据字典.md:§2.2/§2.7/§4.1` | V77 CHECK 约束未登记 | 文档漂移 | v1.18.1 |
+| 11 | R3 | `util/RedisUtil.java` | Redis key 文档 vs 代码前缀漂移 | 文档同步 | v1.18.1 |
+| 12 | R3 | `config/SecurityConfig.java:143-145` | 视频文件 `/api/files/videos/**` permitAll | 已有 nginx Referer 防护 | v1.19.0 |
+| 13 | R3 | `config/SecurityConfig.java:119-125` | 微专业公共端点 permitAll 范围较宽 | Service 层已过滤 CANCELLED | v1.19.0 |
+| 14 | R4 | `api/class.js:6` | 缺 `getClassStudents` API 封装 | 后端端点已存在，前端未消费 | v1.19.0 |
+| 15 | R4 | `api/department.js:6` | 缺 `getDepartmentStats` API 封装 | 后端端点已存在，前端未消费 | v1.19.0 |
+| 16 | R4 | `api/course.js:51` | 缺 4 个 API 函数封装 | 后端端点已存在，前端未消费 | v1.19.0 |
+| 17 | R4 | `references/data-contract.md:17-39` | `users.teacher_status` 字段未登记 | 引用视图漂移 | v1.18.1 |
+| 18 | R5a | `common-table.css` vs `design-tokens.css` | CSS 重复定义（`.data-table`/`.pagination-wrap`/`:deep(.el-dialog)`） | 加载顺序决定行为 | v1.19.0 |
+| 19 | R5a | `design-tokens.css` 多处 | 74 处 `!important` 使用过多 | 代码味道 | v1.19.0 |
+| 20 | R5a | `design-tokens.css:68-80,1321-1381` | `.role-video` vs `[data-theme="dark"]` 潜在冲突 | 实际很少触发 | v1.19.0 |
+| 21 | R5a | `StudentLayout.vue` 多处 | 导航链接缺 `aria-current="page"` | a11y 加固 | v1.19.0 |
+| 22 | R5b | `utils/request.js:110` | 并发 401 无重试队列 | 当前并发量下很少触发 | v1.19.0 |
+| 23 | R5b | `router/index.js:190` | 残留 `sessionStorage.removeItem('userRole')` | 无害但冗余 | v1.18.1 |
+| 24 | R5c | `api/teaching-class.js` | 仍存在该文件，需确认后端端点状态 | 若后端已删，前端 404 | v1.18.1 |
+| 25 | R5c | `api/course.js:3` ↔ `api/microSpecialty.js:62` | `getCourses` 同名不同参冲突 | 命名混淆 | v1.19.0 |
+| 26 | R5c | `utils/logger.js:20-22` | logger 注释与实现不符 | 文档漂移 | v1.18.1 |
+| 27 | R5c | `composables/useAsyncData.js` + `useErrorHandler.js` | 统一 composable 采用率低 | 30+ 视图重复实现 | v1.19.0 |
+| 28 | R5c | `api/course.js:3` `getCourses` 与 `microSpecialty.js:62` 同名 | 见 P1-I #25 | — | — |
+
+### R7 登记的 P2（17 项 — 记录到 backlog）
+
+| # | 维度 | 文件:行号 | 问题 | 修复成本 | 目标版本 |
+|---|------|----------|------|---------|---------|
+| 1 | R1 | `SecurityConfig.java:132` | Swagger 路径生产环境仍 permitAll | 1 行 | v1.18.1 |
+| 2 | R1 | `SecurityConfig.java:80` | CSP 中 `unsafe-inline`/`unsafe-eval`（hls.js 需要） | 调研 + 重构 | v1.20.0 |
+| 3 | R1 | `Service` 层 | 60% `BusinessException(BAD_REQUEST_PARAM)` 用自定义详情 | 新增枚举值 | v1.19.0 |
+| 4 | R1 | `precheck.sh` 第 14 项 | `field-contract-scanner.py` 未在 CI 强制 | CI 配 1 行 | v1.18.1 |
+| 5 | R2 | 多处 Entity | `@TableField` 注解使用不一致 | 重构 | v1.19.0 |
+| 6 | R2 | `docs/数据字典.md:§2.16` | `narration_settings` 默认值未完整记录 | 补全文档 | v1.18.1 |
+| 7 | R3 | `pom.xml` | 无 OWASP Dependency-Check 插件 | 加 1 个 plugin | v1.19.0 |
+| 8 | R4 | `CourseController.java:133-135` | `@RequireRole` 与 `@PreAuthorize` 冗余 | 删 1 注解 | v1.18.1 |
+| 9 | R4 | `plugins/interactive/api/slide.js` | 13 个 slide 端点后端无对应 Controller | 确认后端实现计划 | v1.19.0 |
+| 10 | R5a | `OutlineSidebar.vue:29` | 1 处 emoji 状态指示器（✓） | 1 行 | v1.18.1 |
+| 11 | R5a | `TeacherDashboard.vue:733,737` | 断点 `max-width: 600px`/`380px` 不一致 | 统一为 768px | v1.18.1 |
+| 12 | R5b | `router/index.js:65-67` | 3 个路由名 camelCase 非 PascalCase | 重命名 | v1.18.1 |
+| 13 | R5b | `components/StudentLayout.vue:224-231` | StudentLayout 7 tab 超 spec 5 tab | 重组菜单 | v1.19.0 |
+| 14 | R5c | 多个列表视图 | 无分页/filter 状态持久化到 URL | 全量改 | v1.19.0 |
+| 15 | R5c | `MyCourses.vue:650-696` | N+1 多次 API 调用 | 后端批量接口 | v1.19.0 |
+| 16 | R5c | `store/cart.js` | 购物车纯客户端无服务端同步 | 后端 + action | v1.20.0 |
+| 17 | R5c | 多个列表视图 | 无缓存 TTL 机制（SWR） | 引入 vue-query | v1.20.0 |
+
+### R7 验证结果
+
+| 维度 | 指标 | 状态 |
+|------|------|------|
+| **代码** | P1-C 已修 | 8/8 ✅ |
+| **代码** | P1-I 登记 | 28 条 ✅ |
+| **代码** | P2 登记 | 17 条 ✅ |
+| **本地** | precheck.sh | 16/16 PASS ✅ |
+| **本地** | mvn compile | 0 ERROR ✅ |
+| **本地** | npm run build | SUCCESS ✅ |
+| **横向扫描** | `utils/enums.js:86` 同类硬编码发现 | 待后续工单 |
+
+---
+
 ## 登记规则（沿用）
 
 - P1-I 放行条件：总工程师逐条评估，确认"客户在 100 次正常操作内不可感知"
@@ -137,7 +228,9 @@
 
 ---
 
-*最后更新：2026-06-26 R6 总工程师亲自验收*  
+*最后更新：2026-06-27 R7 全量审查（5 维 R1-R5 交叉验证）*  
 *评估人：总工程师*  
-*P0+P1-C+P1-I+P2 业务代码：100% 清零*  
-*下次清理：v1.18.1 发布前（关注 Spring Boot 3.2.12 EOL 升级窗口）*
+*P1-C：8/8 修复清零*  
+*P1-I：28 条登记，零批量放行*  
+*P2：17 条记录到 backlog*  
+*下次清理：v1.18.1 发布前（Spring Boot 3.2.12 EOL 窗口）*

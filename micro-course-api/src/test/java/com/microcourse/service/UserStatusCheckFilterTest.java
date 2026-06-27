@@ -8,6 +8,7 @@ import com.microcourse.security.UserStatusCheckFilter;
 import com.microcourse.service.UserService;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -170,7 +171,7 @@ class UserStatusCheckFilterTest extends BaseIntegrationTest {
                 });
         RedisUtil failingRedis = new FailingRedisUtil();
 
-        UserStatusCheckFilter filter = new UserStatusCheckFilter(failingRepo, failingRedis);
+        UserStatusCheckFilter filter = new UserStatusCheckFilter(failingRepo, failingRedis, new ObjectMapper());
 
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 999L, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_STUDENT")));

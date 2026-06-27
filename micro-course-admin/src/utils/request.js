@@ -4,7 +4,7 @@ import router from '../router'
 import { getToken, setToken, removeToken, getRefreshToken, setRefreshToken, removeRefreshToken } from './auth'
 
 // P3-8: 提取硬编码配置为常量，便于统一调整
-const API_BASE_URL = '/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 // P1-2: 超时按 HTTP 方法分级 — 客户体验:
 //   - GET  10s: 列表/详情查询,网络慢时 10s 足以感知问题
 //   - POST 30s: 提交表单/创建资源,服务端处理稍长
@@ -82,7 +82,6 @@ request.interceptors.response.use(response => {
     return response
   }
   if (res.code !== 200) {
-    ElMessage.error(res.message || '请求失败')
     return Promise.reject(new Error(res.message))
   }
   // D2: 请求完成后重置上传状态
@@ -110,7 +109,7 @@ request.interceptors.response.use(response => {
       if (isRefreshing) return Promise.reject(error)
       isRefreshing = true
       try {
-        const res = await axios.post('/api/auth/refresh', { refreshToken }, { _skipAuth: true, headers: {} })
+        const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }, { _skipAuth: true, headers: {} })
         const newToken = res.data?.data?.accessToken
         const newRefreshToken = res.data?.data?.refreshToken
         if (newToken) {

@@ -357,9 +357,9 @@ function goToLesson(lesson) {
 }
 
 // ==================== 进度保存（每 10 秒） ====================
-async function saveVideoProgress() {
-  // P1-10: 只在播放中保存进度
-  if (!isPlaying.value) return
+async function saveVideoProgress(force = false) {
+  // P1-10: 只在播放中保存进度（force=true 时跳过此检查，用于卸载前最终上报）
+  if (!force && !isPlaying.value) return
   if (!currentLessonId.value) return
   try {
     const lessonId = currentLessonId.value
@@ -506,11 +506,20 @@ const stopCourseWatch = watch(() => route.query.courseId, (newId) => {
   if (newId) loadCourse(parseInt(newId))
 })
 
-onBeforeUnmount(() => {
+onBeforeUnmount(async () => {
+  // P1-C #8: 先清理定时器，再做最后一次进度上报
   if (progressSaveTimer) {
     clearInterval(progressSaveTimer)
     progressSaveTimer = null
   }
+  
+  // 最后一次进度上报（force=true 确保暂停状态下也能保存进度）
+  try {
+    await saveVideoProgress(true)
+  } catch (e) {
+    console.warn('[LearningView] final progress report failed:', e)
+  }
+  
   stopCourseWatch()
 })
 </script>
