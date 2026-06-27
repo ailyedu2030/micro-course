@@ -55,8 +55,13 @@ public class MicroCourseApplication {
     public void checkPaymentMode() {
         if ("mock".equals(paymentMode)) {
             if (activeProfile.contains("prod")) {
-                throw new IllegalStateException(
-                        "生产环境禁止使用 mock 支付模式，请设置 PAYMENT_MODE=real 并配置支付网关");
+                // 学校内网部署：按需确认支付网关已配置。未配置时允许 mock 模式（见 school-deploy.md）
+                if (!"true".equalsIgnoreCase(System.getenv("PROD_ALLOW_MOCK_PAYMENT"))) {
+                    throw new IllegalStateException(
+                            "生产环境禁止使用 mock 支付模式，请设置 PAYMENT_MODE=real 并配置支付网关。"
+                            + " 如确需 mock 模式，请设置环境变量 PROD_ALLOW_MOCK_PAYMENT=true");
+                }
+                log.warn("[PAYMENT] ⚠️ PROD_ALLOW_MOCK_PAYMENT=true — 生产环境使用 mock 支付！");
             }
             log.warn("[PAYMENT] 当前使用 MOCK 支付模式！支付将模拟成功，不产生真实交易。"
                     + " 生产部署前请务必切换为 real 模式。");
