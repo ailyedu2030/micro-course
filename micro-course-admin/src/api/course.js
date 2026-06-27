@@ -49,3 +49,7 @@ export function updateCourseCover(id, file) {
   formData.append('file', file)
   return request({ method: 'POST', url: `/courses/${id}/cover`, data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
 }
+export function getCourseStudents(id) { return request({ method: 'GET', url: `/courses/${id}/students` }) }
+export function getCourseStats(id) { return request({ method: 'GET', url: `/courses/${id}/stats` }) }
+export function unpublishCourse(id) { return request({ method: 'POST', url: `/courses/${id}/unpublish` }) }
+export function getPendingReviewCourses(params) { return request({ method: 'GET', url: '/courses/pending-review', params }) }

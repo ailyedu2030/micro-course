@@ -4,3 +4,4 @@ export function getClassById(id) { return request({ method: 'GET', url: `/classe
 export function createClass(data) { return request({ method: 'POST', url: '/classes', data }) }
 export function updateClass(id, data) { return request({ method: 'PUT', url: `/classes/${id}`, data }) }
 export function deleteClass(id) { return request({ method: 'DELETE', url: `/classes/${id}` }) }
+export function getClassStudents(id) { return request({ method: 'GET', url: `/classes/${id}/students` }) }

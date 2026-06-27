@@ -187,7 +187,6 @@ router.beforeEach(async (to, from, next) => {
         console.warn('[router] 静默刷新失败, 清除登录态', refreshError)
       }
       removeToken()
-      sessionStorage.removeItem('userRole')
       localStorage.removeItem('micro_course_refresh_token')
       userStore.token = ''
       userStore.userInfo = null

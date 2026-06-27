@@ -82,7 +82,7 @@ DELETE /api/classes/{id}
 ## 3. 登录流程（5 步）
 
 ```
-1. 校验登录失败次数（Redis key: login:lock:{username}）
+1. 校验登录失败次数（Redis key: mc:login:lock:{username}）
    → 失败次数 ≥ 5 → return code 1006（HTTP 423），账号锁定 30 分钟
 2. 验证密码（bcrypt）
    → 失败 → return code 1001
@@ -115,11 +115,11 @@ DELETE /api/classes/{id}
 
 **用途**：用户登出后或账户被禁用时，使已签发的 JWT Token 立即失效。
 
-**Redis key 格式**：`jwt:blacklist:{jti}`
+**Redis key 格式**：`mc:jwt:blacklist:{jti}`
 
 | 属性 | 值 | 说明 |
 |------|----|------|
-| key | `jwt:blacklist:{jti}` | jti = JWT ID（JWT Claims 中唯一标识） |
+| key | `mc:jwt:blacklist:{jti}` | jti = JWT ID（JWT Claims 中唯一标识） |
 | value | `"1"` | 标记位 |
 | TTL | 与 accessToken 有效期间一致（7200s） | Token 过期后自动清除 |
 
@@ -133,7 +133,7 @@ DELETE /api/classes/{id}
 
 **用途**：防止暴力破解，同一用户连续登录失败 ≥ 5 次 → 账号锁定 30 分钟。
 
-**Redis key 格式**：`login:lock:{username}`
+**Redis key 格式**：`mc:login:lock:{username}`
 
 | 属性 | 值 |
 |------|-----|

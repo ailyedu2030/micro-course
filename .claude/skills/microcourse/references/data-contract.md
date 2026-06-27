@@ -74,6 +74,7 @@
 |------|-------|-----------|---------|------|------|
 | id | id | Long | number | - | PK, AUTO |
 | name | name | String | string | 50 | NOT NULL |
+| teacherStatus | teacher_status | Integer | number | - | V24 新增 |
 | majorId | major_id | Long | number | - | FK→majors, NOT NULL |
 | grade | grade | String | string | 10 | NOT NULL |
 | sortOrder | sort_order | Integer | number | - | default 0 |
@@ -126,7 +127,7 @@ departments (1) → majors (N) → classes (N) → users (N)
 
 ---
 
-## 3. 38 张表概览（Phase 1 仅前 4 张，Phase 2+ 详见源文档）
+## 3. 59 张表概览（Phase 1 仅前 4 张，Phase 2+ 详见源文档）
 
 ```
 1. users                  ← Phase 1

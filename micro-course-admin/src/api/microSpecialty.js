@@ -59,6 +59,7 @@ export function transferLeadership(id, data) {
 }
 
 // ========== 课程编排 ==========
+/** 获取微专业课程列表（注意与 course.js getCourses 区分：此函数传 msId，course.js 传搜索参数） */
 export function getCourses(id) {
   return request({ method: 'GET', url: `/micro-specialties/${id}/courses` })
 }

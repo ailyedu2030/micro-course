@@ -9,7 +9,7 @@
  * 使用方法:
  *   import { logger } from '@/utils/logger'
  *   logger.debug('something')  // 生产静默
- *   logger.info('something')   // 生产输出
+ *   logger.info('something')   // 生产静默（防止 F12 泄露内部技术细节）
  *   logger.warn('something')   // 生产输出
  *   logger.error('something')  // 生产输出
  */
