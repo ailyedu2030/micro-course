@@ -645,8 +645,19 @@ public class AuthServiceImpl implements AuthService {
         }
         // 文件类型校验
         String contentType = file.getContentType();
-        if (contentType == null || !java.util.Set.of("image/jpeg", "image/png", "image/webp").contains(contentType)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 JPEG、PNG、WebP 格式的图片");
+        // 兼容前端 Canvas 压缩后 File Blob 传递时 Content-Type 可能为 null 的情况（魔数校验兜底）
+        boolean contentTypeOk = contentType != null && java.util.Set.of("image/jpeg", "image/png", "image/webp").contains(contentType);
+        if (!contentTypeOk) {
+            String origName = file.getOriginalFilename();
+            if (origName != null) {
+                String lower = origName.toLowerCase();
+                if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) contentType = "image/jpeg";
+                else if (lower.endsWith(".png")) contentType = "image/png";
+                else if (lower.endsWith(".webp")) contentType = "image/webp";
+            }
+            if (contentType == null || !java.util.Set.of("image/jpeg", "image/png", "image/webp").contains(contentType)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 JPEG、PNG、WebP 格式的图片");
+            }
         }
         // 文件大小校验（≤2MB）
         if (file.getSize() > 2 * 1024 * 1024) {
