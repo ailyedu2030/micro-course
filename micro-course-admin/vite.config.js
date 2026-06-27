@@ -30,14 +30,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // P1-C 修复：拆分 vendor chunk 降低首屏加载时间
-          // 客户可感知：chunk >400kB 在 3G 网络下加载 >2s
-          if (id.includes('node_modules/element-plus/es')) {
-            if (id.includes('/components/') || id.includes('/directives/')) return 'vendor-el-ui'
-            if (id.includes('/utils/') || id.includes('/hooks/') || id.includes('/locale/')) return 'vendor-el-utils'
-            return 'vendor-el-core'
+          // R8 修复：Element Plus 内部循环依赖，拆分多chunk导致加载顺序错误
+          // Cannot access 'V' before initialization → 合并为单个vendor-el
+          if (id.includes('node_modules/element-plus/es') || id.includes('node_modules/@element-plus/icons-vue')) {
+            return 'vendor-el'
           }
-          if (id.includes('node_modules/@element-plus/icons-vue')) return 'vendor-el-icons'
           if (id.includes('node_modules/xlsx')) return 'vendor-xlsx'
           if (id.includes('node_modules/@vueuse')) return 'vendor-vueuse'
           if (id.includes('node_modules/axios')) return 'vendor-axios'
