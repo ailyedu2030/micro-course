@@ -175,7 +175,9 @@
         </el-alert>
       </div>
       <div class="download-template">
-        <span class="template-tip">模板文件请联系系统管理员获取</span>
+        <el-button size="small" @click="handleDownloadTemplate">
+          <el-icon><Download /></el-icon> 下载样表
+        </el-button>
       </div>
       <el-upload
         ref="uploadRef"
@@ -240,8 +242,9 @@ import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { UploadFilled, Download } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
+import * as XLSX from 'xlsx'
 import { getUsers, updateUser, updateUserStatus, updateTeacherStatus, batchImportUsers, uploadAvatar } from '@/api/user'
 import { getDepartments } from '@/api/department'
 import { getMajors } from '@/api/major'
@@ -483,6 +486,20 @@ const handleDelete = async (row) => {
 }
 
 // 批量导入
+const handleDownloadTemplate = () => {
+  const wsData = [
+    ['username', 'realName', 'password', 'email', 'role', 'departmentId', 'majorId', 'classId', 'studentNo', 'teacherNo'],
+    ['zhangsan', '张三', 'Abc123456', 'zhangsan@school.edu.cn', 'STUDENT', '1', '1', '1', 'S2024001', ''],
+    ['lisi', '李四', 'Abc123456', 'lisi@school.edu.cn', 'TEACHER', '1', '', '', '', 'T001'],
+    ['wangwu', '王五', 'Abc123456', 'wangwu@school.edu.cn', 'ADMIN', '1', '', '', '', ''],
+  ]
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet(wsData)
+  ws['!cols'] = [{ wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 28 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 10 }]
+  XLSX.utils.book_append_sheet(wb, ws, '用户导入')
+  XLSX.writeFile(wb, '用户导入样表.xlsx')
+}
+
 const handleFileChange = (file) => {
   uploadFile.value = file.raw
 }
