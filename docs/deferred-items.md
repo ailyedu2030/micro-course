@@ -160,26 +160,26 @@
 | 4 | R1 | `PageResult.java:of(...)` | 手动构造方法不强制 0-based page 编译时保障 | 调用方已有约定 | v1.19.0 |
 | 5 | R1 | `SystemConfigController.java` `publicConfigs()` | 无显式 `@PreAuthorize("permitAll()")` 注解 | 行为正确，仅整洁 | v1.19.0 |
 | 6 | R1 | `OrderController.java` `paymentCallback()` | 无显式 `@PreAuthorize("permitAll()")` 注解 | HMAC 已验证 | v1.19.0 |
-| 7 | R2 | `entity/` 缺 `CourseSlide.java` + `SlidePage.java` | V49 表的 Entity 缺失 | 可能影响 slide 功能 | v1.18.1 |
+| 7 | R2 | `entity/` 缺 `CourseSlide.java` + `SlidePage.java` | V49 表的 Entity 缺失 | ✅ **R8 已修** | v1.18.0 |
 | 8 | R2 | `docs/数据字典.md` | V58 `exercise_chapters` + `question_chapters` 表未登记 | 文档漂移 | v1.18.1 |
-| 9 | R2 | `references/data-contract.md:130` | "38 张表"过时，实际 59 张 | 引用视图数字错误 | v1.18.1 |
+| 9 | R2 | `references/data-contract.md:130` | "38 张表"过时，实际 59 张 | ✅ **R8 已修** | v1.18.0 |
 | 10 | R2 | `docs/数据字典.md:§2.2/§2.7/§4.1` | V77 CHECK 约束未登记 | 文档漂移 | v1.18.1 |
-| 11 | R3 | `util/RedisUtil.java` | Redis key 文档 vs 代码前缀漂移 | 文档同步 | v1.18.1 |
+| 11 | R3 | `util/RedisUtil.java` | Redis key 文档 vs 代码前缀漂移 | ✅ **R8 已修**（business-logic.md 同步）| v1.18.0 |
 | 12 | R3 | `config/SecurityConfig.java:143-145` | 视频文件 `/api/files/videos/**` permitAll | 已有 nginx Referer 防护 | v1.19.0 |
 | 13 | R3 | `config/SecurityConfig.java:119-125` | 微专业公共端点 permitAll 范围较宽 | Service 层已过滤 CANCELLED | v1.19.0 |
-| 14 | R4 | `api/class.js:6` | 缺 `getClassStudents` API 封装 | 后端端点已存在，前端未消费 | v1.19.0 |
-| 15 | R4 | `api/department.js:6` | 缺 `getDepartmentStats` API 封装 | 后端端点已存在，前端未消费 | v1.19.0 |
-| 16 | R4 | `api/course.js:51` | 缺 4 个 API 函数封装 | 后端端点已存在，前端未消费 | v1.19.0 |
-| 17 | R4 | `references/data-contract.md:17-39` | `users.teacher_status` 字段未登记 | 引用视图漂移 | v1.18.1 |
-| 18 | R5a | `common-table.css` vs `design-tokens.css` | CSS 重复定义（`.data-table`/`.pagination-wrap`/`:deep(.el-dialog)`） | 加载顺序决定行为 | v1.19.0 |
+| 14 | R4 | `api/class.js:6` | 缺 `getClassStudents` API 封装 | ✅ **R8 已修** | v1.18.0 |
+| 15 | R4 | `api/department.js:6` | 缺 `getDepartmentStats` API 封装 | ✅ **R8 已修** | v1.18.0 |
+| 16 | R4 | `api/course.js:51` | 缺 4 个 API 函数封装 | ✅ **R8 已修** | v1.18.0 |
+| 17 | R4 | `references/data-contract.md:17-39` | `users.teacher_status` 字段未登记 | ✅ **R8 已修** | v1.18.0 |
+| 18 | R5a | `common-table.css` vs `design-tokens.css` | CSS 重复定义 | 加载顺序决定行为 | v1.19.0 |
 | 19 | R5a | `design-tokens.css` 多处 | 74 处 `!important` 使用过多 | 代码味道 | v1.19.0 |
 | 20 | R5a | `design-tokens.css:68-80,1321-1381` | `.role-video` vs `[data-theme="dark"]` 潜在冲突 | 实际很少触发 | v1.19.0 |
-| 21 | R5a | `StudentLayout.vue` 多处 | 导航链接缺 `aria-current="page"` | a11y 加固 | v1.19.0 |
+| 21 | R5a | `StudentLayout.vue` 多处 | 导航链接缺 `aria-current="page"` | ✅ **R8 已修** | v1.18.0 |
 | 22 | R5b | `utils/request.js:110` | 并发 401 无重试队列 | 当前并发量下很少触发 | v1.19.0 |
-| 23 | R5b | `router/index.js:190` | 残留 `sessionStorage.removeItem('userRole')` | 无害但冗余 | v1.18.1 |
+| 23 | R5b | `router/index.js:190` | 残留 `sessionStorage.removeItem('userRole')` | ✅ **R8 已修** | v1.18.0 |
 | 24 | R5c | `api/teaching-class.js` | 仍存在该文件，需确认后端端点状态 | 若后端已删，前端 404 | v1.18.1 |
-| 25 | R5c | `api/course.js:3` ↔ `api/microSpecialty.js:62` | `getCourses` 同名不同参冲突 | 命名混淆 | v1.19.0 |
-| 26 | R5c | `utils/logger.js:20-22` | logger 注释与实现不符 | 文档漂移 | v1.18.1 |
+| 25 | R5c | `api/course.js:3` ↔ `api/microSpecialty.js:62` | `getCourses` 同名不同参冲突 | ✅ **R8 已修**（加 JSDoc 注释区分）| v1.18.0 |
+| 26 | R5c | `utils/logger.js:20-22` | logger 注释与实现不符 | ✅ **R8 已修** | v1.18.0 |
 | 27 | R5c | `composables/useAsyncData.js` + `useErrorHandler.js` | 统一 composable 采用率低 | 30+ 视图重复实现 | v1.19.0 |
 | 28 | R5c | `api/course.js:3` `getCourses` 与 `microSpecialty.js:62` 同名 | 见 P1-I #25 | — | — |
 
