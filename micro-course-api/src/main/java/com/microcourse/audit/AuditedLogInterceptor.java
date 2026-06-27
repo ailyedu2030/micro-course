@@ -138,17 +138,18 @@ public class AuditedLogInterceptor implements HandlerInterceptor {
         return request.getRemoteAddr();
     }
 
-    /** 构造 detail 文本：方法标识 + 请求路径 + HTTP 状态（+ 异常类名） */
+    /** 构造 detail JSON：方法标识 + 请求路径 + HTTP 状态（+ 异常类名） */
     private static String buildDetail(HttpServletRequest request, HandlerMethod handlerMethod,
                                       int status, Exception ex) {
         StringBuilder sb = new StringBuilder();
-        sb.append("method=").append(handlerMethod.getBeanType().getSimpleName())
+        sb.append("{\"method\":\"").append(handlerMethod.getBeanType().getSimpleName())
                 .append('.').append(handlerMethod.getMethod().getName());
-        sb.append(" uri=").append(request.getMethod()).append(' ').append(request.getRequestURI());
-        sb.append(" status=").append(status);
+        sb.append("\",\"path\":\"").append(request.getMethod()).append(' ').append(request.getRequestURI());
+        sb.append("\",\"status\":").append(status);
         if (ex != null) {
-            sb.append(" error=").append(ex.getClass().getSimpleName());
+            sb.append(",\"error\":\"").append(ex.getClass().getSimpleName()).append('"');
         }
+        sb.append('}');
         return sb.toString();
     }
 
