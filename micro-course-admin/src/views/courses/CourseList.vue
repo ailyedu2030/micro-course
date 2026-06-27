@@ -188,6 +188,7 @@
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUrlPagination } from '@/composables/useUrlPagination'
+import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
@@ -259,19 +260,34 @@ const fetchTeachers = async () => {
 }
 
 const fetchData = async () => {
+  const params = {
+    page: page.value - 1,
+    size: size.value,
+    keyword: searchForm.keyword || undefined,
+    categoryId: searchForm.categoryId || undefined,
+    teacherName: searchForm.teacherName || undefined,
+    status: searchForm.status !== '' ? searchForm.status : undefined,
+    // 教师自动过滤为自己的课程
+    teacherId: userStore.role === 'TEACHER' ? userStore.userId : undefined
+  }
+  // P2-17: SWR 模式 — 如果有缓存数据立即显示（无 loading），后台刷新
+  const cacheKey = `courses:${JSON.stringify(params)}`
+  const cached = swrCache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < 30000) {
+    tableData.value = cached.data.items || []
+    totalElements.value = cached.data.totalElements || 0
+    // 后台静默刷新
+    getCourses(params).then(({ data }) => {
+      swrCache.set(cacheKey, { data, ts: Date.now() })
+      tableData.value = data.items || []
+      totalElements.value = data.totalElements || 0
+    }).catch(() => {})
+    return
+  }
   loading.value = true
   try {
-    const params = {
-      page: page.value - 1,
-      size: size.value,
-      keyword: searchForm.keyword || undefined,
-      categoryId: searchForm.categoryId || undefined,
-      teacherName: searchForm.teacherName || undefined,
-      status: searchForm.status !== '' ? searchForm.status : undefined,
-      // 教师自动过滤为自己的课程
-      teacherId: userStore.role === 'TEACHER' ? userStore.userId : undefined
-    }
     const { data } = await getCourses(params)
+    swrCache.set(cacheKey, { data, ts: Date.now() })
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {

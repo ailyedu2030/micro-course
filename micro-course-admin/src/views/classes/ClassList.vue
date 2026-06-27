@@ -120,12 +120,19 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 
+// P2-14: URL 分页同步
+import { useUrlPagination } from '@/composables/useUrlPagination'
+const { bindToQuery } = useUrlPagination()
+
 const majorOptions = ref([])
 const searchForm = reactive({
   name: '',
   majorId: null,
   grade: ''
 })
+
+// P2-14: URL 分页同步
+bindToQuery(page, size, searchForm, ['name', 'majorId', 'grade'])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增班级')

@@ -15,6 +15,9 @@ import axios from 'axios'
 const cache = new Map()
 const inflight = new Map()
 
+/** P2-17: 导出共享 cache 供外部代码直接读写（如需自定义 SWR 行为） */
+export const swrCache = cache
+
 export function useSWR(key, options = {}) {
   const { staleTime = 30000, immediate = true } = options
   const data = ref(null)
