@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.dto.ExerciseRecordVO;
 import com.microcourse.dto.SubmitAnswerRequest;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Exercise;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.ExerciseQuestion;
@@ -17,8 +18,10 @@ import com.microcourse.entity.Question;
 import com.microcourse.entity.WrongQuestion;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseQuestionRepository;
 import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.ExerciseRepository;
@@ -51,6 +54,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     private final GradeRepository gradeRepository;
     private final ObjectMapper objectMapper;
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
 
     public ExerciseRecordServiceImpl(ExerciseRecordRepository exerciseRecordRepository,
@@ -61,6 +65,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                                        GradeRepository gradeRepository,
                                        ObjectMapper objectMapper,
                                        CourseRepository courseRepository,
+                                       EnrollmentRepository enrollmentRepository,
                                        NotificationService notificationService) {
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.exerciseRepository = exerciseRepository;
@@ -70,6 +75,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         this.gradeRepository = gradeRepository;
         this.objectMapper = objectMapper;
         this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
         this.notificationService = notificationService;
     }
 
@@ -80,6 +86,17 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         Exercise exercise = exerciseRepository.selectById(request.getExerciseId());
         if (exercise == null) {
             throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
+        }
+
+        // R12 P0-1: 选课检查 — 学生只能提交已选课程课件的练习
+        if (exercise.getCourseId() != null && !SecurityUtil.isAdmin()) {
+            LambdaQueryWrapper<Enrollment> enrollCheck = new LambdaQueryWrapper<>();
+            enrollCheck.eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
+                       .eq(Enrollment::getCourseId, exercise.getCourseId())
+                       .isNull(Enrollment::getDeletedAt);
+            if (enrollmentRepository.selectCount(enrollCheck) == 0) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "未选课不能作答");
+            }
         }
 
         // 2. 校验答题次数是否超限
@@ -421,6 +438,15 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         Exercise exercise = exerciseRepository.selectById(exerciseId);
         if (exercise == null) {
             throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
+        }
+        // R12 P0-2: 教师仅能查看自己授课课程的学生答题记录
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            if (exercise.getCourseId() != null) {
+                Course c = courseRepository.selectById(exercise.getCourseId());
+                if (c != null && !SecurityUtil.isOwnerOrAdmin(c.getTeacherId())) {
+                    throw new BusinessException(ErrorCode.NO_PERMISSION);
+                }
+            }
         }
 
         LambdaQueryWrapper<ExerciseRecord> wrapper = new LambdaQueryWrapper<>();

@@ -582,6 +582,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (enrollment == null) {
             throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
         }
+        // R12 P0-3: 教师仅能修改自己课程学生的选课记录
+        if (!SecurityUtil.isAdmin()) {
+            Course c = courseRepository.selectById(enrollment.getCourseId());
+            if (c != null && !SecurityUtil.isOwnerOrAdmin(c.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
 
         if (request.getProgress() != null) {
             enrollment.setProgress(request.getProgress());
@@ -656,6 +663,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
         // P0-2 修复（审计空洞）：取消前记录状态变更轨迹（历史值 ENROLLED 经 fromString 归一为 APPROVED）
         EnrollmentStatus fromStatus = EnrollmentStatus.fromString(enrollment.getEnrollmentStatus());
+        // R8 业务逻辑 P0-1: 状态机白名单校验(cancelEnrollment 之前缺了此步)
+        if (fromStatus != null && !fromStatus.canTransitionTo(EnrollmentStatus.CANCELLED)) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
+                    "不允许从 " + fromStatus.getValue() + " 转换到 CANCELLED");
+        }
         enrollment.setEnrollmentStatus(EnrollmentStatus.CANCELLED.getValue());
         enrollment.setUpdatedAt(LocalDateTime.now());
         enrollmentRepository.updateById(enrollment);

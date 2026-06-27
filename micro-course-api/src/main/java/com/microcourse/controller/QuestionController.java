@@ -31,7 +31,7 @@ public class QuestionController {
     }
 
 @GetMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<QuestionVO>> page(
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) @Pattern(regexp = "^(SINGLE|MULTIPLE|JUDGE|FILL|SHORT_ANSWER|ESSAY)?$", message = "题目类型无效") String questionType,
@@ -45,7 +45,7 @@ public class QuestionController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN','ACADEMIC')")
     public R<QuestionVO> getById(@PathVariable Long id) {
         QuestionVO vo = questionService.getById(id);
         return R.ok(vo);

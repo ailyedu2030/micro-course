@@ -78,6 +78,12 @@ public class ExerciseVO {
         private Long questionId;
         private Integer score;
         private Integer sortOrder;
+        // R14 P0-2: 题目完整内容（之前只返回关联字段，不返回题目本身）
+        private String questionType;
+        private String content;
+        private String options;
+        private String answer;
+        private String explanation;
 
         public ExerciseQuestionVO() {}
 
@@ -91,5 +97,15 @@ public class ExerciseVO {
         public void setScore(Integer score) { this.score = score; }
         public Integer getSortOrder() { return sortOrder; }
         public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+        public String getQuestionType() { return questionType; }
+        public void setQuestionType(String questionType) { this.questionType = questionType; }
+        public String getContent() { return content; }
+        public void setContent(String content) { this.content = content; }
+        public String getOptions() { return options; }
+        public void setOptions(String options) { this.options = options; }
+        public String getAnswer() { return answer; }
+        public void setAnswer(String answer) { this.answer = answer; }
+        public String getExplanation() { return explanation; }
+        public void setExplanation(String explanation) { this.explanation = explanation; }
     }
 }

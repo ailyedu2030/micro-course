@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 174 | Vue 视图数: 50 | Controller 数: 53 | API 文件数: 40
+> 实体数: 174 | Vue 视图数: 50 | Controller 数: 52 | API 文件数: 40
 
 ---
 
@@ -674,8 +674,6 @@
 | Order | /api/orders | 7 | - |
 
 | Question | /api/questions | 6 | - |
-
-| Slide | /api/courses/{courseId} | 12 | - |
 
 | SystemConfig | /api/system-configs | 1 | - |
 

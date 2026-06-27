@@ -12,6 +12,7 @@ import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Exercise;
 import com.microcourse.entity.ExerciseChapter;
+import com.microcourse.entity.Question;
 import com.microcourse.entity.ExerciseQuestion;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -21,6 +22,7 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseChapterRepository;
 import com.microcourse.repository.ExerciseQuestionRepository;
 import com.microcourse.repository.ExerciseRepository;
+import com.microcourse.repository.QuestionRepository;
 import com.microcourse.service.ExerciseService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,7 @@ import java.util.stream.Collectors;
 public class ExerciseServiceImpl implements ExerciseService {
 
     private final ExerciseRepository exerciseRepository;
+    private final QuestionRepository questionRepository;
     private final ExerciseQuestionRepository exerciseQuestionRepository;
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
@@ -46,12 +49,14 @@ public class ExerciseServiceImpl implements ExerciseService {
     private final EnrollmentRepository enrollmentRepository;
 
     public ExerciseServiceImpl(ExerciseRepository exerciseRepository,
+                               QuestionRepository questionRepository,
                                ExerciseQuestionRepository exerciseQuestionRepository,
                                CourseRepository courseRepository,
                                CourseChapterRepository courseChapterRepository,
                                ExerciseChapterRepository exerciseChapterRepository,
                                EnrollmentRepository enrollmentRepository) {
         this.exerciseRepository = exerciseRepository;
+        this.questionRepository = questionRepository;
         this.exerciseQuestionRepository = exerciseQuestionRepository;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
@@ -386,6 +391,13 @@ public class ExerciseServiceImpl implements ExerciseService {
                 .orderByAsc(ExerciseQuestion::getSortOrder);
         List<ExerciseQuestion> exerciseQuestions = exerciseQuestionRepository.selectList(wrapper);
 
+        // R14 P0-2: 预加载所有题目实际内容（之前只返回关联字段，不返回题目文本）
+        Map<Long, Question> questionMap = new HashMap<>();
+        List<Long> qids = exerciseQuestions.stream().map(ExerciseQuestion::getQuestionId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toList());
+        if (!qids.isEmpty()) {
+            questionRepository.selectBatchIds(qids).forEach(q -> questionMap.put(q.getId(), q));
+        }
         List<ExerciseVO.ExerciseQuestionVO> questionVOList = exerciseQuestions.stream()
                 .map(eq -> {
                     ExerciseVO.ExerciseQuestionVO qvo = new ExerciseVO.ExerciseQuestionVO();
@@ -394,6 +406,14 @@ public class ExerciseServiceImpl implements ExerciseService {
                     qvo.setQuestionId(eq.getQuestionId());
                     qvo.setScore(eq.getScore());
                     qvo.setSortOrder(eq.getSortOrder());
+                    Question qt = questionMap.get(eq.getQuestionId());
+                    if (qt != null) {
+                        qvo.setQuestionType(qt.getQuestionType());
+                        qvo.setContent(qt.getContent());
+                        qvo.setOptions(qt.getOptions());
+                        qvo.setAnswer(qt.getAnswer());
+                        qvo.setExplanation(qt.getExplanation());
+                    }
                     return qvo;
                 })
                 .collect(Collectors.toList());
