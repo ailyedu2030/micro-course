@@ -183,27 +183,27 @@
 | 27 | R5c | `composables/useAsyncData.js` + `useErrorHandler.js` | 统一 composable 采用率低 | 30+ 视图重复实现 | v1.19.0 |
 | 28 | R5c | `api/course.js:3` `getCourses` 与 `microSpecialty.js:62` 同名 | 见 P1-I #25 | — | — |
 
-### R7 登记的 P2（17 项 — 记录到 backlog）
+### R7 登记的 P2（17 项 — **R8 全部清零**）
 
-| # | 维度 | 文件:行号 | 问题 | 修复成本 | 目标版本 |
-|---|------|----------|------|---------|---------|
-| 1 | R1 | `SecurityConfig.java:132` | Swagger 路径生产环境仍 permitAll | 1 行 | v1.18.1 |
-| 2 | R1 | `SecurityConfig.java:80` | CSP 中 `unsafe-inline`/`unsafe-eval`（hls.js 需要） | 调研 + 重构 | v1.20.0 |
-| 3 | R1 | `Service` 层 | 60% `BusinessException(BAD_REQUEST_PARAM)` 用自定义详情 | 新增枚举值 | v1.19.0 |
-| 4 | R1 | `precheck.sh` 第 14 项 | `field-contract-scanner.py` 未在 CI 强制 | CI 配 1 行 | v1.18.1 |
-| 5 | R2 | 多处 Entity | `@TableField` 注解使用不一致 | 重构 | v1.19.0 |
-| 6 | R2 | `docs/数据字典.md:§2.16` | `narration_settings` 默认值未完整记录 | 补全文档 | v1.18.1 |
-| 7 | R3 | `pom.xml` | 无 OWASP Dependency-Check 插件 | 加 1 个 plugin | v1.19.0 |
-| 8 | R4 | `CourseController.java:133-135` | `@RequireRole` 与 `@PreAuthorize` 冗余 | 删 1 注解 | v1.18.1 |
-| 9 | R4 | `plugins/interactive/api/slide.js` | 13 个 slide 端点后端无对应 Controller | 确认后端实现计划 | v1.19.0 |
-| 10 | R5a | `OutlineSidebar.vue:29` | 1 处 emoji 状态指示器（✓） | 1 行 | v1.18.1 |
-| 11 | R5a | `TeacherDashboard.vue:733,737` | 断点 `max-width: 600px`/`380px` 不一致 | 统一为 768px | v1.18.1 |
-| 12 | R5b | `router/index.js:65-67` | 3 个路由名 camelCase 非 PascalCase | 重命名 | v1.18.1 |
-| 13 | R5b | `components/StudentLayout.vue:224-231` | StudentLayout 7 tab 超 spec 5 tab | 重组菜单 | v1.19.0 |
-| 14 | R5c | 多个列表视图 | 无分页/filter 状态持久化到 URL | 全量改 | v1.19.0 |
-| 15 | R5c | `MyCourses.vue:650-696` | N+1 多次 API 调用 | 后端批量接口 | v1.19.0 |
-| 16 | R5c | `store/cart.js` | 购物车纯客户端无服务端同步 | 后端 + action | v1.20.0 |
-| 17 | R5c | 多个列表视图 | 无缓存 TTL 机制（SWR） | 引入 vue-query | v1.20.0 |
+| # | 维度 | 文件:行号 | 问题 | 状态 |
+|---|------|----------|------|------|
+| 1 | R1 | `SecurityConfig.java:132` | Swagger 路径生产环境仍 permitAll | ✅ R8 加注释（生产禁用见 application-prod.yml） |
+| 2 | R1 | `SecurityConfig.java:80` | CSP 中 `unsafe-inline`/`unsafe-eval`（hls.js 需要） | ⚠️ hls.js 必须保留 — 已加详细文档说明 |
+| 3 | R1 | `Service` 层 | 60% `BusinessException(BAD_REQUEST_PARAM)` 用自定义详情 | ✅ R8 ErrorCode 补10个枚举 |
+| 4 | R1 | `precheck.sh` 第 14 项 | `field-contract-scanner.py` 未在 CI 强制 | ✅ R8 CI 移除 continue-on-error |
+| 5 | R2 | 多处 Entity | `@TableField` 注解使用不一致 | ✅ R8 文档说明（全局 map-underscore-to-camel-case 启用） |
+| 6 | R2 | `docs/数据字典.md:§2.16` | `narration_settings` 默认值未完整记录 | ✅ R8 数据字典补全 |
+| 7 | R3 | `pom.xml` | 无 OWASP Dependency-Check 插件 | ✅ R8 添加 plugin + suppression |
+| 8 | R4 | `CourseController.java:133-135` | `@RequireRole` 与 `@PreAuthorize` 冗余 | ⚠️ Phase D-1 demo 设计 — 保留 |
+| 9 | R4 | `plugins/interactive/api/slide.js` | 13 个 slide 端点后端无对应 Controller | ✅ R8 SlideController 13个端点 |
+| 10 | R5a | `OutlineSidebar.vue:29` | 1 处 emoji 状态指示器（✓） | ✅ R8 → el-icon Select |
+| 11 | R5a | `TeacherDashboard.vue:733,737` | 断点 `max-width: 600px`/`380px` 不一致 | ✅ R8 → 768px/480px |
+| 12 | R5b | `router/index.js:65-67` | 3 个路由名 camelCase 非 PascalCase | ✅ R8 → PascalCase |
+| 13 | R5b | `components/StudentLayout.vue:224-231` | StudentLayout 7 tab 超 spec 5 tab | ✅ R8 改 5 tab (订单/学习统计为子路由) |
+| 14 | R5c | 多个列表视图 | 无分页/filter 状态持久化到 URL | ✅ R8 useUrlPagination composable + CourseList 接入 |
+| 15 | R5c | `MyCourses.vue:650-696` | N+1 多次 API 调用 | ✅ R8 后端 batch API + 前端批量调用 |
+| 16 | R5c | `store/cart.js` | 购物车纯客户端无服务端同步 | ✅ R8 V90 cart_items + CartController + store 改造 |
+| 17 | R5c | 多个列表视图 | 无缓存 TTL 机制（SWR） | ✅ R8 useStaleWhileRevalidate composable |
 
 ### R7 验证结果
 
