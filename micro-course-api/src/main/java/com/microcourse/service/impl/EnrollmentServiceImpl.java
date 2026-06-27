@@ -988,12 +988,18 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         recordHistory(next.getId(), fromStatus, EnrollmentStatus.APPROVED, null, "WAITLIST_PROMOTE");
 
         // 7. 通知晋升学生
+        // R8 P1-C-3: 查询课程标题（替代直接拼 hard-coded courseId）
+        String courseTitle = null;
+        try {
+            Course courseForNotify = courseRepository.selectById(courseId);
+            if (courseForNotify != null) courseTitle = courseForNotify.getTitle();
+        } catch (Exception ignored) {}
         try {
             notificationService.notifyAsync(
                     next.getUserId(),
                     NotificationType.ENROLLMENT_SUCCESS,
                     "候补录取通知",
-                    "您已从候补队列中被录取《课程 ID=" + courseId + "》,可开始学习。",
+                    "您已从候补队列中被录取《" + (courseTitle != null ? courseTitle : "课程 ID=" + courseId) + "》,可开始学习。",
                     courseId);
         } catch (Exception e) {
             log.warn("候补通知发送失败, id={}, userId={}", next.getId(), next.getUserId(), e);

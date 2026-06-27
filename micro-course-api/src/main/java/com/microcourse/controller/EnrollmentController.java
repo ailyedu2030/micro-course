@@ -11,6 +11,7 @@ import com.microcourse.dto.R;
 import com.microcourse.dto.StudentDetailVO;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
@@ -33,9 +34,12 @@ import cn.hutool.poi.excel.ExcelWriter;
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
+    private final EnrollmentRepository enrollmentRepository;
 
-    public EnrollmentController(EnrollmentService enrollmentService) {
+    public EnrollmentController(EnrollmentService enrollmentService,
+                                 EnrollmentRepository enrollmentRepository) {
         this.enrollmentService = enrollmentService;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @PostMapping
@@ -107,6 +111,15 @@ public class EnrollmentController {
     @GetMapping("/student-detail/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<StudentDetailVO> getStudentDetail(@PathVariable Long userId) {
+        // R12 P1-C-4: TEACHER 仅能查询自己课程中的学生
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            // 通过 DB 聚合查询：当前教师授课课程 + 学生选课，交集非空则通过
+            long count = enrollmentRepository.countByTeacherAndStudent(currentUserId, userId);
+            if (count == 0) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "该学生不在您的授课课程中");
+            }
+        }
         StudentDetailVO detail = enrollmentService.getStudentDetail(userId);
         return R.ok(detail);
     }

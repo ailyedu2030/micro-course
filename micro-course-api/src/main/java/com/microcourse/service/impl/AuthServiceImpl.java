@@ -50,6 +50,9 @@ import org.xml.sax.InputSource;
 @Service
 public class AuthServiceImpl implements AuthService {
 
+    /** token 过期秒数（前端告知用，非 JWT 签发的 exp） */
+    private static final int TOKEN_EXPIRES_IN_SECONDS = 7200;
+
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
 
     private final UserRepository userRepository;
@@ -131,7 +134,7 @@ public class AuthServiceImpl implements AuthService {
         LoginResponse response = new LoginResponse();
         response.setAccessToken(accessToken);
         response.setRefreshToken(refreshToken);
-        response.setExpiresIn(7200);
+        response.setExpiresIn(TOKEN_EXPIRES_IN_SECONDS);
         response.setTokenType("Bearer");
         return response;
     }
@@ -210,7 +213,7 @@ public class AuthServiceImpl implements AuthService {
             LoginResponse response = new LoginResponse();
             response.setAccessToken(accessToken);
             response.setRefreshToken(refreshToken);
-            response.setExpiresIn(7200);
+            response.setExpiresIn(TOKEN_EXPIRES_IN_SECONDS);
             response.setTokenType("Bearer");
             return response;
         } catch (BusinessException e) {
@@ -296,7 +299,7 @@ public class AuthServiceImpl implements AuthService {
         LoginResponse response = new LoginResponse();
         response.setAccessToken(newAccessToken);
         response.setRefreshToken(newRefreshToken);
-        response.setExpiresIn(7200);
+        response.setExpiresIn(TOKEN_EXPIRES_IN_SECONDS);
         response.setTokenType("Bearer");
         return response;
     }
@@ -489,7 +492,7 @@ public class AuthServiceImpl implements AuthService {
         LoginResponse response = new LoginResponse();
         response.setAccessToken(accessToken);
         response.setRefreshToken(refreshToken);
-        response.setExpiresIn(7200);
+        response.setExpiresIn(TOKEN_EXPIRES_IN_SECONDS);
         response.setTokenType("Bearer");
         return response;
     }

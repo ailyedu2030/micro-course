@@ -138,4 +138,12 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
             "  AND deleted_at IS NULL " +
             "  AND enrollment_status IN ('ENROLLED', 'IN_PROGRESS', 'COMPLETED')")
     List<Long> findActiveUserIdsByCourseId(@Param("courseId") Long courseId);
+
+    /** R12 P1-C-4: 统计教师在授课程中某一学生的选课数（>0 则有权查看） */
+    @org.apache.ibatis.annotations.Select("SELECT COUNT(*) FROM enrollments e " +
+            "JOIN courses c ON e.course_id = c.id " +
+            "WHERE c.teacher_id = #{teacherId} AND e.user_id = #{studentId} " +
+            "  AND e.deleted_at IS NULL AND e.enrollment_status IN ('ENROLLED','COMPLETED')")
+    long countByTeacherAndStudent(@Param("teacherId") Long teacherId,
+                                   @Param("studentId") Long studentId);
 }
