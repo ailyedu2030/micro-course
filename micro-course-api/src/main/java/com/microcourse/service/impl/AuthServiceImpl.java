@@ -570,16 +570,23 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        if (request.getRealName() != null) {
+        if (request.getRealName() != null && !request.getRealName().isEmpty()) {
             user.setRealName(XssSanitizer.sanitizePlainText(request.getRealName()));
         }
-        if (request.getEmail() != null) {
+        // R8 修复：email/phone 空字符串视为"未设置"，避免批量导入的空 email
+        // 触发 uk_users_email 部分唯一约束（WHERE email IS NOT NULL）
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
             user.setEmail(XssSanitizer.sanitizePlainText(request.getEmail()));
+        } else {
+            // 显式置 null：让 email 不存库，从而不参与唯一约束
+            user.setEmail(null);
         }
-        if (request.getPhone() != null) {
+        if (request.getPhone() != null && !request.getPhone().isEmpty()) {
             user.setPhone(XssSanitizer.sanitizePlainText(request.getPhone()));
+        } else {
+            user.setPhone(null);
         }
-        if (request.getGender() != null) {
+        if (request.getGender() != null && !request.getGender().isEmpty()) {
             user.setGender(request.getGender());
         }
         userRepository.updateById(user);

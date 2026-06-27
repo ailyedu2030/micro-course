@@ -20,6 +20,9 @@ public class User {
 
     @TableField("real_name")
     private String realName;
+    // R8 修复：updateStrategy=IGNORED 让空字符串/null 也能写入数据库，
+    // 解决批量导入空 email 触发 uk_users_email 部分唯一约束的问题
+    @TableField(value = "email", updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.IGNORED)
     private String email;
     private String phone;
     private String gender;
