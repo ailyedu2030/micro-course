@@ -295,6 +295,8 @@ const fetchCourse = async () => {
       formData.courseType = data.courseType || 'VIDEO'
       formData.price = data.price || null
       formData.isFree = data.isFree !== false
+      // UI/UX: 已有封面时显示预览
+      if (data.coverUrl) coverPreviewUrl.value = data.coverUrl
     }
   } catch {
     ElMessage.error('获取课程信息失败')

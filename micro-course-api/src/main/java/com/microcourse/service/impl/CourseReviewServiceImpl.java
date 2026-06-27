@@ -323,6 +323,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
                 .collect(java.util.stream.Collectors.toMap(Course::getId, Course::getTitle, (a, b) -> a));
     }
 
+    /** 批量加载评论用户 -> User Map（private方法，仅内部VO转换使用，不暴露Entity到API层） */
     private java.util.Map<Long, User> buildUserMap(List<CourseReview> reviews) {
         java.util.Set<Long> userIds = reviews.stream()
                 .filter(r -> Boolean.FALSE.equals(r.getIsAnonymous()))
