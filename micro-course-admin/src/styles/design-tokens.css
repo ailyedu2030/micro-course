@@ -65,7 +65,7 @@
   --card-border-tinted: rgba(99, 102, 241, 0.08);
 }
 
-/* 视频 = 沉浸式深色 */
+/* 视频 = 沉浸式深色（注意：若 [data-theme="dark"] 同时激活，白底白字可能冲突——两者通常不共存）*/
 .role-video {
   --role-primary: #ffffff;
   --role-primary-dark: #cccccc;

@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Value;
  * - avatars/**  （用户头像）：permitAll —— el-avatar :src 直接引用，且头像为公开展示数据
  * - banners/**  （公开轮播图）：permitAll —— 前端 img :src 直接引用
  * - system/**   （平台 Logo/系统资源）：permitAll —— 公开静态资源（前瞻白名单）
+ * - videos/**   （视频文件）：permitAll —— HTML5 <video> 无法携带 Authorization header，nginx 层有 valid_referers 防盗链
  * - 其他（slides 课件、attachments 附件等私有文件）：authenticated
  *   —— 堵住 WebMvcConfig 将 /api/files/** 映射到 uploads/ 后对私有内容的静态越权下载；
  *      对象级 owner 校验在对应业务 Controller/Service 层执行

@@ -32,6 +32,8 @@ function pickTimeout(config) {
 }
 
 let isRefreshing = false
+// P1-I #22: 并发401重试队列——refresh期间积压的请求，refresh成功后统一重放
+let pendingRequests = []
 
 const request = axios.create({
   baseURL: API_BASE_URL,
@@ -106,7 +108,12 @@ request.interceptors.response.use(response => {
   if (status === 401 && !config._retry && !config._skipAuth) {
     const refreshToken = getRefreshToken()
     if (refreshToken) {
-      if (isRefreshing) return Promise.reject(error)
+      if (isRefreshing) {
+        // P1-I #22: 积压到重试队列，refresh成功后重放
+        return new Promise((resolve, reject) => {
+          pendingRequests.push({ config, resolve, reject })
+        })
+      }
       isRefreshing = true
       try {
         const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }, { _skipAuth: true, headers: {} })
@@ -117,9 +124,20 @@ request.interceptors.response.use(response => {
           setRefreshToken(newRefreshToken || '')
           config.headers.Authorization = `Bearer ${newToken}`
           config._retry = true
+          // P1-I #22: 重放所有积压请求
+          const queue = pendingRequests.slice()
+          pendingRequests = []
+          queue.forEach(({ config: reqCfg, resolve, reject }) => {
+            reqCfg.headers.Authorization = `Bearer ${newToken}`
+            request(reqCfg).then(resolve).catch(reject)
+          })
           return request(config)
         }
-      } catch {
+      } catch (e) {
+        // P1-I #22: refresh失败，积压请求也拒绝
+        const queue = pendingRequests.slice()
+        pendingRequests = []
+        queue.forEach(({ reject }) => reject(e))
         removeToken()
         removeRefreshToken()
       } finally {

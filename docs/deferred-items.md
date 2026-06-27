@@ -177,7 +177,7 @@
 | 21 | R5a | `StudentLayout.vue` 多处 | 导航链接缺 `aria-current="page"` | ✅ **R8 已修** | v1.18.0 |
 | 22 | R5b | `utils/request.js:110` | 并发 401 无重试队列 | 当前并发量下很少触发 | v1.19.0 |
 | 23 | R5b | `router/index.js:190` | 残留 `sessionStorage.removeItem('userRole')` | ✅ **R8 已修** | v1.18.0 |
-| 24 | R5c | `api/teaching-class.js` | 仍存在该文件，需确认后端端点状态 | 若后端已删，前端 404 | v1.18.1 |
+| 24 | R5c | `api/teaching-class.js` | 仍存在该文件，需确认后端端点状态 | ✅ 已确认：后端 TeachingClassController 存在（GET/POST/PUT/DELETE + /{id}/students），保留 | v1.18.0 |
 | 25 | R5c | `api/course.js:3` ↔ `api/microSpecialty.js:62` | `getCourses` 同名不同参冲突 | ✅ **R8 已修**（加 JSDoc 注释区分）| v1.18.0 |
 | 26 | R5c | `utils/logger.js:20-22` | logger 注释与实现不符 | ✅ **R8 已修** | v1.18.0 |
 | 27 | R5c | `composables/useAsyncData.js` + `useErrorHandler.js` | 统一 composable 采用率低 | 30+ 视图重复实现 | v1.19.0 |
