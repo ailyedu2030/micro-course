@@ -104,16 +104,24 @@
           <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0 表示免费" class="full-width" />
         </el-form-item>
         <el-form-item label="封面图" prop="coverUrl">
-          <el-upload
-            ref="coverUploadRef"
-            :auto-upload="false"
-            :limit="1"
-            accept="image/*"
-            :on-change="handleCoverChange"
-          >
-            <el-button size="small">选择图片</el-button>
-          </el-upload>
-          <img v-if="coverPreviewUrl" :src="coverPreviewUrl" class="cover-preview-img" alt="课程封面预览" />
+          <template v-if="!coverPreviewUrl">
+            <el-upload
+              ref="coverUploadRef"
+              :auto-upload="false"
+              :limit="1"
+              accept="image/*"
+              :on-change="handleCoverChange"
+            >
+              <el-button size="small">选择图片</el-button>
+            </el-upload>
+            <div class="cover-tip">建议尺寸 1200×628px，仅支持 JPG/PNG/GIF，最大 5MB</div>
+          </template>
+          <div v-else class="cover-preview-wrapper">
+            <img :src="coverPreviewUrl" class="cover-preview-img" alt="课程封面预览" />
+            <div class="cover-actions">
+              <el-button size="small" @click="handleRemoveCover">删除</el-button>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
@@ -650,6 +658,21 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.cover-tip {
+  margin-top: 6px;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  line-height: 1.4;
+}
+.cover-preview-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cover-actions {
+  display: flex;
+  gap: 8px;
+}
 .cover-preview-img {
   margin-top: 8px;
   width: 120px;
