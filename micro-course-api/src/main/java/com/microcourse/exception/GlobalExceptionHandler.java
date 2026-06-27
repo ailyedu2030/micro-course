@@ -134,7 +134,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<R<Void>> handleDataIntegrity(DataIntegrityViolationException e) {
         log.warn("DataIntegrityViolation: {}", e.getMessage());
-        return ResponseEntity.status(409).body(R.fail(409, "数据冲突，请检查依赖数据"));
+        return ResponseEntity.status(409).body(R.fail(409, parseConflictMessage(e.getMessage())));
     }
 
     @ExceptionHandler(Exception.class)
@@ -145,11 +145,28 @@ public class GlobalExceptionHandler {
                 || (cause.getMessage() != null && cause.getMessage().contains("duplicate key value"))) {
                 // E10: 重复键是客户端错误（非服务器故障），降为 WARN 避免混淆
                 log.warn("Duplicate key constraint violation: {}", cause.getMessage());
-                return ResponseEntity.status(409).body(R.fail(409, "数据已存在,操作冲突"));
+                return ResponseEntity.status(409).body(R.fail(409, parseConflictMessage(cause.getMessage())));
             }
             cause = cause.getCause();
         }
         log.error("Unhandled exception", e);
         return ResponseEntity.status(500).body(R.fail(500, "服务器内部错误"));
+    }
+
+    /**
+     * R8 修复：将数据库约束名映射为用户友好的错误信息
+     */
+    private String parseConflictMessage(String rawMessage) {
+        if (rawMessage == null) return "数据冲突，请检查重复字段";
+        if (rawMessage.contains("uk_users_username")) return "用户名已被使用，请更换其他用户名";
+        if (rawMessage.contains("uk_users_email")) return "邮箱已被其他账户使用，请使用其他邮箱";
+        if (rawMessage.contains("uk_users_student_no")) return "学号已被使用，请检查学号是否正确";
+        if (rawMessage.contains("uk_users_teacher_no")) return "教师编号已被使用，请检查教师编号是否正确";
+        if (rawMessage.contains("uk_users_phone")) return "手机号已被其他账户使用";
+        if (rawMessage.contains("uk_enrollments_user_course")) return "已存在选课记录，请勿重复选课";
+        if (rawMessage.contains("uk_discussion")) return "讨论数据已存在";
+        if (rawMessage.contains("uk_orders")) return "订单已存在";
+        if (rawMessage.contains("uk_courses_")) return "课程数据已存在";
+        return "数据冲突，请检查重复字段或依赖关系";
     }
 }
