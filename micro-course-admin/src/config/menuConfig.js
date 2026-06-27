@@ -115,6 +115,7 @@ const ACADEMIC = [
       { label: '课程审核', path: '/courses/review', icon: 'Film' },
       { label: '课程分类', path: '/course-categories', icon: 'FolderOpened' },
       { label: '课程套餐', path: '/bundles', icon: 'Tickets' },
+      { label: '轮播图管理', path: '/admin/banners', icon: 'PictureFilled' },
     ],
   },
   {
