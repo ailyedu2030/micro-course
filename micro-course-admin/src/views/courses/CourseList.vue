@@ -187,6 +187,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUrlPagination } from '@/composables/useUrlPagination'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
@@ -196,6 +197,7 @@ import { getCategories } from '@/api/course-category'
 import { getUsers } from '@/api/user'
 
 const router = useRouter()
+const { bindToQuery } = useUrlPagination()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 
@@ -214,6 +216,9 @@ const searchForm = reactive({
   teacherName: '',
   status: ''
 })
+
+// P2-14: URL 分页同步
+bindToQuery(page, size, searchForm, ['keyword', 'categoryId', 'teacherName', 'status'])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增课程')

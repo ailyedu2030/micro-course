@@ -109,7 +109,19 @@ public enum ErrorCode {
     MS_MAX_STUDENTS_REACHED(17018, "微专业报名人数已达上限", 400),
     MS_TERMINAL_STATUS(17019, "微专业已处于终态，无法操作", 400),
     MS_ENROLLMENT_STATUS_INVALID(17020, "修读记录状态不允许此操作", 400),
-    MICRO_SPECIALTY_CODE_EXISTS(17021, "微专业代码已存在", 400);
+    MICRO_SPECIALTY_CODE_EXISTS(17021, "微专业代码已存在", 400),
+
+    // P2-3: 补充常用业务错误码
+    LESSON_NOT_FOUND(18001, "课时不存在", 404),
+    EXAM_NOT_FOUND(18004, "考试不存在", 404),
+    EXAM_ALREADY_SUBMITTED(18005, "已提交考试，不可重复提交", 400),
+    EXAM_TIME_EXPIRED(18006, "考试时间已过", 400),
+    REVIEW_PENDING(18007, "课程正在审核中", 400),
+    REVIEW_REJECTED(18008, "课程已审核驳回", 400),
+    CERTIFICATE_ALREADY_ISSUED(18009, "证书已颁发，不可重复", 409),
+    NOTIFICATION_NOT_FOUND(18010, "通知不存在", 404),
+    CART_ITEM_NOT_FOUND(18011, "购物车项不存在", 404),
+    CART_COURSE_ALREADY_ADDED(18012, "课程已在购物车中", 409);
 
     private final int code;
     private final String message;

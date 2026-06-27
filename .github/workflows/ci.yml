@@ -72,8 +72,8 @@ jobs:
 
       - name: Precheck (v1.7.0 字段契约 14 项)
         run: bash .claude/skills/microcourse/scripts/precheck.sh
-        continue-on-error: true
-        # 注: 本地 precheck 16/16 PASS，CI 环境因 set -e 与 bash 版本差异静默失败
+        # P2-4: 去掉 continue-on-error，precheck 失败直接阻塞 PR
+        # 之前因 set -e 与 bash 版本差异静默失败 — 已修（v1.7.0 precheck.sh 移除 set -e）
 
       - name: Package JAR
         run: mvn package -DskipTests -B
