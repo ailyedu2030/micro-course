@@ -731,6 +731,45 @@ onMounted(async () => {
 .hero-search-input :deep(.el-input__wrapper:hover) { box-shadow: none; }
 
 /* ==========================================================================
+   Banner 轮播 — 横向滑动
+   ========================================================================== */
+.banner-section {
+  margin-bottom: var(--space-6);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+.banner-section :deep(.el-carousel__container) {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+.banner-item {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.banner-item .banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.banner-section :deep(.el-carousel__indicator) {
+  padding: 6px 4px;
+}
+.banner-section :deep(.el-carousel__button) {
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--el-color-primary);
+  opacity: .4;
+}
+.banner-section :deep(.el-carousel__indicator--active .el-carousel__button) {
+  opacity: 1;
+  width: 32px;
+}
+
+/* ==========================================================================
    Filter Bar — 分类 + 难度
    ========================================================================== */
 .filter-bar { margin-top: var(--space-4); }
@@ -1029,6 +1068,9 @@ onMounted(async () => {
   .rec-card { flex: 0 0 240px; }
   .hero-title { font-size: 22px; }
   .hero-section { padding: var(--space-4); }
+  .banner-section :deep(.el-carousel) { height: 160px; }
+  .banner-section :deep(.el-carousel__container) { height: 160px; }
+  .banner-section { margin-bottom: var(--space-4); }
   .course-square { padding: var(--space-3); }
   /* 客户体验修复 v1.7.0: 移动端禁用负 margin 扩展,防止横向滚动 */
   .rec-scroll-wrap { margin: 0 !important; padding: 0 !important; }
