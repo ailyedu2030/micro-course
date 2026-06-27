@@ -20,6 +20,8 @@ public enum NotificationType {
     COURSE_UNPUBLISHED("COURSE_UNPUBLISHED", "课程已下架"),
     VIDEO_TRANSCODED("VIDEO_TRANSCODED", "视频转码完成"),
     DISCUSSION_REPLY("DISCUSSION_REPLY", "讨论区有新回复"),
+    // R8 P0-5: 成绩发布通知
+    GRADE_ISSUED("GRADE_ISSUED", "成绩已发布"),
 
     // Phase 14: 微专业通知（23 种）
     MS_INVITE_LEAD("MS_INVITE_LEAD", "微专业负责人邀请"),

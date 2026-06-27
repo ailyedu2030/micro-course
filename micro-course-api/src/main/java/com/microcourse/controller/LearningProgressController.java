@@ -123,6 +123,24 @@ public class LearningProgressController {
         return R.ok(result);
     }
 
+    /**
+     * R8 P0-3: 批量获取用户在多门课程中的学习进度（解决 MyCourses N+1）。
+     * GET /api/learning-progress/progress/batch?courseIds=1,2,3
+     * IDOR 防护：前端传的 userId 为当前登录用户，后端直接取 token 中的 userId。
+     */
+    @GetMapping("/progress/batch")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<LearningProgressVO>> batchGetByUserAndCourses(
+            @RequestParam String courseIds) {
+        Long userId = getCurrentUserId();
+        List<Long> ids = java.util.Arrays.stream(courseIds.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .collect(java.util.stream.Collectors.toList());
+        List<LearningProgressVO> list = learningProgressService.batchGetByUserAndCourses(userId, ids);
+        return R.ok(list);
+    }
+
     @GetMapping("/total-time")
     @PreAuthorize("isAuthenticated()")
     public R<Map<String, Object>> getTotalTime(Authentication authentication) {

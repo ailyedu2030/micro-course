@@ -635,7 +635,7 @@
 
 | Grade | /api/grades | 9 | - |
 
-| LearningProgress | /api/learning-progress | 7 | - |
+| LearningProgress | /api/learning-progress | 8 | - |
 
 | Lesson | /api/lessons | 6 | - |
 

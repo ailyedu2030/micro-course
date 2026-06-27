@@ -81,6 +81,25 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         return vos;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<LearningProgressVO> batchGetByUserAndCourses(Long userId, java.util.List<Long> courseIds) {
+        if (courseIds == null || courseIds.isEmpty()) return new java.util.ArrayList<>();
+        LambdaQueryWrapper<LearningProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LearningProgress::getUserId, userId)
+               .in(LearningProgress::getCourseId, courseIds);
+        java.util.List<LearningProgress> list = learningProgressRepository.selectList(wrapper);
+        java.util.List<LearningProgressVO> vos = convertToVOList(list);
+        java.util.Map<Long, LearningProgressVO> byCourse = new java.util.HashMap<>();
+        for (LearningProgressVO vo : vos) {
+            byCourse.put(vo.getCourseId(), vo);
+        }
+        return courseIds.stream()
+                .map(cid -> byCourse.get(cid))
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     private List<LearningProgressVO> convertToVOList(List<LearningProgress> list) {
         if (list.isEmpty()) {
             return new java.util.ArrayList<>();

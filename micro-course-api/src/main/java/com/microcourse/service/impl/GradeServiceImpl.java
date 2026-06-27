@@ -26,10 +26,15 @@ import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.GradeRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.service.GradeService;
+import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -39,12 +44,15 @@ import java.util.stream.Collectors;
 @Service
 public class GradeServiceImpl implements GradeService {
 
+    private static final Logger log = LoggerFactory.getLogger(GradeServiceImpl.class);
+
     private final GradeRepository gradeRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final ExerciseRepository exerciseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final ExerciseRecordRepository exerciseRecordRepository;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     public GradeServiceImpl(
@@ -54,6 +62,7 @@ public class GradeServiceImpl implements GradeService {
             ExerciseRepository exerciseRepository,
             EnrollmentRepository enrollmentRepository,
             ExerciseRecordRepository exerciseRecordRepository,
+            NotificationService notificationService,
             ObjectMapper objectMapper) {
         this.gradeRepository = gradeRepository;
         this.courseRepository = courseRepository;
@@ -61,6 +70,7 @@ public class GradeServiceImpl implements GradeService {
         this.exerciseRepository = exerciseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.exerciseRecordRepository = exerciseRecordRepository;
+        this.notificationService = notificationService;
         this.objectMapper = objectMapper;
     }
 
@@ -291,6 +301,17 @@ public class GradeServiceImpl implements GradeService {
             gradeRepository.insert(grade);
         }
 
+        // R8 P0-5: 成绩发布后通知学生
+        String courseTitle = course != null ? course.getTitle() : "课程";
+        try {
+            notificationService.notifyAsync(studentId, NotificationType.GRADE_ISSUED,
+                    "成绩已发布",
+                    "您在《" + courseTitle + "》中的成绩已由教师录入，请查看。",
+                    courseId);
+        } catch (Exception e) {
+            log.warn("[Grade] 通知学生成绩发布失败 userId={} courseId={}", studentId, courseId, e);
+        }
+
         GradeVO vo = batchConvertToVO(Collections.singletonList(grade)).get(0);
         vo.setEnrollmentId(request.getEnrollmentId());
         return vo;
@@ -446,6 +467,16 @@ public class GradeServiceImpl implements GradeService {
             ng.setCreatedAt(LocalDateTime.now());
             ng.setUpdatedAt(LocalDateTime.now());
             gradeRepository.insert(ng);
+        }
+
+        // R8 P0-5: 批改后通知学生
+        try {
+            notificationService.notifyAsync(record.getUserId(), NotificationType.EXERCISE_GRADED,
+                    "作业已批改",
+                    "教师在练习《" + (exercise != null ? exercise.getTitle() : "") + "》中对您的作答进行了批改，请查看。",
+                    exercise.getCourseId());
+        } catch (Exception e) {
+            log.warn("[Grade] 通知学生练习批改失败 userId={} exerciseId={}", record.getUserId(), record.getExerciseId(), e);
         }
     }
 

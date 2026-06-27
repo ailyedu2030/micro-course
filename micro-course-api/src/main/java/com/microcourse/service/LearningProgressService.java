@@ -11,6 +11,11 @@ public interface LearningProgressService {
 
     List<LearningProgressVO> getByUserAndCourse(Long userId, Long courseId);
 
+    /**
+     * R8 P0-3: 批量获取用户在多门课程中的学习进度（解决 MyCourses N+1）。
+     */
+    List<LearningProgressVO> batchGetByUserAndCourses(Long userId, List<Long> courseIds);
+
     void updateProgress(Long id, Long userId, ProgressUpdateRequest request);
 
     LearningProgressVO create(ProgressCreateRequest request);

@@ -489,7 +489,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments, cancelEnrollment } from '../../api/enrollment'
-import { getCompletion, getLearningProgress } from '../../api/learning-progress'
+import { getCompletion, getLearningProgress, batchGetLearningProgress } from '../../api/learning-progress'
 import { getChapters } from '../../api/chapter'
 import { getMyFavorites } from '../../api/favorite'
 import { getCourseById } from '../../api/course'
@@ -645,23 +645,25 @@ const fetchEnrollments = async () => {
     const completionData = await getCompletion({ userId }).catch(() => ({}))
     const completionMap = completionData?.data || {}
 
-    // 对每门进行中课程获取练习完成进度
+    // R8 P0-3: 批量获取学习进度（替代 per-course N+1）
     const inProgress = list.filter(e => !e.completed)
-    const progressResults = await Promise.allSettled(
-      inProgress.map(e => getLearningProgress({ courseId: e.courseId }))
-    )
     const newProgressMap = {}
-    progressResults.forEach((result, idx) => {
-      const courseId = inProgress[idx].courseId
-      if (result.status === 'fulfilled' && result.value?.data) {
-        const pdata = result.value.data
-        newProgressMap[courseId] = {
-          completedExercises: pdata.completedExercises ?? pdata.completed ?? 0,
-          totalExercises: pdata.totalExercises ?? pdata.total ?? 0,
-          progress: completionMap[courseId]?.progress ?? inProgress[idx].progress ?? 0
+    if (inProgress.length > 0) {
+      const courseIds = inProgress.map(e => e.courseId)
+      const batchRes = await batchGetLearningProgress(courseIds).catch(() => null)
+      if (batchRes?.data) {
+        const progressList = Array.isArray(batchRes.data) ? batchRes.data : [batchRes.data]
+        for (const pdata of progressList) {
+          if (pdata?.courseId) {
+            newProgressMap[pdata.courseId] = {
+              completedExercises: pdata.completedExercises ?? pdata.completed ?? 0,
+              totalExercises: pdata.totalExercises ?? pdata.total ?? 0,
+              progress: completionMap[pdata.courseId]?.progress ?? inProgress.find(e => e.courseId === pdata.courseId)?.progress ?? 0
+            }
+          }
         }
       }
-    })
+    }
     courseProgressMap.value = newProgressMap
 
     // P1-6: 对每门进行中课程获取章节数据，用实际完成数统计视频进度

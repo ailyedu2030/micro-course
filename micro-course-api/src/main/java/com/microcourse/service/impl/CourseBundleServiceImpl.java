@@ -77,7 +77,7 @@ public class CourseBundleServiceImpl implements CourseBundleService {
             return vo;
         }
 
-        // N+1 修复：批量预加载 course 和 teacher
+        // R8 P0-3 N+1 修复：批量预加载 course 和 teacher（原来 teacher 是逐条查）
         Set<Long> courseIds = items.stream()
                 .map(CourseBundleItem::getCourseId).filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -85,12 +85,17 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         Map<Long, User> teacherMap = new HashMap<>();
         if (!courseIds.isEmpty()) {
             List<Course> courses = courseRepository.selectBatchIds(courseIds);
+            // P0-3: 收集所有 teacherId 后批量查，避免逐条 selectById
+            Set<Long> teacherIds = courses.stream()
+                    .map(Course::getTeacherId).filter(Objects::nonNull).collect(Collectors.toSet());
+            if (!teacherIds.isEmpty()) {
+                List<User> teachers = userRepository.selectBatchIds(teacherIds);
+                for (User t : teachers) {
+                    teacherMap.put(t.getId(), t);
+                }
+            }
             for (Course c : courses) {
                 courseMap.put(c.getId(), c);
-                if (c.getTeacherId() != null && !teacherMap.containsKey(c.getTeacherId())) {
-                    User teacher = userRepository.selectById(c.getTeacherId());
-                    if (teacher != null) teacherMap.put(teacher.getId(), teacher);
-                }
             }
         }
 

@@ -16,6 +16,11 @@ export function getCompletion(params) {
   return request({ method: 'GET', url: '/learning-progress/progress/completion', params })
 }
 
+// R8 P0-3: 批量获取学习进度（解决 MyCourses N+1，替代 per-course getLearningProgress）
+export function batchGetLearningProgress(courseIds) {
+  return request({ method: 'GET', url: '/learning-progress/progress/batch', params: { courseIds: courseIds.join(',') } })
+}
+
 export function getStudyDays() {
   return request({ method: 'GET', url: '/learning-progress/study-days' })
 }
