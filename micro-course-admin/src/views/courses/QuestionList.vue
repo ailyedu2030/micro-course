@@ -236,6 +236,8 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useUrlPagination } from '@/composables/useUrlPagination';
+import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getQuestions, createQuestion, updateQuestion, deleteQuestion, batchImportQuestion } from '@/api/question'
@@ -270,6 +272,10 @@ const searchForm = reactive({
   categoryId: '',
   keyword: ''
 })
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, searchForm, ['questionType', 'difficulty', 'categoryId', 'keyword'])
 
 // 难度字符串→整数映射（前端UI用字符串，后端用整数）
 const DIFFICULTY_MAP = { 'EASY': 1, 'MEDIUM': 2, 'HARD': 3 }

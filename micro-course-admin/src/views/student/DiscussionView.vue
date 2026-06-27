@@ -194,6 +194,8 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed, onUnmounted, watch } from 'vue'
+import { useUrlPagination } from '@/composables/useUrlPagination';
+import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPosts, createPost, getPostById, getComments, createComment, likeComment, deletePost } from '@/api/discussion'
@@ -213,6 +215,10 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 const isMobile = ref(window.innerWidth <= 768)
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, null, [])
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768

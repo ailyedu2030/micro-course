@@ -100,6 +100,8 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useUrlPagination } from '@/composables/useUrlPagination';
+import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getMajors, createMajor, updateMajor, deleteMajor } from '@/api/major'
@@ -122,6 +124,10 @@ const searchForm = reactive({
   name: '',
   departmentId: null
 })
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, searchForm, ['name', 'departmentId'])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增专业')

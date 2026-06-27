@@ -349,6 +349,8 @@ v-for="item in filteredAllMS" :key="'all-ms-' + item.id"
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch, onUnmounted } from 'vue'
+import { useUrlPagination } from '@/composables/useUrlPagination';
+import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -441,6 +443,10 @@ const searchForm = reactive({
   keyword: '',
   difficulty: ''
 })
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, searchForm, ['keyword', 'difficulty'])
 
 // 课程排序
 const courseSort = ref('')

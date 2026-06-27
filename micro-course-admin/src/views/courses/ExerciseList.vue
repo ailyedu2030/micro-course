@@ -246,6 +246,8 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useUrlPagination } from '@/composables/useUrlPagination';
+import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getExercises, createExercise, updateExercise, deleteExercise, addQuestionsToExercise, removeQuestionFromExercise } from '@/api/exercise'
@@ -272,6 +274,10 @@ const searchForm = reactive({
   courseId: null,
   chapterId: null
 })
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, searchForm, ['courseId', 'chapterId'])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增练习')

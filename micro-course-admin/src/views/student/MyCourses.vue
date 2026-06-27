@@ -475,6 +475,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useUrlPagination } from '@/composables/useUrlPagination';
+import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -531,6 +533,10 @@ const extraFavorites = ref([])
 const page = ref(1)
 const size = ref(9)
 const totalElements = ref(0)
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, null, [])
 // 课程练习进度映射: { [courseId]: { completedExercises, totalExercises } }
 const courseProgressMap = ref({})
 // 课程视频进度映射: { [courseId]: { total, completed, percent } }

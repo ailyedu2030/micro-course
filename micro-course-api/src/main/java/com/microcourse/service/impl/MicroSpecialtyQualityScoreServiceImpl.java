@@ -59,16 +59,20 @@ public class MicroSpecialtyQualityScoreServiceImpl implements MicroSpecialtyQual
 
     /** StringRedisTemplate 适配器 */
     public static class RedisStringCache implements Cache {
+        private static final Logger log = LoggerFactory.getLogger(RedisStringCache.class);
         private final StringRedisTemplate template;
         public RedisStringCache(StringRedisTemplate template) { this.template = template; }
         @Override public String get(String key) {
-            try { return template.opsForValue().get(key); } catch (Exception e) { return null; }
+            try { return template.opsForValue().get(key); }
+            catch (Exception e) { log.warn("[QualityScore] Redis GET failed, falling back to DB: key={}", key, e); return null; }
         }
         @Override public void set(String key, String value, Duration ttl) {
-            try { template.opsForValue().set(key, value, ttl); } catch (Exception ignored) {}
+            try { template.opsForValue().set(key, value, ttl); }
+            catch (Exception e) { log.warn("[QualityScore] Redis SET failed: key={}", key, e); }
         }
         @Override public void delete(String key) {
-            try { template.delete(key); } catch (Exception ignored) {}
+            try { template.delete(key); }
+            catch (Exception e) { log.warn("[QualityScore] Redis DEL failed: key={}", key, e); }
         }
     }
 

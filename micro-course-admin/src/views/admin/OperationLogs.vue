@@ -270,6 +270,8 @@
  * Vue 3.4 Composition API + script setup
  */
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { useUrlPagination } from '@/composables/useUrlPagination';
+import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage } from 'element-plus'
 import { Search, RefreshRight, View } from '@element-plus/icons-vue'
 import { getLogs } from '@/api/operation-log'
@@ -305,6 +307,10 @@ const searchForm = reactive({
   endTime: '',
   targetId: ''
 })
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, searchForm, ['userId', 'username', 'module', 'action', 'startTime', 'endTime'])
 
 // 详情弹窗
 const detailVisible = ref(false)
@@ -356,24 +362,37 @@ function handleReset() {
 // 获取数据（含 P1-2 竞态防护）
 async function fetchData() {
   const seq = ++requestSeq
+  // P2-17: SWR 模式
+  const params = {
+    page: page.value - 1,
+    size: size.value,
+    userId: searchForm.userId ? Number(searchForm.userId) : undefined,
+    username: searchForm.username || undefined,
+    module: searchForm.module || undefined,
+    action: searchForm.action || undefined,
+    startTime: searchForm.startTime || undefined,
+    endTime: searchForm.endTime || undefined,
+    targetId: searchForm.targetId ? Number(searchForm.targetId) : undefined
+  }
+  const cacheKey = `OperationLogs:${JSON.stringify(params)}`
+  const cached = swrCache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < 30000) {
+    tableData.value = cached.data.items || []
+    totalElements.value = cached.data.totalElements || 0
+    getLogs(params).then(({ data }) => {
+      swrCache.set(cacheKey, { data, ts: Date.now() })
+      tableData.value = data.items || []
+      totalElements.value = data.totalElements || 0
+    }).catch(() => {})
+    return
+  }
   loading.value = true
   error.value = false
   errorMessage.value = '请稍后重试'
   try {
-    const params = {
-      page: page.value - 1,
-      size: size.value,
-      userId: searchForm.userId ? Number(searchForm.userId) : undefined,
-      username: searchForm.username || undefined,
-      // P1-修复: module 参数映射说明——后端 module 列由 action/targetType 推断（如创建课程 → module="COURSE"）
-      // 前端下拉选项值（USER/COURSE/GRADE/SETTING/PERMISSION/AUTH）与后端推断逻辑一致
-      module: searchForm.module || undefined,
-      action: searchForm.action || undefined,
-      startTime: searchForm.startTime || undefined,
-      endTime: searchForm.endTime || undefined,
-      targetId: searchForm.targetId ? Number(searchForm.targetId) : undefined
-    }
     const { data } = await getLogs(params)
+    // P2-17: SWR 缓存
+    swrCache.set(cacheKey, { data, ts: Date.now() })
     // P1-2: 过期响应丢弃
     if (seq !== requestSeq) return
     tableData.value = data.items || []

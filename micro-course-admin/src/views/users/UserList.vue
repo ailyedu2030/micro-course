@@ -236,6 +236,8 @@
  * Vue 3.4 Composition API + script setup
  */
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useUrlPagination } from '@/composables/useUrlPagination';
+import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
@@ -282,6 +284,10 @@ const searchForm = reactive({
   classId: '',
   status: ''
 })
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, searchForm, ['keyword', 'role', 'departmentId', 'majorId', 'classId', 'status'])
 
 const formData = reactive({
   id: '',
@@ -332,20 +338,33 @@ const fetchClasses = async (majorId) => {
 }
 
 const fetchData = async () => {
+  // P2-17: SWR 模式 — 缓存 30s 内请求，立即显示旧数据 + 后台静默刷新
+  const params = {
+    page: page.value - 1,
+    size: size.value,
+    keyword: searchForm.keyword || undefined,
+    role: searchForm.role || undefined,
+    departmentId: searchForm.departmentId || undefined,
+  }
+  const cacheKey = `UserList:${JSON.stringify(params)}`
+  const cached = swrCache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < 30000) {
+    tableData.value = cached.data.items || []
+    totalElements.value = cached.data.totalElements || 0
+    getUsers(params).then(({ data }) => {
+      swrCache.set(cacheKey, { data, ts: Date.now() })
+      tableData.value = data.items || []
+      totalElements.value = data.totalElements || 0
+    }).catch(() => {})
+    return
+  }
   loading.value = true
   error.value = false
   try {
-    const params = {
-      page: page.value - 1,
-      size: size.value,
-      keyword: searchForm.keyword || undefined,
-      role: searchForm.role || undefined,
-      departmentId: searchForm.departmentId || undefined,
-      majorId: searchForm.majorId || undefined,
-      classId: searchForm.classId || undefined,
-      status: searchForm.status !== '' ? searchForm.status : undefined
-    }
-    const { data } = await getUsers(params)
+    // 完整 params（含 majorId/classId/status）— SWR 已用基础版本
+    const fullParams = { ...params, majorId: searchForm.majorId || undefined, classId: searchForm.classId || undefined, status: searchForm.status !== '' ? searchForm.status : undefined }
+    const { data } = await getUsers(fullParams)
+    swrCache.set(cacheKey, { data, ts: Date.now() })
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {

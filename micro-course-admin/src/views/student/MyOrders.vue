@@ -94,6 +94,8 @@ import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { getMyOrders, payOrder, refundOrder } from '@/api/order'
 import { useAsyncData } from '@/composables/useAsyncData'
+import { useUrlPagination } from '@/composables/useUrlPagination'
+import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 
 const router = useRouter()
@@ -103,6 +105,10 @@ const orders = ref([])
 const page = ref(0)
 const size = ref(20)
 const total = ref(0)
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, null, [])
 
 // Round 11-3: 统一异步加载 + 统一错误处理
 const { handleError, handleSuccess } = useErrorHandler()

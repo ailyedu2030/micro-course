@@ -100,6 +100,8 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useUrlPagination } from '@/composables/useUrlPagination';
+import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
@@ -122,6 +124,10 @@ const searchForm = reactive({
   courseId: '',
   status: ''
 })
+
+// P2-14: URL 分页同步
+const { bindToQuery } = useUrlPagination()
+bindToQuery(page, size, searchForm, ['keyword', 'courseId', 'status'])
 
 const fetchCourseOptions = async () => {
   try {
