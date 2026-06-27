@@ -195,7 +195,7 @@ const quickAccounts = isDev ? [
   { label: '管理员', type: 'danger', username: 'admin', password: 'admin123' },
   { label: '教务处', type: 'warning', username: 'academic', password: '123456' },
   { label: '教师', type: 'success', username: 'teacher', password: '123456' },
-  { label: '学生', type: 'primary', username: 'student', password: '123456' }
+  { label: '学生', type: 'primary', username: 'student', password: 'student123' }
 ] : []
 
 const fillAccount = (acc) => {

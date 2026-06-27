@@ -304,15 +304,18 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         }
 
         // Validate chapterId exists only when provided (FK constraint)
+        Long chapterCourseId = null;
         if (req.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(req.getChapterId());
             if (chapter == null) {
                 throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
             }
+            chapterCourseId = chapter.getCourseId();
         }
 
         DiscussionPost post = new DiscussionPost();
-        post.setCourseId(req.getCourseId());
+        // R14 P1-C-2: 如果前端只传了 chapterId 没传 courseId，反查 chapter 的 courseId
+        post.setCourseId(req.getCourseId() != null ? req.getCourseId() : chapterCourseId);
         post.setChapterId(req.getChapterId());
         post.setUserId(userId);
         // P1 安全修复: XSS 净化 — 标题使用纯文本净化（不应含 HTML），内容允许安全标签

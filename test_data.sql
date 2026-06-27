@@ -425,4 +425,8 @@ BEGIN
   RAISE NOTICE '轮播图: %', (SELECT COUNT(*) FROM banners);
 END $$;
 
+-- R14 P0-4: 同步 discussion 表序列（test_data.sql 用显式 ID 插入后必须 setval，否则后续 INSERT 报主键冲突）
+SELECT setval(pg_get_serial_sequence('discussion_posts', 'id'), COALESCE((SELECT MAX(id) FROM discussion_posts), 1));
+SELECT setval(pg_get_serial_sequence('discussion_comments', 'id'), COALESCE((SELECT MAX(id) FROM discussion_comments), 1));
+
 COMMIT;

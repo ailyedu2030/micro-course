@@ -152,6 +152,7 @@ plugin:
 # J9-01: 支付模式配置 — mock 模式（默认）dev 可用，生产部署时设为 real
 payment:
   mode: ${PAY_MODE:mock}   # mock | real
+  callback-secret: ${PAYMENT_CALLBACK_SECRET:}  # 支付回调签名密钥
 
 # CORS (INFRA-NEW-4: 多个来源以逗号分隔,env 可覆盖)
 cors:
@@ -177,6 +178,9 @@ management:
         enabled: true
 
 # P3-15 慢 SQL 监控阈值（被 MybatisSlowSqlInterceptor 通过 @Value 读取；独立顶级键，不与 mybatis-plus 绑定冲突）
+upload:
+  base-dir: ${UPLOAD_BASE_DIR:uploads}  # 上传根目录（被 @Value("${upload.base-dir:uploads}") 引用）
+
 mybatis:
   slow-sql:
     threshold-ms: ${SLOW_SQL_THRESHOLD_MS:500}   # 500ms 阈值（业务建议，可调整）
