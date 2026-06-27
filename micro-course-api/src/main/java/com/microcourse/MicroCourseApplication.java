@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -23,6 +24,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @author 总工程师
  */
 @SpringBootApplication(exclude = { UserDetailsServiceAutoConfiguration.class })
+@EnableRetry
 @EnableScheduling
 public class MicroCourseApplication {
 

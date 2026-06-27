@@ -22,6 +22,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.dao.DataAccessException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -55,6 +58,8 @@ public class NotificationServiceImpl implements NotificationService {
      */
     @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    @Retryable(retryFor = {DataAccessException.class}, maxAttempts = 3,
+               backoff = @Backoff(delay = 1000, multiplier = 2))
     @Override
     public void notifyAsync(Long userId, NotificationType type, String title, String content, Long relatedId) {
         try {
@@ -199,5 +204,11 @@ public class NotificationServiceImpl implements NotificationService {
         vo.setReadAt(notification.getReadAt());
         vo.setCreatedAt(notification.getCreatedAt());
         return vo;
+    }
+
+    @org.springframework.retry.annotation.Recover
+    public void recoverNotify(DataAccessException t, Long userId, NotificationType type,
+                               String title, String content, Long relatedId) {
+        log.error("[Notification] 重试3次仍失败，通知丢失 userId={} type={} title={}", userId, type, title, t);
     }
 }

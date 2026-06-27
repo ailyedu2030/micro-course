@@ -16,9 +16,9 @@ spring:
       minimum-idle: 20
       # ★ 业务逻辑审计 P0-1 压测发现：300 并发下 20 连接池耗尽
       # PG max_connections=300，预留 50 给运维/管理连接，app 上限 250
-      # ★ E6: maximum-pool-size=250（≥200 生产基线）; minimum-idle=20
-      #   测试环境建议 ≤10（见 application-test.yml 覆盖）
-      maximum-pool-size: 250
+      # ★ E6: maximum-pool-size=250→100（R8 调整：PG default max_connections=100，app 需预留连接给运维）
+      #   100 池 + 10 standby = 110，剩余 40 留给 PG 管理员直连
+      maximum-pool-size: 100
       idle-timeout: 300000
       max-lifetime: 1800000
       # ★ Round 9-2 修复：连接池满时 30s 等待对用户是灾难，降至 5s 快速失败（feature flag 兜底）
