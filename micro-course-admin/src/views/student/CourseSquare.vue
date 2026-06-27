@@ -7,17 +7,17 @@
   <div class="course-square fade-in">
 <!-- ============ P0 闭环修复 Round 4: Banner 轮播（学生端首页） ============ -->
     <section v-if="banners.length > 0" class="banner-section" aria-label="运营 Banner">
-      <div class="banner-track">
-        <a
-          v-for="banner in banners"
-          :key="banner.id"
-          :href="banner.linkUrl || '#'"
-          class="banner-item"
-          @click.prevent="handleBannerClick(banner)"
-        >
-          <img :src="banner.imageUrl" :alt="banner.title || 'banner'" class="banner-img" />
-        </a>
-      </div>
+      <el-carousel height="260px" trigger="click" arrow="always" indicator-position="outside" :interval="4000">
+        <el-carousel-item v-for="banner in banners" :key="banner.id">
+          <a
+            :href="banner.linkUrl || '#'"
+            class="banner-item"
+            @click.prevent="handleBannerClick(banner)"
+          >
+            <img :src="banner.imageUrl" :alt="banner.title || 'banner'" class="banner-img" />
+          </a>
+        </el-carousel-item>
+      </el-carousel>
     </section>
 
     <!-- ============ Hero + Search ============ -->
