@@ -20,6 +20,7 @@ public class PageResult<T> {
         return result;
     }
 
+    /** @param page 0-based（与 MyBatis-Plus PageHelper 一致：0=第1页） */
     public static <T> PageResult<T> of(List<T> items, long totalElements, int page, int size) {
         PageResult<T> result = new PageResult<>();
         result.setItems(items);

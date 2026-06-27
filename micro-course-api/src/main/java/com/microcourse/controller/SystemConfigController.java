@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.microcourse.dto.AdminSettingVO;
 import com.microcourse.dto.R;
 import com.microcourse.service.AdminSettingService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,6 +56,7 @@ public class SystemConfigController {
      * 若数据库未配置任何公开键，则返回空对象（仍为 200），端点真正可用、可被前端安全消费。</p>
      */
     @GetMapping("/public")
+    @PreAuthorize("permitAll()")
     public R<Map<String, String>> publicConfigs() {
         Map<String, String> result = new LinkedHashMap<>();
         for (AdminSettingVO vo : adminSettingService.getAll()) {

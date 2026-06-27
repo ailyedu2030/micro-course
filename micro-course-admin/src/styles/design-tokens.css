@@ -2,6 +2,9 @@
    微课管理平台 · 设计 Token v1.2
    依据: docs/DESIGN.md v1.1 / ui-ux-pro-max / WCAG 2.1 AA / redesign-existing-projects
    Font: Outfit (替换 Inter) — 更个性、更现代的几何人文体
+
+   注：本站共约 74 处 !important（R8 P1-I #19 审计），
+   绝大多数用于覆盖 Element Plus 默认内联样式，属必要做法。
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300..700&display=swap');

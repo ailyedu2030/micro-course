@@ -127,6 +127,8 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
+    /** @deprecated 返回 Entity 对象，仅限内部使用。外部调用请用 Service VO 方法。 */
+    @Deprecated
     public Video findEntityById(Long id) {
         return videoRepository.selectById(id);
     }
@@ -411,6 +413,8 @@ public class VideoServiceImpl implements VideoService {
 
     /** P2: 按 MD5 查询是否已有重复视频 */
     @Override
+    /** @deprecated 返回 Entity 对象，仅限内部 MD5 去重使用。 */
+    @Deprecated
     public Video findByMd5(String md5) {
         if (md5 == null || md5.isBlank()) {
             return null;

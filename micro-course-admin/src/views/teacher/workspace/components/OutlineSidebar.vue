@@ -26,7 +26,7 @@ v-for="lesson in ch.lessons" :key="lesson.id" class="lesson-row"
             <el-icon :size="16" v-if="lesson.lessonType === 'INTERACTIVE'" class="lesson-icon-interactive"><Present /></el-icon>
             <el-icon :size="16" v-else class="lesson-icon-video"><VideoPlay /></el-icon>
             <span class="node-title">{{ lesson.title }}</span>
-            <span class="lesson-status" v-if="lesson.videoUrl || lesson.slideCount">✓</span>
+            <span class="lesson-status" v-if="lesson.videoUrl || lesson.slideCount"><el-icon :size="14"><Select /></el-icon></span>
             <span class="lesson-status empty" v-else>◌</span>
           </div>
         </div>

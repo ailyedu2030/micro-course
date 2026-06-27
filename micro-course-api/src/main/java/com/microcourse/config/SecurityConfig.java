@@ -130,6 +130,7 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/classes/**").authenticated()
                         .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers("/api/users/**").authenticated()
+                        // P2-1: Swagger 文档路径（生产禁用见 application-prod.yml springdoc.api-docs.enabled=false）
                         .requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
                         // P0-1: HLS 流式端点 — hls.js 通过 xhrSetup 携带 JWT，需认证
                         .requestMatchers("GET", "/api/videos/stream/**").authenticated()

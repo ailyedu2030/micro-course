@@ -101,6 +101,7 @@ public class OrderController {
      * 验证失败返回 401；secret 为空时放行（仅限非生产环境）并输出警告日志。</p>
      */
     @PostMapping("/callback")
+    @PreAuthorize("permitAll()")
     public R<Void> paymentCallback(@RequestBody String rawBody,
                                     @RequestHeader(value = "X-Signature", required = false) String signature) {
         // P0-1: HMAC-SHA256 签名验证

@@ -730,11 +730,11 @@ onBeforeUnmount(() => {
 .qa-info { min-width: 0; }
 .qa-title { font-size: var(--text-base); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); margin-bottom: 2px; }
 .qa-desc { font-size: var(--text-xs); color: var(--el-text-color-secondary); }
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .quick-actions { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
   .qa-title { font-size: var(--text-sm); }
 }
-@media (max-width: 380px) {
+@media (max-width: 480px) {
   .quick-actions { grid-template-columns: 1fr; }
 }
 

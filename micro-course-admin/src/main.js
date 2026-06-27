@@ -3,7 +3,7 @@ import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import './styles/design-tokens.css'
-import './styles/common-table.css'
+/* 注：common-table.css 已合并到 design-tokens.css，不再独立引入 */
 import './styles/mobile-fixes.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
