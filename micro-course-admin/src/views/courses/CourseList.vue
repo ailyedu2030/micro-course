@@ -175,6 +175,30 @@
         <el-form-item label="价格(元)" prop="price">
           <el-input-number v-model="formData.price" :min="0" :precision="2" class="full-width" />
         </el-form-item>
+        <el-form-item label="课程封面" prop="coverUrl">
+          <template v-if="!coverPreviewUrl">
+            <el-upload
+              ref="coverUploadRef"
+              :auto-upload="false"
+              :limit="1"
+              accept="image/jpeg,image/jpg,image/png,image/gif"
+              :before-upload="handleBeforeCoverUpload"
+              :on-change="handleCoverChange"
+            >
+              <el-button size="small" type="primary">
+                <el-icon><Plus /></el-icon>
+                选择图片
+              </el-button>
+            </el-upload>
+            <div class="form-tip">建议尺寸 1200×628px，仅支持 JPG/PNG/GIF，最大 2MB</div>
+          </template>
+          <div v-else class="cover-preview-wrapper">
+            <img :src="coverPreviewUrl" class="cover-preview-img" alt="课程封面预览" />
+            <div class="cover-actions">
+              <el-button size="small" @click="handleRemoveCover">删除</el-button>
+            </div>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -193,7 +217,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
 import { useUserStore } from '@/store/user'
-import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse } from '@/api/course'
+import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 import { getUsers } from '@/api/user'
 
@@ -237,6 +261,11 @@ const formData = reactive({
   courseType: 'VIDEO',
   price: null
 })
+
+// 封面上传相关
+const coverUploadRef = ref(null)
+const coverPreviewUrl = ref('')
+const coverFile = ref(null)
 
 const formRules = {
   title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
@@ -368,8 +397,43 @@ const handleCreate = () => {
   formData.creditHours = 1
   formData.semester = ''
   formData.difficulty = ''
+  // 重置封面
+  handleRemoveCover()
   dialogVisible.value = true
   fetchTeachers()
+}
+
+// 封面上传：选文件后本地预览（不立即上传）
+const handleBeforeCoverUpload = (file) => {
+  if (file.size > 2 * 1024 * 1024) {
+    ElMessage.error('封面文件不能超过 2MB')
+    return false
+  }
+  if (!/^image\/(jpeg|jpg|png|gif)$/.test(file.type)) {
+    ElMessage.error('仅支持 JPG/PNG/GIF 格式')
+    return false
+  }
+  return true
+}
+
+const handleCoverChange = (file) => {
+  if (file && file.raw) {
+    coverFile.value = file.raw
+    if (coverPreviewUrl.value) URL.revokeObjectURL(coverPreviewUrl.value)
+    coverPreviewUrl.value = URL.createObjectURL(file.raw)
+  }
+}
+
+const handleRemoveCover = () => {
+  if (coverPreviewUrl.value) {
+    URL.revokeObjectURL(coverPreviewUrl.value)
+  }
+  coverPreviewUrl.value = ''
+  coverFile.value = null
+  // 清空 el-upload 内部文件列表
+  if (coverUploadRef.value) {
+    coverUploadRef.value.clearFiles()
+  }
 }
 
 const handleEdit = (row) => {
@@ -471,8 +535,20 @@ const handleSubmit = async () => {
     if (!valid) return
     submitLoading.value = true
     try {
-      await createCourse(formData)
-      ElMessage.success('创建成功')
+      // 1. 先创建课程
+      const res = await createCourse(formData)
+      const newCourseId = res?.data?.id
+      // 2. 如果有封面，立即上传
+      if (newCourseId && coverFile.value) {
+        try {
+          await updateCourseCover(newCourseId, coverFile.value)
+          ElMessage.success('创建成功，封面已上传')
+        } catch {
+          ElMessage.warning('课程已创建，但封面上传失败，请稍后到编辑页重试')
+        }
+      } else {
+        ElMessage.success('创建成功')
+      }
       dialogVisible.value = false
       fetchData()
     } catch {
@@ -485,6 +561,7 @@ const handleSubmit = async () => {
 
 const handleDialogClose = () => {
   formRef.value?.resetFields()
+  handleRemoveCover()
 }
 
 onMounted(() => {
@@ -500,6 +577,26 @@ onMounted(() => {
   min-height: 100dvh;
   max-width: 1440px;
   margin: 0 auto;
+}
+
+.cover-preview-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.cover-preview-img {
+  max-width: 280px;
+  max-height: 160px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--el-border-color-lighter);
+  object-fit: cover;
+}
+
+.cover-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .page-breadcrumb {
