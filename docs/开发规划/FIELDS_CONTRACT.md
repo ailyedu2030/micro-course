@@ -2,19 +2,19 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 174 | Vue 视图数: 50 | Controller 数: 52 | API 文件数: 40
+> 实体数: 175 | Vue 视图数: 50 | Controller 数: 52 | API 文件数: 40
 
 ---
 
 ## 总览
 
-- ✅ 前后端匹配: 104 字段
+- ✅ 前后端匹配: 107 字段
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 14 字段
 
-- 后端实体字段总数: 1569
+- 后端实体字段总数: 1590
 
-- 前端引用字段总数: 328
+- 前端引用字段总数: 342
 
 
 ## ⚠️ 前端孤儿字段
@@ -683,7 +683,7 @@
 
 | TeachingClass | /api/teaching-classes | 12 | - |
 
-| User | /api/users | 9 | - |
+| User | /api/users | 10 | - |
 
 | Video | /api/videos | 11 | - |
 
@@ -952,6 +952,8 @@
 
 | ProgressUpdateRequest | 12 | 0 |
 
+| PromoteGradeResultVO | 5 | 0 |
+
 | Question | 14 | 0 |
 
 | QuestionChapter | 2 | 0 |
@@ -1018,7 +1020,7 @@
 
 | UserBatchImportDTO | 7 | 0 |
 
-| UserCreateRequest | 10 | 0 |
+| UserCreateRequest | 17 | 0 |
 
 | UserFollow | 4 | 0 |
 
@@ -1028,9 +1030,9 @@
 
 | UserTrendVO | 3 | 0 |
 
-| UserUpdateRequest | 7 | 0 |
+| UserUpdateRequest | 15 | 0 |
 
-| UserVO | 26 | 0 |
+| UserVO | 27 | 0 |
 
 | Video | 30 | 0 |
 

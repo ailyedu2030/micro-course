@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.PromoteGradeResultVO;
 import com.microcourse.dto.UserBatchImportDTO;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
@@ -30,6 +31,7 @@ import com.microcourse.security.UserStatusCheckFilter;
 import com.microcourse.service.OperationLogService;
 import com.microcourse.service.UserService;
 import com.microcourse.util.IpUtil;
+import com.microcourse.util.LogSanitizer;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.context.annotation.Lazy;
@@ -46,6 +48,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
@@ -211,7 +214,14 @@ public class UserServiceImpl implements UserService {
         user.setDepartmentId(request.getDepartmentId());
         user.setMajorId(request.getMajorId());
         user.setClassId(request.getClassId());
-        user.setStatus(1); // 启用
+        user.setGender(request.getGender());
+        user.setStudentNo(request.getStudentNo());
+        user.setTeacherNo(request.getTeacherNo());
+        user.setEnrollmentYear(request.getEnrollmentYear());
+        user.setGraduationYear(request.getGraduationYear());
+        user.setGrade(request.getGrade());
+        user.setPoliticalStatus(request.getPoliticalStatus());
+        user.setStatus(request.getStatus() != null ? request.getStatus() : 1); // 默认启用
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
@@ -236,6 +246,12 @@ public class UserServiceImpl implements UserService {
         if (request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
+        if (request.getGender() != null) {
+            user.setGender(request.getGender());
+        }
+        if (request.getAvatar() != null) {
+            user.setAvatar(request.getAvatar());
+        }
         if (request.getDepartmentId() != null) {
             user.setDepartmentId(request.getDepartmentId());
         }
@@ -247,6 +263,29 @@ public class UserServiceImpl implements UserService {
         }
         if (request.getGrade() != null) {
             user.setGrade(request.getGrade());
+        }
+        if (request.getEnrollmentYear() != null) {
+            user.setEnrollmentYear(request.getEnrollmentYear());
+        }
+        if (request.getGraduationYear() != null) {
+            user.setGraduationYear(request.getGraduationYear());
+        }
+        if (request.getStudentNo() != null) {
+            user.setStudentNo(request.getStudentNo());
+        }
+        if (request.getTeacherNo() != null) {
+            user.setTeacherNo(request.getTeacherNo());
+        }
+        if (request.getPoliticalStatus() != null) {
+            user.setPoliticalStatus(request.getPoliticalStatus());
+        }
+        if (request.getStatus() != null) {
+            // 走 updateStatus 走状态机校验（用 self 触发 @Transactional 代理）
+            if (!Objects.equals(user.getStatus(), request.getStatus())) {
+                self.updateStatus(id, request.getStatus());
+                // 重新加载最新值
+                user = userRepository.selectById(id);
+            }
         }
 
         user.setUpdatedAt(LocalDateTime.now());
@@ -771,6 +810,7 @@ public class UserServiceImpl implements UserService {
         vo.setCasBound(user.getCasBound());
         vo.setStudentNo(user.getStudentNo());
         vo.setTeacherNo(user.getTeacherNo());
+        vo.setPoliticalStatus(user.getPoliticalStatus());
         vo.setStatus(user.getStatus());
         vo.setTeacherStatus(user.getTeacherStatus());
         vo.setLastLoginAt(user.getLastLoginAt());
@@ -824,5 +864,122 @@ public class UserServiceImpl implements UserService {
     private static String maskPhone(String phone) {
         if (phone == null || phone.length() < 7) return phone;
         return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
+    }
+
+    /**
+     * 批量升级学生年级
+     *
+     * 业务规则：
+     * - 升级范围：role=STUDENT 且 status=1（启用）
+     * - 如果指定 fromGrade，只升级当前 grade 等于该值的学生（例：2024）
+     * - grade 字段语义：保存"届"（入学年份），例 2024 表示 2024 届
+     * - 升级逻辑：以 enrollmentYear 为基准计算当前是第几届
+     * - 已经到达毕业年份（>graduationYear）的学生不再升
+     *
+     * @param fromGrade 起始届次（可选；空则升级所有学生）
+     * @return 升级结果
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public PromoteGradeResultVO promoteGrade(String fromGrade) {
+        PromoteGradeResultVO result = new PromoteGradeResultVO();
+        result.setFromGrade(fromGrade == null ? "" : fromGrade);
+        result.setGraduatedUsernames(new java.util.ArrayList<>());
+
+        // 查询所有启用的学生
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<User> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        wrapper.eq("role", com.microcourse.enums.UserRole.STUDENT.name())
+               .eq("status", 1)
+               .isNull("deleted_at");
+        if (fromGrade != null && !fromGrade.trim().isEmpty()) {
+            wrapper.eq("grade", fromGrade.trim());
+        }
+        java.util.List<User> students = userRepository.selectList(wrapper);
+        if (students.isEmpty()) {
+            result.setToGrade("");
+            result.setAffectedCount(0);
+            return result;
+        }
+
+        // 计算目标"届次"：当前届 + 1
+        // 简化方案：grade 字段保存的是届次（入学年份），升级 = grade + 1
+        int upgraded = 0;
+        int graduated = 0;
+        String sampleFromGrade = null;
+        String sampleToGrade = null;
+
+        int currentYear = LocalDateTime.now().getYear();
+        for (User student : students) {
+            String currentGrade = student.getGrade();
+            String enrollmentYear = student.getEnrollmentYear();
+            String graduationYear = student.getGraduationYear();
+
+            // 已毕业检查：如果当前届次 ≥ 毕业年份（4 年制本科），标记毕业
+            if (graduationYear != null && !graduationYear.isEmpty()) {
+                try {
+                    int gradYear = Integer.parseInt(graduationYear);
+                    int studYear = (currentGrade != null && !currentGrade.isEmpty())
+                        ? Integer.parseInt(currentGrade) : 0;
+                    if (studYear >= gradYear) {
+                        // 已毕业，不升
+                        graduated++;
+                        if (student.getUsername() != null) {
+                            result.getGraduatedUsernames().add(student.getUsername());
+                        }
+                        continue;
+                    }
+                } catch (NumberFormatException ignore) {
+                    // 解析失败继续升级
+                }
+            }
+
+            // 计算新届次
+            String newGrade;
+            try {
+                int cur = Integer.parseInt(currentGrade);
+                newGrade = String.valueOf(cur + 1);
+            } catch (NumberFormatException | NullPointerException e) {
+                // 当前 grade 字段不是数字，用 enrollmentYear 兜底
+                if (enrollmentYear != null && !enrollmentYear.isEmpty()) {
+                    try {
+                        newGrade = String.valueOf(Integer.parseInt(enrollmentYear) + 1);
+                    } catch (NumberFormatException ex) {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
+
+            // 兜底：如果解析不出新届次（异常），跳过
+            if (newGrade == null || newGrade.isEmpty()) {
+                continue;
+            }
+
+            // 记录样本
+            if (sampleFromGrade == null) {
+                sampleFromGrade = currentGrade;
+                sampleToGrade = newGrade;
+            }
+
+            // 更新字段
+            student.setGrade(newGrade);
+            student.setUpdatedAt(LocalDateTime.now());
+            userRepository.updateById(student);
+            upgraded++;
+
+            log.info("[PromoteGrade] 学生升级: userId={}, username={}, {} -> {}",
+                    student.getId(), LogSanitizer.sanitizeForLog(student.getUsername()),
+                    currentGrade, newGrade);
+        }
+
+        result.setAffectedCount(upgraded);
+        result.setToGrade(sampleToGrade == null ? "" : sampleToGrade);
+
+        log.info("[PromoteGrade] 批量升级完成 fromGrade={} toGrade={} upgraded={} graduated={}",
+                result.getFromGrade(), result.getToGrade(), upgraded, graduated);
+
+        return result;
     }
 }

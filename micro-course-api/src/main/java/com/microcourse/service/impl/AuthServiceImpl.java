@@ -107,6 +107,7 @@ public class AuthServiceImpl implements AuthService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(password));
+        user.setRealName(request.getUsername()); // 默认使用用户名作为姓名
         user.setRole(UserRole.STUDENT);
         user.setStatus(1); // ACTIVE
         user.setCreatedAt(LocalDateTime.now());

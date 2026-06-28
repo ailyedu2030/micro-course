@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.PromoteGradeResultVO;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
 import com.microcourse.dto.UserStatusRequest;
@@ -174,6 +175,23 @@ public class UserController {
         }
         String avatarUrl = userService.uploadAvatar(id, file);
         return R.ok(avatarUrl);
+    }
+
+    /**
+     * POST /api/users/promote-grade
+     * 批量升级学生年级（管理员 / 教务）
+     * 将所有 STUDENT 角色的 grade 加 1（一年级 → 二年级）
+     * 并刷新 enrollmentYear/graduationYear
+     *
+     * @param fromGrade 只升级指定年级（如 "2024"），为空则升级所有
+     */
+    @PostMapping("/promote-grade")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
+    @AuditedLog("批量升级学生年级")
+    public R<PromoteGradeResultVO> promoteGrade(
+            @RequestParam(required = false) String fromGrade) {
+        PromoteGradeResultVO result = userService.promoteGrade(fromGrade);
+        return R.ok(result);
     }
 
     /**

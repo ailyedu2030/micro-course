@@ -35,6 +35,27 @@ public class UserCreateRequest {
 
     private String gender;
 
+    /** 学号（学生） */
+    private String studentNo;
+
+    /** 工号（教师/教务） */
+    private String teacherNo;
+
+    /** 入学年份（学生） */
+    private String enrollmentYear;
+
+    /** 毕业年份（学生） */
+    private String graduationYear;
+
+    /** 年级（学生，如 2024/2025 自动派生） */
+    private String grade;
+
+    /** 政治面貌 */
+    private String politicalStatus;
+
+    /** 状态：1 启用 2 禁用 3 已删除 */
+    private Integer status;
+
     public UserCreateRequest() {}
 
     public String getUsername() { return username; }
@@ -57,4 +78,18 @@ public class UserCreateRequest {
     public void setClassId(Long classId) { this.classId = classId; }
     public String getGender() { return gender; }
     public void setGender(String gender) { this.gender = gender; }
+    public String getStudentNo() { return studentNo; }
+    public void setStudentNo(String studentNo) { this.studentNo = studentNo; }
+    public String getTeacherNo() { return teacherNo; }
+    public void setTeacherNo(String teacherNo) { this.teacherNo = teacherNo; }
+    public String getEnrollmentYear() { return enrollmentYear; }
+    public void setEnrollmentYear(String enrollmentYear) { this.enrollmentYear = enrollmentYear; }
+    public String getGraduationYear() { return graduationYear; }
+    public void setGraduationYear(String graduationYear) { this.graduationYear = graduationYear; }
+    public String getGrade() { return grade; }
+    public void setGrade(String grade) { this.grade = grade; }
+    public String getPoliticalStatus() { return politicalStatus; }
+    public void setPoliticalStatus(String politicalStatus) { this.politicalStatus = politicalStatus; }
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
 }

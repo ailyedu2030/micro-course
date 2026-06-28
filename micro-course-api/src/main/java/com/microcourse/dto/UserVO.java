@@ -27,6 +27,7 @@ public class UserVO {
     private Boolean casBound;
     private String studentNo;
     private String teacherNo;
+    private String politicalStatus;
     private Integer status;
     private Integer teacherStatus;
     private LocalDateTime lastLoginAt;
@@ -75,6 +76,8 @@ public class UserVO {
     public void setStudentNo(String studentNo) { this.studentNo = studentNo; }
     public String getTeacherNo() { return teacherNo; }
     public void setTeacherNo(String teacherNo) { this.teacherNo = teacherNo; }
+    public String getPoliticalStatus() { return politicalStatus; }
+    public void setPoliticalStatus(String politicalStatus) { this.politicalStatus = politicalStatus; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
     public Integer getTeacherStatus() { return teacherStatus; }

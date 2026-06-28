@@ -151,7 +151,7 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="性别" prop="gender">
-                <el-select v-model="formData.gender" placeholder="请选择" class="full-width">
+                <el-select v-model="formData.gender" placeholder="请选择" class="full-width" clearable>
                   <el-option label="男" value="MALE" />
                   <el-option label="女" value="FEMALE" />
                 </el-select>
@@ -177,18 +177,99 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="年级" prop="grade">
-                <el-input v-model="formData.grade" placeholder="请输入年级" />
+              <el-form-item label="政治面貌" prop="politicalStatus">
+                <el-select v-model="formData.politicalStatus" placeholder="请选择" clearable class="full-width">
+                  <el-option label="群众" value="群众" />
+                  <el-option label="共青团员" value="共青团员" />
+                  <el-option label="中共党员" value="中共党员" />
+                  <el-option label="中共预备党员" value="中共预备党员" />
+                  <el-option label="民革党员" value="民革党员" />
+                  <el-option label="民盟盟员" value="民盟盟员" />
+                  <el-option label="民建会员" value="民建会员" />
+                  <el-option label="民进会员" value="民进会员" />
+                  <el-option label="农工党党员" value="农工党党员" />
+                  <el-option label="致公党党员" value="致公党党员" />
+                  <el-option label="九三学社社员" value="九三学社社员" />
+                  <el-option label="台盟盟员" value="台盟盟员" />
+                  <el-option label="无党派人士" value="无党派人士" />
+                </el-select>
               </el-form-item>
             </el-col>
           </el-row>
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="入学年份" prop="enrollmentYear">
-                <el-input v-model="formData.enrollmentYear" placeholder="如: 2024" />
-              </el-form-item>
-            </el-col>
-          </el-row>
+
+          <!-- 学生专属字段 -->
+          <template v-if="formData.role === 'STUDENT'">
+            <el-divider content-position="left">学生信息</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="学号" prop="studentNo">
+                  <el-input v-model="formData.studentNo" placeholder="请输入学号" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="年级" prop="grade">
+                  <el-input v-model="formData.grade" placeholder="如：2024" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="入学年份" prop="enrollmentYear">
+                  <el-input v-model="formData.enrollmentYear" placeholder="如：2024" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="毕业年份" prop="graduationYear">
+                  <el-input v-model="formData.graduationYear" placeholder="如：2028" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
+
+          <!-- 教师专属字段 -->
+          <template v-if="formData.role === 'TEACHER'">
+            <el-divider content-position="left">教师信息</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="工号" prop="teacherNo">
+                  <el-input v-model="formData.teacherNo" placeholder="请输入工号" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="审核状态" prop="teacherStatus">
+                  <el-select v-model="formData.teacherStatus" class="full-width">
+                    <el-option label="待审核" :value="0" />
+                    <el-option label="已通过" :value="1" />
+                    <el-option label="已驳回" :value="2" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
+
+          <!-- 教务专属字段 -->
+          <template v-if="formData.role === 'ACADEMIC'">
+            <el-divider content-position="left">教务信息</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="工号" prop="teacherNo">
+                  <el-input v-model="formData.teacherNo" placeholder="请输入工号" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="管辖院系">
+                  <el-select v-model="formData.departmentId" placeholder="请选择" clearable class="full-width">
+                    <el-option
+                      v-for="dept in departments"
+                      :key="dept.id"
+                      :label="dept.name"
+                      :value="dept.id"
+                    />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
         </div>
 
         <el-form-item class="form-actions">
@@ -235,6 +316,12 @@ const formData = reactive({
   classId: '',
   grade: '',
   enrollmentYear: '',
+  graduationYear: '',
+  studentNo: '',
+  teacherNo: '',
+  politicalStatus: '',
+  teacherStatus: null,
+  status: 1,
   avatar: ''
 })
 
@@ -356,11 +443,17 @@ const loadUserData = async (id) => {
     formData.email = data.email || ''
     formData.phone = data.phone || ''
     formData.gender = data.gender || ''
+    formData.politicalStatus = data.politicalStatus || ''
     formData.departmentId = data.departmentId || ''
     formData.majorId = data.majorId || ''
     formData.classId = data.classId || ''
     formData.grade = data.grade || ''
     formData.enrollmentYear = data.enrollmentYear || ''
+    formData.graduationYear = data.graduationYear || ''
+    formData.studentNo = data.studentNo || ''
+    formData.teacherNo = data.teacherNo || ''
+    formData.teacherStatus = data.teacherStatus ?? null
+    formData.status = data.status ?? 1
     formData.avatar = data.avatar || ''
     formData.role = data.role || ''
 

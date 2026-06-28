@@ -2,6 +2,7 @@ package com.microcourse.service;
 
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.PromoteGradeResultVO;
 import com.microcourse.dto.TeacherStatusRequest;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
@@ -45,4 +46,14 @@ public interface UserService {
      * 上传用户头像，返回头像URL
      */
     String uploadAvatar(Long userId, MultipartFile file);
+
+    /**
+     * 批量升级学生年级
+     * <p>将所有 STUDENT 的 grade +1，并刷新 enrollmentYear/graduationYear 字段。
+     * 如果指定了 fromGrade（如 "2024"），只升级当前 grade 等于该值的学生。</p>
+     *
+     * @param fromGrade 只升级指定年级，为空则升级所有学生
+     * @return 升级结果
+     */
+    PromoteGradeResultVO promoteGrade(String fromGrade);
 }

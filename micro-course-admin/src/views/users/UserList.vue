@@ -55,6 +55,7 @@
           <span class="card-title">用户列表</span>
           <div class="header-actions">
             <el-button type="warning" @click="teacherApprovalVisible = true">教师审核</el-button>
+            <el-button type="success" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="promoteGradeDialogVisible = true">升级年级</el-button>
             <el-button type="success" v-if="userRole !== 'ACADEMIC'" @click="batchImportVisible = true">批量导入</el-button>
             <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增用户</el-button>
           </div>
@@ -141,24 +142,197 @@
       </template>
     </el-card>
 
-    <!-- 编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" title="编辑用户" width="600px" @close="handleDialogClose" :close-on-press-escape="true">
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
-        <el-form-item label="账号" prop="username">
-          <el-input v-model="formData.username" placeholder="请输入账号" />
-        </el-form-item>
-        <el-form-item label="姓名" prop="realName">
-          <el-input v-model="formData.realName" placeholder="请输入姓名" />
-        </el-form-item>
-        <el-form-item label="角色" prop="role">
-          <el-select v-model="formData.role" placeholder="请选择角色" class="full-width">
-            <el-option label="学生" value="STUDENT" />
-            <el-option label="教师" value="TEACHER" />
-            <el-option label="管理员" value="ADMIN" />
-            <el-option label="教务" value="ACADEMIC" />
-          </el-select>
-        </el-form-item>
-      </el-form>
+    <!-- 编辑弹窗（按角色动态显示字段） -->
+    <el-dialog v-model="dialogVisible" :title="`编辑用户 · ${formData.realName || formData.username}`" width="780px" @close="handleDialogClose" :close-on-press-escape="true" top="5vh">
+      <div v-loading="dialogLoading">
+        <!-- 基础信息（所有角色都有） -->
+        <el-divider content-position="left">基础信息</el-divider>
+        <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="账号" prop="username">
+                <el-input v-model="formData.username" :disabled="true" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="姓名" prop="realName">
+                <el-input v-model="formData.realName" placeholder="请输入姓名" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="角色" prop="role">
+                <el-select v-model="formData.role" :disabled="true" class="full-width">
+                  <el-option label="学生" value="STUDENT" />
+                  <el-option label="教师" value="TEACHER" />
+                  <el-option label="管理员" value="ADMIN" />
+                  <el-option label="教务" value="ACADEMIC" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="状态" prop="status">
+                <el-select v-model="formData.status" :disabled="formData.id === userStore.userId" class="full-width">
+                  <el-option label="启用" :value="1" />
+                  <el-option label="禁用" :value="2" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="性别">
+                <el-select v-model="formData.gender" placeholder="请选择" clearable class="full-width">
+                  <el-option label="男" value="MALE" />
+                  <el-option label="女" value="FEMALE" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="邮箱">
+                <el-input v-model="formData.email" placeholder="请输入邮箱" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="手机">
+                <el-input v-model="formData.phone" placeholder="请输入手机号" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="政治面貌">
+                <el-select v-model="formData.politicalStatus" placeholder="请选择" clearable class="full-width">
+                  <el-option label="群众" value="群众" />
+                  <el-option label="共青团员" value="共青团员" />
+                  <el-option label="中共党员" value="中共党员" />
+                  <el-option label="中共预备党员" value="中共预备党员" />
+                  <el-option label="民革党员" value="民革党员" />
+                  <el-option label="民盟盟员" value="民盟盟员" />
+                  <el-option label="民建会员" value="民建会员" />
+                  <el-option label="民进会员" value="民进会员" />
+                  <el-option label="农工党党员" value="农工党党员" />
+                  <el-option label="致公党党员" value="致公党党员" />
+                  <el-option label="九三学社社员" value="九三学社社员" />
+                  <el-option label="台盟盟员" value="台盟盟员" />
+                  <el-option label="无党派人士" value="无党派人士" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <!-- 学生专属字段 -->
+          <template v-if="formData.role === 'STUDENT'">
+            <el-divider content-position="left">学生信息</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="学号">
+                  <el-input v-model="formData.studentNo" placeholder="请输入学号" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="年级">
+                  <el-input v-model="formData.grade" placeholder="如：2024" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="入学年份">
+                  <el-input v-model="formData.enrollmentYear" placeholder="如：2024" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="毕业年份">
+                  <el-input v-model="formData.graduationYear" placeholder="如：2028" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="院系">
+                  <el-select v-model="formData.departmentId" placeholder="请选择院系" clearable class="full-width" @change="handleDeptChange">
+                    <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="专业">
+                  <el-select v-model="formData.majorId" placeholder="请先选择院系" clearable class="full-width" :disabled="!formData.departmentId" @change="handleDialogMajorChange">
+                    <el-option v-for="m in dialogMajors" :key="m.id" :label="m.name" :value="m.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="班级">
+                  <el-select v-model="formData.classId" placeholder="请先选择专业" clearable class="full-width" :disabled="!formData.majorId">
+                    <el-option v-for="c in dialogClasses" :key="c.id" :label="c.name" :value="c.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
+
+          <!-- 教师专属字段 -->
+          <template v-if="formData.role === 'TEACHER'">
+            <el-divider content-position="left">教师信息</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="工号">
+                  <el-input v-model="formData.teacherNo" placeholder="请输入工号" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="审核状态">
+                  <el-select v-model="formData.teacherStatus" placeholder="请选择" class="full-width" :disabled="formData.id === userStore.userId">
+                    <el-option label="待审核" :value="0" />
+                    <el-option label="已通过" :value="1" />
+                    <el-option label="已驳回" :value="2" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="院系">
+                  <el-select v-model="formData.departmentId" placeholder="请选择院系" clearable class="full-width" @change="handleDeptChange">
+                    <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="专业">
+                  <el-select v-model="formData.majorId" placeholder="可选" clearable class="full-width" :disabled="!formData.departmentId" @change="handleDialogMajorChange">
+                    <el-option v-for="m in dialogMajors" :key="m.id" :label="m.name" :value="m.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
+
+          <!-- 教务专属字段 -->
+          <template v-if="formData.role === 'ACADEMIC'">
+            <el-divider content-position="left">教务信息</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="工号">
+                  <el-input v-model="formData.teacherNo" placeholder="请输入工号" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="管辖院系">
+                  <el-select v-model="formData.departmentId" placeholder="请选择院系" clearable class="full-width">
+                    <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
+        </el-form>
+      </div>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="dialogLoading" @click="handleDialogSave">保存</el-button>
@@ -198,6 +372,34 @@
       <template #footer>
         <el-button @click="batchImportVisible = false">取消</el-button>
         <el-button type="primary" :loading="importLoading" :disabled="!uploadFile" @click="handleBatchImport">开始导入</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 升级年级弹窗 -->
+    <el-dialog v-model="promoteGradeDialogVisible" title="批量升级学生年级" width="500px" :close-on-press-escape="true">
+      <el-alert type="warning" :closable="false" show-icon style="margin-bottom: var(--space-3)">
+        <template #title>
+          <strong>注意：此操作将把所有指定年级学生的 grade +1，无法撤销！</strong>
+        </template>
+      </el-alert>
+      <el-form label-width="100px">
+        <el-form-item label="起始届次">
+          <el-input v-model="promoteFromGrade" placeholder="如：2024（留空升级全部）" />
+        </el-form-item>
+      </el-form>
+      <el-form-item>
+        <el-text size="small" type="info">
+          <p>规则说明：</p>
+          <ul style="margin: 8px 0; padding-left: 20px;">
+            <li>仅升级 <strong>STUDENT</strong> 角色且<strong>启用中</strong>的账号</li>
+            <li>已达到毕业年份的学生会标记为"已毕业"，跳过升级</li>
+            <li>留空起始届次 = 升级所有学生</li>
+          </ul>
+        </el-text>
+      </el-form-item>
+      <template #footer>
+        <el-button @click="promoteGradeDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="promoteGradeLoading" @click="handlePromoteGrade">确认升级</el-button>
       </template>
     </el-dialog>
 
@@ -245,7 +447,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Download } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import * as XLSX from 'xlsx'
-import { getUsers, updateUser, updateUserStatus, updateTeacherStatus, batchImportUsers, uploadAvatar } from '@/api/user'
+import { getUsers, updateUser, updateUserStatus, updateTeacherStatus, batchImportUsers, uploadAvatar, promoteGrade } from '@/api/user'
 import { getDepartments } from '@/api/department'
 import { getMajors } from '@/api/major'
 import { getClasses } from '@/api/class'
@@ -267,6 +469,12 @@ const classes = ref([])
 const dialogVisible = ref(false)
 const dialogLoading = ref(false)
 const formRef = ref(null)
+const dialogMajors = ref([])
+const dialogClasses = ref([])
+// 批量升级年级
+const promoteGradeDialogVisible = ref(false)
+const promoteGradeLoading = ref(false)
+const promoteFromGrade = ref('')
 
 // 批量导入
 const batchImportVisible = ref(false)
@@ -296,7 +504,21 @@ const formData = reactive({
   id: '',
   username: '',
   realName: '',
-  role: ''
+  role: '',
+  email: '',
+  phone: '',
+  gender: '',
+  politicalStatus: '',
+  studentNo: '',
+  teacherNo: '',
+  grade: '',
+  enrollmentYear: '',
+  graduationYear: '',
+  departmentId: '',
+  majorId: '',
+  classId: '',
+  teacherStatus: null,
+  status: 1
 })
 
 const formRules = {
@@ -431,16 +653,107 @@ const handleCreate = () => {
   router.push('/users/create')
 }
 
-const handleEdit = (row) => {
-  formData.id = row.id
-  formData.username = row.username
-  formData.realName = row.realName
-  formData.role = row.role
+const handleEdit = async (row) => {
+  // 先用行数据填表（响应快），然后异步加载完整用户信息
+  Object.assign(formData, {
+    id: row.id,
+    username: row.username,
+    realName: row.realName,
+    role: row.role,
+    email: row.email || '',
+    phone: row.phone || '',
+    gender: row.gender || '',
+    politicalStatus: row.politicalStatus || '',
+    studentNo: row.studentNo || '',
+    teacherNo: row.teacherNo || '',
+    grade: row.grade || '',
+    enrollmentYear: row.enrollmentYear || '',
+    graduationYear: row.graduationYear || '',
+    departmentId: row.departmentId || '',
+    majorId: row.majorId || '',
+    classId: row.classId || '',
+    teacherStatus: row.teacherStatus ?? null,
+    status: row.status ?? 1
+  })
   dialogVisible.value = true
+  // 异步加载完整信息（含 majors/classes）
+  dialogLoading.value = true
+  try {
+    const { data } = await getUserById(row.id)
+    Object.assign(formData, {
+      email: data.email || '',
+      phone: data.phone || '',
+      gender: data.gender || '',
+      politicalStatus: data.politicalStatus || '',
+      studentNo: data.studentNo || '',
+      teacherNo: data.teacherNo || '',
+      grade: data.grade || '',
+      enrollmentYear: data.enrollmentYear || '',
+      graduationYear: data.graduationYear || '',
+      departmentId: data.departmentId || '',
+      majorId: data.majorId || '',
+      classId: data.classId || '',
+      teacherStatus: data.teacherStatus ?? null,
+      status: data.status ?? 1
+    })
+    // 加载级联选项
+    if (formData.departmentId) {
+      await loadDialogMajors(formData.departmentId)
+      if (formData.majorId) {
+        await loadDialogClasses(formData.majorId)
+      }
+    }
+  } catch (err) {
+    console.warn('[UserList] 加载完整用户信息失败', err)
+  } finally {
+    dialogLoading.value = false
+  }
+}
+
+const loadDialogMajors = async (departmentId) => {
+  if (!departmentId) {
+    dialogMajors.value = []
+    return
+  }
+  try {
+    const { data } = await getMajors({ departmentId, size: 1000 })
+    dialogMajors.value = data.items || []
+  } catch {
+    dialogMajors.value = []
+  }
+}
+
+const loadDialogClasses = async (majorId) => {
+  if (!majorId) {
+    dialogClasses.value = []
+    return
+  }
+  try {
+    const { data } = await getClasses({ majorId, size: 1000 })
+    dialogClasses.value = data.items || []
+  } catch {
+    dialogClasses.value = []
+  }
+}
+
+const handleDeptChange = (val) => {
+  formData.majorId = ''
+  formData.classId = ''
+  dialogMajors.value = []
+  dialogClasses.value = []
+  loadDialogMajors(val)
+}
+
+const handleDialogMajorChange = (val) => {
+  formData.classId = ''
+  dialogClasses.value = []
+  loadDialogClasses(val)
 }
 
 const handleDialogClose = () => {
   formRef.value?.resetFields()
+  dialogMajors.value = []
+  dialogClasses.value = []
 }
 
 const handleDialogSave = async () => {
@@ -448,16 +761,30 @@ const handleDialogSave = async () => {
   try {
     await formRef.value.validate()
     dialogLoading.value = true
-    await updateUser(formData.id, {
-      username: formData.username,
-      realName: formData.realName,
-      role: formData.role
-    })
+    // 组装提交数据：剔除空字符串，转换为数字类型
+    const submitData = {}
+    const fields = ['realName', 'email', 'phone', 'gender', 'politicalStatus',
+                     'studentNo', 'teacherNo', 'grade', 'enrollmentYear', 'graduationYear']
+    for (const f of fields) {
+      const v = formData[f]
+      if (v !== '' && v !== null && v !== undefined) submitData[f] = v
+    }
+    // 数字字段
+    if (formData.departmentId !== '' && formData.departmentId !== null) submitData.departmentId = Number(formData.departmentId)
+    if (formData.majorId !== '' && formData.majorId !== null) submitData.majorId = Number(formData.majorId)
+    if (formData.classId !== '' && formData.classId !== null) submitData.classId = Number(formData.classId)
+    if (formData.teacherStatus !== null && formData.teacherStatus !== '') submitData.teacherStatus = Number(formData.teacherStatus)
+    // 状态字段（不能禁用自己）
+    if (formData.id !== userStore.userId) {
+      submitData.status = Number(formData.status)
+    }
+    await updateUser(formData.id, submitData)
     ElMessage.success('保存成功')
     dialogVisible.value = false
     fetchData()
   } catch (err) {
     console.warn('[UserList] 保存失败', err)
+    ElMessage.error('保存失败，请检查表单')
   } finally {
     dialogLoading.value = false
   }
@@ -582,6 +909,44 @@ const handleRejectTeacher = async (row) => {
     loadPendingTeachers()
   } catch {
     ElMessage.error('操作失败')
+  }
+}
+
+// 批量升级年级
+const handlePromoteGrade = async () => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要升级年级吗？此操作不可撤销！`,
+      '⚠️ 危险操作确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确认升级',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+  } catch {
+    return // 用户取消
+  }
+  promoteGradeLoading.value = true
+  try {
+    const { data } = await promoteGrade(promoteFromGrade.value.trim() || undefined)
+    let msg = `升级完成！共升级 ${data.affectedCount || 0} 名学生`
+    if (data.graduatedCount > 0) {
+      msg += `，${data.graduatedCount} 名已毕业跳过`
+    }
+    if (data.fromGrade && data.toGrade) {
+      msg += `（${data.fromGrade} → ${data.toGrade}）`
+    }
+    ElMessage.success(msg)
+    promoteGradeDialogVisible.value = false
+    promoteFromGrade.value = ''
+    fetchData()
+  } catch (err) {
+    console.warn('[UserList] 升级年级失败', err)
+    ElMessage.error('升级年级失败')
+  } finally {
+    promoteGradeLoading.value = false
   }
 }
 
