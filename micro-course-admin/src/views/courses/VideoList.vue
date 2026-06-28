@@ -54,11 +54,11 @@
               accept="video/*"
               :show-file-list="false"
             >
-              <el-tooltip v-if="userRole !== 'ACADEMIC'" content="请先选择课程和章节" placement="top">
+              <el-tooltip v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" content="请先选择课程和章节" placement="top">
                 <el-button type="success" size="small" :disabled="!searchForm.courseId || !searchForm.chapterId">{{ isContextualMode ? '上传本章节视频' : '批量上传视频' }}</el-button>
               </el-tooltip>
             </el-upload>
-            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增视频</el-button>
+            <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">新增视频</el-button>
           </div>
         </div>
       </template>
@@ -207,7 +207,6 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { VideoCamera } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo } from '@/api/video'
 import { getCourses, getCourseById } from '@/api/course'
@@ -219,7 +218,9 @@ const userStore = useUserStore()
 const courseIdFromRoute = computed(() => route.params.courseId)
 const lockedChapterId = computed(() => {
   const id = route.query.chapterId
-  return id ? Number(id) : null
+  if (id === undefined || id === null || id === '') return null
+  const num = Number(id)
+  return Number.isNaN(num) ? null : num
 })
 const isContextualMode = computed(() => lockedChapterId.value !== null)
 const userRole = computed(() => userStore.role)
