@@ -120,22 +120,29 @@
         <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe>
           <template #empty><el-empty description="暂无章节" /></template>
           <el-table-column type="index" label="#" width="60" align="center" />
-          <el-table-column prop="title" label="章节标题" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="chapterType" label="类型" width="100" align="center">
+          <el-table-column prop="title" label="章节标题" min-width="180" show-overflow-tooltip />
+          <el-table-column label="内容类型" width="110" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
-              <el-tag v-else-if="row.chapterType === 'DOCUMENT'" type="info" size="small">文档</el-tag>
-              <el-tag v-else-if="row.chapterType === 'QUIZ'" type="warning" size="small">测验</el-tag>
-              <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
+              <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频课</el-tag>
+              <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">互动课</el-tag>
+              <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="warning" size="small">练习</el-tag>
+              <el-tag v-else type="info" size="small">未设置</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="duration" label="时长(分)" width="90" align="center">
-            <template #default="{ row }">{{ row.duration ?? '-' }}</template>
+          <el-table-column label="内容状态" width="100" align="center">
+            <template #default="{ row }">
+              <span v-if="row.hasContent" style="color:#67c23a">● 已就绪</span>
+              <span v-else style="color:#909399">○ 待添加</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="duration" label="时长" width="80" align="center">
+            <template #default="{ row }">{{ row.duration || '-' }}</template>
           </el-table-column>
           <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
-          <el-table-column label="操作" width="140" align="center" fixed="right">
+          <el-table-column label="操作" width="200" align="center" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
+              <el-button type="success" link size="small" @click="handleManageChapterContent(row)">内容</el-button>
               <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">删除</el-button>
             </template>
           </el-table-column>
@@ -226,27 +233,38 @@
     </el-card>
 
     <!-- 章节弹窗 -->
-    <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="480px" @close="handleChapterDialogClose" :close-on-press-escape="true">
+    <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="500px" @close="handleChapterDialogClose" :close-on-press-escape="true">
       <el-form ref="chapterFormRef" :model="chapterFormData" :rules="chapterFormRules" label-width="80px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="chapterFormData.title" placeholder="请输入章节标题" />
+        <el-form-item label="章节标题" prop="title">
+          <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 导论" />
         </el-form-item>
-        <el-form-item label="类型" prop="chapterType">
-          <el-select v-model="chapterFormData.chapterType" placeholder="请选择类型" class="full-width">
-            <el-option label="视频" value="VIDEO" />
-            <el-option label="文档" value="DOCUMENT" />
-            <el-option label="测验" value="QUIZ" />
+        <el-form-item label="内容类型" prop="chapterType">
+          <el-select v-model="chapterFormData.chapterType" placeholder="选择内容类型" class="full-width" @change="onChapterTypeChange">
+            <el-option label="📹 视频课程" value="VIDEO">
+              <span>📹 视频课程</span>
+            </el-option>
+            <el-option label="🎯 互动课件" value="INTERACTIVE">
+              <span>🎯 互动课件</span>
+            </el-option>
+            <el-option label="📝 随堂练习" value="EXERCISE">
+              <span>📝 随堂练习</span>
+            </el-option>
           </el-select>
+          <div class="form-tip" style="margin-top:6px">
+            <template v-if="chapterFormData.chapterType === 'VIDEO'">学生点击后播放教学视频，支持上传 MP4 或 HLS 流</template>
+            <template v-else-if="chapterFormData.chapterType === 'INTERACTIVE'">学生点击后进入互动课件，支持 PPT 导入 + AI 配音</template>
+            <template v-else-if="chapterFormData.chapterType === 'EXERCISE'">学生点击后进入练习题，支持单选/多选/填空/主观题</template>
+          </div>
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="排序">
-              <el-input-number v-model="chapterFormData.sortOrder" :min="0" class="full-width" />
+            <el-form-item label="排序号">
+              <el-input-number v-model="chapterFormData.sortOrder" :min="1" class="full-width" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="时长(分)">
-              <el-input-number v-model="chapterFormData.duration" :min="0" class="full-width" />
+            <el-form-item label="预计时长(分)">
+              <el-input-number v-model="chapterFormData.duration" :min="0" placeholder="选填" class="full-width" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -314,8 +332,9 @@ const chapterTableRef = ref(null)
 const chapterFormData = reactive({ title: '', sortOrder: 0, chapterType: 'VIDEO', duration: 0 })
 const chapterFormRules = {
   title: [{ required: true, message: '请输入章节标题', trigger: 'blur' }],
-  chapterType: [{ required: true, message: '请选择类型', trigger: 'change' }]
+  chapterType: [{ required: true, message: '请选择内容类型', trigger: 'change' }]
 }
+const onChapterTypeChange = () => {}
 
 let sortableInstance = null
 
@@ -350,7 +369,7 @@ const fetchCourse = async () => {
 const fetchChapters = async () => {
   if (!courseId.value) return
   chapterLoading.value = true
-  try { const { data } = await getChapters({ courseId: courseId.value, size: 999 }); chapters.value = data?.items || data || [] }
+  try { const { data } = await getChapters({ courseId: courseId.value, size: 999 }); chapters.value = (data?.items || data || []).map((c) => ({ ...c, hasContent: !!c.duration || !!c.videoCount })) }
   catch { chapters.value = [] }
   finally { chapterLoading.value = false; await nextTick(); initSortable() }
 }
@@ -443,6 +462,16 @@ const handleEditChapter = (row) => {
   chapterFormData.title = row.title || ''; chapterFormData.sortOrder = row.sortOrder ?? 0
   chapterFormData.chapterType = row.chapterType || 'VIDEO'; chapterFormData.duration = row.duration ?? 0
   chapterDialogVisible.value = true
+}
+const handleManageChapterContent = (row) => {
+  const cid = courseId.value
+  if (row.chapterType === 'INTERACTIVE') {
+    router.push(`/teacher/courses/${cid}/slides/manage`)
+  } else if (row.chapterType === 'EXERCISE') {
+    router.push(`/teacher/courses/${cid}/exercises`)
+  } else {
+    router.push(`/courses/${cid}/videos`)
+  }
 }
 const handleDeleteChapter = async (row) => {
   try { await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' }) } catch { return }
