@@ -18,6 +18,7 @@ public class ChapterVO {
     private String learningObjectives;
     private List<String> keyConcepts;
     private List<Object> exercises;
+    private Integer videoCount;
 
     public ChapterVO() {}
 
@@ -47,4 +48,6 @@ public class ChapterVO {
     public void setKeyConcepts(List<String> keyConcepts) { this.keyConcepts = keyConcepts; }
     public List<Object> getExercises() { return exercises; }
     public void setExercises(List<Object> exercises) { this.exercises = exercises; }
+    public Integer getVideoCount() { return videoCount; }
+    public void setVideoCount(Integer videoCount) { this.videoCount = videoCount; }
 }

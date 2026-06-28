@@ -58,8 +58,17 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         IPage<CourseChapter> ipage = chapterRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
 
+        List<Long> chapterIds = ipage.getRecords().stream()
+                .map(CourseChapter::getId).collect(Collectors.toList());
+        java.util.Map<Long, Long> videoCountMap = batchCountVideosByChapter(chapterIds);
+
         List<ChapterVO> vos = ipage.getRecords().stream()
-                .map(this::convertToVO).collect(Collectors.toList());
+                .map(ch -> {
+                    ChapterVO vo = convertToVO(ch);
+                    vo.setVideoCount(videoCountMap.getOrDefault(ch.getId(), 0L).intValue());
+                    return vo;
+                })
+                .collect(Collectors.toList());
 
         PageResult<ChapterVO> result = new PageResult<>();
         result.setItems(vos);
@@ -68,6 +77,17 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         result.setTotalElements(ipage.getTotal());
         result.setTotalPages(ipage.getPages());
         return result;
+    }
+
+    private java.util.Map<Long, Long> batchCountVideosByChapter(List<Long> chapterIds) {
+        if (chapterIds == null || chapterIds.isEmpty()) return java.util.Collections.emptyMap();
+        List<com.microcourse.entity.Video> videos = videoRepository.selectList(
+                new LambdaQueryWrapper<com.microcourse.entity.Video>()
+                        .select(com.microcourse.entity.Video::getChapterId)
+                        .in(com.microcourse.entity.Video::getChapterId, chapterIds));
+        return videos.stream()
+                .filter(v -> v.getChapterId() != null)
+                .collect(Collectors.groupingBy(com.microcourse.entity.Video::getChapterId, Collectors.counting()));
     }
 
     @Override

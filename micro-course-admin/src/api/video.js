@@ -8,13 +8,14 @@ export function updateVideo(id, data) { return request({ method: 'PUT', url: `/v
 export function deleteVideo(id) { return request({ method: 'DELETE', url: `/videos/${id}` }) }
 
 // ==================== 视频上传 ====================
-export function uploadVideo(formData) {
+export function uploadVideo(formData, onUploadProgress) {
   return request({
     method: 'POST',
     url: '/videos/upload',
     data: formData,
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 600000 // 10 分钟超时（大文件上传）
+    timeout: 600000, // 10 分钟超时（大文件上传）
+    onUploadProgress
   })
 }
 

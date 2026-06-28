@@ -379,8 +379,16 @@ const handleBatchUpload = async ({ file }) => {
     formData.append('courseId', courseId)
     formData.append('chapterId', chapterId)
 
+    // P1-C: 真实进度回调驱动进度条
+    const onProgress = (progressEvent) => {
+      if (progressEvent.total && queueItem) {
+        queueItem.percentage = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+      }
+    }
+
     // Use API wrapper (uploadVideo) for proper request handling through the unified request layer
-    await uploadVideo(formData)
+    await uploadVideo(formData, onProgress)
+    queueItem.percentage = 100
     queueItem.status = 'success'
     uploadSuccess.value++
     ElMessage.success(`${file.name} 上传成功`)

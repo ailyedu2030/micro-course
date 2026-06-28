@@ -129,10 +129,10 @@
               <el-tag v-else type="info" size="small">—</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="内容状态" width="100" align="center">
+          <el-table-column label="内容状态" width="120" align="center">
             <template #default="{ row }">
-              <span v-if="row.hasContent" style="color:#67c23a">● 已就绪</span>
-              <span v-else style="color:#909399">○ 待添加</span>
+              <el-tag v-if="(row.videoCount || 0) > 0" type="success" size="small">● {{ row.videoCount }} 个视频</el-tag>
+              <el-tag v-else type="info" size="small">○ 待添加</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="duration" label="时长" width="80" align="center">
@@ -361,7 +361,7 @@ const fetchCourse = async () => {
 const fetchChapters = async () => {
   if (!courseId.value) return
   chapterLoading.value = true
-  try { const { data } = await getChapters({ courseId: courseId.value, size: 999 }); chapters.value = (data?.items || data || []).map((c) => ({ ...c, hasContent: !!c.duration || !!c.videoCount })) }
+  try { const { data } = await getChapters({ courseId: courseId.value, size: 999 }); chapters.value = data?.items || data || [] }
   catch { chapters.value = [] }
   finally { chapterLoading.value = false; await nextTick(); initSortable() }
 }
