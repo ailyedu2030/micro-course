@@ -151,7 +151,15 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入课程描述" />
+          <div class="quill-editor-wrapper">
+            <QuillEditor
+              v-model:content="formData.description"
+              contentType="html"
+              toolbar="essential"
+              placeholder="请输入课程描述..."
+              :style="{ minHeight: '150px' }"
+            />
+          </div>
         </el-form-item>
         <el-form-item label="学分" prop="creditHours">
           <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
@@ -216,6 +224,8 @@ import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Plus } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useUserStore } from '@/store/user'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover } from '@/api/course'
 import { getCategories } from '@/api/course-category'
@@ -530,9 +540,10 @@ const goWorkspace = (row) => {
 const handleSubmit = async () => {
   if (!formRef.value) return
   try {
-    await formRef.value.validate()
+    const valid = await formRef.value.validate()
+    if (!valid) return
   } catch {
-    return // 校验不通过
+    return
   }
   submitLoading.value = true
   try {
@@ -595,6 +606,21 @@ onMounted(() => {
 .cover-actions {
   display: flex;
   gap: var(--space-2);
+}
+
+.quill-editor-wrapper {
+  width: 100%;
+  border-radius: 4px;
+}
+
+.quill-editor-wrapper :deep(.ql-toolbar) {
+  border-radius: 4px 4px 0 0;
+  background: #fafafa;
+}
+
+.quill-editor-wrapper :deep(.ql-container) {
+  border-radius: 0 0 4px 4px;
+  font-size: 14px;
 }
 
 .page-breadcrumb {
