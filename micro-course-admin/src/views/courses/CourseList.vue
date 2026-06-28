@@ -160,10 +160,10 @@
           <el-input v-model="formData.semester" placeholder="如：2024春季" />
         </el-form-item>
         <el-form-item label="难度" prop="difficulty">
-          <el-select v-model="formData.difficulty" placeholder="请选择难度" class="full-width">
-            <el-option label="初级" value="BEGINNER" />
-            <el-option label="中级" value="INTERMEDIATE" />
-            <el-option label="高级" value="ADVANCED" />
+          <el-select v-model="formData.difficulty" placeholder="请选择难度" class="full-width" clearable>
+            <el-option label="初级" :value="1" />
+            <el-option label="中级" :value="2" />
+            <el-option label="高级" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item label="课程类型" prop="courseType">
@@ -257,7 +257,7 @@ const formData = reactive({
   description: '',
   creditHours: 1,
   semester: '',
-  difficulty: '',
+  difficulty: null,
   courseType: 'VIDEO',
   price: null
 })
@@ -394,7 +394,7 @@ const handleCreate = () => {
   formData.description = ''
   formData.creditHours = 1
   formData.semester = ''
-  formData.difficulty = ''
+  formData.difficulty = null
   // 重置封面
   handleRemoveCover()
   dialogVisible.value = true

@@ -79,7 +79,7 @@
           <el-input v-model.number="formData.teacherId" placeholder="请输入教师ID" type="number" />
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入课程描述" />
+          <el-input v-model="formData.description" type="textarea" :autosize="{ minRows: 4, maxRows: 10 }" placeholder="请输入课程描述" />
         </el-form-item>
         <el-form-item label="学分" prop="creditHours">
           <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
@@ -89,9 +89,9 @@
         </el-form-item>
         <el-form-item label="难度" prop="difficulty">
           <el-select v-model="formData.difficulty" placeholder="请选择难度" class="full-width">
-            <el-option label="初级" value="BEGINNER" />
-            <el-option label="中级" value="INTERMEDIATE" />
-            <el-option label="高级" value="ADVANCED" />
+            <el-option label="初级" :value="1" />
+            <el-option label="中级" :value="2" />
+            <el-option label="高级" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item label="课程类型" prop="courseType">
