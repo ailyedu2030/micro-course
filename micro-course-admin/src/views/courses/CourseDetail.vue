@@ -1,74 +1,155 @@
 <!--
-  课程详情管理
-  路由路径: /courses/:id
-  Phase 1
-  Author: jackie
+  课程详情 / 编辑
+  路由: /courses/:id  |  /courses/:id/edit
 -->
 <template>
-  <div class="course-detail-page">
-    <!-- 课程信息卡 -->
-    <el-card class="info-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">{{ isEditMode ? '编辑课程' : '课程详情' }}</span>
-          <div class="header-actions">
-            <el-button v-if="!isEditMode && courseData.status === 0" type="primary" @click="handleSubmitForReview">提交审核</el-button>
-            <el-button v-if="!isEditMode && courseData.status === 1" type="success" @click="handleApprove">审核通过</el-button>
-            <el-button v-if="!isEditMode && courseData.status === 1" type="danger" @click="handleReject">驳回</el-button>
-            <el-button v-if="!isEditMode && courseData.status === 2" type="primary" @click="handlePublish">发布</el-button>
-            <el-button v-if="!isEditMode && courseData.status === 4" type="warning" @click="handleUnpublish">下架</el-button>
-            <el-button v-if="!isEditMode" type="primary" @click="switchToEdit">编辑</el-button>
-            <el-button @click="handleBack">返回</el-button>
-          </div>
-        </div>
-      </template>
+  <div class="course-detail-page" v-loading="loading" element-loading-text="加载课程信息...">
+    <!-- 面包屑 -->
+    <div class="page-breadcrumb">
+      <el-breadcrumb>
+        <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/courses' }">课程管理</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ isEditMode ? '编辑课程' : (courseData.title || '课程详情') }}</el-breadcrumb-item>
+      </el-breadcrumb>
+    </div>
 
-      <!-- 查看模式 -->
-      <div v-if="!isEditMode" class="course-view">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="课程标题">{{ courseData.title || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="分类">{{ courseData.categoryName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="授课教师">{{ courseData.teacherName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag v-if="courseData.status === 0" type="info" size="small">草稿</el-tag>
-            <el-tag v-else-if="courseData.status === 1" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="courseData.status === 2" type="success" size="small">已通过</el-tag>
-            <el-tag v-else-if="courseData.status === 3" type="danger" size="small">驳回</el-tag>
-            <el-tag v-else-if="courseData.status === 4" type="success" size="small">已发布</el-tag>
-            <el-tag v-else-if="courseData.status === 5" type="warning" size="small">已下架</el-tag>
-            <el-tag v-else type="info" size="small">已归档</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="学分">{{ courseData.creditHours ?? '-' }}</el-descriptions-item>
-          <el-descriptions-item label="学期">{{ courseData.semester || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="难度">
-            <el-tag v-if="courseData.difficulty === 1 || courseData.difficulty === 'BEGINNER'" size="small">初级</el-tag>
-            <el-tag v-else-if="courseData.difficulty === 2 || courseData.difficulty === 'INTERMEDIATE'" size="small">中级</el-tag>
-            <el-tag v-else-if="courseData.difficulty === 3 || courseData.difficulty === 'ADVANCED'" size="small">高级</el-tag>
-            <span v-else>-</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="课程类型">
-            <el-tag v-if="courseData.courseType === 'VIDEO'" type="primary" size="small">视频课程</el-tag>
-            <el-tag v-else-if="courseData.courseType === 'INTERACTIVE'" type="success" size="small">互动课程</el-tag>
-            <span v-else>{{ courseData.courseType || '视频课程' }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="价格">
-            <span v-if="courseData.price" class="price-amount">¥{{ courseData.price }}</span>
-            <span v-else class="price-free">免费</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="评分">{{ courseData.rating ? courseData.rating.toFixed(1) : '-' }}</el-descriptions-item>
-          <el-descriptions-item label="学生数">{{ courseData.studentCount || 0 }}</el-descriptions-item>
-          <el-descriptions-item label="课程描述" :span="2">
-            <div class="description-html" v-html="courseData.description || '-'"></div>
-          </el-descriptions-item>
-          <el-descriptions-item label="封面">
-            <el-image v-if="courseData.coverUrl" :src="courseData.coverUrl" class="cover-preview" fit="cover" />
-            <span v-else>-</span>
-          </el-descriptions-item>
-        </el-descriptions>
+    <!-- ========== 查看模式 ========== -->
+    <template v-if="!isEditMode && !loading">
+      <!-- 头部操作栏 -->
+      <div class="action-bar">
+        <h1 class="course-title">{{ courseData.title || '未命名课程' }}</h1>
+        <div class="action-buttons">
+          <template v-if="courseData.status === 0">
+            <el-button type="primary" @click="handleSubmitForReview">提交审核</el-button>
+          </template>
+          <template v-if="courseData.status === 1">
+            <el-button type="success" @click="handleApprove">审核通过</el-button>
+            <el-button type="danger" @click="handleReject">驳回</el-button>
+          </template>
+          <template v-if="courseData.status === 2">
+            <el-button type="primary" @click="handlePublish">发布</el-button>
+          </template>
+          <template v-if="courseData.status === 4">
+            <el-button type="warning" @click="handleUnpublish">下架</el-button>
+          </template>
+          <el-button type="primary" plain @click="switchToEdit">编辑</el-button>
+          <el-button @click="handleBack">返回</el-button>
+        </div>
       </div>
 
-      <!-- 编辑模式 -->
-      <el-form v-else ref="formRef" :model="formData" :rules="formRules" label-width="100px" class="form-container">
+      <!-- 基本信息 -->
+      <el-card shadow="never" class="info-card">
+        <template #header><span class="card-title">基本信息</span></template>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>分类</label>
+            <span>{{ courseData.categoryName || '-' }}</span>
+          </div>
+          <div class="info-item">
+            <label>授课教师</label>
+            <span>{{ courseData.teacherName || '-' }}</span>
+          </div>
+          <div class="info-item">
+            <label>状态</label>
+            <span>
+              <el-tag v-if="courseData.status === 0" type="info" size="small">草稿</el-tag>
+              <el-tag v-else-if="courseData.status === 1" type="warning" size="small">待审核</el-tag>
+              <el-tag v-else-if="courseData.status === 2" type="success" size="small">已通过</el-tag>
+              <el-tag v-else-if="courseData.status === 3" type="danger" size="small">驳回</el-tag>
+              <el-tag v-else-if="courseData.status === 4" type="success" size="small">已发布</el-tag>
+              <el-tag v-else-if="courseData.status === 5" type="warning" size="small">已下架</el-tag>
+              <el-tag v-else type="info" size="small">已归档</el-tag>
+            </span>
+          </div>
+          <div class="info-item">
+            <label>学分</label>
+            <span>{{ courseData.creditHours ?? '-' }}</span>
+          </div>
+          <div class="info-item">
+            <label>学期</label>
+            <span>{{ courseData.semester || '-' }}</span>
+          </div>
+          <div class="info-item">
+            <label>难度</label>
+            <span>
+              <template v-if="courseData.difficulty === 1 || courseData.difficulty === 'BEGINNER'">初级</template>
+              <template v-else-if="courseData.difficulty === 2 || courseData.difficulty === 'INTERMEDIATE'">中级</template>
+              <template v-else-if="courseData.difficulty === 3 || courseData.difficulty === 'ADVANCED'">高级</template>
+              <template v-else>-</template>
+            </span>
+          </div>
+          <div class="info-item">
+            <label>课程类型</label>
+            <span>
+              <el-tag v-if="courseData.courseType === 'VIDEO'" type="primary" size="small">视频课程</el-tag>
+              <el-tag v-else-if="courseData.courseType === 'INTERACTIVE'" type="success" size="small">互动课程</el-tag>
+              <span v-else>{{ courseData.courseType || '-' }}</span>
+            </span>
+          </div>
+          <div class="info-item">
+            <label>价格</label>
+            <span class="price">{{ courseData.price ? '¥' + courseData.price : '免费' }}</span>
+          </div>
+          <div class="info-item">
+            <label>学员数</label>
+            <span>{{ courseData.studentCount ?? 0 }}</span>
+          </div>
+        </div>
+      </el-card>
+
+      <!-- 封面 -->
+      <el-card shadow="never" class="info-card" v-if="courseData.coverUrl">
+        <template #header><span class="card-title">课程封面</span></template>
+        <el-image :src="courseData.coverUrl" fit="contain" class="cover-img" />
+      </el-card>
+
+      <!-- 课程描述 -->
+      <el-card shadow="never" class="info-card" v-if="courseData.description">
+        <template #header><span class="card-title">课程描述</span></template>
+        <div class="description-html" v-html="courseData.description"></div>
+      </el-card>
+
+      <!-- 章节管理 -->
+      <el-card shadow="never" class="chapter-card">
+        <template #header>
+          <div class="card-header-row">
+            <span class="card-title">章节管理 <span class="hint">（可拖拽排序）</span></span>
+            <el-button v-if="userRole !== 'ACADEMIC'" type="primary" size="small" @click="handleCreateChapter">新增章节</el-button>
+          </div>
+        </template>
+        <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe>
+          <template #empty><el-empty description="暂无章节" /></template>
+          <el-table-column type="index" label="#" width="60" align="center" />
+          <el-table-column prop="title" label="章节标题" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="chapterType" label="类型" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
+              <el-tag v-else-if="row.chapterType === 'DOCUMENT'" type="info" size="small">文档</el-tag>
+              <el-tag v-else-if="row.chapterType === 'QUIZ'" type="warning" size="small">测验</el-tag>
+              <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="duration" label="时长(分)" width="90" align="center">
+            <template #default="{ row }">{{ row.duration ?? '-' }}</template>
+          </el-table-column>
+          <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
+          <el-table-column label="操作" width="140" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
+              <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-if="chapters.length > 0" class="sort-bar">
+          <el-button type="warning" size="small" @click="handleSaveSort">保存排序</el-button>
+        </div>
+      </el-card>
+    </template>
+
+    <!-- ========== 编辑模式 ========== -->
+    <el-card v-if="isEditMode && !loading" shadow="never" class="edit-card">
+      <template #header><span class="card-title">编辑课程</span></template>
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px" class="edit-form">
         <el-form-item label="课程标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入课程标题" />
         </el-form-item>
@@ -78,61 +159,65 @@
           </el-select>
         </el-form-item>
         <el-form-item label="授课教师">
-          <el-input :model-value="teacherName" disabled placeholder="—" />
+          <el-input :model-value="teacherName" disabled />
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
           <div class="quill-editor-wrapper">
-            <QuillEditor
-              v-model:content="formData.description"
-              contentType="html"
-              toolbar="essential"
-              placeholder="请输入课程描述..."
-              :style="{ minHeight: '150px' }"
-            />
+            <QuillEditor v-model:content="formData.description" contentType="html" toolbar="essential" placeholder="请输入课程描述..." :style="{ minHeight: '180px' }" />
           </div>
         </el-form-item>
-        <el-form-item label="学分" prop="creditHours">
-          <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
-        </el-form-item>
-        <el-form-item label="学期" prop="semester">
-          <el-input v-model="formData.semester" placeholder="如：2024春季" />
-        </el-form-item>
-        <el-form-item label="难度" prop="difficulty">
-          <el-select v-model="formData.difficulty" placeholder="请选择难度" class="full-width">
-            <el-option label="初级" :value="1" />
-            <el-option label="中级" :value="2" />
-            <el-option label="高级" :value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="课程类型" prop="courseType">
-          <el-select v-model="formData.courseType" placeholder="请选择课程类型" class="full-width">
-            <el-option label="视频课程" value="VIDEO" />
-            <el-option label="互动课程" value="INTERACTIVE" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="价格(¥)" prop="price">
-          <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0 表示免费" class="full-width" />
-        </el-form-item>
-        <el-form-item label="封面图" prop="coverUrl">
-          <template v-if="!coverPreviewUrl">
-            <el-upload
-              ref="coverUploadRef"
-              :auto-upload="false"
-              :limit="1"
-              accept="image/*"
-              :on-change="handleCoverChange"
-            >
-              <el-button size="small">选择图片</el-button>
-            </el-upload>
-            <div class="cover-tip">建议尺寸 1200×628px，仅支持 JPG/PNG/GIF，最大 5MB</div>
-          </template>
-          <div v-else class="cover-preview-wrapper">
-            <img :src="coverPreviewUrl" class="cover-preview-img" alt="课程封面预览" />
-            <div class="cover-actions">
-              <el-button size="small" @click="handleRemoveCover">删除</el-button>
-            </div>
-          </div>
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="学分">
+              <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="学期">
+              <el-input v-model="formData.semester" placeholder="如：2024春季" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="难度">
+              <el-select v-model="formData.difficulty" placeholder="请选择" class="full-width" clearable>
+                <el-option label="初级" :value="1" />
+                <el-option label="中级" :value="2" />
+                <el-option label="高级" :value="3" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="课程类型">
+              <el-select v-model="formData.courseType" placeholder="请选择" class="full-width">
+                <el-option label="视频课程" value="VIDEO" />
+                <el-option label="互动课程" value="INTERACTIVE" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="价格(¥)">
+              <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0 表示免费" class="full-width" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="封面图">
+              <template v-if="!coverPreviewUrl">
+                <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png,image/gif,image/webp" :on-change="handleCoverChange">
+                  <el-button size="small">选择图片</el-button>
+                </el-upload>
+                <div class="form-tip">建议 1200×628px，支持 JPG/PNG/GIF/WebP，最大 5MB</div>
+              </template>
+              <div v-else class="cover-preview-wrap">
+                <img :src="coverPreviewUrl" class="cover-preview-img" alt="封面预览" />
+                <el-button size="small" @click="handleRemoveCover">删除</el-button>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item>
           <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
           <el-button @click="switchToView">取消</el-button>
@@ -140,54 +225,11 @@
       </el-form>
     </el-card>
 
-    <!-- 章节管理卡 -->
-    <el-card v-if="!isEditMode" class="chapter-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">章节管理 <span class="drag-hint">(可拖拽排序)</span></span>
-          <el-button type="primary" size="small" v-if="userRole !== 'ACADEMIC'" @click="handleCreateChapter">新增章节</el-button>
-        </div>
-      </template>
-      <el-table ref="chapterTableRef" v-loading="chapterLoading" :aria-busy="chapterLoading" :data="chapters" stripe border class="data-table">
-        <template #empty>
-          <el-empty description="暂无章节数据" />
-        </template>
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="chapterType" label="类型" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
-            <el-tag v-else-if="row.chapterType === 'DOCUMENT'" type="info" size="small">文档</el-tag>
-            <el-tag v-else-if="row.chapterType === 'QUIZ'" type="warning" size="small">测验</el-tag>
-            <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="duration" label="时长(分钟)" width="120" align="center">
-          <template #default="{ row }">
-            {{ row.duration ?? '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right" align="center">
-          <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div v-if="chapters.length > 0" class="sort-actions">
-        <el-button type="warning" size="small" @click="handleSaveSort">保存排序</el-button>
-      </div>
-    </el-card>
-
     <!-- 章节弹窗 -->
-    <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="500px" @close="handleChapterDialogClose" :close-on-press-escape="true">
-      <el-form ref="chapterFormRef" :model="chapterFormData" :rules="chapterFormRules" label-width="100px">
+    <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="480px" @close="handleChapterDialogClose" :close-on-press-escape="true">
+      <el-form ref="chapterFormRef" :model="chapterFormData" :rules="chapterFormRules" label-width="80px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="chapterFormData.title" placeholder="请输入章节标题" />
-        </el-form-item>
-        <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="chapterFormData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
         <el-form-item label="类型" prop="chapterType">
           <el-select v-model="chapterFormData.chapterType" placeholder="请选择类型" class="full-width">
@@ -196,9 +238,18 @@
             <el-option label="测验" value="QUIZ" />
           </el-select>
         </el-form-item>
-        <el-form-item label="时长(分钟)" prop="duration">
-          <el-input-number v-model="chapterFormData.duration" :min="0" class="full-width" />
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="排序">
+              <el-input-number v-model="chapterFormData.sortOrder" :min="0" class="full-width" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="时长(分)">
+              <el-input-number v-model="chapterFormData.duration" :min="0" class="full-width" />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <el-button @click="handleChapterCancel">取消</el-button>
@@ -228,37 +279,28 @@ const userRole = computed(() => userStore.role)
 const courseId = computed(() => route.params.id)
 const isEditMode = computed(() => route.path.includes('/edit'))
 
-const loading = ref(false)
+const loading = ref(true)
 const submitLoading = ref(false)
 const courseData = ref({})
 const categories = ref([])
 
 const formRef = ref(null)
 const formData = reactive({
-  title: '',
-  categoryId: '',
-  teacherId: '',
-  description: '',
-  creditHours: 1,
-  semester: '',
-  difficulty: '',
-  courseType: 'VIDEO',
-  price: null,
-  isFree: true
+  title: '', categoryId: null, teacherId: null,
+  description: '', creditHours: 1, semester: '',
+  difficulty: null, courseType: 'VIDEO', price: null, isFree: true
 })
-
 const formRules = {
-  title: [{ required: true, message: '请输入课程标题', trigger: ['blur', 'change'] }],
-  categoryId: [{ required: true, message: '请选择分类', trigger: ['blur', 'change'] }],
-  teacherId: [{ required: true, message: '请输入教师ID', trigger: ['blur', 'change'] }]
+  title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
+  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }]
 }
-
 const teacherName = computed(() => courseData.value.teacherName || '')
 
 const coverUploadRef = ref(null)
 const coverPreviewUrl = ref('')
 const coverFile = ref(null)
 
+// ===== 章节 =====
 const chapterLoading = ref(false)
 const chapterSubmitLoading = ref(false)
 const chapters = ref([])
@@ -269,27 +311,18 @@ const currentChapterId = ref(null)
 const chapterFormRef = ref(null)
 const chapterTableRef = ref(null)
 
-const chapterFormData = reactive({
-  title: '',
-  sortOrder: 0,
-  chapterType: 'VIDEO',
-  duration: 0
-})
-
+const chapterFormData = reactive({ title: '', sortOrder: 0, chapterType: 'VIDEO', duration: 0 })
 const chapterFormRules = {
-  title: [{ required: true, message: '请输入章节标题', trigger: ['blur', 'change'] }],
-  chapterType: [{ required: true, message: '请选择类型', trigger: ['blur', 'change'] }]
+  title: [{ required: true, message: '请输入章节标题', trigger: 'blur' }],
+  chapterType: [{ required: true, message: '请选择类型', trigger: 'change' }]
 }
 
 let sortableInstance = null
 
+// ===== 数据加载 =====
 const fetchCategories = async () => {
-  try {
-    const { data } = await getCategories({ size: 1000 })
-    categories.value = data.items || []
-  } catch {
-    ElMessage.error('获取分类列表失败')
-  }
+  try { const { data } = await getCategories({ size: 1000 }); categories.value = data.items || [] }
+  catch { categories.value = [] }
 }
 
 const fetchCourse = async () => {
@@ -300,439 +333,214 @@ const fetchCourse = async () => {
     courseData.value = data || {}
     if (isEditMode.value) {
       formData.title = data.title || ''
-      formData.categoryId = data.categoryId || ''
-      formData.teacherId = data.teacherId || ''
+      formData.categoryId = data.categoryId || null
       formData.description = data.description || ''
-      formData.creditHours = data.creditHours || 1
+      formData.creditHours = data.creditHours ?? 1
       formData.semester = data.semester || ''
-      formData.difficulty = data.difficulty || ''
+      formData.difficulty = data.difficulty ?? null
       formData.courseType = data.courseType || 'VIDEO'
-      formData.price = data.price || null
+      formData.price = data.price ?? null
       formData.isFree = data.isFree !== false
-      // UI/UX: 已有封面时显示预览
       if (data.coverUrl) coverPreviewUrl.value = data.coverUrl
     }
-  } catch {
-    ElMessage.error('获取课程信息失败')
-  } finally {
-    loading.value = false
-  }
+  } catch { ElMessage.error('获取课程信息失败') }
+  finally { loading.value = false }
 }
 
 const fetchChapters = async () => {
   if (!courseId.value) return
   chapterLoading.value = true
-  try {
-    const { data } = await getChapters({ courseId: courseId.value })
-    chapters.value = data.items || []
-    await nextTick()
-    initSortable()
-  } catch {
-    ElMessage.error('获取章节列表失败')
-  } finally {
-    chapterLoading.value = false
-  }
+  try { const { data } = await getChapters({ courseId: courseId.value, size: 999 }); chapters.value = data?.items || data || [] }
+  catch { chapters.value = [] }
+  finally { chapterLoading.value = false; await nextTick(); initSortable() }
 }
 
 const initSortable = () => {
-  if (!chapterTableRef.value || sortableInstance) return
-  const el = chapterTableRef.value.$el.querySelector('.el-table__body-wrapper tbody')
+  if (sortableInstance) sortableInstance.destroy()
+  const el = chapterTableRef.value?.$el?.querySelector('.el-table__body-wrapper tbody')
   if (!el) return
-  sortableInstance = Sortable.create(el, {
-    handle: '.el-table__row',
-    animation: 150,
-    onEnd: ({ oldIndex, newIndex }) => {
-      const movedItem = chapters.value.splice(oldIndex, 1)[0]
-      chapters.value.splice(newIndex, 0, movedItem)
-      chapters.value.forEach((item, idx) => {
-        item.sortOrder = idx + 1
-      })
-    }
-  })
+  sortableInstance = Sortable.create(el, { handle: '.el-table__row', animation: 150, onEnd: () => {} })
 }
 
-const handleSaveSort = async () => {
-  try {
-    const sorted = chapters.value.map((c, i) => ({
-      id: c.id,
-      sortOrder: i + 1
-    }))
-    await sortChapters(sorted)
-    ElMessage.success('排序已保存')
-  } catch {
-    ElMessage.error('排序保存失败')
-  }
+// ===== 页面操作 =====
+const handleBack = () => router.push('/courses')
+const switchToEdit = () => router.push(`/courses/${courseId.value}/edit`)
+const switchToView = () => router.push(`/courses/${courseId.value}`)
+
+const handleSubmitForReview = async () => {
+  try { await ElMessageBox.confirm('确定提交审核？', '提示', { type: 'info' }) } catch { return }
+  try { await submitCourseForReview(courseId.value); ElMessage.success('已提交审核'); fetchCourse() }
+  catch { ElMessage.error('操作失败') }
+}
+const handleApprove = async () => {
+  try { await ElMessageBox.confirm('确定审核通过？', '提示', { type: 'info' }) } catch { return }
+  try { await approveCourse(courseId.value); ElMessage.success('审核通过'); fetchCourse() }
+  catch { ElMessage.error('操作失败') }
+}
+const handleReject = async () => {
+  let reason = ''
+  try { const res = await ElMessageBox.prompt('请输入驳回原因', '驳回', { confirmButtonText: '确定', inputType: 'textarea' }); reason = res.value }
+  catch { return }
+  try { await rejectCourse(courseId.value, reason); ElMessage.success('已驳回'); fetchCourse() }
+  catch { ElMessage.error('操作失败') }
+}
+const handlePublish = async () => {
+  try { await ElMessageBox.confirm('确定发布？', '提示', { type: 'info' }) } catch { return }
+  try { await updateCourseStatus(courseId.value, 4); ElMessage.success('已发布'); fetchCourse() }
+  catch { ElMessage.error('操作失败') }
+}
+const handleUnpublish = async () => {
+  try { await ElMessageBox.confirm('确定下架？', '提示', { type: 'info' }) } catch { return }
+  try { await updateCourseStatus(courseId.value, 5); ElMessage.success('已下架'); fetchCourse() }
+  catch { ElMessage.error('操作失败') }
 }
 
-const switchToEdit = () => {
-  router.push(`/courses/${courseId.value}/edit`)
+// ===== 编辑提交 =====
+const handleCoverChange = (file) => {
+  coverFile.value = file.raw
+  if (coverPreviewUrl.value) URL.revokeObjectURL(coverPreviewUrl.value)
+  coverPreviewUrl.value = URL.createObjectURL(file.raw)
 }
-
-const switchToView = () => {
-  formRef.value?.resetFields()
-  router.push(`/courses/${courseId.value}`)
-}
-
-const handleBack = () => {
-  router.push('/courses')
+const handleRemoveCover = () => {
+  if (coverPreviewUrl.value) URL.revokeObjectURL(coverPreviewUrl.value)
+  coverPreviewUrl.value = ''; coverFile.value = null
+  coverUploadRef.value?.clearFiles()
 }
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
+  try {
+    const valid = await formRef.value.validate()
     if (!valid) return
-    submitLoading.value = true
-    try {
-      await updateCourse(courseId.value, formData)
-      let coverOk = true
-      if (coverFile.value) {
-        coverOk = await handleUploadCover()
-      }
-      if (coverOk) {
-        ElMessage.success('操作成功')
-      } else {
-        ElMessage.warning('课程信息已保存，但封面上传失败，请稍后重新上传')
-      }
-      router.push(`/courses/${courseId.value}`)
-    } catch {
-      ElMessage.error('保存失败，请稍后重试')
-    } finally {
-      submitLoading.value = false
-    }
-  })
-}
-
-const handleCoverChange = (file) => {
-  coverFile.value = file.raw
-  coverPreviewUrl.value = URL.createObjectURL(file.raw)
-}
-
-const handleRemoveCover = () => {
-  if (coverPreviewUrl.value) {
-    URL.revokeObjectURL(coverPreviewUrl.value)
-    coverPreviewUrl.value = ''
-    coverFile.value = null
-  }
-}
-
-const handleUploadCover = async () => {
-  if (!coverFile.value) return true
+  } catch { return }
+  submitLoading.value = true
   try {
-    await updateCourseCover(courseId.value, coverFile.value)
-    ElMessage.success('封面上传成功')
-    return true
-  } catch {
-    ElMessage.error('封面上传失败')
-    return false
-  }
-}
-
-const handleApprove = async () => {
-  try {
-    await ElMessageBox.confirm('确定审核通过该课程?', '提示', { type: 'warning' })
-    await approveCourse(courseId.value)
-    ElMessage.success('审核通过成功')
-    fetchCourse()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败')
-    }
-  }
-}
-
-const handleReject = async () => {
-  try {
-    const { value: reason } = await ElMessageBox.prompt('请输入驳回原因', '驳回课程', {
-      confirmButtonText: '确认驳回',
-      cancelButtonText: '取消',
-      type: 'warning',
-      inputPlaceholder: '请输入驳回原因...'
+    await updateCourse(courseId.value, {
+      title: formData.title, categoryId: formData.categoryId, description: formData.description,
+      creditHours: formData.creditHours, semester: formData.semester || undefined,
+      difficulty: formData.difficulty, courseType: formData.courseType,
+      price: formData.price, isFree: formData.isFree
     })
-    if (reason === null) return
-    await rejectCourse(courseId.value, reason)
-    ElMessage.success('驳回成功')
-    fetchCourse()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败')
+    if (coverFile.value) {
+      try { await updateCourseCover(courseId.value, coverFile.value) }
+      catch { ElMessage.warning('信息已保存，封面上传失败') }
     }
-  }
+    ElMessage.success('保存成功')
+    router.push(`/courses/${courseId.value}`)
+  } catch { ElMessage.error('保存失败') }
+  finally { submitLoading.value = false }
 }
 
-const handlePublish = async () => {
-  try {
-    await ElMessageBox.confirm('确定发布该课程?', '提示', { type: 'warning' })
-    await updateCourseStatus(courseId.value, 4)
-    ElMessage.success('发布成功')
-    fetchCourse()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败')
-    }
-  }
-}
-
-const handleUnpublish = async () => {
-  try {
-    await ElMessageBox.confirm('确定下架该课程?', '提示', { type: 'warning' })
-    await updateCourseStatus(courseId.value, 5)
-    ElMessage.success('下架成功')
-    fetchCourse()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败')
-    }
-  }
-}
-
-const handleSubmitForReview = async () => {
-  try {
-    await ElMessageBox.confirm('确定提交该课程进行审核?', '提示', { type: 'warning' })
-    await submitCourseForReview(courseId.value)
-    ElMessage.success('提交成功，课程已进入审核流程')
-    fetchCourse()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('提交失败')
-    }
-  }
-}
-
+// ===== 章节操作 =====
 const handleCreateChapter = () => {
-  chapterDialogTitle.value = '新增章节'
-  isChapterEdit.value = false
-  currentChapterId.value = null
-  chapterFormData.title = ''
-  chapterFormData.sortOrder = 0
-  chapterFormData.chapterType = 'VIDEO'
-  chapterFormData.duration = 0
+  chapterDialogTitle.value = '新增章节'; isChapterEdit.value = false
+  chapterFormData.title = ''; chapterFormData.sortOrder = 0
+  chapterFormData.chapterType = 'VIDEO'; chapterFormData.duration = 0
   chapterDialogVisible.value = true
 }
-
 const handleEditChapter = (row) => {
-  chapterDialogTitle.value = '编辑章节'
-  isChapterEdit.value = true
-  currentChapterId.value = row.id
-  chapterFormData.title = row.title
-  chapterFormData.sortOrder = row.sortOrder || 0
-  chapterFormData.chapterType = row.chapterType || 'VIDEO'
-  chapterFormData.duration = row.duration || 0
+  chapterDialogTitle.value = '编辑章节'; isChapterEdit.value = true; currentChapterId.value = row.id
+  chapterFormData.title = row.title || ''; chapterFormData.sortOrder = row.sortOrder ?? 0
+  chapterFormData.chapterType = row.chapterType || 'VIDEO'; chapterFormData.duration = row.duration ?? 0
   chapterDialogVisible.value = true
 }
-
 const handleDeleteChapter = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定删除该章节?', '提示', { type: 'warning' })
-    await deleteChapter(row.id)
-    ElMessage.success('删除成功')
-    fetchChapters()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
-  }
+  try { await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' }) } catch { return }
+  try { await deleteChapter(row.id); ElMessage.success('已删除'); fetchChapters() }
+  catch { ElMessage.error('删除失败') }
 }
-
+const handleSaveSort = async () => {
+  const ids = chapters.value.map((c) => c.id)
+  try { await sortChapters(ids); ElMessage.success('排序已保存'); fetchChapters() }
+  catch { ElMessage.error('保存排序失败') }
+}
 const handleChapterSubmit = async () => {
   if (!chapterFormRef.value) return
-  await chapterFormRef.value.validate(async (valid) => {
-    if (!valid) return
-    chapterSubmitLoading.value = true
-    try {
-      const submitData = {
-        courseId: courseId.value,
-        title: chapterFormData.title,
-        sortOrder: chapterFormData.sortOrder,
-        chapterType: chapterFormData.chapterType,
-        duration: chapterFormData.duration
-      }
-      if (isChapterEdit.value) {
-        await updateChapter(currentChapterId.value, submitData)
-        ElMessage.success('操作成功')
-      } else {
-        await createChapter(submitData)
-        ElMessage.success('操作成功')
-      }
-      chapterDialogVisible.value = false
-      fetchChapters()
-    } catch {
-      ElMessage.error(isChapterEdit.value ? '编辑失败，请稍后重试' : '创建失败，请稍后重试')
-    } finally {
-      chapterSubmitLoading.value = false
-    }
-  })
+  try { await chapterFormRef.value.validate() } catch { return }
+  chapterSubmitLoading.value = true
+  try {
+    const payload = { ...chapterFormData, courseId: Number(courseId.value) }
+    if (isChapterEdit.value) await updateChapter(currentChapterId.value, payload)
+    else await createChapter(payload)
+    ElMessage.success(isChapterEdit.value ? '更新成功' : '创建成功')
+    chapterDialogVisible.value = false
+    fetchChapters()
+  } catch { ElMessage.error('操作失败') }
+  finally { chapterSubmitLoading.value = false }
 }
-
-const handleChapterDialogClose = () => {
-  chapterFormRef.value?.resetFields()
-}
-
-const handleChapterCancel = () => {
-  chapterFormRef.value?.resetFields()
-  chapterDialogVisible.value = false
-}
+const handleChapterCancel = () => { chapterDialogVisible.value = false }
+const handleChapterDialogClose = () => { chapterFormRef.value?.resetFields() }
 
 onMounted(() => {
   fetchCategories()
-  fetchCourse()
-  if (!isEditMode.value) {
-    fetchChapters()
-  }
+  fetchCourse().then(() => { if (!isEditMode.value) fetchChapters() })
 })
-
-onUnmounted(() => {
-  sortableInstance?.destroy()
-  if (coverPreviewUrl.value) {
-    URL.revokeObjectURL(coverPreviewUrl.value)
-    coverPreviewUrl.value = ''
-  }
-})
+onUnmounted(() => { if (sortableInstance) sortableInstance.destroy() })
 </script>
 
 <style scoped>
 .course-detail-page {
-  padding: var(--space-6);
-  background: var(--el-bg-color-page);
-  min-height: 100dvh;
-  max-width: 1440px;
+  padding: 24px;
+  max-width: 1100px;
   margin: 0 auto;
 }
+.page-breadcrumb { margin-bottom: 16px; }
 
-.info-card {
-  margin-bottom: var(--space-4);
-  background: var(--el-fill-color-blank);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs), var(--shadow-sm);
+/* 操作栏 */
+.action-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
 }
+.course-title { font-size: 22px; font-weight: 600; color: #303133; margin: 0; }
+.action-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.chapter-card {
-  border-radius: var(--radius-lg);
-  background: var(--el-fill-color-blank);
-  box-shadow: var(--shadow-xs), var(--shadow-sm);
-}
+/* 信息卡片 */
+.info-card { margin-bottom: 16px; }
+.card-title { font-size: 16px; font-weight: 600; color: #303133; }
+.card-header-row { display: flex; justify-content: space-between; align-items: center; }
+.hint { font-size: 12px; color: #909399; font-weight: 400; }
+.edit-card { margin-bottom: 16px; }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.price-amount { color: var(--el-color-danger); font-weight: var(--weight-semibold); }
-.price-free { color: var(--el-color-success); }
+/* 信息网格 */
+.info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 24px; }
+.info-item { display: flex; flex-direction: column; gap: 4px; }
+.info-item label { font-size: 13px; color: #909399; }
+.info-item span { font-size: 14px; color: #303133; word-break: break-word; }
+.price { color: #e6a23c; font-weight: 600; }
 
-.card-title {
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  color: var(--el-text-color-primary);
-  letter-spacing: var(--tracking-wide);
-}
+/* 封面 */
+.cover-img { max-width: 300px; border-radius: 6px; }
 
-.header-actions {
-  display: flex;
-  gap: var(--space-2);
-}
-.cover-preview { width: 120px; height: 80px; border-radius: var(--radius-sm); }
-
-.drag-hint {
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
-  font-weight: normal;
-}
-
-.sort-actions {
-  margin-top: var(--space-3);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.course-view {
-  max-width: 900px;
-}
-
-.form-container {
-  max-width: 800px;
-}
-
-.data-table {
-  width: 100%;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.data-table :deep(.el-table__header th) {
-  color: var(--el-text-color-primary);
-}
-
-.data-table :deep(.el-table__row) {
-  transition: background-color var(--duration-fast) var(--ease-out);
-}
-
-.data-table :deep(.el-table__row:hover > td) {
-  background-color: var(--role-primary-light-9) !important;
-}
-
-.full-width {
-  width: 100%;
-}
-
-.cover-tip {
-  margin-top: 6px;
-  font-size: var(--text-xs);
-  color: var(--el-text-color-secondary);
-  line-height: 1.4;
-}
-.cover-preview-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.cover-actions {
-  display: flex;
-  gap: 8px;
-}
-.cover-preview-img {
-  margin-top: 8px;
-  width: 120px;
-  height: 80px;
-  border-radius: var(--radius-sm);
-  object-fit: cover;
-}
-
-.description-html {
-  line-height: 1.8;
-  max-width: 100%;
-  word-break: break-word;
-}
-.description-html :deep(ol) { padding-left: 20px; }
-.description-html :deep(ul) { padding-left: 20px; }
+/* 描述 HTML */
+.description-html { line-height: 1.8; color: #303133; font-size: 14px; }
+.description-html :deep(ol), .description-html :deep(ul) { padding-left: 20px; margin: 8px 0; }
 .description-html :deep(li) { margin-bottom: 4px; }
-.description-html :deep(p) { margin: 4px 0; }
+.description-html :deep(p) { margin: 8px 0; }
 
-.quill-editor-wrapper {
-  width: 100%;
-  border-radius: 4px;
-  margin-bottom: 8px;
-}
-.quill-editor-wrapper :deep(.ql-toolbar) {
-  border-radius: 4px 4px 0 0;
-  background: #fafafa;
-}
-.quill-editor-wrapper :deep(.ql-container) {
-  border-radius: 0 0 4px 4px;
-  font-size: 14px;
-}
+/* 章节 */
+.chapter-card { margin-bottom: 16px; }
+.sort-bar { margin-top: 12px; text-align: right; }
 
+/* 编辑表单 */
+.edit-form { max-width: 700px; }
+.full-width { width: 100%; }
+.form-tip { font-size: 12px; color: #909399; margin-top: 4px; }
+.cover-preview-wrap { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.cover-preview-wrap img { max-width: 200px; max-height: 120px; border-radius: 6px; border: 1px solid #ebeef5; object-fit: cover; }
+
+/* Quill */
+.quill-editor-wrapper { width: 100%; border-radius: 4px; }
+.quill-editor-wrapper :deep(.ql-toolbar) { border-radius: 4px 4px 0 0; background: #fafafa; }
+.quill-editor-wrapper :deep(.ql-container) { border-radius: 0 0 4px 4px; font-size: 14px; }
+
+/* 响应式 */
 @media (max-width: 768px) {
-  .course-detail-page {
-    padding: var(--space-3);
-  }
-
-  .info-card,
-  .chapter-card {
-    margin-bottom: var(--space-3);
-  }
-
-  .header-actions {
-    flex-wrap: wrap;
-  }
+  .course-detail-page { padding: 12px; }
+  .info-grid { grid-template-columns: 1fr 1fr; }
+  .cover-img { max-width: 100%; }
+}
+@media (max-width: 480px) {
+  .info-grid { grid-template-columns: 1fr; }
+  .action-bar { flex-direction: column; align-items: flex-start; }
 }
 </style>
