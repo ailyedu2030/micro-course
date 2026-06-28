@@ -7,6 +7,7 @@ import com.microcourse.dto.GradeUpdateRequest;
 import com.microcourse.dto.GradeVO;
 import com.microcourse.dto.PageResult;
 
+import java.util.List;
 import java.util.Map;
 
 public interface GradeService {
@@ -39,4 +40,11 @@ public interface GradeService {
      * body: { "questionId": Long, "score": Integer, "comment": String }
      */
     void manualGrade(Long recordId, Map<String, Object> body, Long teacherId);
+
+    /**
+     * 获取成绩列表（用于导出 Excel），按课程过滤
+     * @param courseId 课程 ID（可选，为空则返回当前教师所有课程成绩）
+     * @param currentUserId 当前用户 ID（权限校验）
+     */
+    List<GradeVO> getGradesForExport(Long courseId, Long currentUserId);
 }

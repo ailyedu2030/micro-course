@@ -63,9 +63,9 @@ public enum CourseStatus {
             case DRAFT:
                 return target == PENDING_REVIEW;
             case PENDING_REVIEW:
-                return target == APPROVED || target == REJECTED;
+                return target == APPROVED || target == REJECTED || target == DRAFT;
             case APPROVED:
-                return target == PUBLISHED;
+                return target == PUBLISHED || target == CLOSED;
             case PUBLISHED:
                 return target == CLOSED || target == ARCHIVED;
             case CLOSED:

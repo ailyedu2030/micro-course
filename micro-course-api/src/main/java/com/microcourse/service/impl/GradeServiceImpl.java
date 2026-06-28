@@ -665,4 +665,11 @@ public class GradeServiceImpl implements GradeService {
     private String sanitizeComment(String comment) {
         return com.microcourse.util.XssSanitizer.sanitize(comment);
     }
+
+    @Override
+    public java.util.List<GradeVO> getGradesForExport(Long courseId, Long currentUserId) {
+        // 用 page 方法取最大 10000 条（覆盖实际场景）
+        PageResult<GradeVO> result = page(courseId, null, 0, 10000);
+        return result.getItems();
+    }
 }

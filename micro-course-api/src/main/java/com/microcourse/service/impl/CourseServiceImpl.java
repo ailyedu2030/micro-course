@@ -883,7 +883,7 @@ public class CourseServiceImpl implements CourseService {
         }
 
         // DRAFT / REJECTED → CLOSED 是合法的"软删除"操作（不走状态机白名单）
-        // 其他状态（如 PUBLISHED）的删除走 updateStatus 走 canTransitionTo 校验
+        // CLOSED 已下架，可直接清理（不再变更状态）
         if (currentStatus == CourseStatus.DRAFT.getCode()
                 || currentStatus == CourseStatus.REJECTED.getCode()) {
             int affected = courseRepository.update(null,
@@ -896,6 +896,8 @@ public class CourseServiceImpl implements CourseService {
             if (affected == 0) {
                 throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
             }
+        } else if (currentStatus == CourseStatus.CLOSED.getCode()) {
+            // 已下架课程直接清理，不修改状态
         } else {
             // PUBLISHED → CLOSED 等合法转换走 updateStatus（E2-1: self 代理确保 @Transactional 生效）
             self.updateStatus(id, CourseStatus.CLOSED.getCode());

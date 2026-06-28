@@ -181,7 +181,7 @@
               ref="coverUploadRef"
               :auto-upload="false"
               :limit="1"
-              accept="image/jpeg,image/jpg,image/png,image/gif"
+              accept="image/jpeg,image/png,image/gif,image/webp"
               :before-upload="handleBeforeCoverUpload"
               :on-change="handleCoverChange"
             >

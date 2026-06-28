@@ -9,12 +9,14 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Notification;
+import com.microcourse.entity.User;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.NotificationRepository;
+import com.microcourse.repository.UserRepository;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
@@ -40,13 +42,16 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final UserRepository userRepository;
 
     public NotificationServiceImpl(NotificationRepository notificationRepository,
                                    CourseRepository courseRepository,
-                                   EnrollmentRepository enrollmentRepository) {
+                                   EnrollmentRepository enrollmentRepository,
+                                   UserRepository userRepository) {
         this.notificationRepository = notificationRepository;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -89,47 +94,80 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public NotificationVO send(NotificationCreateRequest request, Long senderId) {
-        // SECURITY: TEACHER 只能向自己课程中的学生发送通知
-        if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC")) {
-            // 查询教师所有课程
-            LambdaQueryWrapper<Course> courseWrapper = new LambdaQueryWrapper<>();
-            courseWrapper.eq(Course::getTeacherId, senderId).isNull(Course::getDeletedAt);
-            List<Course> teacherCourses = courseRepository.selectList(courseWrapper);
-            if (teacherCourses.isEmpty()) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "没有可授课的课程，无法发送通知");
-            }
-            Set<Long> courseIds = teacherCourses.stream().map(Course::getId).collect(Collectors.toSet());
-            // 查询收件人是否在这些课程中已选课
-            LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
-            enrollWrapper.eq(Enrollment::getUserId, request.getUserId())
-                         .in(Enrollment::getCourseId, courseIds)
-                         .ne(Enrollment::getEnrollmentStatus, "CANCELLED");
-            if (enrollmentRepository.selectCount(enrollWrapper) == 0) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "只能向自己课程中的学生发送通知");
-            }
-            // R12 P1-C-8: 当指定 relatedId(courseId) 时，额外检查该课程是否为自己所授
-            if (request.getRelatedId() != null && request.getRelatedId() > 0) {
-                Course relatedCourse = courseRepository.selectById(request.getRelatedId());
-                if (relatedCourse != null && !relatedCourse.getTeacherId().equals(senderId)) {
-                    throw new BusinessException(ErrorCode.NO_PERMISSION, "无权发送关于其他教师课程的通知");
-                }
-            }
+        // 解析目标用户列表
+        List<Long> userIds = resolveTargetUserIds(request, senderId);
+
+        if (userIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "没有可发送的目标用户");
         }
 
-        Notification notification = new Notification();
-        notification.setUserId(request.getUserId());
-        notification.setType(request.getType());
-        // P1 安全修复: XSS 净化通知标题和内容
-        notification.setTitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getTitle()));
-        notification.setContent(com.microcourse.util.XssSanitizer.sanitize(request.getContent()));
-        notification.setRelatedId(request.getRelatedId());
-        notification.setChannel(request.getChannel() != null ? request.getChannel() : "SITE");
-        notification.setIsRead(false);
-        notification.setCreatedAt(LocalDateTime.now());
-        notification.setUpdatedAt(LocalDateTime.now());
+        Notification first = null;
+        for (Long uid : userIds) {
+            Notification notification = new Notification();
+            notification.setUserId(uid);
+            notification.setType(request.getType());
+            notification.setTitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getTitle()));
+            notification.setContent(com.microcourse.util.XssSanitizer.sanitize(request.getContent()));
+            notification.setRelatedId(request.getRelatedId());
+            notification.setChannel(request.getChannel() != null ? request.getChannel() : "SITE");
+            notification.setIsRead(false);
+            notification.setCreatedAt(LocalDateTime.now());
+            notificationRepository.insert(notification);
+            if (first == null) first = notification;
+        }
 
-        notificationRepository.insert(notification);
-        return convertToVO(notification);
+        log.info("[Notification] 群发完成 senderId={} count={} type={}", senderId, userIds.size(), request.getType());
+        return first != null ? convertToVO(first) : null;
+    }
+
+    private List<Long> resolveTargetUserIds(NotificationCreateRequest request, Long senderId) {
+        // 模式 1：sendToAll（管理员公告）— 仅 ADMIN 可用
+        if (Boolean.TRUE.equals(request.getSendToAll())) {
+            if (!SecurityUtil.isAdmin()) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "仅管理员可发送全员公告");
+            }
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(User::getStatus, 1).isNull(User::getDeletedAt);
+            return userRepository.selectList(wrapper).stream()
+                    .map(User::getId).collect(Collectors.toList());
+        }
+
+        // 模式 2：targetUserIds（群发指定用户）
+        if (request.getTargetUserIds() != null && !request.getTargetUserIds().isEmpty()) {
+            // TEACHER 权限校验
+            if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC")) {
+                validateTeacherCanNotify(senderId, request.getTargetUserIds());
+            }
+            return request.getTargetUserIds();
+        }
+
+        // 模式 3：userId（单用户，向后兼容）
+        if (request.getUserId() != null) {
+            List<Long> singleUser = List.of(request.getUserId());
+            if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC")) {
+                validateTeacherCanNotify(senderId, singleUser);
+            }
+            return singleUser;
+        }
+
+        return List.of();
+    }
+
+    private void validateTeacherCanNotify(Long teacherId, List<Long> targetUserIds) {
+        LambdaQueryWrapper<Course> courseWrapper = new LambdaQueryWrapper<>();
+        courseWrapper.eq(Course::getTeacherId, teacherId).isNull(Course::getDeletedAt);
+        List<Course> teacherCourses = courseRepository.selectList(courseWrapper);
+        if (teacherCourses.isEmpty()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "没有可授课的课程，无法发送通知");
+        }
+        Set<Long> courseIds = teacherCourses.stream().map(Course::getId).collect(Collectors.toSet());
+        LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
+        enrollWrapper.in(Enrollment::getUserId, targetUserIds)
+                     .in(Enrollment::getCourseId, courseIds)
+                     .ne(Enrollment::getEnrollmentStatus, "CANCELLED");
+        if (enrollmentRepository.selectCount(enrollWrapper) == 0) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "只能向自己课程中的学生发送通知");
+        }
     }
 
     @Override

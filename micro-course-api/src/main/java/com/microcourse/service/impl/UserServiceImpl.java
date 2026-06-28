@@ -24,6 +24,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.listener.UserBatchImportListener;
 import com.microcourse.repository.ClassesRepository;
 import com.microcourse.repository.DepartmentRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.security.UserStatusCheckFilter;
@@ -66,6 +67,7 @@ public class UserServiceImpl implements UserService {
     private final DepartmentRepository departmentRepository;
     private final MajorRepository majorRepository;
     private final ClassesRepository classesRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final RedisUtil redisUtil;
     private final OperationLogService operationLogService;
 
@@ -77,6 +79,7 @@ public class UserServiceImpl implements UserService {
                            DepartmentRepository departmentRepository,
                            MajorRepository majorRepository,
                            ClassesRepository classesRepository,
+                           EnrollmentRepository enrollmentRepository,
                            RedisUtil redisUtil,
                            OperationLogService operationLogService,
                            @Lazy UserServiceImpl self) {
@@ -85,6 +88,7 @@ public class UserServiceImpl implements UserService {
         this.departmentRepository = departmentRepository;
         this.majorRepository = majorRepository;
         this.classesRepository = classesRepository;
+        this.enrollmentRepository = enrollmentRepository;
         this.redisUtil = redisUtil;
         this.operationLogService = operationLogService;
         this.self = self;
@@ -192,6 +196,22 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         UserVO vo = convertToVO(user);
+        // R12 P0-2: TEACHER 仅能查看自己课程中的学生
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()
+                && !SecurityUtil.isOwnerOrAdmin(id)) {
+            User targetUser = user;
+            if (targetUser != null && com.microcourse.enums.UserRole.STUDENT.equals(targetUser.getRole())) {
+                long count = enrollmentRepository.countByTeacherAndStudent(
+                        SecurityUtil.getCurrentUserId(), id);
+                if (count == 0) {
+                    vo.setRealName(maskRealName(vo.getRealName()));
+                    vo.setEmail(maskEmail(vo.getEmail()));
+                    vo.setPhone(maskPhone(vo.getPhone()));
+                    vo.setStudentNo(null);
+                    vo.setTeacherNo(null);
+                }
+            }
+        }
         // R12 数据隔离分级：
         //   - 校内管理岗（ADMIN/ACADEMIC/TEACHER）：完整可见（学号/工号/手机/邮箱）
         //   - 本人：完整可见

@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.alibaba.excel.EasyExcel;
 import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.ExerciseRecordVO;
 import com.microcourse.dto.GradeCreateRequest;
@@ -11,6 +12,7 @@ import com.microcourse.dto.R;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.GradeService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
@@ -18,6 +20,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -111,6 +117,25 @@ public class GradeController {
     public R<Void> manualGrade(@PathVariable Long recordId, @RequestBody Map<String, Object> body) {
         gradeService.manualGrade(recordId, body, getCurrentUserId());
         return R.ok();
+    }
+
+    /**
+     * GET /api/grades/export?courseId=1
+     * 导出成绩为 Excel（教师/管理员）
+     */
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @AuditedLog("导出成绩")
+    public void export(@RequestParam(required = false) Long courseId,
+                       HttpServletResponse response) throws IOException {
+        List<GradeVO> grades = gradeService.getGradesForExport(courseId, getCurrentUserId());
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("UTF-8");
+        String fileName = URLEncoder.encode("成绩导出", StandardCharsets.UTF_8).replace("+", "%20");
+        response.setHeader("Content-Disposition", "attachment; filename=" + fileName + ".xlsx");
+        EasyExcel.write(response.getOutputStream(), GradeVO.class)
+                .sheet("成绩")
+                .doWrite(grades);
     }
 
     private Long getCurrentUserId() {
