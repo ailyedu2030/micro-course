@@ -200,30 +200,50 @@
           <!-- 学生专属字段 -->
           <template v-if="formData.role === 'STUDENT'">
             <el-divider content-position="left">学生信息</el-divider>
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="学号" prop="studentNo">
-                  <el-input v-model="formData.studentNo" placeholder="请输入学号" />
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="年级" prop="grade">
-                  <el-input v-model="formData.grade" placeholder="如：2024" />
-                </el-form-item>
-              </el-col>
-            </el-row>
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="入学年份" prop="enrollmentYear">
-                  <el-input v-model="formData.enrollmentYear" placeholder="如：2024" />
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="毕业年份" prop="graduationYear">
-                  <el-input v-model="formData.graduationYear" placeholder="如：2028" />
-                </el-form-item>
-              </el-col>
-            </el-row>
+<el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="学号" prop="studentNo">
+                <el-input v-model="formData.studentNo" placeholder="请输入学号" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="入学年份" prop="enrollmentYear">
+                <el-input
+                  v-model="formData.enrollmentYear"
+                  placeholder="如：2024"
+                  @input="handleEnrollmentYearChange"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="年级" prop="grade">
+                <el-input
+                  v-model="formData.grade"
+                  placeholder="自动计算"
+                  :disabled="!formData.enrollmentYear"
+                >
+                  <template #append>
+                    <el-tag v-if="gradeHint" :type="gradeHintType" size="small">{{ gradeHint }}</el-tag>
+                  </template>
+                </el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="毕业年份" prop="graduationYear">
+                <el-input
+                  v-model="formData.graduationYear"
+                  placeholder="如：2028（4 年制本科）"
+                  @input="handleGraduationYearChange"
+                >
+                  <template #append>
+                    <el-tag v-if="studyYearsHint" type="info" size="small">{{ studyYearsHint }}</el-tag>
+                  </template>
+                </el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
           </template>
 
           <!-- 教师专属字段 -->
@@ -282,7 +302,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Back } from '@element-plus/icons-vue'
@@ -350,6 +370,78 @@ const formRules = {
   realName: [{ required: true, message: '请输入姓名', trigger: ['blur', 'change'] }],
   role: [{ required: true, message: '请选择角色', trigger: ['blur', 'change'] }]
 }
+
+// ============== 年级联动逻辑 ==============
+const STUDY_YEARS_DEFAULT = 4
+function parseYear(value) {
+  const n = parseInt(value, 10)
+  return Number.isFinite(n) && n > 1900 && n < 2200 ? n : null
+}
+const currentYear = new Date().getFullYear()
+function calcGradeFromEnrollment(enrollmentYear, gradYear) {
+  const ey = parseYear(enrollmentYear)
+  if (ey === null) return ''
+  const gy = parseYear(gradYear)
+  const totalYears = gy !== null ? (gy - ey + 1) : STUDY_YEARS_DEFAULT
+  const cur = currentYear - ey + 1
+  if (cur <= 0) return '0'
+  if (cur > totalYears) return String(totalYears)
+  return String(cur)
+}
+function calcGradYearFromEnrollment(enrollmentYear) {
+  const ey = parseYear(enrollmentYear)
+  if (ey === null) return ''
+  return String(ey + STUDY_YEARS_DEFAULT)
+}
+const handleEnrollmentYearChange = () => {
+  const ey = parseYear(formData.enrollmentYear)
+  if (ey === null) {
+    formData.grade = ''
+    return
+  }
+  if (!formData.graduationYear) {
+    formData.graduationYear = calcGradYearFromEnrollment(formData.enrollmentYear)
+  }
+  formData.grade = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
+}
+const handleGraduationYearChange = () => {
+  const ey = parseYear(formData.enrollmentYear)
+  const gy = parseYear(formData.graduationYear)
+  if (ey === null || gy === null) return
+  if (gy <= ey) {
+    ElMessage.warning('毕业年份必须大于入学年份')
+    formData.graduationYear = String(ey + STUDY_YEARS_DEFAULT)
+  }
+  formData.grade = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
+}
+const gradeHint = computed(() => {
+  const ey = parseYear(formData.enrollmentYear)
+  if (ey === null) return ''
+  if (formData.grade) return `当前${formData.grade}年级`
+  return '自动计算'
+})
+const gradeHintType = computed(() => {
+  const ey = parseYear(formData.enrollmentYear)
+  const g = parseYear(formData.grade)
+  if (ey === null) return 'info'
+  if (g === null) return 'info'
+  const cur = currentYear - ey + 1
+  if (cur > (parseYear(formData.graduationYear) - ey + 1 || STUDY_YEARS_DEFAULT)) return 'warning'
+  return 'success'
+})
+const studyYearsHint = computed(() => {
+  const ey = parseYear(formData.enrollmentYear)
+  const gy = parseYear(formData.graduationYear)
+  if (ey === null || gy === null) return ''
+  const years = gy - ey + 1
+  if (years <= 0) return ''
+  return `${years} 年制`
+})
+watch(() => formData.role, (newRole) => {
+  if (newRole === 'STUDENT' && formData.enrollmentYear) {
+    formData.grade = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
+  }
+})
 
 const fetchDepartments = async () => {
   try {
@@ -456,6 +548,12 @@ const loadUserData = async (id) => {
     formData.status = data.status ?? 1
     formData.avatar = data.avatar || ''
     formData.role = data.role || ''
+
+    // 联动重算：保证 grade 与 enrollmentYear 一致（防止历史脏数据）
+    if (formData.role === 'STUDENT' && formData.enrollmentYear) {
+      const expected = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
+      if (expected) formData.grade = expected
+    }
 
     if (data.departmentId) {
       await fetchMajors(data.departmentId)

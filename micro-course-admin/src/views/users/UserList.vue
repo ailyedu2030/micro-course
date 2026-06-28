@@ -55,7 +55,6 @@
           <span class="card-title">用户列表</span>
           <div class="header-actions">
             <el-button type="warning" @click="teacherApprovalVisible = true">教师审核</el-button>
-            <el-button type="success" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="promoteGradeDialogVisible = true">升级年级</el-button>
             <el-button type="success" v-if="userRole !== 'ACADEMIC'" @click="batchImportVisible = true">批量导入</el-button>
             <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增用户</el-button>
           </div>
@@ -232,20 +231,40 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="年级">
-                  <el-input v-model="formData.grade" placeholder="如：2024" />
+                <el-form-item label="入学年份">
+                  <el-input
+                    v-model="formData.enrollmentYear"
+                    placeholder="如：2024"
+                    @input="handleEnrollmentYearChange"
+                  />
                 </el-form-item>
               </el-col>
             </el-row>
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="入学年份">
-                  <el-input v-model="formData.enrollmentYear" placeholder="如：2024" />
+                <el-form-item label="年级">
+                  <el-input
+                    v-model="formData.grade"
+                    placeholder="自动计算"
+                    :disabled="!formData.enrollmentYear"
+                  >
+                    <template #append>
+                      <el-tag v-if="gradeHint" :type="gradeHintType" size="small">{{ gradeHint }}</el-tag>
+                    </template>
+                  </el-input>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="毕业年份">
-                  <el-input v-model="formData.graduationYear" placeholder="如：2028" />
+                  <el-input
+                    v-model="formData.graduationYear"
+                    placeholder="如：2028（4 年制本科）"
+                    @input="handleGraduationYearChange"
+                  >
+                    <template #append>
+                      <el-tag v-if="studyYearsHint" type="info" size="small">{{ studyYearsHint }}</el-tag>
+                    </template>
+                  </el-input>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -375,34 +394,6 @@
       </template>
     </el-dialog>
 
-    <!-- 升级年级弹窗 -->
-    <el-dialog v-model="promoteGradeDialogVisible" title="批量升级学生年级" width="500px" :close-on-press-escape="true">
-      <el-alert type="warning" :closable="false" show-icon style="margin-bottom: var(--space-3)">
-        <template #title>
-          <strong>注意：此操作将把所有指定年级学生的 grade +1，无法撤销！</strong>
-        </template>
-      </el-alert>
-      <el-form label-width="100px">
-        <el-form-item label="起始届次">
-          <el-input v-model="promoteFromGrade" placeholder="如：2024（留空升级全部）" />
-        </el-form-item>
-      </el-form>
-      <el-form-item>
-        <el-text size="small" type="info">
-          <p>规则说明：</p>
-          <ul style="margin: 8px 0; padding-left: 20px;">
-            <li>仅升级 <strong>STUDENT</strong> 角色且<strong>启用中</strong>的账号</li>
-            <li>已达到毕业年份的学生会标记为"已毕业"，跳过升级</li>
-            <li>留空起始届次 = 升级所有学生</li>
-          </ul>
-        </el-text>
-      </el-form-item>
-      <template #footer>
-        <el-button @click="promoteGradeDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="promoteGradeLoading" @click="handlePromoteGrade">确认升级</el-button>
-      </template>
-    </el-dialog>
-
     <!-- 教师审核弹窗 -->
     <el-dialog v-model="teacherApprovalVisible" title="教师入驻审核" width="700px" destroy-on-close :close-on-press-escape="true">
       <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--space-4)">
@@ -439,7 +430,7 @@
  * 用户列表页
  * Vue 3.4 Composition API + script setup
  */
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
@@ -447,7 +438,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Download } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import * as XLSX from 'xlsx'
-import { getUsers, updateUser, updateUserStatus, updateTeacherStatus, batchImportUsers, uploadAvatar, promoteGrade } from '@/api/user'
+import { getUsers, updateUser, updateUserStatus, updateTeacherStatus, batchImportUsers, uploadAvatar } from '@/api/user'
 import { getDepartments } from '@/api/department'
 import { getMajors } from '@/api/major'
 import { getClasses } from '@/api/class'
@@ -471,10 +462,6 @@ const dialogLoading = ref(false)
 const formRef = ref(null)
 const dialogMajors = ref([])
 const dialogClasses = ref([])
-// 批量升级年级
-const promoteGradeDialogVisible = ref(false)
-const promoteGradeLoading = ref(false)
-const promoteFromGrade = ref('')
 
 // 批量导入
 const batchImportVisible = ref(false)
@@ -526,6 +513,99 @@ const formRules = {
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
 }
+
+// ============== 年级联动逻辑 ==============
+// 入学年份变更 → 自动算当前年级 + 毕业年份（默认 4 年制）
+const STUDY_YEARS_DEFAULT = 4
+
+function parseYear(value) {
+  const n = parseInt(value, 10)
+  return Number.isFinite(n) && n > 1900 && n < 2200 ? n : null
+}
+
+const currentYear = new Date().getFullYear()
+
+// 联动：根据 enrollmentYear 自动计算 grade
+function calcGradeFromEnrollment(enrollmentYear, gradYear) {
+  const ey = parseYear(enrollmentYear)
+  if (ey === null) return ''
+  // 用毕业年份反推学制
+  const gy = parseYear(gradYear)
+  const totalYears = gy !== null ? (gy - ey + 1) : STUDY_YEARS_DEFAULT
+  // 当前年级 = 当前年 - 入学年 + 1（限制在 1..totalYears）
+  const cur = currentYear - ey + 1
+  if (cur <= 0) return '0' // 还未入学
+  if (cur > totalYears) return String(totalYears) // 已毕业
+  return String(cur)
+}
+
+// 联动：根据 enrollmentYear + grade 计算毕业年份
+function calcGradYearFromEnrollment(enrollmentYear) {
+  const ey = parseYear(enrollmentYear)
+  if (ey === null) return ''
+  return String(ey + STUDY_YEARS_DEFAULT)
+}
+
+// 用户改入学年份时：自动算当前年级 + 同步毕业年份
+const handleEnrollmentYearChange = () => {
+  const ey = parseYear(formData.enrollmentYear)
+  if (ey === null) {
+    formData.grade = ''
+    return
+  }
+  // 如果毕业年份为空，或者和当前一致（4 年制），则同步更新
+  if (!formData.graduationYear) {
+    formData.graduationYear = calcGradYearFromEnrollment(formData.enrollmentYear)
+  }
+  formData.grade = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
+}
+
+// 用户改毕业年份时：自动反推学制 + 重新算当前年级
+const handleGraduationYearChange = () => {
+  const ey = parseYear(formData.enrollmentYear)
+  const gy = parseYear(formData.graduationYear)
+  if (ey === null || gy === null) return
+  // 毕业年份必须 ≥ 入学年份 + 1
+  if (gy <= ey) {
+    ElMessage.warning('毕业年份必须大于入学年份')
+    formData.graduationYear = String(ey + STUDY_YEARS_DEFAULT)
+  }
+  formData.grade = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
+}
+
+// 智能提示（computed）
+const gradeHint = computed(() => {
+  const ey = parseYear(formData.enrollmentYear)
+  if (ey === null) return ''
+  if (formData.grade) return `当前${formData.grade}年级`
+  return '自动计算'
+})
+
+const gradeHintType = computed(() => {
+  const ey = parseYear(formData.enrollmentYear)
+  const g = parseYear(formData.grade)
+  if (ey === null) return 'info'
+  if (g === null) return 'info'
+  const cur = currentYear - ey + 1
+  if (cur > (parseYear(formData.graduationYear) - ey + 1 || STUDY_YEARS_DEFAULT)) return 'warning'
+  return 'success'
+})
+
+const studyYearsHint = computed(() => {
+  const ey = parseYear(formData.enrollmentYear)
+  const gy = parseYear(formData.graduationYear)
+  if (ey === null || gy === null) return ''
+  const years = gy - ey + 1
+  if (years <= 0) return ''
+  return `${years} 年制`
+})
+
+// 监听 enrollmentYear / graduationYear / role 变化，role 变 STUDENT 时自动重算
+watch(() => formData.role, (newRole) => {
+  if (newRole === 'STUDENT' && formData.enrollmentYear) {
+    formData.grade = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
+  }
+})
 
 const fetchDepartments = async () => {
   try {
@@ -675,6 +755,14 @@ const handleEdit = async (row) => {
     teacherStatus: row.teacherStatus ?? null,
     status: row.status ?? 1
   })
+  // 联动校验：确保 grade 与 enrollmentYear 一致（防止历史脏数据）
+  if (formData.role === 'STUDENT' && formData.enrollmentYear) {
+    const expected = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
+    if (expected && expected !== formData.grade) {
+      // 如果数据库的 grade 不匹配，按当前日期重算并提示
+      formData.grade = expected
+    }
+  }
   dialogVisible.value = true
   // 异步加载完整信息（含 majors/classes）
   dialogLoading.value = true
@@ -696,6 +784,13 @@ const handleEdit = async (row) => {
       teacherStatus: data.teacherStatus ?? null,
       status: data.status ?? 1
     })
+    // 再次联动校验（用最新数据）
+    if (formData.role === 'STUDENT' && formData.enrollmentYear) {
+      const expected = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
+      if (expected && expected !== formData.grade) {
+        formData.grade = expected
+      }
+    }
     // 加载级联选项
     if (formData.departmentId) {
       await loadDialogMajors(formData.departmentId)
@@ -883,7 +978,6 @@ const loadPendingTeachers = async () => {
 }
 
 // 监听教师审核弹窗打开
-import { watch } from 'vue'
 watch(teacherApprovalVisible, (val) => {
   if (val) {
     loadPendingTeachers()
@@ -909,44 +1003,6 @@ const handleRejectTeacher = async (row) => {
     loadPendingTeachers()
   } catch {
     ElMessage.error('操作失败')
-  }
-}
-
-// 批量升级年级
-const handlePromoteGrade = async () => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要升级年级吗？此操作不可撤销！`,
-      '⚠️ 危险操作确认',
-      {
-        type: 'warning',
-        confirmButtonText: '确认升级',
-        cancelButtonText: '取消',
-        confirmButtonClass: 'el-button--danger'
-      }
-    )
-  } catch {
-    return // 用户取消
-  }
-  promoteGradeLoading.value = true
-  try {
-    const { data } = await promoteGrade(promoteFromGrade.value.trim() || undefined)
-    let msg = `升级完成！共升级 ${data.affectedCount || 0} 名学生`
-    if (data.graduatedCount > 0) {
-      msg += `，${data.graduatedCount} 名已毕业跳过`
-    }
-    if (data.fromGrade && data.toGrade) {
-      msg += `（${data.fromGrade} → ${data.toGrade}）`
-    }
-    ElMessage.success(msg)
-    promoteGradeDialogVisible.value = false
-    promoteFromGrade.value = ''
-    fetchData()
-  } catch (err) {
-    console.warn('[UserList] 升级年级失败', err)
-    ElMessage.error('升级年级失败')
-  } finally {
-    promoteGradeLoading.value = false
   }
 }
 

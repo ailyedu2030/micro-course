@@ -33,17 +33,3 @@ export function uploadAvatar(userId, file) {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
-
-/**
- * 批量升级学生年级
- * POST /users/promote-grade?fromGrade=2024
- * @param {string} [fromGrade] 起始届次（可选；空则升级所有学生）
- * @returns {Promise<{code, message, data: PromoteGradeResultVO}>}
- */
-export function promoteGrade(fromGrade) {
-  return request({
-    method: 'POST',
-    url: '/users/promote-grade',
-    params: fromGrade ? { fromGrade } : {}
-  })
-}
