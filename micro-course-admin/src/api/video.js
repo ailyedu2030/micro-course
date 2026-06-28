@@ -9,12 +9,13 @@ export function deleteVideo(id) { return request({ method: 'DELETE', url: `/vide
 
 // ==================== 视频上传 ====================
 export function uploadVideo(formData, onUploadProgress) {
+  // P1-C 修复: 不要显式设置 Content-Type — 浏览器自动加 boundary
+  // _timeout 被 request.js 的 pickTimeout 识别
   return request({
     method: 'POST',
     url: '/videos/upload',
     data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 600000, // 10 分钟超时（大文件上传）
+    _timeout: 600000, // 10 分钟（覆盖全局 FormData 默认 300s）
     onUploadProgress
   })
 }
@@ -26,8 +27,7 @@ export function uploadVideoCover(id, file) {
   return request({
     method: 'POST',
     url: `/videos/${id}/cover`,
-    data: fd,
-    headers: { 'Content-Type': 'multipart/form-data' }
+    data: fd
   })
 }
 

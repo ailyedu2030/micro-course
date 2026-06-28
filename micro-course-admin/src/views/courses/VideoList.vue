@@ -45,50 +45,15 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">视频列表</span>
+          <span class="card-title">{{ isContextualMode ? '本章节视频' : '视频列表' }}</span>
           <div class="header-actions">
-            <el-upload
-              :before-upload="handleBeforeUpload"
-              :http-request="handleBatchUpload"
-              multiple
-              accept="video/*"
-              :show-file-list="false"
-            >
-              <el-tooltip v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" content="请先选择课程和章节" placement="top">
-                <el-button type="success" size="small" :disabled="!searchForm.courseId || !searchForm.chapterId">{{ isContextualMode ? '上传本章节视频' : '批量上传视频' }}</el-button>
-              </el-tooltip>
-            </el-upload>
-            <el-button type="primary" v-if="(userRole === 'TEACHER' || userRole === 'ADMIN') && !isContextualMode" @click="handleCreate">新增视频</el-button>
+            <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              {{ isContextualMode ? '添加视频' : '新增视频' }}
+            </el-button>
           </div>
         </div>
       </template>
-
-      <!-- 上传队列 -->
-      <div v-if="uploadQueue.length > 0" class="upload-queue">
-        <div class="queue-title">上传队列</div>
-        <div v-for="(item, idx) in uploadQueue" :key="idx" class="queue-item">
-          <span class="queue-name">{{ item.name }}</span>
-          <el-progress :percentage="item.percentage" :stroke-width="6" class="queue-progress" />
-          <span class="queue-status">
-            <el-tag v-if="item.status === 'success'" type="success" size="small">成功</el-tag>
-            <el-tag v-else-if="item.status === 'error'" type="danger" size="small">失败</el-tag>
-            <el-tag v-else-if="item.status === 'cancelled'" type="info" size="small">已取消</el-tag>
-            <el-tag v-else type="info" size="small">上传中</el-tag>
-          </span>
-          <el-button
-            v-if="item.status === 'uploading'"
-            type="danger"
-            size="small"
-            link
-            @click="handleCancelUpload(idx)"
-          >
-取消
-</el-button>
-        </div>
-        <div class="queue-summary">
-          成功: {{ uploadSuccess }} / 失败: {{ uploadError }} / 总计: {{ uploadQueue.length }}
-        </div>
-      </div>
 
       <el-table v-loading="loading" :aria-busy="loading" :data="tableData" stripe border class="data-table">
         <template #empty>
@@ -148,11 +113,31 @@
       </div>
     </el-card>
 
-    <!-- 弹窗表单 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
-      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
+    <!-- 弹窗表单（统一：新增+编辑） -->
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose" :close-on-press-escape="true">
+      <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
+        <el-form-item v-if="!isEdit" label="视频文件" prop="file">
+          <el-upload
+            ref="dialogUploadRef"
+            :auto-upload="false"
+            :limit="1"
+            accept="video/*"
+            :on-change="handleDialogFileChange"
+            :on-remove="handleDialogFileRemove"
+            drag
+          >
+            <div class="upload-trigger">
+              <el-icon class="upload-icon"><UploadFilled /></el-icon>
+              <div class="upload-text">点击或拖拽视频文件到此处</div>
+              <div class="upload-hint">支持 MP4/MOV/MKV，最大 2GB。选完后标题自动填充。</div>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">大文件上传可能需要几分钟，请耐心等待。</div>
+            </template>
+          </el-upload>
+        </el-form-item>
         <el-form-item label="标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入视频标题" />
+          <el-input v-model="formData.title" placeholder="选完文件后自动填充，或手动输入" />
         </el-form-item>
         <el-form-item label="所属课程" prop="courseId" v-if="!isContextualMode || isEdit">
           <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="isContextualMode || isEdit">
@@ -169,8 +154,18 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <div class="dialog-footer">
+          <el-progress
+            v-if="!isEdit && submitProgress > 0 && submitProgress < 100"
+            :percentage="submitProgress"
+            :stroke-width="4"
+            class="footer-progress"
+          />
+          <div class="footer-buttons">
+            <el-button @click="dialogVisible = false" :disabled="submitLoading">取消</el-button>
+            <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+          </div>
+        </div>
       </template>
     </el-dialog>
 
@@ -207,6 +202,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, UploadFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo } from '@/api/video'
 import { getCourses, getCourseById } from '@/api/course'
@@ -227,6 +223,7 @@ const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const submitProgress = ref(0)
 const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
@@ -251,19 +248,18 @@ const formData = reactive({
   title: '',
   courseId: null,
   chapterId: null,
-  sortOrder: 0
+  sortOrder: 0,
+  file: null
 })
 
 const formRules = {
-  title: [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
+  title: courseIdFromRoute.value ? [] : [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
   courseId: courseIdFromRoute.value ? [] : [{ required: true, message: '请选择所属课程', trigger: 'change' }],
-  chapterId: [{ required: true, message: '请选择所属章节', trigger: 'change' }]
+  chapterId: [{ required: true, message: '请选择所属章节', trigger: 'change' }],
+  file: [{ required: true, message: '请选择视频文件', trigger: 'change' }]
 }
 
-const uploadQueue = ref([])
-const uploadSuccess = ref(0)
-const uploadError = ref(0)
-const uploadXHRMap = ref({}) // store XHR objects for cancel
+const dialogUploadRef = ref(null)
 
 const coverDialogVisible = ref(false)
 const previewDialogVisible = ref(false)
@@ -343,64 +339,6 @@ const formatFileSize = (size) => {
   return `${(size / (1024 * 1024 * 1024)).toFixed(1)}GB`
 }
 
-const handleBeforeUpload = (file) => {
-  const item = {
-    name: file.name,
-    percentage: 0,
-    status: 'uploading'
-  }
-  uploadQueue.value.push(item)
-  return true
-}
-
-const handleCancelUpload = (idx) => {
-  const item = uploadQueue.value[idx]
-  if (item && item.xhr) {
-    item.xhr.abort()
-    item.status = 'cancelled'
-  }
-}
-
-const handleBatchUpload = async ({ file }) => {
-  const queueItem = uploadQueue.value.find(i => i.name === file.name)
-  if (!queueItem) return
-
-  const courseId = lockedChapterId.value ? courseIdFromRoute.value : searchForm.courseId
-  const chapterId = lockedChapterId.value || searchForm.chapterId
-  if (!courseId || !chapterId) {
-    queueItem.status = 'error'
-    uploadError.value++
-    ElMessage.error('请先选择课程和章节')
-    return
-  }
-
-  try {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('courseId', courseId)
-    formData.append('chapterId', chapterId)
-
-    // P1-C: 真实进度回调驱动进度条
-    const onProgress = (progressEvent) => {
-      if (progressEvent.total && queueItem) {
-        queueItem.percentage = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-      }
-    }
-
-    // Use API wrapper (uploadVideo) for proper request handling through the unified request layer
-    await uploadVideo(formData, onProgress)
-    queueItem.percentage = 100
-    queueItem.status = 'success'
-    uploadSuccess.value++
-    ElMessage.success(`${file.name} 上传成功`)
-    fetchData()
-  } catch (e) {
-    queueItem.status = 'error'
-    uploadError.value++
-    ElMessage.error(`${file.name} 上传失败: ${e?.response?.data?.message || e?.message || '未知错误'}`)
-  }
-}
-
 const handleCourseChange = async (courseId) => {
   searchForm.chapterId = ''
   chapterOptions.value = []
@@ -414,13 +352,16 @@ const handleCourseChange = async (courseId) => {
 }
 
 const handleCreate = () => {
-  dialogTitle.value = '新增视频'
+  dialogTitle.value = '添加视频'
   isEdit.value = false
   currentId.value = null
   formData.title = ''
-  formData.courseId = searchForm.courseId ? Number(searchForm.courseId) : (courseIdFromRoute.value ? Number(courseIdFromRoute.value) : null)
-  formData.chapterId = searchForm.chapterId ? Number(searchForm.chapterId) : null
+  formData.file = null
+  formData.courseId = courseIdFromRoute.value ? Number(courseIdFromRoute.value)
+    : (searchForm.courseId ? Number(searchForm.courseId) : null)
+  formData.chapterId = lockedChapterId.value || (searchForm.chapterId ? Number(searchForm.chapterId) : null)
   formData.sortOrder = 0
+  submitProgress.value = 0
   dialogVisible.value = true
 }
 
@@ -462,17 +403,45 @@ const handleSubmit = async () => {
         await updateVideo(currentId.value, { title: formData.title, sortOrder: formData.sortOrder, chapterId: formData.chapterId })
         ElMessage.success('编辑成功')
       } else {
-        await createVideo({ title: formData.title, chapterId: formData.chapterId, courseId: formData.courseId, sortOrder: formData.sortOrder })
+        // P1-C 修复: 新增视频 = 选文件+创建记录,调用 /api/videos/upload 一次完成
+        const fd = new FormData()
+        fd.append('file', formData.file)
+        fd.append('courseId', formData.courseId)
+        fd.append('chapterId', formData.chapterId)
+        const onProgress = (progressEvent) => {
+          if (progressEvent.total) {
+            submitProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          }
+        }
+        await uploadVideo(fd, onProgress)
         ElMessage.success('创建成功')
       }
       dialogVisible.value = false
       fetchData()
-    } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+    } catch (e) {
+      // P1-C 修复: 显示真实错误而不是通用"创建失败"
+      const msg = e?.response?.data?.message || e?.message || (isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(msg)
     } finally {
       submitLoading.value = false
+      submitProgress.value = 0
     }
   })
+}
+
+const handleDialogFileChange = (uploadFile) => {
+  if (uploadFile && uploadFile.raw) {
+    formData.file = uploadFile.raw
+    if (!formData.title) {
+      // 默认用文件名（去掉扩展名）作为标题
+      const nameWithoutExt = uploadFile.name.replace(/\.[^.]+$/, '')
+      formData.title = nameWithoutExt
+    }
+  }
+}
+
+const handleDialogFileRemove = () => {
+  formData.file = null
 }
 
 const handleDialogClose = () => {
@@ -708,6 +677,57 @@ onUnmounted(() => {
 
 .full-width {
   width: 100%;
+}
+
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: var(--space-3);
+}
+
+.footer-progress {
+  flex: 1;
+}
+
+.footer-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.upload-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) var(--space-6);
+  border: 2px dashed var(--el-border-color);
+  border-radius: var(--radius-md);
+  background: var(--el-fill-color-light);
+  cursor: pointer;
+  transition: border-color var(--duration-base);
+}
+
+.upload-trigger:hover {
+  border-color: var(--el-color-primary);
+}
+
+.upload-icon {
+  font-size: 36px;
+  color: var(--el-color-primary);
+  margin-bottom: var(--space-2);
+}
+
+.upload-text {
+  font-size: 14px;
+  font-weight: var(--weight-medium);
+  color: var(--el-text-color-primary);
+  margin-bottom: var(--space-1);
+}
+
+.upload-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .search-input,
