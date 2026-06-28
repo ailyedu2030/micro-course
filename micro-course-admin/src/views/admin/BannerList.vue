@@ -126,7 +126,8 @@
               :show-file-list="false"
               :auto-upload="false"
               :limit="1"
-              accept="image/*"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              :before-upload="handleBeforeUpload"
               :on-change="handleImageChange"
             >
               <el-image
