@@ -11,20 +11,26 @@
       <el-breadcrumb separator="→">
         <el-breadcrumb-item :to="{ path: '/courses' }">课程管理</el-breadcrumb-item>
         <el-breadcrumb-item :to="{ path: `/courses/${courseIdFromRoute}` }">{{ courseTitle }}</el-breadcrumb-item>
-        <el-breadcrumb-item>视频管理</el-breadcrumb-item>
+        <el-breadcrumb-item v-if="isContextualMode">{{ chapterTitle || '章节视频' }}</el-breadcrumb-item>
+        <el-breadcrumb-item v-else>视频管理</el-breadcrumb-item>
+        <el-breadcrumb-item v-if="isContextualMode">
+          <el-link type="primary" :underline="false" :to="{ path: `/courses/${courseIdFromRoute}` }">
+            ← 返回课程
+          </el-link>
+        </el-breadcrumb-item>
       </el-breadcrumb>
     </div>
 
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="所属课程" v-if="!courseIdFromRoute">
+        <el-form-item label="所属课程" v-if="!isContextualMode && !courseIdFromRoute">
           <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200" @change="handleCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="章节" v-if="searchForm.courseId">
-          <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable class="filter-input-w200">
+          <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable :disabled="isContextualMode" class="filter-input-w200">
             <el-option v-for="item in chapterOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -49,7 +55,7 @@
               :show-file-list="false"
             >
               <el-tooltip v-if="userRole !== 'ACADEMIC'" content="请先选择课程和章节" placement="top">
-                <el-button type="success" size="small" :disabled="!searchForm.courseId || !searchForm.chapterId">批量上传视频</el-button>
+                <el-button type="success" size="small" :disabled="!searchForm.courseId || !searchForm.chapterId">{{ isContextualMode ? '上传本章节视频' : '批量上传视频' }}</el-button>
               </el-tooltip>
             </el-upload>
             <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增视频</el-button>
@@ -205,12 +211,17 @@ import { VideoCamera } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo } from '@/api/video'
 import { getCourses, getCourseById } from '@/api/course'
-import { getChapters } from '@/api/chapter'
+import { getChapters, getChapterById } from '@/api/chapter'
 import { getToken } from '@/utils/auth'
 
 const route = useRoute()
 const userStore = useUserStore()
 const courseIdFromRoute = computed(() => route.params.courseId)
+const lockedChapterId = computed(() => {
+  const id = route.query.chapterId
+  return id ? Number(id) : null
+})
+const isContextualMode = computed(() => lockedChapterId.value !== null)
 const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
@@ -222,6 +233,7 @@ const size = ref(10)
 const courseOptions = ref([])
 const chapterOptions = ref([])
 const courseTitle = ref('')
+const chapterTitle = ref('')
 
 const searchForm = reactive({
   courseId: '',
@@ -352,8 +364,8 @@ const handleBatchUpload = async ({ file }) => {
   const queueItem = uploadQueue.value.find(i => i.name === file.name)
   if (!queueItem) return
 
-  const courseId = searchForm.courseId
-  const chapterId = searchForm.chapterId
+  const courseId = lockedChapterId.value ? courseIdFromRoute.value : searchForm.courseId
+  const chapterId = lockedChapterId.value || searchForm.chapterId
   if (!courseId || !chapterId) {
     queueItem.status = 'error'
     uploadError.value++
@@ -503,6 +515,13 @@ onMounted(() => {
       } catch {}
       searchForm.courseId = Number(cid)
       await handleCourseChange(Number(cid))
+      if (isContextualMode.value) {
+        try {
+          const { data } = await getChapterById(lockedChapterId.value)
+          chapterTitle.value = data?.title || ''
+          searchForm.chapterId = lockedChapterId.value
+        } catch {}
+      }
       fetchData()
     }
   })

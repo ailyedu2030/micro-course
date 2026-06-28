@@ -463,7 +463,7 @@ const handleManageChapterContent = (row) => {
   } else if (row.chapterType === 'EXERCISE') {
     router.push(`/courses/${cid}/exercises`)
   } else {
-    router.push(`/courses/${cid}/videos`)
+    router.push(`/courses/${cid}/videos?chapterId=${row.id}`)
   }
 }
 const handleDeleteChapter = async (row) => {
