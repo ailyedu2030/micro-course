@@ -190,6 +190,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
@@ -198,7 +199,9 @@ import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getToken } from '@/utils/auth'
 
+const route = useRoute()
 const userStore = useUserStore()
+const courseIdFromRoute = computed(() => route.params.courseId)
 const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
@@ -379,10 +382,9 @@ const handleCreate = () => {
   isEdit.value = false
   currentId.value = null
   formData.title = ''
-  formData.courseId = searchForm.courseId ? Number(searchForm.courseId) : null
-  formData.chapterId = null
+  formData.courseId = searchForm.courseId ? Number(searchForm.courseId) : (courseIdFromRoute.value ? Number(courseIdFromRoute.value) : null)
+  formData.chapterId = searchForm.chapterId ? Number(searchForm.chapterId) : null
   formData.sortOrder = 0
-  formData.url = ''
   dialogVisible.value = true
 }
 
@@ -394,7 +396,6 @@ const handleEdit = (row) => {
   formData.courseId = row.courseId
   formData.chapterId = row.chapterId
   formData.sortOrder = row.sortOrder || 0
-  formData.url = row.url || ''
   dialogVisible.value = true
 }
 
@@ -475,7 +476,14 @@ const handlePreviewCover = (row) => {
 }
 
 onMounted(() => {
-  fetchCourses()
+  fetchCourses().then(() => {
+    const cid = courseIdFromRoute.value
+    if (cid) {
+      searchForm.courseId = Number(cid)
+      handleCourseChange(Number(cid))
+      fetchData()
+    }
+  })
 })
 
 onUnmounted(() => {

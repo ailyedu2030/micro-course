@@ -124,7 +124,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (request.getDuration() != null) chapter.setDuration(request.getDuration());
 
         chapter.setUpdatedAt(LocalDateTime.now());
-        chapter.setVersion(chapter.getVersion() == null ? 1 : chapter.getVersion() + 1);
 
         chapterRepository.updateById(chapter);
         return convertToVO(chapter);

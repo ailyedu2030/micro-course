@@ -461,7 +461,7 @@ const handleManageChapterContent = (row) => {
   if (row.chapterType === 'INTERACTIVE') {
     router.push(`/teacher/courses/${cid}/slides/manage`)
   } else if (row.chapterType === 'EXERCISE') {
-    router.push(`/teacher/courses/${cid}/exercises`)
+    router.push(`/courses/${cid}/exercises`)
   } else {
     router.push(`/courses/${cid}/videos`)
   }
