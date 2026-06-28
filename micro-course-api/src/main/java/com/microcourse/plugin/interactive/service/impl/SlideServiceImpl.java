@@ -163,7 +163,7 @@ public class SlideServiceImpl implements SlideService {
         wrapper.eq(CourseSlide::getCourseId, courseId);
         CourseSlide slide = courseSlideMapper.selectOne(wrapper);
         if (slide == null) {
-            throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND);
+            return null;
         }
         return toVO(slide);
     }
@@ -171,6 +171,9 @@ public class SlideServiceImpl implements SlideService {
     @Override
     public List<SlidePageVO> getPages(Long courseId) {
         SlideVO slideVO = getByCourseId(courseId);
+        if (slideVO == null) {
+            return java.util.Collections.emptyList();
+        }
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getSlideId, slideVO.getId())
                 .orderByAsc(SlidePage::getPageNumber);

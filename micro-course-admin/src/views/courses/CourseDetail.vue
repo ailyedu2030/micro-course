@@ -28,22 +28,22 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="课程标题">{{ courseData.title || '-' }}</el-descriptions-item>
           <el-descriptions-item label="分类">{{ courseData.categoryName || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="教师ID">{{ courseData.teacherId || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="授课教师">{{ courseData.teacherName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag v-if="courseData.status === 0" type="info" size="small">草稿</el-tag>
             <el-tag v-else-if="courseData.status === 1" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="courseData.status === 2" type="success" size="small">通过</el-tag>
+            <el-tag v-else-if="courseData.status === 2" type="success" size="small">已通过</el-tag>
             <el-tag v-else-if="courseData.status === 3" type="danger" size="small">驳回</el-tag>
             <el-tag v-else-if="courseData.status === 4" type="success" size="small">已发布</el-tag>
-            <el-tag v-else-if="courseData.status === 5" type="warning" size="small">下架</el-tag>
-            <el-tag v-else type="info" size="small">归档</el-tag>
+            <el-tag v-else-if="courseData.status === 5" type="warning" size="small">已下架</el-tag>
+            <el-tag v-else type="info" size="small">已归档</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="学分">{{ courseData.creditHours ?? '-' }}</el-descriptions-item>
           <el-descriptions-item label="学期">{{ courseData.semester || '-' }}</el-descriptions-item>
           <el-descriptions-item label="难度">
-            <el-tag v-if="courseData.difficulty === 'BEGINNER'" size="small">初级</el-tag>
-            <el-tag v-else-if="courseData.difficulty === 'INTERMEDIATE'" size="small">中级</el-tag>
-            <el-tag v-else-if="courseData.difficulty === 'ADVANCED'" size="small">高级</el-tag>
+            <el-tag v-if="courseData.difficulty === 1 || courseData.difficulty === 'BEGINNER'" size="small">初级</el-tag>
+            <el-tag v-else-if="courseData.difficulty === 2 || courseData.difficulty === 'INTERMEDIATE'" size="small">中级</el-tag>
+            <el-tag v-else-if="courseData.difficulty === 3 || courseData.difficulty === 'ADVANCED'" size="small">高级</el-tag>
             <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="课程类型">
@@ -57,7 +57,9 @@
           </el-descriptions-item>
           <el-descriptions-item label="评分">{{ courseData.rating ? courseData.rating.toFixed(1) : '-' }}</el-descriptions-item>
           <el-descriptions-item label="学生数">{{ courseData.studentCount || 0 }}</el-descriptions-item>
-          <el-descriptions-item label="课程描述" :span="2">{{ courseData.description || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="课程描述" :span="2">
+            <div class="description-html" v-html="courseData.description || '-'"></div>
+          </el-descriptions-item>
           <el-descriptions-item label="封面">
             <el-image v-if="courseData.coverUrl" :src="courseData.coverUrl" class="cover-preview" fit="cover" />
             <span v-else>-</span>
@@ -75,11 +77,19 @@
             <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="教师ID" prop="teacherId">
-          <el-input v-model.number="formData.teacherId" placeholder="请输入教师ID" type="number" />
+        <el-form-item label="授课教师">
+          <el-input :model-value="teacherName" disabled placeholder="—" />
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :autosize="{ minRows: 4, maxRows: 10 }" placeholder="请输入课程描述" />
+          <div class="quill-editor-wrapper">
+            <QuillEditor
+              v-model:content="formData.description"
+              contentType="html"
+              toolbar="essential"
+              placeholder="请输入课程描述..."
+              :style="{ minHeight: '150px' }"
+            />
+          </div>
         </el-form-item>
         <el-form-item label="学分" prop="creditHours">
           <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
@@ -207,6 +217,8 @@ import { useUserStore } from '@/store/user'
 import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 const router = useRouter()
 const route = useRoute()
@@ -240,6 +252,8 @@ const formRules = {
   categoryId: [{ required: true, message: '请选择分类', trigger: ['blur', 'change'] }],
   teacherId: [{ required: true, message: '请输入教师ID', trigger: ['blur', 'change'] }]
 }
+
+const teacherName = computed(() => courseData.value.teacherName || '')
 
 const coverUploadRef = ref(null)
 const coverPreviewUrl = ref('')
@@ -681,6 +695,30 @@ onUnmounted(() => {
   height: 80px;
   border-radius: var(--radius-sm);
   object-fit: cover;
+}
+
+.description-html {
+  line-height: 1.8;
+  max-width: 100%;
+  word-break: break-word;
+}
+.description-html :deep(ol) { padding-left: 20px; }
+.description-html :deep(ul) { padding-left: 20px; }
+.description-html :deep(li) { margin-bottom: 4px; }
+.description-html :deep(p) { margin: 4px 0; }
+
+.quill-editor-wrapper {
+  width: 100%;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.quill-editor-wrapper :deep(.ql-toolbar) {
+  border-radius: 4px 4px 0 0;
+  background: #fafafa;
+}
+.quill-editor-wrapper :deep(.ql-container) {
+  border-radius: 0 0 4px 4px;
+  font-size: 14px;
 }
 
 @media (max-width: 768px) {
