@@ -195,6 +195,10 @@ public class VideoServiceImpl implements VideoService {
         if (request.getStatus() != null) {
             video.setStatus(request.getStatus());
         }
+        if (request.getChapterId() != null) {
+            assertChapterBelongsToCourse(request.getChapterId(), video.getCourseId());
+            video.setChapterId(request.getChapterId());
+        }
 
         video.setUpdatedAt(LocalDateTime.now());
         // P2: @Version 由 MyBatis-Plus 乐观锁插件自动处理

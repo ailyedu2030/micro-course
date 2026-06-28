@@ -154,8 +154,8 @@
         <el-form-item label="标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入视频标题" />
         </el-form-item>
-        <el-form-item label="所属课程" prop="courseId" v-if="!courseIdFromRoute">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="!!courseIdFromRoute">
+        <el-form-item label="所属课程" prop="courseId" v-if="!isContextualMode || isEdit">
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="isContextualMode || isEdit">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -423,8 +423,9 @@ const handleEdit = async (row) => {
   formData.courseId = row.courseId
   formData.chapterId = row.chapterId
   formData.sortOrder = row.sortOrder || 0
-  if (chapterOptions.value.length === 0 && row.courseId) {
-    await handleCourseChange(row.courseId)
+  await handleCourseChange(row.courseId)
+  if (row.chapterId && !chapterOptions.value.find(c => c.id === row.chapterId)) {
+    formData.chapterId = null
   }
   dialogVisible.value = true
 }
@@ -449,7 +450,7 @@ const handleSubmit = async () => {
     submitLoading.value = true
     try {
       if (isEdit.value) {
-        await updateVideo(currentId.value, { title: formData.title, sortOrder: formData.sortOrder })
+        await updateVideo(currentId.value, { title: formData.title, sortOrder: formData.sortOrder, chapterId: formData.chapterId })
         ElMessage.success('编辑成功')
       } else {
         await createVideo({ title: formData.title, chapterId: formData.chapterId, courseId: formData.courseId, sortOrder: formData.sortOrder })
