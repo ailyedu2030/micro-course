@@ -45,7 +45,7 @@
           <template #default="{ row }">
             <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
             <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="success" size="small">练习</el-tag>
-            <el-tag v-else-if="row.chapterType === 'MIXED'" type="warning" size="small">混合</el-tag>
+            <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">互动课件</el-tag>
             <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
           </template>
         </el-table-column>
@@ -89,8 +89,8 @@
         <el-form-item label="类型" prop="chapterType">
           <el-select v-model="formData.chapterType" placeholder="请选择类型" class="full-width">
             <el-option label="视频" value="VIDEO" />
+            <el-option label="互动课件" value="INTERACTIVE" />
             <el-option label="练习" value="EXERCISE" />
-            <el-option label="混合" value="MIXED" />
           </el-select>
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">

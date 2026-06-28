@@ -121,12 +121,12 @@
           <template #empty><el-empty description="暂无章节" /></template>
           <el-table-column type="index" label="#" width="60" align="center" />
           <el-table-column prop="title" label="章节标题" min-width="180" show-overflow-tooltip />
-          <el-table-column label="内容类型" width="110" align="center">
+          <el-table-column label="内容形式" width="120" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频课</el-tag>
-              <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">互动课</el-tag>
-              <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="warning" size="small">练习</el-tag>
-              <el-tag v-else type="info" size="small">未设置</el-tag>
+              <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">📹 视频课</el-tag>
+              <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">🎯 互动课</el-tag>
+              <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="warning" size="small">📝 练习</el-tag>
+              <el-tag v-else type="info" size="small">—</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="内容状态" width="100" align="center">
@@ -196,11 +196,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="课程类型">
-              <el-select v-model="formData.courseType" placeholder="请选择" class="full-width">
-                <el-option label="视频课程" value="VIDEO" />
-                <el-option label="互动课程" value="INTERACTIVE" />
-              </el-select>
+            <el-form-item label="价格(¥)">
+              <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=免费" class="full-width" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -233,27 +230,21 @@
     </el-card>
 
     <!-- 章节弹窗 -->
-    <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="500px" @close="handleChapterDialogClose" :close-on-press-escape="true">
+    <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="480px" @close="handleChapterDialogClose" :close-on-press-escape="true">
       <el-form ref="chapterFormRef" :model="chapterFormData" :rules="chapterFormRules" label-width="80px">
         <el-form-item label="章节标题" prop="title">
-          <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 导论" />
+          <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 环境搭建" />
         </el-form-item>
-        <el-form-item label="内容类型" prop="chapterType">
-          <el-select v-model="chapterFormData.chapterType" placeholder="选择内容类型" class="full-width" @change="onChapterTypeChange">
-            <el-option label="📹 视频课程" value="VIDEO">
-              <span>📹 视频课程</span>
-            </el-option>
-            <el-option label="🎯 互动课件" value="INTERACTIVE">
-              <span>🎯 互动课件</span>
-            </el-option>
-            <el-option label="📝 随堂练习" value="EXERCISE">
-              <span>📝 随堂练习</span>
-            </el-option>
+        <el-form-item label="内容形式" prop="chapterType">
+          <el-select v-model="chapterFormData.chapterType" placeholder="选择本章节的内容形式" class="full-width">
+            <el-option label="📹 视频讲解" value="VIDEO" />
+            <el-option label="🎯 互动课件" value="INTERACTIVE" />
+            <el-option label="📝 随堂练习" value="EXERCISE" />
           </el-select>
-          <div class="form-tip" style="margin-top:6px">
-            <template v-if="chapterFormData.chapterType === 'VIDEO'">学生点击后播放教学视频，支持上传 MP4 或 HLS 流</template>
-            <template v-else-if="chapterFormData.chapterType === 'INTERACTIVE'">学生点击后进入互动课件，支持 PPT 导入 + AI 配音</template>
-            <template v-else-if="chapterFormData.chapterType === 'EXERCISE'">学生点击后进入练习题，支持单选/多选/填空/主观题</template>
+          <div class="form-tip" style="margin-top:4px">
+            <template v-if="chapterFormData.chapterType === 'VIDEO'">学生点击后进入视频播放器，教师需上传教学视频</template>
+            <template v-else-if="chapterFormData.chapterType === 'INTERACTIVE'">学生点击后进入互动课件，教师需导入 PPT 并编辑</template>
+            <template v-else-if="chapterFormData.chapterType === 'EXERCISE'">学生点击后开始答题，教师需提前创建练习题</template>
           </div>
         </el-form-item>
         <el-row :gutter="20">

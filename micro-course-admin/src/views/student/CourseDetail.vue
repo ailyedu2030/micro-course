@@ -145,9 +145,10 @@
                     <template #title>
                       <span class="outline-idx">{{ idx + 1 }}</span>
                       <span class="outline-title">{{ ch.title }}</span>
-                      <el-tag v-if="ch.chapterType === 'VIDEO'" size="small" type="primary" effect="plain">视频</el-tag>
-                      <el-tag v-else-if="ch.chapterType === 'EXERCISE'" size="small" type="success" effect="plain">练习</el-tag>
-                      <el-tag v-else size="small" type="info" effect="plain">{{ ch.chapterType }}</el-tag>
+                      <el-tag v-if="ch.chapterType === 'VIDEO'" size="small" type="primary" effect="plain">📹 视频课</el-tag>
+                      <el-tag v-else-if="ch.chapterType === 'INTERACTIVE'" size="small" type="success" effect="plain">🎯 互动课</el-tag>
+                      <el-tag v-else-if="ch.chapterType === 'EXERCISE'" size="small" type="warning" effect="plain">📝 练习</el-tag>
+                      <el-tag v-else size="small" type="info" effect="plain">—</el-tag>
                       <span class="outline-duration">{{ formatDuration(ch.duration) }}</span>
                     </template>
                     <p v-if="ch.description" class="outline-desc">{{ ch.description }}</p>
@@ -419,7 +420,13 @@ function handleAddCart() {
 }
 
 const handleChapterClick = (row) => {
-  router.push(row.chapterType === 'EXERCISE' ? `/student/chapters/${row.id}/exercises` : `/student/learning?courseId=${courseId.value}&chapterId=${row.id}`)
+  if (row.chapterType === 'EXERCISE') {
+    router.push(`/student/chapters/${row.id}/exercises`)
+  } else if (row.chapterType === 'INTERACTIVE' || course.value.courseType === 'INTERACTIVE') {
+    router.push(`/student/courses/${courseId.value}/slides/player`)
+  } else {
+    router.push(`/student/learning?courseId=${courseId.value}&chapterId=${row.id}`)
+  }
 }
 const goLogin = () => router.push({ path: '/login', query: { redirect: route.fullPath } })
 const goLearn = () => { router.push(isInteractive.value ? `/student/courses/${courseId.value}/slides/player` : `/student/learning?courseId=${courseId.value}`) }

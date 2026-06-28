@@ -184,20 +184,12 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="课程类型">
-              <el-select v-model="formData.courseType" placeholder="请选择" class="full-width">
-                <el-option label="视频课程" value="VIDEO" />
-                <el-option label="互动课程" value="INTERACTIVE" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
             <el-form-item label="价格(¥)">
               <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=免费" class="full-width" />
             </el-form-item>
           </el-col>
+        </el-row>
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="课程封面">
               <template v-if="!coverPreviewUrl">
