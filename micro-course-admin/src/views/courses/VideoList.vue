@@ -58,7 +58,7 @@
                 <el-button type="success" size="small" :disabled="!searchForm.courseId || !searchForm.chapterId">{{ isContextualMode ? '上传本章节视频' : '批量上传视频' }}</el-button>
               </el-tooltip>
             </el-upload>
-            <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">新增视频</el-button>
+            <el-button type="primary" v-if="(userRole === 'TEACHER' || userRole === 'ADMIN') && !isContextualMode" @click="handleCreate">新增视频</el-button>
           </div>
         </div>
       </template>
