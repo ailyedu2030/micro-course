@@ -23,6 +23,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.listener.UserBatchImportListener;
 import com.microcourse.repository.ClassesRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MajorRepository;
@@ -68,6 +69,7 @@ public class UserServiceImpl implements UserService {
     private final MajorRepository majorRepository;
     private final ClassesRepository classesRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final CourseRepository courseRepository;
     private final RedisUtil redisUtil;
     private final OperationLogService operationLogService;
 
@@ -80,6 +82,7 @@ public class UserServiceImpl implements UserService {
                            MajorRepository majorRepository,
                            ClassesRepository classesRepository,
                            EnrollmentRepository enrollmentRepository,
+                           CourseRepository courseRepository,
                            RedisUtil redisUtil,
                            OperationLogService operationLogService,
                            @Lazy UserServiceImpl self) {
@@ -89,6 +92,7 @@ public class UserServiceImpl implements UserService {
         this.majorRepository = majorRepository;
         this.classesRepository = classesRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.courseRepository = courseRepository;
         this.redisUtil = redisUtil;
         this.operationLogService = operationLogService;
         this.self = self;
@@ -113,8 +117,33 @@ public class UserServiceImpl implements UserService {
         wrapper.eq(query.getDepartmentId() != null, User::getDepartmentId, query.getDepartmentId());
         wrapper.eq(query.getMajorId() != null, User::getMajorId, query.getMajorId());
         wrapper.eq(query.getClassId() != null, User::getClassId, query.getClassId());
-        // TEACHER 角色过滤：仅返回任课学生
-        if (query.getInUserIds() != null && !query.getInUserIds().isEmpty()) {
+        // TEACHER 角色过滤：仅返回任课学生（Service 层防御深度）
+        // Controller 层通过 query.inUserIds 设置过滤；此段作为服务层兜底
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            java.util.List<Long> scopeUserIds = query.getInUserIds();
+            if (scopeUserIds == null || scopeUserIds.isEmpty()) {
+                // 调用方未设置范围 — 内部计算
+                Long tid = SecurityUtil.getCurrentUserId();
+                scopeUserIds = courseRepository.selectList(
+                    new LambdaQueryWrapper<com.microcourse.entity.Course>()
+                        .eq(com.microcourse.entity.Course::getTeacherId, tid)
+                        .isNull(com.microcourse.entity.Course::getDeletedAt)
+                        .select(com.microcourse.entity.Course::getId)
+                ).stream().map(com.microcourse.entity.Course::getId).collect(java.util.stream.Collectors.toList());
+                if (!scopeUserIds.isEmpty()) {
+                    scopeUserIds = enrollmentRepository.selectList(
+                        new LambdaQueryWrapper<com.microcourse.entity.Enrollment>()
+                            .in(com.microcourse.entity.Enrollment::getCourseId, scopeUserIds)
+                            .isNull(com.microcourse.entity.Enrollment::getDeletedAt)
+                            .select(com.microcourse.entity.Enrollment::getUserId)
+                    ).stream().map(com.microcourse.entity.Enrollment::getUserId).distinct().collect(java.util.stream.Collectors.toList());
+                }
+            }
+            if (scopeUserIds == null || scopeUserIds.isEmpty()) {
+                scopeUserIds = java.util.Collections.singletonList(-1L);
+            }
+            wrapper.in(User::getId, scopeUserIds);
+        } else if (query.getInUserIds() != null && !query.getInUserIds().isEmpty()) {
             wrapper.in(User::getId, query.getInUserIds());
         }
         wrapper.isNull(User::getDeletedAt);

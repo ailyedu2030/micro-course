@@ -7,6 +7,7 @@ import com.microcourse.dto.R;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.LearningProgressService;
+import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -56,7 +57,7 @@ public class LearningProgressController {
         Long currentUserId = getCurrentUserId();
         Long targetUserId = (userId != null) ? userId : currentUserId;
         // IDOR: 非本人且非 ADMIN 时，TEACHER 需校验课程归属，否则拒绝
-        if (!currentUserId.equals(targetUserId) && !hasRole("ADMIN")) {
+        if (!currentUserId.equals(targetUserId) && !SecurityUtil.isAdmin()) {
             if (hasRole("TEACHER")) {
                 learningProgressService.assertTeacherOwnsCourse(currentUserId, courseId);
             } else {
@@ -99,7 +100,7 @@ public class LearningProgressController {
             @RequestParam(required = false) Long courseId) {
         Long currentUserId = getCurrentUserId();
         // IDOR: 非本人且非 ADMIN 时，TEACHER 需校验课程归属，否则拒绝
-        if (!currentUserId.equals(userId) && !hasRole("ADMIN")) {
+        if (!currentUserId.equals(userId) && !SecurityUtil.isAdmin()) {
             if (hasRole("TEACHER") && courseId != null) {
                 learningProgressService.assertTeacherOwnsCourse(currentUserId, courseId);
             } else {

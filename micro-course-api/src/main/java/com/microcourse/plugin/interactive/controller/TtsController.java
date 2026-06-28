@@ -81,7 +81,7 @@ public class TtsController {
     }
 
     private void verifyAccess(Long courseId) {
-        if (SecurityUtil.hasRole("ADMIN") || SecurityUtil.hasRole("ACADEMIC")) return;
+        if (SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC")) return;
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
 

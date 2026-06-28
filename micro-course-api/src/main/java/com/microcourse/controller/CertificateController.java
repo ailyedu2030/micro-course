@@ -42,7 +42,7 @@ public class CertificateController {
         CertificateVO cert = certificateService.getById(id);
         Long certUserId = cert.getUserId();
         Long currentUserId = SecurityUtil.getCurrentUserId();
-        if (!Objects.equals(certUserId, currentUserId) && !SecurityUtil.hasRole("ADMIN")) {
+        if (!Objects.equals(certUserId, currentUserId) && !SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         return R.ok(cert);
@@ -54,7 +54,7 @@ public class CertificateController {
         CertificateVO cert = certificateService.getById(id);
         Long certUserId = cert.getUserId();
         Long currentUserId = SecurityUtil.getCurrentUserId();
-        if (!Objects.equals(certUserId, currentUserId) && !SecurityUtil.hasRole("ADMIN")) {
+        if (!Objects.equals(certUserId, currentUserId) && !SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         byte[] pdfBytes = certificateService.generateCertificatePdf(id);

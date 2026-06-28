@@ -320,7 +320,7 @@ const size = ref(20)
 const searchForm = reactive({
   keyword: '',
   role: '',
-  status: null
+  status: ''
 })
 
 // 导入相关
@@ -377,7 +377,7 @@ function handleSearch() {
 function handleReset() {
   searchForm.keyword = ''
   searchForm.role = ''
-  searchForm.status = null
+  searchForm.status = ''
   page.value = 1
   fetchData()
 }

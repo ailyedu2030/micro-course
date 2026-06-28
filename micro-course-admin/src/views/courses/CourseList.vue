@@ -531,32 +531,33 @@ const goWorkspace = (row) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitLoading.value = true
-    try {
-      // 1. 先创建课程
-      const res = await createCourse(formData)
-      const newCourseId = res?.data?.id
-      // 2. 如果有封面，立即上传
-      if (newCourseId && coverFile.value) {
-        try {
-          await updateCourseCover(newCourseId, coverFile.value)
-          ElMessage.success('创建成功，封面已上传')
-        } catch {
-          ElMessage.warning('课程已创建，但封面上传失败，请稍后到编辑页重试')
-        }
-      } else {
-        ElMessage.success('创建成功')
+  try {
+    await formRef.value.validate()
+  } catch {
+    return // 校验不通过
+  }
+  submitLoading.value = true
+  try {
+    const res = await createCourse(formData)
+    const newCourseId = res?.data?.id
+    if (newCourseId && coverFile.value) {
+      try {
+        await updateCourseCover(newCourseId, coverFile.value)
+        ElMessage.success('创建成功，封面已上传')
+      } catch {
+        ElMessage.warning('课程已创建，但封面上传失败，请稍后到编辑页重试')
       }
-      dialogVisible.value = false
-      fetchData()
-    } catch {
-      ElMessage.error('创建失败')
-    } finally {
-      submitLoading.value = false
+    } else {
+      ElMessage.success('创建成功')
     }
-  })
+    dialogVisible.value = false
+    fetchData()
+  } catch {
+    ElMessage.error('创建失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
 }
 
 const handleDialogClose = () => {

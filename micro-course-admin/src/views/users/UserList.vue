@@ -123,7 +123,7 @@
         <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="danger" link size="small" @click="handleSoftDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -896,14 +896,15 @@ const handleToggleStatus = async (row, newStatus) => {
   }
 }
 
-const handleDelete = async (row) => {
+const handleSoftDelete = async (row) => {
+  const actionText = row.status === 3 ? '恢复' : '删除'
   try {
-    await ElMessageBox.confirm('确定删除该用户？', '提示', { type: 'warning' })
-    await updateUserStatus(row.id, { status: 3 })
-    ElMessage.success('删除成功')
+    await ElMessageBox.confirm(`确定${actionText}该用户？`, '提示', { type: 'warning' })
+    await updateUserStatus(row.id, { status: row.status === 3 ? 1 : 3 })
+    ElMessage.success(`${actionText}成功`)
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') ElMessage.error(`${actionText}失败`)
   }
 }
 
