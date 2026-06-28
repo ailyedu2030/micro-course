@@ -117,7 +117,7 @@
             <el-button v-if="userRole !== 'ACADEMIC'" type="primary" size="small" @click="handleCreateChapter">新增章节</el-button>
           </div>
         </template>
-        <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe>
+        <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe row-key="id">
           <template #empty><el-empty description="暂无章节" /></template>
           <el-table-column type="index" label="#" width="60" align="center" />
           <el-table-column prop="title" label="章节标题" min-width="180" show-overflow-tooltip />
@@ -484,12 +484,15 @@ const handleChapterSubmit = async () => {
   try { await chapterFormRef.value.validate() } catch { return }
   chapterSubmitLoading.value = true
   try {
-    const payload = { ...chapterFormData, courseId: Number(courseId.value) }
-    if (isChapterEdit.value) await updateChapter(currentChapterId.value, payload)
-    else await createChapter(payload)
+    if (isChapterEdit.value) {
+      const { title, sortOrder, chapterType, duration } = chapterFormData
+      await updateChapter(currentChapterId.value, { title, sortOrder, chapterType, duration: duration || 0 })
+    } else {
+      await createChapter({ ...chapterFormData, courseId: Number(courseId.value) })
+    }
     ElMessage.success(isChapterEdit.value ? '更新成功' : '创建成功')
     chapterDialogVisible.value = false
-    fetchChapters()
+    await fetchChapters()
   } catch { ElMessage.error('操作失败') }
   finally { chapterSubmitLoading.value = false }
 }

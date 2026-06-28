@@ -112,6 +112,7 @@ import { getCourses } from '@/api/course'
 
 const loading = ref(false)
 const saving = ref(false)
+const userStore = useUserStore()
 const bundles = ref([])
 const page = ref(0)
 const size = ref(20)
@@ -164,7 +165,7 @@ const handleSave = async () => {
   }
   saving.value = true
   try {
-    await createBundle({ title: formData.value.title, description: formData.value.description, price: formData.value.price, isFree: !formData.value.price })
+    await createBundle({ title: formData.value.title, description: formData.value.description, price: formData.value.price, isFree: !formData.value.price, creatorId: userStore.userId })
     ElMessage.success('创建成功')
     dialogVisible.value = false
     fetchBundles()
@@ -188,7 +189,6 @@ const openDetail = async (row) => {
   try {
     const { data } = await getBundleById(row.id)
     bundleItems.value = data.items || []
-    const userStore = useUserStore()
     const params = { size: 200 }
     if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
     const { data: coursesData } = await getCourses(params)

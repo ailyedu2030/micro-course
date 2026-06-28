@@ -201,6 +201,7 @@ const formData = reactive({
   name: '',
   teacherId: null,
   semester: '',
+  schedule: '',
   maxStudents: 30,
   location: '',
   classSchedules: []

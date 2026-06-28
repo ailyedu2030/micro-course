@@ -101,8 +101,7 @@ const formRef = ref(null)
 
 const formData = reactive({
   name: '',
-  color: '#409eff',
-  description: ''
+  color: '#409eff'
 })
 
 const formRules = {

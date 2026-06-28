@@ -116,14 +116,13 @@ const parentName = ref('')
 const formData = reactive({
   parentId: null,
   name: '',
-  code: '',
-  sortOrder: 0,
-  description: ''
+  level: 1,
+  sortOrder: 0
 })
 
 const formRules = {
   name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入分类编码', trigger: 'blur' }]
+  level: [{ required: true, message: '请选择层级', trigger: 'change' }]
 }
 
 const fetchData = async () => {
