@@ -359,7 +359,11 @@ const handleCreate = () => {
   isEdit.value = false
   formData.title = ''
   formData.categoryId = ''
-  formData.teacherId = userStore.role === 'TEACHER' ? userStore.userId : ''
+  // TEACHER 自动填自己；ADMIN/ACADEMIC 用一个特殊标记
+  // 后端要求 teacherId 非 null，el-select 接受 undefined 占位
+  formData.teacherId = userStore.role === 'TEACHER' && userStore.userId
+    ? Number(userStore.userId)
+    : undefined
   formData.description = ''
   formData.creditHours = 1
   formData.semester = ''
