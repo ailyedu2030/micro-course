@@ -151,10 +151,23 @@ public class UserServiceImpl implements UserService {
                 .collect(Collectors.toList());
 
         // 列表端脱敏（/api/users 端点）
+        // R12 数据隔离分级：校内透明、跨级隔离
+        //   - ADMIN / ACADEMIC：完整（学院管理需要）
+        //   - TEACHER：完整（任课管理需要）
+        //   - 当前用户本人：完整
+        //   - 其他（学生看学生等）：脱敏
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        boolean canSeeReal = SecurityUtil.isAdmin()
+                || SecurityUtil.hasRole("ACADEMIC")
+                || SecurityUtil.hasRole("TEACHER");
         vos.forEach(vo -> {
-            vo.setRealName(maskRealName(vo.getRealName()));
-            vo.setEmail(maskEmail(vo.getEmail()));
-            vo.setPhone(maskPhone(vo.getPhone()));
+            if (canSeeReal || (currentUserId != null && currentUserId.equals(vo.getId()))) {
+                // 完整字段，不脱敏
+            } else {
+                vo.setRealName(maskRealName(vo.getRealName()));
+                vo.setEmail(maskEmail(vo.getEmail()));
+                vo.setPhone(maskPhone(vo.getPhone()));
+            }
         });
 
 
@@ -175,17 +188,21 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         UserVO vo = convertToVO(user);
-        // 权限脱敏：非本人且非管理员时，敏感字段掩码处理
-        if (!SecurityUtil.isOwnerOrAdmin(id)) {
+        // R12 数据隔离分级：
+        //   - 校内管理岗（ADMIN/ACADEMIC/TEACHER）：完整可见（学号/工号/手机/邮箱）
+        //   - 本人：完整可见
+        //   - 其他（如学生查学生）：姓名/手机/邮箱脱敏
+        boolean canSeeReal = SecurityUtil.isAdmin()
+                || SecurityUtil.hasRole("ACADEMIC")
+                || SecurityUtil.hasRole("TEACHER")
+                || SecurityUtil.isOwnerOrAdmin(id);
+        if (!canSeeReal) {
             vo.setRealName(maskRealName(vo.getRealName()));
             vo.setEmail(maskEmail(vo.getEmail()));
             vo.setPhone(maskPhone(vo.getPhone()));
-            // Round 11-1 数据隔离：学号/工号属强标识字段。ACADEMIC（教务）因学籍管理职责保留可见，
-            // 其余角色（如 TEACHER）查看他人时一律隐藏，防止跨角色越权关联学生身份。
-            if (!SecurityUtil.hasRole("ACADEMIC")) {
-                vo.setStudentNo(null);
-                vo.setTeacherNo(null);
-            }
+            // 学号/工号属强标识字段，非校内管理岗查看他人时一律隐藏
+            vo.setStudentNo(null);
+            vo.setTeacherNo(null);
         }
         return vo;
     }

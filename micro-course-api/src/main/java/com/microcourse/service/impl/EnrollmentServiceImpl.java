@@ -757,11 +757,15 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         vo.setUserId(user.getId());
         vo.setUsername(user.getUsername());
         vo.setRealName(user.getRealName());
-        // Round 11-1 数据隔离：敏感字段按角色脱敏。
-        //   - ADMIN / 本人：完整手机/邮箱（运营与自查需要）；
-        //   - TEACHER / ACADEMIC：脱敏（合规要求，仅保留可识别片段）。
-        // 姓名/班级/专业保持完整，教师管理学员体验零退化。
-        if (SecurityUtil.isOwnerOrAdmin(user.getId())) {
+        // R12 数据隔离分级：校内透明、严格隔离
+        //   - 校内管理岗（ADMIN / ACADEMIC / TEACHER）：完整（教学管理需要）
+        //   - 本人：完整（自查需要）
+        //   - 其他角色（如 STUDENT 查 STUDENT）：脱敏
+        boolean canSeeReal = SecurityUtil.isAdmin()
+                || SecurityUtil.hasRole("ACADEMIC")
+                || SecurityUtil.hasRole("TEACHER")
+                || SecurityUtil.isOwnerOrAdmin(userId);
+        if (canSeeReal) {
             vo.setEmail(user.getEmail());
             vo.setPhone(user.getPhone());
         } else {
