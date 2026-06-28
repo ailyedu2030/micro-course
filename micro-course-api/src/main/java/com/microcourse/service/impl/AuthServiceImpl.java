@@ -808,7 +808,11 @@ public class AuthServiceImpl implements AuthService {
         vo.setEnrollmentYear(user.getEnrollmentYear());
         vo.setStudentNo(user.getStudentNo());
         vo.setTeacherNo(user.getTeacherNo());
+        vo.setGraduationYear(user.getGraduationYear());
+        vo.setPoliticalStatus(user.getPoliticalStatus());
+        vo.setCasBound(user.getCasBound());
         vo.setStatus(user.getStatus());
+        vo.setTeacherStatus(user.getTeacherStatus());
         vo.setLastLoginAt(user.getLastLoginAt());
         vo.setCreatedAt(user.getCreatedAt());
         return vo;

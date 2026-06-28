@@ -94,7 +94,7 @@ public class EnrollmentController {
 
     /** P1-1: 收紧权限仅 TEACHER/ADMIN；P1-2: 返回分页结果 */
     @GetMapping("/course/{courseId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<EnrollmentVO>> getCourseEnrollments(
             @PathVariable Long courseId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
@@ -109,7 +109,7 @@ public class EnrollmentController {
 
     /** P0-2: 获取学员详情（关联 users + classes + majors） */
     @GetMapping("/student-detail/{userId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<StudentDetailVO> getStudentDetail(@PathVariable Long userId) {
         // R12 P1-C-4: TEACHER 仅能查询自己课程中的学生
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {

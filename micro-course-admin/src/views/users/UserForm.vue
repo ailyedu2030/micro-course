@@ -437,7 +437,20 @@ const studyYearsHint = computed(() => {
   if (years <= 0) return ''
   return `${years} 年制`
 })
-watch(() => formData.role, (newRole) => {
+watch(() => formData.role, (newRole, oldRole) => {
+  // 角色切换时清除上一角色的专属字段
+  if (oldRole) {
+    if (oldRole !== 'STUDENT') {
+      formData.studentNo = ''
+      formData.grade = ''
+      formData.enrollmentYear = ''
+      formData.graduationYear = ''
+    }
+    if (oldRole !== 'TEACHER' && oldRole !== 'ACADEMIC') {
+      formData.teacherNo = ''
+      formData.teacherStatus = null
+    }
+  }
   if (newRole === 'STUDENT' && formData.enrollmentYear) {
     formData.grade = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
   }
