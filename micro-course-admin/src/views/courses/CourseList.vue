@@ -252,8 +252,8 @@ const formRef = ref(null)
 
 const formData = reactive({
   title: '',
-  categoryId: '',
-  teacherId: '',
+  categoryId: null,
+  teacherId: null,
   description: '',
   creditHours: 1,
   semester: '',
@@ -299,7 +299,7 @@ const fetchData = async () => {
     teacherName: searchForm.teacherName || undefined,
     status: searchForm.status !== '' ? searchForm.status : undefined,
     // 教师自动过滤为自己的课程
-    teacherId: userStore.role === 'TEACHER' ? userStore.userId : undefined
+    teacherId: userStore.role === 'TEACHER' ? userStore.userId : null
   }
   // P2-17: SWR 模式 — 如果有缓存数据立即显示（无 loading），后台刷新
   const cacheKey = `courses:${JSON.stringify(params)}`
@@ -387,12 +387,10 @@ const handleCreate = () => {
   dialogTitle.value = '新增课程'
   isEdit.value = false
   formData.title = ''
-  formData.categoryId = ''
-  // TEACHER 自动填自己；ADMIN/ACADEMIC 用一个特殊标记
-  // 后端要求 teacherId 非 null，el-select 接受 undefined 占位
+  formData.categoryId = null
   formData.teacherId = userStore.role === 'TEACHER' && userStore.userId
     ? Number(userStore.userId)
-    : undefined
+    : null
   formData.description = ''
   formData.creditHours = 1
   formData.semester = ''
@@ -557,7 +555,6 @@ const handleSubmit = async () => {
   } finally {
     submitLoading.value = false
   }
-}
 }
 
 const handleDialogClose = () => {
