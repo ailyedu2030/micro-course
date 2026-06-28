@@ -156,9 +156,10 @@
       <template #footer>
         <div class="dialog-footer">
           <el-progress
-            v-if="!isEdit && submitProgress > 0 && submitProgress < 100"
+            v-if="!isEdit && submitProgress > 0"
             :percentage="submitProgress"
             :stroke-width="4"
+            :status="submitProgress >= 100 ? 'success' : ''"
             class="footer-progress"
           />
           <div class="footer-buttons">
@@ -402,6 +403,8 @@ const handleSubmit = async () => {
       if (isEdit.value) {
         await updateVideo(currentId.value, { title: formData.title, sortOrder: formData.sortOrder, chapterId: formData.chapterId })
         ElMessage.success('编辑成功')
+        dialogVisible.value = false
+        fetchData()
       } else {
         // P1-C 修复: 新增视频 = 选文件+创建记录,调用 /api/videos/upload 一次完成
         const fd = new FormData()
@@ -414,10 +417,12 @@ const handleSubmit = async () => {
           }
         }
         await uploadVideo(fd, onProgress)
+        // 让用户看到 100% 完成状态再关闭
+        await new Promise(r => setTimeout(r, 800))
         ElMessage.success('创建成功')
+        dialogVisible.value = false
+        fetchData()
       }
-      dialogVisible.value = false
-      fetchData()
     } catch (e) {
       // P1-C 修复: 显示真实错误而不是通用"创建失败"
       const msg = e?.response?.data?.message || e?.message || (isEdit.value ? '编辑失败' : '创建失败')
