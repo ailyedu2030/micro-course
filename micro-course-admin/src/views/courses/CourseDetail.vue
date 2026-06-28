@@ -427,7 +427,8 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     await updateCourse(courseId.value, {
-      title: formData.title, categoryId: formData.categoryId, description: formData.description,
+      title: formData.title, categoryId: formData.categoryId, teacherId: formData.teacherId,
+      description: formData.description,
       creditHours: formData.creditHours, semester: formData.semester || undefined,
       difficulty: formData.difficulty, courseType: formData.courseType,
       price: formData.price, isFree: formData.isFree

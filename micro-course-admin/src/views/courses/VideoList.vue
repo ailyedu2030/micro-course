@@ -225,14 +225,12 @@ const formData = reactive({
   title: '',
   courseId: null,
   chapterId: null,
-  sortOrder: 0,
-  url: ''
+  sortOrder: 0
 })
 
 const formRules = {
   title: [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
-  courseId: [{ required: true, message: '请选择所属课程', trigger: 'change' }],
-  url: [{ required: true, message: '请输入视频URL', trigger: 'blur' }]
+  courseId: [{ required: true, message: '请选择所属课程', trigger: 'change' }]
 }
 
 const uploadQueue = ref([])
@@ -420,10 +418,10 @@ const handleSubmit = async () => {
     submitLoading.value = true
     try {
       if (isEdit.value) {
-        await updateVideo(currentId.value, formData)
+        await updateVideo(currentId.value, { title: formData.title, sortOrder: formData.sortOrder })
         ElMessage.success('编辑成功')
       } else {
-        await createVideo(formData)
+        await createVideo({ title: formData.title, chapterId: formData.chapterId, courseId: formData.courseId, sortOrder: formData.sortOrder })
         ElMessage.success('创建成功')
       }
       dialogVisible.value = false

@@ -8,13 +8,13 @@
 
 ## 总览
 
-- ✅ 前后端匹配: 107 字段
+- ✅ 前后端匹配: 106 字段
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 14 字段
 
-- 后端实体字段总数: 1586
+- 后端实体字段总数: 1588
 
-- 前端引用字段总数: 343
+- 前端引用字段总数: 338
 
 
 ## ⚠️ 前端孤儿字段
@@ -647,7 +647,7 @@
 
 | FrontendError | /api/frontend-errors | 1 | - |
 
-| Grade | /api/grades | 9 | - |
+| Grade | /api/grades | 10 | - |
 
 | LearningProgress | /api/learning-progress | 8 | - |
 
@@ -922,7 +922,7 @@
 
 | Notification | 11 | 0 |
 
-| NotificationCreateRequest | 6 | 0 |
+| NotificationCreateRequest | 8 | 0 |
 
 | NotificationPreference | 8 | 0 |
 

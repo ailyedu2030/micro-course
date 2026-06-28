@@ -34,7 +34,7 @@ async function handleUpload(file) {
   const fd = new FormData()
   fd.append('file', file)
   fd.append('courseId', String(props.courseId))
-  fd.append('lessonId', String(props.lessonId))
+  fd.append('chapterId', String(props.lessonId))
   try {
     const res = await request({
       method: 'POST',

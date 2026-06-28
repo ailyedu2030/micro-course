@@ -928,7 +928,6 @@ async function doSubmit() {
   try {
     const { data } = await submitExerciseRecord({
       exerciseId: currentExercise.value.id,
-      userId,
       answers: answerList,
       duration,
       attemptNo: attemptNo.value

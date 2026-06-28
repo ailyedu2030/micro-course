@@ -868,7 +868,6 @@ const handleDialogSave = async () => {
     if (formData.departmentId !== '' && formData.departmentId !== null) submitData.departmentId = Number(formData.departmentId)
     if (formData.majorId !== '' && formData.majorId !== null) submitData.majorId = Number(formData.majorId)
     if (formData.classId !== '' && formData.classId !== null) submitData.classId = Number(formData.classId)
-    if (formData.teacherStatus !== null && formData.teacherStatus !== '') submitData.teacherStatus = Number(formData.teacherStatus)
     // 状态字段（不能禁用自己）
     if (formData.id !== userStore.userId) {
       submitData.status = Number(formData.status)
@@ -988,7 +987,7 @@ watch(teacherApprovalVisible, (val) => {
 // 通过教师
 const handleApproveTeacher = async (row) => {
   try {
-    await updateTeacherStatus(row.id, { teacherStatus: 1 })
+    await updateTeacherStatus(row.id, { teacherStatus: 1, reason: '' })
     ElMessage.success(`教师 ${row.realName} 审核通过`)
     loadPendingTeachers()
   } catch {
@@ -999,7 +998,7 @@ const handleApproveTeacher = async (row) => {
 // 驳回教师
 const handleRejectTeacher = async (row) => {
   try {
-    await updateTeacherStatus(row.id, { teacherStatus: 2 })
+    await updateTeacherStatus(row.id, { teacherStatus: 2, reason: '' })
     ElMessage.success(`教师 ${row.realName} 已驳回`)
     loadPendingTeachers()
   } catch {

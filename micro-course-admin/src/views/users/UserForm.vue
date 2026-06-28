@@ -514,6 +514,8 @@ const handleSubmit = async () => {
     submitLoading.value = true
     try {
       const submitData = { ...formData }
+      delete submitData.teacherStatus
+      delete submitData.avatar
       if (isEdit.value) {
         delete submitData.username
         delete submitData.password

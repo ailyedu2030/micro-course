@@ -545,7 +545,20 @@ const handleSubmit = async () => {
   }
   submitLoading.value = true
   try {
-    const res = await createCourse(formData)
+    const res = await createCourse({
+      title: formData.title,
+      categoryId: formData.categoryId,
+      teacherId: formData.teacherId,
+      subtitle: formData.subtitle || '',
+      summary: formData.summary || '',
+      description: formData.description || '',
+      coverUrl: formData.coverUrl || '',
+      semester: formData.semester || '',
+      difficulty: formData.difficulty,
+      courseType: formData.courseType || 'VIDEO',
+      creditHours: formData.creditHours || 0,
+      price: formData.price || 0
+    })
     const newCourseId = res?.data?.id
     if (newCourseId && coverFile.value) {
       try {
