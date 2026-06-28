@@ -174,7 +174,7 @@ import { loadAuthImage, clearImageCache } from '@/utils/authImage'
 import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loading, RefreshRight, PictureFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
-const courseId = computed(() => route.params.id)
+const courseId = computed(() => route.params.courseId)
 
 const pages = ref([])
 const current = ref(0)

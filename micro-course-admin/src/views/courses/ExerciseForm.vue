@@ -206,7 +206,8 @@ const submitLoading = ref(false)
 const courseOptions = ref([])
 const chapterOptions = ref([])
 const exerciseQuestions = ref([])
-const exerciseId = computed(() => route.params.id)
+const courseIdFromRoute = computed(() => route.params.courseId)
+const exerciseId = computed(() => route.query.exerciseId)
 const isEdit = computed(() => !!exerciseId.value)
 
 const formData = reactive({
@@ -434,6 +435,10 @@ const fetchExercise = async () => {
 }
 
 onMounted(() => {
+  if (courseIdFromRoute.value) {
+    formData.courseId = Number(courseIdFromRoute.value)
+    handleCourseChange(formData.courseId)
+  }
   fetchCourseOptions()
   if (isEdit.value) {
     fetchExercise()

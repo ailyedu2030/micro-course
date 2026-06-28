@@ -8,6 +8,6 @@ export function getCheckInStreak() {
   return request({ method: 'GET', url: '/check-ins/streak' })
 }
 
-export function createCheckIn(data) {
-  return request({ method: 'POST', url: '/check-ins', data })
+export function createCheckIn() {
+  return request({ method: 'POST', url: '/check-ins' })
 }

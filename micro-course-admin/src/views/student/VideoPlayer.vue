@@ -603,8 +603,8 @@ const videoContainerRef = ref(null)
 const progressTrack = ref(null)
 
 // Route params
-const videoId = computed(() => route.params.id)
-const courseId = computed(() => route.query.courseId)
+const videoId = computed(() => route.params.videoId || route.query.videoId)
+const courseId = computed(() => route.params.id || route.query.courseId)
 const chapterId = computed(() => route.query.chapterId)
 
 // State

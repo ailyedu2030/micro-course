@@ -148,7 +148,7 @@
           </el-table-column>
         </el-table>
         <div v-if="chapters.length > 0" class="sort-bar">
-          <el-button type="warning" size="small" @click="handleSaveSort">保存排序</el-button>
+          <el-button type="warning" size="small" :loading="saveSortLoading" @click="handleSaveSort">保存排序</el-button>
         </div>
       </el-card>
     </template>
@@ -312,6 +312,7 @@ const coverFile = ref(null)
 // ===== 章节 =====
 const chapterLoading = ref(false)
 const chapterSubmitLoading = ref(false)
+const saveSortLoading = ref(false)
 const chapters = ref([])
 const chapterDialogVisible = ref(false)
 const chapterDialogTitle = ref('新增章节')
@@ -470,9 +471,12 @@ const handleDeleteChapter = async (row) => {
   catch { ElMessage.error('删除失败') }
 }
 const handleSaveSort = async () => {
-  const ids = chapters.value.map((c) => c.id)
-  try { await sortChapters(ids); ElMessage.success('排序已保存'); fetchChapters() }
+  if (saveSortLoading.value) return
+  saveSortLoading.value = true
+  const sorts = chapters.value.map((c, i) => ({ id: c.id, sortOrder: i + 1 }))
+  try { await sortChapters(sorts); ElMessage.success('排序已保存'); fetchChapters() }
   catch { ElMessage.error('保存排序失败') }
+  finally { saveSortLoading.value = false }
 }
 const handleChapterSubmit = async () => {
   if (!chapterFormRef.value) return

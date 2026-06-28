@@ -176,7 +176,7 @@ import SlidePreview from '@/plugins/interactive/components/SlidePreview.vue'
 import { loadAuthImage, clearImageCache } from '@/utils/authImage'
 
 const route = useRoute()
-const courseId = computed(() => route.params.id)
+const courseId = computed(() => route.params.courseId)
 
 const slide = ref(null)
 const pages = ref([])

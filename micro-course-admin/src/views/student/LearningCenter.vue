@@ -1009,7 +1009,7 @@ async function checkTodayStatus() {
 async function doCheckIn() {
   checkInLoading.value = true
   try {
-    await createCheckIn({})
+    await createCheckIn()
     checkedInToday.value = true
     ElMessage.success('打卡成功！')
   } catch (e) {
