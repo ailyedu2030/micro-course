@@ -151,15 +151,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
-          <div class="quill-editor-wrapper">
-            <QuillEditor
-              v-model:content="formData.description"
-              contentType="html"
-              toolbar="essential"
-              placeholder="请输入课程描述..."
-              :style="{ minHeight: '150px' }"
-            />
-          </div>
+          <el-input v-model="formData.description" type="textarea" :autosize="{ minRows: 4, maxRows: 10 }" placeholder="请输入课程描述" />
         </el-form-item>
         <el-form-item label="学分" prop="creditHours">
           <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
@@ -224,8 +216,6 @@ import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Plus } from '@element-plus/icons-vue'
 import * as XLSX from 'xlsx'
-import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useUserStore } from '@/store/user'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover } from '@/api/course'
 import { getCategories } from '@/api/course-category'
