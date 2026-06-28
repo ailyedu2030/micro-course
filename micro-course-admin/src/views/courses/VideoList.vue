@@ -14,7 +14,7 @@
         <el-breadcrumb-item v-if="isContextualMode">{{ chapterTitle || '章节视频' }}</el-breadcrumb-item>
         <el-breadcrumb-item v-else>视频管理</el-breadcrumb-item>
         <el-breadcrumb-item v-if="isContextualMode">
-          <el-link type="primary" :underline="false" :to="{ path: `/courses/${courseIdFromRoute}` }">
+          <el-link type="primary" :underline="'never'" :to="{ path: `/courses/${courseIdFromRoute}` }">
             ← 返回课程
           </el-link>
         </el-breadcrumb-item>
