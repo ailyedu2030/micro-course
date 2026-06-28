@@ -321,6 +321,9 @@ public class CourseServiceImpl implements CourseService {
         }
         if (query.getStatus() != null) {
             wrapper.eq(Course::getStatus, query.getStatus());
+        } else {
+            // 默认排除已删除（CLOSED）和已归档（ARCHIVED）的课程
+            wrapper.notIn(Course::getStatus, List.of(CourseStatus.CLOSED.getCode(), CourseStatus.ARCHIVED.getCode()));
         }
         if (query.getRecommended() != null) {
             wrapper.eq(Course::getIsRecommended, query.getRecommended());
