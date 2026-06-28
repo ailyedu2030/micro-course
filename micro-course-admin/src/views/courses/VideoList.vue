@@ -6,10 +6,19 @@
 -->
 <template>
   <div class="video-list-page">
+    <!-- 课程上下文头部 -->
+    <div v-if="courseIdFromRoute && courseTitle" class="course-context">
+      <el-breadcrumb separator="→">
+        <el-breadcrumb-item :to="{ path: '/courses' }">课程管理</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: `/courses/${courseIdFromRoute}` }">{{ courseTitle }}</el-breadcrumb-item>
+        <el-breadcrumb-item>视频管理</el-breadcrumb-item>
+      </el-breadcrumb>
+    </div>
+
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="所属课程">
+        <el-form-item label="所属课程" v-if="!courseIdFromRoute">
           <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200" @change="handleCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
@@ -82,6 +91,7 @@
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
         <el-table-column prop="courseName" label="所属课程" min-width="120" />
+        <el-table-column prop="chapterName" label="所属章节" min-width="120" show-overflow-tooltip />
         <el-table-column label="封面" width="90" align="center">
           <template #default="{ row }">
             <el-image
@@ -138,19 +148,18 @@
         <el-form-item label="标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入视频标题" />
         </el-form-item>
-        <el-form-item label="所属课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width">
+        <el-form-item label="所属课程" prop="courseId" v-if="!courseIdFromRoute">
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="!!courseIdFromRoute">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="章节ID" prop="chapterId">
-          <el-input v-model="formData.chapterId" placeholder="请输入章节ID" type="number" />
+        <el-form-item label="所属章节" prop="chapterId">
+          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width">
+            <el-option v-for="item in chapterOptions" :key="item.id" :label="item.title" :value="item.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
           <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
-        </el-form-item>
-        <el-form-item label="视频URL" prop="url">
-          <el-input v-model="formData.url" placeholder="请输入视频URL" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -195,7 +204,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo } from '@/api/video'
-import { getCourses } from '@/api/course'
+import { getCourses, getCourseById } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getToken } from '@/utils/auth'
 
@@ -212,6 +221,7 @@ const page = ref(1)
 const size = ref(10)
 const courseOptions = ref([])
 const chapterOptions = ref([])
+const courseTitle = ref('')
 
 const searchForm = reactive({
   courseId: '',
@@ -233,7 +243,8 @@ const formData = reactive({
 
 const formRules = {
   title: [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
-  courseId: [{ required: true, message: '请选择所属课程', trigger: 'change' }]
+  courseId: courseIdFromRoute.value ? [] : [{ required: true, message: '请选择所属课程', trigger: 'change' }],
+  chapterId: [{ required: true, message: '请选择所属章节', trigger: 'change' }]
 }
 
 const uploadQueue = ref([])
@@ -290,12 +301,16 @@ const handleSearch = () => {
 }
 
 const handleReset = () => {
-  searchForm.courseId = ''
+  searchForm.courseId = courseIdFromRoute.value ? Number(courseIdFromRoute.value) : ''
   searchForm.chapterId = ''
   chapterOptions.value = []
   page.value = 1
   tableData.value = []
   totalElements.value = 0
+  if (searchForm.courseId) {
+    handleCourseChange(searchForm.courseId)
+    fetchData()
+  }
 }
 
 const handleSizeChange = () => {
@@ -388,7 +403,7 @@ const handleCreate = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑视频'
   isEdit.value = true
   currentId.value = row.id
@@ -396,6 +411,9 @@ const handleEdit = (row) => {
   formData.courseId = row.courseId
   formData.chapterId = row.chapterId
   formData.sortOrder = row.sortOrder || 0
+  if (chapterOptions.value.length === 0 && row.courseId) {
+    await handleCourseChange(row.courseId)
+  }
   dialogVisible.value = true
 }
 
@@ -476,11 +494,15 @@ const handlePreviewCover = (row) => {
 }
 
 onMounted(() => {
-  fetchCourses().then(() => {
+  fetchCourses().then(async () => {
     const cid = courseIdFromRoute.value
     if (cid) {
+      try {
+        const { data } = await getCourseById(Number(cid))
+        courseTitle.value = data?.title || ''
+      } catch {}
       searchForm.courseId = Number(cid)
-      handleCourseChange(Number(cid))
+      await handleCourseChange(Number(cid))
       fetchData()
     }
   })
@@ -501,6 +523,10 @@ onUnmounted(() => {
   min-height: 100dvh;
   max-width: 1440px;
   margin: 0 auto;
+}
+
+.course-context {
+  margin-bottom: var(--space-4);
 }
 
 .filter-card {
