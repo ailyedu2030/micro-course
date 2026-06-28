@@ -109,6 +109,10 @@ public class UserServiceImpl implements UserService {
         wrapper.eq(query.getDepartmentId() != null, User::getDepartmentId, query.getDepartmentId());
         wrapper.eq(query.getMajorId() != null, User::getMajorId, query.getMajorId());
         wrapper.eq(query.getClassId() != null, User::getClassId, query.getClassId());
+        // TEACHER 角色过滤：仅返回任课学生
+        if (query.getInUserIds() != null && !query.getInUserIds().isEmpty()) {
+            wrapper.in(User::getId, query.getInUserIds());
+        }
         wrapper.isNull(User::getDeletedAt);
         wrapper.orderByDesc(User::getCreatedAt);
 

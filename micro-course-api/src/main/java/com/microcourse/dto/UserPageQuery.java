@@ -11,6 +11,10 @@ public class UserPageQuery {
     private Long departmentId;
     private Long majorId;
     private Long classId;
+    /** TEACHER 角色时，仅返回该教师的任课学生 */
+    private Long teacherId;
+    /** 仅返回指定用户 ID 集合（与 teacherId 互斥） */
+    private java.util.List<Long> inUserIds;
     private int page;
     private int size;
 
@@ -30,6 +34,10 @@ public class UserPageQuery {
     public void setMajorId(Long majorId) { this.majorId = majorId; }
     public Long getClassId() { return classId; }
     public void setClassId(Long classId) { this.classId = classId; }
+    public Long getTeacherId() { return teacherId; }
+    public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
+    public java.util.List<Long> getInUserIds() { return inUserIds; }
+    public void setInUserIds(java.util.List<Long> inUserIds) { this.inUserIds = inUserIds; }
     public int getPage() { return page; }
     public void setPage(int page) { this.page = page; }
     public int getSize() { return size; }
