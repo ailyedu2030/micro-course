@@ -492,7 +492,8 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException(ErrorCode.COURSE_TEACHER_NOT_FOUND);
         }
 
-        String courseType = request.getCourseType() != null ? request.getCourseType() : "VIDEO";
+        String courseType = request.getCourseType() != null && !request.getCourseType().isBlank()
+            ? request.getCourseType().trim() : "VIDEO";
         if (!"VIDEO".equals(courseType)) {
             if (!pluginRegistry.isEnabled(courseType)) {
                 throw new BusinessException(ErrorCode.PLUGIN_NOT_ENABLED);
