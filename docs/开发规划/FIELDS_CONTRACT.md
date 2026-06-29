@@ -663,7 +663,7 @@
 
 | MicroSpecialtyFeatured | /api/micro-specialties | 6 | - |
 
-| MicroSpecialtyProposal | /api/micro-specialty-proposals | 7 | - |
+| MicroSpecialtyProposal | /api/micro-specialty-proposals | 10 | - |
 
 | MicroSpecialtyTeacher | /api/micro-specialty-teachers | 7 | - |
 
