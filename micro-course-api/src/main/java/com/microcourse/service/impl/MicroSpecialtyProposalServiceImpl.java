@@ -274,6 +274,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         if (request.getPrerequisites() != null) proposal.setPrerequisites(request.getPrerequisites());
         if (request.getSemester() != null) proposal.setSemester(request.getSemester());
         if (request.getMaxStudents() != null) proposal.setMaxStudents(request.getMaxStudents());
+        if (request.getOfferDepartmentId() != null) proposal.setOfferDepartmentId(request.getOfferDepartmentId());
 
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.updateById(proposal);
