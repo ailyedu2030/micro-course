@@ -50,6 +50,11 @@
               <el-input-number v-model="form.maxStudents" :min="1" :max="10000" class="full-width" />
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="总学分">
+              <el-input-number v-model="form.credits" :min="0" :max="100" :precision="1" class="full-width" />
+            </el-form-item>
+          </el-col>
         </el-row>
       </el-form>
     </el-card>
@@ -77,7 +82,7 @@ const submitting = ref(false)
 const formRef = ref(null)
 const form = ref({
   title: '', description: '', offerDepartmentId: null,
-  trainingObjective: '', semester: '', prerequisites: '', maxStudents: null
+  trainingObjective: '', semester: '', prerequisites: '', maxStudents: null, credits: null
 })
 const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
