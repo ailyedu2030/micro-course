@@ -97,6 +97,7 @@ jobs:
 
       - name: Upload JAR
         uses: actions/upload-artifact@v5
+        continue-on-error: true
         with:
           name: backend-jar
           path: micro-course-api/target/*.jar
@@ -132,6 +133,7 @@ jobs:
 
       - name: Upload dist
         uses: actions/upload-artifact@v5
+        continue-on-error: true
         with:
           name: frontend-dist
           path: micro-course-admin/dist
