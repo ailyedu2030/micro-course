@@ -122,9 +122,11 @@
         <!-- 操作按钮 -->
         <div class="edit-submit-bar">
           <el-button @click="closeEditor">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleSubmitEdit">
-            {{ editorMode === 'resubmit' ? '重新提交' : '保存' }}
-          </el-button>
+          <template v-if="editorMode === 'edit'">
+            <el-button type="primary" :loading="submitting" @click="handleSaveOnly">保存</el-button>
+            <el-button type="success" :loading="submittingResubmit" @click="handleSaveAndResubmit">保存并重新提交</el-button>
+          </template>
+          <el-button v-else type="primary" :loading="submitting" @click="handleSubmitEdit">重新提交</el-button>
         </div>
       </div>
     </template>
@@ -149,6 +151,7 @@ const total = ref(0)
 
 const editingRow = ref(null)
 const submitting = ref(false)
+const submittingResubmit = ref(false)
 const editorFormRef = ref(null)
 const editorForm = ref({})
 const editorMode = ref('edit')
@@ -209,11 +212,35 @@ const handleSubmitEdit = async () => {
   try { await editorFormRef.value.validate() } catch { return }
   submitting.value = true
   try {
-    if (editorMode.value === 'edit') { await updateProposal(editingRow.value.id, editorForm.value); ElMessage.success('已保存') }
-    else { await resubmitProposal(editingRow.value.id, editorForm.value); ElMessage.success('已重新提交') }
+    await resubmitProposal(editingRow.value.id, editorForm.value)
+    ElMessage.success('已重新提交')
     closeEditor(); fetchData()
   } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { submitting.value = false }
+}
+
+const handleSaveOnly = async () => {
+  if (!editorFormRef.value) return
+  try { await editorFormRef.value.validate() } catch { return }
+  submitting.value = true
+  try {
+    await updateProposal(editingRow.value.id, editorForm.value)
+    ElMessage.success('已保存')
+    closeEditor(); fetchData()
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  finally { submitting.value = false }
+}
+
+const handleSaveAndResubmit = async () => {
+  if (!editorFormRef.value) return
+  try { await editorFormRef.value.validate() } catch { return }
+  submittingResubmit.value = true
+  try {
+    await resubmitProposal(editingRow.value.id, editorForm.value)
+    ElMessage.success('已保存并重新提交')
+    closeEditor(); fetchData()
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  finally { submittingResubmit.value = false }
 }
 
 const handleDelete = async (row) => {
