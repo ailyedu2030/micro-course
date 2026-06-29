@@ -123,7 +123,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         ms.setSemester(proposal.getSemester());
         ms.setMaxStudents(proposal.getMaxStudents());
         ms.setLeadTeacherId(proposal.getProposerId());
-        ms.setStatus("PENDING_REVIEW");
+        ms.setStatus("APPROVED");
         ms.setCreatorId(SecurityUtil.getCurrentUserId());
         ms.setCreatedAt(LocalDateTime.now());
         ms.setUpdatedAt(LocalDateTime.now());
