@@ -29,20 +29,22 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
+        // R8 修复：Element Plus 内部循环依赖，拆分多chunk导致加载顺序错误
+        // Cannot access 'V' before initialization → 合并为单个vendor-el
         manualChunks(id) {
-          // R8 修复：Element Plus 内部循环依赖，拆分多chunk导致加载顺序错误
-          // Cannot access 'V' before initialization → 合并为单个vendor-el
-          if (id.includes('node_modules/element-plus/es') || id.includes('node_modules/@element-plus/icons-vue')) {
+          if (id.includes('node_modules/element-plus/es') || id.includes('node_modules/@element-plus/icons-vue')
+              || id.includes('node_modules/element-plus/theme')) {
             return 'vendor-el'
           }
           if (id.includes('node_modules/xlsx')) return 'vendor-xlsx'
           if (id.includes('node_modules/@vueuse')) return 'vendor-vueuse'
           if (id.includes('node_modules/axios')) return 'vendor-axios'
+          if (id.includes('node_modules/vue-router') || id.includes('node_modules/pinia') || id.includes('node_modules/vue')) return 'vendor-vue-core'
           // 视频播放器 lazy-load: 仅观看视频时加载
           if (id.includes('VideoPlayer.vue') || id.includes('video.js') || id.includes('hls.js')) return 'vendor-video-player'
         },
       }
     },
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 1000,
   }
 })
