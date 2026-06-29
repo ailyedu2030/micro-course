@@ -94,6 +94,10 @@ class GradeFlowIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("教师不可批改不属于自己课程的学生的成绩 — 403 阻断")
     void teacherGradeOtherTeacherCourse_forbidden() throws Exception {
+        // P1-C 修复: 创建用户99确保UserStatusCheckFilter通过(否则status=DELETED->401)
+        jdbc.update("INSERT INTO users (id, username, password, real_name, role, status, cas_bound, created_at, updated_at) " +
+                "VALUES (99, 'otherTeacher', '$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK', " +
+                "'其他教师', 'TEACHER', 1, false, now(), now()) ON CONFLICT (id) DO NOTHING");
         String studentToken = jwtUtil.generateToken(STUDENT_ID, "student", UserRole.STUDENT, 1L);
         String teacherBToken = jwtUtil.generateToken(99L, "otherTeacher", UserRole.TEACHER, 1L);
 
