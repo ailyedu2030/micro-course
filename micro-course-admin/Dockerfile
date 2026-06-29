@@ -1,8 +1,17 @@
+# Build stage: npm ci + vite build (自给自足, 不依赖外部 dist artifact)
+FROM node:24-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Runtime: nginx serve static files
 FROM nginx:1.27-alpine
 RUN addgroup -S microcourse && adduser -S microcourse -G microcourse
 RUN rm -rf /usr/share/nginx/html/*
-COPY dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
 RUN chown -R microcourse:microcourse /usr/share/nginx/html /var/cache/nginx /var/run && \
     chmod -R 755 /usr/share/nginx/html && \
     sed -i 's/^user  nginx;/user  microcourse;/' /etc/nginx/nginx.conf
