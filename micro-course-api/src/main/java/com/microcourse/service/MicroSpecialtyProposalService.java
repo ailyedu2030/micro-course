@@ -30,4 +30,13 @@ public interface MicroSpecialtyProposalService {
 
     /** 重提申报（REJECTED → PENDING_REVIEW，本人操作） */
     void resubmitProposal(Long proposalId, MicroSpecialtyProposalRequest request);
+
+    /** 获取申报详情 */
+    MicroSpecialtyProposalRequest getProposal(Long proposalId);
+
+    /** 编辑申报（仅 WITHDRAWN 状态） */
+    void updateProposal(Long proposalId, MicroSpecialtyProposalRequest request);
+
+    /** 删除申报（仅 WITHDRAWN 状态） */
+    void deleteProposal(Long proposalId);
 }

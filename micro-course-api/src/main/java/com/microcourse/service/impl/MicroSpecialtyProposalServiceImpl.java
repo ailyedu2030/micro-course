@@ -232,4 +232,68 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.updateById(proposal);
     }
+
+    @Override
+    public MicroSpecialtyProposalRequest getProposal(Long proposalId) {
+        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+        if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!proposal.getProposerId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        MicroSpecialtyProposalRequest vo = new MicroSpecialtyProposalRequest();
+        vo.setTitle(proposal.getTitle());
+        vo.setDescription(proposal.getDescription());
+        vo.setTrainingObjective(proposal.getTrainingObjective());
+        vo.setPrerequisites(proposal.getPrerequisites());
+        vo.setSemester(proposal.getSemester());
+        vo.setMaxStudents(proposal.getMaxStudents());
+        return vo;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateProposal(Long proposalId, MicroSpecialtyProposalRequest request) {
+        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+        if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!proposal.getProposerId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        if (!"WITHDRAWN".equals(proposal.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已撤回状态可编辑");
+        }
+
+        if (request.getTitle() != null) proposal.setTitle(request.getTitle());
+        if (request.getDescription() != null) proposal.setDescription(request.getDescription());
+        if (request.getTrainingObjective() != null) proposal.setTrainingObjective(request.getTrainingObjective());
+        if (request.getPrerequisites() != null) proposal.setPrerequisites(request.getPrerequisites());
+        if (request.getSemester() != null) proposal.setSemester(request.getSemester());
+        if (request.getMaxStudents() != null) proposal.setMaxStudents(request.getMaxStudents());
+
+        proposal.setUpdatedAt(LocalDateTime.now());
+        proposalRepository.updateById(proposal);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteProposal(Long proposalId) {
+        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+        if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (!proposal.getProposerId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        if (!"WITHDRAWN".equals(proposal.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已撤回状态可删除");
+        }
+
+        proposalRepository.deleteById(proposalId);
+    }
 }

@@ -89,4 +89,28 @@ public class MicroSpecialtyProposalController {
         proposalService.resubmitProposal(id, request);
         return R.ok();
     }
+
+    /** 获取申报详情 */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public R<?> getProposal(@PathVariable Long id) {
+        return R.ok(proposalService.getProposal(id));
+    }
+
+    /** 编辑申报 (仅 WITHDRAWN 状态可编辑) */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public R<Void> updateProposal(@PathVariable Long id,
+                                   @Valid @RequestBody MicroSpecialtyProposalRequest request) {
+        proposalService.updateProposal(id, request);
+        return R.ok();
+    }
+
+    /** 删除申报 (仅 WITHDRAWN 状态可删除) */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('TEACHER')")
+    public R<Void> deleteProposal(@PathVariable Long id) {
+        proposalService.deleteProposal(id);
+        return R.ok();
+    }
 }

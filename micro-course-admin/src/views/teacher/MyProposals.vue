@@ -48,6 +48,10 @@
             <template v-else-if="row.status === 'PENDING_REVIEW'">
               <el-button size="small" type="danger" @click="handleWithdraw(row)">撤回</el-button>
             </template>
+            <template v-else-if="row.status === 'WITHDRAWN'">
+              <el-button size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
+              <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            </template>
             <span v-else class="no-action">-</span>
           </template>
         </el-table-column>
@@ -83,7 +87,7 @@
       </el-form>
       <template #footer>
         <el-button @click="editVisible = false">取消</el-button>
-        <el-button type="primary" :loading="resubmitting" @click="handleResubmit">重新提交</el-button>
+        <el-button type="primary" :loading="resubmitting" @click="handleSubmitEdit">{{ isEditOnly ? '保存' : '重新提交' }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -92,7 +96,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getMyProposals, withdrawProposal, resubmitProposal } from '@/api/microSpecialty'
+import { getMyProposals, withdrawProposal, resubmitProposal, updateProposal, deleteProposal } from '@/api/microSpecialty'
 
 const loading = ref(false)
 const error = ref(false)
@@ -140,16 +144,35 @@ const handleEdit = (row) => {
   editingId.value = row.id
   editForm.value = { title: row.title, description: row.description, trainingObjective: row.trainingObjective, semester: row.semester }
   editVisible.value = true
+  isEditOnly.value = row.status === 'WITHDRAWN'
 }
 const resetEditForm = () => { editFormRef.value?.clearValidate() }
 
-const handleResubmit = async () => {
+const isEditOnly = ref(false)
+
+const handleSubmitEdit = async () => {
   if (!editFormRef.value) return
   try { await editFormRef.value.validate() } catch { return }
   resubmitting.value = true
-  try { await resubmitProposal(editingId.value, editForm.value); ElMessage.success('已重新提交'); editVisible.value = false; fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '提交失败') }
+  try {
+    if (isEditOnly.value) {
+      await updateProposal(editingId.value, editForm.value)
+      ElMessage.success('已保存')
+    } else {
+      await resubmitProposal(editingId.value, editForm.value)
+      ElMessage.success('已重新提交')
+    }
+    editVisible.value = false; fetchData()
+  }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { resubmitting.value = false }
+}
+
+const handleDelete = async (row) => {
+  try { await ElMessageBox.confirm('确定删除该申报？删除后不可恢复。', '确认', { type: 'warning' }) }
+  catch { return }
+  try { await deleteProposal(row.id); ElMessage.success('已删除'); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
 }
 
 onMounted(fetchData)

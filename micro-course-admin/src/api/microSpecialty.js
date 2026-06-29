@@ -155,6 +155,18 @@ export function resubmitProposal(id, data) {
   return request({ method: 'POST', url: `/micro-specialty-proposals/${id}/resubmit`, data })
 }
 
+export function updateProposal(id, data) {
+  return request({ method: 'PUT', url: `/micro-specialty-proposals/${id}`, data })
+}
+
+export function deleteProposal(id) {
+  return request({ method: 'DELETE', url: `/micro-specialty-proposals/${id}` })
+}
+
+export function getProposal(id) {
+  return request({ method: 'GET', url: `/micro-specialty-proposals/${id}` })
+}
+
 // ========== 教师邀请 ==========
 export function getPendingInvites(params) {
   return request({ method: 'GET', url: '/micro-specialty-teachers/pending-invites', params })
