@@ -27,6 +27,9 @@ public class MicroSpecialtyProgressAggregator {
     private static final Logger log = LoggerFactory.getLogger(MicroSpecialtyProgressAggregator.class);
     private static final int BATCH_SIZE = 100;
 
+    // CON-002 修复: 防止定时任务重叠执行
+    private volatile boolean running = false;
+
     private final MicroSpecialtyEnrollmentRepository enrollmentRepository;
     private final MicroSpecialtyEnrollmentService enrollmentService;
     private final MicroSpecialtyRepository msRepository;
@@ -49,6 +52,20 @@ public class MicroSpecialtyProgressAggregator {
      */
     @Scheduled(cron = "0 0 2 * * ?")
     public void aggregateAll() {
+        // CON-002 修复: 防止重叠执行
+        if (running) {
+            log.warn("[MS-Progress] 上一轮聚合仍在执行，跳过本轮");
+            return;
+        }
+        running = true;
+        try {
+            doAggregateAll();
+        } finally {
+            running = false;
+        }
+    }
+
+    private void doAggregateAll() {
         log.info("[MS-Progress] 开始聚合微专业进度");
 
         long offset = 0;
@@ -67,6 +84,7 @@ public class MicroSpecialtyProgressAggregator {
 
             if (batch.isEmpty()) break;
 
+            Set<Long> batchIds = new HashSet<>();
             for (MicroSpecialtyEnrollment en : batch) {
                 try {
                     // 首次处理 APPROVED → 自动转为 IN_PROGRESS（version 乐观锁）
@@ -85,18 +103,20 @@ public class MicroSpecialtyProgressAggregator {
                     if (en.getMicroSpecialtyId() != null) {
                         affectedMsIds.add(en.getMicroSpecialtyId());
                     }
-
-                    // 检查是否刚完成
-                    MicroSpecialtyEnrollment updated = enrollmentRepository.selectById(en.getId());
-                    if (updated != null) {
-                        if ("COMPLETED".equals(updated.getStatus())) completed++;
-                        if ("FAILED".equals(updated.getStatus())) {
-                            failed++;
-                            // notification handled by aggregateProgress internally
-                        }
-                    }
+                    batchIds.add(en.getId());
                 } catch (Exception e) {
-                    log.warn("[MS-Progress] 聚合失败 enrollmentId={}: {}", en.getId(), e.getMessage());
+                    // ERR-002 修复: 异常升级为 error 日志 + count 追踪
+                    failed++;
+                    log.error("[MS-Progress] 聚合失败 enrollmentId={}: {}", en.getId(), e.getMessage(), e);
+                }
+            }
+
+            // RES-003 修复: 批量查询替代 N+1 逐条 selectById
+            if (!batchIds.isEmpty()) {
+                List<MicroSpecialtyEnrollment> updatedBatch = enrollmentRepository.selectBatchIds(batchIds);
+                for (MicroSpecialtyEnrollment updated : updatedBatch) {
+                    if ("COMPLETED".equals(updated.getStatus())) completed++;
+                    if ("FAILED".equals(updated.getStatus())) failed++;
                 }
             }
 
@@ -116,7 +136,8 @@ public class MicroSpecialtyProgressAggregator {
                         .set(MicroSpecialty::getStudentCount, count.intValue());
                 msRepository.update(null, uw);
             } catch (Exception e) {
-                log.warn("[MS-Progress] student_count recalibration failed msId={}: {}", msId, e.getMessage());
+                // ERR-002 修复: 异常升级为 error 日志
+                log.error("[MS-Progress] student_count recalibration failed msId={}: {}", msId, e.getMessage(), e);
             }
         }
 

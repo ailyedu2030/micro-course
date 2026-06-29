@@ -355,10 +355,10 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         }
 
         if (request.getTitle() != null) {
-            post.setTitle(request.getTitle());
+            post.setTitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getTitle()));
         }
         if (request.getContent() != null) {
-            post.setContent(request.getContent());
+            post.setContent(com.microcourse.util.XssSanitizer.sanitize(request.getContent()));
         }
         if (request.getIsAnonymous() != null) {
             post.setIsAnonymous(request.getIsAnonymous());

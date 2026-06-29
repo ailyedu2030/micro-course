@@ -646,7 +646,9 @@ public class UserServiceImpl implements UserService {
 
     /** P0-2: 预加载所有院系 name → id 映射 */
     private Map<String, Long> buildDepartmentNameMap() {
-        List<Department> all = departmentRepository.selectList(null);
+        // RES-004 修复: 添加 LIMIT 防止未来数据增长导致 OOM
+        List<Department> all = departmentRepository.selectList(
+                new LambdaQueryWrapper<Department>().last("LIMIT 10000"));
         Map<String, Long> map = new HashMap<>();
         for (Department d : all) {
             map.put(d.getName(), d.getId());
@@ -656,7 +658,8 @@ public class UserServiceImpl implements UserService {
 
     /** P0-2: 预加载所有专业 name → id 映射 */
     private Map<String, Long> buildMajorNameMap() {
-        List<Major> all = majorRepository.selectList(null);
+        List<Major> all = majorRepository.selectList(
+                new LambdaQueryWrapper<Major>().last("LIMIT 10000"));
         Map<String, Long> map = new HashMap<>();
         for (Major m : all) {
             map.put(m.getName(), m.getId());
@@ -666,7 +669,8 @@ public class UserServiceImpl implements UserService {
 
     /** P0-2: 预加载所有班级 name → id 映射 */
     private Map<String, Long> buildClassNameMap() {
-        List<Classes> all = classesRepository.selectList(null);
+        List<Classes> all = classesRepository.selectList(
+                new LambdaQueryWrapper<Classes>().last("LIMIT 10000"));
         Map<String, Long> map = new HashMap<>();
         for (Classes c : all) {
             map.put(c.getName(), c.getId());

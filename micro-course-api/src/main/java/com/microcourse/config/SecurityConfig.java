@@ -103,7 +103,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // login/cas: 公开; refresh: refreshToken 在 body 中作为凭证
                         .requestMatchers("/api/auth/login", "/api/auth/cas", "/api/auth/refresh", "/api/auth/register").permitAll()
-                        .requestMatchers("GET", "/api/admin/stats/health").permitAll()
+                        .requestMatchers("GET", "/api/admin/stats/health").hasAnyRole("ADMIN")
                         // P3-14/P3-15（Round 7-3）：监控端点放行 —— 仅放行 health 与 prometheus 两个具体路径
                         // （收窄白名单，不放行 /actuator/** 通配，避免未来误暴露 env/beans/heapdump 等敏感端点）。
                         // management.endpoints.web.exposure.include 已限定仅暴露 health,info,metrics,prometheus；
@@ -163,10 +163,9 @@ public class SecurityConfig {
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
-        // P1 修复 v1.7.0: 显式声明 BCrypt 强度为 10 (Spring Security 4+ 的默认值,
-        // 但显式写出可避免 JDK/Spring 升级时默认值变更带来的兼容性回归)。
-        // 强度 10 ≈ 2^10 = 1024 轮哈希,~100ms 每次,平衡安全与性能。
-        return new BCryptPasswordEncoder(10);
+        // SEC-006 修复 v1.8.0: BCrypt 强度从 10 提升到 12 (OWASP 2023 建议最小值)
+        // 强度 12 ≈ 2^12 = 4096 轮哈希, ~400ms 每次, 安全性提升 4x, 现代 CPU 可接受
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean

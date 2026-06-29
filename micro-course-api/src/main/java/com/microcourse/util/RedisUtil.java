@@ -1,5 +1,6 @@
 package com.microcourse.util;
 
+import com.microcourse.metrics.RedisMetrics;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
@@ -13,13 +14,23 @@ public class RedisUtil {
     private static final Logger log = LoggerFactory.getLogger(RedisUtil.class);
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisMetrics redisMetrics;
 
-    public RedisUtil(RedisTemplate<String, Object> redisTemplate) {
+    public RedisUtil(RedisTemplate<String, Object> redisTemplate, RedisMetrics redisMetrics) {
         this.redisTemplate = redisTemplate;
+        this.redisMetrics = redisMetrics;
     }
 
+    /** Default TTL for keys without explicit expiration: 1 hour */
+    private static final long DEFAULT_TTL_SECONDS = 3600L;
+
+    /**
+     * @deprecated Use {@link #set(String, Object, long, TimeUnit)} to always specify TTL.
+     *   This overload applies a default 1-hour TTL to prevent unbounded key growth.
+     */
+    @Deprecated
     public void set(String key, Object value) {
-        redisTemplate.opsForValue().set(key, value);
+        redisTemplate.opsForValue().set(key, value, DEFAULT_TTL_SECONDS, TimeUnit.SECONDS);
     }
 
     public void set(String key, Object value, long timeout, TimeUnit unit) {
@@ -60,6 +71,7 @@ public class RedisUtil {
         try {
             return incrementWithExpire("mc:login:lock:" + username, 30 * 60);
         } catch (Exception e) {
+            redisMetrics.recordLoginFailureError();
             log.warn("[Redis] incrLoginFailure 失败，降级处理: {}", e.getMessage());
             return 1L;
         }
@@ -73,6 +85,7 @@ public class RedisUtil {
             Object val = get("mc:login:lock:" + username);
             return val == null ? 0 : Integer.parseInt(val.toString());
         } catch (Exception e) {
+            redisMetrics.recordLoginCheckError();
             log.warn("[Redis] getLoginFailureCount 失败，降级为 0: {}", e.getMessage());
             return 0;
         }
@@ -82,6 +95,7 @@ public class RedisUtil {
         try {
             delete("mc:login:lock:" + username);
         } catch (Exception e) {
+            redisMetrics.recordLoginClearError();
             log.warn("[Redis] clearLoginFailure 失败: {}", e.getMessage());
         }
     }
@@ -93,6 +107,7 @@ public class RedisUtil {
         try {
             set("mc:jwt:blacklist:" + jti, "1", ttlSeconds, TimeUnit.SECONDS);
         } catch (Exception e) {
+            redisMetrics.recordTokenBlacklistError();
             log.warn("[Redis] blacklistToken 失败 jti={}: {}", jti, e.getMessage());
         }
     }
@@ -104,6 +119,7 @@ public class RedisUtil {
         try {
             return hasKey("mc:jwt:blacklist:" + jti);
         } catch (Exception e) {
+            redisMetrics.recordTokenCheckError();
             log.warn("[Redis] isTokenBlacklisted 失败 jti={}，降级为未黑名单: {}", jti, e.getMessage());
             return false;
         }
@@ -115,9 +131,13 @@ public class RedisUtil {
      */
     public String ping() {
         try {
-            redisTemplate.getConnectionFactory().getConnection().ping();
-            return "PONG";
+            // RES-011 修复: 使用 execute(RedisCallback) 由 RedisTemplate 管理连接生命周期，杜绝连接泄漏
+            return redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<String>) connection -> {
+                connection.ping();
+                return "PONG";
+            });
         } catch (Exception e) {
+            redisMetrics.recordPingError();
             log.warn("[RedisUtil] ping failed", e);
             throw e;
         }

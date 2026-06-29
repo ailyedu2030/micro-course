@@ -194,7 +194,7 @@ class UserStatusCheckFilterTest extends BaseIntegrationTest {
     /** 伪造「Redis 故障」的 RedisUtil：读写均抛异常，用于验证 fail-safe 降级 / fail-open 放行。 */
     private static class FailingRedisUtil extends RedisUtil {
         FailingRedisUtil() {
-            super(null); // 不接触真实 RedisTemplate（下述 override 覆盖所有被调用方法）
+            super(null, null); // 不接触真实 RedisTemplate / RedisMetrics（下述 override 覆盖所有被调用方法）
         }
 
         @Override

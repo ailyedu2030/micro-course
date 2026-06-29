@@ -38,6 +38,9 @@ public class OrderController {
     @Value("${payment.callback-secret:}")
     private String payCallbackSecret;
 
+    @Value("${spring.profiles.active:}")
+    private String activeProfiles;
+
     public OrderController(OrderService orderService, ObjectMapper objectMapper) {
         this.orderService = orderService;
         this.objectMapper = objectMapper;
@@ -129,6 +132,12 @@ public class OrderController {
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "签名验证异常");
             }
         } else {
+            // SEC-004 修复: 生产环境拒绝无 secret 的回调
+            boolean isProduction = activeProfiles != null && activeProfiles.contains("prod");
+            if (isProduction) {
+                log.error("[SECURITY] 生产环境 payment.callback-secret 未配置，拒绝支付回调");
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "支付回调密钥未配置");
+            }
             log.warn("⚠️ PAY_CALLBACK_SECRET 未配置！支付回调签名验证已跳过，生产环境请立即配置 payment.callback-secret");
         }
 

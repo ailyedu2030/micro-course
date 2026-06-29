@@ -17,6 +17,9 @@ public class MicroSpecialtyInviteExpiryJob {
 
     private static final Logger log = LoggerFactory.getLogger(MicroSpecialtyInviteExpiryJob.class);
 
+    // CON-009 修复: 防止定时任务重叠执行
+    private volatile boolean running = false;
+
     private final MicroSpecialtyInviteService inviteService;
 
     public MicroSpecialtyInviteExpiryJob(MicroSpecialtyInviteService inviteService) {
@@ -29,12 +32,21 @@ public class MicroSpecialtyInviteExpiryJob {
      */
     @Scheduled(cron = "0 0 * * * ?")
     public void scanExpired() {
+        // CON-009 修复: 防止重叠执行
+        if (running) {
+            log.warn("[MS-InviteExpiry] 上一轮扫描仍在执行，跳过本轮");
+            return;
+        }
+        running = true;
         try {
             log.debug("[MS-InviteExpiry] 开始扫描过期邀请");
             int totalExpired = inviteService.scanExpired();
             log.info("[MS-InviteExpiry] 扫描完成: expired={}", totalExpired);
         } catch (Exception e) {
+            // ERR-002 修复: 异常升级为 error 日志
             log.error("[MS-InviteExpiry] unexpected error during scan: {}", e.getMessage(), e);
+        } finally {
+            running = false;
         }
     }
 }

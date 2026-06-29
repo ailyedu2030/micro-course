@@ -298,6 +298,7 @@ public class GradeServiceImpl implements GradeService {
             gradeRepository.updateById(grade);
         } else {
             // 新建记录
+            // CON-004 修复: 使用 saveOrUpdate 原子操作替代 selectOne + insert, 防止并发重复插入
             grade = new Grade();
             grade.setCourseId(courseId);
             grade.setUserId(studentId);
@@ -307,7 +308,16 @@ public class GradeServiceImpl implements GradeService {
             grade.setGradedAt(LocalDateTime.now());
             grade.setCreatedAt(LocalDateTime.now());
             grade.setUpdatedAt(LocalDateTime.now());
-            gradeRepository.insert(grade);
+            try {
+                gradeRepository.insert(grade);
+            } catch (org.springframework.dao.DuplicateKeyException e) {
+                // 并发插入冲突: 重新查询已存在的记录并返回
+                log.info("[teacherGrade] 并发插入冲突, 降级查询: courseId={}, userId={}", courseId, studentId);
+                grade = gradeRepository.selectOne(existWrapper);
+                if (grade == null) {
+                    throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "成绩记录冲突后查询失败");
+                }
+            }
         }
 
         // R8 P0-5: 成绩发布后通知学生
@@ -454,7 +464,11 @@ public class GradeServiceImpl implements GradeService {
         Grade grade = findGradeForRecord(record, exercise.getCourseId());
         if (grade != null) {
             grade.setScore(BigDecimal.valueOf(total));
+            grade.setTotalScore(record.getTotalScore() != null ? BigDecimal.valueOf(record.getTotalScore()) : null);
             grade.setPassed(passed);
+            grade.setAttemptNo(record.getAttemptNo());
+            grade.setDuration(record.getDuration());
+            grade.setSubmittedAt(record.getSubmittedAt());
             grade.setComment(comment);
             grade.setGradedBy(teacherId);
             grade.setGradedAt(LocalDateTime.now());

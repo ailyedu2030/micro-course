@@ -60,35 +60,51 @@ public class NotificationServiceImpl implements NotificationService {
      * <p>{@code @Async} 在独立线程池（AsyncConfig#taskExecutor）执行，不阻塞主业务事务；
      * {@code @Transactional(propagation = REQUIRES_NEW)} 确保每次通知写入独立提交（E2-3 修复）；
      * 全程 try-catch 兜底，通知持久化失败仅记录日志，绝不向调用方传播异常（异常隔离）。
+     *
+     * ERR-007 修复: @Retryable 与 @Async 不兼容（Spring AOP 代理链在异步线程中不可达）。
+     * 改为在 catch 块中手动重试 2 次（线程内重试，不依赖 AOP）。
      */
     @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    @Retryable(retryFor = {DataAccessException.class}, maxAttempts = 3,
-               backoff = @Backoff(delay = 1000, multiplier = 2))
     @Override
     public void notifyAsync(Long userId, NotificationType type, String title, String content, Long relatedId) {
-        try {
-            if (userId == null || type == null) {
-                log.warn("[Notification] notifyAsync 入参非法,跳过 userId={} type={}", userId, type);
+        int maxRetries = 2;
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                doNotifyAsync(userId, type, title, content, relatedId);
+                return;
+            } catch (org.springframework.dao.DataAccessException e) {
+                if (attempt < maxRetries) {
+                    log.warn("[Notification] 通知写入失败, 第{}次重试 userId={} type={}", attempt + 1, userId, type, e);
+                    try { Thread.sleep(1000L * (attempt + 1)); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+                } else {
+                    log.error("[Notification] 异步通知发送失败（已重试{}次）userId={} type={} relatedId={}", maxRetries, userId, type, relatedId, e);
+                }
+            } catch (Exception e) {
+                log.error("[Notification] 异步通知发送失败 userId={} type={} relatedId={}", userId, type, relatedId, e);
                 return;
             }
-            Notification notification = new Notification();
-            notification.setUserId(userId);
-            notification.setType(type.getCode());
-            notification.setTitle(title);
-            notification.setContent(content);
-            notification.setRelatedId(relatedId);
-            notification.setChannel("SITE");
-            notification.setIsRead(false);
-            LocalDateTime now = LocalDateTime.now();
-            notification.setCreatedAt(now);
-            notification.setUpdatedAt(now);
-            notificationRepository.insert(notification);
-            log.debug("[Notification] 已发送 userId={} type={} relatedId={}", userId, type.getCode(), relatedId);
-        } catch (Exception e) {
-            // 异常隔离：通知失败不得影响主链路（选课/批改/审批）
-            log.error("[Notification] 异步通知发送失败 userId={} type={} relatedId={}", userId, type, relatedId, e);
         }
+    }
+
+    private void doNotifyAsync(Long userId, NotificationType type, String title, String content, Long relatedId) {
+        if (userId == null || type == null) {
+            log.warn("[Notification] notifyAsync 入参非法,跳过 userId={} type={}", userId, type);
+            return;
+        }
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setType(type.getCode());
+        notification.setTitle(title);
+        notification.setContent(content);
+        notification.setRelatedId(relatedId);
+        notification.setChannel("SITE");
+        notification.setIsRead(false);
+        LocalDateTime now = LocalDateTime.now();
+        notification.setCreatedAt(now);
+        notification.setUpdatedAt(now);
+        notificationRepository.insert(notification);
+        log.debug("[Notification] 已发送 userId={} type={} relatedId={}", userId, type.getCode(), relatedId);
     }
 
     @Override

@@ -253,7 +253,12 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         List<Map<String, Object>> result = new ArrayList<>();
 
         // VIDEO_WATCH - count learning_progress records (video watches)
-        Long videoWatchCount = learningProgressRepository.selectCount(null);
+        // RES-015 修复: 限制统计范围为近 365 天 + 排除软删除, 防止全表 COUNT
+        Long videoWatchCount = learningProgressRepository.selectCount(
+                new LambdaQueryWrapper<LearningProgress>()
+                        .ge(LearningProgress::getCreatedAt, java.time.LocalDateTime.now().minusDays(365))
+                        .isNull(LearningProgress::getDeletedAt)
+        );
         Map<String, Object> videoWatch = new LinkedHashMap<>();
         videoWatch.put("type", "VIDEO_WATCH");
         videoWatch.put("count", videoWatchCount);

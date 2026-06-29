@@ -600,7 +600,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 try {
                     certificateService.issueCertificate(enrollment.getUserId(), enrollment.getCourseId());
                 } catch (Exception e) {
-                    log.warn("[Enrollment] 证书自动颁发失败 userId={}, courseId={}", enrollment.getUserId(), enrollment.getCourseId(), e);
+                    // DF-006 修复: 证书颁发失败升级为 ERROR 日志(保留 fail-open 不中断完成流程)
+                    log.error("[Enrollment] 证书自动颁发失败 userId={} courseId={}", enrollment.getUserId(), enrollment.getCourseId(), e);
                 }
                 try {
                     badgeService.checkAndAwardCourseCompletion(
@@ -613,7 +614,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                             .eq(Enrollment::getUserId, enrollment.getUserId())
                                             .eq(Enrollment::getCompleted, true)));
                 } catch (Exception e) {
-                    log.warn("[Enrollment] 徽章自动颁发失败 userId={}, courseId={}", enrollment.getUserId(), enrollment.getCourseId(), e);
+                    log.error("[Enrollment] 徽章自动颁发失败 userId={} courseId={}", enrollment.getUserId(), enrollment.getCourseId(), e);
                 }
             }
         }
@@ -997,7 +998,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         try {
             Course courseForNotify = courseRepository.selectById(courseId);
             if (courseForNotify != null) courseTitle = courseForNotify.getTitle();
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("[notifyNextInQueue] 获取课程标题失败, courseId={}, error={}", courseId, e.getMessage());
+        }
         try {
             notificationService.notifyAsync(
                     next.getUserId(),

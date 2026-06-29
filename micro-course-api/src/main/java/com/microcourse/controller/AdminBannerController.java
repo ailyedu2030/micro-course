@@ -46,6 +46,8 @@ public class AdminBannerController {
         if (image.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片不能为空");
         }
+        // SEC-007 修复: 文件名路径穿越校验
+        com.microcourse.util.FileUploadUtil.assertSafeFilename(image.getOriginalFilename());
         String imageUrl = bannerService.saveBannerImage(image);
         BannerVO banner = bannerService.create(imageUrl, linkUrl, sortOrder, enabled);
         return R.ok(banner);
@@ -60,6 +62,7 @@ public class AdminBannerController {
                               @RequestParam(required = false) Boolean enabled) {
         String imageUrl = null;
         if (image != null && !image.isEmpty()) {
+            com.microcourse.util.FileUploadUtil.assertSafeFilename(image.getOriginalFilename());
             imageUrl = bannerService.saveBannerImage(image);
         }
         BannerVO banner = bannerService.update(id, imageUrl, linkUrl, sortOrder, enabled);

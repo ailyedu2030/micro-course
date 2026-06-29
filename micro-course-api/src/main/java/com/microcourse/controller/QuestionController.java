@@ -90,6 +90,8 @@ public class QuestionController {
         if (file.getSize() > 10 * 1024 * 1024) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件大小不能超过 10MB");
         }
+        // SEC-009 修复: 文件名路径穿越校验
+        com.microcourse.util.FileUploadUtil.assertSafeFilename(file.getOriginalFilename());
         // P1 安全修复: 魔数校验（防御深度，防止 Content-Type 伪造）
         verifyExcelMagic(file);
         String contentType = file.getContentType();

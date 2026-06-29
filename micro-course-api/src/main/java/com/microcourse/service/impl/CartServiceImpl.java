@@ -36,9 +36,13 @@ public class CartServiceImpl implements CartService {
                 .isNull(CartItem::getDeletedAt);
         CartItem existing = cartItemRepository.selectOne(wrapper);
         if (existing != null) {
+            // CON-003 修复: 使用原子 SQL 更新数量, 避免 read-modify-write 竞态
+            cartItemRepository.update(null,
+                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<CartItem>()
+                            .eq(CartItem::getId, existing.getId())
+                            .setSql("quantity = quantity + " + quantity)
+                            .set(CartItem::getUpdatedAt, LocalDateTime.now()));
             existing.setQuantity(existing.getQuantity() + quantity);
-            existing.setUpdatedAt(LocalDateTime.now());
-            cartItemRepository.updateById(existing);
             return existing;
         }
         CartItem item = new CartItem();

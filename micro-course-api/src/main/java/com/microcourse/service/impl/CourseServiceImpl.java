@@ -870,10 +870,11 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        // FK 检查：有选课记录时禁止关闭
+        // FK 检查：有活跃选课记录时禁止关闭 (DF-008 修复: 排除 CANCELLED/WAITLIST)
         long enrollCount = enrollmentRepository.selectCount(
                 new LambdaQueryWrapper<Enrollment>()
-                        .eq(Enrollment::getCourseId, id));
+                        .eq(Enrollment::getCourseId, id)
+                        .notIn(Enrollment::getEnrollmentStatus, "CANCELLED", "WAITLIST"));
         if (enrollCount > 0) {
             throw new BusinessException(ErrorCode.COURSE_HAS_ENROLLMENTS);
         }

@@ -33,6 +33,9 @@ public class JwtUtil {
     @Value("${jwt.refresh-expiration:604800000}")
     private Long refreshExpiration;
 
+    @Value("${spring.profiles.active:}")
+    private String activeProfiles;
+
     private SecretKey cachedKey;
 
     public JwtUtil() {
@@ -43,6 +46,12 @@ public class JwtUtil {
         if (secret == null || secret.isEmpty()) {
             // R8 修复 P0-1: 本地开发兜底密钥（生产必须通过 JWT_SECRET 环境变量显式设置）
             // 仅用于 mvn spring-boot:run 本地启动场景，不应用于生产部署
+            // SEC-003 修复: 生产环境 fail-fast，杜绝硬编码密钥泄露
+            boolean isProduction = activeProfiles != null && activeProfiles.contains("prod");
+            if (isProduction) {
+                throw new IllegalStateException(
+                        "[SECURITY] jwt.secret 未配置！生产环境必须设置 JWT_SECRET 环境变量，禁止使用兜底密钥");
+            }
             secret = "dev-only-jwt-secret-key-min-32-bytes-please-change-in-prod";
             System.err.println("[WARN] jwt.secret 未配置，使用本地开发兜底密钥（仅限开发环境）");
         }

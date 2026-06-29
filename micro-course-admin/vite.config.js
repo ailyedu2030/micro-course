@@ -1,9 +1,21 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    // RES-001 修复: element-plus 按需引入, 减少 vendor-el chunk 从 ~1.1MB 到 ~300KB
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()],
+    }),
+  ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) }
   },

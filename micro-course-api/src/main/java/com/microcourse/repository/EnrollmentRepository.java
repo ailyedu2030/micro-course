@@ -136,7 +136,8 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
     @org.apache.ibatis.annotations.Select("SELECT DISTINCT user_id FROM enrollments " +
             "WHERE course_id = #{courseId} " +
             "  AND deleted_at IS NULL " +
-            "  AND enrollment_status IN ('ENROLLED', 'IN_PROGRESS', 'COMPLETED')")
+            "  AND enrollment_status IN ('ENROLLED', 'IN_PROGRESS', 'COMPLETED') " +
+            "LIMIT 5000")
     List<Long> findActiveUserIdsByCourseId(@Param("courseId") Long courseId);
 
     /** R12 P1-C-4: 统计教师在授课程中某一学生的选课数（>0 则有权查看） */

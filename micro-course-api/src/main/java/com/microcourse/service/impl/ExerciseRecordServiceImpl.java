@@ -500,7 +500,9 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         LambdaQueryWrapper<ExerciseRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ExerciseRecord::getUserId, userId)
                .ge(ExerciseRecord::getSubmittedAt, since)
-               .orderByAsc(ExerciseRecord::getSubmittedAt);
+               .orderByAsc(ExerciseRecord::getSubmittedAt)
+               // RES-012 修复: 限制最大加载行数防止 OOM，后续应改为 SQL GROUP BY
+               .last("LIMIT 2000");
         List<ExerciseRecord> records = exerciseRecordRepository.selectList(wrapper);
 
         // Group by date
