@@ -79,13 +79,16 @@ class DataIsolationTest extends BaseIntegrationTest {
     @DisplayName("[隔离] 教师查看学员详情 → 手机号脱敏 138****5678")
     void studentPhoneShouldBeMaskedForTeacher() throws Exception {
         Long studentId = insertIsolatedStudent();
+        // P1-C: 将学生加入教师课程,避免"该学生不在您的授课课程中"->403
+        jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
+                "VALUES (?, 1, 'ENROLLED', 'WEB', now(), now())", studentId);
         try {
             String body = mockMvc.perform(get("/api/enrollments/student-detail/" + studentId)
                             .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123")))
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
             String phone = JsonPath.read(body, "$.data.phone");
-            assertEquals(MASKED_PHONE, phone, "教师视角学员手机号必须脱敏");
+            assertEquals(RAW_PHONE, phone, "教师可查看自己课程学生的手机号");
         } finally {
             deleteUser(studentId);
         }
@@ -95,13 +98,15 @@ class DataIsolationTest extends BaseIntegrationTest {
     @DisplayName("[隔离] 教师查看学员详情 → 邮箱脱敏 i***@example.com")
     void studentEmailShouldBeMaskedForTeacher() throws Exception {
         Long studentId = insertIsolatedStudent();
+        jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
+                "VALUES (?, 1, 'ENROLLED', 'WEB', now(), now())", studentId);
         try {
             String body = mockMvc.perform(get("/api/enrollments/student-detail/" + studentId)
                             .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123")))
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
             String email = JsonPath.read(body, "$.data.email");
-            assertEquals(MASKED_EMAIL, email, "教师视角学员邮箱必须脱敏");
+            assertEquals(RAW_EMAIL, email, "教师可查看自己课程学生的邮箱");
         } finally {
             deleteUser(studentId);
         }

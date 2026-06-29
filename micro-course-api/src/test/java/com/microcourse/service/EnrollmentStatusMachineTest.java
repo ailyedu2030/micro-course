@@ -14,9 +14,13 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.EnrollmentHistoryRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.service.EnrollmentService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,6 +49,13 @@ class EnrollmentStatusMachineTest extends BaseIntegrationTest {
     private EnrollmentRepository enrollmentRepository;
     @Autowired
     private EnrollmentHistoryRepository enrollmentHistoryRepository;
+
+    @BeforeEach
+    void setupSecurityContext() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+    }
 
     // --------- helpers ---------
 

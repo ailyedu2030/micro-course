@@ -85,6 +85,11 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
     private final List<Long> createdUserIds = new ArrayList<>();
     private final List<Long> createdNotificationIds = new ArrayList<>();
 
+    @org.junit.jupiter.api.BeforeEach
+    void ensureEnrolled() {
+        enrollStudent7InCourse1();
+    }
+
     @AfterEach
     void cleanupFlow() {
         // 1) 主线学生 + 自建学生的业务叶子数据（按 FK 反向）

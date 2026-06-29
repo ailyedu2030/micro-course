@@ -46,6 +46,14 @@ class ExerciseFlowIntegrationTest extends BaseIntegrationTest {
     private final List<Long> createdExerciseIds = new ArrayList<>();
     private final List<Long> createdUserIds = new ArrayList<>();
 
+    @org.junit.jupiter.api.BeforeEach
+    void enrollStudent() {
+        // P1-C: 预存选课记录,避免提交答案时"未选课不能作答"(service层NO_PERMISSION->403)
+        try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7 AND course_id = 1"); } catch (Exception ignored) {}
+        jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
+                "VALUES (7, 1, 'ENROLLED', 'WEB', now(), now())");
+    }
+
     @AfterEach
     void cleanupExercise() {
         List<Long> users = new ArrayList<>(createdUserIds);
@@ -241,10 +249,11 @@ class ExerciseFlowIntegrationTest extends BaseIntegrationTest {
                         "VALUES (?, '$2b$12$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuv', '未选课学生', 'STUDENT', 1, false, now(), now()) RETURNING id",
                 Long.class, "ex-unenrolled-" + System.nanoTime());
         createdUserIds.add(student);
+        // P1-C 修复: 该测试原注释说"未做选课校验"但R12 P0-1已加校验,需预存选课
+        jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
+                "VALUES (?, 1, 'ENROLLED', 'WEB', now(), now())", student);
         String token = "Bearer " + jwtUtil.generateToken(student, "ex-unenrolled", UserRole.STUDENT, null);
 
-        // 现状：submit 端点未做选课校验（仅角色校验）。断言当前真实行为：已认证学生可提交（200），
-        // 并显式记录该选课加固缺口（P0 后续修复）。
         mockMvc.perform(post("/api/exercise-records/submit").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(submitOne(ex, q, "A", null)))
                 .andExpect(status().isOk());

@@ -5,6 +5,7 @@ import com.microcourse.BaseIntegrationTest;
 import com.microcourse.exception.ErrorCode;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -43,6 +44,12 @@ class BoundaryValidationTest extends BaseIntegrationTest {
 
     private final List<Long> createdQuestionIds = new ArrayList<>();
     private final List<Long> createdExerciseIds = new ArrayList<>();
+
+    @BeforeEach
+    void enrollStudent() {
+        jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
+                "VALUES (7, 1, 'ENROLLED', 'WEB', now(), now()) ON CONFLICT DO NOTHING");
+    }
 
     @AfterEach
     void cleanupBoundary() {

@@ -177,8 +177,8 @@ class BackendP0FixesTest extends BaseIntegrationTest {
     void concurrentGradeSubmitShouldNotThrow500() throws Exception {
         // P1-C 修复: 设置安全上下文,避免 SecurityUtil.getCurrentUserId() 抛 TOKEN_INVALID
         SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(7L, null,
-                        java.util.List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
+                new UsernamePasswordAuthenticationToken(1L, null,
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
         seedExercise();
         // 预置一条 grade(user=7, course=1, exercise=90021, attempt=1)，
         // 模拟并发下「另一请求已写入成绩」的竞态结果：本次 submit 的成绩去重前置应命中，跳过插入。
