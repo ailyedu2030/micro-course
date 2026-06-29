@@ -100,7 +100,7 @@ html, body, #app {
   height: 100%;
   display: flex;
   flex-direction: column;
-  font-family: 'Outfit', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
