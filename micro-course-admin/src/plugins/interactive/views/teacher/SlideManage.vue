@@ -19,6 +19,9 @@
         <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx" class="replace-upload">
           <el-button :icon="UploadFilled">替换课件</el-button>
         </el-upload>
+        <el-button @click="handleDownloadSlide" :icon="Download">
+          下载 PPT
+        </el-button>
         <el-button :loading="aiGenerating" @click="handleGenerateAllAI" :icon="MagicStick">
           批量 AI 生成
         </el-button>
@@ -180,8 +183,8 @@ v-model="editingScript" type="textarea" :rows="10"
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete } from '@element-plus/icons-vue'
-import { uploadSlide, getSlides, getSlidePages, getSlidePage, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio, deleteSlide, deleteSlidePage, reorderSlidePages } from '@/plugins/interactive/api/slide'
+import { ArrowLeft, UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete, Download } from '@element-plus/icons-vue'
+import { uploadSlide, getSlides, getSlidePages, getSlidePage, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio, deleteSlide, deleteSlidePage, reorderSlidePages, downloadOriginalSlide } from '@/plugins/interactive/api/slide'
 import SlidePreview from '@/plugins/interactive/components/SlidePreview.vue'
 import { loadAuthImage, clearImageCache } from '@/utils/authImage'
 import Sortable from 'sortablejs'
@@ -231,6 +234,7 @@ async function handleSaveScript() {
     await updateNarration(courseId.value, selectedPage.value.pageNumber, editingScript.value)
     selectedPage.value.narrationScript = editingScript.value
     selectedPage.value.narrationStatus = 'TEACHER_EDITED'
+    ElMessage.success('讲述稿已保存')
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '保存讲述稿失败')
   }
@@ -412,6 +416,23 @@ async function handleDeletePage(page) {
     }
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+async function handleDownloadSlide() {
+  try {
+    const res = await downloadOriginalSlide(courseId.value)
+    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = slide.value?.fileName || 'slide.pptx'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch {
+    ElMessage.error('下载失败')
   }
 }
 

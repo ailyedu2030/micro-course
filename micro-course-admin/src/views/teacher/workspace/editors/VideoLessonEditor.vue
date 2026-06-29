@@ -40,7 +40,6 @@ async function handleUpload(file) {
       method: 'POST',
       url: '/videos/upload',
       data: fd,
-      headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (e) => {
         uploadProgress.value = Math.round((e.loaded / e.total) * 100)
       }

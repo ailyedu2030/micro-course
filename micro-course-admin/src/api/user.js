@@ -14,7 +14,7 @@ export function updateTeacherStatus(id, data) { return request({ method: 'PUT', 
  * @param {FormData} formData - xlsx file
  */
 export function batchImportUsers(formData) {
-  return request({ method: 'POST', url: '/users/batch', data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
+  return request({ method: 'POST', url: '/users/batch', data: formData })
 }
 
 /**
@@ -29,7 +29,6 @@ export function uploadAvatar(userId, file) {
   return request({
     method: 'POST',
     url: `/users/${userId}/avatar`,
-    data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' }
+    data: formData
   })
 }

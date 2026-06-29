@@ -75,3 +75,7 @@ export function deleteSlidePage(courseId, pageNumber) {
 export function reorderSlidePages(courseId, order) {
   return request({ method: 'PUT', url: `/courses/${courseId}/slides/pages/reorder`, data: order })
 }
+
+export function downloadOriginalSlide(courseId) {
+  return request({ method: 'GET', url: `/courses/${courseId}/slides/download`, responseType: 'blob' })
+}

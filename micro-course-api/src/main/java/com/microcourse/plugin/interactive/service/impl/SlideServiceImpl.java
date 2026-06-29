@@ -384,6 +384,17 @@ public class SlideServiceImpl implements SlideService {
         }
     }
 
+    @Override
+    public byte[] getOriginalFile(Long courseId) {
+        verifyCourseOwner(courseId);
+        try {
+            Path pptxPath = Paths.get(storagePath, String.valueOf(courseId), "original.pptx");
+            return Files.readAllBytes(pptxPath);
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND, "课件原始文件不存在");
+        }
+    }
+
     private String sha256(byte[] bytes) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");

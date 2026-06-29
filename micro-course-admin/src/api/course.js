@@ -47,7 +47,7 @@ export function copyCourse(id) {
 export function updateCourseCover(id, file) {
   const formData = new FormData()
   formData.append('file', file)
-  return request({ method: 'POST', url: `/courses/${id}/cover`, data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
+  return request({ method: 'POST', url: `/courses/${id}/cover`, data: formData })
 }
 export function getCourseStudents(id) { return request({ method: 'GET', url: `/courses/${id}/students` }) }
 export function getCourseStats(id) { return request({ method: 'GET', url: `/courses/${id}/stats` }) }

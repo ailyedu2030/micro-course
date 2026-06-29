@@ -158,6 +158,18 @@ public class SlideController {
         return R.ok(slideService.updatePage(courseId, pageNumber, body));
     }
 
+    @GetMapping("/download")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ResponseEntity<byte[]> downloadOriginal(@PathVariable Long courseId) {
+        com.microcourse.plugin.interactive.dto.SlideVO slide = slideService.getByCourseId(courseId);
+        byte[] fileBytes = slideService.getOriginalFile(courseId);
+        String filename = slide.getFileName() != null ? slide.getFileName() : "slide.pptx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+                .body(fileBytes);
+    }
+
     private void verifyAccess(Long courseId) {
         if (SecurityUtil.isAdmin()) {
             return;

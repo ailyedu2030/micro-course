@@ -21,8 +21,7 @@ export function createBanner(formData) {
   return request({
     method: 'POST',
     url: '/admin/banners',
-    data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' }
+    data: formData
   })
 }
 
@@ -36,8 +35,7 @@ export function updateBanner(id, formData) {
   return request({
     method: 'PUT',
     url: `/admin/banners/${id}`,
-    data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' }
+    data: formData
   })
 }
 
