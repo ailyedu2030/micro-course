@@ -77,7 +77,9 @@
               <el-input v-model="editorForm.title" placeholder="微专业名称" maxlength="200" show-word-limit />
             </el-form-item>
             <el-form-item label="说明" prop="description">
-              <el-input v-model="editorForm.description" type="textarea" :rows="4" placeholder="详细说明微专业的内容与意义" maxlength="2000" show-word-limit />
+              <div class="quill-wrapper">
+                <QuillEditor v-model:content="editorForm.description" content-type="html" toolbar="essential" placeholder="详细说明微专业的内容与意义..." :style="{ minHeight: '160px' }" />
+              </div>
             </el-form-item>
             <el-form-item label="开课学院" prop="offerDepartmentId">
               <el-select v-model="editorForm.offerDepartmentId" placeholder="选择学院" class="full-width" v-loading="collegeLoading">
@@ -92,7 +94,9 @@
           <template #header><span class="card-title">详细信息</span></template>
           <el-form :model="editorForm" label-width="100px" class="edit-form">
             <el-form-item label="培养目标" prop="trainingObjective">
-              <el-input v-model="editorForm.trainingObjective" type="textarea" :rows="3" placeholder="描述培养目标与预期成果" maxlength="2000" show-word-limit />
+              <div class="quill-wrapper">
+                <QuillEditor v-model:content="editorForm.trainingObjective" content-type="html" toolbar="essential" placeholder="描述培养目标与预期成果..." :style="{ minHeight: '140px' }" />
+              </div>
             </el-form-item>
             <el-form-item label="建议学期">
               <el-input v-model="editorForm.semester" placeholder="如 2025-2026-1" />
@@ -133,6 +137,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit } from '@element-plus/icons-vue'
 import { getMyProposals, withdrawProposal, resubmitProposal, updateProposal, deleteProposal } from '@/api/microSpecialty'
 import { getDepartments } from '@/api/department'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 const loading = ref(false)
 const error = ref(false)
@@ -237,4 +243,7 @@ onMounted(fetchData)
 .edit-form { max-width: 700px; }
 .edit-submit-bar { display: flex; justify-content: flex-end; gap: var(--space-3); padding-top: var(--space-2); }
 .full-width { width: 100%; }
+.quill-wrapper { width: 100%; border-radius: 4px; }
+.quill-wrapper :deep(.ql-toolbar) { border-radius: 4px 4px 0 0; background: #fafafa; }
+.quill-wrapper :deep(.ql-container) { border-radius: 0 0 4px 4px; font-size: 14px; }
 </style>
