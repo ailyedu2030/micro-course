@@ -170,7 +170,7 @@
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
           <div class="quill-editor-wrapper">
-            <QuillEditor v-model:content="formData.description" contentType="html" toolbar="essential" placeholder="请输入课程描述..." :style="{ minHeight: '180px' }" />
+            <QuillEditor v-model:content="formData.description" content-type="html" toolbar="essential" placeholder="请输入课程描述..." :style="{ minHeight: '180px' }" />
           </div>
         </el-form-item>
         <el-row :gutter="20">

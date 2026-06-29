@@ -43,7 +43,8 @@
         </template>
       </el-result>
       <el-empty v-else-if="!loading && tableData.length === 0" description="暂无院系数据" :image-size="120" />
-      <el-table v-loading="loading"
+      <el-table
+        v-loading="loading"
         v-else
         :data="tableData"
         stripe
