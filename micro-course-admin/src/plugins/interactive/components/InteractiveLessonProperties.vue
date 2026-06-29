@@ -36,7 +36,9 @@ watch(() => props.courseId, async (id) => {
       const p = await Slides.getSlidePages(id)
       pages.value = p.data || []
     }
-  } catch {}
+  } catch (e) {
+    console.warn('[InteractiveLessonProperties] 加载课件信息失败', e?.message)
+  }
 }, { immediate: true })
 </script>
 

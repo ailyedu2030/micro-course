@@ -354,7 +354,7 @@ const fetchCourse = async () => {
       formData.isFree = data.isFree !== false
       if (data.coverUrl) coverPreviewUrl.value = data.coverUrl
     }
-  } catch { ElMessage.error('获取课程信息失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取课程信息失败') }
   finally { loading.value = false }
 }
 
@@ -381,29 +381,29 @@ const switchToView = () => router.push(`/courses/${courseId.value}`)
 const handleSubmitForReview = async () => {
   try { await ElMessageBox.confirm('确定提交审核？', '提示', { type: 'info' }) } catch { return }
   try { await submitCourseForReview(courseId.value); ElMessage.success('已提交审核'); fetchCourse() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 const handleApprove = async () => {
   try { await ElMessageBox.confirm('确定审核通过？', '提示', { type: 'info' }) } catch { return }
   try { await approveCourse(courseId.value); ElMessage.success('审核通过'); fetchCourse() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 const handleReject = async () => {
   let reason = ''
   try { const res = await ElMessageBox.prompt('请输入驳回原因', '驳回', { confirmButtonText: '确定', inputType: 'textarea' }); reason = res.value }
   catch { return }
   try { await rejectCourse(courseId.value, reason); ElMessage.success('已驳回'); fetchCourse() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 const handlePublish = async () => {
   try { await ElMessageBox.confirm('确定发布？', '提示', { type: 'info' }) } catch { return }
   try { await updateCourseStatus(courseId.value, 4); ElMessage.success('已发布'); fetchCourse() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 const handleUnpublish = async () => {
   try { await ElMessageBox.confirm('确定下架？', '提示', { type: 'info' }) } catch { return }
   try { await updateCourseStatus(courseId.value, 5); ElMessage.success('已下架'); fetchCourse() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 // ===== 编辑提交 =====
@@ -439,7 +439,7 @@ const handleSubmit = async () => {
     }
     ElMessage.success('保存成功')
     router.push(`/courses/${courseId.value}`)
-  } catch { ElMessage.error('保存失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
   finally { submitLoading.value = false }
 }
 
@@ -469,14 +469,14 @@ const handleManageChapterContent = (row) => {
 const handleDeleteChapter = async (row) => {
   try { await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' }) } catch { return }
   try { await deleteChapter(row.id); ElMessage.success('已删除'); fetchChapters() }
-  catch { ElMessage.error('删除失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
 }
 const handleSaveSort = async () => {
   if (saveSortLoading.value) return
   saveSortLoading.value = true
   const sorts = chapters.value.map((c, i) => ({ id: c.id, sortOrder: i + 1 }))
   try { await sortChapters(sorts); ElMessage.success('排序已保存'); fetchChapters() }
-  catch { ElMessage.error('保存排序失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '保存排序失败') }
   finally { saveSortLoading.value = false }
 }
 const handleChapterSubmit = async () => {
@@ -493,7 +493,7 @@ const handleChapterSubmit = async () => {
     ElMessage.success(isChapterEdit.value ? '更新成功' : '创建成功')
     chapterDialogVisible.value = false
     await fetchChapters()
-  } catch { ElMessage.error('操作失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { chapterSubmitLoading.value = false }
 }
 const handleChapterCancel = () => { chapterDialogVisible.value = false }

@@ -484,7 +484,7 @@ const handleUnpublish = async (row) => {
 const handleDelete = async (row) => {
   try { await ElMessageBox.confirm('确定删除该课程?', '提示', { type: 'warning' }) } catch { return }
   try { await deleteCourse(row.id); ElMessage.success('删除成功'); fetchData() }
-  catch { ElMessage.error('删除失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
 }
 
 const handleCopy = async (row) => {

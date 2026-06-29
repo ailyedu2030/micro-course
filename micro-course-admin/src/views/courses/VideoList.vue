@@ -498,7 +498,9 @@ onMounted(() => {
       try {
         const { data } = await getCourseById(Number(cid))
         courseTitle.value = data?.title || ''
-      } catch {}
+      } catch (e) {
+        console.warn('[VideoList] getCourseById failed', e?.message)
+      }
       searchForm.courseId = Number(cid)
       await handleCourseChange(Number(cid))
       if (isContextualMode.value) {
@@ -506,7 +508,9 @@ onMounted(() => {
           const { data } = await getChapterById(lockedChapterId.value)
           chapterTitle.value = data?.title || ''
           searchForm.chapterId = lockedChapterId.value
-        } catch {}
+        } catch (e) {
+          console.warn('[VideoList] getChapterById failed', e?.message)
+        }
       }
       fetchData()
     }
