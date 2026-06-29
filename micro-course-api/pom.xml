@@ -345,6 +345,10 @@
                     <suppressionFiles>
                         <suppressionFile>dependency-check-suppressions.xml</suppressionFile>
                     </suppressionFiles>
+                    <!-- NVD API Key 引用 env (GitHub Secret: NVD_API_KEY)
+                         有 key: 50 req/s, 无 key: 5 req/s
+                         无 key 时仍能跑 (但慢), dep-check 自动 fallback -->
+                    <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
                 </configuration>
                 <executions>
                     <execution>

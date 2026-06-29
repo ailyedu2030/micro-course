@@ -17,6 +17,10 @@ env:
   TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course
   TEST_REDIS_HOST: localhost
   TEST_REDIS_PORT: 6379
+  # NVD API Key (用户在 https://nvd.nist.gov/developers/request-an-api-key 申请)
+  # 有 key 限速 50 req/s (10x 加速), 无 key 限速 5 req/s
+  # 申请: gh secret set NVD_API_KEY --repo ailyedu2030/micro-course
+  NVD_API_KEY: ${{ secrets.NVD_API_KEY || '' }}
 
 jobs:
   # ============================================================================
