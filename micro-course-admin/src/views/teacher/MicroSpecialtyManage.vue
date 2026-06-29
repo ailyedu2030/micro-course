@@ -21,7 +21,7 @@
           <el-button v-if="showSubmit" type="success" :loading="submitting" @click="handleSubmit">提交审核</el-button>
           <el-button v-if="showOpen" type="warning" :loading="actioning" @click="handleOpen">开课</el-button>
           <el-button v-if="showClose" type="danger" :loading="actioning" @click="handleClose">结业</el-button>
-          <el-button @click="showFeaturedDialog">申请置顶</el-button>
+          <el-button v-if="detail.status === 'APPROVED' || detail.status === 'RECRUITING'" @click="showFeaturedDialog">申请置顶</el-button>
         </div>
       </div>
 
@@ -120,7 +120,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
-import { getMicroSpecialtyDetail, updateMicroSpecialty, submitMicroSpecialty, openMicroSpecialty, closeMicroSpecialty, cancelMicroSpecialty, applyFeatured, getStats } from '@/api/microSpecialty'
+import { getMicroSpecialtyDetail, updateMicroSpecialty, submitMicroSpecialty, openMicroSpecialty, closeMicroSpecialty, cancelMicroSpecialty, applyFeatured, getStats, getEnrollmentList } from '@/api/microSpecialty'
 import { getEnrollments } from '@/api/enrollment'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
@@ -162,7 +162,14 @@ const fetchDetail = async () => {
   error.value = false; loading.value = true
   try {
     const { data: d } = await getMicroSpecialtyDetail(msId.value)
-    detail.value = d; form.value = { ...d }
+    detail.value = d
+    // 仅提取可编辑字段到form
+    form.value = {
+      title: d.title || '', subtitle: d.subtitle || '',
+      description: d.description || '', trainingObjective: d.trainingObjective || '',
+      admissionRequirement: d.admissionRequirement || '',
+      semester: d.semester || '', coverUrl: d.coverUrl || ''
+    }
     try { const { data: stats } = await getStats(msId.value); detail.value = { ...detail.value, stats } } catch {}
     fetchEnrollments(); fetchProgress()
   } catch { error.value = true }
@@ -171,7 +178,7 @@ const fetchDetail = async () => {
 
 const fetchEnrollments = async () => {
   enrollLoading.value = true
-  try { const { data } = await getEnrollments(msId.value); enrollments.value = data?.items || data || [] }
+  try { const { data } = await getEnrollmentList(msId.value); enrollments.value = data?.items || data || [] }
   catch { enrollments.value = [] }
   finally { enrollLoading.value = false }
 }
