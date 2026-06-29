@@ -103,7 +103,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // login/cas: 公开; refresh: refreshToken 在 body 中作为凭证
                         .requestMatchers("/api/auth/login", "/api/auth/cas", "/api/auth/refresh", "/api/auth/register").permitAll()
-                        .requestMatchers("GET", "/api/admin/stats/health").hasAnyRole("ADMIN")
+                        .requestMatchers("GET", "/api/admin/stats/health").permitAll()
                         // P3-14/P3-15（Round 7-3）：监控端点放行 —— 仅放行 health 与 prometheus 两个具体路径
                         // （收窄白名单，不放行 /actuator/** 通配，避免未来误暴露 env/beans/heapdump 等敏感端点）。
                         // management.endpoints.web.exposure.include 已限定仅暴露 health,info,metrics,prometheus；
