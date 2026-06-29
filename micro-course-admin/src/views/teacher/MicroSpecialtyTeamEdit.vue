@@ -3,40 +3,34 @@
   路由: /teacher/micro-specialties/:id/team
 -->
 <template>
-  <div class="ms-team-edit">
+  <div class="ms-team-page">
     <el-page-header @back="$router.back()" :content="'教师团队 · ' + (detail?.title || '')" class="mg-bottom-16" />
 
     <div v-loading="loading">
-      <el-result
-        v-if="error"
-        icon="error"
-        title="加载失败"
-        sub-title="请稍后重试"
-      >
-        <template #extra>
-          <el-button type="primary" @click="fetchData">重试</el-button>
-        </template>
+      <el-result v-if="error" icon="error" title="加载失败" sub-title="请稍后重试">
+        <template #extra><el-button type="primary" @click="fetchData">重试</el-button></template>
       </el-result>
       <el-empty v-else-if="!loading && !detail" description="微专业不存在" />
 
-      <div v-if="detail">
-        <el-card shadow="never">
+      <template v-if="detail">
+        <!-- 已邀请教师 -->
+        <el-card shadow="never" class="section-card">
           <template #header>
             <div class="card-header">
-              <span>团队成员（{{ teachers.length }} 人）</span>
-              <el-button type="primary" size="small" @click="showInviteDialog">邀请教师</el-button>
+              <span>已邀请教师（{{ teachers.length }} 人）</span>
+              <el-button size="small" type="danger" @click="expelMode = !expelMode">{{ expelMode ? '完成' : '批量操作' }}</el-button>
             </div>
           </template>
           <el-table :data="teachers" stripe border>
             <template #empty><el-empty description="暂未邀请教师" /></template>
             <el-table-column prop="teacherName" label="姓名" width="120" />
-            <el-table-column prop="role" label="角色" width="120">
+            <el-table-column label="角色" width="120">
               <template #default="{ row }"><el-tag size="small">{{ roleMap[row.role] || row.role || '教师' }}</el-tag></template>
             </el-table-column>
             <el-table-column prop="courseTitle" label="归属课程" min-width="160" show-overflow-tooltip>
               <template #default="{ row }">{{ row.courseTitle || '-' }}</template>
             </el-table-column>
-            <el-table-column label="邀请状态" width="130" align="center">
+            <el-table-column label="邀请状态" width="110" align="center">
               <template #default="{ row }">
                 <el-tag v-if="row.inviteStatus === 'INVITED'" type="warning" size="small">待响应</el-tag>
                 <el-tag v-else-if="row.inviteStatus === 'ACTIVE'" type="success" size="small">已接受</el-tag>
@@ -45,60 +39,80 @@
                 <el-tag v-else size="small">{{ row.inviteStatus || '-' }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="倒计时" width="100" align="center">
+            <el-table-column label="过期" width="110" align="center">
               <template #default="{ row }">
-                <span v-if="row.inviteStatus === 'INVITED'" :class="{ 'expiring': row.expiring }">
-                  {{ row.deadlineText || '-' }}
-                </span>
+                <span v-if="row.inviteStatus === 'INVITED'" :class="{ 'expiring': row.expiring }">{{ row.deadlineText || '-' }}</span>
                 <span v-else>-</span>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="180" align="center" fixed="right">
               <template #default="{ row }">
-                <el-button size="small" type="danger" @click="handleRemove(row)">移除</el-button>
-                <el-button v-if="row.inviteStatus === 'DECLINED' || row.inviteStatus === 'REMOVED'" size="small" @click="handleReinvite(row)">重邀</el-button>
+                <el-button v-if="expelMode" size="small" type="danger" @click="handleRemove(row)">移除</el-button>
+                <template v-else>
+                  <el-button size="small" type="danger" @click="handleRemove(row)">移除</el-button>
+                  <el-button v-if="row.inviteStatus === 'DECLINED' || row.inviteStatus === 'REMOVED'" size="small" @click="handleReinvite(row)">重邀</el-button>
+                </template>
               </template>
             </el-table-column>
           </el-table>
         </el-card>
-      </div>
-    </div>
 
-    <!-- 邀请教师 Dialog -->
-    <el-dialog v-model="inviteVisible" title="邀请教师" width="500px" @closed="resetInviteForm">
-      <el-form ref="inviteFormRef" :model="inviteForm" :rules="inviteRules" label-width="100px">
-        <el-form-item label="教师" prop="teacherId">
-          <el-select v-model="inviteForm.teacherId" filterable placeholder="搜索教师" class="full-width">
-            <el-option v-for="t in teacherOptions" :key="t.id" :label="`${t.realName} (${t.collegeName || ''})`" :value="t.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="角色">
-          <el-select v-model="inviteForm.role" class="full-width">
-            <el-option label="负责人" value="LEAD" />
-            <el-option label="团队成员" value="MEMBER" />
-            <el-option label="助教" value="ASSISTANT" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="归属课程">
-          <el-select v-model="inviteForm.courseId" filterable placeholder="选择课程（可选）" class="full-width" clearable>
-            <el-option v-for="c in courseOptions" :key="c.id" :label="c.courseTitle || c.title" :value="c.id" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="inviteVisible = false">取消</el-button>
-        <el-button type="primary" :loading="inviting" @click="handleInvite">发送邀请</el-button>
+        <!-- 邀请新教师 -->
+        <el-card shadow="never" class="section-card">
+          <template #header><span class="card-title">邀请新教师</span></template>
+          <!-- 搜索过滤 -->
+          <div class="filter-bar">
+            <el-input v-model="searchKeyword" placeholder="搜索教师姓名" clearable class="search-input" @clear="fetchCandidates" @keyup.enter="fetchCandidates">
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
+            <el-select v-model="searchDept" placeholder="选择学院" clearable class="filter-select" @change="fetchCandidates">
+              <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
+            </el-select>
+            <el-button type="primary" @click="fetchCandidates">搜索</el-button>
+          </div>
+
+          <!-- 候选教师表格 -->
+          <el-table :data="candidates" stripe border v-loading="candidateLoading" @selection-change="handleSelectionChange" ref="candidateTableRef">
+            <template #empty><el-empty :description="searched ? '未找到匹配的教师' : '点击搜索查看可选教师'" /></template>
+            <el-table-column type="selection" width="50" />
+            <el-table-column prop="realName" label="姓名" width="120" />
+            <el-table-column prop="collegeName" label="学院" width="140" show-overflow-tooltip />
+            <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
+            <el-table-column label="角色" width="140">
+              <template #default="{ row: r }">
+                <el-select v-model="inviteRoles[r.id]" size="small" class="full-width">
+                  <el-option label="团队成员" value="MEMBER" />
+                  <el-option label="助教" value="ASSISTANT" />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="归属课程" width="160">
+              <template #default="{ row: r }">
+                <el-select v-model="inviteCourses[r.id]" size="small" filterable placeholder="选择课程" class="full-width" clearable>
+                  <el-option v-for="c in courseOptions" :key="c.id" :label="c.courseTitle || c.title" :value="c.id" />
+                </el-select>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="invite-bar" v-if="selectedCandidates.length > 0">
+            <span>已选 <strong>{{ selectedCandidates.length }}</strong> 位教师</span>
+            <el-button type="primary" :loading="inviting" @click="handleBatchInvite">批量邀请</el-button>
+          </div>
+        </el-card>
       </template>
-    </el-dialog>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { getMicroSpecialtyDetail, getTeachers, inviteTeacher, removeTeacher, reinviteTeacher, getCourses } from '@/api/microSpecialty'
 import { getUsers } from '@/api/user'
+import { getDepartments } from '@/api/department'
 
 const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
 
@@ -109,20 +123,25 @@ const error = ref(false)
 const detail = ref(null)
 const teachers = ref([])
 const courseOptions = ref([])
+const expelMode = ref(false)
 
-const inviteVisible = ref(false)
+// 搜索候选教师
+const searchKeyword = ref('')
+const searchDept = ref(null)
+const searched = ref(false)
+const candidateLoading = ref(false)
+const candidates = ref([])
+const departments = ref([])
+const selectedCandidates = ref([])
+const inviteRoles = reactive({})
+const inviteCourses = reactive({})
 const inviting = ref(false)
-const inviteFormRef = ref(null)
-const inviteForm = ref({ teacherId: null, role: 'MEMBER', courseId: null })
-const inviteRules = { teacherId: [{ required: true, message: '请选择教师', trigger: 'change' }] }
-const teacherOptions = ref([])
+const candidateTableRef = ref(null)
 
 const fetchData = async () => {
-  error.value = false
-  loading.value = true
+  error.value = false; loading.value = true
   try {
-    const { data: d } = await getMicroSpecialtyDetail(msId.value)
-    detail.value = d
+    const { data: d } = await getMicroSpecialtyDetail(msId.value); detail.value = d
     const { data: t } = await getTeachers(msId.value)
     const items = t.items || t || []
     const now = Date.now()
@@ -131,43 +150,67 @@ const fetchData = async () => {
       const rem = dl ? Math.max(0, Math.ceil((dl - now) / 86400000)) : null
       return { ...i, expiring: i.inviteStatus === 'INVITED' && rem !== null && rem < 3, deadlineText: dl ? (rem > 0 ? `剩余${rem}天` : '已过期') : '' }
     })
-    // Load courses for invite dialog
-    try { const { data: cc } = await getCourses(msId.value); courseOptions.value = cc.items || cc || [] } catch { /* skip */ }
+    try { const { data: cc } = await getCourses(msId.value); courseOptions.value = cc.items || cc || [] } catch {}
   } catch { error.value = true }
-  finally { loading.value = false }
+  finally { loading.value = false; loadDepartments() }
 }
 
-const showInviteDialog = async () => {
-  inviteForm.value = { teacherId: null, role: 'MEMBER', courseId: null }
-  // 加载可选教师列表（排除已邀请的）
+const loadDepartments = async () => {
+  try { const { data } = await getDepartments(); departments.value = data?.items || data || [] }
+  catch {}
+}
+
+const fetchCandidates = async () => {
+  candidateLoading.value = true; searched.value = true
   try {
-    const { data } = await getUsers({ role: 'TEACHER', size: 1000 })
-    const allTeachers = data?.items || data || []
+    const params = { role: 'TEACHER', size: 200 }
+    if (searchKeyword.value) params.keyword = searchKeyword.value
+    if (searchDept.value) params.departmentId = searchDept.value
+    const { data } = await getUsers(params)
+    const all = data?.items || data || []
+    // 排除已邀请/已接受/待响应
     const invitedIds = new Set(teachers.value.map(t => t.teacherId).filter(Boolean))
-    teacherOptions.value = allTeachers.filter(t => !invitedIds.has(t.id))
-  } catch { teacherOptions.value = [] }
-  inviteVisible.value = true
+    candidates.value = all.filter(t => !invitedIds.has(t.id))
+  } catch { candidates.value = [] }
+  finally { candidateLoading.value = false }
 }
-const resetInviteForm = () => { inviteFormRef.value?.clearValidate() }
 
-const handleInvite = async () => {
-  if (!inviteFormRef.value) return
-  try { await inviteFormRef.value.validate() } catch { return }
+const handleSelectionChange = (rows) => {
+  selectedCandidates.value = rows
+}
+
+const handleBatchInvite = async () => {
+  if (selectedCandidates.value.length === 0) return
   inviting.value = true
-  try { await inviteTeacher(msId.value, inviteForm.value); ElMessage.success('邀请已发送'); inviteVisible.value = false; fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '邀请失败') }
-  finally { inviting.value = false }
+  let success = 0; let fail = 0
+  for (const t of selectedCandidates.value) {
+    try {
+      await inviteTeacher(msId.value, {
+        teacherId: t.id,
+        role: inviteRoles[t.id] || 'MEMBER',
+        courseId: inviteCourses[t.id] || null
+      })
+      success++
+    } catch { fail++ }
+  }
+  if (success > 0) ElMessage.success(`已邀请 ${success} 位教师` + (fail > 0 ? `，${fail} 位失败` : ''))
+  else ElMessage.error('全部邀请失败')
+  inviting.value = false
+  fetchData()
+  // 清除选择和已邀请的候选
+  candidates.value = candidates.value.filter(c => !selectedCandidates.value.find(s => s.id === c.id))
+  selectedCandidates.value = []
+  candidateTableRef.value?.clearSelection()
 }
 
 const handleRemove = async (row) => {
-  try { await ElMessageBox.confirm(`确定移除「${row.teacherName}」？`, '确认', { type: 'warning' }) }
-  catch { return }
+  try { await ElMessageBox.confirm(`确定移除「${row.teacherName}」？`, '确认', { type: 'warning' }) } catch { return }
   try { await removeTeacher(msId.value, row.id || row.teacherId); ElMessage.success('已移除'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '移除失败') }
 }
 
 const handleReinvite = async (row) => {
-  try {       await reinviteTeacher(row.id || row.inviteId, {}); ElMessage.success('已重新邀请'); fetchData() }
+  try { await reinviteTeacher(row.id || row.inviteId, {}); ElMessage.success('已重新邀请'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '重邀失败') }
 }
 
@@ -175,9 +218,17 @@ onMounted(fetchData)
 </script>
 
 <style scoped>
-.ms-team-edit { padding: var(--space-4); max-width: 1200px; margin: 0 auto; }
+.ms-team-page { padding: var(--space-4); max-width: 1200px; margin: 0 auto; }
 .mg-bottom-16 { margin-bottom: var(--space-4); }
 .full-width { width: 100%; }
+.section-card { margin-bottom: var(--space-4); }
+.card-title { font-size: 16px; font-weight: 600; color: #303133; }
 .card-header { display: flex; align-items: center; justify-content: space-between; }
 .expiring { color: var(--el-color-danger); font-weight: 600; }
+
+.filter-bar { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); }
+.search-input { width: 280px; }
+.filter-select { width: 200px; }
+
+.invite-bar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4); margin-top: var(--space-4); background: var(--el-color-primary-light-9); border-radius: var(--radius-md); }
 </style>
