@@ -98,6 +98,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyDetail, getTeachers, inviteTeacher, removeTeacher, reinviteTeacher, getCourses } from '@/api/microSpecialty'
+import { getUsers } from '@/api/user'
 
 const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
 
@@ -136,8 +137,15 @@ const fetchData = async () => {
   finally { loading.value = false }
 }
 
-const showInviteDialog = () => {
+const showInviteDialog = async () => {
   inviteForm.value = { teacherId: null, role: 'MEMBER', courseId: null }
+  // 加载可选教师列表（排除已邀请的）
+  try {
+    const { data } = await getUsers({ role: 'TEACHER', size: 1000 })
+    const allTeachers = data?.items || data || []
+    const invitedIds = new Set(teachers.value.map(t => t.teacherId).filter(Boolean))
+    teacherOptions.value = allTeachers.filter(t => !invitedIds.has(t.id))
+  } catch { teacherOptions.value = [] }
   inviteVisible.value = true
 }
 const resetInviteForm = () => { inviteFormRef.value?.clearValidate() }
