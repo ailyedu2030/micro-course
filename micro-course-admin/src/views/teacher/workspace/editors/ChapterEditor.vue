@@ -32,7 +32,7 @@ const rules = {
 onMounted(async () => {
   try {
     const res = await getChapters({ size: 200 })
-    const ch = (res.data?.items || []).find(c => c.id == props.chapterId)
+    const ch = (res.data?.items || []).find(c => c.id === props.chapterId)
     if (ch) {
       form.value = { title: ch.title || '', description: ch.description || '' }
       initialForm.value = { ...form.value }

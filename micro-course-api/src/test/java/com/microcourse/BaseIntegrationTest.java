@@ -48,14 +48,32 @@ public abstract class BaseIntegrationTest {
 
     /**
      * 获取 admin 的 Bearer token（缓存，全类只登录一次避免Redis限流）
+     * 根因修复(v1.7.1): 清空所有 mockMvc 默认 clientIp=127.0.0.1 相关的登录/IP/refresh 计数
+     * 防止跨 test class 累计触发限流(AuthServiceImpl.refresh() 同一 IP 每小时 20 次限流)
      */
     @BeforeEach
     public void resetLoginState() {
         cachedAdminToken = null;
         try {
-            applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("mc:login:lock:admin");
-            applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("mc:login:lock:student");
-            applicationContext.getBean(com.microcourse.util.RedisUtil.class).delete("mc:login:lock:p0_teacher");
+            com.microcourse.util.RedisUtil redisUtil = applicationContext.getBean(com.microcourse.util.RedisUtil.class);
+            redisUtil.delete("mc:login:lock:admin");
+            redisUtil.delete("mc:login:lock:student");
+            redisUtil.delete("mc:login:lock:p0_teacher");
+            // 清空 mockMvc 默认 clientIp=127.0.0.1 的所有计数 (login fail + IP + refresh 限流)
+            redisUtil.delete("mc:login:lock:127.0.0.1");
+            redisUtil.delete("mc:login:lock:ip:127.0.0.1");
+            redisUtil.delete("mc:login:lock:refresh:127.0.0.1");
+            // 兜底: 用 SCAN 模式清空所有 mc:login:lock:* key
+            org.springframework.data.redis.core.StringRedisTemplate stringRedis =
+                    applicationContext.getBean(org.springframework.data.redis.core.StringRedisTemplate.class);
+            org.springframework.data.redis.core.Cursor<byte[]> cursor = stringRedis.getRequiredConnectionFactory()
+                    .getConnection().keyCommands().scan(
+                            org.springframework.data.redis.core.ScanOptions.scanOptions()
+                                    .match("mc:login:lock:*").count(1000).build());
+            while (cursor.hasNext()) {
+                String key = new String(cursor.next());
+                stringRedis.delete(key);
+            }
             applicationContext.getBean(com.microcourse.service.AuthService.class).resetLoginLockout();
         } catch (Exception ignored) {}
     }

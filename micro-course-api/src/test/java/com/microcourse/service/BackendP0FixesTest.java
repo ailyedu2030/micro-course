@@ -200,6 +200,12 @@ class BackendP0FixesTest extends BaseIntegrationTest {
     @Test
     @DisplayName("[P0-4] 选课后 student_count 原子 +1")
     void enrollShouldAtomicallyIncrementStudentCount() {
+        // 防御性深度: BoundaryValidationTest 等其他 test class 的 @AfterEach 漏清理 enrollments 时
+        // 这里仍能保证干净起跑。根因是 BoundaryValidationTest 已修,这里是 belt-and-suspenders.
+        exec("DELETE FROM enrollment_histories WHERE enrollment_id IN " +
+                "(SELECT id FROM enrollments WHERE course_id = 1 OR user_id = 7)");
+        exec("DELETE FROM enrollments WHERE course_id = 1 OR user_id = 7");
+        exec("UPDATE courses SET student_count = 0 WHERE id = 1");
         int before = studentCount(1L);
         EnrollmentCreateRequest req = new EnrollmentCreateRequest();
         req.setCourseId(1L);
@@ -212,6 +218,11 @@ class BackendP0FixesTest extends BaseIntegrationTest {
     @Test
     @DisplayName("[P0-4] 取消选课后 student_count 原子 -1 且不变负数")
     void cancelEnrollmentShouldAtomicallyDecrementStudentCount() {
+        // 根因修复: 跨 test class 状态污染
+        exec("DELETE FROM enrollment_histories WHERE enrollment_id IN " +
+                "(SELECT id FROM enrollments WHERE course_id = 2 OR user_id = 7)");
+        exec("DELETE FROM enrollments WHERE course_id = 2 OR user_id = 7");
+        exec("UPDATE courses SET student_count = 0 WHERE id = 2");
         int before = studentCount(2L);
         EnrollmentCreateRequest req = new EnrollmentCreateRequest();
         req.setCourseId(2L);

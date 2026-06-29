@@ -699,7 +699,7 @@ const scrollToActiveChapter = () => {
 }
 
 // Progress reporting
-let progressId = ref(null)
+const progressId = ref(null)
 let lastReportedProgress = 0
 let progressReportTimer = null
 let hideControlsTimer = null
@@ -715,7 +715,7 @@ const NOTES_STORAGE_KEY = computed(() => {
 })
 
 // HLS
-let hlsInstance = ref(null)
+const hlsInstance = ref(null)
 const hlsFatal = ref(false)
 
 // Learning objectives overlay
@@ -736,7 +736,7 @@ let touchStartY = 0
 let touchStartTime = 0
 let touchStartVolume = 100
 let touchStartBrightness = 100
-let lastTapTime = 0
+const lastTapTime = 0
 let tapCount = 0
 let tapTimer = null
 let isSwiping = false

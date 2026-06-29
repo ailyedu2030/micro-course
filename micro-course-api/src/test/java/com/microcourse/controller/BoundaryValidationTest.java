@@ -47,12 +47,18 @@ class BoundaryValidationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void enrollStudent() {
+        // 显式清理+重置(根因修复:防止跨 test class 状态污染导致 BackendP0FixesTest.enrollShouldAtomicallyIncrementStudentCount flaky)
+        try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7 AND course_id = 1"); } catch (Exception ignored) {}
+        try { jdbc.update("UPDATE courses SET student_count = 0 WHERE id = 1"); } catch (Exception ignored) {}
         jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
                 "VALUES (7, 1, 'ENROLLED', 'WEB', now(), now()) ON CONFLICT DO NOTHING");
     }
 
     @AfterEach
     void cleanupBoundary() {
+        // ★ 根因修复: 跨 class 状态污染源 — 必须清理 enrollment,否则污染 BackendP0FixesTest 等
+        try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7 AND course_id = 1"); } catch (Exception ignored) {}
+        try { jdbc.update("UPDATE courses SET student_count = 0 WHERE id = 1"); } catch (Exception ignored) {}
         try { jdbc.update("DELETE FROM exercise_records WHERE user_id = 7"); } catch (Exception ignored) {}
         try { jdbc.update("DELETE FROM grades WHERE user_id = 7"); } catch (Exception ignored) {}
         try { jdbc.update("DELETE FROM wrong_questions WHERE user_id = 7"); } catch (Exception ignored) {}

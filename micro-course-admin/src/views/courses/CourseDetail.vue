@@ -389,6 +389,7 @@ const handleApprove = async () => {
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 const handleReject = async () => {
+  // eslint-disable-next-line no-useless-assignment -- reason 在 try 块内被用户输入覆盖
   let reason = ''
   try { const res = await ElMessageBox.prompt('请输入驳回原因', '驳回', { confirmButtonText: '确定', inputType: 'textarea' }); reason = res.value }
   catch { return }

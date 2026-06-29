@@ -264,6 +264,16 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <excludedGroups>${surefire.excludedGroups}</excludedGroups>
+                    <!-- CI 慢根因修复尝试(agent 报告 P0-1):
+                         后端 246 测试串行 ~50s,CI 慢 3-5x.
+                         ★ 纪律 2 警示: 开启 <parallel>classes</parallel> 后
+                         AuthFlowIntegrationTest.refreshToken_IssuesNewJwt 失败
+                         (Redis 锁被其他并行 test 覆盖 → 401 vs 200).
+                         共享 Redis + 共享 DB 的 integration test 套件不适合 classes 级别并行.
+                         改用 methods 级别并行(同一 class 内方法并行,跨 class 串行)
+                         可以部分提速且不破坏 fixture 隔离 -->
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
                 </configuration>
             </plugin>
 
