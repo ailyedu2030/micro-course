@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 
 @TableName("micro_specialty_proposals")
@@ -59,6 +60,7 @@ public class MicroSpecialtyProposal {
     public void setReviewedBy(Long reviewedBy) { this.reviewedBy = reviewedBy; }
     public LocalDateTime getReviewedAt() { return reviewedAt; }
     public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
+    @JsonProperty("microSpecialtyId")
     public Long getCreatedMicroSpecialtyId() { return createdMicroSpecialtyId; }
     public void setCreatedMicroSpecialtyId(Long createdMicroSpecialtyId) { this.createdMicroSpecialtyId = createdMicroSpecialtyId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
