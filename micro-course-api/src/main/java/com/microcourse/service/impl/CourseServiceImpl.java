@@ -893,8 +893,7 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "已归档课程不可操作");
         }
 
-        // DRAFT / REJECTED → CLOSED 是合法的"软删除"操作（不走状态机白名单）
-        // CLOSED 已下架，可直接清理（不再变更状态）
+        // DRAFT / REJECTED → CLOSED CAS
         if (currentStatus == CourseStatus.DRAFT.getCode()
                 || currentStatus == CourseStatus.REJECTED.getCode()) {
             int affected = courseRepository.update(null,
@@ -908,14 +907,16 @@ public class CourseServiceImpl implements CourseService {
                 throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
             }
         } else if (currentStatus == CourseStatus.CLOSED.getCode()) {
-            // 已下架且无活跃选课 → 物理删除（设置 deleted_at 使 @TableLogic 自动过滤）
-            course.setDeletedAt(LocalDateTime.now());
-            course.setUpdatedAt(LocalDateTime.now());
-            courseRepository.updateById(course);
+            // 已下架, 直接进入下方统一软删除
         } else {
-            // PUBLISHED → CLOSED 等合法转换走 updateStatus（E2-1: self 代理确保 @Transactional 生效）
+            // PUBLISHED → CLOSED 等合法转换
             self.updateStatus(id, CourseStatus.CLOSED.getCode());
         }
+
+        // 统一软删除: 设置 deleted_at 使 @TableLogic 自动过滤, 一次删除即不可见
+        course.setDeletedAt(LocalDateTime.now());
+        course.setUpdatedAt(LocalDateTime.now());
+        courseRepository.updateById(course);
 
         LambdaQueryWrapper<CourseChapter> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseChapter::getCourseId, id);
