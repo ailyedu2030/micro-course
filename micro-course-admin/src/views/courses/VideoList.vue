@@ -77,12 +77,14 @@
             <span v-else class="no-thumb">—</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column prop="status" label="状态" width="180" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 0" type="warning" size="small">上传中</el-tag>
-            <el-tag v-else-if="row.status === 1" type="info" size="small">转码中</el-tag>
+            <el-tooltip v-if="row.status === 3 && row.errorMessage" :content="row.errorMessage" placement="top">
+              <el-tag type="danger" size="small">失败（点查原因）</el-tag>
+            </el-tooltip>
+            <el-tag v-else-if="row.status === 0" type="warning" size="small">上传中</el-tag>
+            <el-tag v-else-if="row.status === 1" type="info" size="small">转码中 {{ row.progress || 0 }}%</el-tag>
             <el-tag v-else-if="row.status === 2" type="success" size="small">完成</el-tag>
-            <el-tag v-else-if="row.status === 3" type="danger" size="small">失败</el-tag>
             <el-tag v-else type="info" size="small">{{ row.status ?? '-' }}</el-tag>
           </template>
         </el-table-column>

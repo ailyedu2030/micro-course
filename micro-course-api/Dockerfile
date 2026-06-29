@@ -9,7 +9,7 @@ FROM eclipse-temurin:17-jre-alpine
 RUN apk add --no-cache ffmpeg tini
 RUN addgroup -S microcourse && adduser -S microcourse -G microcourse
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY target/micro-course-api-1.0.0.jar app.jar
 RUN mkdir -p /data/videos /data/slides /app/uploads && chown -R microcourse:microcourse /app /data
 USER microcourse
 EXPOSE 8080
