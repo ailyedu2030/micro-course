@@ -15,8 +15,12 @@ import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.ExerciseRecordService;
 import com.microcourse.service.LearningProgressService;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -171,6 +175,10 @@ class BackendP0FixesTest extends BaseIntegrationTest {
     @Test
     @DisplayName("[P0-3] 成绩唯一键已存在时再次 submit 不抛 500（成绩去重前置命中）")
     void concurrentGradeSubmitShouldNotThrow500() throws Exception {
+        // P1-C 修复: 设置安全上下文,避免 SecurityUtil.getCurrentUserId() 抛 TOKEN_INVALID
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(7L, null,
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))));
         seedExercise();
         // 预置一条 grade(user=7, course=1, exercise=90021, attempt=1)，
         // 模拟并发下「另一请求已写入成绩」的竞态结果：本次 submit 的成绩去重前置应命中，跳过插入。
@@ -271,6 +279,7 @@ class BackendP0FixesTest extends BaseIntegrationTest {
         exec("DELETE FROM courses WHERE id >= 90000");
         exec("DELETE FROM users WHERE id >= 90000");
         exec("UPDATE courses SET student_count = 0 WHERE id IN (1,2,3,4)");
+        SecurityContextHolder.clearContext();
     }
 
     private ProgressCreateRequest buildProgress(Long userId, Long courseId, Long chapterId) {
