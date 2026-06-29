@@ -108,7 +108,11 @@ const handleApprove = async (row) => {
   finally { actingId.value = null }
 }
 
-const handleReject = (row) => { rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true }
+const handleReject = async (row) => {
+  try { await ElMessageBox.confirm(`确定驳回「${row.title}」？`, '确认驳回', { type: 'warning', confirmButtonText: '驳回', cancelButtonText: '取消' }) }
+  catch { return }
+  rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true
+}
 const confirmReject = async () => {
   actingId.value = rejectTarget.value.id
   try { await rejectMicroSpecialty(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
