@@ -914,9 +914,17 @@ public class CourseServiceImpl implements CourseService {
         }
 
         // 统一软删除: 设置 deleted_at 使 @TableLogic 自动过滤, 一次删除即不可见
-        course.setDeletedAt(LocalDateTime.now());
-        course.setUpdatedAt(LocalDateTime.now());
-        courseRepository.updateById(course);
+        // 注意: CAS 分支已通过 LambdaUpdateWrapper 直接更新了 DB version,
+        //   此处 course 对象的 version 可能已过期, 必须重新查询确保 version 匹配
+        Course fresh = courseRepository.selectById(id);
+        if (fresh != null) {
+            fresh.setDeletedAt(LocalDateTime.now());
+            fresh.setUpdatedAt(LocalDateTime.now());
+            boolean updated = courseRepository.updateById(fresh) > 0;
+            if (!updated) {
+                throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "课程删除失败,请刷新后重试");
+            }
+        }
 
         LambdaQueryWrapper<CourseChapter> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseChapter::getCourseId, id);
