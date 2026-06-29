@@ -871,6 +871,11 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
+        // TEACHER 只能删除自己的课程
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
         // FK 检查：有活跃选课记录时禁止关闭 (DF-008 修复: 排除 CANCELLED/WAITLIST)
         long enrollCount = enrollmentRepository.selectCount(
                 new LambdaQueryWrapper<Enrollment>()
