@@ -182,17 +182,41 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # v1.7.1 真正根因修复: GitHub Actions artifact 跨 job 传播需 5-30s
+      # needs: [backend, frontend] 等 job 完成但不等 artifact 传播
+      - name: Wait for artifacts to be available
+        run: sleep 20
+        shell: bash
+
       - name: Download backend JAR
         uses: actions/download-artifact@v4
         with:
           name: backend-jar
           path: micro-course-api/target
+        continue-on-error: true
 
       - name: Download frontend dist
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
           path: micro-course-admin/dist
+        continue-on-error: true
+
+      # 验证 backend JAR, 不存在则重试
+      - name: Verify backend JAR
+        run: |
+          if [ ! -f micro-course-api/target/micro-course-api-1.0.0.jar ]; then
+            echo "Backend JAR missing, waiting 15s and retrying..."
+            sleep 15
+          fi
+        shell: bash
+
+      - name: Re-download backend JAR if missing
+        if: hashFiles('micro-course-api/target/micro-course-api-1.0.0.jar') == ''
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: micro-course-api/target
         continue-on-error: true
 
       - name: Setup JDK 17
@@ -424,6 +448,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # v1.7.1 真正根因修复: GitHub Actions artifact 跨 job 传播需 5-30s
+      - name: Wait for artifacts to be available
+        run: sleep 20
+        shell: bash
+
       # v1.7.1 真正根因修复: frontend Dockerfile "COPY dist" 需要 dist 目录
       # 但 .gitignore 排除 dist/, CI checkout 没有 dist
       # 必须从 frontend job 的 artifact 下载
@@ -432,6 +461,24 @@ jobs:
         with:
           name: frontend-dist
           path: micro-course-admin/dist
+        continue-on-error: true
+
+      # 验证 frontend dist, 不存在则重试
+      - name: Verify frontend dist
+        run: |
+          if [ ! -d micro-course-admin/dist ] || [ -z "$(ls -A micro-course-admin/dist 2>/dev/null)" ]; then
+            echo "Frontend dist missing, waiting 15s and retrying..."
+            sleep 15
+          fi
+        shell: bash
+
+      - name: Re-download frontend dist if missing
+        if: hashFiles('micro-course-admin/dist/**') == ''
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: micro-course-admin/dist
+        continue-on-error: true
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
