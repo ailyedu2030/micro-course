@@ -908,7 +908,10 @@ public class CourseServiceImpl implements CourseService {
                 throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
             }
         } else if (currentStatus == CourseStatus.CLOSED.getCode()) {
-            // 已下架课程直接清理，不修改状态
+            // 已下架且无活跃选课 → 物理删除（设置 deleted_at 使 @TableLogic 自动过滤）
+            course.setDeletedAt(LocalDateTime.now());
+            course.setUpdatedAt(LocalDateTime.now());
+            courseRepository.updateById(course);
         } else {
             // PUBLISHED → CLOSED 等合法转换走 updateStatus（E2-1: self 代理确保 @Transactional 生效）
             self.updateStatus(id, CourseStatus.CLOSED.getCode());
