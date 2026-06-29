@@ -76,7 +76,7 @@ const handleSubmit = async () => {
   try { await formRef.value.validate() } catch { return }
   submitting.value = true
   try { await submitProposal(form.value); ElMessage.success('申报已提交'); router.push('/teacher/micro-specialties/my-proposals') }
-  catch { ElMessage.error('提交失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '提交失败') }
   finally { submitting.value = false }
 }
 

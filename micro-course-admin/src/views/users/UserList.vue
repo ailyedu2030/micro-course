@@ -1017,7 +1017,7 @@ async function handleAvatarUpload(file, row) {
     const avatarUrl = res.data || res
     row.avatar = avatarUrl + '?t=' + Date.now()
     fetchData()
-  } catch { ElMessage.error('上传失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '上传失败') }
   return false
 }
 

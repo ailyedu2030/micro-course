@@ -104,7 +104,7 @@ const statusType = (s) => statusTypeMap[s] || 'info'
 const handleApprove = async (row) => {
   actingId.value = row.id
   try { await approveMicroSpecialty(row.id); ElMessage.success('已通过'); fetchData() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }
 
@@ -112,7 +112,7 @@ const handleReject = (row) => { rejectTarget.value = row; rejectReason.value = '
 const confirmReject = async () => {
   actingId.value = rejectTarget.value.id
   try { await rejectMicroSpecialty(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }
 
@@ -120,12 +120,12 @@ const handleCancel = async (row) => {
   try { await ElMessageBox.confirm('确定取消该微专业？', '确认', { type: 'warning' }) }
   catch { return }
   try { await cancelMicroSpecialty(row.id); ElMessage.success('已取消'); fetchData() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 const handleArchive = async (row) => {
   try { await archiveMicroSpecialty(row.id); ElMessage.success('已归档'); fetchData() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 onMounted(fetchData)

@@ -218,14 +218,14 @@ const handleTabChange = (name) => {
 
 const handleAccept = async (inv) => {
   try { await acceptInvite(inv.id); ElMessage.success('已接受'); fetchInvites() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 const handleDecline = async (inv) => {
   try { await ElMessageBox.confirm('确定拒绝该邀请？', '提示', { type: 'warning' }) }
   catch { return }
   try { await declineInvite(inv.id); ElMessage.success('已拒绝'); fetchInvites() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 const showCreateDialog = () => { createVisible.value = true }
@@ -238,7 +238,7 @@ const handleCreate = async () => {
   try { await createFormRef.value.validate() } catch { return }
   creating.value = true
   try { await createMicroSpecialty(createForm.value); ElMessage.success('创建成功'); createVisible.value = false; fetchList(activeTab.value) }
-  catch { ElMessage.error('创建失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '创建失败') }
   finally { creating.value = false }
 }
 

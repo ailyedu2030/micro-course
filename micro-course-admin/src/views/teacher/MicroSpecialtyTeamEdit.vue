@@ -147,7 +147,7 @@ const handleInvite = async () => {
   try { await inviteFormRef.value.validate() } catch { return }
   inviting.value = true
   try { await inviteTeacher(msId.value, inviteForm.value); ElMessage.success('邀请已发送'); inviteVisible.value = false; fetchData() }
-  catch { ElMessage.error('邀请失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '邀请失败') }
   finally { inviting.value = false }
 }
 
@@ -155,12 +155,12 @@ const handleRemove = async (row) => {
   try { await ElMessageBox.confirm(`确定移除「${row.teacherName}」？`, '确认', { type: 'warning' }) }
   catch { return }
   try { await removeTeacher(msId.value, row.id || row.teacherId); ElMessage.success('已移除'); fetchData() }
-  catch { ElMessage.error('移除失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '移除失败') }
 }
 
 const handleReinvite = async (row) => {
   try {       await reinviteTeacher(row.id || row.inviteId, {}); ElMessage.success('已重新邀请'); fetchData() }
-  catch { ElMessage.error('重邀失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '重邀失败') }
 }
 
 onMounted(fetchData)

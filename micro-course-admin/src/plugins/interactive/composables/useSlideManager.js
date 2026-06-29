@@ -41,7 +41,7 @@ export function useSlideManager(courseId) {
       })
       ElMessage.success('上传成功，正在后台渲染...')
       startPolling()
-    } catch { ElMessage.error('上传失败') }
+    } catch (e) { ElMessage.error(e?.response?.data?.message || '上传失败') }
     finally { uploading.value = false }
     return false
   }
@@ -57,7 +57,7 @@ export function useSlideManager(courseId) {
       selectedPage.value.narrationStatusText = u.narrationStatusText
       editingScript.value = u.narrationScript
       ElMessage.success('讲述稿已生成')
-    } catch { ElMessage.error('AI 生成失败') }
+    } catch (e) { ElMessage.error(e?.response?.data?.message || 'AI 生成失败') }
     finally { aiLoading.value = false }
   }
 
@@ -68,7 +68,7 @@ export function useSlideManager(courseId) {
       const res = await generateAudio(courseId.value, selectedPage.value.pageNumber)
       Object.assign(selectedPage.value, res.data)
       ElMessage.success('音频已生成')
-    } catch { ElMessage.error('TTS 生成失败') }
+    } catch (e) { ElMessage.error(e?.response?.data?.message || 'TTS 生成失败') }
     finally { ttsLoading.value = false }
   }
 

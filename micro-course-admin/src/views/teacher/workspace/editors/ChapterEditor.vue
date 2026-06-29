@@ -55,7 +55,7 @@ async function handleSave() {
     initialForm.value = { ...form.value }
     emit('update')
     ElMessage.success('章节已保存')
-  } catch { ElMessage.error('保存失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
 }
 </script>
 

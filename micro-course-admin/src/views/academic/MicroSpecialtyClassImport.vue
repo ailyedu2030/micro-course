@@ -71,7 +71,7 @@ const fetchSpecialties = async () => {
   try {
     const { data } = await getMicroSpecialtyList({ size: 200 })
     specialtyOptions.value = data.items || data || []
-  } catch { ElMessage.error('加载微专业列表失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载微专业列表失败') }
   finally { loadingSpecialties.value = false }
 }
 
@@ -83,7 +83,7 @@ const onSpecialtyChange = async (id) => {
   try {
     // Load classes for selected specialty via microSpecialty enrollments API
     // For now, classOptions come from the parent context or a separate API
-  } catch { ElMessage.error('加载班级列表失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载班级列表失败') }
   finally { loadingClasses.value = false }
 }
 
@@ -95,7 +95,7 @@ const handleImport = async () => {
     const { data } = await classImport({ microSpecialtyId: form.value.microSpecialtyId, classIds: form.value.classIds })
     result.value = typeof data === 'number' ? { successCount: data, skipCount: 0, pendingCount: 0, errors: [] } : data
     ElMessage.success('导入完成')
-  } catch { ElMessage.error('导入失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '导入失败') }
   finally { importing.value = false }
 }
 

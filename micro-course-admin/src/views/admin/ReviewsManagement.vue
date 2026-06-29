@@ -98,7 +98,7 @@ async function handleApprove(row) {
     await approveReview(row.id)
     ElMessage.success('已通过')
     fetchData()
-  } catch { ElMessage.error('操作失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 async function handleReject(row) {
@@ -109,7 +109,7 @@ async function handleReject(row) {
     await rejectReview(row.id)
     ElMessage.success('已驳回')
     fetchData()
-  } catch { ElMessage.error('驳回失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '驳回失败') }
 }
 
 async function handleDelete(row) {
@@ -120,7 +120,7 @@ async function handleDelete(row) {
     await deleteReview(row.id)
     ElMessage.success('已删除')
     fetchData()
-  } catch { ElMessage.error('删除失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
 }
 
 function formatDate(iso) {

@@ -281,7 +281,7 @@ async function loadCourse() {
     }
     notInteractive.value = false
     await loadSlides()
-  } catch { ElMessage.error('加载课程失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载课程失败') }
   finally { loading.value = false }
 }
 
@@ -467,7 +467,7 @@ async function generateOneNarration(idx) {
     pages.value[idx].narrationScript = res.data.narrationScript
     pages.value[idx].narrationStatus = res.data.narrationStatus
     ElMessage.success('讲述稿已生成')
-  } catch { ElMessage.error('生成失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '生成失败') }
   finally { aiLoading.value[idx] = false }
 }
 
@@ -526,7 +526,7 @@ async function generateOneAudio(idx) {
     const p = await getSlidePages(courseId.value)
     if (p.data?.[idx]) pages.value[idx].narrationStatus = p.data[idx].narrationStatus
     ElMessage.success('音频已生成')
-  } catch { ElMessage.error('TTS生成失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || 'TTS生成失败') }
   finally { ttsLoading.value[idx] = false }
 }
 
@@ -542,7 +542,7 @@ function removeExercise(idx) {
 async function submitForReview() {
   submitting.value = true
   try { await submitCourseForReview(courseId.value); ElMessage.success('已提交审核') }
-  catch { ElMessage.error('提交失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '提交失败') }
   finally { submitting.value = false }
 }
 

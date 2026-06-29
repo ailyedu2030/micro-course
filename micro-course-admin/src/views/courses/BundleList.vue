@@ -140,7 +140,7 @@ const fetchBundles = async () => {
     const { data } = await getBundles({ page: page.value, size: size.value })
     bundles.value = data.items || []
     total.value = data.totalElements || 0
-  } catch { ElMessage.error('加载套件列表失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载套件列表失败') }
   finally { loading.value = false }
 }
 
@@ -169,7 +169,7 @@ const handleSave = async () => {
     ElMessage.success('创建成功')
     dialogVisible.value = false
     fetchBundles()
-  } catch { ElMessage.error('保存失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
   finally { saving.value = false }
 }
 
@@ -181,7 +181,7 @@ const handleDelete = async (row) => {
     await deleteBundle(row.id)
     ElMessage.success('删除成功')
     fetchBundles()
-  } catch { ElMessage.error('删除失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
 }
 
 const openDetail = async (row) => {
@@ -195,7 +195,7 @@ const openDetail = async (row) => {
     const existingIds = new Set(bundleItems.value.map(i => i.courseId))
     availableCourses.value = (coursesData.items || []).filter(c => !existingIds.has(c.id))
     itemDialog.value = true
-  } catch { ElMessage.error('加载子课失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载子课失败') }
 }
 
 const handleAddItem = async () => {
@@ -206,7 +206,7 @@ const handleAddItem = async () => {
     await openDetail(currentBundle.value)
     selectedCourseId.value = null
     newSortOrder.value = (bundleItems.value.length || 0) + 1
-  } catch { ElMessage.error('添加失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '添加失败') }
 }
 
 const handleRemoveItem = async (row) => {
@@ -217,7 +217,7 @@ const handleRemoveItem = async (row) => {
     await removeBundleCourse(currentBundle.value.id, row.id)
     ElMessage.success('移除成功')
     await openDetail(currentBundle.value)
-  } catch { ElMessage.error('移除失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '移除失败') }
 }
 
 onMounted(() => fetchBundles())

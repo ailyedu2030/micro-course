@@ -147,7 +147,7 @@ async function fetchDeptStats() {
   try {
     const { data } = await getDepartmentStats()
     departmentStats.value = (data || []).sort((a, b) => (b.avgCompletionRate || 0) - (a.avgCompletionRate || 0))
-  } catch { ElMessage.error('加载院系统计失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载院系统计失败') }
   finally { deptLoading.value = false }
 }
 

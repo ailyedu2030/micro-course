@@ -133,7 +133,7 @@ const handleWithdraw = async (row) => {
   try { await ElMessageBox.confirm('确定撤回该申报？', '确认', { type: 'warning' }) }
   catch { return }
   try { await withdrawProposal(row.id); ElMessage.success('已撤回'); fetchData() }
-  catch { ElMessage.error('撤回失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '撤回失败') }
 }
 
 const handleEdit = (row) => {
@@ -148,7 +148,7 @@ const handleResubmit = async () => {
   try { await editFormRef.value.validate() } catch { return }
   resubmitting.value = true
   try { await resubmitProposal(editingId.value, editForm.value); ElMessage.success('已重新提交'); editVisible.value = false; fetchData() }
-  catch { ElMessage.error('提交失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '提交失败') }
   finally { resubmitting.value = false }
 }
 

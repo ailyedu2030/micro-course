@@ -94,21 +94,21 @@ const handleTabChange = (name) => { activeTab.value = name; fetchData(name) }
 
 const handleAccept = async (inv) => {
   try { await acceptInvite(inv.id); ElMessage.success('已接受'); fetchData(activeTab.value) }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 const handleDecline = async (inv) => {
   try { await ElMessageBox.confirm('确定拒绝该邀请？', '提示', { type: 'warning' }) }
   catch { return }
   try { await declineInvite(inv.id); ElMessage.success('已拒绝'); fetchData(activeTab.value) }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 const handleLeave = async (inv) => {
   try { await ElMessageBox.confirm('确定退出该微专业团队？', '提示', { type: 'warning' }) }
   catch { return }
   try { await leaveTeam(inv.id); ElMessage.success('已退出'); fetchData(activeTab.value) }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 onMounted(() => fetchData('pending'))

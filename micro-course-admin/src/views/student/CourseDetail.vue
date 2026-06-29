@@ -449,7 +449,7 @@ const handleSubmitReview = async () => {
   if (!reviewForm.value.rating) { ElMessage.warning('请选择评分'); return }
   reviewSubmitting.value = true
   try { await createReview(courseId.value, { rating: reviewForm.value.rating, content: reviewForm.value.content }); ElMessage.success('评价提交成功'); reviewDialogVisible.value = false; fetchReviews(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  catch { ElMessage.error('提交失败，请重试') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '提交失败，请重试') }
   finally { reviewSubmitting.value = false }
 }
 

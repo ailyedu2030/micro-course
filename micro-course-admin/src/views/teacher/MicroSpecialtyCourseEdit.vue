@@ -204,7 +204,7 @@ const handleAdd = async () => {
   try { await addFormRef.value.validate() } catch { return }
   adding.value = true
   try { await addCourse(msId.value, addForm.value); ElMessage.success('添加成功'); addVisible.value = false; fetchData() }
-  catch { ElMessage.error('添加失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '添加失败') }
   finally { adding.value = false }
 }
 
@@ -218,7 +218,7 @@ const resetEditForm = () => { editFormRef.value?.clearValidate() }
 const handleEditSave = async () => {
   editing.value = true
   try { await updateCourseItem(msId.value, editingItem.value.id, editForm.value); ElMessage.success('保存成功'); editVisible.value = false; fetchData() }
-  catch { ElMessage.error('保存失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
   finally { editing.value = false }
 }
 
@@ -226,7 +226,7 @@ const handleRemove = async (row) => {
   try { await ElMessageBox.confirm(`确定移除「${row.courseTitle}」？`, '确认', { type: 'warning' }) }
   catch { return }
   try { await removeCourse(msId.value, row.id); ElMessage.success('已移除'); fetchData() }
-  catch { ElMessage.error('移除失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '移除失败') }
 }
 
 // 指派教师
@@ -262,7 +262,7 @@ const handleAssignTeacher = async () => {
     ElMessage.success('教师已指派')
     assignVisible.value = false
     fetchData()
-  } catch { ElMessage.error('指派失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '指派失败') }
   finally { assigning.value = false }
 }
 

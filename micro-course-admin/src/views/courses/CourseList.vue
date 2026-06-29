@@ -453,7 +453,7 @@ const handleView = (row) => {
 const handleApprove = async (row) => {
   try { await ElMessageBox.confirm('确定审核通过该课程?', '提示', { type: 'warning' }) } catch { return }
   try { await approveCourse(row.id); ElMessage.success('审核通过成功'); fetchData() }
-  catch { ElMessage.error('审核通过失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '审核通过失败') }
 }
 
 const handleReject = async (row) => {
@@ -466,19 +466,19 @@ const handleReject = async (row) => {
     value = res.value
   } catch { return }
   try { await rejectCourse(row.id, value || ''); ElMessage.success('驳回成功'); fetchData() }
-  catch { ElMessage.error('驳回失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '驳回失败') }
 }
 
 const handlePublish = async (row) => {
   try { await ElMessageBox.confirm('确定发布该课程?', '提示', { type: 'warning' }) } catch { return }
   try { await updateCourseStatus(row.id, 4); ElMessage.success('发布成功'); fetchData() }
-  catch { ElMessage.error('发布失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '发布失败') }
 }
 
 const handleUnpublish = async (row) => {
   try { await ElMessageBox.confirm('确定下架该课程?', '提示', { type: 'warning' }) } catch { return }
   try { await updateCourseStatus(row.id, 5); ElMessage.success('下架成功'); fetchData() }
-  catch { ElMessage.error('下架失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '下架失败') }
 }
 
 const handleDelete = async (row) => {
@@ -529,7 +529,7 @@ function getStatusLabel(status) {
 }
 
 const goSlides = (row) => {
-  router.push(`/teacher/courses/${row.id}/slides`)
+  router.push(`/teacher/courses/${row.id}/slides/manage`)
 }
 const goWorkspace = (row) => {
   router.push(`/teacher/courses/${row.id}/workspace`)

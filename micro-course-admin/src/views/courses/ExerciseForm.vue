@@ -289,7 +289,7 @@ async function handleRandomPick() {
     exerciseQuestions.value = [...exerciseQuestions.value, ...picked]
     bankStats.value.forEach(s => { s.pickCount = 0 })
     ElMessage.success(`已随机抽取 ${picked.length} 题`)
-  } catch { ElMessage.error('随机选题失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '随机选题失败') }
 }
 
 const parsedOptions = (optionsStr) => {

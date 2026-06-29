@@ -105,14 +105,14 @@ const fetchMicroSpecialties = async () => {
 const handleSetGold = async (row) => {
   actingId.value = row.id
   try { await setGoldFeatured(row.id); ElMessage.success('已设为金标'); fetchMicroSpecialties() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }
 
 const handleUnsetGold = async (row) => {
   actingId.value = row.id
   try { await unsetGoldFeatured(row.id); ElMessage.success('已取消金标'); fetchMicroSpecialties() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }
 

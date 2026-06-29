@@ -95,7 +95,7 @@ onMounted(async () => {
     const { data } = await getBundleById(bundleId.value)
     bundle.value = data
     items.value = data.items || []
-  } catch { ElMessage.error('加载套件失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载套件失败') }
   finally { loading.value = false }
 
   if (isLoggedIn.value) {
@@ -127,7 +127,7 @@ const handleBuy = async () => {
     await payOrder(order.id, 'BALANCE')
     isEnrolled.value = true
     ElMessage.success('购买成功，已选修所有必修课')
-  } catch { ElMessage.error('操作失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { buyLoading.value = false }
 }
 </script>

@@ -109,7 +109,7 @@ async function fetchData() {
     const { data } = await getCourses(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-  } catch { ElMessage.error('加载失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载失败') }
   finally { loading.value = false }
 }
 
@@ -120,7 +120,7 @@ function handleView(row) { router.push(`/courses/${row.id}`) }
 
 async function handleApprove(row) {
   try { await approveCourse(row.id); ElMessage.success('已通过'); fetchData() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 async function handleReject(row) {
@@ -134,12 +134,12 @@ async function handleReject(row) {
     reason = res.value
   } catch { return }
   try { await rejectCourse(row.id, { reason }); ElMessage.success('已驳回'); fetchData() }
-  catch { ElMessage.error('驳回失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '驳回失败') }
 }
 
 async function handlePublish(row) {
   try { await publishCourse(row.id); ElMessage.success('已发布'); fetchData() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
 onMounted(fetchData)

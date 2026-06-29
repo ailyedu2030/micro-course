@@ -47,7 +47,7 @@ async function handleUpload(file) {
     videoFile.value = file.name
     if (res.data?.url) previewUrl.value = res.data.url
     ElMessage.success('视频上传成功')
-  } catch { ElMessage.error('上传失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '上传失败') }
   finally { uploading.value = false }
   return false
 }

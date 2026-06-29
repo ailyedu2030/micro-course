@@ -380,14 +380,14 @@ function stopProgressSim() { if (progressSim) { clearInterval(progressSim); prog
 async function handleGenerateAllAI() {
   aiGenerating.value = true
   try { await generateAllNarrations(courseId.value); ElMessage.success('批量 AI 生成已启动'); setTimeout(() => loadData(), 5000) }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { aiGenerating.value = false }
 }
 
 async function handleGenerateAllTTS() {
   ttsGenerating.value = true
   try { await generateAllAudio(courseId.value); ElMessage.success('批量 TTS 生成已启动'); setTimeout(() => loadData(), 5000) }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { ttsGenerating.value = false }
 }
 

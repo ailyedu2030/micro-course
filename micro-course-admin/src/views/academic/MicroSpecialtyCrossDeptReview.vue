@@ -109,7 +109,7 @@ const fetchData = async () => {
 const handleApprove = async (row) => {
   actingId.value = row.id
   try { await reviewCrossDept(row.id, { approved: true }); ElMessage.success('已批准'); fetchData() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }
 
@@ -121,7 +121,7 @@ const handleReject = async (row) => {
 const confirmReject = async () => {
   actingId.value = rejectTarget.value.id
   try { await reviewCrossDept(rejectTarget.value.id, { approved: false, reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }
 

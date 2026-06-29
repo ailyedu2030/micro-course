@@ -211,28 +211,28 @@ const handleSave = async () => {
     await updateMicroSpecialty(msId.value, form.value)
     ElMessage.success('保存成功')
     fetchDetail()
-  } catch { ElMessage.error('保存失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
   finally { saving.value = false }
 }
 
 const handleSubmit = async () => {
   submitting.value = true
   try { await submitMicroSpecialty(msId.value); ElMessage.success('已提交审核'); fetchDetail() }
-  catch { ElMessage.error('提交失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '提交失败') }
   finally { submitting.value = false }
 }
 
 const handleOpen = async () => {
   actioning.value = true
   try { await openMicroSpecialty(msId.value); ElMessage.success('已开课'); fetchDetail() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actioning.value = false }
 }
 
 const handleClose = async () => {
   actioning.value = true
   try { await closeMicroSpecialty(msId.value); ElMessage.success('已结业'); fetchDetail() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actioning.value = false }
 }
 
@@ -241,7 +241,7 @@ const handleCancel = async () => {
   catch { return }
   actioning.value = true
   try { await cancelMicroSpecialty(msId.value); ElMessage.success('已取消'); fetchDetail() }
-  catch { ElMessage.error('操作失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actioning.value = false }
 }
 
@@ -249,7 +249,7 @@ const showFeaturedDialog = () => { featuredForm.value.reason = ''; featuredVisib
 const handleFeatured = async () => {
   featuring.value = true
   try { await applyFeatured(msId.value, { reason: featuredForm.value.reason }); ElMessage.success('置顶申请已提交'); featuredVisible.value = false }
-  catch { ElMessage.error('申请失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '申请失败') }
   finally { featuring.value = false }
 }
 

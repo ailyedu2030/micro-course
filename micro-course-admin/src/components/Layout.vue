@@ -254,7 +254,7 @@ async function handleCommand(cmd) {
     try {
       await userStore.logout()
       router.push('/login')
-    } catch { ElMessage.error('退出失败') }
+    } catch (e) { ElMessage.error(e?.response?.data?.message || '退出失败') }
   } else if (cmd === 'profile') {
     router.push('/profile')
   } else if (cmd === 'settings') {
