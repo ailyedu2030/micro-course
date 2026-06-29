@@ -322,7 +322,7 @@ INSERT INTO discussion_posts (id, course_id, chapter_id, user_id, title, content
 (5, 5, 14, 9, '线性回归梯度下降收敛问题', '调试时loss一直不下降，是学习率的问题吗？', false, false, true, 6, 15, 1, NOW()-INTERVAL '10 days', NOW()-INTERVAL '10 days'),
 (6, 1, 1, 11, '求助：String字符串拼接效率', 'String和StringBuilder性能差异大吗？', false, false, false, 2, 3, 1, NOW()-INTERVAL '8 days', NOW()-INTERVAL '8 days'),
 (7, 4, 10, 12, 'RESTful API设计问题', 'PUT和PATCH的区别是什么？', false, false, false, 3, 7, 1, NOW()-INTERVAL '6 days', NOW()-INTERVAL '6 days'),
-(8, 2, 5, 19, '红黑树删除操作看不懂', '删除节点的几种情况能详细讲讲吗？', false, false, false, 1, 2, 1, NOW()-INTERVAL '4 days', NOW()-INTERVAL '4 days');
+(8, 2, 5, 18, '红黑树删除操作看不懂', '删除节点的几种情况能详细讲讲吗？', false, false, false, 1, 2, 1, NOW()-INTERVAL '4 days', NOW()-INTERVAL '4 days');
 
 -- ============================================================
 -- 16. 讨论回复
