@@ -17,10 +17,6 @@ env:
   TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course
   TEST_REDIS_HOST: localhost
   TEST_REDIS_PORT: 6379
-  # NVD API Key (用户在 https://nvd.nist.gov/developers/request-an-api-key 申请)
-  # 有 key 限速 50 req/s (10x 加速), 无 key 限速 5 req/s
-  # 申请: gh secret set NVD_API_KEY --repo ailyedu2030/micro-course
-  NVD_API_KEY: ${{ secrets.NVD_API_KEY || '' }}
 
 jobs:
   # ============================================================================
@@ -185,12 +181,6 @@ jobs:
       PAY_MODE: mock
     steps:
       - uses: actions/checkout@v6
-
-      # v1.7.1 真正根因修复: GitHub Actions artifact 跨 job 传播需 5-30s
-      # e2e/docker 立即跑会导致 "Artifact not found" race condition
-      - name: Wait for backend and frontend artifacts
-        run: sleep 30
-        shell: bash
 
       - name: Download backend JAR
         uses: actions/download-artifact@v4
@@ -433,11 +423,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      # v1.7.1 真正根因修复: GitHub Actions artifact 跨 job 传播需 5-30s
-      - name: Wait for backend and frontend artifacts
-        run: sleep 30
-        shell: bash
 
       # v1.7.1 真正根因修复: frontend Dockerfile "COPY dist" 需要 dist 目录
       # 但 .gitignore 排除 dist/, CI checkout 没有 dist

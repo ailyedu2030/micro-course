@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
-    <!-- P2-7: OWASP Dependency-Check 抑制规则 (已知误报或可接受) -->
-    <suppress>
-        <notes>spring-security-crypto 已知误报（5.7+ 修复）</notes>
-        <cve>CVE-2022-22978</cve>
-    </suppress>
-</suppressions>
