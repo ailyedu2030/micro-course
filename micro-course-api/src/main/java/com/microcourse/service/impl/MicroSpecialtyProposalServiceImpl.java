@@ -217,8 +217,8 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        if (!"REJECTED".equals(proposal.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已驳回状态可重提");
+        if (!"REJECTED".equals(proposal.getStatus()) && !"WITHDRAWN".equals(proposal.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已驳回或已撤回状态可重提");
         }
 
         if (request.getTitle() != null) proposal.setTitle(request.getTitle());
