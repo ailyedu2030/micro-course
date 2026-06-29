@@ -142,6 +142,14 @@ public class SlideController {
         return R.ok();
     }
 
+    @PutMapping("/pages/reorder")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> reorderPages(@PathVariable Long courseId,
+                                 @RequestBody List<Map<String, Integer>> order) {
+        slideService.reorderPages(courseId, order);
+        return R.ok();
+    }
+
     @PutMapping("/pages/{pageNumber}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<SlidePageVO> updatePage(@PathVariable Long courseId,

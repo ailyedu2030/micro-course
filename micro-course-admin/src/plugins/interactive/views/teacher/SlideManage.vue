@@ -16,6 +16,9 @@
         <el-button type="danger" plain @click="handleDeleteSlide" :icon="Delete">
           删除课件
         </el-button>
+        <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx" class="replace-upload">
+          <el-button :icon="UploadFilled">替换课件</el-button>
+        </el-upload>
         <el-button :loading="aiGenerating" @click="handleGenerateAllAI" :icon="MagicStick">
           批量 AI 生成
         </el-button>
@@ -74,6 +77,7 @@ drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx" :disab
         <div
 v-for="page in pages" :key="page.pageNumber"
           class="thumb-card" :class="{ active: selectedPage?.pageNumber === page.pageNumber }"
+          :data-page="page.pageNumber"
           tabindex="0" role="button"
           :aria-label="'第' + page.pageNumber + '页'"
           @click="selectPage(page)"
@@ -173,13 +177,14 @@ v-model="editingScript" type="textarea" :rows="10"
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete } from '@element-plus/icons-vue'
-import { uploadSlide, getSlides, getSlidePages, getSlidePage, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio, deleteSlide, deleteSlidePage } from '@/plugins/interactive/api/slide'
+import { uploadSlide, getSlides, getSlidePages, getSlidePage, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio, deleteSlide, deleteSlidePage, reorderSlidePages } from '@/plugins/interactive/api/slide'
 import SlidePreview from '@/plugins/interactive/components/SlidePreview.vue'
 import { loadAuthImage, clearImageCache } from '@/utils/authImage'
+import Sortable from 'sortablejs'
 
 const route = useRoute()
 const courseId = computed(() => route.params.courseId)
@@ -199,6 +204,7 @@ const thumbUrls = ref({})
 const previewUrl = ref('')
 let pollTimer = null
 let progressSim = null
+let sortableInstance = null
 
 const statusTag = computed(() => {
   if (!slide.value) return null
@@ -309,6 +315,37 @@ async function loadThumbnails() {
     const blobUrl = await loadAuthImage(`/courses/${cid}/slides/pages/${page.pageNumber}/thumbnail`)
     if (blobUrl) thumbUrls.value[page.pageNumber] = blobUrl
   }
+  await nextTick()
+  initPageSort()
+}
+
+function initPageSort() {
+  const el = document.querySelector('.thumb-grid')
+  if (!el || sortableInstance) return
+  sortableInstance = Sortable.create(el, {
+    animation: 200,
+    onEnd: async (evt) => {
+      const items = Array.from(el.children).map((child, idx) => {
+        const num = parseInt(child.getAttribute('data-page') || '0', 10)
+        return num
+      })
+      // 旧顺序 -> 新顺序: 只更新被拖动的元素
+      const oldNum = parseInt(evt.item.getAttribute('data-page') || '0', 10)
+      const newPos = evt.newIndex + 1
+      if (oldNum === newPos) return
+      // 批量更新排序
+      const order = items.map((pageNum, idx) => ({
+        pageNumber: pageNum,
+        newPageNumber: idx + 1
+      }))
+      try {
+        await reorderSlidePages(courseId.value, order)
+        await loadData()
+      } catch {
+        ElMessage.error('排序保存失败')
+      }
+    }
+  })
 }
 
 async function loadPreviewImage(page) {
@@ -379,7 +416,7 @@ async function handleDeletePage(page) {
 }
 
 onMounted(() => loadData())
-onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache() })
+onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null } })
 </script>
 
 <style scoped>

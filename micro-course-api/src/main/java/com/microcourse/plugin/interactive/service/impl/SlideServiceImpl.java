@@ -356,6 +356,26 @@ public class SlideServiceImpl implements SlideService {
         return toPageVO(page);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void reorderPages(Long courseId, List<Map<String, Integer>> order) {
+        verifyCourseOwner(courseId);
+        for (Map<String, Integer> item : order) {
+            Integer oldNum = item.get("pageNumber");
+            Integer newNum = item.get("newPageNumber");
+            if (oldNum == null || newNum == null || oldNum.equals(newNum)) continue;
+            SlidePage page = slidePageMapper.selectOne(
+                    new LambdaQueryWrapper<SlidePage>()
+                            .eq(SlidePage::getCourseId, courseId)
+                            .eq(SlidePage::getPageNumber, oldNum));
+            if (page != null) {
+                page.setPageNumber(newNum);
+                page.setUpdatedAt(LocalDateTime.now());
+                slidePageMapper.updateById(page);
+            }
+        }
+    }
+
     private void verifyCourseOwner(Long courseId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
