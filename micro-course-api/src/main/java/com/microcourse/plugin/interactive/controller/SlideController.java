@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/courses/{courseId}/slides")
@@ -125,6 +126,30 @@ public class SlideController {
      * - TEACHER: 必须是课程的所有者
      * - STUDENT: 必须已选此课（有非 CANCELLED 的 enrollment 记录）
      */
+
+    @DeleteMapping
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> deleteSlide(@PathVariable Long courseId) {
+        slideService.deleteSlide(courseId);
+        return R.ok();
+    }
+
+    @DeleteMapping("/pages/{pageNumber}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> deletePage(@PathVariable Long courseId,
+                               @PathVariable Integer pageNumber) {
+        slideService.deletePage(courseId, pageNumber);
+        return R.ok();
+    }
+
+    @PutMapping("/pages/{pageNumber}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<SlidePageVO> updatePage(@PathVariable Long courseId,
+                                      @PathVariable Integer pageNumber,
+                                      @RequestBody Map<String, Object> body) {
+        return R.ok(slideService.updatePage(courseId, pageNumber, body));
+    }
+
     private void verifyAccess(Long courseId) {
         if (SecurityUtil.isAdmin()) {
             return;

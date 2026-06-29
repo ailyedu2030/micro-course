@@ -39,6 +39,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -310,6 +311,57 @@ public class SlideServiceImpl implements SlideService {
             }
         }
         return sb.toString().trim();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteSlide(Long courseId) {
+        // P0-6: OWNER 校验
+        verifyCourseOwner(courseId);
+        CourseSlide slide = courseSlideMapper.selectOne(
+                new LambdaQueryWrapper<CourseSlide>().eq(CourseSlide::getCourseId, courseId));
+        if (slide == null) throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND);
+        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getSlideId, slide.getId()));
+        courseSlideMapper.deleteById(slide.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deletePage(Long courseId, Integer pageNumber) {
+        SlidePage page = slidePageMapper.selectOne(
+                new LambdaQueryWrapper<SlidePage>()
+                        .eq(SlidePage::getCourseId, courseId)
+                        .eq(SlidePage::getPageNumber, pageNumber));
+        if (page == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+        verifyCourseOwner(courseId);
+        slidePageMapper.deleteById(page.getId());
+    }
+
+    @Override
+    public SlidePageVO updatePage(Long courseId, Integer pageNumber, Map<String, Object> body) {
+        SlidePage page = slidePageMapper.selectOne(
+                new LambdaQueryWrapper<SlidePage>()
+                        .eq(SlidePage::getCourseId, courseId)
+                        .eq(SlidePage::getPageNumber, pageNumber));
+        if (page == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+        verifyCourseOwner(courseId);
+        // 安全更新：只允许修改 narrationScript 等安全字段
+        if (body.containsKey("narrationScript") && body.get("narrationScript") instanceof String) {
+            page.setNarrationScript((String) body.get("narrationScript"));
+            page.setNarrationStatus("TEACHER_EDITED");
+        }
+        page.setUpdatedAt(LocalDateTime.now());
+        slidePageMapper.updateById(page);
+        return toPageVO(page);
+    }
+
+    private void verifyCourseOwner(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
     }
 
     private String sha256(byte[] bytes) {

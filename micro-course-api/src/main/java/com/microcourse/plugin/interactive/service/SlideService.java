@@ -19,4 +19,10 @@ public interface SlideService {
     byte[] getPageImage(Long courseId, Integer pageNumber);
 
     byte[] getPageThumbnail(Long courseId, Integer pageNumber);
+
+    void deleteSlide(Long courseId);
+
+    void deletePage(Long courseId, Integer pageNumber);
+
+    SlidePageVO updatePage(Long courseId, Integer pageNumber, java.util.Map<String, Object> body);
 }

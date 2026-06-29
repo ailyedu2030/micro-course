@@ -63,3 +63,11 @@ export function getNarrationSettings(courseId) {
 export function updateNarrationSettings(courseId, data) {
   return request({ method: 'PUT', url: `/courses/${courseId}/narration-settings`, data })
 }
+
+export function deleteSlide(courseId) {
+  return request({ method: 'DELETE', url: `/courses/${courseId}/slides` })
+}
+
+export function deleteSlidePage(courseId, pageNumber) {
+  return request({ method: 'DELETE', url: `/courses/${courseId}/slides/pages/${pageNumber}` })
+}
