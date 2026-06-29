@@ -18,6 +18,7 @@ public class MicroSpecialtyProposal {
     private String prerequisites;
     private String semester;
     private Integer maxStudents;
+    private java.math.BigDecimal credits;
     private String status;
     private String reviewComment;
     private Long reviewedBy;
@@ -48,6 +49,8 @@ public class MicroSpecialtyProposal {
     public void setSemester(String semester) { this.semester = semester; }
     public Integer getMaxStudents() { return maxStudents; }
     public void setMaxStudents(Integer maxStudents) { this.maxStudents = maxStudents; }
+    public java.math.BigDecimal getCredits() { return credits; }
+    public void setCredits(java.math.BigDecimal credits) { this.credits = credits; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getReviewComment() { return reviewComment; }

@@ -62,6 +62,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         proposal.setPrerequisites(request.getPrerequisites());
         proposal.setSemester(request.getSemester());
         proposal.setMaxStudents(request.getMaxStudents());
+        if (request.getCredits() != null) proposal.setCredits(request.getCredits());
         proposal.setStatus("PENDING_REVIEW");
         proposal.setCreatedAt(LocalDateTime.now());
         proposal.setUpdatedAt(LocalDateTime.now());
@@ -227,6 +228,8 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         if (request.getPrerequisites() != null) proposal.setPrerequisites(request.getPrerequisites());
         if (request.getSemester() != null) proposal.setSemester(request.getSemester());
         if (request.getMaxStudents() != null) proposal.setMaxStudents(request.getMaxStudents());
+        if (request.getOfferDepartmentId() != null) proposal.setOfferDepartmentId(request.getOfferDepartmentId());
+        if (request.getCredits() != null) proposal.setCredits(request.getCredits());
 
         proposal.setStatus("PENDING_REVIEW");
         proposal.setUpdatedAt(LocalDateTime.now());
@@ -275,6 +278,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         if (request.getSemester() != null) proposal.setSemester(request.getSemester());
         if (request.getMaxStudents() != null) proposal.setMaxStudents(request.getMaxStudents());
         if (request.getOfferDepartmentId() != null) proposal.setOfferDepartmentId(request.getOfferDepartmentId());
+        if (request.getCredits() != null) proposal.setCredits(request.getCredits());
 
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.updateById(proposal);
