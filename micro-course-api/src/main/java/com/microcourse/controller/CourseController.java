@@ -131,8 +131,8 @@ public class CourseController {
      * 落地示例，建立渐进迁移路径，不强制全量替换。</p>
      */
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
-    @RequireRole({"ADMIN", "ACADEMIC"})
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @RequireRole({"TEACHER", "ADMIN", "ACADEMIC"})
     public R<Void> updateStatus(@PathVariable Long id,
                                 @RequestParam Integer status) {
         courseService.updateStatus(id, status);
