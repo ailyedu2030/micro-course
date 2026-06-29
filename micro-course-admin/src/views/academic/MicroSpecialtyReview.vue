@@ -28,9 +28,10 @@
         <el-table-column prop="createdAt" label="创建时间" width="130" align="center">
           <template #default="{ row }">{{ row.createdAt?.slice(0, 10) || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="320" align="center" fixed="right">
+        <el-table-column label="操作" width="380" align="center" fixed="right">
           <template #default="{ row }">
             <template v-if="row.status === 'PENDING_REVIEW'">
+              <el-button size="small" @click="showDetail(row)">查看</el-button>
               <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">通过</el-button>
               <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
               <el-button size="small" @click="handleCancel(row)">取消</el-button>
@@ -59,6 +60,19 @@
         <el-button type="danger" :loading="actingId !== null" @click="confirmReject">确认驳回</el-button>
       </template>
     </el-dialog>
+    <!-- 查看详情 Dialog -->
+    <el-dialog v-model="detailVisible" title="微专业详情" width="560px">
+      <div class="detail-grid" v-if="detailRow">
+        <div class="detail-item"><label>标题</label><span>{{ detailRow.title }}</span></div>
+        <div class="detail-item"><label>学院</label><span>{{ detailRow.collegeName || '-' }}</span></div>
+        <div class="detail-item"><label>创建者</label><span>{{ detailRow.creatorName || '-' }}</span></div>
+        <div class="detail-item"><label>学期</label><span>{{ detailRow.semester || '-' }}</span></div>
+        <div class="detail-item"><label>招生上限</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
+        <div class="detail-item"><label>状态</label><span><el-tag :type="statusType(detailRow.status)" size="small">{{ statusLabel(detailRow.status) }}</el-tag></span></div>
+        <div class="detail-item full-width"><label>说明</label><span v-html="detailRow.description || '-'" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>培养目标</label><span v-html="detailRow.trainingObjective || '-'" class="detail-html"></span></div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -78,6 +92,10 @@ const total = ref(0)
 const rejectVisible = ref(false)
 const rejectReason = ref('')
 const rejectTarget = ref(null)
+const detailVisible = ref(false)
+const detailRow = ref(null)
+
+const showDetail = (row) => { detailRow.value = row; detailVisible.value = true }
 
 const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', RECRUITING: '招生中', COMPLETED: '已结业', REJECTED: '已驳回', CANCELLED: '已取消', ARCHIVED: '已归档' }
 const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', RECRUITING: '', COMPLETED: 'info', REJECTED: 'danger', CANCELLED: 'danger', ARCHIVED: 'info' }
@@ -141,4 +159,11 @@ onMounted(fetchData)
 .mg-bottom-12 { margin-bottom: var(--space-3); }
 .mg-top-12 { margin-top: var(--space-3); }
 .pagination { display: flex; justify-content: flex-end; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; }
+.detail-item { display: flex; flex-direction: column; gap: 4px; }
+.detail-item.full-width { grid-column: 1 / -1; }
+.detail-item label { font-size: 13px; color: #909399; }
+.detail-item span { font-size: 14px; color: #303133; word-break: break-word; }
+.detail-html { line-height: 1.6; }
+.detail-html :deep(p) { margin: 4px 0; }
 </style>

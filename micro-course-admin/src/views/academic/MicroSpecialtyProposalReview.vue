@@ -33,9 +33,10 @@
         <el-table-column prop="createdAt" label="提交时间" width="130" align="center">
           <template #default="{ row }">{{ row.createdAt?.slice(0, 10) || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="220" align="center" fixed="right">
+        <el-table-column label="操作" width="260" align="center" fixed="right">
           <template #default="{ row }">
             <template v-if="row.status === 'PENDING_REVIEW'">
+              <el-button size="small" @click="showDetail(row)">查看</el-button>
               <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">批准</el-button>
               <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
             </template>
@@ -63,6 +64,20 @@
         <el-button type="danger" :loading="actingId !== null" @click="confirmReject">确认驳回</el-button>
       </template>
     </el-dialog>
+    <!-- 查看详情 Dialog -->
+    <el-dialog v-model="detailVisible" title="申报详情" width="560px">
+      <div class="detail-grid" v-if="detailRow">
+        <div class="detail-item"><label>标题</label><span>{{ detailRow.title }}</span></div>
+        <div class="detail-item"><label>学院</label><span>{{ detailRow.collegeName || '-' }}</span></div>
+        <div class="detail-item"><label>申请人</label><span>{{ detailRow.applicantName || '-' }}</span></div>
+        <div class="detail-item"><label>建议学期</label><span>{{ detailRow.semester || '-' }}</span></div>
+        <div class="detail-item"><label>招生上限</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
+        <div class="detail-item"><label>状态</label><span><el-tag :type="statusType(detailRow.status)" size="small">{{ statusLabel(detailRow.status) }}</el-tag></span></div>
+        <div class="detail-item full-width"><label>说明</label><span v-html="detailRow.description || '-'" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>培养目标</label><span v-html="detailRow.trainingObjective || '-'" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>准入门槛</label><span>{{ detailRow.prerequisites || '-' }}</span></div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -83,6 +98,10 @@ const rejectVisible = ref(false)
 const rejectReason = ref('')
 const rejectTarget = ref(null)
 const error = ref(false)
+const detailVisible = ref(false)
+const detailRow = ref(null)
+
+const showDetail = (row) => { detailRow.value = row; detailVisible.value = true }
 
 const statusMap = { PENDING_REVIEW: '审核中', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回' }
 const statusTypeMap = { PENDING_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger', WITHDRAWN: 'info' }
@@ -134,4 +153,11 @@ onMounted(fetchData)
 .mg-top-12 { margin-top: var(--space-3); }
 .pagination { display: flex; justify-content: flex-end; }
 .no-action { color: var(--el-text-color-placeholder); }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; }
+.detail-item { display: flex; flex-direction: column; gap: 4px; }
+.detail-item.full-width { grid-column: 1 / -1; }
+.detail-item label { font-size: 13px; color: #909399; }
+.detail-item span { font-size: 14px; color: #303133; word-break: break-word; }
+.detail-html { line-height: 1.6; }
+.detail-html :deep(p) { margin: 4px 0; }
 </style>
