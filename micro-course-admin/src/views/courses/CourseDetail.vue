@@ -418,6 +418,11 @@ const handleUnpublish = async () => {
 
 // ===== 编辑提交 =====
 const handleCoverChange = (file) => {
+  if (file.raw && file.raw.size > 5 * 1024 * 1024) {
+    ElMessage.warning('封面图片不能超过 5MB')
+    coverUploadRef.value?.clearFiles()
+    return
+  }
   coverFile.value = file.raw
   if (coverPreviewUrl.value) URL.revokeObjectURL(coverPreviewUrl.value)
   coverPreviewUrl.value = URL.createObjectURL(file.raw)

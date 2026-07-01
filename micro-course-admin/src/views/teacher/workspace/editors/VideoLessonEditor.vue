@@ -16,7 +16,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { uploadVideo } from '@/api/video'
 import { UploadFilled } from '@element-plus/icons-vue'
@@ -51,6 +51,13 @@ async function handleUpload(file) {
   finally { uploading.value = false }
   return false
 }
+
+function beforeUnload(e) {
+  if (uploading.value) { e.preventDefault(); e.returnValue = '' }
+}
+
+onMounted(() => window.addEventListener('beforeunload', beforeUnload))
+onUnmounted(() => window.removeEventListener('beforeunload', beforeUnload))
 </script>
 <style scoped>
 .video-editor { padding: var(--space-5); }

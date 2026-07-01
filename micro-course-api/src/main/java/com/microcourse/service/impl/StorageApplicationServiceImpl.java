@@ -13,6 +13,9 @@ import com.microcourse.service.StorageApplicationService;
 import com.microcourse.util.FileUploadUtil;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.StorageValidator;
+import org.apache.ibatis.session.ExecutorType;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -61,6 +64,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     private final ProposalSharedUnitRepository sharedUnitRepository;
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
+    private final SqlSessionFactory sqlSessionFactory;
 
     public StorageApplicationServiceImpl(
             MicroSpecialtyProposalRepository proposalRepository,
@@ -70,7 +74,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             ProposalSignatureRepository signatureRepository,
             ProposalSharedUnitRepository sharedUnitRepository,
             UserRepository userRepository,
-            DepartmentRepository departmentRepository) {
+            DepartmentRepository departmentRepository,
+            SqlSessionFactory sqlSessionFactory) {
         this.proposalRepository = proposalRepository;
         this.courseRepository = courseRepository;
         this.leadCourseRepository = leadCourseRepository;
@@ -79,6 +84,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         this.sharedUnitRepository = sharedUnitRepository;
         this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
+        this.sqlSessionFactory = sqlSessionFactory;
     }
 
     // ================================================================
@@ -355,13 +361,9 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿或已驳回状态可提交审核");
         }
 
-        // 执行提交前校验
+        // 执行提交前校验（使用 validateAndThrow 确保异常路径不会被遗漏）
         StorageApplicationSaveRequest req = buildRequest(proposal);
-        List<String> errors = StorageValidator.validateForSubmit(req);
-        if (!errors.isEmpty()) {
-            throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
-                    String.join("；", errors));
-        }
+        StorageValidator.validateAndThrow(req);
 
         proposal.setStatus("PENDING_REVIEW");
         proposal.setUpdatedAt(LocalDateTime.now());
@@ -786,11 +788,12 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             throw new IllegalStateException("replaceSubTables 必须在事务上下文中调用");
         }
 
-        // courses — A2: 仅当 courses 数组非 null 时更新
+        // courses — A2: 仅当 courses 数组非 null 时更新 (R-002: 批量插入)
         if (request.getCourses() != null) {
             courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
                     .eq(ProposalCourse::getProposalId, proposalId));
             int sortOrder = 0;
+            List<ProposalCourse> entities = new ArrayList<>();
             for (ProposalCourseItem item : request.getCourses()) {
                 ProposalCourse entity = new ProposalCourse();
                 entity.setProposalId(proposalId);
@@ -800,15 +803,25 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 entity.setCredits(item.getCredits());
                 entity.setSemester(item.getSemester());
                 entity.setSortOrder(sortOrder++);
-                courseRepository.insert(entity);
+                entities.add(entity);
+            }
+            if (!entities.isEmpty()) {
+                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+                    ProposalCourseRepository batchRepo = sqlSession.getMapper(ProposalCourseRepository.class);
+                    for (ProposalCourse entity : entities) {
+                        batchRepo.insert(entity);
+                    }
+                    sqlSession.commit();
+                }
             }
         }
 
-        // leadCourses — A2: 仅当 leadCourses 数组非 null 时更新
+        // leadCourses — A2: 仅当 leadCourses 数组非 null 时更新 (R-002: 批量插入)
         if (request.getLeadCourses() != null) {
             leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
                     .eq(ProposalLeadCourse::getProposalId, proposalId));
             int sortOrder = 0;
+            List<ProposalLeadCourse> entities = new ArrayList<>();
             for (ProposalLeadCourseItem item : request.getLeadCourses()) {
                 ProposalLeadCourse entity = new ProposalLeadCourse();
                 entity.setProposalId(proposalId);
@@ -816,7 +829,16 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 entity.setCredits(item.getCredits());
                 entity.setHours(item.getHours());
                 entity.setSortOrder(sortOrder++);
-                leadCourseRepository.insert(entity);
+                entities.add(entity);
+            }
+            if (!entities.isEmpty()) {
+                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+                    ProposalLeadCourseRepository batchRepo = sqlSession.getMapper(ProposalLeadCourseRepository.class);
+                    for (ProposalLeadCourse entity : entities) {
+                        batchRepo.insert(entity);
+                    }
+                    sqlSession.commit();
+                }
             }
         }
 
