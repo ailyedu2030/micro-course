@@ -52,20 +52,35 @@ fi
 echo ""
 echo "[3/6] 构建后端 ..."
 cd "$APP_DIR/micro-course-api"
+# Phase 15: 生产环境 Maven 必须使用 JDK 17（M1 Mac 默认 JDK 26 与 MyBatis-Plus 冲突）
+# 服务器验证: java -version 应显示 17.x
 mvn clean package -DskipTests -q 2>&1 | tail -5
 echo "  后端构建完成"
 
-# === Step 4: Flyway 迁移 ===
+# === Step 4: Frontend 构建 ===
 echo ""
-echo "[4/6] Flyway 数据库迁移 ..."
-echo "  新增迁移:"
-echo "    V102: 订单幂等性部分唯一索引 (orders userId+courseId WHERE PENDING/PAID)"
-echo "    V103: 高频排序索引 (enrollments/discussion_posts/exercise_records/certificates/grades)"
+echo "[4/7] 构建前端 ..."
+cd "$APP_DIR/micro-course-admin"
+npm ci 2>&1 | tail -3
+npm run build 2>&1 | tail -3
+echo "  前端构建完成"
+
+# === Step 5: Flyway 迁移 ===
+echo ""
+echo "[5/7] Flyway 数据库迁移 ..."
+echo "  Phase 15 新增迁移 (V91-V96):"
+echo "    V91: expand_proposal_fields — 申请表扩展 27 字段"
+echo "    V92: proposal_courses_tables — 课程体系+负责人课程表"
+echo "    V93: proposal_team_members — 教学团队成员表"
+echo "    V94: proposal_signatures_and_shared — 签字+共建共享单位表"
+echo "    V96: add_micro_specialty_name — 微专业名称字段"
+echo "  注意: V91-V96 版本号低于已应用的 V99-V103，需 outOfOrder=true"
+echo "  已在 application.yml 中配置: flyway.out-of-order: true"
 echo "  迁移将在应用启动时自动执行"
 
-# === Step 5: 重启服务 ===
+# === Step 6: 重启服务 ===
 echo ""
-echo "[5/6] 重启后端服务 ..."
+echo "[6/7] 重启后端服务 ..."
 if systemctl is-active --quiet micro-course-api 2>/dev/null; then
     sudo systemctl restart micro-course-api
     echo "  服务已重启"
@@ -80,9 +95,9 @@ else
     echo "    cd $APP_DIR/micro-course-api && nohup java -jar target/micro-course-api-1.0.0.jar &"
 fi
 
-# === Step 6: 健康检查 ===
+# === Step 7: 健康检查 ===
 echo ""
-echo "[6/6] 健康检查 ..."
+echo "[7/7] 健康检查 ..."
 sleep 5
 if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
     echo "  ✅ 后端健康检查通过"
@@ -95,9 +110,13 @@ fi
 echo ""
 echo "============================================"
 echo "  部署完成!"
-echo "  本次更新: fix(super-fix-v4) 34 findings"
-echo "  - 安全: BCrypt12, JWT fail-fast, XSS, 路径穿越"
-echo "  - 并发: 原子SQL cart, DuplicateKey, 防重叠"
+echo "  本次更新: feat(phase15) 整理收纳微专业申请表系统"
+echo "  - 新增: 5模块申请表（表头/基本情况/教学团队/签字/共享单位）"
+echo "  - 新增: Word导出(Apache POI) + PDF导出(OpenPDF)"
+echo "  - 新增: 12个REST API端点 + 自动保存(1.5s防抖)"
+echo "  - 新增: null值在V91中被禁止，默认使用0或空字符串"
+echo "  - Flyway: outOfOrder=true（V91-V96低于已应用的V99）"
+echo "  - 配置: JDK 17必需（JDK 26与MyBatis-Plus不兼容）"
 echo "  - 资源: maxLimit, 5索引, 500MB上传, LIMIT"
 echo "  - 数据库: V102 订单唯一索引, V103 排序索引"
 echo "============================================"
