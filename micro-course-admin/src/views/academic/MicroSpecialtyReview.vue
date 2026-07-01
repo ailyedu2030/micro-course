@@ -6,7 +6,7 @@
   <div class="ms-review">
     <el-page-header @back="$router.back()" content="微专业审核" class="mg-bottom-16" />
 
-    <el-tabs v-model="activeTab" @tab-change="fetchData">
+    <el-tabs v-model="activeTab" @tab-change="() => { page = 1; fetchData() }">
       <el-tab-pane label="待审批" name="PENDING" />
       <el-tab-pane label="全部" name="ALL" />
     </el-tabs>
@@ -72,6 +72,9 @@
         <div class="detail-item full-width"><label>说明</label><span v-html="detailRow.description || '-'" class="detail-html"></span></div>
         <div class="detail-item full-width"><label>培养目标</label><span v-html="detailRow.trainingObjective || '-'" class="detail-html"></span></div>
       </div>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -85,7 +88,7 @@ const activeTab = ref('PENDING')
 const loading = ref(false)
 const actingId = ref(null)
 const items = ref([])
-const page = ref(0)
+const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 
@@ -120,6 +123,8 @@ const statusLabel = (s) => statusMap[s] || s
 const statusType = (s) => statusTypeMap[s] || 'info'
 
 const handleApprove = async (row) => {
+  try { await ElMessageBox.confirm(`确定通过「${row.title}」的微专业？`, '确认通过', { type: 'info', confirmButtonText: '通过', cancelButtonText: '取消' }) }
+  catch { return }
   actingId.value = row.id
   try { await approveMicroSpecialty(row.id); ElMessage.success('已通过'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
@@ -146,6 +151,8 @@ const handleCancel = async (row) => {
 }
 
 const handleArchive = async (row) => {
+  try { await ElMessageBox.confirm(`确定归档「${row.title}」？`, '确认归档', { type: 'info', confirmButtonText: '归档', cancelButtonText: '取消' }) }
+  catch { return }
   try { await archiveMicroSpecialty(row.id); ElMessage.success('已归档'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }

@@ -6,7 +6,7 @@
   <div class="ms-proposal-review">
     <el-page-header @back="$router.back()" content="申报审核" class="mg-bottom-16" />
 
-    <el-tabs v-model="activeTab" @tab-change="fetchData">
+    <el-tabs v-model="activeTab" @tab-change="() => { page = 1; fetchData() }">
       <el-tab-pane label="待审批" name="PENDING" />
       <el-tab-pane label="全部" name="ALL" />
     </el-tabs>
@@ -99,7 +99,7 @@ const loading = ref(false)
 const actingId = ref(null)
 const router = useRouter()
 const items = ref([])
-const page = ref(0)
+const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 
@@ -134,6 +134,8 @@ const fetchData = async () => {
 }
 
 const handleApprove = async (row) => {
+  try { await ElMessageBox.confirm(`确定批准「${row.title}」的申报？`, '确认批准', { type: 'info', confirmButtonText: '批准', cancelButtonText: '取消' }) }
+  catch { return }
   actingId.value = row.id
   try { await approveProposal(row.id); ElMessage.success('已批准'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }

@@ -67,13 +67,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, setGoldFeatured, unsetGoldFeatured } from '@/api/microSpecialty'
 
 const loading = ref(false)
 const actingId = ref(null)
 const items = ref([])
-const page = ref(0)
+const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 const error = ref(false)
@@ -87,7 +87,7 @@ const fetchMicroSpecialties = async () => {
     const res = await getMicroSpecialtyList({
       // 移除 isGoldFeatured=false 过滤, 需要拿全量 RECRUITING 数据来统计金标数量
 
-      page: 0,
+      page: page.value,
       size: 100
     })
     // Filter for RECRUITING status
@@ -103,6 +103,8 @@ const fetchMicroSpecialties = async () => {
 }
 
 const handleSetGold = async (row) => {
+  try { await ElMessageBox.confirm(`设为金标后将在首页置顶展示（当前金标位：${goldCount.value} / 2）`, '确认设为金标', { type: 'info', confirmButtonText: '确定', cancelButtonText: '取消' }) }
+  catch { return }
   actingId.value = row.id
   try { await setGoldFeatured(row.id); ElMessage.success('已设为金标'); fetchMicroSpecialties() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
@@ -110,6 +112,8 @@ const handleSetGold = async (row) => {
 }
 
 const handleUnsetGold = async (row) => {
+  try { await ElMessageBox.confirm(`确定取消「${row.title}」的金标？`, '确认取消金标', { type: 'info', confirmButtonText: '确定', cancelButtonText: '取消' }) }
+  catch { return }
   actingId.value = row.id
   try { await unsetGoldFeatured(row.id); ElMessage.success('已取消金标'); fetchMicroSpecialties() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
