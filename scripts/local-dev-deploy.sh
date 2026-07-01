@@ -460,11 +460,14 @@ fi
 echo ""
 echo "✅ 本地测试全部通过"
 echo ""
+
+# 自动打开生产门禁 (需要先移除旧文件,再写入时间戳)
+# ⚠ 这里不能用 bash scripts/deploy-gate.sh open — set -e + trap ERR
+#   在 bash 嵌套调用时可能误触发 cleanup_on_error 导致容器被清理
+rm -f "$ROOT/.production-gate" 2>/dev/null
+date +%s > "$ROOT/.production-gate" 2>/dev/null
 echo "  🔓 生产门禁已自动打开 (有效期 4 小时)"
 echo ""
-
-# 自动打开生产门禁
-bash "$ROOT/scripts/deploy-gate.sh open" > /dev/null 2>&1
 
 echo "  下一步: 如果要部署到生产,请先走 staging 验证:"
 echo "    1. bash scripts/deploy-gate.sh check   ← 确认门禁已开"

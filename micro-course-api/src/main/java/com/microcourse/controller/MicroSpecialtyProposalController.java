@@ -48,7 +48,7 @@ public class MicroSpecialtyProposalController {
 
     /** 所有待审申报 */
     @GetMapping
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
     public R<PageResult<?>> listAllPending(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -63,7 +63,7 @@ public class MicroSpecialtyProposalController {
      * 普通申报和 storage 类型申报（DRAFT→APPROVED + 创建微专业）。
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
     public R<Void> approveProposal(@PathVariable Long id,
                                     @RequestParam(required = false) String comment) {
         proposalService.approveAndCreateSpecialty(id, SecurityUtil.getCurrentUserId());
@@ -76,7 +76,7 @@ public class MicroSpecialtyProposalController {
      * proposal 的 DRAFT 状态，支持 DRAFT→REJECTED 转换。
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
     public R<Void> rejectProposal(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String reason = body.getOrDefault("reason", "");
         proposalService.rejectProposal(id, reason);
@@ -102,7 +102,7 @@ public class MicroSpecialtyProposalController {
 
     /** 获取申报详情 */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")  // P1-C-4 修复：增加 ACADEMIC 权限
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC','ADMIN')")  // P1-C-4 修复：增加 ACADEMIC 权限
     public R<?> getProposal(@PathVariable Long id) {
         return R.ok(proposalService.getProposal(id));
     }
