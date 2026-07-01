@@ -131,12 +131,12 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="总学分">
-              <el-input-number :value="totalCreditsDisplay" disabled :min="0" :max="100" :precision="1" class="full-width" controls-position="right" />
+              <el-input-number :model-value="totalCreditsDisplay" :disabled="true" :min="0" :max="100" :precision="1" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="课程门数">
-              <el-input-number :value="courses.length" disabled :min="0" :max="200" class="full-width" controls-position="right" />
+              <el-input-number :model-value="courses.length" :disabled="true" :min="0" :max="200" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
         </el-row>
