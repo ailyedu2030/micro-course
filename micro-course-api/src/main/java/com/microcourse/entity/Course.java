@@ -49,6 +49,19 @@ public class Course {
 
     private String courseType;
     private BigDecimal price;
+
+    @TableField("free_access_scope")
+    private String freeAccessScope;  // none | same_department | same_college | same_school
+
+    @TableField("free_dept_ids")
+    private String freeDeptIds;     // JSON 字符串
+
+    @TableField("discount_scope")
+    private String discountScope;   // none | same_college | same_school
+
+    @TableField("discount_percent")
+    private Integer discountPercent; // 0-100
+
     private Boolean isFree;
 
     @TableLogic(value = "NULL", delval = "now()")
@@ -110,6 +123,14 @@ public class Course {
     public void setCourseType(String courseType) { this.courseType = courseType; }
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
+    public String getFreeAccessScope() { return freeAccessScope; }
+    public void setFreeAccessScope(String freeAccessScope) { this.freeAccessScope = freeAccessScope; }
+    public String getFreeDeptIds() { return freeDeptIds; }
+    public void setFreeDeptIds(String freeDeptIds) { this.freeDeptIds = freeDeptIds; }
+    public String getDiscountScope() { return discountScope; }
+    public void setDiscountScope(String discountScope) { this.discountScope = discountScope; }
+    public Integer getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(Integer discountPercent) { this.discountPercent = discountPercent; }
     public Boolean getIsFree() { return isFree; }
     public void setIsFree(Boolean isFree) { this.isFree = isFree; }
 }

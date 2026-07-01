@@ -53,3 +53,7 @@ export function getCourseStudents(id) { return request({ method: 'GET', url: `/c
 export function getCourseStats(id) { return request({ method: 'GET', url: `/courses/${id}/stats` }) }
 export function unpublishCourse(id) { return request({ method: 'POST', url: `/courses/${id}/unpublish` }) }
 export function getPendingReviewCourses(params) { return request({ method: 'GET', url: '/courses/pending-review', params }) }
+
+// Phase 4: 课程定价
+export function updateCoursePricing(id, data) { return request({ method: 'PUT', url: `/courses/${id}/pricing`, data }) }
+export function getPricingForAdopter(id) { return request({ method: 'GET', url: `/courses/${id}/pricing-for-adopter` }) }

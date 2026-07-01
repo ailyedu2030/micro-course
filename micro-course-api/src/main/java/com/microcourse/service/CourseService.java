@@ -2,11 +2,14 @@ package com.microcourse.service;
 
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
+import com.microcourse.dto.CoursePricingRequest;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
 import com.microcourse.dto.PageResult;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 public interface CourseService {
 
@@ -71,4 +74,10 @@ public interface CourseService {
      * @return 课程统计 VO
      */
     CourseStatsVO computeStats(Long courseId);
+
+    /** Phase 4: 更新课程定价 */
+    void updatePricing(Long courseId, Object request);
+
+    /** Phase 4: 查询课程对某教师的费用 */
+    Map<String, Object> getPricingForAdopter(Long courseId);
 }

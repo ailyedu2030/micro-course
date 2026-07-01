@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
+import com.microcourse.dto.CoursePricingRequest;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
@@ -120,6 +121,21 @@ public class CourseController {
                               @Valid @RequestBody CourseUpdateRequest request) {
         CourseVO vo = courseService.update(id, request);
         return R.ok(vo);
+    }
+
+    /** Phase 4: 更新课程定价 */
+    @PutMapping("/{id}/pricing")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
+    public R<Void> updatePricing(@PathVariable Long id, @RequestBody CoursePricingRequest request) {
+        courseService.updatePricing(id, request);
+        return R.ok();
+    }
+
+    /** Phase 4: 查询课程对某教师的费用 */
+    @GetMapping("/{id}/pricing-for-adopter")
+    @PreAuthorize("hasRole('TEACHER')")
+    public R<Map<String, Object>> getPricingForAdopter(@PathVariable Long id) {
+        return R.ok(courseService.getPricingForAdopter(id));
     }
 
     /**

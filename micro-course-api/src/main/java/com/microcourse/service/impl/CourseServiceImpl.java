@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.ChapterVO;
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
+import com.microcourse.dto.CoursePricingRequest;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
@@ -15,6 +16,7 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.CourseReviewLog;
+import com.microcourse.entity.Department;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.User;
 import com.microcourse.entity.Video;
@@ -32,6 +34,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
+import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
@@ -52,6 +55,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,6 +85,7 @@ public class CourseServiceImpl implements CourseService {
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final DepartmentRepository departmentRepository;
     private final CourseChapterRepository chapterRepository;
     private final CourseReviewRepository reviewRepository;
     private final CourseReviewLogRepository reviewLogRepository;
@@ -103,6 +108,7 @@ public class CourseServiceImpl implements CourseService {
     public CourseServiceImpl(CourseRepository courseRepository,
                              CourseCategoryRepository categoryRepository,
                              UserRepository userRepository,
+                             DepartmentRepository departmentRepository,
                              CourseChapterRepository chapterRepository,
                              CourseReviewRepository reviewRepository,
                              CourseReviewLogRepository reviewLogRepository,
@@ -119,6 +125,7 @@ public class CourseServiceImpl implements CourseService {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.departmentRepository = departmentRepository;
         this.chapterRepository = chapterRepository;
         this.reviewRepository = reviewRepository;
         this.reviewLogRepository = reviewLogRepository;
@@ -1175,5 +1182,79 @@ public class CourseServiceImpl implements CourseService {
         }
         // exercises 留空,等待 Phase 6 练习模块实现
         return vo;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updatePricing(Long courseId, Object request) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!course.getTeacherId().equals(userId) && !SecurityUtil.isAdmin())
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        // 用 instanceof 处理 CoursePricingRequest
+        if (request instanceof CoursePricingRequest req) {
+            course.setPrice(req.getBasePrice());
+            course.setFreeAccessScope(req.getFreeAccessScope());
+            course.setFreeDeptIds(req.getFreeDeptIds());
+            course.setDiscountScope(req.getDiscountScope());
+            course.setDiscountPercent(req.getDiscountPercent());
+        }
+        course.setUpdatedAt(LocalDateTime.now());
+        courseRepository.updateById(course);
+        evictCourseCacheAfterCommit(courseId);
+    }
+
+    @Override
+    public Map<String, Object> getPricingForAdopter(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        Long adopterTeacherId = SecurityUtil.getCurrentUserId();
+        User adopter = userRepository.selectById(adopterTeacherId);
+        if (adopter == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+
+        Map<String, Object> result = new HashMap<>();
+        BigDecimal basePrice = course.getPrice() != null ? course.getPrice() : BigDecimal.ZERO;
+        result.put("basePrice", basePrice);
+        result.put("sameSchool", false);
+        result.put("sameDept", false);
+        result.put("finalPrice", basePrice);
+        result.put("feeNote", "");
+
+        // 计算折扣
+        if (adopter.getDepartmentId() != null) {
+            Department adopterDept = departmentRepository.selectById(adopter.getDepartmentId());
+            if (adopterDept != null) {
+                // 同院系检查
+                if ("same_department".equals(course.getFreeAccessScope()) && course.getFreeDeptIds() != null) {
+                    String[] ids = course.getFreeDeptIds().replace("[","").replace("]","").replace("\"","").split(",");
+                    for (String id : ids) {
+                        if (String.valueOf(adopter.getDepartmentId()).equals(id.trim())) {
+                            result.put("finalPrice", BigDecimal.ZERO);
+                            result.put("freeAccess", true);
+                            result.put("feeNote", "免费（同院系）");
+                            return result;
+                        }
+                    }
+                }
+                if ("same_college".equals(course.getFreeAccessScope())) {
+                    result.put("finalPrice", BigDecimal.ZERO);
+                    result.put("freeAccess", true);
+                    result.put("feeNote", "免费（同学院）");
+                    return result;
+                }
+                // 同校检查 (折扣)
+                if ("same_school".equals(course.getDiscountScope())) {
+                    result.put("sameSchool", true);
+                    long percent = course.getDiscountPercent() != null ? course.getDiscountPercent() : 70;
+                    BigDecimal finalPrice = basePrice.multiply(BigDecimal.valueOf(100 - percent)).divide(BigDecimal.valueOf(100));
+                    result.put("finalPrice", finalPrice);
+                    result.put("feeNote", percent + "% 折扣 (同校)");
+                    return result;
+                }
+            }
+        }
+        result.put("feeNote", "跨院系选课，按原价计费");
+        return result;
     }
 }

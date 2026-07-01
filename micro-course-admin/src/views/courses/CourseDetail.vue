@@ -198,6 +198,33 @@
               </el-form-item>
             </el-col>
           </el-row>
+          <el-divider content-position="left">定价规则</el-divider>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="免费范围">
+                <el-select v-model="formData.freeAccessScope" placeholder="选择免费范围" class="full-width">
+                  <el-option label="无" value="none" />
+                  <el-option label="同院系" value="same_department" />
+                  <el-option label="同学院" value="same_college" />
+                  <el-option label="同学校" value="same_school" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="优惠范围">
+                <el-select v-model="formData.discountScope" placeholder="选择优惠范围" class="full-width">
+                  <el-option label="无" value="none" />
+                  <el-option label="同学院" value="same_college" />
+                  <el-option label="同学校" value="same_school" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="优惠比例">
+                <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" />%
+              </el-form-item>
+            </el-col>
+          </el-row>
         </el-form>
       </el-card>
 
@@ -306,7 +333,11 @@ const formRef = ref(null)
 const formData = reactive({
   title: '', categoryId: null, teacherId: null,
   description: '', creditHours: 1, semester: '',
-  difficulty: null, courseType: 'VIDEO', price: null, isFree: true
+  difficulty: null, courseType: 'VIDEO', price: null, isFree: true,
+  freeAccessScope: 'none',
+  freeDeptIds: '[]',
+  discountScope: 'none',
+  discountPercent: 0
 })
 const formRules = {
   title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
