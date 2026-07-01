@@ -370,7 +370,7 @@ const signLevelLabel = (level) => {
 }
 
 const unitTypeLabel = (type) => {
-  const map = { UNIVERSITY: '高校', ENTERPRISE: '企业', RESEARCH: '科研机构', SHARE_UNIV: '拟共享高校', OTHER: '其他' }  // P1-C-5 修复
+  const map = { UNIVERSITY: '高校', ENTERPRISE: '企业', RESEARCH: '科研机构', SHARE_UNIV: '拟共享高校', CO_BUILD_UNIV: '共建高校', OTHER: '其他' }
   return map[type] || type || ''
 }
 
