@@ -412,6 +412,9 @@ jobs:
             sleep 1
           done
 
+      - name: Setup .env for dry-run
+        run: cp .env.example .env
+
       - name: Run deploy dry-run
         run: bash scripts/deploy-dryrun.sh
         continue-on-error: false
