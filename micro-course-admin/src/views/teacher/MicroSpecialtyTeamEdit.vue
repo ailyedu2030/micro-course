@@ -47,9 +47,9 @@
             </el-table-column>
             <el-table-column label="操作" width="180" align="center" fixed="right">
               <template #default="{ row }">
-                <el-button v-if="expelMode" size="small" type="danger" @click="handleRemove(row)">移除</el-button>
+                <el-button v-if="expelMode" size="small" type="danger" :loading="removingId === (row.id || row.teacherId)" @click="handleRemove(row)">移除</el-button>
                 <template v-else>
-                  <el-button size="small" type="danger" @click="handleRemove(row)">移除</el-button>
+                  <el-button size="small" type="danger" :loading="removingId === (row.id || row.teacherId)" @click="handleRemove(row)">移除</el-button>
                   <el-button v-if="row.inviteStatus === 'DECLINED' || row.inviteStatus === 'REMOVED'" size="small" @click="handleReinvite(row)">重邀</el-button>
                 </template>
               </template>
@@ -136,6 +136,7 @@ const selectedCandidates = ref([])
 const inviteRoles = reactive({})
 const inviteCourses = reactive({})
 const inviting = ref(false)
+const removingId = ref(null)
 const candidateTableRef = ref(null)
 
 const fetchData = async () => {
@@ -160,29 +161,42 @@ const loadDepartments = async () => {
   catch {}
 }
 
-const fetchCandidates = async () => {
-  candidateLoading.value = true; searched.value = true
-  try {
-    const params = { role: 'TEACHER', size: 200 }
-    if (searchKeyword.value) params.keyword = searchKeyword.value
-    if (searchDept.value) params.departmentId = searchDept.value
-    const { data } = await getUsers(params)
-    const all = data?.items || data || []
-    // 排除已邀请/已接受/待响应
-    const invitedIds = new Set(teachers.value.map(t => t.teacherId).filter(Boolean))
-    candidates.value = all.filter(t => !invitedIds.has(t.id))
-  } catch { candidates.value = [] }
-  finally { candidateLoading.value = false }
+// 防抖搜索
+let searchDebounceTimer = null
+const fetchCandidates = () => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(async () => {
+    candidateLoading.value = true; searched.value = true
+    try {
+      const params = { role: 'TEACHER', size: 200 }
+      if (searchKeyword.value) params.keyword = searchKeyword.value
+      if (searchDept.value) params.departmentId = searchDept.value
+      const { data } = await getUsers(params)
+      const all = data?.items || data || []
+      // 排除已邀请/已接受/待响应(teacherId可能为null)
+      const invitedIds = new Set(teachers.value.map(t => t.teacherId).filter(id => id != null))
+      candidates.value = all.filter(t => !invitedIds.has(t.id))
+      // 为每个候选初始化默认角色(MEMBER)
+      candidates.value.forEach(t => {
+        if (!(t.id in inviteRoles)) inviteRoles[t.id] = 'MEMBER'
+      })
+    } catch { candidates.value = [] }
+    finally { candidateLoading.value = false }
+  }, 300)
 }
 
 const handleSelectionChange = (rows) => {
   selectedCandidates.value = rows
+  // 为新选中的教师初始化角色
+  rows.forEach(t => {
+    if (!(t.id in inviteRoles)) inviteRoles[t.id] = 'MEMBER'
+  })
 }
 
 const handleBatchInvite = async () => {
   if (selectedCandidates.value.length === 0) return
   inviting.value = true
-  let success = 0; let fail = 0
+  const failed = []
   for (const t of selectedCandidates.value) {
     try {
       await inviteTeacher(msId.value, {
@@ -190,28 +204,52 @@ const handleBatchInvite = async () => {
         role: inviteRoles[t.id] || 'MEMBER',
         courseId: inviteCourses[t.id] || null
       })
-      success++
-    } catch { fail++ }
+    } catch (e) {
+      failed.push({ name: t.realName, msg: e?.response?.data?.message || '失败' })
+    }
   }
-  if (success > 0) ElMessage.success(`已邀请 ${success} 位教师` + (fail > 0 ? `，${fail} 位失败` : ''))
-  else ElMessage.error('全部邀请失败')
   inviting.value = false
+  // 详细的成功/失败反馈
+  const succeeded = selectedCandidates.value.length - failed.length
+  if (succeeded > 0) ElMessage.success(`已邀请 ${succeeded} 位教师`)
+  if (failed.length > 0) {
+    const msg = failed.map(f => `${f.name}: ${f.msg}`).join('; ')
+    ElMessage.warning(`${failed.length} 位失败: ${msg.substring(0, 200)}`)
+  }
   fetchData()
-  // 清除选择和已邀请的候选
-  candidates.value = candidates.value.filter(c => !selectedCandidates.value.find(s => s.id === c.id))
-  selectedCandidates.value = []
+  // 刷新候选列表(已邀请的会被排除)
+  if (searched.value) fetchCandidates()
+  // 清空选择
   candidateTableRef.value?.clearSelection()
+  selectedCandidates.value = []
 }
 
 const handleRemove = async (row) => {
   try { await ElMessageBox.confirm(`确定移除「${row.teacherName}」？`, '确认', { type: 'warning' }) } catch { return }
+  removingId.value = row.id || row.teacherId
   try { await removeTeacher(msId.value, row.id || row.teacherId); ElMessage.success('已移除'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '移除失败') }
+  finally { removingId.value = null }
 }
 
 const handleReinvite = async (row) => {
+  try { await ElMessageBox.confirm(`确定重新邀请「${row.teacherName}」？`, '确认', { type: 'warning' }) } catch { return }
   try { await reinviteTeacher(row.id || row.inviteId, {}); ElMessage.success('已重新邀请'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '重邀失败') }
+}
+
+const handleBatchRemove = async () => {
+  if (selectedCandidates.value.length === 0) return
+  try { await ElMessageBox.confirm(`确定批量移除 ${selectedCandidates.value.length} 位教师？`, '确认', { type: 'warning' }) } catch { return }
+  const failed = []
+  for (const t of selectedCandidates.value) {
+    try { await removeTeacher(msId.value, t.id || t.teacherId) }
+    catch { failed.push(t.teacherName) }
+  }
+  if (failed.length === 0) ElMessage.success('已批量移除')
+  else ElMessage.warning(`${failed.length} 位移除失败: ${failed.join(',')}`)
+  fetchData()
+  selectedCandidates.value = []
 }
 
 onMounted(fetchData)
