@@ -602,35 +602,61 @@ async function handleSave() {
 // ==================== 自动保存（1.5s 防抖） ====================
 const autoSaveTimer = ref(null)
 
-watch(
-  [form, courses, leadCourses, teamMembers, signatures, sharedUnits],
-  () => {
-    if (!draftId.value) return
-    if (!initialLoadComplete.value) return  // P2-D: skip during initial load
-    dirty.value = true
-    if (autoSaveTimer.value) clearTimeout(autoSaveTimer.value)
-    autoSaveTimer.value = setTimeout(async () => {
-      pendingSave.value = true  // RT-3: 标记正在保存（配合 beforeunload 防止数据丢失）
-      saveStatus.value = '保存中'
-      try {
-        await autoSaveStorageApplication(draftId.value, buildSavePayload())
-        saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
-        dirty.value = false
-      } catch {
-        saveStatus.value = '保存失败'
-        // B3 fix: flash the save status to a persistent warning so user notices
-        setTimeout(() => {
-          if (saveStatus.value === '保存失败') {
-            saveStatus.value = '⚠ 未保存'
-          }
-        }, 5000)
-      } finally {
-        pendingSave.value = false  // RT-3: 清除待保存标记
-      }
-    }, 1500)
-  },
-  { deep: true }
-)
+/**
+ * Extracted auto-save scheduler — shared by all targeted watchers.
+ * Debounces: resets the timer on each call, only fires after 1.5s of inactivity.
+ */
+function scheduleAutoSave() {
+  if (!draftId.value) return
+  if (!initialLoadComplete.value) return  // skip during initial load
+  dirty.value = true
+  if (autoSaveTimer.value) clearTimeout(autoSaveTimer.value)
+  autoSaveTimer.value = setTimeout(async () => {
+    pendingSave.value = true  // RT-3: mark save in progress
+    saveStatus.value = '保存中'
+    try {
+      await autoSaveStorageApplication(draftId.value, buildSavePayload())
+      saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
+      dirty.value = false
+    } catch {
+      saveStatus.value = '保存失败'
+      // B3 fix: persist warning after 5s if still failing
+      setTimeout(() => {
+        if (saveStatus.value === '保存失败') {
+          saveStatus.value = '⚠ 未保存'
+        }
+      }, 5000)
+    } finally {
+      pendingSave.value = false  // RT-3: clear in-progress flag
+    }
+  }, 1500)
+}
+
+// ---- Targeted watchers (replaces single deep watch) ----
+// Deep-watching form caused unnecessary timer resets on every keystroke
+// in rich text fields (HTML string changes). Now we watch specific signals.
+
+// Non-rich-text form fields: shallow watch via computed snapshot
+const formDirtySnapshot = computed(() => {
+  // eslint-disable-next-line no-unused-vars
+  const { introduction, marketDemandAnalysis, specialtyOverview, curriculumDesign, constructionGuarantee, ...rest } = form.value
+  return { ...rest }
+})
+watch(formDirtySnapshot, scheduleAutoSave)
+
+// Rich text fields: watch string length only (not deep) to detect edits
+watch(() => form.value.introduction?.length, scheduleAutoSave)
+watch(() => form.value.marketDemandAnalysis?.length, scheduleAutoSave)
+watch(() => form.value.specialtyOverview?.length, scheduleAutoSave)
+watch(() => form.value.curriculumDesign?.length, scheduleAutoSave)
+watch(() => form.value.constructionGuarantee?.length, scheduleAutoSave)
+
+// Sub-table arrays: watch length for structural changes (add/remove rows)
+watch(() => courses.value.length, scheduleAutoSave)
+watch(() => leadCourses.value.length, scheduleAutoSave)
+watch(() => teamMembers.value.length, scheduleAutoSave)
+watch(() => signatures.value.length, scheduleAutoSave)
+watch(() => sharedUnits.value.length, scheduleAutoSave)
 
 // ==================== 提交审核 ====================
 async function handleSubmit() {
@@ -735,7 +761,7 @@ async function handleExport(type) {
     const a = document.createElement('a')
     a.href = url
     const ext = type === 'word' ? 'docx' : 'pdf'
-    const schoolName = form.value.title || '申报高校'
+    const schoolName = (form.value.title || '申报高校').replace(/[/\\:*?"<>|]/g, '').trim()
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     a.download = `【${schoolName}】整理收纳微专业申请表_${date}.${ext}`
     a.click()

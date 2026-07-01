@@ -147,7 +147,8 @@ public class StorageApplicationController {
         }
 
         byte[] bytes = exportService.exportWord(id);
-        String filename = "【" + resolveSchoolName(id) + "】整理收纳微专业申请表_"
+        String schoolName = resolveSchoolName(id);
+        String filename = "【" + schoolName + "】整理收纳微专业申请表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".docx";
 
         ContentDisposition disposition = ContentDisposition.attachment()
@@ -177,7 +178,8 @@ public class StorageApplicationController {
         }
 
         byte[] bytes = exportService.exportPdf(id);
-        String filename = "【" + resolveSchoolName(id) + "】整理收纳微专业申请表_"
+        String schoolName = resolveSchoolName(id);
+        String filename = "【" + schoolName + "】整理收纳微专业申请表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf";
 
         ContentDisposition disposition = ContentDisposition.attachment()
@@ -229,11 +231,15 @@ public class StorageApplicationController {
     /**
      * P2-3 fix (R-008): 使用轻量级查询替代 getDetail() 以避免导出时重复查询。
      * getDetail() 会联查所有子表 + 用户名/院系名，而导出文件名仅需 title 字段。
+     *
+     * <p>R-003 fix: 对用户可控的标题进行文件名校验，移除路径遍历和特殊字符。</p>
      */
     private String resolveSchoolName(Long proposalId) {
         try {
             MicroSpecialtyProposal p = proposalRepository.selectById(proposalId);
-            return p != null && p.getTitle() != null ? p.getTitle() : "申报高校";
+            String name = p != null && p.getTitle() != null ? p.getTitle() : "申报高校";
+            // Sanitize: remove characters unsafe for filenames across OS
+            return name.replaceAll("[/\\\\:*?\"<>|]", "").trim();
         } catch (Exception e) {
             return "申报高校";
         }

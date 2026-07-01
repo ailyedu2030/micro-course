@@ -842,10 +842,11 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             }
         }
 
-        // teamMembers — A2: 仅当 teamMembers 数组非 null 时更新
+        // teamMembers — A2: 仅当 teamMembers 数组非 null 时更新 (R-002: 批量插入)
         if (request.getTeamMembers() != null) {
             teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
                     .eq(ProposalTeamMember::getProposalId, proposalId));
+            List<ProposalTeamMember> entities = new ArrayList<>();
             for (ProposalTeamMemberItem item : request.getTeamMembers()) {
                 ProposalTeamMember entity = new ProposalTeamMember();
                 entity.setProposalId(proposalId);
@@ -858,16 +859,26 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 entity.setProfession(item.getProfession());
                 entity.setTaughtCourses(item.getTaughtCourses());
                 entity.setPlannedCourses(item.getPlannedCourses());
-                teamMemberRepository.insert(entity);
+                entities.add(entity);
+            }
+            if (!entities.isEmpty()) {
+                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+                    ProposalTeamMemberRepository batchRepo = sqlSession.getMapper(ProposalTeamMemberRepository.class);
+                    for (ProposalTeamMember entity : entities) {
+                        batchRepo.insert(entity);
+                    }
+                    sqlSession.commit();
+                }
             }
         }
 
-        // signatures — A2: 仅当 signatures 数组非 null 时更新（不处理 SHARED_UNIT 级别）
+        // signatures — A2: 仅当 signatures 数组非 null 时更新（不处理 SHARED_UNIT 级别）(R-002: 批量插入)
         if (request.getSignatures() != null) {
             signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
                     .eq(ProposalSignature::getProposalId, proposalId)
                     .ne(ProposalSignature::getSignLevel, "SHARED_UNIT"));
             int sigSeq = 0;
+            List<ProposalSignature> entities = new ArrayList<>();
             for (ProposalSignatureItem item : request.getSignatures()) {
                 ProposalSignature entity = new ProposalSignature();
                 entity.setProposalId(proposalId);
@@ -880,11 +891,20 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 entity.setSealImageUrl(item.getSealImageUrl());
                 entity.setSignDate(parseDate(item.getSignDate()));
                 entity.setRemark(item.getRemark());
-                signatureRepository.insert(entity);
+                entities.add(entity);
+            }
+            if (!entities.isEmpty()) {
+                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+                    ProposalSignatureRepository batchRepo = sqlSession.getMapper(ProposalSignatureRepository.class);
+                    for (ProposalSignature entity : entities) {
+                        batchRepo.insert(entity);
+                    }
+                    sqlSession.commit();
+                }
             }
         }
 
-        // sharedUnits — 仅 full save 时处理，且仅当 sharedUnits 数组非 null 时更新
+        // sharedUnits — 仅 full save 时处理，且仅当 sharedUnits 数组非 null 时更新 (R-002: 批量插入)
         if (includeSharedUnits && request.getSharedUnits() != null) {
             sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
                     .eq(ProposalSharedUnit::getProposalId, proposalId));
@@ -893,13 +913,15 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                     .eq(ProposalSignature::getProposalId, proposalId)
                     .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
             int sortOrder = 0;
+            List<ProposalSharedUnit> unitEntities = new ArrayList<>();
+            List<ProposalSignature> sigEntities = new ArrayList<>();
             for (ProposalSharedUnitItem item : request.getSharedUnits()) {
                 ProposalSharedUnit entity = new ProposalSharedUnit();
                 entity.setProposalId(proposalId);
                 entity.setUnitName(item.getUnitName());
                 entity.setUnitType(item.getUnitType());
                 entity.setSortOrder(sortOrder);
-                sharedUnitRepository.insert(entity);
+                unitEntities.add(entity);
 
                 // 同步共享单位签字数据到 proposal_signatures 表
                 ProposalSignature sig = new ProposalSignature();
@@ -918,9 +940,29 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 sig.setSignDate(item.getSignDate() != null && !item.getSignDate().isEmpty()
                         ? parseDate(item.getSignDate()) : null);
                 sig.setRemark(item.getRemark());
-                signatureRepository.insert(sig);
+                sigEntities.add(sig);
 
                 sortOrder++;
+            }
+            // Batch insert shared units
+            if (!unitEntities.isEmpty()) {
+                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+                    ProposalSharedUnitRepository batchRepo = sqlSession.getMapper(ProposalSharedUnitRepository.class);
+                    for (ProposalSharedUnit entity : unitEntities) {
+                        batchRepo.insert(entity);
+                    }
+                    sqlSession.commit();
+                }
+            }
+            // Batch insert shared unit signatures
+            if (!sigEntities.isEmpty()) {
+                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+                    ProposalSignatureRepository batchRepo = sqlSession.getMapper(ProposalSignatureRepository.class);
+                    for (ProposalSignature entity : sigEntities) {
+                        batchRepo.insert(entity);
+                    }
+                    sqlSession.commit();
+                }
             }
         }
     }

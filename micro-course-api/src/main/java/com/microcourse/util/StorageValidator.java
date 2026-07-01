@@ -4,6 +4,8 @@ import com.microcourse.dto.storage.ProposalCourseItem;
 import com.microcourse.dto.storage.ProposalSignatureItem;
 import com.microcourse.dto.storage.ProposalTeamMemberItem;
 import com.microcourse.dto.storage.StorageApplicationSaveRequest;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -90,6 +92,18 @@ public final class StorageValidator {
         }
 
         return errors;
+    }
+
+    /**
+     * 提交前校验并在有错误时直接抛出异常（确保异常路径不会被遗漏）。
+     * <p>与 {@link #validateForSubmit} 使用相同的校验逻辑。</p>
+     */
+    public static void validateAndThrow(StorageApplicationSaveRequest req) {
+        List<String> errors = validateForSubmit(req);
+        if (!errors.isEmpty()) {
+            throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
+                    "请补全以下必填项：\n" + String.join("\n", errors));
+        }
     }
 
     private static void checkRichTextWordCount(List<String> errors, String html,
