@@ -5,13 +5,17 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.invite.AcceptWithChaptersRequest;
+import com.microcourse.dto.invite.AcceptWithChaptersRequest.ChapterDecisionItem;
 import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyTeacher;
 import com.microcourse.entity.User;
+import com.microcourse.entity.proposal.ChapterTeacherAssignment;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.ChapterTeacherAssignmentRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
 import com.microcourse.repository.MicroSpecialtyTeacherRepository;
 import com.microcourse.repository.UserRepository;
@@ -39,17 +43,20 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final MicroSpecialtyService msService;
+    private final ChapterTeacherAssignmentRepository chapterAssignRepository;
 
     public MicroSpecialtyInviteServiceImpl(MicroSpecialtyTeacherRepository teacherRepository,
                                            MicroSpecialtyRepository msRepository,
                                            UserRepository userRepository,
                                            NotificationService notificationService,
-                                           MicroSpecialtyService msService) {
+                                           MicroSpecialtyService msService,
+                                           ChapterTeacherAssignmentRepository chapterAssignRepository) {
         this.teacherRepository = teacherRepository;
         this.msRepository = msRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.msService = msService;
+        this.chapterAssignRepository = chapterAssignRepository;
     }
 
     @Override
@@ -414,5 +421,50 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         }
 
         return totalExpired;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void acceptWithChapters(Long inviteId, AcceptWithChaptersRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        // 1. 校验邀请有效
+        MicroSpecialtyTeacher record = teacherRepository.selectById(inviteId);
+        if (record == null) throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND);
+        if (!userId.equals(record.getTeacherId()))
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        if (!"INVITED".equals(record.getInviteStatus()))
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "邀请已处理或已过期");
+
+        // 2. 校验每个章节决策都填写了 source (BR-1)
+        for (ChapterDecisionItem dec : request.getChapterDecisions()) {
+            if (dec.getSource() == null || "TBD".equals(dec.getSource()))
+                throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "所有章节都必须选择来源(已有/新建)");
+        }
+
+        // 3. 验证 teacher 身份
+        User teacher = userRepository.selectById(userId);
+        if (teacher == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "用户不存在");
+
+        // 4. 更新 MicroSpecialtyTeacher 的微专业状态
+        record.setInviteStatus("ACTIVE");
+        record.setRespondedAt(LocalDateTime.now());
+        record.setVersion(record.getVersion() != null ? record.getVersion() : 0);
+        teacherRepository.updateById(record);
+
+        // 5. 更新 chapter_teacher_assignments 中属于该邀请的章节决策
+        LambdaUpdateWrapper<ChapterTeacherAssignment> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(ChapterTeacherAssignment::getTeacherId, userId)
+                     .eq(ChapterTeacherAssignment::getAcceptStatus, "PENDING");
+        ChapterTeacherAssignment update = new ChapterTeacherAssignment();
+        update.setAcceptStatus("ACCEPTED");
+        update.setAcceptedAt(LocalDateTime.now());
+        chapterAssignRepository.update(update, updateWrapper);
+
+        // 6. 发送团队通知
+        if (record.getInvitedBy() != null) {
+            notificationService.notifyAsync(record.getInvitedBy(), NotificationType.MS_INVITE_ACCEPTED,
+                    "邀请已接受", teacher.getRealName() + " 已加入微专业团队",
+                    record.getMicroSpecialtyId());
+        }
     }
 }

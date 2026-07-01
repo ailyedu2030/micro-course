@@ -1,6 +1,7 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.invite.AcceptWithChaptersRequest;
 
 /**
  * 微专业教师邀请 Service 接口。
@@ -29,6 +30,9 @@ public interface MicroSpecialtyInviteService {
     /** 重新邀请（复用 REMOVED/DECLINED 记录重置状态） */
     /** 重新邀请（§7.4 端点对齐 spec：用 inviteId 复用 DECLINED/REMOVED 记录） */
     void reinviteTeacher(Long inviteId, String role, String responsibility, Long courseId);
+
+    /** 接受邀请(含章节来源决策) → ACTIVE */
+    void acceptWithChapters(Long inviteId, AcceptWithChaptersRequest request);
 
     /** 每小时扫 INVITED 过期 → DECLINED + 通知 */
     int scanExpired();

@@ -2,7 +2,9 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.dto.invite.AcceptWithChaptersRequest;
 import com.microcourse.service.MicroSpecialtyInviteService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -50,6 +52,15 @@ public class MicroSpecialtyTeacherController {
     @PreAuthorize("hasRole('TEACHER')")
     public R<Void> acceptInvite(@PathVariable Long inviteId) {
         inviteService.acceptInvite(inviteId);
+        return R.ok();
+    }
+
+    /** 接受邀请(含章节来源决策) → ACTIVE */
+    @PostMapping("/{inviteId}/accept-with-chapters")
+    @PreAuthorize("hasRole('TEACHER')")
+    public R<Void> acceptWithChapters(@PathVariable Long inviteId,
+                                       @Valid @RequestBody AcceptWithChaptersRequest request) {
+        inviteService.acceptWithChapters(inviteId, request);
         return R.ok();
     }
 
