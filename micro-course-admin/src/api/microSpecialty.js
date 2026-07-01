@@ -233,3 +233,8 @@ export function getStats(id) {
 export function getMyRole(id) {
   return request({ method: 'GET', url: `/micro-specialties/${id}/my-role` })
 }
+
+// ========== 章节来源决策 ==========
+export function acceptWithChapters(inviteId, data) {
+  return request({ method: 'POST', url: `/micro-specialty-teachers/${inviteId}/accept-with-chapters`, data })
+}

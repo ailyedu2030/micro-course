@@ -54,13 +54,70 @@
         </div>
       </div>
     </div>
+
+    <!-- Phase 3: 章节来源决策 Drawer -->
+    <el-drawer v-model="acceptDrawerVisible" title="接受邀请 — 章节来源决策" direction="rtl" size="55%" @closed="chapterSearchResults=[];chapterSearchKeyword=''">
+      <template v-if="currentInvite">
+        <el-alert :title="'微专业: ' + (currentInvite.microSpecialtyTitle || '')" type="info" :closable="false" show-icon class="mg-bottom-16" />
+        <el-alert :title="'邀请人: ' + (currentInvite.inviterName || '')" type="success" :closable="false" show-icon class="mg-bottom-16" />
+        <el-divider content-position="left">已分配章节 ({{ chapterDecisions.length }})</el-divider>
+
+        <el-table :data="chapterDecisions" border size="small">
+          <el-table-column label="#" width="50" align="center">
+            <template #default="{ $index }">{{ $index + 1 }}</template>
+          </el-table-column>
+          <el-table-column label="章节名称" prop="chapterTitle" min-width="160">
+            <template #default="{ row }">
+              <div>
+                <strong>{{ row.chapterTitle }}</strong>
+                <div v-if="row.source === 'existing' && row.sourceChapterId" class="muted-12">
+                  已选: {{ row.sourceChapterTitle || row.sourceChapterId }}
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="来源" width="160">
+            <template #default="{ row }">
+              <el-radio-group v-model="row.source" size="small" @change="row.sourceChapterId=null;row.sourceChapterTitle=null;row.newChapterTitle=''">
+                <el-radio value="existing">已有</el-radio>
+                <el-radio value="new">新建</el-radio>
+              </el-radio-group>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="220">
+            <template #default="{ row }">
+              <template v-if="row.source === 'existing'">
+                <el-input v-model="chapterSearchKeyword" placeholder="搜索章节..." size="small" class="mg-bottom-8">
+                  <template #append><el-button :loading="chapterSearchLoading" size="small" @click="searchPlatformChapters">搜索</el-button></template>
+                </el-input>
+                <div v-if="chapterSearchResults.length" class="search-results">
+                  <div v-for="r in chapterSearchResults" :key="r.chapterId" class="search-result-item" @click="row.sourceChapterId=r.chapterId;row.sourceChapterTitle=r.chapterTitle;chapterSearchResults=[]">
+                    <span>{{ r.courseTitle }} / {{ r.chapterTitle }}</span>
+                    <el-tag size="small">{{ r.duration }}学时</el-tag>
+                  </div>
+                </div>
+              </template>
+              <template v-else-if="row.source === 'new'">
+                <el-input v-model="row.newChapterTitle" placeholder="章节标题" size="small" class="mg-bottom-4" />
+                <el-input-number v-model="row.newChapterHours" :min="1" :max="200" size="small" placeholder="学时" controls-position="right" />
+              </template>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+      <template #footer>
+        <el-button @click="acceptDrawerVisible = false">取消</el-button>
+        <el-button type="primary" :loading="accepting" @click="confirmAcceptWithChapters">确认接受并保存决策</el-button>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPendingInvites, acceptInvite, declineInvite, leaveTeam } from '@/api/microSpecialty'
+import { getPendingInvites, acceptInvite, declineInvite, leaveTeam, acceptWithChapters } from '@/api/microSpecialty'
+import request from '@/utils/request'
 
 const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
 
@@ -92,9 +149,64 @@ const fetchData = async (tab) => {
 
 const handleTabChange = (name) => { activeTab.value = name; fetchData(name) }
 
-const handleAccept = async (inv) => {
-  try { await acceptInvite(inv.id); ElMessage.success('已接受'); fetchData(activeTab.value) }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+// Phase 3: 章节来源决策
+const acceptDrawerVisible = ref(false)
+const currentInvite = ref(null)  // 当前处理的邀请
+const chapterDecisions = ref([])  // [{chapterId, source:'existing'|'new'|null, sourceChapterId, newChapterTitle, newChapterHours}]
+const chapterSearchResults = ref([])
+const chapterSearchKeyword = ref('')
+const chapterSearchLoading = ref(false)
+const accepting = ref(false)
+
+// 打开接受向导
+function handleAccept(inv) {
+  currentInvite.value = inv
+  chapterDecisions.value = (inv.assignedChapters || []).map(ch => ({
+    chapterId: ch.chapterId,
+    chapterTitle: ch.chapterTitle || ch.title,
+    source: null,  // null=未选择, 'existing'|'new'
+    sourceChapterId: null,
+    sourceChapterTitle: null,
+    newChapterTitle: '',
+    newChapterHours: ch.hours || 8
+  }))
+  acceptDrawerVisible.value = true
+}
+
+// 已有章节搜索
+async function searchPlatformChapters() {
+  if (!chapterSearchKeyword.value) return
+  chapterSearchLoading.value = true
+  try {
+    const { data } = await request({ method:'GET', url:'/courses/chapters/search', params:{ keyword: chapterSearchKeyword.value, page:0, size:10 }})
+    chapterSearchResults.value = data.items || []
+  } catch (e) { ElMessage.error('搜索失败') }
+  finally { chapterSearchLoading.value = false }
+}
+
+// 确认接受
+async function confirmAcceptWithChapters() {
+  const inv = currentInvite.value
+  if (!inv) return
+  // 验证: 所有章节必须选择来源
+  const hasUnset = chapterDecisions.value.some(d => !d.source)
+  if (hasUnset) { ElMessage.warning('所有章节都必须选择来源'); return }
+  
+  accepting.value = true
+  try {
+    await acceptWithChapters(inv.id, {
+      chapterDecisions: chapterDecisions.value.map(d => ({
+        chapterId: d.chapterId,
+        source: d.source,
+        sourceChapterId: d.sourceChapterId,
+        newChapterTitle: d.newChapterTitle
+      }))
+    })
+    ElMessage.success('已接受邀请, 章节决策已保存')
+    acceptDrawerVisible.value = false
+    fetchData(activeTab.value)
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '接受失败') }
+  finally { accepting.value = false }
 }
 
 const handleDecline = async (inv) => {
@@ -133,4 +245,10 @@ onMounted(() => fetchData('pending'))
 .invite-deadline { font-size: var(--el-font-size-small); color: var(--el-text-color-secondary); }
 .invite-deadline.expiring { color: var(--el-color-danger); font-weight: 600; }
 .invite-actions { display: flex; gap: var(--space-2); }
+.muted-12 { font-size: 12px; color: var(--el-text-color-secondary); }
+.search-results { max-height: 200px; overflow-y: auto; border: 1px solid #ebeef5; border-radius: 4px; }
+.search-result-item { padding: 6px 10px; cursor: pointer; border-bottom: 1px solid #ebeef5; }
+.search-result-item:hover { background: #f5f7fa; }
+.mg-bottom-4 { margin-bottom: 4px; }
+.mg-bottom-8 { margin-bottom: 8px; }
 </style>
