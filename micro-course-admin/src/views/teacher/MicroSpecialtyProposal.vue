@@ -131,12 +131,12 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="总学分">
-              <el-input-number v-model="form.totalCredits" :min="0" :max="100" :precision="1" class="full-width" controls-position="right" />
+              <el-input-number :value="totalCreditsDisplay" disabled :min="0" :max="100" :precision="1" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="课程门数">
-              <el-input-number v-model="form.courseCount" :min="0" :max="200" class="full-width" controls-position="right" />
+              <el-input-number :value="courses.length" disabled :min="0" :max="200" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -531,6 +531,29 @@ const rules3 = {
 const totalCourseHours = computed(() => {
   return courses.value.reduce((sum, row) => sum + (Number(row.hours) || 0), 0)
 })
+
+/** 课程表学分列总和（自动联动到总学分输入框） */
+const totalCreditsDisplay = computed(() => {
+  const sum = courses.value.reduce((s, row) => s + (Number(row.credits) || 0), 0)
+  return sum || 0
+})
+
+// 同步课程门数/总学分到 form（提交时后端需要这些字段）
+watch(courses, () => {
+  form.value.courseCount = courses.value.length
+  form.value.totalCredits = totalCreditsDisplay.value
+}, { deep: true })
+
+/** 每学分最低16学时校验：学时 < 学分×16 时警告 */
+watch(courses, () => {
+  for (const row of courses.value) {
+    const cred = Number(row.credits) || 0
+    const hrs = Number(row.hours) || 0
+    if (cred > 0 && hrs > 0 && hrs < cred * 16) {
+      console.warn(`[学分·学时] 课程「${row.courseName || ''}」学分 ${cred} 建议至少 ${cred * 16} 学时，当前 ${hrs}`)
+    }
+  }
+}, { deep: true })
 
 // 表单是否完整(用于禁用"提交审核"按钮,防止误点)
 const formComplete = computed(() => {
