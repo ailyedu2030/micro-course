@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAllProposals, approveProposal, rejectProposal } from '@/api/microSpecialty'
@@ -99,13 +99,9 @@ const activeTab = ref('PENDING')
 const loading = ref(false)
 const actingId = ref(null)
 const router = useRouter()
+// 直接读 role，不通过函数（避免 Vite tree-shake 把 userStore 去掉了）
 const userStore = useUserStore()
-const currentRole = userStore.role
-
-// 路由守卫存在竞态: async getInfo() 期间组件异步加载完成并 onMounted,
-// 此时守卫还未发出角色不符的重定向. API 先行发出 → 后端 403 → console error.
-// 修复: 组件自己检查角色,不符则不请求也不报错.
-const hasAccess = ['ACADEMIC', 'ADMIN'].includes(currentRole)
+const hasAccess = ['ACADEMIC', 'ADMIN'].includes(userStore.role)
 const items = ref([])
 const page = ref(0)
 const size = ref(20)
@@ -135,9 +131,13 @@ const fetchData = async () => {
     const { data } = await getAllProposals(params)
     items.value = data.items || data || []
     total.value = data.totalElements || 0
-  } catch {
-    error.value = true
-    ElMessage.error('加载失败')
+  } catch (e) {
+    // 403 预期行为 - 路由守卫若未及时重定向,后端会拦截非ACADEMIC角色
+    // 静默忽略,不显示错误也不报console
+    if (e?.response?.status !== 403) {
+      error.value = true
+      ElMessage.error('加载失败')
+    }
   }
   finally { loading.value = false }
 }

@@ -246,6 +246,7 @@ const handleRegister = async () => {
         setToken(res.data.accessToken)
         setRefreshToken(res.data.refreshToken || '')
         userStore.token = res.data.accessToken
+        userStore.refreshToken = res.data.refreshToken || ''
         await userStore.getInfo()
         ElMessage.success('注册成功！欢迎你，' + (userStore.realName || registerForm.username))
         showRegisterDialog.value = false

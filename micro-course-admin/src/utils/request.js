@@ -122,6 +122,10 @@ request.interceptors.response.use(response => {
         if (newToken) {
           setToken(newToken)
           setRefreshToken(newRefreshToken || '')
+          // 通知 store token 已刷新（避免 store.token 与 localStorage 不一致）
+          window.dispatchEvent(new CustomEvent('token-refreshed', {
+            detail: { token: newToken, refreshToken: newRefreshToken || '' }
+          }))
           config.headers.Authorization = `Bearer ${newToken}`
           config._retry = true
           // P1-I #22: 重放所有积压请求

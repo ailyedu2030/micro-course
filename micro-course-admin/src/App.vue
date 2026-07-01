@@ -91,6 +91,22 @@ onMounted(async () => {
       console.error('[App] 获取用户信息失败', err)
     }
   }
+  // P2: 跨标签页 token 同步 — 另一个标签页登录/登出后，同步 store
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'micro_course_token' && e.newValue !== e.oldValue) {
+      if (e.newValue !== userStore.token) {
+        userStore.token = e.newValue || ''
+        userStore.userInfo = null  // 强制下次路由守卫/API 调用时重新获取
+      }
+    }
+  })
+  // P2: Token 刷新同步 — request.js 401 拦截器刷新 token 后更新 store
+  window.addEventListener('token-refreshed', (e) => {
+    userStore.token = e.detail.token
+    if (e.detail.refreshToken) {
+      userStore.refreshToken = e.detail.refreshToken
+    }
+  })
 })
 </script>
 
