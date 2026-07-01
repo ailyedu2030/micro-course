@@ -15,6 +15,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.MicroSpecialtyProposalRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
 import com.microcourse.repository.MicroSpecialtyTeacherRepository;
+import com.microcourse.service.MicroSpecialtyMaterializationService;
 import com.microcourse.service.MicroSpecialtyProposalService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
@@ -43,19 +44,22 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
     private final NotificationService notificationService;
     private final com.microcourse.repository.DepartmentRepository departmentRepository;
     private final com.microcourse.repository.UserRepository userRepository;
+    private final MicroSpecialtyMaterializationService materializationService;
 
     public MicroSpecialtyProposalServiceImpl(MicroSpecialtyProposalRepository proposalRepository,
                                               MicroSpecialtyRepository msRepository,
                                               MicroSpecialtyTeacherRepository msTeacherRepository,
                                               NotificationService notificationService,
                                               com.microcourse.repository.DepartmentRepository departmentRepository,
-                                              com.microcourse.repository.UserRepository userRepository) {
+                                              com.microcourse.repository.UserRepository userRepository,
+                                              MicroSpecialtyMaterializationService materializationService) {
         this.proposalRepository = proposalRepository;
         this.msRepository = msRepository;
         this.msTeacherRepository = msTeacherRepository;
         this.notificationService = notificationService;
         this.departmentRepository = departmentRepository;
         this.userRepository = userRepository;
+        this.materializationService = materializationService;
     }
 
     @Override
@@ -431,5 +435,13 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
                 "微专业负责人邀请", "您已被指定为微专业《" + ms.getTitle() + "》负责人，请在7天内接受邀请", ms.getId());
 
         log.info("approveAndCreateSpecialty: proposalId={}, msId={}", proposalId, ms.getId());
+
+        // Phase 5: 物化申报中的章节到微专业
+        try {
+            materializationService.materialize(proposalId);
+        } catch (Exception e) {
+            log.error("materialize failed for proposal {}: {}", proposalId, e.getMessage());
+            // 不阻断审批流程, 但记录错误供后续排查
+        }
     }
 }
