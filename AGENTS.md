@@ -96,10 +96,12 @@ Phase 开发工作流:
 - ❌ 在生产 DB 做写操作而不 ask user
 - ❌ 生产容器上做实验（micro-course-api-1 / micro-course-admin-1 / postgres / redis）
 - ❌ 全量部署新功能（必须走灰度白名单）
+- ❌ 在未通过生产门禁时操作生产（必须先 `bash scripts/deploy-gate.sh check`）
 
 **必须**：
 - ✅ audit trail：每次生产操作前 dump 当前状态，commit message 写明操作步骤
 - ✅ rollback 路径：ROLLBACK_PLAN.md 覆盖最近 3 个版本
+- ✅ 先通过生产门禁：`bash scripts/deploy-gate.sh check`
 
 **自检**（每次 ssh/curl/playwright 前）：
 ```bash

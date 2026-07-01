@@ -460,11 +460,19 @@ fi
 echo ""
 echo "✅ 本地测试全部通过"
 echo ""
-echo "  下一步: 如果要部署到生产,请先走 staging 验证:"
-echo "    1. 灰度发布到生产 (scripts/gray-release.sh)"
-echo "    2. 加入白名单 (xiaona 等测试账号)"
-echo "    3. 监控 5 分钟"
-echo "    4. 全量发布 (roll-out)"
+echo "  🔓 生产门禁已自动打开 (有效期 4 小时)"
 echo ""
+
+# 自动打开生产门禁
+bash "$ROOT/scripts/deploy-gate.sh open" > /dev/null 2>&1
+
+echo "  下一步: 如果要部署到生产,请先走 staging 验证:"
+echo "    1. bash scripts/deploy-gate.sh check   ← 确认门禁已开"
+echo "    2. 灰度发布到生产 (scripts/gray-release.sh)"
+echo "    3. 加入白名单 (xiaona 等测试账号)"
+echo "    4. 监控 5 分钟"
+echo "    5. 全量发布 (roll-out)"
+echo ""
+echo "  ⚠️  如果门禁关闭,任何生产操作会被阻断!"
 echo "  ⚠️  不要直接生产部署,必须先 staging 验证!"
 exit 0

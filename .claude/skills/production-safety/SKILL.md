@@ -259,17 +259,49 @@ echo "  - 状态: 已回滚,待进一步分析"
 2. 加 precheck 规则防止再次发生
 3. 更新 ROLLBACK_PLAN.md
 
-## 4. 自检命令 (Agent 必跑)
+## 4. 生产门禁（物理阻断，不可绕过）
 
-每次 Agent 准备执行 ssh/curl/playwright 操作前,运行:
+所有生产操作（ssh/docker cp/curl/playwright）前，必须先检查门禁：
+
+```bash
+# 强制检查: 门禁是否已开?
+bash scripts/deploy-gate.sh check
+# 退出码 0 = 门开着 → 允许继续
+# 退出码 1 = 门关着 → ❌ 阻断! 请先跑 local-dev-deploy.sh
+```
+
+**门禁生命周期**:
+```
+local-dev-deploy.sh 全部 PASS
+  → 自动开门 (scripts/deploy-gate.sh open)
+  → 有效期 4 小时
+  → 超时自动关门
+  → 重新 local-dev-deploy.sh 再开门
+```
+
+### 绕过后门（紧急情况，必须用户确认）
+
+如果用户明确要求"跳过门禁直接部署"，AI 必须：
+1. 确认用户已知晓风险
+2. 由用户手动运行 `bash scripts/deploy-gate.sh open`
+3. AI 记录到 commit message: `⚠ bypassed production gate by user request`
+4. 部署后主动运行 `bash scripts/deploy-gate.sh close`
+
+## 5. 自检命令 (Agent 必跑)
+
+每次 Agent 准备执行 ssh/curl/playwright 操作前,必须运行:
 
 ```bash
 # 1. 判断目标
 TARGET="$1"  # 例如: 100.74.122.13, microcourse.ailyedu.cn, localhost
 if [[ "$TARGET" =~ (100\.74\.122\.13|microcourse\.ailyedu\.cn) ]]; then
   echo "🚨 检测到生产目标: $TARGET"
-  echo "必须遵循 production-safety skill 的 6 步发布流程"
-  echo "当前是否已完成 Step 1-5? (yes/no)"
+
+  # 2. 检查生产门禁 (物理阻断)
+  bash scripts/deploy-gate.sh check || exit 1
+
+  # 3. 确认本地验证已完成
+  echo "当前是否已完成 local-dev-deploy.sh 全部 PASS? (yes/no)"
   read -p "" ANSWER
   if [ "$ANSWER" != "yes" ]; then
     echo "❌ 阻断: 必须先完成本地验证才能操作生产"
