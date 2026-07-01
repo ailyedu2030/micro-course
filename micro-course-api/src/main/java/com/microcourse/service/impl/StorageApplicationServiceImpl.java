@@ -100,8 +100,18 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         proposal.setStatus("DRAFT");
         proposal.setCreatedAt(LocalDateTime.now());
         proposal.setUpdatedAt(LocalDateTime.now());
+        // 自动填充教师所属学院
+        try {
+            com.microcourse.entity.User user = userRepository.selectById(userId);
+            if (user != null && user.getDepartmentId() != null) {
+                proposal.setOfferDepartmentId(user.getDepartmentId());
+            }
+        } catch (Exception e) {
+            log.warn("initDraft: 无法获取用户学院信息, userId={}", userId);
+        }
         proposalRepository.insert(proposal);
-        log.info("initDraft: userId={}, proposalId={}", userId, proposal.getId());
+        log.info("initDraft: userId={}, proposalId={}, departmentId={}",
+            userId, proposal.getId(), proposal.getOfferDepartmentId());
         return proposal.getId();
     }
 
