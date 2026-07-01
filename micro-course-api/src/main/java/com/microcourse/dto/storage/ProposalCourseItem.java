@@ -1,9 +1,11 @@
 package com.microcourse.dto.storage;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import java.math.BigDecimal;
+import java.util.List;
 
 public class ProposalCourseItem {
 
@@ -17,6 +19,10 @@ public class ProposalCourseItem {
     @DecimalMax(value = "99.9", message = "学分超出合理范围")
     private BigDecimal credits;
     private String semester;
+
+    // Phase 1: 课程下的章节列表
+    @Valid
+    private List<ProposalChapterItem> chapters;
 
     public ProposalCourseItem() {}
 
@@ -32,4 +38,6 @@ public class ProposalCourseItem {
     public void setCredits(BigDecimal credits) { this.credits = credits; }
     public String getSemester() { return semester; }
     public void setSemester(String semester) { this.semester = semester; }
+    public List<ProposalChapterItem> getChapters() { return chapters; }
+    public void setChapters(List<ProposalChapterItem> chapters) { this.chapters = chapters; }
 }

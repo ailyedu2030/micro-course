@@ -58,6 +58,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
 
     private final MicroSpecialtyProposalRepository proposalRepository;
     private final ProposalCourseRepository courseRepository;
+    private final ProposalChapterRepository chapterRepository;
     private final ProposalLeadCourseRepository leadCourseRepository;
     private final ProposalTeamMemberRepository teamMemberRepository;
     private final ProposalSignatureRepository signatureRepository;
@@ -69,6 +70,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     public StorageApplicationServiceImpl(
             MicroSpecialtyProposalRepository proposalRepository,
             ProposalCourseRepository courseRepository,
+            ProposalChapterRepository chapterRepository,
             ProposalLeadCourseRepository leadCourseRepository,
             ProposalTeamMemberRepository teamMemberRepository,
             ProposalSignatureRepository signatureRepository,
@@ -78,6 +80,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             SqlSessionFactory sqlSessionFactory) {
         this.proposalRepository = proposalRepository;
         this.courseRepository = courseRepository;
+        this.chapterRepository = chapterRepository;
         this.leadCourseRepository = leadCourseRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.signatureRepository = signatureRepository;
@@ -849,7 +852,36 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                     for (ProposalCourse entity : entities) {
                         batchRepo.insert(entity);
                     }
-                    sqlSession.commit();
+                    sqlSession.flushStatements();  // 必须先 flush 让 course.id 可用
+                }
+
+                // Phase 1: 同步保存章节(嵌套在课程循环内,确保 course.id 可用)
+                List<ProposalChapter> allChapters = new ArrayList<>();
+                for (int i = 0; i < request.getCourses().size(); i++) {
+                    ProposalCourseItem item = request.getCourses().get(i);
+                    ProposalCourse courseEntity = entities.get(i);
+                    if (item.getChapters() != null && !item.getChapters().isEmpty()) {
+                        int chapterSort = 0;
+                        for (ProposalChapterItem chItem : item.getChapters()) {
+                            ProposalChapter ch = new ProposalChapter();
+                            ch.setProposalId(proposalId);
+                            ch.setCourseId(courseEntity.getId());
+                            ch.setTitle(chItem.getTitle());
+                            ch.setDescription(chItem.getDescription());
+                            ch.setHours(chItem.getHours());
+                            ch.setSortOrder(chapterSort++);
+                            allChapters.add(ch);
+                        }
+                    }
+                }
+                if (!allChapters.isEmpty()) {
+                    try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+                        ProposalChapterRepository chRepo = sqlSession.getMapper(ProposalChapterRepository.class);
+                        for (ProposalChapter ch : allChapters) {
+                            chRepo.insert(ch);
+                        }
+                        sqlSession.commit();
+                    }
                 }
             }
         }
@@ -1023,6 +1055,26 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             item.setHours(e.getHours());
             item.setCredits(e.getCredits());
             item.setSemester(e.getSemester());
+            // Phase 1: 加载该课程的章节
+            item.setChapters(buildChapterItems(e.getId()));
+            items.add(item);
+        }
+        return items;
+    }
+
+    private List<ProposalChapterItem> buildChapterItems(Long courseId) {
+        List<ProposalChapter> entities = chapterRepository.selectList(
+                new LambdaQueryWrapper<ProposalChapter>()
+                        .eq(ProposalChapter::getCourseId, courseId)
+                        .orderByAsc(ProposalChapter::getSortOrder));
+        List<ProposalChapterItem> items = new ArrayList<>();
+        for (ProposalChapter e : entities) {
+            ProposalChapterItem item = new ProposalChapterItem();
+            item.setId(e.getId());
+            item.setTitle(e.getTitle());
+            item.setDescription(e.getDescription());
+            item.setHours(e.getHours());
+            item.setSortOrder(e.getSortOrder());
             items.add(item);
         }
         return items;
