@@ -17,7 +17,7 @@
           <span v-if="saveStatus" class="save-status" :class="{ 'save-error': saveStatus === '保存失败' || saveStatus === '⚠ 未保存' }">
             {{ saveStatus }}
           </span>
-          <el-button type="primary" @click="handleSubmit">提交审核</el-button>
+          <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">提交审核</el-button>
           <el-dropdown trigger="click" @command="handleExport">
             <el-button>导出<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
             <template #dropdown>
@@ -361,7 +361,7 @@
     <div class="footer-bar">
       <el-button @click="handleBack">返回</el-button>
       <el-button :loading="saving" @click="handleSave">保存</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">提交审核</el-button>
+      <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">提交审核</el-button>
       <el-button type="danger" plain @click="handleResetAll">重置全部</el-button>
     </div>
   </div>  <!-- closes ms-proposal-page -->
@@ -373,7 +373,7 @@
     <el-button v-if="step < 4" type="primary" @click="step++">下一步</el-button>
     <template v-if="step === 4">
       <el-button :loading="saving" @click="handleSave">保存</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">提交审核</el-button>
+      <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">提交审核</el-button>
     </template>
   </div>
 </template>
@@ -530,6 +530,19 @@ const rules3 = {
 // ==================== 计算属性 ====================
 const totalCourseHours = computed(() => {
   return courses.value.reduce((sum, row) => sum + (Number(row.hours) || 0), 0)
+})
+
+// 表单是否完整(用于禁用"提交审核"按钮,防止误点)
+const formComplete = computed(() => {
+  return !!(
+    form.value.title &&
+    form.value.microSpecialtyName &&
+    form.value.leadName &&
+    form.value.contactPhone &&
+    form.value.applyDate &&
+    courses.value.length > 0 &&
+    teamMembers.value.length > 0
+  )
 })
 
 // ==================== 构建保存 payload ====================
