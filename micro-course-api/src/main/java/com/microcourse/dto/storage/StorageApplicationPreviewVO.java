@@ -37,6 +37,7 @@ public class StorageApplicationPreviewVO {
     private String leadTitle;
     private String leadPosition;
     private String leadResearchDirection;
+    private String leadMainTasks;
 
     private List<ProposalCourseItem> courses;
     private List<ProposalLeadCourseItem> leadCourses;
@@ -106,6 +107,9 @@ public class StorageApplicationPreviewVO {
     public void setLeadPosition(String leadPosition) { this.leadPosition = leadPosition; }
     public String getLeadResearchDirection() { return leadResearchDirection; }
     public void setLeadResearchDirection(String leadResearchDirection) { this.leadResearchDirection = leadResearchDirection; }
+
+    public String getLeadMainTasks() { return leadMainTasks; }
+    public void setLeadMainTasks(String leadMainTasks) { this.leadMainTasks = leadMainTasks; }
 
     public List<ProposalCourseItem> getCourses() { return courses; }
     public void setCourses(List<ProposalCourseItem> courses) { this.courses = courses; }

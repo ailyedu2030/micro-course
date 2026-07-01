@@ -18,6 +18,10 @@ import com.microcourse.repository.MicroSpecialtyTeacherRepository;
 import com.microcourse.service.MicroSpecialtyProposalService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
+
+import java.util.*;
+import java.util.stream.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -37,15 +41,21 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
     private final MicroSpecialtyRepository msRepository;
     private final MicroSpecialtyTeacherRepository msTeacherRepository;
     private final NotificationService notificationService;
+    private final com.microcourse.repository.DepartmentRepository departmentRepository;
+    private final com.microcourse.repository.UserRepository userRepository;
 
     public MicroSpecialtyProposalServiceImpl(MicroSpecialtyProposalRepository proposalRepository,
-                                             MicroSpecialtyRepository msRepository,
-                                             MicroSpecialtyTeacherRepository msTeacherRepository,
-                                             NotificationService notificationService) {
+                                              MicroSpecialtyRepository msRepository,
+                                              MicroSpecialtyTeacherRepository msTeacherRepository,
+                                              NotificationService notificationService,
+                                              com.microcourse.repository.DepartmentRepository departmentRepository,
+                                              com.microcourse.repository.UserRepository userRepository) {
         this.proposalRepository = proposalRepository;
         this.msRepository = msRepository;
         this.msTeacherRepository = msTeacherRepository;
         this.notificationService = notificationService;
+        this.departmentRepository = departmentRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -78,22 +88,54 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
                 new LambdaQueryWrapper<MicroSpecialtyProposal>()
                         .eq(MicroSpecialtyProposal::getProposerId, userId)
                         .orderByDesc(MicroSpecialtyProposal::getCreatedAt));
-        return PageResult.of(ipage);
+        return enrichWithNames(ipage);
     }
 
     @Override
     public PageResult<?> getAllPendingProposals(int page, int size, String status) {
         LambdaQueryWrapper<MicroSpecialtyProposal> wrapper = new LambdaQueryWrapper<>();
-        // status=null 或 "ALL" 表示不按状态过滤，显示全部
         if (status != null && !"ALL".equals(status)) {
             wrapper.eq(MicroSpecialtyProposal::getStatus, status);
         } else if (status == null || "ALL".equals(status)) {
-            // 不加 status 过滤条件
         }
         wrapper.orderByDesc(MicroSpecialtyProposal::getCreatedAt);
         IPage<MicroSpecialtyProposal> ipage = proposalRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
-        return PageResult.of(ipage);
+        return enrichWithNames(ipage);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private PageResult enrichWithNames(IPage<MicroSpecialtyProposal> ipage) {
+        if (ipage.getRecords() == null || ipage.getRecords().isEmpty()) {
+            return PageResult.of(new java.util.ArrayList(), ipage.getTotal(), 0, (int) ipage.getSize());
+        }
+        // 批量子表查询学院和用户名称
+        java.util.Set<Long> deptIds = new java.util.HashSet<>();
+        java.util.Set<Long> userIds = new java.util.HashSet<>();
+        for (MicroSpecialtyProposal p : ipage.getRecords()) {
+            if (p.getOfferDepartmentId() != null) deptIds.add(p.getOfferDepartmentId());
+            if (p.getProposerId() != null) userIds.add(p.getProposerId());
+        }
+        java.util.Map<Long, String> deptMap = new java.util.HashMap<>();
+        if (!deptIds.isEmpty()) {
+            List<com.microcourse.entity.Department> depts = departmentRepository.selectBatchIds(deptIds);
+            if (depts != null) for (com.microcourse.entity.Department d : depts) deptMap.put(d.getId(), d.getName());
+        }
+        java.util.Map<Long, String> userMap = new java.util.HashMap<>();
+        if (!userIds.isEmpty()) {
+            List<com.microcourse.entity.User> users = userRepository.selectBatchIds(userIds);
+            if (users != null) for (com.microcourse.entity.User u : users) userMap.put(u.getId(), u.getRealName());
+        }
+        @SuppressWarnings("unchecked")
+        List<java.util.Map<String, Object>> records = new java.util.ArrayList<>();
+        for (MicroSpecialtyProposal p : ipage.getRecords()) {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.Map<String, Object> map = mapper.convertValue(p, java.util.Map.class);
+            map.put("collegeName", deptMap.getOrDefault(p.getOfferDepartmentId(), ""));
+            map.put("applicantName", userMap.getOrDefault(p.getProposerId(), ""));
+            records.add(map);
+        }
+        return PageResult.of(records, ipage.getTotal(), (int) ipage.getCurrent() - 1, (int) ipage.getSize());
     }
 
     @Override
@@ -329,11 +371,16 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         } else {
             ms.setTitle(proposal.getLeadName() != null ? proposal.getLeadName() + "的微专业" : "未命名微专业");
         }
-        ms.setDescription(proposal.getDescription());
+        ms.setDescription(proposal.getDescription() != null ? proposal.getDescription() : proposal.getIntroduction());
         ms.setOfferDepartmentId(proposal.getOfferDepartmentId());
-        ms.setTrainingObjective(proposal.getTrainingObjective());
-        ms.setSemester(proposal.getSemester());
-        ms.setMaxStudents(proposal.getMaxStudents());
+        ms.setTrainingObjective(proposal.getTrainingObjective() != null ? proposal.getTrainingObjective() :
+            (proposal.getSpecialtyOverview() != null ? proposal.getSpecialtyOverview() : proposal.getMarketDemandAnalysis()));
+        // storage 端用 enrollmentQuota+classSize 取代 maxStudents
+        ms.setSemester(proposal.getSemester() != null ? proposal.getSemester() :
+            (proposal.getStartDate() != null ? String.valueOf(proposal.getStartDate().getYear()) : null));
+        ms.setMaxStudents(proposal.getMaxStudents() != null ? proposal.getMaxStudents() :
+            (proposal.getEnrollmentQuota() != null ? proposal.getEnrollmentQuota() :
+             proposal.getClassSize() != null ? proposal.getClassSize() : 0));
         ms.setLeadTeacherId(proposal.getProposerId());
         ms.setStatus("APPROVED");
         ms.setCreatorId(reviewerId);

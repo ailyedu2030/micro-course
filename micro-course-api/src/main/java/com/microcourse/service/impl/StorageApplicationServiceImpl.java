@@ -650,6 +650,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         vo.setLeadTitle(proposal.getLeadTitle());
         vo.setLeadPosition(proposal.getLeadPosition());
         vo.setLeadResearchDirection(proposal.getLeadResearchDirection());
+        vo.setLeadMainTasks(proposal.getLeadMainTasks());
 
         vo.setCourses(buildCourseItems(proposal.getId()));
         vo.setLeadCourses(buildLeadCourseItems(proposal.getId()));
