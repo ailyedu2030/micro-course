@@ -121,3 +121,4 @@ backups/
 
 # Phase 15: 字体文件（运行时生成PDF用，从系统拷入，不入仓）
 micro-course-api/src/main/resources/fonts/
+.production-gate
