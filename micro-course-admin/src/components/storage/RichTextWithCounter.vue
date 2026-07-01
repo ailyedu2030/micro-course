@@ -10,7 +10,7 @@
         @update:content="$emit('update:modelValue', $event)"
       />
     </div>
-    <div class="word-count" :class="{ warning: count > warningThreshold, error: count > maxThreshold }">
+    <div class="word-count" :class="{ warning: count > effectiveWarningThreshold, error: count > maxThreshold }">
       字数：{{ count }} / {{ maxThreshold > 0 ? '最多' + maxThreshold : '建议≤' + recommendThreshold }}
     </div>
   </div>
@@ -26,6 +26,7 @@ const props = defineProps({
   placeholder: { type: String, default: '' },
   minHeight: { type: Number, default: 140 },
   recommendThreshold: { type: Number, default: 0 },
+  warningThreshold: { type: Number, default: 0 },
   maxThreshold: { type: Number, default: 0 }
 })
 
@@ -34,6 +35,13 @@ defineEmits(['update:modelValue'])
 const count = computed(() => {
   if (!props.modelValue) return 0
   return props.modelValue.replace(/<[^>]*>/g, '').replace(/&[\w;]+/g, ' ').replace(/\s+/g, '').length
+})
+
+const effectiveWarningThreshold = computed(() => {
+  // 当 warningThreshold 未传值（保持默认0）时，使用 recommendThreshold
+  // 当 warningThreshold 被显式传入0时，0是合法值，不覆盖
+  if (props.warningThreshold > 0) return props.warningThreshold
+  return props.recommendThreshold
 })
 </script>
 
