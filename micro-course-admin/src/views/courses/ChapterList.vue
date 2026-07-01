@@ -251,25 +251,25 @@ const handleDelete = async (row) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitLoading.value = true
-    try {
-      if (isEdit.value) {
-        await updateChapter(currentId.value, formData)
-        ElMessage.success('编辑成功')
-      } else {
-        await createChapter(formData)
-        ElMessage.success('创建成功')
-      }
-      dialogVisible.value = false
-      fetchData()
-    } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
-    } finally {
-      submitLoading.value = false
+  let valid = false
+  try { valid = await formRef.value.validate() } catch { valid = false }
+  if (!valid) return
+  submitLoading.value = true
+  try {
+    if (isEdit.value) {
+      await updateChapter(currentId.value, formData)
+      ElMessage.success('编辑成功')
+    } else {
+      await createChapter(formData)
+      ElMessage.success('创建成功')
     }
-  })
+    dialogVisible.value = false
+    fetchData()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || (isEdit.value ? '编辑失败' : '创建失败'))
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 const handleDialogClose = () => {

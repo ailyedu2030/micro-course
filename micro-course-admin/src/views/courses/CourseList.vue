@@ -111,13 +111,13 @@
             <el-button v-if="row.courseType === 'INTERACTIVE'" type="primary" link size="small" @click.stop="goWorkspace(row)">工作台</el-button>
             <el-button type="primary" link size="small" @click.stop="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.courseType === 'INTERACTIVE'" type="success" link size="small" @click.stop="goSlides(row)">课件</el-button>
-            <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="success" link size="small" @click.stop="handleApprove(row)">审核通过</el-button>
-            <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="danger" link size="small" @click.stop="handleReject(row)">驳回</el-button>
-            <el-button v-if="row.status === 2 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="primary" link size="small" @click.stop="handlePublish(row)">发布</el-button>
-            <el-button v-if="row.status === 4 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="warning" link size="small" @click.stop="handleUnpublish(row)">下架</el-button>
+            <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">审核通过</el-button>
+            <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleReject(row)">驳回</el-button>
+            <el-button v-if="row.status === 2 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">发布</el-button>
+            <el-button v-if="row.status === 4 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="warning" link size="small" :loading="actingId === row.id" @click.stop="handleUnpublish(row)">下架</el-button>
             <el-button type="info" link size="small" @click.stop="handleView(row)">查看</el-button>
             <el-button type="primary" link size="small" @click.stop="handleCopy(row)">复制</el-button>
-            <el-button type="danger" link size="small" @click.stop="handleDelete(row)">删除</el-button>
+            <el-button type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -236,6 +236,7 @@ const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const actingId = ref(null)
 const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
@@ -452,8 +453,10 @@ const handleView = (row) => {
 
 const handleApprove = async (row) => {
   try { await ElMessageBox.confirm('确定审核通过该课程?', '提示', { type: 'warning' }) } catch { return }
+  actingId.value = row.id
   try { await approveCourse(row.id); ElMessage.success('审核通过成功'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '审核通过失败') }
+  finally { actingId.value = null }
 }
 
 const handleReject = async (row) => {
@@ -465,37 +468,46 @@ const handleReject = async (row) => {
     })
     value = res.value
   } catch { return }
+  actingId.value = row.id
   try { await rejectCourse(row.id, value || ''); ElMessage.success('驳回成功'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '驳回失败') }
+  finally { actingId.value = null }
 }
 
 const handlePublish = async (row) => {
   try { await ElMessageBox.confirm('确定发布该课程?', '提示', { type: 'warning' }) } catch { return }
+  actingId.value = row.id
   try { await updateCourseStatus(row.id, 4); ElMessage.success('发布成功'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '发布失败') }
+  finally { actingId.value = null }
 }
 
 const handleUnpublish = async (row) => {
   try { await ElMessageBox.confirm('确定下架该课程?', '提示', { type: 'warning' }) } catch { return }
+  actingId.value = row.id
   try { await updateCourseStatus(row.id, 5); ElMessage.success('下架成功'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '下架失败') }
+  finally { actingId.value = null }
 }
 
 const handleDelete = async (row) => {
   try { await ElMessageBox.confirm('确定删除该课程?', '提示', { type: 'warning' }) } catch { return }
+  actingId.value = row.id
   try { await deleteCourse(row.id); ElMessage.success('删除成功'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
+  finally { actingId.value = null }
 }
 
 const handleCopy = async (row) => {
+  actingId.value = row.id
   try {
     const { data } = await copyCourse(row.id)
     const newId = data?.id || data
     ElMessage.success('复制成功，即将跳转到编辑页面')
     router.push(`/courses/${newId}/edit`)
-  } catch {
-    ElMessage.error('复制失败')
-  }
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '复制失败')
+  } finally { actingId.value = null }
 }
 
 const handleExport = () => {
