@@ -23,7 +23,7 @@ class StorageApplicationE2ETest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        teacherToken = loginAs("p0_teacher", "teacher123");
+        teacherToken = loginAs("p0_teacher", "student123");
     }
 
     @Test
