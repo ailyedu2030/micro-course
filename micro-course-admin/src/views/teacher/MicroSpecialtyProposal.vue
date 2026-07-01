@@ -154,7 +154,7 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="开课时间">
-              <DatePickerYM v-model="form.startDate" />
+              <DatePickerYM v-model="form.startDate" placeholder="选择开课时间" future />
             </el-form-item>
           </el-col>
         </el-row>
