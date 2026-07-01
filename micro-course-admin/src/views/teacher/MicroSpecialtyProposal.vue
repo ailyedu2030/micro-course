@@ -277,6 +277,65 @@
         <el-divider content-position="left">团队成员</el-divider>
         <DynamicTableEditor v-model="teamMembers" :columns="teamColumns" :default-row="teamDefaultRow" />
       </el-form>
+
+      <!-- Phase 2: 章节分配 -->
+      <el-divider content-position="left">章节分配</el-divider>
+      <div v-if="teamMembers.length === 0" class="empty-hint">
+        先添加上方团队成员, 即可为其分配负责章节
+      </div>
+      <el-table v-else :data="teamMembers" border size="small">
+        <el-table-column label="姓名" width="120">
+          <template #default="{ row }">{{ row.name || '(未命名)' }}</template>
+        </el-table-column>
+        <el-table-column label="已分配章节" min-width="200">
+          <template #default="{ row }">
+            <el-tag
+              v-for="a in chapterAssignments.filter(ca => ca.teamMemberIndex === row._index)"
+              :key="a.chapterId"
+              type="info"
+              size="small"
+              closable
+              @close="removeChapterAssign(a, row._index)"
+              class="mg-right-4">
+              {{ getChapterLabel(a.chapterId) }}
+            </el-tag>
+            <span v-if="!chapterAssignments.some(ca => ca.teamMemberIndex === row._index)" class="muted">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="openChapterDrawer(row)">
+              分配章节
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <!-- 章节分配 Drawer -->
+      <el-drawer v-model="chapterDrawerVisible" title="分配章节" direction="rtl" size="50%">
+        <template v-if="chapterDrawerMember">
+          <el-alert :title="'为 ' + (chapterDrawerMember.name || '(未命名)') + ' 分配章节'" type="info" :closable="false" show-icon class="mg-bottom-16" />
+
+          <el-collapse v-if="courses.length > 0">
+            <el-collapse-item v-for="course in courses" :key="course._index || course.id" :title="course.courseName || '(未命名课程)'">
+              <el-checkbox-group v-if="course.chapters && course.chapters.length">
+                <div v-for="ch in course.chapters" :key="ch.id" class="chapter-check-item">
+                  <el-checkbox
+                    :model-value="isChapterAssigned(chapterDrawerMember, ch.id)"
+                    :label="ch.title + ' (' + (ch.hours || 0) + '学时)'"
+                    @change="(val) => toggleChapter(chapterDrawerMember, ch.id, course.id, val)" />
+                </div>
+              </el-checkbox-group>
+              <div v-else class="empty-hint">该课程还没有章节</div>
+            </el-collapse-item>
+          </el-collapse>
+          <div v-else class="empty-hint">还没有课程, 请先在 Step 2 添加课程和章节</div>
+        </template>
+        <template #footer>
+          <el-button @click="chapterDrawerVisible = false">关闭</el-button>
+          <el-button type="primary" @click="chapterDrawerVisible = false">完成</el-button>
+        </template>
+      </el-drawer>
     </el-card>
 
     <!-- ========== 模块4：牵头单位意见 ========== -->
@@ -471,6 +530,58 @@ const signatures = ref([
 // 共建共享单位
 const sharedUnits = ref([])
 
+// Phase 2: 章节-教师分配
+const chapterAssignments = ref([])
+const chapterDrawerVisible = ref(false)
+const chapterDrawerMember = ref(null)  // 当前正在分配的团队成员
+
+function openChapterDrawer(member) {
+  chapterDrawerMember.value = member
+  chapterDrawerVisible.value = true
+}
+
+function isChapterAssigned(member, chapterId) {
+  return chapterAssignments.value.some(a => 
+    a.chapterId === chapterId && a.teamMemberIndex === member._index)
+}
+
+function toggleChapter(member, chapterId, courseId, checked) {
+  const memberIndex = member._index
+  if (checked) {
+    chapterAssignments.value.push({
+      courseId, chapterId, 
+      teamMemberIndex: memberIndex,
+      teacherId: memberIndex + 1  // 用序号占位(提案阶段,文本名)
+    })
+  } else {
+    chapterAssignments.value = chapterAssignments.value.filter(a =>
+      !(a.chapterId === chapterId && a.teamMemberIndex === memberIndex))
+  }
+}
+
+// 获取所有课程章节(扁平化,供 Drawer 使用)
+function allChapters() {
+  const result = []
+  for (const course of courses.value) {
+    for (const ch of (course.chapters || [])) {
+      result.push({ id: ch.id, title: ch.title, courseName: course.courseName, courseId: course.id })
+    }
+  }
+  return result
+}
+
+function getChapterLabel(chapterId) {
+  for (const course of courses.value) {
+    const ch = (course.chapters || []).find(c => c.id === chapterId)
+    if (ch) return (course.courseName || '') + ' / ' + (ch.title || '')
+  }
+  return '(未知章节)'
+}
+function removeChapterAssign(assign, memberIndex) {
+  chapterAssignments.value = chapterAssignments.value.filter(a =>
+    !(a.chapterId === assign.chapterId && a.teamMemberIndex === memberIndex))
+}
+
 // ==================== 下拉选项 ====================
 const typeOptions = ['急需紧缺型']
 const audienceOptions = ['专科', '本科', '硕士', '博士']
@@ -582,7 +693,12 @@ function buildSavePayload() {
     leadCourses: leadCourses.value,
     teamMembers: teamMembers.value,
     signatures: signatures.value,
-    sharedUnits: sharedUnits.value
+    sharedUnits: sharedUnits.value,
+    chapterAssignments: chapterAssignments.value.map(a => ({
+      courseId: a.courseId,
+      chapterId: a.chapterId,
+      teacherId: a.teacherId
+    }))
   }
 }
 
@@ -711,6 +827,9 @@ watch(() => JSON.stringify(leadCourses.value), scheduleAutoSave)
 watch(() => JSON.stringify(teamMembers.value), scheduleAutoSave)
 watch(() => JSON.stringify(signatures.value), scheduleAutoSave)
 watch(() => JSON.stringify(sharedUnits.value), scheduleAutoSave)
+
+// Phase 2: 自动维护 teamMembers._index
+watch(teamMembers, () => { teamMembers.value.forEach((m,i) => m._index = i) }, { immediate: true, deep: true })
 
 // ==================== 提交审核 ====================
 async function handleSubmit() {
@@ -868,6 +987,12 @@ async function loadDraft(id) {
             sigs[2] || { opinionText: '', signature: { type: 'TEXT', text: '', imageUrl: '' }, seal: { type: 'TEXT', text: '', imageUrl: '' }, signDate: '', remark: '' }
           ]
       sharedUnits.value = data.sharedUnits || []
+      // 加载章节分配
+      if (data.chapterAssignments) {
+        chapterAssignments.value = data.chapterAssignments.map(a => ({
+          ...a, teamMemberIndex: (a.teacherId || 1) - 1
+        }))
+      }
     }
     draftId.value = id
     dirty.value = false
@@ -1116,6 +1241,20 @@ onBeforeUnmount(() => {
 .add-unit-bar {
   text-align: center;
   margin-top: 8px;
+}
+
+/* Phase 2: 章节分配 */
+.mg-right-4 {
+  margin-right: 4px;
+}
+.mg-bottom-16 {
+  margin-bottom: 16px;
+}
+.muted {
+  color: #c0c4cc;
+}
+.chapter-check-item {
+  padding: 6px 0;
 }
 
 /* 底部操作栏 */

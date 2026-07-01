@@ -901,11 +901,9 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
                     ChapterTeacherAssignmentRepository batchRepo = sqlSession.getMapper(ChapterTeacherAssignmentRepository.class);
                     for (ChapterAssignmentItem assignItem : request.getChapterAssignments()) {
-                        // 验证 teacherId 是 TEACHER 角色
-                        User teacher = userRepository.selectById(assignItem.getTeacherId());
-                        if (teacher == null || !"TEACHER".equals(teacher.getRole().name())) {
-                            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "教师 " + assignItem.getTeacherId() + " 不存在或不是 TEACHER 角色");
-                        }
+                        // Phase 2: 提案阶段不做 teacherId 的 TEACHER 角色验证
+                        // (因为 proposal_team_members 是文本表, 无实际用户 ID)
+                        // 真正的教师验证在 Phase 3 (邀请流程) 中进行
                         ChapterTeacherAssignment entity = new ChapterTeacherAssignment();
                         entity.setProposalId(proposalId);
                         entity.setCourseId(assignItem.getCourseId());
