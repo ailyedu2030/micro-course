@@ -100,11 +100,18 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         proposal.setStatus("DRAFT");
         proposal.setCreatedAt(LocalDateTime.now());
         proposal.setUpdatedAt(LocalDateTime.now());
-        // 自动填充教师所属学院
+        // 自动填充所属学院
         try {
             com.microcourse.entity.User user = userRepository.selectById(userId);
             if (user != null && user.getDepartmentId() != null) {
                 proposal.setOfferDepartmentId(user.getDepartmentId());
+            } else {
+                // 用户无学院时，兜底取第一个可用学院
+                List<com.microcourse.entity.Department> depts = departmentRepository.selectList(null);
+                if (depts != null && !depts.isEmpty()) {
+                    proposal.setOfferDepartmentId(depts.get(0).getId());
+                    log.warn("initDraft: userId={} 无学院，兜底使用 departmentId={}", userId, depts.get(0).getId());
+                }
             }
         } catch (Exception e) {
             log.warn("initDraft: 无法获取用户学院信息, userId={}", userId);
@@ -541,7 +548,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         vo.setMicroSpecialtyName(proposal.getMicroSpecialtyName());
         vo.setLeadName(proposal.getLeadName());
         vo.setContactPhone(proposal.getContactPhone());
-        vo.setApplyDate(proposal.getApplyDate() != null ? proposal.getApplyDate().toString() : null);
+        vo.setApplyDate(proposal.getApplyDate() != null ?
+            java.time.format.DateTimeFormatter.ofPattern("yyyy.M").format(proposal.getApplyDate()) : null);
 
         // 模块2：基本情况
         vo.setType(proposal.getType());
@@ -604,7 +612,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         vo.setStatus(proposal.getStatus());
         vo.setLeadName(proposal.getLeadName());
         vo.setContactPhone(proposal.getContactPhone());
-        vo.setApplyDate(proposal.getApplyDate() != null ? proposal.getApplyDate().toString() : null);
+        vo.setApplyDate(proposal.getApplyDate() != null ?
+            java.time.format.DateTimeFormatter.ofPattern("yyyy.M").format(proposal.getApplyDate()) : null);
         vo.setType(proposal.getType());
         vo.setTargetAudience(proposal.getTargetAudience());
         vo.setTargetDisciplines(proposal.getTargetDisciplines());
@@ -644,7 +653,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         req.setTitle(proposal.getTitle());
         req.setLeadName(proposal.getLeadName());
         req.setContactPhone(proposal.getContactPhone());
-        req.setApplyDate(proposal.getApplyDate() != null ? proposal.getApplyDate().toString() : null);
+        req.setApplyDate(proposal.getApplyDate() != null ?
+                java.time.format.DateTimeFormatter.ofPattern("yyyy.M").format(proposal.getApplyDate()) : null);
         req.setType(proposal.getType());
         req.setTargetAudience(proposal.getTargetAudience());
         req.setTargetDisciplines(proposal.getTargetDisciplines());

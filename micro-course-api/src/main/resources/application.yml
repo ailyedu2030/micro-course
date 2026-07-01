@@ -34,6 +34,9 @@ spring:
     baseline-version: 72
     locations: classpath:db/migration
     table: flyway_schema_history
+    # Phase 15: V91-V96 是新增 migration，版本号低于已应用的 V99-V103
+    # 启用 out-of-order 允许 Flyway 按顺序应用新 migrations
+    out-of-order: true
 
   # Redis 7（Docker 容器，6379）—— 登录失败计数 + Token 黑名单
   # 依据：业务逻辑 §2.1（login:lock:{username}）+ §2.4（登出黑名单）
