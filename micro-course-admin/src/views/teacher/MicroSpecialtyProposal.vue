@@ -459,11 +459,11 @@ const courses = ref([])
 const leadCourses = ref([])
 const teamMembers = ref([])
 
-// 签字模块（3个签名块）
+// 签字模块（3个签名块）—— signLevel 必须存在，后端 DB NOT NULL + 后端生成 SHARED_UNIT 时按此匹配
 const signatures = ref([
-  { opinionText: '', signature: { type: 'TEXT', text: '', imageUrl: '' }, seal: { type: 'TEXT', text: '', imageUrl: '' }, signDate: '', remark: '' },
-  { opinionText: '', signature: { type: 'TEXT', text: '', imageUrl: '' }, seal: { type: 'TEXT', text: '', imageUrl: '' }, signDate: '', remark: '' },
-  { opinionText: '', signature: { type: 'TEXT', text: '', imageUrl: '' }, seal: { type: 'TEXT', text: '', imageUrl: '' }, signDate: '', remark: '' }
+  { signLevel: 'LEAD',   opinionText: '', signature: { type: 'TEXT', text: '', imageUrl: '' }, seal: { type: 'TEXT', text: '', imageUrl: '' }, signDate: '', remark: '' },
+  { signLevel: 'DEPT',   opinionText: '', signature: { type: 'TEXT', text: '', imageUrl: '' }, seal: { type: 'TEXT', text: '', imageUrl: '' }, signDate: '', remark: '' },
+  { signLevel: 'SCHOOL', opinionText: '', signature: { type: 'TEXT', text: '', imageUrl: '' }, seal: { type: 'TEXT', text: '', imageUrl: '' }, signDate: '', remark: '' }
 ])
 
 // 共建共享单位

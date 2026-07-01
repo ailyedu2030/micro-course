@@ -44,7 +44,7 @@ class StorageApplicationE2ETest extends BaseIntegrationTest {
         // 2. save - 保存完整表单
         String fullForm = "{"
             + "\"title\":\"测试大学\",\"microSpecialtyName\":\"整理收纳微专业\","
-            + "\"leadName\":\"李教授\",\"contactPhone\":\"13800138000\",\"applyDate\":\"2026.9\","
+            + "\"leadName\":\"李教授\",\"contactPhone\":\"13800138000\",\"applyDate\":\"2026.9.1\","
             + "\"type\":\"急需紧缺型\",\"targetAudience\":\"本科,硕士\",\"targetDisciplines\":\"教育学\","
             + "\"totalCredits\":16,\"courseCount\":5,\"coBuildUniversities\":\"合作大学\","
             + "\"enrollmentQuota\":50,\"classSize\":25,\"startDate\":\"2026.9.1\",\"duration\":\"1学期\","
@@ -52,7 +52,7 @@ class StorageApplicationE2ETest extends BaseIntegrationTest {
             + "\"introduction\":\"<p>微专业介绍</p>\","
             + "\"courses\":[{\"moduleName\":\"基础\",\"courseName\":\"整理学\",\"hours\":32,\"credits\":2,\"semester\":\"第1学期\"}],"
             + "\"teamMembers\":[{\"name\":\"李教授\",\"age\":45,\"title\":\"教授\",\"organization\":\"测试大学\",\"profession\":\"教育\"}],"
-            + "\"signatures\":[{\"signLevel\":\"LEAD\",\"opinionText\":\"同意\",\"signature\":{\"type\":\"TEXT\",\"text\":\"李\"},\"signDate\":\"2026.9\"}]"
+            + "\"signatures\":[{\"signLevel\":\"LEAD\",\"opinionText\":\"同意\",\"signature\":{\"type\":\"TEXT\",\"text\":\"李\"},\"signDate\":\"2026.9.1\"}]"
             + "}";
 
         mockMvc.perform(put("/api/storage-applications/{id}", proposalId)
@@ -125,7 +125,7 @@ class StorageApplicationE2ETest extends BaseIntegrationTest {
         Number pid = JsonPath.read(initResult.getResponse().getContentAsString(), "$.data");
         Long proposalId = pid.longValue();
 
-        String form = "{\"title\":\"测试\",\"microSpecialtyName\":\"微专业\",\"leadName\":\"李\",\"contactPhone\":\"13800138000\",\"applyDate\":\"2026.9\",\"type\":\"急需紧缺型\",\"targetAudience\":\"本科\",\"totalCredits\":12,\"courseCount\":4,\"introduction\":\"<p>t</p>\",\"courses\":[{\"moduleName\":\"M\",\"courseName\":\"C\",\"hours\":32,\"credits\":2,\"semester\":\"S1\"}],\"teamMembers\":[{\"name\":\"N\",\"age\":30,\"title\":\"T\",\"organization\":\"O\",\"profession\":\"P\"}],\"signatures\":[{\"signLevel\":\"LEAD\",\"opinionText\":\"OK\",\"signature\":{\"type\":\"TEXT\",\"text\":\"L\"},\"signDate\":\"2026.9\"}]}";
+        String form = "{\"title\":\"测试\",\"microSpecialtyName\":\"微专业\",\"leadName\":\"李\",\"contactPhone\":\"13800138000\",\"applyDate\":\"2026.9.1\",\"type\":\"急需紧缺型\",\"targetAudience\":\"本科\",\"totalCredits\":12,\"courseCount\":4,\"introduction\":\"<p>t</p>\",\"courses\":[{\"moduleName\":\"M\",\"courseName\":\"C\",\"hours\":32,\"credits\":2,\"semester\":\"S1\"}],\"teamMembers\":[{\"name\":\"N\",\"age\":30,\"title\":\"T\",\"organization\":\"O\",\"profession\":\"P\"}],\"signatures\":[{\"signLevel\":\"LEAD\",\"opinionText\":\"OK\",\"signature\":{\"type\":\"TEXT\",\"text\":\"L\"},\"signDate\":\"2026.9.1\"}]}";
         mockMvc.perform(put("/api/storage-applications/{id}", proposalId)
                 .header("Authorization", "Bearer " + teacherToken)
                 .contentType(MediaType.APPLICATION_JSON).content(form))

@@ -25,7 +25,7 @@ class StorageValidatorTest {
         req.setMicroSpecialtyName("整理收纳");
         req.setLeadName("李教授");
         req.setContactPhone("13800138000");
-        req.setApplyDate("2026.9");
+        req.setApplyDate("2026.9.1");
         req.setType("急需紧缺型");
         req.setTargetAudience("本科");
         req.setTotalCredits(12);

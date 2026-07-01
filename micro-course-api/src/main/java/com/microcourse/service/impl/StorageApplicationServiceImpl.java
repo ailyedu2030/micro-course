@@ -566,7 +566,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         vo.setLeadName(proposal.getLeadName());
         vo.setContactPhone(proposal.getContactPhone());
         vo.setApplyDate(proposal.getApplyDate() != null ?
-            java.time.format.DateTimeFormatter.ofPattern("yyyy.M").format(proposal.getApplyDate()) : null);
+            java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d").format(proposal.getApplyDate()) : null);
 
         // 模块2：基本情况
         vo.setType(proposal.getType());
@@ -630,7 +630,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         vo.setLeadName(proposal.getLeadName());
         vo.setContactPhone(proposal.getContactPhone());
         vo.setApplyDate(proposal.getApplyDate() != null ?
-            java.time.format.DateTimeFormatter.ofPattern("yyyy.M").format(proposal.getApplyDate()) : null);
+            java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d").format(proposal.getApplyDate()) : null);
         vo.setType(proposal.getType());
         vo.setTargetAudience(proposal.getTargetAudience());
         vo.setTargetDisciplines(proposal.getTargetDisciplines());
@@ -672,7 +672,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         req.setLeadName(proposal.getLeadName());
         req.setContactPhone(proposal.getContactPhone());
         req.setApplyDate(proposal.getApplyDate() != null ?
-                java.time.format.DateTimeFormatter.ofPattern("yyyy.M").format(proposal.getApplyDate()) : null);
+                java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d").format(proposal.getApplyDate()) : null);
         req.setType(proposal.getType());
         req.setTargetAudience(proposal.getTargetAudience());
         req.setTargetDisciplines(proposal.getTargetDisciplines());

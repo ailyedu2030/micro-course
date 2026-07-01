@@ -83,6 +83,11 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, approveMicroSpecialty, rejectMicroSpecialty, cancelMicroSpecialty, archiveMicroSpecialty } from '@/api/microSpecialty'
+import { useUserStore } from '@/store/user'
+
+const userStore = useUserStore()
+// 路由守卫竞态: 组件异步 load 在 store.getInfo() 前完成 → 错误 fetch → 403
+const hasAccess = ['ACADEMIC', 'ADMIN'].includes(userStore.role)
 
 const activeTab = ref('PENDING')
 const loading = ref(false)
@@ -105,6 +110,7 @@ const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'suc
 const error = ref(false)
 
 const fetchData = async () => {
+  if (!hasAccess) return
   loading.value = true
   error.value = false
   try {

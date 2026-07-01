@@ -93,11 +93,19 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAllProposals, approveProposal, rejectProposal } from '@/api/microSpecialty'
+import { useUserStore } from '@/store/user'
 
 const activeTab = ref('PENDING')
 const loading = ref(false)
 const actingId = ref(null)
 const router = useRouter()
+const userStore = useUserStore()
+const currentRole = userStore.role
+
+// 路由守卫存在竞态: async getInfo() 期间组件异步加载完成并 onMounted,
+// 此时守卫还未发出角色不符的重定向. API 先行发出 → 后端 403 → console error.
+// 修复: 组件自己检查角色,不符则不请求也不报错.
+const hasAccess = ['ACADEMIC', 'ADMIN'].includes(currentRole)
 const items = ref([])
 const page = ref(0)
 const size = ref(20)
@@ -118,6 +126,7 @@ const statusLabel = (s) => statusMap[s] || s
 const statusType = (s) => statusTypeMap[s] || 'info'
 
 const fetchData = async () => {
+  if (!hasAccess) return  // 无权限,直接静默返回 (守卫会重定向)
   loading.value = true
   error.value = false
   try {
@@ -134,6 +143,7 @@ const fetchData = async () => {
 }
 
 const handleApprove = async (row) => {
+  if (!hasAccess) return
   try { await ElMessageBox.confirm(`确定批准「${row.title}」的申报？`, '确认批准', { type: 'info', confirmButtonText: '批准', cancelButtonText: '取消' }) }
   catch { return }
   actingId.value = row.id
@@ -143,11 +153,13 @@ const handleApprove = async (row) => {
 }
 
 const handleReject = async (row) => {
+  if (!hasAccess) return
   try { await ElMessageBox.confirm(`确定驳回「${row.title}」的申报？`, '确认驳回', { type: 'warning', confirmButtonText: '驳回', cancelButtonText: '取消' }) }
   catch { return }
   rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true
 }
 const confirmReject = async () => {
+  if (!hasAccess) return
   actingId.value = rejectTarget.value.id
   try { await rejectProposal(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }

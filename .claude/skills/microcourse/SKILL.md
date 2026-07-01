@@ -17,6 +17,7 @@ description: |
   - 权限矩阵遵守 docs/权限矩阵.md v2.0
   - 开发规范遵守 docs/开发规范.md v1.4
   - 字段冲突未在 docs/冲突评审决议.md 中登记 = 阻塞合并
+  - **🚨 涉及 ssh/curl/playwright 操作前必须加载 `.claude/skills/production-safety/SKILL.md`**
 ---
 
 # 微课平台 · skill 入口

@@ -1,27 +1,31 @@
 # 微课管理平台 · AI 开发入口
 
-> 本文件由 Claude Code / opencode 启动时自动加载。
-> 定义项目技能体系、开发节奏、质量门禁。
+> 本文件由 Claude Code / opencode **每次启动时自动加载**。
+> 按场景按需加载 `docs/` 下的详细规范，见下方 **按需加载规则**。
+> 详细开发流程 → `docs/开发流程-完整版.md`
+> 发布管理规范 → `docs/发布管理.md`
 
 ---
 
 ## 技能体系（启动时自动加载）
 
-本项目使用 3 层技能架构。AI 在编码前必须加载对应技能：
+本项目使用 4 层技能架构。AI 在编码前必须加载对应技能：
 
 | 技能 | 路径 | 触发 |
 |------|------|------|
 | **微课平台（宪法）** | `.claude/skills/microcourse/SKILL.md` | 项目中任何操作 |
 | **微课平台-后端** | `.claude/skills/microcourse-backend/SKILL.md` | 编写 Java 代码 |
 | **微课平台-前端** | `.claude/skills/microcourse-frontend/SKILL.md` | 编写 Vue/JS 代码 |
+| **🚨 生产环境保护（铁律）** | `.claude/skills/production-safety/SKILL.md` | ssh/curl/playwright 操作前 |
 | **开发 Spec（必读）** | `docs/开发规划/phase5-10-spec.md` | 开发任何新功能前必须逐条对照 |
 
 **加载要求**：
 - 每次编码前，**必须**先读取对应的 SKILL.md
-- **每次开发新功能前，必须先读取 docs/开发规划/phase5-10-spec.md 定位当前 Phase 的任务清单**
+- **每次开发新功能前，必须先读取 `docs/开发规划/phase5-10-spec.md` 定位当前 Phase**
 - SKILL.md 中的 contracts 和禁止项是**绝对基线**，不可偏差
 - 字段/路径/响应格式与 contracts 冲突 = **阻塞合并**
 - **每个 Agent 交付前必须对照 spec 中的验收标准逐项自检**
+- **🚨 每次 ssh/curl/playwright 操作前必须加载 production-safety skill,自检目标是否生产**
 
 ---
 
@@ -41,53 +45,19 @@ Phase 开发工作流:
 
 ---
 
-## 开发流程（强制）
+## 开发流程（索引）
 
-### Step 1 · 读契约
-按需读取 contracts（`references/` 下 6 份 + 前端 6 份）确认所有约束。
+**完整详细流程见 `docs/开发流程-完整版.md`**。每次开始编码/提交前必须先阅读该文件。
 
-### Step 2 · 预检
-```bash
-bash .claude/skills/microcourse/scripts/precheck.sh
-```
-退出码 != 0 → 禁止写代码。
-
-### Step 3 · 编码
-使用 Agent Team 并行开发。用 coder 类型 agent。不用 Lombok、不用 @Autowired 字段注入、构造器注入。
-
-### Step 4 · 交叉验证（强制，不可跳过）
-**每次开发阶段完成后，立即启动 5 维交叉验证**：
-
-| 维度 | 审查内容 | Agent |
-|------|---------|-------|
-| R1 代码质量+契约 | Lombok/@Autowired/分页/响应/@PreAuthorize/ErrorCode | reviewer |
-| R2 DB 迁移 | 逐表逐字段 vs 数据字典.md | reviewer |
-| R3 安全+配置 | pom.xml CVE / JWT / Redis key / application.yml | reviewer |
-| R4 跨域一致性 | FK 链 / 命名 / REST 路径 / Service 接口 | reviewer |
-| **R5 前端 UI/UX + 交互逻辑** | **见下方细分 3 路** | **3 reviewer 并行** |
-
-#### R5 前端审查（必查，否则不可上线）
-
-R5 拆为 3 个并行 sub-reviewer，覆盖前端结构性 bug：
-
-| Sub | 焦点 | 必查项 |
-|-----|------|--------|
-| **R5a 视觉与一致性** | UI 组件规范、主题统一、三态齐全 | Element Plus 组件用法、Loading/Empty/Error 状态、响应式断点、a11y 基础 |
-| **R5b 页面与功能交互** | 路由、表单、按钮、用户反馈 | 路由守卫、角色分离、表单提交、token 持久化路径、错误 toast 覆盖 |
-| **R5c 数据交互** | Pinia / API / 缓存 / 分页 | store action/getter 一致性、API 调用时机、localStorage/sessionStorage 一致性、分页/列表数据流 |
-
-**铁律**：
-- 5 维 reviewer **必须并行**启动，不能串行
-- 任一 FAIL → 立即修复 → 重新审查
-- 全部 PASS → 才能 git commit
-
-**输出规范**：每条审查结果必须标注 `P0 / P1-C / P1-I / P2`，不标注的审查报告视为无效。
-
-### Step 5 · 提交
-```
-Commit message 格式: <type>(<scope>): <描述>
-必须标注"交叉验证通过(R1-R5)"
-```
+| 步骤 | 内容 | 关键规则 |
+|------|------|---------|
+| Step 1 | 读契约（references/ 下 contracts） | — |
+| Step 2 | 预检（`bash precheck.sh`） | 退出码 != 0 → 禁止写代码 |
+| Step 3 | 编码（Agent Team 并行） | 不用 Lombok / @Autowired / 构造器注入 |
+| Step 4 | **5 维交叉验证（R1-R5，并行 reviewer）** | 任一 FAIL → 修复后重审 |
+| Step 4.5 | 缺陷修复（**必须根因分析，禁止表面修复**） | 横向扫描 → 修复 → 重审 |
+| Step 5 | **创建 PR**（分支命名 + Conventional Commit + Sign-off + Code Review） | 至少 1 人 Approved，禁止 self-approve |
+| Step 6 | 合并与发布（squash merge + CHANGELOG + Feature Flag） | 禁止 merge commit，Breaking Change 必须标注 |
 
 ---
 
@@ -97,152 +67,46 @@ Commit message 格式: <type>(<scope>): <描述>
 |------|------|------|
 | **P0** | 数据安全 / 核心功能不可用 / 客户首次操作必现错误 | 支付验证绕过、登录失败、页面白屏 |
 | **P1-C** | **客户可感知**的不一致、错误消息、体验降级 | 显示错误信息、按钮失效、数据不一致 |
-| **P1-I** | **内部仅见**的代码/文档问题，客户在正常使用中不可感知 | 数据字典未同步、命名规范、死代码、.bak 文件 |
+| **P1-I** | **内部仅见**的代码/文档问题，客户正常使用中不可感知 | 数据字典未同步、命名规范、死代码 |
 | **P2** | 代码整洁、安全加固建议、性能优化 | chunk 体积、CSP 策略、日志级别 |
-
-## 发布门禁（Release Gate）
-
-| 门禁 | 要求 | 说明 |
-|------|------|------|
-| precheck.sh | 14/14 PASS | 违反 = 阻塞 |
-| mvn compile | 0 ERROR | 违反 = 阻塞 |
-| npm build | SUCCESS | 违反 = 阻塞 |
-| E2E 测试 | 100% PASS | 违反 = 阻塞 |
-| deploy-dryrun | 0 FAIL | 违反 = 阻塞 |
-| **P0 缺陷** | **零容忍** | 发现 1 个即阻塞，全部修复 |
-| **P1-C 缺陷** | **零容忍** | 发现 1 个即阻塞，全部修复 |
-| P1-I 缺陷 | 可放行，但必须登记到 deferred-items.md | 总工程师逐条评估后签字 |
-| P2 缺陷 | 可放行，记录即可 | 可批量归档到 backlog |
-
-### 发布决策 5 步流程（不可跳过）
-
-```
-Step 1: 收集 R1-R5 审查报告
-Step 2: 逐条过筛，标记每条为 P0 / P1-C / P1-I / P2
-Step 3: P0 + P1-C → 全部修复 → 重新审查 → 进入下一步
-Step 4: P1-I → 总工程师逐条评估 → 登记到 docs/deferred-items.md → 签字放行
-Step 5: commit message 必须标注:
-        "交叉验证通过(R1-R5) | P0+P1-C 已清零 | P1-I 登记 deferred-items.md"
-```
-
-### 铁律
-
-- ❌ **禁止**：将 P1-C 误判为 P1-I 而放行（审查 → 总工程师逐条确认）
-- ❌ **禁止**：批量放行 P1-I 而不逐个评估（每一条都要写清为什么可以 defer）
-- ❌ **禁止**：deferred-items.md 中的条目超过 1 个版本不处理
-- ✅ **每次发布前，deferred-items.md 必须是空的或仅有当前版本新增的条目**
 
 ---
 
-## 总工程师放行纪律（AI 反偏见机制）
+## 按需加载规则
 
-> AI（无论是 coder / reviewer / chief engineer）天生有 5 类偏见：
-> 1. **乐观偏见**：默认"事情是好的"，倾向跳过验证
-> 2. **跳跃推理**：看到 A 推 B，C→D→E 跳过了实际证据
-> 3. **表面修复**：修症状不修根因
-> 4. **权威服从**：照搬规范不批判
-> 5. **降级诱惑**：把高严重度静默降为低严重度以便"放行"
+| 场景 | 必须读取 | 加载原因 |
+|------|---------|---------|
+| **开始编码 / 提交代码** | `docs/开发流程-完整版.md` | Step 3-6 完整规范（R5 审查、根因分析、PR 模板、Conventional Commit） |
+| **发布决策 / 放行** | `docs/发布管理.md` | 发布门禁表、决策 6 步流程、总工程师放行纪律 7 条 |
+| **ssh/curl/playwright 操作前** | `.claude/skills/production-safety/SKILL.md`（自动加载） | 生产环境保护铁律 |
+| **开发新功能前** | `docs/开发规划/phase5-10-spec.md` | 定位当前 Phase 任务清单 |
+
+---
+
+## 🚨 生产安全快速检查
+
+> **2026-07-01 事故教训**: DatePickerYM 修复时直接 ssh 到生产服务器改代码 → Playwright 在生产 URL 验证 → 创建了 proposal 41-53 真实脏数据。**绝不可重演**。
 >
-> 本节是反偏见硬约束。**违反任一条 = 决策无效，必须重做。**
+> 本章节是 P0 级硬约束，违反任一条 = 立即停止 + 报告用户。
 
-### 纪律 1 · 每条结论必须附证据
+**绝对禁止**：
+- ❌ 在生产做实验（ssh 改代码 / Playwright 调试 / DB 插入测试数据）
+- ❌ 跳过 Step 1-3 直接部署到生产
+- ❌ 用生产用户名（xiaona）复刻到本地 DB
+- ❌ 在生产 DB 做写操作而不 ask user
+- ❌ 生产容器上做实验（micro-course-api-1 / micro-course-admin-1 / postgres / redis）
+- ❌ 全量部署新功能（必须走灰度白名单）
 
-| ❌ 禁用写法 | ✅ 必须写法 |
-|-----------|----------|
-| "应该没问题" | `bash 命令 + 输出：` |
-| "看起来是文档漂移" | `已 grep -rn "userId\|user_id"`，无任何后端做映射 |
-| "我修复了 X" | `修复前根因 + 修复后测试输出` |
-| "测试通过" | 粘贴测试命令的真实输出 |
+**必须**：
+- ✅ audit trail：每次生产操作前 dump 当前状态，commit message 写明操作步骤
+- ✅ rollback 路径：ROLLBACK_PLAN.md 覆盖最近 3 个版本
 
-**规则**：任何"我相信"、"应该"、"大概"在审查/修复/放行文档中**必须替换为可验证证据**（file:line、命令输出、测试结果）。
-
-### 纪律 2 · 每条修复必须做根因分析（禁止表面修复）
-
-修复一个 bug 前**必须填写**：
-
+**自检**（每次 ssh/curl/playwright 前）：
+```bash
+# 生产标识: 100.74.122.13, microcourse.ailyedu.cn, frp 内网
+# 如果是 → 必须确认完整部署流程已完成, 否则 exit 1
 ```
-【根因分析】
-- 症状：客户看到什么 / 测试报什么
-- 直接原因：哪行代码 / 哪个配置（file:line）
-- 根本原因：为什么会写错（copy-paste? 规范不清? reviewer 没看? 历史遗留?）
-- 类似问题横向扫描：grep/检查同模式是否还有 N 处
-- 防止再发：要不要加 precheck.sh 规则 / lint 规则 / 自动化测试
-```
-
-**只有根本原因 + 横向扫描完成后，才能动手改。** 否则 = 表面修复，必须重做。
-
-### 纪律 3 · P1-C 降级必须有客户场景分析
-
-禁止审查 agent 自行把 P1-C 降为 P1-I。总工程师若要降级，**必须在 commit message 或 release note 中显式写出**：
-
-```
-【降级决策】
-- 原等级：P1-C（来源 R5a 报告）
-- 降级为：P1-I
-- 客户场景：______（具体说明客户在什么操作路径下遇到）
-- 操作频率：______（客户 100 次操作中会遇到几次）
-- 修复成本：______（行数/工时）
-- 为什么 defer：______
-- 目标修复版本：v1.8.0
-```
-
-**不填 = 降级无效，按 P1-C 处理。**
-
-### 纪律 4 · 挑战式放行（Adversarial Review）
-
-总工程师宣布"放行"前**必须**：
-
-```
-【挑战式自检】
-1. 如果客户是挑剔的早期用户，他最可能因为哪 3 件事流失？
-2. 上一个版本到这一个版本之间，最大的改动是什么？最可能因此产生什么 bug？
-3. 如果只看 deferred-items.md 中的 P1-I，最严重的 3 条真的不影响客户吗？
-4. 我是否因为赶时间而想"差不多就行"？
-```
-
-**任何一项答"我不确定"或"可能是" → 暂停放行，回去补完。**
-
-### 纪律 5 · 跳过规范前必须先挑战规范
-
-遇到"`SKILL.md` 说 X，代码做 Y"的情况，**禁止直接照搬规范**：
-
-```
-【规范挑战】
-- SKILL.md 第 N 行说 X
-- 当前代码做 Y
-- X 是否仍然适用？（规范可能过时）
-- Y 是否有合理理由？（代码可能懂更新的需求）
-- 如果 Y 是对的 → 修规范
-- 如果 X 是对的 → 修代码 + 找为什么被违反
-- 不允许"默认 X 对，照搬改 Y"
-```
-
-### 纪律 6 · 验证必须是可重复的具体动作
-
-| ❌ "已验证" | ✅ 可重复验证步骤 |
-|----------|----------|
-| "我测试过没问题" | `mvn test -Dtest=XxxTest` 输出 PASS |
-| "我查过代码" | `grep -rn "pattern" src/` 输出 |
-| "我看过文档" | 引用 `docs/xxx.md 第 N 行` |
-| "前端和后端匹配" | `curl http://localhost:8080/api/xxx` + JSON 解析 |
-
-**总工程师放行前，最终验证必须用命令实际跑一遍，把输出粘贴进 release note。**
-
-### 纪律 7 · commit 模板强制填写根因
-
-任何 `fix` 类型 commit 必须包含：
-
-```
-fix(scope): 标题
-
-【症状】客户看到什么
-【根因】为什么会写错（不是改了什么，是为什么之前错）
-【横向扫描】grep 结果或类似问题清单
-【防止再发】precheck.sh / lint / 测试
-【验证】测试命令 + 输出
-```
-
-**只写"改了什么"的 commit = 表面修复，code review 必须打回。**
+详见 `.claude/skills/production-safety/SKILL.md`（自动加载）。
 
 ---
 
