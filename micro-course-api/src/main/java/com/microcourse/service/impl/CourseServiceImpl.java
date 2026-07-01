@@ -913,15 +913,6 @@ public class CourseServiceImpl implements CourseService {
             self.updateStatus(id, CourseStatus.CLOSED.getCode());
         }
 
-        // 统一软删除: 使用 LambdaUpdateWrapper 直接设置 deleted_at
-        // (updateById 可能被 @TableLogic 拦截导致 deletedAt 未写入 DB)
-        courseRepository.update(null,
-                new LambdaUpdateWrapper<Course>()
-                        .eq(Course::getId, id)
-                        .set(Course::getDeletedAt, LocalDateTime.now())
-                        .set(Course::getUpdatedAt, LocalDateTime.now())
-                        .setSql("version = version + 1"));
-
         LambdaQueryWrapper<CourseChapter> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseChapter::getCourseId, id);
         chapterRepository.delete(wrapper);
