@@ -139,7 +139,8 @@ public class StorageApplicationController {
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
     public ResponseEntity<byte[]> exportWord(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
-        // 导出不做强制校验：空字段在 Word 模板中留空
+        // 校验 owner 权限，防止 IDOR（P0 安全修复）
+        storageApplicationService.validateOwner(id, userId);
         byte[] bytes = exportService.exportWord(id);
         String schoolName = resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"
@@ -164,7 +165,8 @@ public class StorageApplicationController {
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
     public ResponseEntity<byte[]> exportPdf(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
-        // 导出不做强制校验：空字段在 PDF 模板中留空
+        // 校验 owner 权限，防止 IDOR（P0 安全修复）
+        storageApplicationService.validateOwner(id, userId);
         byte[] bytes = exportService.exportPdf(id);
         String schoolName = resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"

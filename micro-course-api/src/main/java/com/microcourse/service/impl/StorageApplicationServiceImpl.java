@@ -200,7 +200,9 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         // 更新主表字段
         applyRequestToProposal(proposal, request);
         proposal.setUpdatedAt(LocalDateTime.now());
-        proposalRepository.updateById(proposal);
+        if (proposalRepository.updateById(proposal) == 0) {
+            throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "数据冲突，请重新加载后再试");
+        }
 
         // 处理子表（先删后插，包含共享单位签字同步）
         replaceSubTables(proposalId, request, true);
@@ -384,7 +386,9 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
 
         proposal.setStatus("PENDING_REVIEW");
         proposal.setUpdatedAt(LocalDateTime.now());
-        proposalRepository.updateById(proposal);
+        if (proposalRepository.updateById(proposal) == 0) {
+            throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "数据已被其他操作修改，请刷新后重试");
+        }
         log.info("submit: proposalId={}, userId={}", proposalId, userId);
     }
 
@@ -504,6 +508,17 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 .eq(ProposalSharedUnit::getProposalId, proposalId));
 
         log.info("resetAll: proposalId={}", proposalId);
+    }
+
+    @Override
+    public void validateOwner(Long proposalId, Long userId) {
+        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+        if (proposal == null) {
+            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+        }
+        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdminOrAcademic()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
     }
 
     // ================================================================

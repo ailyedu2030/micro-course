@@ -631,8 +631,8 @@ const autoSaveTimer = ref(null)
 function scheduleAutoSave() {
   if (!draftId.value) return
   if (!initialLoadComplete.value) return
-  if (!autoSaveEnabled.value) return   /* 手动保存过才启用 autoSave */
-  dirty.value = true
+  dirty.value = true  /* 先标记 dirty（即使 autoSave 未启用也能触发离开警告） */
+  if (!autoSaveEnabled.value) return
   if (autoSaveTimer.value) clearTimeout(autoSaveTimer.value)
   autoSaveTimer.value = setTimeout(async () => {
     pendingSave.value = true  // RT-3: mark save in progress
@@ -642,7 +642,7 @@ function scheduleAutoSave() {
       saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
       dirty.value = false
     } catch {
-      // 静默失败: 500 常发生在旧数据首次编辑时，不打扰用户
+      saveStatus.value = '⚠ 保存失败'
     } finally {
       pendingSave.value = false  // RT-3: clear in-progress flag
     }
@@ -668,12 +668,12 @@ watch(() => form.value.specialtyOverview?.length, scheduleAutoSave)
 watch(() => form.value.curriculumDesign?.length, scheduleAutoSave)
 watch(() => form.value.constructionGuarantee?.length, scheduleAutoSave)
 
-// Sub-table arrays: watch length for structural changes (add/remove rows)
-watch(() => courses.value.length, scheduleAutoSave)
-watch(() => leadCourses.value.length, scheduleAutoSave)
-watch(() => teamMembers.value.length, scheduleAutoSave)
-watch(() => signatures.value.length, scheduleAutoSave)
-watch(() => sharedUnits.value.length, scheduleAutoSave)
+// Sub-table arrays: deep watch via JSON (captures cell edits, not just add/remove)
+watch(() => JSON.stringify(courses.value), scheduleAutoSave)
+watch(() => JSON.stringify(leadCourses.value), scheduleAutoSave)
+watch(() => JSON.stringify(teamMembers.value), scheduleAutoSave)
+watch(() => JSON.stringify(signatures.value), scheduleAutoSave)
+watch(() => JSON.stringify(sharedUnits.value), scheduleAutoSave)
 
 // ==================== 提交审核 ====================
 async function handleSubmit() {
@@ -874,7 +874,7 @@ function retryLoad() {
 function handleBack() {
   if (dirty.value) {
     ElMessageBox.confirm('有未保存的更改，确定离开？', '确认离开', { type: 'warning' })
-      .then(() => router.back())
+      .then(() => { dirty.value = false; router.back() })
       .catch(() => {})
   } else {
     router.back()

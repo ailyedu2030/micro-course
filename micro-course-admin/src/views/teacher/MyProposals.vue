@@ -132,6 +132,13 @@ const handleExportWord = async (row) => {
   try {
     const res = await exportStorageWord(row.id)
     const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+    // 检查响应是否为 JSON 错误而非有效文件
+    if (blob.type === 'application/json') {
+      const text = await new Response(blob).text()
+      const err = JSON.parse(text)
+      ElMessage.error(err?.message || '导出失败')
+      return
+    }
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -140,7 +147,7 @@ const handleExportWord = async (row) => {
     URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
   } catch (e) {
-    ElMessage.error('导出失败')
+    ElMessage.error(e?.response?.data?.message || '导出失败')
   }
 }
 
@@ -148,6 +155,12 @@ const handleExportPdf = async (row) => {
   try {
     const res = await exportStoragePdf(row.id)
     const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+    if (blob.type === 'application/json') {
+      const text = await new Response(blob).text()
+      const err = JSON.parse(text)
+      ElMessage.error(err?.message || '导出失败')
+      return
+    }
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -156,7 +169,7 @@ const handleExportPdf = async (row) => {
     URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
   } catch (e) {
-    ElMessage.error('导出失败')
+    ElMessage.error(e?.response?.data?.message || '导出失败')
   }
 }
 

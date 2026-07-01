@@ -99,7 +99,7 @@ const loading = ref(false)
 const actingId = ref(null)
 const router = useRouter()
 const items = ref([])
-const page = ref(1)
+const page = ref(0)
 const size = ref(20)
 const total = ref(0)
 

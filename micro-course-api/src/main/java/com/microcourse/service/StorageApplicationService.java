@@ -41,6 +41,8 @@ public interface StorageApplicationService {
 
     /** 10. 重置全部 */
     void resetAll(Long proposalId, Long userId);
+    /** 校验当前用户是否为申报 owner（P0-1 IDOR 防御） */
+    void validateOwner(Long proposalId, Long userId);
 
     /** 11. 导出前置校验 */
     ExportValidationResult validateForExport(Long proposalId, Long userId);
