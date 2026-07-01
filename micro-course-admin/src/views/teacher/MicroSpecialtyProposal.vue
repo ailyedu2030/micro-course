@@ -394,6 +394,7 @@ import DynamicTableEditor from '@/components/storage/DynamicTableEditor.vue'
 import SignatureBlock from '@/components/storage/SignatureBlock.vue'
 import SignatureUploader from '@/components/storage/SignatureUploader.vue'
 import DatePickerYM from '@/components/storage/DatePickerYM.vue'
+import { useUserStore } from '@/store/user'
 
 const route = useRoute()
 const router = useRouter()
@@ -850,6 +851,10 @@ async function initDraft() {
     const res = await initStorageDraft()
     const id = typeof res.data === 'object' ? res.data.id : res.data
     draftId.value = id
+    // 自动填充当前教师的姓名和联系方式
+    const currentUser = useUserStore()
+    if (currentUser.realName) form.value.leadName = currentUser.realName
+    if (currentUser.phone) form.value.contactPhone = currentUser.phone
     dirty.value = false
     saveStatus.value = ''
     initialLoadComplete.value = true

@@ -13,6 +13,7 @@ export const useUserStore = defineStore('user', {
     userId: (state) => state.userInfo?.id || null,
     role: (state) => state.userInfo?.role || '',
     realName: (state) => state.userInfo?.realName || '',
+    phone: (state) => state.userInfo?.phone || '',
     username: (state) => state.userInfo?.username || ''
   },
   actions: {
