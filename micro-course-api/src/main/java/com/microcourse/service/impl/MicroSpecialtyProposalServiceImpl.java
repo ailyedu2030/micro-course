@@ -295,8 +295,8 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        if (!"WITHDRAWN".equals(proposal.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已撤回状态可删除");
+        if (!"DRAFT".equals(proposal.getStatus()) && !"WITHDRAWN".equals(proposal.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅草稿或已撤回状态可删除");
         }
 
         proposalRepository.deleteById(proposalId);

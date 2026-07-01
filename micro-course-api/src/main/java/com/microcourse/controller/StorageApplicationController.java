@@ -136,19 +136,13 @@ public class StorageApplicationController {
      * GET /api/storage-applications/{id}/export-word
      */
     @GetMapping("/{id}/export-word")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")  // P1-C-3 修复：增加 ACADEMIC 权限
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
     public ResponseEntity<byte[]> exportWord(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
-        // P1-C-2 修复：统一使用 BusinessException 抛出，而非 ResponseEntity.badRequest()
-        ExportValidationResult validation = storageApplicationService.validateForExport(id, userId);
-        if (!validation.isValid()) {
-            throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
-                    "导出校验失败：" + String.join("；", validation.getErrors()));
-        }
-
+        // 导出不做强制校验：空字段在 Word 模板中留空
         byte[] bytes = exportService.exportWord(id);
         String schoolName = resolveSchoolName(id);
-        String filename = "【" + schoolName + "】整理收纳微专业申请表_"
+        String filename = "【" + schoolName + "】微专业申报表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".docx";
 
         ContentDisposition disposition = ContentDisposition.attachment()
@@ -167,19 +161,13 @@ public class StorageApplicationController {
      * GET /api/storage-applications/{id}/export-pdf
      */
     @GetMapping("/{id}/export-pdf")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")  // P1-C-3 修复：增加 ACADEMIC 权限
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
     public ResponseEntity<byte[]> exportPdf(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
-        // P1-C-2 修复：统一使用 BusinessException 抛出
-        ExportValidationResult validation = storageApplicationService.validateForExport(id, userId);
-        if (!validation.isValid()) {
-            throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
-                    "导出校验失败：" + String.join("；", validation.getErrors()));
-        }
-
+        // 导出不做强制校验：空字段在 PDF 模板中留空
         byte[] bytes = exportService.exportPdf(id);
         String schoolName = resolveSchoolName(id);
-        String filename = "【" + schoolName + "】整理收纳微专业申请表_"
+        String filename = "【" + schoolName + "】微专业申报表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf";
 
         ContentDisposition disposition = ContentDisposition.attachment()

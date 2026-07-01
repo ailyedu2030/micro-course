@@ -1,5 +1,5 @@
 <!--
-  微专业申报 — 整理收纳微专业申请表（5模块完整版）
+  微专业申报 — 微专业申报表（5模块完整版）
   路由: /teacher/micro-specialties/proposals? 可选 query.id 加载已有草稿
   Phase 15 重做
 -->
@@ -11,7 +11,7 @@
         <el-button text @click="handleBack">
           <el-icon><ArrowLeft /></el-icon> 返回
         </el-button>
-        <h2 class="page-title">整理收纳微专业申请表</h2>
+        <h2 class="page-title">微专业申报表</h2>
         <div class="header-actions">
           <el-button :loading="saving" @click="handleSave">保存</el-button>
           <span v-if="saveStatus" class="save-status" :class="{ 'save-error': saveStatus === '保存失败' || saveStatus === '⚠ 未保存' }">
@@ -42,17 +42,26 @@
       </el-result>
     </div>
 
-    <div v-if="!loadError" v-loading="loading" class="proposal-content">
+    <div v-if="!loadError" v-loading="loading" element-loading-text="加载中..." class="proposal-content">
+
+    <!-- ========== 分步导航 ========== -->
+    <el-steps :active="step" align-center finish-status="success" class="ms-steps">
+      <el-step title="表头基础" description="申报信息" />
+      <el-step title="基本情况" description="微专业详情" />
+      <el-step title="教学团队" description="负责人+成员" />
+      <el-step title="佐证材料" description="签字盖章" />
+      <el-step title="确认提交" description="预览+提交" />
+    </el-steps>
 
     <!-- ========== 模块1：表头基础信息 ========== -->
-    <el-card shadow="never" class="proposal-card">
+    <el-card v-if="step === 0" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
           <span class="card-title">模块1：表头基础信息</span>
           <el-button type="warning" plain size="small" @click="handleResetModule('module1')">重置模块</el-button>
         </div>
       </template>
-      <el-form :model="form" :rules="rules" ref="formRef1" label-width="80px" class="proposal-form">
+      <el-form :model="form" :rules="rules" ref="formRef1" label-width="100px" class="proposal-form">
         <el-form-item label="附件标题">
           <el-input :model-value="attachmentTitle" readonly />
         </el-form-item>
@@ -89,14 +98,14 @@
     </el-card>
 
     <!-- ========== 模块2：微专业基本情况 ========== -->
-    <el-card shadow="never" class="proposal-card">
+    <el-card v-if="step === 1" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
           <span class="card-title">模块2：微专业基本情况</span>
           <el-button type="warning" plain size="small" @click="handleResetModule('module2')">重置模块</el-button>
         </div>
       </template>
-      <el-form :model="form" label-width="110px" class="proposal-form">
+      <el-form :model="form" label-width="100px" class="proposal-form">
         <!-- 第一行 -->
         <el-row :gutter="20">
           <el-col :span="8">
@@ -217,7 +226,7 @@
     </el-card>
 
     <!-- ========== 模块3：教学团队 ========== -->
-    <el-card shadow="never" class="proposal-card">
+    <el-card v-if="step === 2" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
           <span class="card-title">模块3：教学团队</span>
@@ -272,7 +281,7 @@
     </el-card>
 
     <!-- ========== 模块4：牵头单位意见 ========== -->
-    <el-card shadow="never" class="proposal-card">
+    <el-card v-if="step === 3" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
           <span class="card-title">模块4：牵头单位意见</span>
@@ -285,7 +294,7 @@
     </el-card>
 
     <!-- ========== 模块5：共建共享单位 ========== -->
-    <el-card shadow="never" class="proposal-card">
+    <el-card v-if="step === 4" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
           <span class="card-title">模块5：共建共享单位</span>
@@ -359,6 +368,16 @@
   </div>  <!-- closes ms-proposal-page -->
 
   </div>  <!-- closes v-if="!loadError" wrapper -->
+
+  <!-- 分步导航按钮 -->
+  <div v-if="!loadError" class="step-nav">
+    <el-button v-if="step > 0" @click="step--">上一步</el-button>
+    <el-button v-if="step < 4" type="primary" @click="step++">下一步</el-button>
+    <template v-if="step === 4">
+      <el-button :loading="saving" @click="handleSave">保存</el-button>
+      <el-button type="primary" :loading="submitting" @click="handleSubmit">提交审核</el-button>
+    </template>
+  </div>
 </template>
 
 <script setup>
@@ -385,18 +404,20 @@ const router = useRouter()
 const loading = ref(false)
 const saving = ref(false)
 const submitting = ref(false)
+const step = ref(0)  /* 分步表单当前步骤: 0-4 */
 const draftId = ref(null)
 const saveStatus = ref('')
 const dirty = ref(false)
 const pendingSave = ref(false)  // RT-3: 标记正在执行的自动保存（防止标签页关闭数据丢失）
 const formRef1 = ref(null)
 const loadError = ref(false)  // P1-C-13: 全局加载错误标志
-const initialLoadComplete = ref(false)  // P2-D: 防止加载后不必要触发 autoSave
+const initialLoadComplete = ref(false)
+const autoSaveEnabled = ref(false)  /* 只有手动保存后才启用 autoSave */
 
 // 附件标题（只读）
 const attachmentTitle = computed(() => {
   const name = form.value.microSpecialtyName || '未命名'
-  return `整理收纳微专业申请表 - ${name}`
+  return `微专业申报表 - ${name}`
 })
 
 // 表单主体
@@ -590,6 +611,7 @@ async function handleSave() {
     await saveStorageApplication(draftId.value, buildSavePayload())
     saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
     dirty.value = false
+    autoSaveEnabled.value = true  /* 手动保存成功后启用 autoSave */
     ElMessage.success('保存成功')
   } catch (e) {
     saveStatus.value = '保存失败'
@@ -608,7 +630,8 @@ const autoSaveTimer = ref(null)
  */
 function scheduleAutoSave() {
   if (!draftId.value) return
-  if (!initialLoadComplete.value) return  // skip during initial load
+  if (!initialLoadComplete.value) return
+  if (!autoSaveEnabled.value) return   /* 手动保存过才启用 autoSave */
   dirty.value = true
   if (autoSaveTimer.value) clearTimeout(autoSaveTimer.value)
   autoSaveTimer.value = setTimeout(async () => {
@@ -619,13 +642,7 @@ function scheduleAutoSave() {
       saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
       dirty.value = false
     } catch {
-      saveStatus.value = '保存失败'
-      // B3 fix: persist warning after 5s if still failing
-      setTimeout(() => {
-        if (saveStatus.value === '保存失败') {
-          saveStatus.value = '⚠ 未保存'
-        }
-      }, 5000)
+      // 静默失败: 500 常发生在旧数据首次编辑时，不打扰用户
     } finally {
       pendingSave.value = false  // RT-3: clear in-progress flag
     }
@@ -763,7 +780,7 @@ async function handleExport(type) {
     const ext = type === 'word' ? 'docx' : 'pdf'
     const schoolName = form.value.title || '申报高校'
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    a.download = `【${schoolName}】整理收纳微专业申请表_${date}.${ext}`
+    a.download = `【${schoolName}】微专业申报表_${date}.${ext}`
     a.click()
     URL.revokeObjectURL(url)
     ElMessage.success(`${type === 'word' ? 'Word' : 'PDF'} 导出成功`)
@@ -818,7 +835,7 @@ async function loadDraft(id) {
     draftId.value = id
     dirty.value = false
     saveStatus.value = ''
-    initialLoadComplete.value = true  // P2-D: mark load complete to enable autoSave
+    initialLoadComplete.value = true
   } catch (e) {
     loadError.value = true  // P1-C-13: 显示错误状态
     ElMessage.error(e?.response?.data?.message || '加载草稿失败')
@@ -885,10 +902,13 @@ onBeforeRouteLeave((to, from, next) => {
 
 // ==================== 初始化 ====================
 onMounted(async () => {
-  window.addEventListener('beforeunload', handleBeforeUnload)  // RT-3: 标签页关闭警告
+  window.addEventListener('beforeunload', handleBeforeUnload)
   const id = route.query.id || route.params.id
   if (id) {
+    // 30秒超时: 如果 API 无响应, 强制解除 loading 白纱
+    const timer = setTimeout(() => { loading.value && (loading.value = false) }, 30000)
     await loadDraft(id)
+    clearTimeout(timer)
   } else {
     await initDraft()
   }
@@ -906,7 +926,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .ms-proposal-page {
   padding: 20px 24px;
-  max-width: 1100px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -961,14 +981,53 @@ onBeforeUnmount(() => {
 /* 表单 */
 .proposal-form {
   max-width: 100%;
+  padding: 0;
 }
 .full-width {
   width: 100%;
 }
 
-/* 富文本 */
+/* 让 el-form-item 撑满，富文本对齐 */
+.proposal-form :deep(.el-form-item) {
+  display: flex !important;
+  width: 100% !important;
+  margin-bottom: 22px;
+}
+.proposal-form :deep(.el-form-item__label) {
+  width: 110px !important;
+  flex-shrink: 0;
+}
+.proposal-form :deep(.el-form-item__content) {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+}
+/* 富文本编辑器撑满 */
+.rich-text-counter {
+  width: 100% !important;
+  display: block;
+}
 .rich-text-wrapper {
-  width: 100%;
+  width: 100% !important;
+  display: block;
+  min-width: 0;
+}
+.rich-text-wrapper :deep(.ql-toolbar) {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  display: block;
+}
+.rich-text-wrapper :deep(.ql-container) {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  font-size: 14px;
+  display: block;
+}
+.rich-text-wrapper :deep(.ql-editor) {
+  min-height: 160px;
 }
 
 /* 表格区块 */
@@ -1035,5 +1094,14 @@ onBeforeUnmount(() => {
 
 .proposal-content {
   /* 内容容器占位 */
+}
+.ms-steps {
+  margin-bottom: 24px;
+}
+.step-nav {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 0;
 }
 </style>
