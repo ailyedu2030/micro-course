@@ -230,7 +230,7 @@
               <td>{{ signLevelLabel(s.signLevel) }}</td>
               <td>
                 <template v-if="s.opinionText">{{ s.opinionText }}</template>
-                <template v-if="s.remark"><br/>备注：{{ s.remark }}</template>
+                <template v-if="s.remark"><br />备注：{{ s.remark }}</template>
               </td>
               <td class="text-center">
                 <img v-if="s.signatureImageUrl" :src="s.signatureImageUrl" class="signature-img" alt="签字" />

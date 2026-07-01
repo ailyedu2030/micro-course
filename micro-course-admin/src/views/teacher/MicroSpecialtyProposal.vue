@@ -43,8 +43,7 @@
     </div>
 
     <div v-if="!loadError" v-loading="loading" element-loading-text="加载中..." class="proposal-content">
-
-    <!-- ========== 分步导航 ========== -->
+<!-- ========== 分步导航 ========== -->
     <el-steps :active="step" align-center finish-status="success" class="ms-steps">
       <el-step title="表头基础" description="申报信息" />
       <el-step title="基本情况" description="微专业详情" />
@@ -366,8 +365,7 @@
       <el-button type="danger" plain @click="handleResetAll">重置全部</el-button>
     </div>
   </div>  <!-- closes ms-proposal-page -->
-
-  </div>  <!-- closes v-if="!loadError" wrapper -->
+</div>  <!-- closes v-if="!loadError" wrapper -->
 
   <!-- 分步导航按钮 -->
   <div v-if="!loadError" class="step-nav">
@@ -655,7 +653,7 @@ function scheduleAutoSave() {
 
 // Non-rich-text form fields: shallow watch via computed snapshot
 const formDirtySnapshot = computed(() => {
-  // eslint-disable-next-line no-unused-vars
+   
   const { introduction, marketDemandAnalysis, specialtyOverview, curriculumDesign, constructionGuarantee, ...rest } = form.value
   return { ...rest }
 })

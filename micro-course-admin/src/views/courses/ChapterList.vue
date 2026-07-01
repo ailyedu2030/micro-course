@@ -251,9 +251,9 @@ const handleDelete = async (row) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  let valid = false
-  try { valid = await formRef.value.validate() } catch { valid = false }
-  if (!valid) return
+  try {
+    await formRef.value.validate()
+  } catch { return }
   submitLoading.value = true
   try {
     if (isEdit.value) {

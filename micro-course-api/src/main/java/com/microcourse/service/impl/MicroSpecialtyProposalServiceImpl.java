@@ -126,11 +126,24 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             List<com.microcourse.entity.User> users = userRepository.selectBatchIds(userIds);
             if (users != null) for (com.microcourse.entity.User u : users) userMap.put(u.getId(), u.getRealName());
         }
-        @SuppressWarnings("unchecked")
-        List<java.util.Map<String, Object>> records = new java.util.ArrayList<>();
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        java.util.List<java.util.Map<String, Object>> records = new java.util.ArrayList<>();
         for (MicroSpecialtyProposal p : ipage.getRecords()) {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            java.util.Map<String, Object> map = mapper.convertValue(p, java.util.Map.class);
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", p.getId());
+            map.put("title", p.getTitle());
+            map.put("description", p.getDescription());
+            map.put("offerDepartmentId", p.getOfferDepartmentId());
+            map.put("trainingObjective", p.getTrainingObjective());
+            map.put("prerequisites", p.getPrerequisites());
+            map.put("semester", p.getSemester());
+            map.put("maxStudents", p.getMaxStudents());
+            map.put("credits", p.getCredits());
+            map.put("status", p.getStatus());
+            map.put("type", p.getType());
+            map.put("createdAt", p.getCreatedAt() != null ? p.getCreatedAt().toString() : null);
+            map.put("updatedAt", p.getUpdatedAt() != null ? p.getUpdatedAt().toString() : null);
+            map.put("version", p.getVersion());
             map.put("collegeName", deptMap.getOrDefault(p.getOfferDepartmentId(), ""));
             map.put("applicantName", userMap.getOrDefault(p.getProposerId(), ""));
             records.add(map);
