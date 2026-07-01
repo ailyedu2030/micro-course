@@ -983,6 +983,30 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         requireLeadOf(msId);
         checkNotTerminal(ms);
 
+        // 校验角色枚举
+        if (!"LEAD".equals(request.getRole()) && !"MEMBER".equals(request.getRole()) && !"ASSISTANT".equals(request.getRole())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "角色必须为 LEAD/MEMBER/ASSISTANT");
+        }
+
+        // LEAD 唯一性校验
+        if ("LEAD".equals(request.getRole())) {
+            Long activeLeadCount = msTeacherRepository.selectCount(
+                    new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                            .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
+                            .eq(MicroSpecialtyTeacher::getRole, "LEAD")
+                            .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
+            if (activeLeadCount > 0) throw new BusinessException(ErrorCode.MS_LEAD_EXISTS);
+        }
+
+        // 校验课程归属
+        if (request.getCourseId() != null) {
+            Long courseCount = msCourseRepository.selectCount(
+                    new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                            .eq(MicroSpecialtyCourse::getId, request.getCourseId())
+                            .eq(MicroSpecialtyCourse::getMicroSpecialtyId, msId));
+            if (courseCount == 0) throw new BusinessException(ErrorCode.COURSE_NOT_IN_MS);
+        }
+
         // 检查是否已存在有效记录
         Long existCount = msTeacherRepository.selectCount(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
@@ -1025,6 +1049,11 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .eq(MicroSpecialtyTeacher::getTeacherId, teacherId)
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
         if (teacher == null) throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND);
+
+        // LEAD 禁止被直接移除, 需走 transferLeadership 流程
+        if ("LEAD".equals(teacher.getRole())) {
+            throw new BusinessException(ErrorCode.MS_LEAD_CANNOT_REMOVE);
+        }
 
         LambdaUpdateWrapper<MicroSpecialtyTeacher> wrapper = new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                 .eq(MicroSpecialtyTeacher::getId, teacher.getId())

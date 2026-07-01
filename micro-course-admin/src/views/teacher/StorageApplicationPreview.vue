@@ -87,25 +87,25 @@
       <!-- 微专业介绍（富文本） -->
       <div v-if="data.introduction" class="rich-section">
         <strong class="block-label">微专业介绍：</strong>
-        <div v-html="data.introduction" class="rich-content"></div>
+        <div v-html="sanitizeHtml(data.introduction)" class="rich-content"></div>
       </div>
 
       <!-- 市场需求分析 -->
       <div v-if="data.marketDemandAnalysis" class="rich-section">
         <strong class="block-label">市场需求分析：</strong>
-        <div v-html="data.marketDemandAnalysis" class="rich-content"></div>
+        <div v-html="sanitizeHtml(data.marketDemandAnalysis)" class="rich-content"></div>
       </div>
 
       <!-- 专业概述 -->
       <div v-if="data.specialtyOverview" class="rich-section">
         <strong class="block-label">专业概况：</strong>
-        <div v-html="data.specialtyOverview" class="rich-content"></div>
+        <div v-html="sanitizeHtml(data.specialtyOverview)" class="rich-content"></div>
       </div>
 
       <!-- 课程设计 -->
       <div v-if="data.curriculumDesign" class="rich-section">
         <strong class="block-label">课程设计思路：</strong>
-        <div v-html="data.curriculumDesign" class="rich-content"></div>
+        <div v-html="sanitizeHtml(data.curriculumDesign)" class="rich-content"></div>
       </div>
 
       <!-- 课程表 -->
@@ -136,7 +136,7 @@
       <!-- 建设保障 -->
       <div v-if="data.constructionGuarantee" class="rich-section">
         <strong class="block-label">建设保障：</strong>
-        <div v-html="data.constructionGuarantee" class="rich-content"></div>
+        <div v-html="sanitizeHtml(data.constructionGuarantee)" class="rich-content"></div>
       </div>
 
       <!-- 模块3：教学团队情况 -->
@@ -288,6 +288,20 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getStoragePreview, exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 
+// B5 fix: Simple HTML sanitizer - strips script/on* attributes to prevent stored XSS
+function sanitizeHtml(html) {
+  if (!html) return ''
+  // Strip <script> tags
+  let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  // Strip on* event handlers (both double and single quoted)
+  sanitized = sanitized.replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+  sanitized = sanitized.replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+  // Strip javascript: URLs in href
+  sanitized = sanitized.replace(/href\s*=\s*"javascript:[^"]*"/gi, 'href="#"')
+  sanitized = sanitized.replace(/href\s*=\s*'javascript:[^']*'/gi, "href='#'")
+  return sanitized
+}
+
 const route = useRoute()
 const loading = ref(true)
 const error = ref(false)
@@ -310,6 +324,13 @@ const handleExport = async (type) => {
   const fn = type === 'word' ? exportStorageWord : exportStoragePdf
   try {
     const res = await fn(route.params.id)
+    // B4 fix: check if response is actually a JSON error disguised as blob
+    if (res.data && res.data.type === 'application/json') {
+      const text = await new Response(res.data).text()
+      const err = JSON.parse(text)
+      ElMessage.error(err.message || '导出校验失败')
+      return
+    }
     const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

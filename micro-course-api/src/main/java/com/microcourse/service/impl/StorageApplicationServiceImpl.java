@@ -15,7 +15,9 @@ import com.microcourse.util.StorageValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -24,8 +26,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Phase 15: 微专业申请表 Storage Application Service 实现
@@ -100,24 +107,29 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                         .eq(MicroSpecialtyProposal::getProposerId, userId)
                         .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
 
+        // A5 修复：批量加载院系名称，避免 N+1 查询
+        Set<Long> deptIds = proposals.stream()
+                .map(MicroSpecialtyProposal::getOfferDepartmentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> deptNameMap = new HashMap<>();
+        if (!deptIds.isEmpty()) {
+            List<Department> depts = departmentRepository.selectBatchIds(deptIds);
+            deptNameMap = depts.stream()
+                    .collect(Collectors.toMap(Department::getId, Department::getName));
+        }
+
         List<StorageApplicationSummaryVO> result = new ArrayList<>();
         for (MicroSpecialtyProposal p : proposals) {
             StorageApplicationSummaryVO vo = new StorageApplicationSummaryVO();
             vo.setId(p.getId());
             vo.setTitle(p.getTitle());
+            vo.setMicroSpecialtyName(p.getMicroSpecialtyName());
             vo.setStatus(p.getStatus());
-            // P1-C-8 修复：填充 type 字段
             vo.setType(p.getType());
+            vo.setDepartmentName(deptNameMap.getOrDefault(p.getOfferDepartmentId(), ""));
             vo.setCreatedAt(p.getCreatedAt());
             vo.setUpdatedAt(p.getUpdatedAt());
-
-            // 关联 department 名称
-            if (p.getOfferDepartmentId() != null) {
-                Department dept = departmentRepository.selectById(p.getOfferDepartmentId());
-                if (dept != null) {
-                    vo.setDepartmentName(dept.getName());
-                }
-            }
             result.add(vo);
         }
         return result;
@@ -165,8 +177,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.updateById(proposal);
 
-        // 处理子表（先删后插）
-        replaceSubTables(proposalId, request);
+        // 处理子表（先删后插，包含共享单位签字同步）
+        replaceSubTables(proposalId, request, true);
 
         return buildVO(proposal);
     }
@@ -185,9 +197,11 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
+        // P0-1 修复：autoSave 对非可编辑状态静默跳过（不抛异常，因为是后台操作）
         String status = proposal.getStatus();
         if (!"DRAFT".equals(status) && !"REJECTED".equals(status)) {
-            throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿或已驳回状态可自动保存");
+            log.debug("autoSave skipped: proposal {} status is {}", proposalId, status);
+            return;
         }
 
         // 仅更新非空字段到主表
@@ -195,8 +209,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.updateById(proposal);
 
-        // 子表在 autoSave 时也进行替换
-        replaceSubTables(proposalId, request);
+        // 子表在 autoSave 时也进行替换，但共享单位签字仅在 full save 时同步
+        replaceSubTables(proposalId, request, false);
     }
 
     // ================================================================
@@ -238,6 +252,18 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
+            }
+
+            // B6 fix: delete old signature/seal files of the same type to prevent accumulation
+            if (Files.exists(uploadPath)) {
+                try (var dirStream = Files.newDirectoryStream(uploadPath, type + "_*")) {
+                    for (Path oldFile : dirStream) {
+                        Files.deleteIfExists(oldFile);
+                        log.info("Deleted old image: {}", oldFile);
+                    }
+                } catch (IOException e) {
+                    log.warn("Failed to clean old images for proposalId={}, type={}", proposalId, type, e);
+                }
             }
 
             String ext = lowerName.endsWith(".png") ? ".png" : ".jpg";
@@ -342,6 +368,10 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             case MODULE_SHARED_UNITS:
                 sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
                         .eq(ProposalSharedUnit::getProposalId, proposalId));
+                // P0-2 修复：重置共享单位时也清除对应的签字记录
+                signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
+                        .eq(ProposalSignature::getProposalId, proposalId)
+                        .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
                 break;
             default:
                 throw new BusinessException(ErrorCode.SA_MODULE_NOT_FOUND, "未知模块: " + module);
@@ -586,6 +616,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         req.setLeadPhone(proposal.getLeadPhone());
         req.setLeadResearchDirection(proposal.getLeadResearchDirection());
         req.setLeadMainTasks(proposal.getLeadMainTasks());
+        req.setOfferDepartmentId(proposal.getOfferDepartmentId());
         req.setCourses(buildCourseItems(proposal.getId()));
         req.setLeadCourses(buildLeadCourseItems(proposal.getId()));
         req.setTeamMembers(buildTeamMemberItems(proposal.getId()));
@@ -693,16 +724,32 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         if (request.getLeadMainTasks() != null) {
             proposal.setLeadMainTasks(request.getLeadMainTasks());
         }
+        // A1 修复：持久化申报院系 ID
+        if (request.getOfferDepartmentId() != null) {
+            proposal.setOfferDepartmentId(request.getOfferDepartmentId());
+        }
     }
 
     /**
-     * 先删后插替换子表数据
+     * 先删后插替换子表数据。
+     * A2/A4/A6 修复：仅当子表数组不为 null 时才执行删除+插入，防止 autoSave 传入空数组导致数据丢失。
+     * 事务保护由调用方 @Transactional 保证，本方法要求 Propagation.MANDATORY。
+     *
+     * @param proposalId         申请表 ID
+     * @param request            保存请求（子表数组为 null 表示不更新该子表）
+     * @param includeSharedUnits true=全量保存（含共享单位签字同步）；false=自动保存（跳过共享单位）
      */
-    private void replaceSubTables(Long proposalId, StorageApplicationSaveRequest request) {
-        // courses
-        courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
-                .eq(ProposalCourse::getProposalId, proposalId));
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void replaceSubTables(Long proposalId, StorageApplicationSaveRequest request, boolean includeSharedUnits) {
+        // A6 修复：运行为确保处于活跃事务中
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("replaceSubTables 必须在事务上下文中调用");
+        }
+
+        // courses — A2: 仅当 courses 数组非 null 时更新
         if (request.getCourses() != null) {
+            courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
+                    .eq(ProposalCourse::getProposalId, proposalId));
             int sortOrder = 0;
             for (ProposalCourseItem item : request.getCourses()) {
                 ProposalCourse entity = new ProposalCourse();
@@ -717,10 +764,10 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             }
         }
 
-        // leadCourses
-        leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
-                .eq(ProposalLeadCourse::getProposalId, proposalId));
+        // leadCourses — A2: 仅当 leadCourses 数组非 null 时更新
         if (request.getLeadCourses() != null) {
+            leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
+                    .eq(ProposalLeadCourse::getProposalId, proposalId));
             int sortOrder = 0;
             for (ProposalLeadCourseItem item : request.getLeadCourses()) {
                 ProposalLeadCourse entity = new ProposalLeadCourse();
@@ -733,10 +780,10 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             }
         }
 
-        // teamMembers
-        teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
-                .eq(ProposalTeamMember::getProposalId, proposalId));
+        // teamMembers — A2: 仅当 teamMembers 数组非 null 时更新
         if (request.getTeamMembers() != null) {
+            teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
+                    .eq(ProposalTeamMember::getProposalId, proposalId));
             for (ProposalTeamMemberItem item : request.getTeamMembers()) {
                 ProposalTeamMember entity = new ProposalTeamMember();
                 entity.setProposalId(proposalId);
@@ -753,10 +800,11 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             }
         }
 
-        // signatures
-        signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
-                .eq(ProposalSignature::getProposalId, proposalId));
+        // signatures — A2: 仅当 signatures 数组非 null 时更新（不处理 SHARED_UNIT 级别）
         if (request.getSignatures() != null) {
+            signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
+                    .eq(ProposalSignature::getProposalId, proposalId)
+                    .ne(ProposalSignature::getSignLevel, "SHARED_UNIT"));
             int sigSeq = 0;
             for (ProposalSignatureItem item : request.getSignatures()) {
                 ProposalSignature entity = new ProposalSignature();
@@ -768,25 +816,49 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 entity.setSignatureText(item.getSignatureText());
                 entity.setSignatureImageUrl(item.getSignatureImageUrl());
                 entity.setSealImageUrl(item.getSealImageUrl());
-                // P1-C-1 修复：解析请求中的日期字符串，而非设为 now()
                 entity.setSignDate(parseDate(item.getSignDate()));
                 entity.setRemark(item.getRemark());
                 signatureRepository.insert(entity);
             }
         }
 
-        // sharedUnits
-        sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
-                .eq(ProposalSharedUnit::getProposalId, proposalId));
-        if (request.getSharedUnits() != null) {
+        // sharedUnits — 仅 full save 时处理，且仅当 sharedUnits 数组非 null 时更新
+        if (includeSharedUnits && request.getSharedUnits() != null) {
+            sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
+                    .eq(ProposalSharedUnit::getProposalId, proposalId));
+            // 先清除旧的 SHARED_UNIT 级别签字，再重新插入
+            signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
+                    .eq(ProposalSignature::getProposalId, proposalId)
+                    .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
             int sortOrder = 0;
             for (ProposalSharedUnitItem item : request.getSharedUnits()) {
                 ProposalSharedUnit entity = new ProposalSharedUnit();
                 entity.setProposalId(proposalId);
                 entity.setUnitName(item.getUnitName());
                 entity.setUnitType(item.getUnitType());
-                entity.setSortOrder(sortOrder++);
+                entity.setSortOrder(sortOrder);
                 sharedUnitRepository.insert(entity);
+
+                // 同步共享单位签字数据到 proposal_signatures 表
+                ProposalSignature sig = new ProposalSignature();
+                sig.setProposalId(proposalId);
+                sig.setSignLevel("SHARED_UNIT");
+                sig.setUnitSeq(sortOrder);
+                sig.setOpinionText(item.getOpinionText());
+                if (item.getSignature() != null) {
+                    sig.setSignatureType(item.getSignature().getType());
+                    sig.setSignatureText(item.getSignature().getText());
+                    sig.setSignatureImageUrl(item.getSignature().getImageUrl());
+                }
+                if (item.getSeal() != null) {
+                    sig.setSealImageUrl(item.getSeal().getImageUrl());
+                }
+                sig.setSignDate(item.getSignDate() != null && !item.getSignDate().isEmpty()
+                        ? parseDate(item.getSignDate()) : null);
+                sig.setRemark(item.getRemark());
+                signatureRepository.insert(sig);
+
+                sortOrder++;
             }
         }
     }
@@ -881,6 +953,19 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 new LambdaQueryWrapper<ProposalSharedUnit>()
                         .eq(ProposalSharedUnit::getProposalId, proposalId)
                         .orderByAsc(ProposalSharedUnit::getSortOrder));
+
+        // P0-2 修复：加载 SHARED_UNIT 级别签字，按 unitSeq 索引
+        List<ProposalSignature> sigs = signatureRepository.selectList(
+                new LambdaQueryWrapper<ProposalSignature>()
+                        .eq(ProposalSignature::getProposalId, proposalId)
+                        .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
+        java.util.Map<Integer, ProposalSignature> sigMap = new java.util.HashMap<>();
+        for (ProposalSignature sig : sigs) {
+            if (sig.getUnitSeq() != null) {
+                sigMap.put(sig.getUnitSeq(), sig);
+            }
+        }
+
         List<ProposalSharedUnitItem> items = new ArrayList<>();
         for (ProposalSharedUnit e : entities) {
             ProposalSharedUnitItem item = new ProposalSharedUnitItem();
@@ -888,6 +973,19 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             item.setUnitName(e.getUnitName());
             item.setUnitType(e.getUnitType());
             item.setSortOrder(e.getSortOrder());
+
+            // P0-2 修复：从 proposal_signatures 回填签字数据
+            ProposalSignature sig = sigMap.get(e.getSortOrder());
+            if (sig != null) {
+                item.setOpinionText(sig.getOpinionText());
+                item.setSignature(new ProposalSignatureItem.SignatureFile(
+                        sig.getSignatureType(), sig.getSignatureText(), sig.getSignatureImageUrl()));
+                item.setSeal(new ProposalSignatureItem.SignatureFile(
+                        null, null, sig.getSealImageUrl()));
+                item.setSignDate(sig.getSignDate() != null ? sig.getSignDate().toString() : null);
+                item.setRemark(sig.getRemark());
+            }
+
             items.add(item);
         }
         return items;
@@ -902,36 +1000,38 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     }
 
     /**
-     * P1-C-1 修复：解析前端传来的日期字符串（支持 yyyy-MM、yyyy-MM-dd 等格式）
+     * 解析前端传来的日期字符串，支持多种格式。
+     * A3 修复：解析失败时打印 ERROR 级别日志（含实际输入），不再静默忽略。
      */
     private static LocalDateTime parseDate(String dateStr) {
         if (dateStr == null || dateStr.isBlank()) {
             return null;
         }
         String trimmed = dateStr.trim();
-        // 尝试多种格式
-        String[] patterns = {
-            "yyyy-MM-dd'T'HH:mm:ss",
-            "yyyy-MM-dd HH:mm:ss",
-            "yyyy-MM-dd",
-            "yyyy-MM"
-        };
-        for (String pattern : patterns) {
-            try {
-                if (pattern.equals("yyyy-MM")) {
-                    return LocalDateTime.of(
-                        java.time.YearMonth.parse(trimmed, java.time.format.DateTimeFormatter.ofPattern(pattern)).getYear(),
-                        java.time.YearMonth.parse(trimmed, java.time.format.DateTimeFormatter.ofPattern(pattern)).getMonth(),
-                        1, 0, 0, 0);
-                }
-                return LocalDateTime.parse(trimmed.replace(" ", "T"), java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            } catch (Exception ignored) {}
-        }
-        // 尝试仅 yyyy-MM
         try {
-            java.time.YearMonth ym = java.time.YearMonth.parse(trimmed, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
-            return ym.atDay(1).atStartOfDay();
-        } catch (Exception ignored) {}
-        return null;
+            // yyyy.M 格式（如 "2025.9"）
+            if (trimmed.matches("\\d{4}\\.\\d{1,2}")) {
+                java.time.YearMonth ym = java.time.YearMonth.parse(trimmed,
+                        java.time.format.DateTimeFormatter.ofPattern("yyyy.M"));
+                return ym.atDay(1).atStartOfDay();
+            }
+            // yyyy.M.d 格式（如 "2025.9.15"）
+            if (trimmed.matches("\\d{4}\\.\\d{1,2}\\.\\d{1,2}")) {
+                return LocalDateTime.parse(trimmed + " 00:00:00",
+                        java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d HH:mm:ss"));
+            }
+            // yyyy-MM 格式（如 "2025-09"）
+            if (trimmed.matches("\\d{4}-\\d{1,2}") && !trimmed.contains("T") && !trimmed.contains(" ")) {
+                java.time.YearMonth ym = java.time.YearMonth.parse(trimmed,
+                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+                return ym.atDay(1).atStartOfDay();
+            }
+            // ISO 格式 / yyyy-MM-dd / yyyy-MM-dd'T'HH:mm:ss / yyyy-MM-dd HH:mm:ss
+            return LocalDateTime.parse(trimmed.replace(" ", "T"),
+                    java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (Exception e) {
+            log.error("日期解析失败: input='{}', error={}", dateStr, e.getMessage());
+            return null;
+        }
     }
 }

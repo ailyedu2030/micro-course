@@ -8,11 +8,11 @@
 
 ## 总览
 
-- ✅ 前后端匹配: 129 字段
+- ✅ 前后端匹配: 130 字段
 
-- ⚠️ 前端孤儿 (有前端引用无后端实体): 16 字段
+- ⚠️ 前端孤儿 (有前端引用无后端实体): 15 字段
 
-- 后端实体字段总数: 1616
+- 后端实体字段总数: 1617
 
 - 前端引用字段总数: 360
 
@@ -29,14 +29,14 @@
 3. 计算字段 (前端自行维护)
 
 
-### 可疑前端孤儿 (1 个)
+### 可疑前端孤儿 (0 个)
 
 
 | # | 字段名 | 出现位置 | 建议行动 |
 
 |---|--------|---------|---------|
 
-| 1 | `microSpecialtyName` | micro-course-admin/src/views/teacher/MicroSpecialtyProposal.vue:microSpecialtyName | ❓ 需人工判断 |
+(无)
 
 
 
@@ -918,7 +918,7 @@
 
 | MicroSpecialtyFeaturedAudit | 8 | 0 |
 
-| MicroSpecialtyProposal | 43 | 0 |
+| MicroSpecialtyProposal | 44 | 0 |
 
 | MicroSpecialtyTeacher | 15 | 0 |
 

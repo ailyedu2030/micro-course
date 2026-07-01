@@ -14,7 +14,7 @@
         <h2 class="page-title">整理收纳微专业申请表</h2>
         <div class="header-actions">
           <el-button :loading="saving" @click="handleSave">保存</el-button>
-          <span v-if="saveStatus" class="save-status" :class="{ 'save-error': saveStatus.startsWith('保存失败') }">
+          <span v-if="saveStatus" class="save-status" :class="{ 'save-error': saveStatus === '保存失败' || saveStatus === '⚠ 未保存' }">
             {{ saveStatus }}
           </span>
           <el-button type="primary" @click="handleSubmit">提交审核</el-button>
@@ -336,6 +336,11 @@
                 <DatePickerYM v-model="unit.signDate" />
               </el-form-item>
             </el-col>
+            <el-col :span="12">
+              <el-form-item label="备注">
+                <el-input v-model="unit.remark" placeholder="备注信息" maxlength="200" />
+              </el-form-item>
+            </el-col>
           </el-row>
         </el-form>
       </div>
@@ -528,7 +533,8 @@ function addSharedUnit() {
     opinionText: '',
     signature: { type: 'TEXT', text: '', imageUrl: '' },
     seal: { type: 'TEXT', text: '', imageUrl: '' },
-    signDate: ''
+    signDate: '',
+    remark: ''  // B2 fix: add remark field for shared units
   })
 }
 
@@ -601,6 +607,12 @@ watch(
         dirty.value = false
       } catch {
         saveStatus.value = '保存失败'
+        // B3 fix: flash the save status to a persistent warning so user notices
+        setTimeout(() => {
+          if (saveStatus.value === '保存失败') {
+            saveStatus.value = '⚠ 未保存'
+          }
+        }, 5000)
       }
     }, 1500)
   },
@@ -688,6 +700,13 @@ async function handleExport(type) {
   const fn = type === 'word' ? exportStorageWord : exportStoragePdf
   try {
     const res = await fn(draftId.value)
+    // B4 fix: check if response is actually a JSON error disguised as blob
+    if (res.data && res.data.type === 'application/json') {
+      const text = await new Response(res.data).text()
+      const err = JSON.parse(text)
+      ElMessage.error(err.message || '导出校验失败')
+      return
+    }
     const blob = new Blob([res.data])
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -725,6 +744,12 @@ async function loadDraft(id) {
         if (data[field] !== undefined) {
           form.value[field] = data[field]
         }
+      }
+      // B1 fix: convert targetAudience from comma-separated string to array for checkbox-group
+      if (typeof form.value.targetAudience === 'string') {
+        form.value.targetAudience = form.value.targetAudience
+          ? form.value.targetAudience.split(',').map(s => s.trim())
+          : []
       }
       // 同步子表
       courses.value = data.courses || []
@@ -855,6 +880,7 @@ onBeforeUnmount(() => {
 }
 .save-status.save-error {
   color: #f56c6c;
+  font-weight: 600;
 }
 
 /* 卡片 */

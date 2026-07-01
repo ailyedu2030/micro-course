@@ -18,6 +18,7 @@ public class StorageApplicationSaveRequest {
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "请输入正确的手机号")
     private String contactPhone;
     private String applyDate;
+    private Long offerDepartmentId;
 
     // === 模块2：基本情况 ===
     private String type;
@@ -73,6 +74,8 @@ public class StorageApplicationSaveRequest {
     public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
     public String getApplyDate() { return applyDate; }
     public void setApplyDate(String applyDate) { this.applyDate = applyDate; }
+    public Long getOfferDepartmentId() { return offerDepartmentId; }
+    public void setOfferDepartmentId(Long offerDepartmentId) { this.offerDepartmentId = offerDepartmentId; }
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
