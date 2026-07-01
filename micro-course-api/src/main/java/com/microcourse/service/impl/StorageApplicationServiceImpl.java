@@ -64,6 +64,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     private final ProposalSignatureRepository signatureRepository;
     private final ProposalSharedUnitRepository sharedUnitRepository;
     private final UserRepository userRepository;
+    private final ChapterTeacherAssignmentRepository assignmentRepository;
     private final DepartmentRepository departmentRepository;
     private final SqlSessionFactory sqlSessionFactory;
 
@@ -76,6 +77,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             ProposalSignatureRepository signatureRepository,
             ProposalSharedUnitRepository sharedUnitRepository,
             UserRepository userRepository,
+            ChapterTeacherAssignmentRepository assignmentRepository,
             DepartmentRepository departmentRepository,
             SqlSessionFactory sqlSessionFactory) {
         this.proposalRepository = proposalRepository;
@@ -86,6 +88,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         this.signatureRepository = signatureRepository;
         this.sharedUnitRepository = sharedUnitRepository;
         this.userRepository = userRepository;
+        this.assignmentRepository = assignmentRepository;
         this.departmentRepository = departmentRepository;
         this.sqlSessionFactory = sqlSessionFactory;
     }
@@ -606,6 +609,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         vo.setTeamMembers(buildTeamMemberItems(proposal.getId()));
         vo.setSignatures(buildSignatureItems(proposal.getId()));
         vo.setSharedUnits(buildSharedUnitItems(proposal.getId()));
+        vo.setChapterAssignments(buildAssignmentItems(proposal.getId()));
 
         // 关联查询字段
         vo.setProposerName(lookupUserName(proposal.getProposerId()));
@@ -662,6 +666,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         vo.setTeamMembers(buildTeamMemberItems(proposal.getId()));
         vo.setSignatures(buildSignatureItems(proposal.getId()));
         vo.setSharedUnits(buildSharedUnitItems(proposal.getId()));
+        vo.setChapterAssignments(buildAssignmentItems(proposal.getId()));
 
         return vo;
     }
@@ -705,6 +710,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         req.setTeamMembers(buildTeamMemberItems(proposal.getId()));
         req.setSignatures(buildSignatureItems(proposal.getId()));
         req.setSharedUnits(buildSharedUnitItems(proposal.getId()));
+        req.setChapterAssignments(buildAssignmentItems(proposal.getId()));
         return req;
     }
 
@@ -882,6 +888,34 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                         }
                         sqlSession.commit();
                     }
+                }
+            }
+        }
+
+        // Phase 2: 章节-教师分配同步
+        if (request.getChapterAssignments() != null) {
+            // 先删后插
+            assignmentRepository.delete(new LambdaQueryWrapper<ChapterTeacherAssignment>()
+                    .eq(ChapterTeacherAssignment::getProposalId, proposalId));
+            if (!request.getChapterAssignments().isEmpty()) {
+                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+                    ChapterTeacherAssignmentRepository batchRepo = sqlSession.getMapper(ChapterTeacherAssignmentRepository.class);
+                    for (ChapterAssignmentItem assignItem : request.getChapterAssignments()) {
+                        // 验证 teacherId 是 TEACHER 角色
+                        User teacher = userRepository.selectById(assignItem.getTeacherId());
+                        if (teacher == null || !"TEACHER".equals(teacher.getRole().name())) {
+                            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "教师 " + assignItem.getTeacherId() + " 不存在或不是 TEACHER 角色");
+                        }
+                        ChapterTeacherAssignment entity = new ChapterTeacherAssignment();
+                        entity.setProposalId(proposalId);
+                        entity.setCourseId(assignItem.getCourseId());
+                        entity.setChapterId(assignItem.getChapterId());
+                        entity.setTeacherId(assignItem.getTeacherId());
+                        entity.setSource("TBD");
+                        entity.setAcceptStatus("PENDING");
+                        batchRepo.insert(entity);
+                    }
+                    sqlSession.commit();
                 }
             }
         }
@@ -1191,6 +1225,34 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         }
         User user = userRepository.selectById(userId);
         return user != null ? user.getRealName() : null;
+    }
+
+    // Phase 2: 加载章节-教师分配
+    private List<ChapterAssignmentItem> buildAssignmentItems(Long proposalId) {
+        List<ChapterTeacherAssignment> entities = assignmentRepository.selectList(
+                new LambdaQueryWrapper<ChapterTeacherAssignment>()
+                        .eq(ChapterTeacherAssignment::getProposalId, proposalId)
+                        .eq(ChapterTeacherAssignment::getDeletedAt, null));
+        List<ChapterAssignmentItem> items = new ArrayList<>();
+        for (ChapterTeacherAssignment e : entities) {
+            ChapterAssignmentItem item = new ChapterAssignmentItem();
+            item.setId(e.getId());
+            item.setCourseId(e.getCourseId());
+            item.setChapterId(e.getChapterId());
+            item.setTeacherId(e.getTeacherId());
+            item.setSource(e.getSource() != null ? e.getSource() : "TBD");
+            item.setAcceptStatus(e.getAcceptStatus() != null ? e.getAcceptStatus() : "PENDING");
+            ProposalChapter ch = chapterRepository.selectById(e.getChapterId());
+            if (ch != null) {
+                item.setChapterTitle(ch.getTitle());
+                ProposalCourse course = courseRepository.selectById(ch.getCourseId());
+                if (course != null) {
+                    item.setCourseTitle(course.getCourseName());
+                }
+            }
+            items.add(item);
+        }
+        return items;
     }
 
     /**

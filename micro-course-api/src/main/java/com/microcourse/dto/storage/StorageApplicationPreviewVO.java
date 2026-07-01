@@ -44,6 +44,7 @@ public class StorageApplicationPreviewVO {
     private List<ProposalTeamMemberItem> teamMembers;
     private List<ProposalSignatureItem> signatures;
     private List<ProposalSharedUnitItem> sharedUnits;
+    private List<ChapterAssignmentItem> chapterAssignments;
 
     public StorageApplicationPreviewVO() {}
 
@@ -121,4 +122,6 @@ public class StorageApplicationPreviewVO {
     public void setSignatures(List<ProposalSignatureItem> signatures) { this.signatures = signatures; }
     public List<ProposalSharedUnitItem> getSharedUnits() { return sharedUnits; }
     public void setSharedUnits(List<ProposalSharedUnitItem> sharedUnits) { this.sharedUnits = sharedUnits; }
+    public List<ChapterAssignmentItem> getChapterAssignments() { return chapterAssignments; }
+    public void setChapterAssignments(List<ChapterAssignmentItem> chapterAssignments) { this.chapterAssignments = chapterAssignments; }
 }

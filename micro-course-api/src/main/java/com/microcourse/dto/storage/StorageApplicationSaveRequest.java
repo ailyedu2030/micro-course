@@ -59,6 +59,8 @@ public class StorageApplicationSaveRequest {
     private List<ProposalTeamMemberItem> teamMembers;
     private List<ProposalSignatureItem> signatures;
     private List<ProposalSharedUnitItem> sharedUnits;
+    // Phase 2: 章节-教师分配
+    private List<ChapterAssignmentItem> chapterAssignments;
 
     public StorageApplicationSaveRequest() {}
 
@@ -136,4 +138,6 @@ public class StorageApplicationSaveRequest {
     public void setSignatures(List<ProposalSignatureItem> signatures) { this.signatures = signatures; }
     public List<ProposalSharedUnitItem> getSharedUnits() { return sharedUnits; }
     public void setSharedUnits(List<ProposalSharedUnitItem> sharedUnits) { this.sharedUnits = sharedUnits; }
+    public List<ChapterAssignmentItem> getChapterAssignments() { return chapterAssignments; }
+    public void setChapterAssignments(List<ChapterAssignmentItem> chapterAssignments) { this.chapterAssignments = chapterAssignments; }
 }
