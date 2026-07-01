@@ -219,7 +219,7 @@
           <div class="table-summary" v-if="totalCourseHours > 0">
             总学时：<strong>{{ totalCourseHours }}</strong>
           </div>
-          <DynamicTableEditor v-model="courses" :columns="courseColumns" :default-row="courseDefaultRow" @change="onCourseChange" />
+          <CourseChapterEditor v-model="courses" @change="onCourseChange" />
         </div>
       </el-form>
     </el-card>
@@ -391,6 +391,7 @@ import {
 } from '@/api/storageApplication'
 import RichTextWithCounter from '@/components/storage/RichTextWithCounter.vue'
 import DynamicTableEditor from '@/components/storage/DynamicTableEditor.vue'
+import CourseChapterEditor from '@/components/storage/CourseChapterEditor.vue'
 import SignatureBlock from '@/components/storage/SignatureBlock.vue'
 import SignatureUploader from '@/components/storage/SignatureUploader.vue'
 import DatePickerYM from '@/components/storage/DatePickerYM.vue'
@@ -488,7 +489,7 @@ const courseColumns = [
   { prop: 'credits', label: '学分', type: 'number', width: '80', min: 0.5 },
   { prop: 'semester', label: '开课学期', type: 'text', placeholder: '如：第1学期' }
 ]
-const courseDefaultRow = { moduleName: '', courseName: '', hours: null, credits: null, semester: '' }
+const courseDefaultRow = { moduleName: '', courseName: '', hours: null, credits: null, semester: '', chapters: [] }
 
 const leadCourseColumns = [
   { prop: 'courseName', label: '课程名称', type: 'text', minWidth: '180', placeholder: '必填' },
@@ -854,7 +855,7 @@ async function loadDraft(id) {
           : []
       }
       // 同步子表
-      courses.value = data.courses || []
+      courses.value = (data.courses || []).map(c => ({ ...c, chapters: c.chapters || [] }))
       leadCourses.value = data.leadCourses || []
       teamMembers.value = data.teamMembers || []
       // 同步签名（确保至少3个）
