@@ -114,10 +114,8 @@
         <transition name="sidebar-shade-fade">
           <div v-if="sidebarTransitioning" class="sidebar-shade-overlay" />
         </transition>
-        <router-view v-slot="{ Component }">
-          <transition name="page-fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
+        <router-view v-slot="{ Component, route: routeInfo }">
+          <component :is="Component" :key="routeInfo.path" />
         </router-view>
       </el-main>
     </el-container>

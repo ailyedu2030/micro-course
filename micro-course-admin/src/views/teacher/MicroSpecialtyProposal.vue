@@ -410,7 +410,8 @@ const pendingSave = ref(false)  // RT-3: 标记正在执行的自动保存（防
 const formRef1 = ref(null)
 const loadError = ref(false)  // P1-C-13: 全局加载错误标志
 const initialLoadComplete = ref(false)
-const autoSaveEnabled = ref(false)  /* 只有手动保存后才启用 autoSave */
+const autoSaveEnabled = ref(false)
+const leavingConfirmed = ref(false)  /* 防 route guard 双重确认 */
 
 // 附件标题（只读）
 const attachmentTitle = computed(() => {
@@ -847,11 +848,12 @@ async function initDraft() {
   loadError.value = false
   try {
     const res = await initStorageDraft()
-    // initDraft 返回 draftId（可能是字符串或数字）
     const id = typeof res.data === 'object' ? res.data.id : res.data
     draftId.value = id
     dirty.value = false
     saveStatus.value = ''
+    initialLoadComplete.value = true
+    autoSaveEnabled.value = true
   } catch (e) {
     loadError.value = true  // P1-C-13: 显示错误状态
     ElMessage.error(e?.response?.data?.message || '初始化草稿失败')
@@ -872,10 +874,13 @@ function retryLoad() {
 function handleBack() {
   if (dirty.value) {
     ElMessageBox.confirm('有未保存的更改，确定离开？', '确认离开', { type: 'warning' })
-      .then(() => { dirty.value = false; router.back() })
+      .then(() => {
+        leavingConfirmed.value = true
+        router.push('/teacher/micro-specialties/my-proposals')
+      })
       .catch(() => {})
   } else {
-    router.back()
+    router.push('/teacher/micro-specialties/my-proposals')
   }
 }
 
@@ -889,7 +894,7 @@ function handleBeforeUnload(e) {
 
 // ==================== 路由离开守卫 ====================
 onBeforeRouteLeave((to, from, next) => {
-  if (dirty.value) {
+  if (dirty.value && !leavingConfirmed.value) {
     ElMessageBox.confirm('有未保存的更改，确定离开？', '确认离开', { type: 'warning' })
       .then(() => next())
       .catch(() => next(false))
