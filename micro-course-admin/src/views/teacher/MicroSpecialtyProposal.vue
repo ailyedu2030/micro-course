@@ -388,6 +388,7 @@ const submitting = ref(false)
 const draftId = ref(null)
 const saveStatus = ref('')
 const dirty = ref(false)
+const pendingSave = ref(false)  // RT-3: 标记正在执行的自动保存（防止标签页关闭数据丢失）
 const formRef1 = ref(null)
 const loadError = ref(false)  // P1-C-13: 全局加载错误标志
 
@@ -600,6 +601,7 @@ watch(
     dirty.value = true
     if (autoSaveTimer.value) clearTimeout(autoSaveTimer.value)
     autoSaveTimer.value = setTimeout(async () => {
+      pendingSave.value = true  // RT-3: 标记正在保存（配合 beforeunload 防止数据丢失）
       saveStatus.value = '保存中'
       try {
         await autoSaveStorageApplication(draftId.value, buildSavePayload())
@@ -613,6 +615,8 @@ watch(
             saveStatus.value = '⚠ 未保存'
           }
         }, 5000)
+      } finally {
+        pendingSave.value = false  // RT-3: 清除待保存标记
       }
     }, 1500)
   },
@@ -814,6 +818,14 @@ function handleBack() {
   }
 }
 
+// RT-3: 标签页关闭/刷新前警告 — 防止 autoSave 进行中的数据丢失
+function handleBeforeUnload(e) {
+  if (dirty.value || pendingSave.value) {
+    e.preventDefault()
+    e.returnValue = '有未保存的数据，确定离开吗？'
+  }
+}
+
 // ==================== 路由离开守卫 ====================
 onBeforeRouteLeave((to, from, next) => {
   if (dirty.value) {
@@ -827,6 +839,7 @@ onBeforeRouteLeave((to, from, next) => {
 
 // ==================== 初始化 ====================
 onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload)  // RT-3: 标签页关闭警告
   const id = route.query.id || route.params.id
   if (id) {
     await loadDraft(id)
@@ -837,6 +850,7 @@ onMounted(async () => {
 
 // ==================== 清理 ====================
 onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)  // RT-3: 移除标签页关闭警告
   if (autoSaveTimer.value) {
     clearTimeout(autoSaveTimer.value)
   }

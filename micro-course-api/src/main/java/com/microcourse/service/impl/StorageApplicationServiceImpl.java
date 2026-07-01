@@ -207,7 +207,16 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         // 仅更新非空字段到主表
         applyRequestToProposal(proposal, request);
         proposal.setUpdatedAt(LocalDateTime.now());
-        proposalRepository.updateById(proposal);
+        // RT-1: 使用 @Version 乐观锁防止 autoSave 与 submit 的竞态条件
+        // update(entity, wrapper) 将 WHERE 条件加入 version 检查，冲突时返回 0 行
+        int rows = proposalRepository.update(proposal, new LambdaQueryWrapper<MicroSpecialtyProposal>()
+                .eq(MicroSpecialtyProposal::getId, proposalId)
+                .eq(MicroSpecialtyProposal::getVersion, proposal.getVersion()));
+        if (rows == 0) {
+            log.warn("autoSave conflict: proposal {} was modified by another operation (submit likely in progress)", proposalId);
+            // autoSave 是后台操作，冲突时静默跳过，不抛异常
+            return;
+        }
 
         // 子表在 autoSave 时也进行替换，但共享单位签字仅在 full save 时同步
         replaceSubTables(proposalId, request, false);

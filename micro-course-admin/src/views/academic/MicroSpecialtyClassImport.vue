@@ -45,8 +45,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, classImport } from '@/api/microSpecialty'
+import { getClasses } from '@/api/class'
 
 const importing = ref(false)
 const loadingSpecialties = ref(false)
@@ -81,8 +82,9 @@ const onSpecialtyChange = async (id) => {
   if (!id) return
   loadingClasses.value = true
   try {
-    // Load classes for selected specialty via microSpecialty enrollments API
-    // For now, classOptions come from the parent context or a separate API
+    // 加载所有班级 (学院级, 与微专业无关, 由用户筛选选择)
+    const { data } = await getClasses({ size: 1000 })
+    classOptions.value = data?.items || data || []
   } catch (e) { ElMessage.error(e?.response?.data?.message || '加载班级列表失败') }
   finally { loadingClasses.value = false }
 }
@@ -90,6 +92,14 @@ const onSpecialtyChange = async (id) => {
 const handleImport = async () => {
   if (!formRef.value) return
   try { await formRef.value.validate() } catch { return }
+  // 二次确认
+  try {
+    await ElMessageBox.confirm(
+      `确认将 ${form.value.classIds.length} 个班级导入该微专业？此操作会创建修读记录。`,
+      '确认导入',
+      { type: 'warning', confirmButtonText: '确认导入', cancelButtonText: '取消' }
+    )
+  } catch { return }
   importing.value = true
   try {
     const { data } = await classImport({ microSpecialtyId: form.value.microSpecialtyId, classIds: form.value.classIds })

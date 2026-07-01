@@ -288,17 +288,21 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getStoragePreview, exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 
-// B5 fix: Simple HTML sanitizer - strips script/on* attributes to prevent stored XSS
+// RT-2 fix: Enhanced HTML sanitizer with case-insensitive patterns and wider vector coverage
 function sanitizeHtml(html) {
   if (!html) return ''
-  // Strip <script> tags
-  let sanitized = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-  // Strip on* event handlers (both double and single quoted)
-  sanitized = sanitized.replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
-  sanitized = sanitized.replace(/\son\w+\s*=\s*'[^']*'/gi, '')
-  // Strip javascript: URLs in href
-  sanitized = sanitized.replace(/href\s*=\s*"javascript:[^"]*"/gi, 'href="#"')
-  sanitized = sanitized.replace(/href\s*=\s*'javascript:[^']*'/gi, "href='#'")
+  let sanitized = html
+  // Strip <script> tags (case-insensitive)
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  // Strip ALL on* event handlers — unquoted, double-quoted, and single-quoted (case-insensitive)
+  sanitized = sanitized.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, ' ')
+  // Strip dangerous protocols in href/src/action/formaction (case-insensitive)
+  sanitized = sanitized.replace(/(href|src|action|formaction)\s*=\s*"(?:javascript|vbscript|data|file):[^"]*"/gi, '$1="#"')
+  sanitized = sanitized.replace(/(href|src|action|formaction)\s*=\s*'(?:javascript|vbscript|data|file):[^']*'/gi, "$1='#'")
+  // Strip <iframe> <embed> <object> <frame> <frameset> <ilayer> tags (case-insensitive)
+  sanitized = sanitized.replace(/<\/?(?:iframe|embed|object|frame|frameset|ilayer)[^>]*>/gi, '')
+  // Strip <meta> tags — potential redirect vectors (case-insensitive)
+  sanitized = sanitized.replace(/<meta[^>]*>/gi, '')
   return sanitized
 }
 
