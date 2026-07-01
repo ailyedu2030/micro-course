@@ -187,14 +187,14 @@ const formatTime = (t) => t ? new Date(t).toLocaleString('zh-CN', { year: 'numer
 const loadColleges = async () => {
   collegeLoading.value = true
   try { const res = await getDepartments(); colleges.value = res.data?.items || res.data || [] }
-  catch {}
+  catch (e) { ElMessage.error(e?.response?.data?.message || '获取学院列表失败') }
   finally { collegeLoading.value = false }
 }
 
 const fetchData = async () => {
   error.value = false; loading.value = true
   try { const { data } = await getMyProposals({ page: page.value, size: size.value }); proposals.value = data.items || data || []; total.value = data.totalElements || 0 }
-  catch { error.value = true }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '获取申报列表失败'); error.value = true }
   finally { loading.value = false }
 }
 

@@ -307,9 +307,8 @@ async function searchCourses(keyword) {
     if (isTeacher.value) params.teacherId = userStore.userInfo?.id
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
-  } catch {
-    courseOptions.value = []
-  } finally {
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '搜索课程失败') }
+  finally {
     courseLoading.value = false
   }
 }

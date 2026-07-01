@@ -86,7 +86,7 @@ const fetchData = async (tab) => {
     if (tab === 'pending') list = list.filter(i => i.status === 'INVITED' || i.status === 'PENDING_ACADEMIC')
     else list = list.filter(i => i.status !== 'INVITED' && i.status !== 'PENDING_ACADEMIC')
     items.value = list
-  } catch { error.value = true }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取邀请列表失败'); error.value = true }
   finally { loading.value = false }
 }
 

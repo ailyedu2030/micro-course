@@ -170,23 +170,23 @@ const fetchDetail = async () => {
       admissionRequirement: d.admissionRequirement || '',
       semester: d.semester || '', coverUrl: d.coverUrl || ''
     }
-    try { const { data: stats } = await getStats(msId.value); detail.value = { ...detail.value, stats } } catch {}
+    try { const { data: stats } = await getStats(msId.value); detail.value = { ...detail.value, stats } } catch { /* skip stats */ }
     fetchEnrollments(); fetchProgress()
-  } catch { error.value = true }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取微专业详情失败'); error.value = true }
   finally { loading.value = false }
 }
 
 const fetchEnrollments = async () => {
   enrollLoading.value = true
   try { const { data } = await getEnrollmentList(msId.value); enrollments.value = data?.items || data || [] }
-  catch { enrollments.value = [] }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '获取报名列表失败') }
   finally { enrollLoading.value = false }
 }
 
 const fetchProgress = async () => {
   progressLoading.value = true
   try { const { data } = await getStats(msId.value); progressData.value = data || {} }
-  catch { progressData.value = null }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '获取进度数据失败') }
   finally { progressLoading.value = false }
 }
 

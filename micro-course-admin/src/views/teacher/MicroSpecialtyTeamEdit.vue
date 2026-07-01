@@ -151,14 +151,14 @@ const fetchData = async () => {
       const rem = dl ? Math.max(0, Math.ceil((dl - now) / 86400000)) : null
       return { ...i, expiring: i.inviteStatus === 'INVITED' && rem !== null && rem < 3, deadlineText: dl ? (rem > 0 ? `剩余${rem}天` : '已过期') : '' }
     })
-    try { const { data: cc } = await getCourses(msId.value); courseOptions.value = cc.items || cc || [] } catch {}
-  } catch { error.value = true }
+    try { const { data: cc } = await getCourses(msId.value); courseOptions.value = cc.items || cc || [] } catch { /* skip course options */ }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取微专业详情失败'); error.value = true }
   finally { loading.value = false; loadDepartments() }
 }
 
 const loadDepartments = async () => {
   try { const { data } = await getDepartments(); departments.value = data?.items || data || [] }
-  catch {}
+  catch (e) { ElMessage.error(e?.response?.data?.message || '获取部门列表失败') }
 }
 
 // 防抖搜索

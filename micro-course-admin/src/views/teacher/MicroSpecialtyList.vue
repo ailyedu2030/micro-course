@@ -186,7 +186,7 @@ const fetchList = async (role) => {
   try {
     const { data } = await getMicroSpecialtyList({ role, page: 0, size: 50 })
     list.value = data.items || data || []
-  } catch { error.value = true }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取微专业列表失败'); error.value = true }
   finally { loading.value = false }
 }
 
@@ -207,7 +207,7 @@ const fetchInvites = async () => {
       }
     })
     pendingInviteCount.value = invites.value.filter(i => i.deadlineText !== '已过期').length
-  } catch { inviteError.value = true }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取邀请列表失败'); inviteError.value = true }
   finally { inviteLoading.value = false }
 }
 
@@ -246,7 +246,7 @@ const fetchColleges = async () => {
   try {
     const { data } = await getDepartments({ size: 1000 })
     colleges.value = data.items || data || []
-  } catch { colleges.value = [] }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取学院列表失败') }
 }
 
 onMounted(() => { fetchList('leading'); fetchColleges() })
