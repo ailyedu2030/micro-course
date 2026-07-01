@@ -33,14 +33,17 @@
         <el-table-column prop="createdAt" label="提交时间" width="130" align="center">
           <template #default="{ row }">{{ row.createdAt?.slice(0, 10) || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="260" align="center" fixed="right">
+        <el-table-column label="操作" width="320" align="center" fixed="right">
           <template #default="{ row }">
             <template v-if="row.status === 'PENDING_REVIEW'">
               <el-button size="small" @click="showDetail(row)">查看</el-button>
+              <el-button size="small" @click="goPreview(row)">预览</el-button>
               <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">批准</el-button>
               <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
             </template>
-            <span v-else class="no-action">-</span>
+            <template v-else>
+              <el-button size="small" @click="goPreview(row)">预览</el-button>
+            </template>
           </template>
         </el-table-column>
       </el-table>
@@ -77,18 +80,24 @@
         <div class="detail-item full-width"><label>培养目标</label><span v-html="detailRow.trainingObjective || '-'" class="detail-html"></span></div>
         <div class="detail-item full-width"><label>准入门槛</label><span>{{ detailRow.prerequisites || '-' }}</span></div>
       </div>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+        <el-button type="primary" @click="goPreview(detailRow); detailVisible = false">预览申报表</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAllProposals, approveProposal, rejectProposal } from '@/api/microSpecialty'
 
 const activeTab = ref('PENDING')
 const loading = ref(false)
 const actingId = ref(null)
+const router = useRouter()
 const items = ref([])
 const page = ref(0)
 const size = ref(20)
@@ -141,6 +150,10 @@ const confirmReject = async () => {
   try { await rejectProposal(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
+}
+
+const goPreview = (row) => {
+  router.push(`/teacher/micro-specialties/storage-preview/${row.id}`)
 }
 
 onMounted(fetchData)

@@ -301,4 +301,75 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
 
         proposalRepository.deleteById(proposalId);
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void approveAndCreateSpecialty(Long proposalId, Long reviewerId) {
+        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+        if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
+
+        if (!"PENDING_REVIEW".equals(proposal.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可批准");
+        }
+
+        // 更新 proposal 为 APPROVED
+        proposal.setStatus("APPROVED");
+        proposal.setReviewedBy(reviewerId);
+        proposal.setReviewedAt(LocalDateTime.now());
+        proposal.setUpdatedAt(LocalDateTime.now());
+        proposalRepository.updateById(proposal);
+
+        // 创建微专业 DRAFT
+        MicroSpecialty ms = new MicroSpecialty();
+        ms.setCode("MS-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+
+        // 对于 storage 类型，使用 Phase 15 新增字段
+        if (proposal.getTitle() != null) {
+            ms.setTitle(proposal.getTitle());
+        } else {
+            ms.setTitle(proposal.getLeadName() != null ? proposal.getLeadName() + "的微专业" : "未命名微专业");
+        }
+        ms.setDescription(proposal.getDescription());
+        ms.setOfferDepartmentId(proposal.getOfferDepartmentId());
+        ms.setTrainingObjective(proposal.getTrainingObjective());
+        ms.setSemester(proposal.getSemester());
+        ms.setMaxStudents(proposal.getMaxStudents());
+        ms.setLeadTeacherId(proposal.getProposerId());
+        ms.setStatus("APPROVED");
+        ms.setCreatorId(reviewerId);
+        ms.setCreatedAt(LocalDateTime.now());
+        ms.setUpdatedAt(LocalDateTime.now());
+        ms.setVersion(0);
+        ms.setIsFeatured(false);
+        ms.setIsGoldFeatured(false);
+        ms.setFeaturedStatus("NONE");
+        ms.setStudentCount(0);
+        msRepository.insert(ms);
+
+        // 回写 proposal
+        proposal.setCreatedMicroSpecialtyId(ms.getId());
+        proposalRepository.updateById(proposal);
+
+        // 创建 LEAD INVITED 记录
+        MicroSpecialtyTeacher leadRecord = new MicroSpecialtyTeacher();
+        leadRecord.setMicroSpecialtyId(ms.getId());
+        leadRecord.setTeacherId(proposal.getProposerId());
+        leadRecord.setRole("LEAD");
+        leadRecord.setInviteStatus("INVITED");
+        leadRecord.setInvitedBy(reviewerId);
+        leadRecord.setInvitedAt(LocalDateTime.now());
+        leadRecord.setInviteExpiresAt(LocalDateTime.now().plusDays(7));
+        leadRecord.setCreatedAt(LocalDateTime.now());
+        msTeacherRepository.insert(leadRecord);
+
+        // 通知申报人
+        notificationService.notifyAsync(proposal.getProposerId(), NotificationType.MS_PROPOSAL_APPROVED,
+                "申报已批准", "您的微专业申报已获批准，请接受负责人邀请", ms.getId());
+
+        // 通知 LEAD
+        notificationService.notifyAsync(proposal.getProposerId(), NotificationType.MS_INVITE_LEAD,
+                "微专业负责人邀请", "您已被指定为微专业《" + ms.getTitle() + "》负责人，请在7天内接受邀请", ms.getId());
+
+        log.info("approveAndCreateSpecialty: proposalId={}, msId={}", proposalId, ms.getId());
+    }
 }

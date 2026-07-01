@@ -5,6 +5,7 @@ import com.microcourse.dto.R;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyProposalRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
 import com.microcourse.service.MicroSpecialtyProposalService;
+import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -56,15 +57,24 @@ public class MicroSpecialtyProposalController {
         return R.ok(result);
     }
 
-    /** 批准申报 → 创建 DRAFT + LEAD INVITED */
+    /**
+     * 批准申报 → 创建 DRAFT + LEAD INVITED。
+     * Phase 15 增强：统一使用 approveAndCreateSpecialty，同时处理
+     * 普通申报和 storage 类型申报（DRAFT→APPROVED + 创建微专业）。
+     */
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('ACADEMIC')")
-    public R<MicroSpecialtyVO> approveProposal(@PathVariable Long id) {
-        MicroSpecialtyVO vo = proposalService.approveProposal(id);
-        return R.ok(vo);
+    public R<Void> approveProposal(@PathVariable Long id,
+                                    @RequestParam(required = false) String comment) {
+        proposalService.approveAndCreateSpecialty(id, SecurityUtil.getCurrentUserId());
+        return R.ok();
     }
 
-    /** 驳回申报 */
+    /**
+     * 驳回申报。
+     * Phase 15 增强：Service 层已扩展 rejectProposal 以接受 storage 类型
+     * proposal 的 DRAFT 状态，支持 DRAFT→REJECTED 转换。
+     */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('ACADEMIC')")
     public R<Void> rejectProposal(@PathVariable Long id, @RequestBody Map<String, String> body) {
@@ -92,7 +102,7 @@ public class MicroSpecialtyProposalController {
 
     /** 获取申报详情 */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")  // P1-C-4 修复：增加 ACADEMIC 权限
     public R<?> getProposal(@PathVariable Long id) {
         return R.ok(proposalService.getProposal(id));
     }

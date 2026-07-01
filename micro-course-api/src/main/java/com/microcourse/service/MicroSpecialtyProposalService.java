@@ -39,4 +39,13 @@ public interface MicroSpecialtyProposalService {
 
     /** 删除申报（仅 WITHDRAWN 状态） */
     void deleteProposal(Long proposalId);
+
+    /**
+     * Phase 15: 审批通过后，如果是 storage 类型提案，自动创建微专业
+     *
+     * <p>与 approveProposal 的区别：本方法额外处理 storage 类型提案（Phase 15），
+     * 创建微专业 DRAFT 并设置 lead 邀请。对于 storage 类型，使用 Phase 15 新增字段；
+     * 对于普通 proposal 类型，走原有的 approveProposal 逻辑。</p>
+     */
+    void approveAndCreateSpecialty(Long proposalId, Long reviewerId);
 }

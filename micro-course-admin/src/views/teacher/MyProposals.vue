@@ -31,19 +31,30 @@
         <el-table-column prop="createdAt" label="提交时间" width="130" align="center">
           <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="220" align="center" fixed="right">
+        <el-table-column label="操作" width="360" align="center" fixed="right">
           <template #default="{ row }">
-            <template v-if="row.status === 'APPROVED'">
+            <template v-if="row.status === 'DRAFT'">
+              <el-button size="small" @click="handlePreview(row)">预览</el-button>
+              <el-button size="small" @click="handleExportWord(row)">Word</el-button>
+              <el-button size="small" @click="handleExportPdf(row)">PDF</el-button>
+            </template>
+            <template v-else-if="row.status === 'APPROVED'">
               <el-button size="small" type="success" @click="$router.push(`/teacher/micro-specialties/${row.microSpecialtyId || row.id}/manage`)">进入管理</el-button>
+              <el-button size="small" @click="handlePreview(row)">预览</el-button>
+              <el-button size="small" @click="handleExportWord(row)">Word</el-button>
+              <el-button size="small" @click="handleExportPdf(row)">PDF</el-button>
             </template>
             <template v-else-if="row.status === 'REJECTED'">
               <el-button size="small" type="warning" @click="openEditor(row)">编辑重提</el-button>
+              <el-button size="small" @click="handlePreview(row)">预览</el-button>
             </template>
             <template v-else-if="row.status === 'PENDING_REVIEW'">
+              <el-button size="small" @click="handlePreview(row)">预览</el-button>
               <el-button size="small" type="danger" @click="handleWithdraw(row)">撤回</el-button>
             </template>
             <template v-else-if="row.status === 'WITHDRAWN'">
               <el-button size="small" type="primary" @click="openEditor(row)">编辑</el-button>
+              <el-button size="small" @click="handlePreview(row)">预览</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
             </template>
             <span v-else class="no-action">-</span>
@@ -135,10 +146,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit } from '@element-plus/icons-vue'
 import { getMyProposals, withdrawProposal, resubmitProposal, updateProposal, deleteProposal } from '@/api/microSpecialty'
 import { getDepartments } from '@/api/department'
+import { exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
@@ -155,6 +168,7 @@ const submittingResubmit = ref(false)
 const editorFormRef = ref(null)
 const editorForm = ref({})
 const editorMode = ref('edit')
+const router = useRouter()
 const collegeLoading = ref(false)
 const colleges = ref([])
 const editorRules = {
@@ -164,8 +178,8 @@ const editorRules = {
   trainingObjective: [{ required: true, message: '请输入培养目标', trigger: 'blur' }]
 }
 
-const statusMap = { PENDING_REVIEW: '审核中', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回' }
-const statusTypeMap = { PENDING_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger', WITHDRAWN: 'info' }
+const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '审核中', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回' }
+const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger', WITHDRAWN: 'info' }
 const statusLabel = (s) => statusMap[s] || s
 const statusType = (s) => statusTypeMap[s] || 'info'
 const formatTime = (t) => t ? new Date(t).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'
@@ -247,6 +261,42 @@ const handleDelete = async (row) => {
   try { await ElMessageBox.confirm('确定删除该申报？删除后不可恢复。', '确认', { type: 'warning' }) } catch { return }
   try { await deleteProposal(row.id); ElMessage.success('已删除'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
+}
+
+const handlePreview = (row) => {
+  router.push(`/teacher/micro-specialties/storage-preview/${row.id}`)
+}
+
+const handleExportWord = async (row) => {
+  try {
+    const res = await exportStorageWord(row.id)
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `【${row.title || '申报'}】申请表.docx`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch (e) {
+    ElMessage.error('导出失败')
+  }
+}
+
+const handleExportPdf = async (row) => {
+  try {
+    const res = await exportStoragePdf(row.id)
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `【${row.title || '申报'}】申请表.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch (e) {
+    ElMessage.error('导出失败')
+  }
 }
 
 onMounted(fetchData)

@@ -2,19 +2,19 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 174 | Vue 视图数: 50 | Controller 数: 52 | API 文件数: 40
+> 实体数: 174 | Vue 视图数: 50 | Controller 数: 53 | API 文件数: 41
 
 ---
 
 ## 总览
 
-- ✅ 前后端匹配: 106 字段
+- ✅ 前后端匹配: 129 字段
 
-- ⚠️ 前端孤儿 (有前端引用无后端实体): 15 字段
+- ⚠️ 前端孤儿 (有前端引用无后端实体): 16 字段
 
-- 后端实体字段总数: 1590
+- 后端实体字段总数: 1616
 
-- 前端引用字段总数: 339
+- 前端引用字段总数: 360
 
 
 ## ⚠️ 前端孤儿字段
@@ -29,14 +29,14 @@
 3. 计算字段 (前端自行维护)
 
 
-### 可疑前端孤儿 (0 个)
+### 可疑前端孤儿 (1 个)
 
 
 | # | 字段名 | 出现位置 | 建议行动 |
 
 |---|--------|---------|---------|
 
-(无)
+| 1 | `microSpecialtyName` | micro-course-admin/src/views/teacher/MicroSpecialtyProposal.vue:microSpecialtyName | ❓ 需人工判断 |
 
 
 
@@ -679,6 +679,8 @@
 
 | Question | /api/questions | 6 | - |
 
+| StorageApplication | /api/storage-applications | 11 | - |
+
 | SystemConfig | /api/system-configs | 1 | - |
 
 | Tag | /api/tags | 7 | - |
@@ -916,7 +918,7 @@
 
 | MicroSpecialtyFeaturedAudit | 8 | 0 |
 
-| MicroSpecialtyProposal | 17 | 0 |
+| MicroSpecialtyProposal | 43 | 0 |
 
 | MicroSpecialtyTeacher | 15 | 0 |
 

@@ -121,7 +121,17 @@ public enum ErrorCode {
     CERTIFICATE_ALREADY_ISSUED(18009, "证书已颁发，不可重复", 409),
     NOTIFICATION_NOT_FOUND(18010, "通知不存在", 404),
     CART_ITEM_NOT_FOUND(18011, "购物车项不存在", 404),
-    CART_COURSE_ALREADY_ADDED(18012, "课程已在购物车中", 409);
+    CART_COURSE_ALREADY_ADDED(18012, "课程已在购物车中", 409),
+
+    // Phase 15: 微专业申请表
+    SA_NOT_FOUND(19001, "申请表不存在", 404),
+    SA_STATUS_INVALID(19002, "申请表状态不允许此操作", 400),
+    SA_FORM_INCOMPLETE(19003, "请补全必填项后再提交", 400),
+    SA_SIGNATURE_IMAGE_TOO_LARGE(19004, "签名/公章图片不能超过2MB", 400),
+    SA_SIGNATURE_IMAGE_INVALID_TYPE(19005, "签名/公章仅支持jpg/png格式", 400),
+    SA_EXPORT_TEMPLATE_MISSING(19006, "导出模板缺失", 500),
+    SA_AUTO_SAVE_CONFLICT(19007, "自动保存冲突，请刷新后重试", 409),
+    SA_MODULE_NOT_FOUND(19008, "模块标识不存在", 400);
 
     private final int code;
     private final String message;
