@@ -218,10 +218,12 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     public void autoSave(Long proposalId, Long userId, StorageApplicationSaveRequest request) {
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+            log.warn("autoSave skipped: proposal {} not found", proposalId);
+            return;
         }
         if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
+            log.warn("autoSave skipped: userId {} no permission for proposal {}", userId, proposalId);
+            return;
         }
 
         // P0-1 修复：autoSave 对非可编辑状态静默跳过（不抛异常，因为是后台操作）
