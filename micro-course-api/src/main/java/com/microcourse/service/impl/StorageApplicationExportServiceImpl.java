@@ -8,6 +8,7 @@ import com.microcourse.service.StorageApplicationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Phase 15: 申请表导出 Service 实现
@@ -32,7 +33,12 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
         this.wordGenerator = wordGenerator;
     }
 
+    /**
+     * P2 fix (C-006): Wrap export read in read-only transaction to prevent
+     * inconsistent data if save/autoSave writes concurrently.
+     */
     @Override
+    @Transactional(readOnly = true)
     public byte[] exportWord(Long proposalId) {
         log.info("exportWord: proposalId={}", proposalId);
         StorageApplicationVO data = storageApplicationService.getDetail(proposalId, null);
@@ -45,6 +51,7 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
     }
 
     @Override
+    @Transactional(readOnly = true)
     public byte[] exportPdf(Long proposalId) {
         log.info("exportPdf: proposalId={}", proposalId);
         StorageApplicationVO data = storageApplicationService.getDetail(proposalId, null);

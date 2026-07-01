@@ -42,7 +42,7 @@
       </el-result>
     </div>
 
-    <div v-if="!loadError" class="proposal-content">
+    <div v-if="!loadError" v-loading="loading" class="proposal-content">
 
     <!-- ========== 模块1：表头基础信息 ========== -->
     <el-card shadow="never" class="proposal-card">
@@ -52,7 +52,7 @@
           <el-button type="warning" plain size="small" @click="handleResetModule('module1')">重置模块</el-button>
         </div>
       </template>
-      <el-form :model="form" :rules="rules" ref="formRef1" label-width="110px" class="proposal-form">
+      <el-form :model="form" :rules="rules" ref="formRef1" label-width="80px" class="proposal-form">
         <el-form-item label="附件标题">
           <el-input :model-value="attachmentTitle" readonly />
         </el-form-item>
@@ -89,7 +89,7 @@
     </el-card>
 
     <!-- ========== 模块2：微专业基本情况 ========== -->
-    <el-card shadow="never" class="proposal-card" v-loading="loading">
+    <el-card shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
           <span class="card-title">模块2：微专业基本情况</span>
@@ -224,7 +224,7 @@
           <el-button type="warning" plain size="small" @click="handleResetModule('module3')">重置模块</el-button>
         </div>
       </template>
-      <el-form :model="form" label-width="110px" class="proposal-form">
+      <el-form :model="form" :rules="rules3" label-width="110px" class="proposal-form">
         <el-divider content-position="left">专业负责人</el-divider>
         <el-row :gutter="20">
           <el-col :span="8">
@@ -247,7 +247,7 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="联系电话">
+            <el-form-item label="联系电话" prop="leadPhone">
               <el-input v-model="form.leadPhone" placeholder="负责人电话" maxlength="11" />
             </el-form-item>
           </el-col>
@@ -391,6 +391,7 @@ const dirty = ref(false)
 const pendingSave = ref(false)  // RT-3: 标记正在执行的自动保存（防止标签页关闭数据丢失）
 const formRef1 = ref(null)
 const loadError = ref(false)  // P1-C-13: 全局加载错误标志
+const initialLoadComplete = ref(false)  // P2-D: 防止加载后不必要触发 autoSave
 
 // 附件标题（只读）
 const attachmentTitle = computed(() => {
@@ -498,6 +499,13 @@ const rules = {
   applyDate: [{ required: true, message: '请选择申请时间', trigger: 'change' }]
 }
 
+// ==================== 模块3 表单校验 (P2-A) ====================
+const rules3 = {
+  leadPhone: [
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
+  ]
+}
+
 // ==================== 计算属性 ====================
 const totalCourseHours = computed(() => {
   return courses.value.reduce((sum, row) => sum + (Number(row.hours) || 0), 0)
@@ -598,6 +606,7 @@ watch(
   [form, courses, leadCourses, teamMembers, signatures, sharedUnits],
   () => {
     if (!draftId.value) return
+    if (!initialLoadComplete.value) return  // P2-D: skip during initial load
     dirty.value = true
     if (autoSaveTimer.value) clearTimeout(autoSaveTimer.value)
     autoSaveTimer.value = setTimeout(async () => {
@@ -627,6 +636,16 @@ watch(
 async function handleSubmit() {
   if (!draftId.value) {
     ElMessage.warning('草稿尚未初始化')
+    return
+  }
+  // P2-G: 业务级校验 — 课程表至少1行
+  if (courses.value.length === 0) {
+    ElMessage.warning('请至少填写一行课程信息')
+    return
+  }
+  // P2-G: 业务级校验 — 教学团队至少1人
+  if (teamMembers.value.length === 0) {
+    ElMessage.warning('请至少填写一位教学团队成员')
     return
   }
   // P1-C-11 修复：增加程序化表单校验
@@ -773,6 +792,7 @@ async function loadDraft(id) {
     draftId.value = id
     dirty.value = false
     saveStatus.value = ''
+    initialLoadComplete.value = true  // P2-D: mark load complete to enable autoSave
   } catch (e) {
     loadError.value = true  // P1-C-13: 显示错误状态
     ElMessage.error(e?.response?.data?.message || '加载草稿失败')
@@ -884,7 +904,7 @@ onBeforeUnmount(() => {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .save-status {
@@ -972,7 +992,7 @@ onBeforeUnmount(() => {
 .footer-bar {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   padding-top: 8px;
   padding-bottom: 32px;
   border-top: 1px solid #ebeef5;

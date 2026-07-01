@@ -10,6 +10,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
 import com.microcourse.service.StorageApplicationService;
+import com.microcourse.util.FileUploadUtil;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.StorageValidator;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -236,6 +238,9 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
+        // P2-4 fix (S-004): validate filename to prevent path traversal
+        FileUploadUtil.assertSafeFilename(file.getOriginalFilename());
+
         // 校验文件
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE, "文件不能为空");
@@ -253,6 +258,32 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
 
         if (file.getSize() > 2 * 1024 * 1024) {
             throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_TOO_LARGE);
+        }
+
+        // P2-2 fix (S-004): verify file content via magic bytes (not just extension)
+        boolean validMagic = false;
+        try (InputStream is = file.getInputStream()) {
+            byte[] header = new byte[8];
+            int read = is.read(header, 0, 8);
+            if (read >= 8) {
+                // JPEG: FF D8 FF
+                if (header[0] == (byte)0xFF && header[1] == (byte)0xD8 && header[2] == (byte)0xFF) {
+                    validMagic = true;
+                }
+                // PNG: 89 50 4E 47 0D 0A 1A 0A
+                if (header[0] == (byte)0x89 && header[1] == 0x50 && header[2] == 0x4E &&
+                    header[3] == 0x47 && header[4] == 0x0D && header[5] == 0x0A &&
+                    header[6] == 0x1A && header[7] == 0x0A) {
+                    validMagic = true;
+                }
+            }
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
+                "无法读取文件内容");
+        }
+        if (!validMagic) {
+            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
+                "文件内容不是有效的 jpg/png 图片");
         }
 
         // 保存文件到本地 uploads 目录
@@ -1039,7 +1070,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             return LocalDateTime.parse(trimmed.replace(" ", "T"),
                     java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         } catch (Exception e) {
-            log.error("日期解析失败: input='{}', error={}", dateStr, e.getMessage());
+            String redacted = dateStr.length() > 20 ? dateStr.substring(0, 10) + "..." : dateStr;
+            log.error("日期解析失败: input='{}' (len={}), error={}", redacted, dateStr.length(), e.getMessage());
             return null;
         }
     }

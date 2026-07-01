@@ -244,10 +244,19 @@ public class StorageApplicationPdfGenerator {
                         doc.add(new Paragraph("负责人签字：" + sig.getSignatureText(), bodyFont));
                     } else if ("IMAGE".equals(sig.getSignatureType()) && sig.getSignatureImageUrl() != null) {
                         try {
-                            Image img = Image.getInstance(new URL(sig.getSignatureImageUrl()));
-                            img.scaleToFit(100, 40);
-                            doc.add(img);
+                            URL imgUrl = new URL(sig.getSignatureImageUrl());
+                            // SSRF protection: block private/internal IP ranges
+                            String host = imgUrl.getHost();
+                            if (host == null || host.equals("localhost") || host.equals("127.0.0.1") || host.startsWith("10.") || host.startsWith("172.16.") || host.startsWith("192.168.") || host.equals("[::1]") || host.endsWith(".local")) {
+                                log.warn("SSRF blocked: rejecting private URL host={}", host);
+                                doc.add(new Paragraph("[签名图片-地址无效]", bodyFont));
+                            } else {
+                                Image img = Image.getInstance(imgUrl);
+                                img.scaleToFit(100, 40);
+                                doc.add(img);
+                            }
                         } catch (Exception e) {
+                            log.warn("签名图片加载失败: {}", e.getMessage());
                             doc.add(new Paragraph("[签名图片]", bodyFont));
                         }
                     }

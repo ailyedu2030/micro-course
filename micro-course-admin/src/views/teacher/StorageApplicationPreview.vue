@@ -8,7 +8,7 @@
     </div>
 
     <!-- 错误状态 -->
-    <el-result v-if="error" icon="error" title="加载失败" sub-title="无法加载预览数据，请稍后重试">
+    <el-result v-if="error" icon="error" title="加载失败" :sub-title="errorMessage">
       <template #extra><el-button type="primary" @click="loadData">重试</el-button></template>
     </el-result>
 
@@ -309,6 +309,7 @@ function sanitizeHtml(html) {
 const route = useRoute()
 const loading = ref(true)
 const error = ref(false)
+const errorMessage = ref('')  // P2-F: 具体错误信息
 const data = ref(null)
 
 const loadData = async () => {
@@ -317,8 +318,9 @@ const loadData = async () => {
   try {
     const res = await getStoragePreview(route.params.id)
     data.value = res.data
-  } catch {
+  } catch (e) {
     error.value = true
+    errorMessage.value = e?.response?.data?.message || e?.message || '无法加载预览数据，请稍后重试'  // P2-F: 显示具体错误
   } finally {
     loading.value = false
   }
@@ -346,7 +348,8 @@ const handleExport = async (type) => {
     URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
   } catch (e) {
-    ElMessage.error('导出失败')
+    const msg = e?.response?.data?.message || e?.message || '导出失败'  // P2-F: 显示具体错误
+    ElMessage.error(msg)
   }
 }
 

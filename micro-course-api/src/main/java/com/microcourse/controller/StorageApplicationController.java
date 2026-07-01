@@ -4,6 +4,8 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.dto.R;
 import com.microcourse.dto.storage.*;
+import com.microcourse.entity.MicroSpecialtyProposal;
+import com.microcourse.repository.MicroSpecialtyProposalRepository;
 import com.microcourse.service.StorageApplicationService;
 import com.microcourse.service.StorageApplicationExportService;
 import com.microcourse.util.SecurityUtil;
@@ -30,12 +32,15 @@ public class StorageApplicationController {
 
     private final StorageApplicationService storageApplicationService;
     private final StorageApplicationExportService exportService;
+    private final MicroSpecialtyProposalRepository proposalRepository;
 
     public StorageApplicationController(
             StorageApplicationService storageApplicationService,
-            StorageApplicationExportService exportService) {
+            StorageApplicationExportService exportService,
+            MicroSpecialtyProposalRepository proposalRepository) {
         this.storageApplicationService = storageApplicationService;
         this.exportService = exportService;
+        this.proposalRepository = proposalRepository;
     }
 
     /**
@@ -87,6 +92,9 @@ public class StorageApplicationController {
     /**
      * 5. 自动保存
      * PATCH /api/storage-applications/{id}/auto-save
+     *
+     * 注意：autoSave 不添加 @Valid 注解，因为自动保存是部分保存，
+     * 允许发送不完整的表单数据。完整校验在 submit() 时执行。
      */
     @PatchMapping("/{id}/auto-save")
     @PreAuthorize("hasRole('TEACHER')")
@@ -219,13 +227,13 @@ public class StorageApplicationController {
     }
 
     /**
-     * 辅助方法：从申请表详情中解析学校名称，用于导出文件名。
+     * P2-3 fix (R-008): 使用轻量级查询替代 getDetail() 以避免导出时重复查询。
+     * getDetail() 会联查所有子表 + 用户名/院系名，而导出文件名仅需 title 字段。
      */
     private String resolveSchoolName(Long proposalId) {
         try {
-            Long userId = SecurityUtil.getCurrentUserId();
-            StorageApplicationVO vo = storageApplicationService.getDetail(proposalId, userId);
-            return vo != null && vo.getTitle() != null ? vo.getTitle() : "申报高校";
+            MicroSpecialtyProposal p = proposalRepository.selectById(proposalId);
+            return p != null && p.getTitle() != null ? p.getTitle() : "申报高校";
         } catch (Exception e) {
             return "申报高校";
         }
