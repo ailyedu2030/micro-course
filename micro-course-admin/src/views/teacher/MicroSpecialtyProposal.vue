@@ -761,7 +761,7 @@ async function handleExport(type) {
     const a = document.createElement('a')
     a.href = url
     const ext = type === 'word' ? 'docx' : 'pdf'
-    const schoolName = (form.value.title || '申报高校').replace(/[/\\:*?"<>|]/g, '').trim()
+    const schoolName = form.value.title || '申报高校'
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     a.download = `【${schoolName}】整理收纳微专业申请表_${date}.${ext}`
     a.click()
