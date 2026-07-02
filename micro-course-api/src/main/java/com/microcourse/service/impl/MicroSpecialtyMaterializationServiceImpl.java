@@ -3,6 +3,7 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.*;
 import com.microcourse.entity.proposal.*;
+import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
@@ -110,7 +111,7 @@ public class MicroSpecialtyMaterializationServiceImpl implements MicroSpecialtyM
                             newCourse.setTitle(pc.getCourseName());
                             newCourse.setPrice(assign.getFrozenPrice());
                             newCourse.setTeacherId(assign.getTeacherId());
-                            newCourse.setStatus(1); // PENDING_REVIEW → 待发布
+                            newCourse.setStatus(CourseStatus.PENDING_REVIEW.getCode()); // 待审核 → 待发布
                             newCourse.setCreatedAt(LocalDateTime.now());
                             newCourse.setUpdatedAt(LocalDateTime.now());
                             courseRepo.insert(newCourse);
