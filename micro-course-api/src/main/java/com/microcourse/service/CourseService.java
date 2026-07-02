@@ -76,7 +76,7 @@ public interface CourseService {
     CourseStatsVO computeStats(Long courseId);
 
     /** Phase 4: 更新课程定价 */
-    void updatePricing(Long courseId, Object request);
+    void updatePricing(Long courseId, CoursePricingRequest request);
 
     /** Phase 4: 查询课程对某教师的费用 */
     Map<String, Object> getPricingForAdopter(Long courseId);

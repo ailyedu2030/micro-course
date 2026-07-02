@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -27,6 +28,9 @@ public class MicroSpecialtyCourseChapter {
     @TableField("proposal_chapter_id")
     private Long proposalChapterId;
 
+    @Version
+    private Integer version;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -44,6 +48,8 @@ public class MicroSpecialtyCourseChapter {
     public void setSource(String source) { this.source = source; }
     public Long getProposalChapterId() { return proposalChapterId; }
     public void setProposalChapterId(Long proposalChapterId) { this.proposalChapterId = proposalChapterId; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

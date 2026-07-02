@@ -82,7 +82,7 @@ public class MicroSpecialtyTeacherController {
 
     /** 跨学院审批（ACADEMIC） */
     @PostMapping("/{inviteId}/review-cross-dept")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
     public R<Void> reviewCrossDept(@PathVariable Long inviteId,
                                     @RequestBody Map<String, Object> body) {
         boolean approve = "approve".equals(body.get("action"))

@@ -889,31 +889,33 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                         sqlSession.commit();
                     }
                 }
-            }
-        }
 
-        // Phase 2: 章节-教师分配同步
-        if (request.getChapterAssignments() != null) {
-            // 先删后插
-            assignmentRepository.delete(new LambdaQueryWrapper<ChapterTeacherAssignment>()
-                    .eq(ChapterTeacherAssignment::getProposalId, proposalId));
-            if (!request.getChapterAssignments().isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ChapterTeacherAssignmentRepository batchRepo = sqlSession.getMapper(ChapterTeacherAssignmentRepository.class);
-                    for (ChapterAssignmentItem assignItem : request.getChapterAssignments()) {
-                        // Phase 2: 提案阶段不做 teacherId 的 TEACHER 角色验证
-                        // (因为 proposal_team_members 是文本表, 无实际用户 ID)
-                        // 真正的教师验证在 Phase 3 (邀请流程) 中进行
-                        ChapterTeacherAssignment entity = new ChapterTeacherAssignment();
-                        entity.setProposalId(proposalId);
-                        entity.setCourseId(assignItem.getCourseId());
-                        entity.setChapterId(assignItem.getChapterId());
-                        entity.setTeacherId(assignItem.getTeacherId());
-                        entity.setSource("TBD");
-                        entity.setAcceptStatus("PENDING");
-                        batchRepo.insert(entity);
+                // Phase 2: 章节-教师分配同步 (必须在 chapters flush 后, allChapters 有正确 ID)
+                if (request.getChapterAssignments() != null && !request.getChapterAssignments().isEmpty()) {
+                    assignmentRepository.delete(new LambdaQueryWrapper<ChapterTeacherAssignment>()
+                            .eq(ChapterTeacherAssignment::getProposalId, proposalId));
+                    try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+                        ChapterTeacherAssignmentRepository batchRepo = sqlSession.getMapper(ChapterTeacherAssignmentRepository.class);
+                        for (ChapterAssignmentItem assignItem : request.getChapterAssignments()) {
+                            Long newChapterId = assignItem.getChapterId();
+                            Long newCourseId = assignItem.getCourseId();
+                            for (ProposalChapter ch : allChapters) {
+                                if (ch.getId().equals(newChapterId)) {
+                                    newCourseId = ch.getCourseId();
+                                    break;
+                                }
+                            }
+                            ChapterTeacherAssignment entity = new ChapterTeacherAssignment();
+                            entity.setProposalId(proposalId);
+                            entity.setCourseId(newCourseId);
+                            entity.setChapterId(newChapterId);
+                            entity.setTeacherId(assignItem.getTeacherId());
+                            entity.setSource("TBD");
+                            entity.setAcceptStatus("PENDING");
+                            batchRepo.insert(entity);
+                        }
+                        sqlSession.commit();
                     }
-                    sqlSession.commit();
                 }
             }
         }

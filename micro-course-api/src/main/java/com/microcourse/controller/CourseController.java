@@ -126,7 +126,7 @@ public class CourseController {
     /** Phase 4: 更新课程定价 */
     @PutMapping("/{id}/pricing")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
-    public R<Void> updatePricing(@PathVariable Long id, @RequestBody CoursePricingRequest request) {
+    public R<Void> updatePricing(@PathVariable Long id, @Valid @RequestBody CoursePricingRequest request) {
         courseService.updatePricing(id, request);
         return R.ok();
     }

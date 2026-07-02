@@ -157,11 +157,9 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         if (teacherId != null && params != null && params.containsKey("role")) {
             String roleFilter = (String) params.get("role");
             if ("leading".equals(roleFilter)) {
-                wrapper.inSql(MicroSpecialty::getId,
-                    "SELECT micro_specialty_id FROM micro_specialty_teachers WHERE teacher_id = " + teacherId + " AND role = 'LEAD'");
+                wrapper.apply("EXISTS (SELECT 1 FROM micro_specialty_teachers WHERE micro_specialty_id = micro_specialties.id AND teacher_id = {0} AND role = 'LEAD')", teacherId);
             } else if ("participating".equals(roleFilter)) {
-                wrapper.inSql(MicroSpecialty::getId,
-                    "SELECT micro_specialty_id FROM micro_specialty_teachers WHERE teacher_id = " + teacherId + " AND role IN ('LEAD','MEMBER','ASSISTANT')");
+                wrapper.apply("EXISTS (SELECT 1 FROM micro_specialty_teachers WHERE micro_specialty_id = micro_specialties.id AND teacher_id = {0} AND role IN ('LEAD','MEMBER','ASSISTANT'))", teacherId);
             }
         }
         wrapper.orderByDesc(MicroSpecialty::getCreatedAt);
@@ -724,6 +722,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     public void cancel(Long id) {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+
+        requireLeadOf(id);
 
         // 禁止重复取消
         if ("CANCELLED".equals(ms.getStatus())) throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已被取消");

@@ -1186,20 +1186,17 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updatePricing(Long courseId, Object request) {
+    public void updatePricing(Long courseId, CoursePricingRequest request) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         Long userId = SecurityUtil.getCurrentUserId();
         if (!course.getTeacherId().equals(userId) && !SecurityUtil.isAdmin())
             throw new BusinessException(ErrorCode.NO_PERMISSION);
-        // 用 instanceof 处理 CoursePricingRequest
-        if (request instanceof CoursePricingRequest req) {
-            course.setPrice(req.getBasePrice());
-            course.setFreeAccessScope(req.getFreeAccessScope());
-            course.setFreeDeptIds(req.getFreeDeptIds());
-            course.setDiscountScope(req.getDiscountScope());
-            course.setDiscountPercent(req.getDiscountPercent());
-        }
+        course.setPrice(request.getBasePrice());
+        course.setFreeAccessScope(request.getFreeAccessScope());
+        course.setFreeDeptIds(request.getFreeDeptIds());
+        course.setDiscountScope(request.getDiscountScope());
+        course.setDiscountPercent(request.getDiscountPercent());
         course.setUpdatedAt(LocalDateTime.now());
         courseRepository.updateById(course);
         evictCourseCacheAfterCommit(courseId);

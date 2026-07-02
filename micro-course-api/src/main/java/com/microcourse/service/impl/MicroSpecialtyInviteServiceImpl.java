@@ -449,7 +449,10 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         record.setInviteStatus("ACTIVE");
         record.setRespondedAt(LocalDateTime.now());
         record.setVersion(record.getVersion() != null ? record.getVersion() : 0);
-        teacherRepository.updateById(record);
+        int updatedRows = teacherRepository.updateById(record);
+        if (updatedRows == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION, "邀请已被其他操作修改，请刷新后重试");
+        }
 
         // 5. 更新 chapter_teacher_assignments 中属于该邀请的章节决策
         LambdaUpdateWrapper<ChapterTeacherAssignment> updateWrapper = new LambdaUpdateWrapper<>();

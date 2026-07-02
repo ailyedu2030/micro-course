@@ -440,7 +440,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         try {
             materializationService.materialize(proposalId);
         } catch (Exception e) {
-            log.error("materialize failed for proposal {}: {}", proposalId, e.getMessage());
+            log.error("materialize failed for proposal {}", proposalId, e);
             // 不阻断审批流程, 但记录错误供后续排查
         }
     }
