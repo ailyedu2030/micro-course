@@ -86,11 +86,11 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="归属课程" width="160">
+            <el-table-column label="分配章节" width="120">
               <template #default="{ row: r }">
-                <el-select v-model="inviteCourses[r.id]" size="small" filterable placeholder="选择课程" class="full-width" clearable>
-                  <el-option v-for="c in courseOptions" :key="c.id" :label="c.courseTitle || c.title" :value="c.id" />
-                </el-select>
+                <el-button link type="primary" size="small" @click="openChapterSelect(r)">
+                  选择章节 {{ getInviteChapterCount(r.id) > 0 ? '(' + getInviteChapterCount(r.id) + ')' : '' }}
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -102,6 +102,23 @@
         </el-card>
       </template>
     </div>
+    <el-dialog v-model="chapterPopupVisible" title="选择章节" width="500px">
+      <template v-if="chapterPopupTeacher">
+        <el-alert :title="'为 ' + (chapterPopupTeacher.realName || '') + ' 分配章节'" type="info" :closable="false" show-icon class="mg-bottom-12" />
+        <el-checkbox-group v-model="inviteChapters[chapterPopupTeacher.id]">
+          <div v-for="ch in chapterOptions" :key="ch.id" class="chapter-check-row">
+            <el-checkbox :label="ch.id" :value="ch.id">
+              {{ ch.courseTitle || ch.courseName }} / {{ ch.chapterTitle || ch.title }}
+            </el-checkbox>
+          </div>
+        </el-checkbox-group>
+        <div v-if="chapterOptions.length === 0" class="empty-hint">暂无章节</div>
+      </template>
+      <template #footer>
+        <el-button @click="chapterPopupVisible = false">取消</el-button>
+        <el-button type="primary" @click="chapterPopupVisible = false">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -138,6 +155,10 @@ const inviteCourses = reactive({})
 const inviting = ref(false)
 const removingId = ref(null)
 const candidateTableRef = ref(null)
+const chapterOptions = ref([])
+const chapterPopupVisible = ref(false)
+const chapterPopupTeacher = ref(null)
+const inviteChapters = reactive({})
 
 const fetchData = async () => {
   error.value = false; loading.value = true
@@ -202,7 +223,8 @@ const handleBatchInvite = async () => {
       await inviteTeacher(msId.value, {
         teacherId: t.id,
         role: inviteRoles[t.id] || 'MEMBER',
-        courseId: inviteCourses[t.id] || null
+        courseId: inviteCourses[t.id] || null,
+        chapterIds: inviteChapters[t.id] || []
       })
     } catch (e) {
       failed.push({ name: t.realName, msg: e?.response?.data?.message || '失败' })
@@ -252,7 +274,43 @@ const handleBatchRemove = async () => {
   selectedCandidates.value = []
 }
 
-onMounted(fetchData)
+// 获取某教师当前已选章节数
+function getInviteChapterCount(teacherId) {
+  return (inviteChapters[teacherId] || []).length
+}
+
+// 打开章节选择弹窗
+function openChapterSelect(teacher) {
+  chapterPopupTeacher.value = teacher
+  if (!inviteChapters[teacher.id]) inviteChapters[teacher.id] = []
+  chapterPopupVisible.value = true
+}
+
+// 加载微专业的章节选项
+async function loadChapterOptions() {
+  try {
+    const { data } = await getMicroSpecialtyDetail(msId.value)
+    const chapters = []
+    if (data.courses) {
+      for (const c of data.courses) {
+        if (c.chapters) {
+          for (const ch of c.chapters) {
+            chapters.push({
+              id: ch.id,
+              chapterTitle: ch.title,
+              hours: ch.hours,
+              courseTitle: c.courseName,
+              courseId: c.id
+            })
+          }
+        }
+      }
+    }
+    chapterOptions.value = chapters
+  } catch { ElMessage.warning('加载章节失败') }
+}
+
+onMounted(() => { fetchData(); loadChapterOptions() })
 </script>
 
 <style scoped>
@@ -269,4 +327,7 @@ onMounted(fetchData)
 .filter-select { width: 200px; }
 
 .invite-bar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4); margin-top: var(--space-4); background: var(--el-color-primary-light-9); border-radius: var(--radius-md); }
+.mg-bottom-12 { margin-bottom: 12px; }
+.chapter-check-row { padding: 6px 0; }
+.empty-hint { padding: 24px; text-align: center; color: var(--el-text-color-secondary); }
 </style>

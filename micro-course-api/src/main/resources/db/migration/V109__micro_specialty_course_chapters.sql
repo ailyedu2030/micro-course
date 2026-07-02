@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS micro_specialty_course_chapters (
     micro_specialty_id  BIGINT       NOT NULL REFERENCES micro_specialties(id) ON DELETE CASCADE,
     course_id           BIGINT       NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     chapter_id          BIGINT       NOT NULL REFERENCES course_chapters(id) ON DELETE CASCADE,
-    source              VARCHAR(20)  NOT NULL,  -- 'from_proposal' | 'new' | 'existing'
+    source              VARCHAR(20)  NOT NULL,
     proposal_chapter_id BIGINT       REFERENCES proposal_chapters(id),
     created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_ms_cc UNIQUE (micro_specialty_id, chapter_id)

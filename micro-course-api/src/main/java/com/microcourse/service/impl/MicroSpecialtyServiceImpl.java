@@ -18,6 +18,8 @@ import com.microcourse.dto.microSpecialty.MicroSpecialtyUpdateRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Department;
+import com.microcourse.entity.proposal.ChapterTeacherAssignment;
+import com.microcourse.entity.proposal.ProposalChapter;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyCourse;
@@ -38,7 +40,9 @@ import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyFeaturedAuditRepository;
 import com.microcourse.repository.MicroSpecialtyProposalRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
+import com.microcourse.repository.ChapterTeacherAssignmentRepository;
 import com.microcourse.repository.MicroSpecialtyTeacherRepository;
+import com.microcourse.repository.ProposalChapterRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AdminSettingService;
 import com.microcourse.service.MicroSpecialtyEnrollmentService;
@@ -80,6 +84,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     private final MicroSpecialtyFeaturedService featuredService;
     private final DepartmentRepository departmentRepository;
     private final CourseRepository courseRepository;
+    private final ProposalChapterRepository proposalChapterRepository;
+    private final ChapterTeacherAssignmentRepository chapterAssignRepo;
 
     public MicroSpecialtyServiceImpl(MicroSpecialtyRepository msRepository,
                                      MicroSpecialtyCourseRepository msCourseRepository,
@@ -95,7 +101,9 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                                      MicroSpecialtyFeaturedAuditRepository msFeaturedAuditRepository,
                                      @Lazy MicroSpecialtyFeaturedService featuredService,
                                      DepartmentRepository departmentRepository,
-                                     CourseRepository courseRepository) {
+                                     CourseRepository courseRepository,
+                                     ProposalChapterRepository proposalChapterRepository,
+                                     ChapterTeacherAssignmentRepository chapterAssignRepo) {
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
         this.msTeacherRepository = msTeacherRepository;
@@ -111,6 +119,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         this.featuredService = featuredService;
         this.departmentRepository = departmentRepository;
         this.courseRepository = courseRepository;
+        this.proposalChapterRepository = proposalChapterRepository;
+        this.chapterAssignRepo = chapterAssignRepo;
     }
 
     // ====== 查询 ======
@@ -1027,6 +1037,21 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         record.setInviteExpiresAt(LocalDateTime.now().plusDays(7));
         record.setCreatedAt(LocalDateTime.now());
         msTeacherRepository.insert(record);
+
+        // Phase 3: 多章节分配
+        if (request.getChapterIds() != null && !request.getChapterIds().isEmpty()) {
+            for (Long chapterId : request.getChapterIds()) {
+                ProposalChapter chapter = proposalChapterRepository.selectById(chapterId);
+                ChapterTeacherAssignment assign = new ChapterTeacherAssignment();
+                assign.setChapterId(chapterId);
+                assign.setTeacherId(request.getTeacherId());
+                assign.setProposalId(msId);
+                assign.setCourseId(chapter != null ? chapter.getCourseId() : null);
+                assign.setSource("TBD");
+                assign.setAcceptStatus("PENDING");
+                chapterAssignRepo.insert(assign);
+            }
+        }
 
         notificationService.notifyAsync(request.getTeacherId(), NotificationType.MS_INVITE_TEAM,
                 "微专业团队邀请", "您被邀请加入微专业《" + ms.getTitle() + "》团队", msId);
