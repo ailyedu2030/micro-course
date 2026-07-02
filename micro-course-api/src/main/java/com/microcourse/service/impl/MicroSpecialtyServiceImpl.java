@@ -165,8 +165,41 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         wrapper.orderByDesc(MicroSpecialty::getCreatedAt);
 
         IPage<MicroSpecialty> ipage = msRepository.selectPage(new Page<>(page + 1, size), wrapper);
-        List<MicroSpecialtyVO> vos = ipage.getRecords().stream()
-                .map(this::toVO).collect(Collectors.toList());
+        List<MicroSpecialty> records = ipage.getRecords();
+        List<MicroSpecialtyVO> vos = new java.util.ArrayList<>(records.size());
+
+        // P2-7: 批量预加载 N+1 → 用 IN 查询一次取完
+        java.util.Set<Long> deptIds = new java.util.HashSet<>();
+        java.util.Set<Long> teacherIds = new java.util.HashSet<>();
+        java.util.Set<Long> creatorIds = new java.util.HashSet<>();
+        for (MicroSpecialty ms : records) {
+            if (ms.getOfferDepartmentId() != null) deptIds.add(ms.getOfferDepartmentId());
+            if (ms.getLeadTeacherId() != null) teacherIds.add(ms.getLeadTeacherId());
+            if (ms.getCreatorId() != null) creatorIds.add(ms.getCreatorId());
+        }
+
+        java.util.Map<Long, String> deptNameMap = new java.util.HashMap<>();
+        if (!deptIds.isEmpty()) {
+            departmentRepository.selectBatchIds(deptIds).forEach(d -> deptNameMap.put(d.getId(), d.getName()));
+        }
+        java.util.Map<Long, String> teacherNameMap = new java.util.HashMap<>();
+        if (!teacherIds.isEmpty()) {
+            userRepository.selectBatchIds(teacherIds).forEach(u -> teacherNameMap.put(u.getId(), u.getRealName()));
+        }
+        java.util.Map<Long, String> creatorNameMap = new java.util.HashMap<>();
+        if (!creatorIds.isEmpty()) {
+            userRepository.selectBatchIds(creatorIds).forEach(u -> creatorNameMap.put(u.getId(), u.getRealName()));
+        }
+
+        for (MicroSpecialty ms : records) {
+            MicroSpecialtyVO vo = new MicroSpecialtyVO();
+            copyToVO(ms, vo);
+            // 批量预加载赋值（覆盖 copyToVO 内的 N+1 查询）
+            if (ms.getOfferDepartmentId() != null) vo.setDepartmentName(deptNameMap.get(ms.getOfferDepartmentId()));
+            if (ms.getLeadTeacherId() != null) vo.setLeadTeacherName(teacherNameMap.get(ms.getLeadTeacherId()));
+            if (ms.getCreatorId() != null) vo.setCreatorName(creatorNameMap.get(ms.getCreatorId()));
+            vos.add(vo);
+        }
         return PageResult.of(vos, ipage.getTotal(), page, size);
     }
 
