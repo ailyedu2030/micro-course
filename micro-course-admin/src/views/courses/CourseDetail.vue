@@ -392,6 +392,10 @@ const fetchCourse = async () => {
       formData.courseType = data.courseType || 'VIDEO'
       formData.price = data.price ?? null
       formData.isFree = data.isFree !== false
+      formData.freeAccessScope = data.freeAccessScope || 'none'
+      formData.freeDeptIds = data.freeDeptIds || '[]'
+      formData.discountScope = data.discountScope || 'none'
+      formData.discountPercent = data.discountPercent ?? 0
       if (data.coverUrl) coverPreviewUrl.value = data.coverUrl
     }
   } catch (e) { ElMessage.error(e?.response?.data?.message || '获取课程信息失败') }

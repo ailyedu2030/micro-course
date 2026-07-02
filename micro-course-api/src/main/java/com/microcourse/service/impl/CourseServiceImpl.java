@@ -602,6 +602,11 @@ public class CourseServiceImpl implements CourseService {
         }
         if (request.getPrice() != null) { course.setPrice(request.getPrice()); course.setIsFree(request.getPrice().compareTo(java.math.BigDecimal.ZERO) == 0); }
         if (request.getIsFree() != null) course.setIsFree(request.getIsFree());
+        // Phase 4: 课程定价字段
+        if (request.getFreeAccessScope() != null) course.setFreeAccessScope(request.getFreeAccessScope());
+        if (request.getFreeDeptIds() != null) course.setFreeDeptIds(request.getFreeDeptIds());
+        if (request.getDiscountScope() != null) course.setDiscountScope(request.getDiscountScope());
+        if (request.getDiscountPercent() != null) course.setDiscountPercent(request.getDiscountPercent());
 
         course.setUpdatedAt(LocalDateTime.now());
 

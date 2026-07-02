@@ -26,6 +26,12 @@ public class CourseUpdateRequest {
     private BigDecimal price;
     private Boolean isFree;
 
+    // Phase 4: 课程定价
+    private String freeAccessScope;   // none | same_department | same_college | same_school
+    private String freeDeptIds;       // JSON 字符串
+    private String discountScope;     // none | same_college | same_school
+    private Integer discountPercent;  // 0-100
+
     public CourseUpdateRequest() {}
 
     public String getTitle() { return title; }
@@ -62,4 +68,13 @@ public class CourseUpdateRequest {
     public void setPrice(BigDecimal price) { this.price = price; }
     public Boolean getIsFree() { return isFree; }
     public void setIsFree(Boolean isFree) { this.isFree = isFree; }
+
+    public String getFreeAccessScope() { return freeAccessScope; }
+    public void setFreeAccessScope(String s) { this.freeAccessScope = s; }
+    public String getFreeDeptIds() { return freeDeptIds; }
+    public void setFreeDeptIds(String s) { this.freeDeptIds = s; }
+    public String getDiscountScope() { return discountScope; }
+    public void setDiscountScope(String s) { this.discountScope = s; }
+    public Integer getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(Integer n) { this.discountPercent = n; }
 }
