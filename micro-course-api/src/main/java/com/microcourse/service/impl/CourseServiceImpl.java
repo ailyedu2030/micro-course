@@ -517,6 +517,10 @@ public class CourseServiceImpl implements CourseService {
         course.setCourseType(courseType);
         course.setPrice(request.getPrice());
         course.setIsFree(request.getPrice() == null || request.getPrice().compareTo(java.math.BigDecimal.ZERO) == 0);
+        course.setFreeAccessScope(request.getFreeAccessScope());
+        course.setFreeDeptIds(request.getFreeDeptIds());
+        course.setDiscountScope(request.getDiscountScope());
+        course.setDiscountPercent(request.getDiscountPercent());
         course.setCategoryId(request.getCategoryId());
         course.setTeacherId(request.getTeacherId());
         course.setSubtitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getSubtitle()));

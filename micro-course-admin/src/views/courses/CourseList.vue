@@ -189,6 +189,33 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-divider content-position="left">定价规则</el-divider>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="免费范围">
+              <el-select v-model="formData.freeAccessScope" class="full-width">
+                <el-option label="无" value="none" />
+                <el-option label="同院系" value="same_department" />
+                <el-option label="同学院" value="same_college" />
+                <el-option label="同学校" value="same_school" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="优惠范围">
+              <el-select v-model="formData.discountScope" class="full-width">
+                <el-option label="无" value="none" />
+                <el-option label="同学院" value="same_college" />
+                <el-option label="同学校" value="same_school" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="优惠比例">
+              <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" />%
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="课程封面">
@@ -268,7 +295,11 @@ const formData = reactive({
   semester: '',
   difficulty: null,
   courseType: 'VIDEO',
-  price: null
+  price: null,
+  freeAccessScope: 'none',
+  freeDeptIds: '[]',
+  discountScope: 'none',
+  discountPercent: 0
 })
 
 // 封面上传相关
@@ -569,7 +600,11 @@ const handleSubmit = async () => {
       difficulty: formData.difficulty,
       courseType: formData.courseType || 'VIDEO',
       creditHours: formData.creditHours || 0,
-      price: formData.price || 0
+      price: formData.price || 0,
+      freeAccessScope: formData.freeAccessScope,
+      freeDeptIds: formData.freeDeptIds,
+      discountScope: formData.discountScope,
+      discountPercent: formData.discountPercent
     })
     const newCourseId = res?.data?.id
     if (newCourseId && coverFile.value) {

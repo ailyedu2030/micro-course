@@ -44,6 +44,11 @@ public class CourseCreateRequest {
 
     private java.math.BigDecimal price;
 
+    private String freeAccessScope;
+    private String freeDeptIds;
+    private String discountScope;
+    private Integer discountPercent;
+
     public CourseCreateRequest() {}
 
     public String getTitle() { return title; }
@@ -78,4 +83,13 @@ public class CourseCreateRequest {
     public void setCourseType(String courseType) { this.courseType = courseType; }
     public java.math.BigDecimal getPrice() { return price; }
     public void setPrice(java.math.BigDecimal price) { this.price = price; }
+
+    public String getFreeAccessScope() { return freeAccessScope; }
+    public void setFreeAccessScope(String s) { this.freeAccessScope = s; }
+    public String getFreeDeptIds() { return freeDeptIds; }
+    public void setFreeDeptIds(String s) { this.freeDeptIds = s; }
+    public String getDiscountScope() { return discountScope; }
+    public void setDiscountScope(String s) { this.discountScope = s; }
+    public Integer getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(Integer n) { this.discountPercent = n; }
 }
