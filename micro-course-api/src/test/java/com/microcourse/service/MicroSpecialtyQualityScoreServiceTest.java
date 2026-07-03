@@ -89,14 +89,14 @@ class MicroSpecialtyQualityScoreServiceTest {
         c1.put("course_id", 100L);
         c1.put("cnt", 8L);
         completed.add(c1);
-        when(enrollRepo.countCompletedByCourseIds(anyList())).thenReturn(completed);
+        when(enrollRepo.countCompletedByCourseIds(anyList(), anyString())).thenReturn(completed);
 
         List<Map<String, Object>> inProgressOrCompleted = new ArrayList<>();
         Map<String, Object> c2 = new HashMap<>();
         c2.put("course_id", 100L);
         c2.put("cnt", 10L);
         inProgressOrCompleted.add(c2);
-        when(enrollRepo.countInProgressOrCompletedByCourseIds(anyList())).thenReturn(inProgressOrCompleted);
+        when(enrollRepo.countInProgressOrCompletedByCourseIds(anyList(), anyString(), anyString(), anyString())).thenReturn(inProgressOrCompleted);
 
         List<Map<String, Object>> ratings = new ArrayList<>();
         Map<String, Object> r1 = new HashMap<>();
@@ -122,8 +122,8 @@ class MicroSpecialtyQualityScoreServiceTest {
         ms.setMaxStudents(0);
         when(msRepo.selectBatchIds(anyList())).thenReturn(Collections.singletonList(ms));
         when(msCourseRepo.selectCourseIdsByMsIds(anyList())).thenReturn(Collections.emptyList());
-        when(enrollRepo.countCompletedByCourseIds(anyList())).thenReturn(Collections.emptyList());
-        when(enrollRepo.countInProgressOrCompletedByCourseIds(anyList())).thenReturn(Collections.emptyList());
+        when(enrollRepo.countCompletedByCourseIds(anyList(), anyString())).thenReturn(Collections.emptyList());
+        when(enrollRepo.countInProgressOrCompletedByCourseIds(anyList(), anyString(), anyString(), anyString())).thenReturn(Collections.emptyList());
         when(reviewRepo.avgRatingByCourseIds(anyList())).thenReturn(Collections.emptyList());
 
         BigDecimal score = service.calculate(2L);

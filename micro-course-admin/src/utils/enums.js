@@ -51,7 +51,9 @@ export const EnrollmentStatus = {
   CANCELLED: 'CANCELLED',
   REJECTED: 'REJECTED',
   COMPLETED: 'COMPLETED',
-  DROPPED: 'DROPPED'
+  DROPPED: 'DROPPED',
+  /** @deprecated LEGACY 兼容值，后端新写入已逐步迁移为 APPROVED */
+  ENROLLED: 'ENROLLED'
 }
 
 /** 通知类型（值=code 字符串，对齐后端 NotificationType.getCode()，持久化进 notifications.type） */

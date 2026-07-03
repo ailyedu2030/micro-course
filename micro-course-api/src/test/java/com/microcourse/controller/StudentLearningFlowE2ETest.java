@@ -2,6 +2,7 @@ package com.microcourse.controller;
 
 import com.microcourse.BaseIntegrationTest;
 
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.util.JwtUtil;
@@ -274,8 +275,8 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.data.courseId").value((int) COURSE_ID));
 
         Long count = jdbc.queryForObject(
-                "SELECT count(*) FROM enrollments WHERE user_id = ? AND course_id = ? AND enrollment_status <> 'CANCELLED'",
-                Long.class, STUDENT_ID, COURSE_ID);
+                "SELECT count(*) FROM enrollments WHERE user_id = ? AND course_id = ? AND enrollment_status <> ?",
+                Long.class, STUDENT_ID, COURSE_ID, EnrollmentStatus.CANCELLED.getValue());
         assertTrue(count != null && count >= 1, "选课后应落库 enrollment 记录");
     }
 

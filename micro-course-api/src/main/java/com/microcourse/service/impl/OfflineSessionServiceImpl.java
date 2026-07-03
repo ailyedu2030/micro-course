@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.AttendanceRecordVO;
 import com.microcourse.dto.OfflineSessionCreateRequest;
 import com.microcourse.enums.AttendanceStatus;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.dto.OfflineSessionUpdateRequest;
 import com.microcourse.dto.OfflineSessionVO;
 import com.microcourse.dto.PageResult;
@@ -197,7 +198,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, chapter.getCourseId())
                         .eq(Enrollment::getUserId, userId)
-                        .in(Enrollment::getEnrollmentStatus, "ENROLLED", "IN_PROGRESS", "COMPLETED"));
+                        .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue(), EnrollmentStatus.COMPLETED.getValue()));
         if (enrollmentCount == 0) {
             throw new BusinessException(ErrorCode.NOT_ENROLLED);
         }
@@ -287,7 +288,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
             totalCount = Math.toIntExact(enrollmentRepository.selectCount(
                     new LambdaQueryWrapper<Enrollment>()
                             .eq(Enrollment::getCourseId, chapter.getCourseId())
-                            .in(Enrollment::getEnrollmentStatus, "ENROLLED", "IN_PROGRESS", "COMPLETED")));
+                            .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue(), EnrollmentStatus.COMPLETED.getValue())));
         }
         final Integer finalTotalCount = totalCount;
 

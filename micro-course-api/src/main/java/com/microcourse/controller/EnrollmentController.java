@@ -9,6 +9,7 @@ import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.StudentDetailVO;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.EnrollmentRepository;
@@ -115,7 +116,10 @@ public class EnrollmentController {
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
             Long currentUserId = SecurityUtil.getCurrentUserId();
             // 通过 DB 聚合查询：当前教师授课课程 + 学生选课，交集非空则通过
-            long count = enrollmentRepository.countByTeacherAndStudent(currentUserId, userId);
+            long count = enrollmentRepository.countByTeacherAndStudent(currentUserId, userId,
+                    EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                    EnrollmentStatus.APPROVED.getValue(),
+                    EnrollmentStatus.COMPLETED.getValue());
             if (count == 0) {
                 throw new BusinessException(ErrorCode.NO_PERMISSION, "该学生不在您的授课课程中");
             }

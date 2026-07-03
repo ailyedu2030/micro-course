@@ -907,7 +907,7 @@ public class CourseServiceImpl implements CourseService {
         long enrollCount = enrollmentRepository.selectCount(
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, id)
-                        .notIn(Enrollment::getEnrollmentStatus, "CANCELLED", "WAITLIST"));
+                        .notIn(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue(), EnrollmentStatus.WAITLIST.getValue()));
         if (enrollCount > 0) {
             throw new BusinessException(ErrorCode.COURSE_HAS_ENROLLMENTS);
         }

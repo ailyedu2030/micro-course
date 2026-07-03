@@ -14,6 +14,7 @@ import com.microcourse.entity.MicroSpecialtyCourse;
 import com.microcourse.entity.MicroSpecialtyEnrollment;
 import com.microcourse.entity.User;
 import com.microcourse.entity.Department;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
@@ -219,7 +220,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         new LambdaQueryWrapper<Enrollment>()
                                 .eq(Enrollment::getCourseId, mc.getCourseId())
                                 .eq(Enrollment::getUserId, en.getUserId())
-                                .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
+                                .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
 
                 BigDecimal minScore = mc.getMinScore() != null ? mc.getMinScore() : BigDecimal.valueOf(60);
                 boolean alreadyPassed = existingEnroll != null
@@ -636,13 +637,13 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         new LambdaQueryWrapper<Enrollment>()
                                 .eq(Enrollment::getCourseId, mc.getCourseId())
                                 .eq(Enrollment::getUserId, en.getUserId())
-                                .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
+                                .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
                 if (courseEn != null) {
                     courseEnrollmentRepository.update(null,
                             new LambdaUpdateWrapper<Enrollment>()
                                     .eq(Enrollment::getId, courseEn.getId())
                                     .eq(Enrollment::getVersion, courseEn.getVersion())
-                                    .set(Enrollment::getEnrollmentStatus, "CANCELLED")
+                                    .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
                                     .set(Enrollment::getUpdatedAt, LocalDateTime.now())
                                     .setSql("version = version + 1"));
                 }
@@ -839,7 +840,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                     new LambdaQueryWrapper<Enrollment>()
                             .eq(Enrollment::getCourseId, mc.getCourseId())
                             .eq(Enrollment::getUserId, en.getUserId())
-                            .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
+                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
             if (courseEn != null) {
                 // P1-11: 收集课程级 progress
                 if (courseEn.getProgress() != null) {
@@ -891,7 +892,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                     new LambdaQueryWrapper<Enrollment>()
                             .eq(Enrollment::getCourseId, mc.getCourseId())
                             .eq(Enrollment::getUserId, en.getUserId())
-                            .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
+                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
             if (courseEn != null && courseEn.getFinalScore() != null) {
                 totalElectiveScore += courseEn.getFinalScore().doubleValue();
                 electivePassedCount++;

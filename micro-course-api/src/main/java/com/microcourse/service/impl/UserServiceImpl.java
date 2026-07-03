@@ -17,6 +17,7 @@ import com.microcourse.entity.Department;
 import com.microcourse.entity.Major;
 import com.microcourse.entity.OperationLog;
 import com.microcourse.entity.User;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.UserRole;
 import com.microcourse.enums.UserStatus;
 import com.microcourse.exception.BusinessException;
@@ -231,7 +232,10 @@ public class UserServiceImpl implements UserService {
             User targetUser = user;
             if (targetUser != null && com.microcourse.enums.UserRole.STUDENT.equals(targetUser.getRole())) {
                 long count = enrollmentRepository.countByTeacherAndStudent(
-                        SecurityUtil.getCurrentUserId(), id);
+                        SecurityUtil.getCurrentUserId(), id,
+                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                        EnrollmentStatus.APPROVED.getValue(),
+                        EnrollmentStatus.COMPLETED.getValue());
                 if (count == 0) {
                     vo.setRealName(maskRealName(vo.getRealName()));
                     vo.setEmail(maskEmail(vo.getEmail()));

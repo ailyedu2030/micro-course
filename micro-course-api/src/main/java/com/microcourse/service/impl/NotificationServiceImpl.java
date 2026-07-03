@@ -10,6 +10,7 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Notification;
 import com.microcourse.entity.User;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -180,7 +181,7 @@ public class NotificationServiceImpl implements NotificationService {
         LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
         enrollWrapper.in(Enrollment::getUserId, targetUserIds)
                      .in(Enrollment::getCourseId, courseIds)
-                     .ne(Enrollment::getEnrollmentStatus, "CANCELLED");
+                     .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
         if (enrollmentRepository.selectCount(enrollWrapper) == 0) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "只能向自己课程中的学生发送通知");
         }

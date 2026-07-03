@@ -156,3 +156,18 @@ http.authorizeHttpRequests(auth -> auth
 | 班级导入 | `hasAnyRole('ACADEMIC','ADMIN')` | — |
 | 归档 | `hasRole('ACADEMIC')` | — |
 | LEAD 继任 | `hasRole('ACADEMIC')` | — |
+
+### 5.3 常规选课（enrollments）API 权限映射
+
+| 操作 | Controller @PreAuthorize | Service 层二次校验 |
+|------|------------------------|-------------------|
+| 创建选课 POST /api/enrollments | `hasRole('STUDENT')` | 付费课程校验（非 PAYMENT 渠道拒绝） |
+| 我的选课 GET /api/enrollments/my | `isAuthenticated()` | 从 JWT 取 userId，仅返回本人数据 |
+| 选课分页 GET /api/enrollments | `hasAnyRole('TEACHER','ADMIN','ACADEMIC')` | TEACHER 自动覆写 teacherId=本人 |
+| 课程学员 GET /api/enrollments/course/{id} | `hasAnyRole('TEACHER','ADMIN','ACADEMIC')` | TEACHER: `assertCourseOwnership()` |
+| 选课详情 GET /api/enrollments/{id} | `hasAnyRole('STUDENT','TEACHER','ADMIN','ACADEMIC')` | STUDENT 仅本人；TEACHER 仅课主 |
+| 更新选课 PUT /api/enrollments/{id} | `hasAnyRole('TEACHER','ADMIN')` | TEACHER 仅课主 |
+| 取消选课 DELETE /api/enrollments/{id} | `hasAnyRole('STUDENT','ADMIN')` | STUDENT 仅本人 |
+| 课程排行 GET /api/enrollments/course/{id}/ranking | `isAuthenticated()` | 仅本人可见真实 userId（数据隔离） |
+| 导出学员 GET /api/enrollments/export | `hasAnyRole('TEACHER','ADMIN','ACADEMIC')` | TEACHER: `assertCourseOwnership()` |
+| 学员详情 GET /api/enrollments/student-detail/{userId} | `hasAnyRole('TEACHER','ADMIN','ACADEMIC')` | TEACHER: `countByTeacherAndStudent()` 交集检查 |

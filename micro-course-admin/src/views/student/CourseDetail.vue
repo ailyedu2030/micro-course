@@ -439,7 +439,7 @@ const fetchTeacher = async () => {
 const checkEnrollment = async () => {
   if (!isLoggedIn.value || !courseId.value) return
   const uid = userStore.userInfo?.id; if (!uid) return
-  try { const { data } = await getMyEnrollments(uid); const list = Array.isArray(data) ? data : (data?.items || []); isEnrolled.value = list.some(e => String(e.courseId) === String(courseId.value)) }
+  try { const { data } = await getMyEnrollments(uid); const list = Array.isArray(data) ? data : (data?.items || []); isEnrolled.value = list.some(e => String(e.courseId) === String(courseId.value) && ['ENROLLED','APPROVED','COMPLETED'].includes(e.enrollmentStatus)) }
   catch (e) { console.warn('[CourseDetail] checkEnrollment 获取选课状态失败', e); isEnrolled.value = false }
 }
 

@@ -9,6 +9,7 @@ import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.dto.SlideVO;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -195,7 +196,7 @@ public class SlideController {
                     new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.Enrollment>()
                             .eq(com.microcourse.entity.Enrollment::getUserId, currentUserId)
                             .eq(com.microcourse.entity.Enrollment::getCourseId, courseId)
-                            .ne(com.microcourse.entity.Enrollment::getEnrollmentStatus, "CANCELLED"));
+                            .ne(com.microcourse.entity.Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
             if (count > 0) {
                 allowed = true;
             }

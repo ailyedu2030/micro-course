@@ -1485,6 +1485,395 @@
 
 ---
 
+## 6. 选课管理（10个）
+
+### 6.1 POST /api/enrollments — 创建选课
+
+**权限要求**：STUDENT
+
+**请求参数**
+
+| 参数名 | 位置 | 必填 | 类型 | 说明 |
+|--------|------|------|------|------|
+| courseId | body | 是 | Long | 课程 ID |
+| sourceChannel | body | 否 | String | 选课来源：SEARCH / RECOMMEND / QRCODE / MANUAL / PAYMENT。PAYMENT 表示订单支付后自动选课，跳过付费检查 |
+
+**请求体示例**
+```json
+{
+  "courseId": 1,
+  "sourceChannel": "SEARCH"
+}
+```
+
+**成功响应示例**
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "id": 1,
+    "courseId": 1,
+    "courseName": "Python 入门",
+    "userId": 1,
+    "userName": "张三",
+    "progress": 0,
+    "completed": false,
+    "enrollmentStatus": "ENROLLED",
+    "sourceChannel": "SEARCH",
+    "enrolledAt": "2026-06-11T10:00:00+08:00"
+  },
+  "timestamp": 1749620400000
+}
+```
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 400 | 6007 | 课程未发布或已下架 |
+| 400 | 9005 | 该课程为付费课程，请先购买 |
+| 404 | 6001 | 课程不存在 |
+| 503 | 1008 | 选课服务暂时不可用 |
+| 409 | 8002 | 已存在选课记录（幂等返回） |
+
+**业务规则**
+- 课程满员时自动进入 WAITLIST（候补队列），按 FIFO 顺序自动录取
+- 付费课程（free=false）必须 sourceChannel=PAYMENT 才能选课
+- 退课后可重新选课：物理删除旧 CANCELLED 记录后走正常流程
+- 行级锁（SELECT ... FOR UPDATE）+ 原子 SQL 防超卖
+- 选课成功后异步写入 enrollment_histories 审计轨迹 + 发送通知
+
+---
+
+### 6.2 GET /api/enrollments/my — 我的选课列表
+
+**权限要求**：已认证（本人数据）
+
+**请求参数**
+
+| 参数名 | 位置 | 必填 | 类型 | 说明 |
+|--------|------|------|------|------|
+| completed | query | 否 | Boolean | 是否完成（不传返回全部，true=已完成，false=进行中） |
+
+**成功响应示例**
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": [
+    {
+      "id": 1,
+      "courseId": 1,
+      "courseName": "Python 入门",
+      "courseTitle": "Python 入门",
+      "coverUrl": "https://...",
+      "teacherName": "李老师",
+      "progress": 65,
+      "completed": false,
+      "finalScore": null,
+      "enrollmentStatus": "ENROLLED",
+      "sourceChannel": "SEARCH",
+      "enrolledAt": "2026-06-11T10:00:00+08:00",
+      "completedAt": null
+    }
+  ],
+  "timestamp": 1749620400000
+}
+```
+
+**错误响应**：无
+
+**业务规则**
+- 从 JWT 中获取 userId，不传参
+- 过滤 CANCELLED 状态的记录
+- 按 enrolled_at DESC 排序
+
+---
+
+### 6.3 GET /api/enrollments — 选课分页查询
+
+**权限要求**：TEACHER / ADMIN / ACADEMIC
+
+**请求参数**
+
+| 参数名 | 位置 | 必填 | 类型 | 说明 |
+|--------|------|------|------|------|
+| page | query | 否 | Integer | 页码（0-based，默认 0） |
+| size | query | 否 | Integer | 每页条数（默认 10，最大 10000） |
+| teacherId | query | 否 | Long | 教师 ID（TEACHER 角色自动覆写为本人） |
+| studentName | query | 否 | String | 学员姓名（模糊匹配） |
+| courseName | query | 否 | String | 课程名称（模糊匹配） |
+| status | query | 否 | String | 选课状态（PENDING / APPROVED / WAITLIST / ENROLLED / CANCELLED / REJECTED / COMPLETED / DROPPED） |
+| className | query | 否 | String | 班级名称（服务端关联过滤） |
+| majorName | query | 否 | String | 专业名称（服务端关联过滤） |
+
+**成功响应示例**
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "courseId": 1,
+        "courseName": "Python 入门",
+        "userId": 1,
+        "userName": "张三",
+        "className": "计科2301班",
+        "majorName": "计算机科学与技术",
+        "progress": 65,
+        "completed": false,
+        "enrollmentStatus": "ENROLLED",
+        "enrolledAt": "2026-06-11T10:00:00+08:00"
+      }
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 1,
+    "totalPages": 1
+  },
+  "timestamp": 1749620400000
+}
+```
+
+**错误响应**：无
+
+**安全规则**
+- TEACHER 只能查自己课程的学员（teacherId 自动覆写为当前用户）
+- 服务端按 className/majorName 做关联过滤（非前端过滤）
+
+---
+
+### 6.4 GET /api/enrollments/course/{courseId} — 课程学员列表
+
+**权限要求**：TEACHER / ADMIN / ACADEMIC
+
+**请求参数**
+
+| 参数名 | 位置 | 必填 | 类型 | 说明 |
+|--------|------|------|------|------|
+| courseId | path | 是 | Long | 课程 ID |
+| page | query | 否 | Integer | 页码（0-based，默认 0） |
+| size | query | 否 | Integer | 每页条数（默认 10，最大 10000） |
+
+**成功响应**：同 6.3 的分页格式
+
+**安全规则**
+- TEACHER 必须为课程 owner（assertCourseOwnership），否则 403
+
+---
+
+### 6.5 GET /api/enrollments/{id} — 选课详情
+
+**权限要求**：STUDENT（本人）/ TEACHER（课程创建者）/ ADMIN / ACADEMIC
+
+**路径参数**
+
+| 参数名 | 必填 | 类型 | 说明 |
+|--------|------|------|------|
+| id | 是 | Long | 选课记录 ID |
+
+**成功响应**：同 6.1 的 VO 格式
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 404 | 8001 | 选课记录不存在 |
+| 403 | 10003 | 无权限操作（非本人/非课主/非管理员） |
+
+---
+
+### 6.6 PUT /api/enrollments/{id} — 更新选课
+
+**权限要求**：TEACHER / ADMIN
+
+**路径参数**
+
+| 参数名 | 必填 | 类型 | 说明 |
+|--------|------|------|------|
+| id | 是 | Long | 选课记录 ID |
+
+**请求参数**
+
+| 参数名 | 位置 | 必填 | 类型 | 说明 |
+|--------|------|------|------|------|
+| progress | body | 否 | Double | 学习进度（0-100） |
+| completed | body | 否 | Boolean | 是否完成（true 时自动颁发证书） |
+| finalScore | body | 否 | BigDecimal | 总评成绩 |
+| finalGrade | body | 否 | String | 成绩等级（EXCELLENT / GOOD / PASS / FAIL） |
+| enrollmentStatus | body | 否 | String | 选课状态变更（走状态机白名单校验） |
+
+**成功响应**：同 6.1 的 VO 格式
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 404 | 8001 | 选课记录不存在 |
+| 403 | 10003 | 无权限（非课主/非管理员） |
+| 400 | 8004 | 不允许的状态转换 |
+
+**业务规则**
+- 状态变更走 EnrollmentStatus.canTransitionTo() 白名单校验
+- 状态变更写入 enrollment_histories
+- completed=true 时自动调用 certificateService.issueCertificate()
+
+---
+
+### 6.7 DELETE /api/enrollments/{id} — 取消选课
+
+**权限要求**：STUDENT（本人）/ ADMIN
+
+**路径参数**
+
+| 参数名 | 必填 | 类型 | 说明 |
+|--------|------|------|------|
+| id | 是 | Long | 选课记录 ID |
+
+**成功响应**
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": null,
+  "timestamp": 1749620400000
+}
+```
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 404 | 8001 | 选课记录不存在 |
+| 403 | 10003 | 无权限（非本人/非管理员） |
+| 400 | 8004 | 不允许的状态转换 |
+
+**业务规则**
+- IDOR 校验：STUDENT 仅能取消本人选课
+- 取消后同步 courses.student_count -1（原子操作）
+- 取消后自动晋升候补队列第一名（WAITLIST → APPROVED）
+- 若有关联 PAID 订单则触发退款
+- 写入 enrollment_histories 审计轨迹
+
+---
+
+### 6.8 GET /api/enrollments/course/{courseId}/ranking — 课程排行
+
+**权限要求**：已认证
+
+**路径参数**
+
+| 参数名 | 必填 | 类型 | 说明 |
+|--------|------|------|------|
+| courseId | 是 | Long | 课程 ID |
+
+**请求参数**
+
+| 参数名 | 位置 | 必填 | 类型 | 说明 |
+|--------|------|------|------|------|
+| limit | query | 否 | Integer | 返回条数（默认 10，最大 100） |
+
+**成功响应示例**
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": [
+    {
+      "rank": 1,
+      "userId": null,
+      "userName": "匿名",
+      "progress": 100,
+      "completed": true,
+      "isCurrentUser": false
+    },
+    {
+      "rank": 2,
+      "userId": 1,
+      "userName": "张三",
+      "progress": 65,
+      "completed": false,
+      "isCurrentUser": true
+    }
+  ],
+  "timestamp": 1749620400000
+}
+```
+
+**安全规则**
+- 仅本人可看到自己的真实 userId 和 userName（用于"我"的高亮）
+- 其他用户显示 userId=null，userName="匿名"（数据隔离）
+
+---
+
+### 6.9 GET /api/enrollments/export — 导出课程学员
+
+**权限要求**：TEACHER / ADMIN / ACADEMIC
+
+**请求参数**
+
+| 参数名 | 位置 | 必填 | 类型 | 说明 |
+|--------|------|------|------|------|
+| courseId | query | 是 | Long | 课程 ID |
+
+**成功响应**：application/vnd.openxmlformats-officedocument.spreadsheetml.sheet Excel 文件
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 403 | 10003 | TEACHER 非课程 owner 时无权限 |
+
+**业务规则**
+- 使用 Hutool ExcelWriter 导出
+- 含：选课ID/课程ID/课程名称/用户ID/学生姓名/学习进度/是否完成/总评成绩/成绩等级/选课状态/选课来源/选课时间/完成时间
+
+---
+
+### 6.10 GET /api/enrollments/student-detail/{userId} — 学员详情
+
+**权限要求**：TEACHER（仅自己课程中的学生）/ ADMIN / ACADEMIC
+
+**路径参数**
+
+| 参数名 | 必填 | 类型 | 说明 |
+|--------|------|------|------|
+| userId | 是 | Long | 学生用户 ID |
+
+**成功响应示例**
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "userId": 1,
+    "username": "zhangsan",
+    "realName": "张三",
+    "email": "zhangsan@example.com",
+    "phone": "13812341234",
+    "className": "计科2301班",
+    "majorName": "计算机科学与技术"
+  },
+  "timestamp": 1749620400000
+}
+```
+
+**错误响应**
+
+| 状态码 | code | 说明 |
+|--------|------|------|
+| 404 | 5001 | 用户不存在 |
+| 403 | 10003 | TEACHER 查非本课程学生时无权限 |
+
+**安全规则**
+- TEACHER 通过 `countByTeacherAndStudent` 检查学生是否在授课程中
+- 管理员/教务处可直接查看
+
+---
+
 ## 附录：数据结构参考
 
 ### 用户状态（users.status）

@@ -21,6 +21,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseChapterRepository;
 import com.microcourse.repository.ExerciseQuestionRepository;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.QuestionRepository;
 import com.microcourse.service.ExerciseService;
@@ -525,7 +526,7 @@ public class ExerciseServiceImpl implements ExerciseService {
         // J3-01: 查询学生已选课程
         LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
         enrollWrapper.eq(Enrollment::getUserId, userId)
-                .ne(Enrollment::getEnrollmentStatus, "CANCELLED");
+                .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
         List<Enrollment> enrollments = enrollmentRepository.selectList(enrollWrapper);
         if (enrollments.isEmpty()) {
             return new ArrayList<>();

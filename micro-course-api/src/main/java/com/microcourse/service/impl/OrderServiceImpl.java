@@ -25,6 +25,7 @@ import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.OrderService;
 import org.springframework.context.annotation.Lazy;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +109,7 @@ public class OrderServiceImpl implements OrderService {
         // SECURITY: 检查是否已选课（含免费选课），防止已选课用户重复购买
         List<EnrollmentVO> myEnrollments = enrollmentService.getMyEnrollments(userId, null);
         boolean alreadyEnrolled = myEnrollments.stream()
-                .anyMatch(e -> courseId.equals(e.getCourseId()) && !"CANCELLED".equals(e.getEnrollmentStatus()));
+                .anyMatch(e -> courseId.equals(e.getCourseId()) && !EnrollmentStatus.CANCELLED.getValue().equals(e.getEnrollmentStatus()));
         if (alreadyEnrolled) {
             throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS, "您已选课，无需重复购买");
         }
@@ -300,7 +301,7 @@ public class OrderServiceImpl implements OrderService {
             LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
             enrollWrapper.eq(Enrollment::getUserId, order.getUserId())
                     .eq(Enrollment::getCourseId, order.getCourseId())
-                    .ne(Enrollment::getEnrollmentStatus, "CANCELLED");
+                    .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
             Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
             if (enrollment != null) {
                 enrollmentService.cancelEnrollment(enrollment.getId(), order.getUserId());

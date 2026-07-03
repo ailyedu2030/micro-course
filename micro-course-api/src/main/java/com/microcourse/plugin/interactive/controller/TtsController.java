@@ -9,6 +9,7 @@ import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.service.TtsService;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.util.SecurityUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.http.CacheControl;
@@ -95,7 +96,7 @@ public class TtsController {
                     new LambdaQueryWrapper<Enrollment>()
                             .eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
                             .eq(Enrollment::getCourseId, courseId)
-                            .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
+                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
             if (count > 0) allowed = true;
         }
         if (!allowed) throw new BusinessException(ErrorCode.NO_PERMISSION);

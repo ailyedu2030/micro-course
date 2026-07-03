@@ -24,7 +24,13 @@
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120">
             <el-option label="学习中" value="ENROLLED" />
+            <el-option label="已通过" value="APPROVED" />
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="候补中" value="WAITLIST" />
+            <el-option label="已完成" value="COMPLETED" />
             <el-option label="已取消" value="CANCELLED" />
+            <el-option label="已拒绝" value="REJECTED" />
+            <el-option label="已退课" value="DROPPED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -65,8 +71,13 @@
         <el-table-column prop="enrollmentStatus" label="状态" width="120" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.enrollmentStatus === 'ENROLLED'" type="primary" size="small">学习中</el-tag>
-            <el-tag v-else-if="row.enrollmentStatus === 'CANCELLED'" type="info" size="small">已取消</el-tag>
             <el-tag v-else-if="row.enrollmentStatus === 'PENDING'" type="warning" size="small">待审核</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'WAITLIST'" type="warning" size="small">候补中</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'APPROVED'" type="success" size="small">已通过</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'COMPLETED'" type="success" size="small">已完成</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'CANCELLED'" type="info" size="small">已取消</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'DROPPED'" type="danger" size="small">已退课</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'REJECTED'" type="danger" size="small">已拒绝</el-tag>
             <el-tag v-else type="info" size="small">{{ row.enrollmentStatus || '-' }}</el-tag>
           </template>
         </el-table-column>

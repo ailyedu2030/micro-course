@@ -186,8 +186,8 @@
                   </span>
                 </div>
                 <div class="ms-course-status">
-                  <el-tag v-if="item.enrollmentStatus === 'ENROLLED'" type="success" size="small">已修读</el-tag>
-                  <el-tag v-else-if="item.enrollmentStatus === 'IN_PROGRESS'" type="warning" size="small">进行中</el-tag>
+                  <el-tag v-if="item.enrollmentStatus === 'ENROLLED' || item.enrollmentStatus === 'APPROVED'" type="success" size="small">已修读</el-tag>
+                  <el-tag v-else-if="item.enrollmentStatus === 'COMPLETED'" type="success" size="small">已完成</el-tag>
                   <el-tag v-else-if="item.enrollmentStatus === 'FAILED'" type="danger" size="small">未通过</el-tag>
                 </div>
                 <el-icon class="ms-go-icon"><ArrowRight /></el-icon>

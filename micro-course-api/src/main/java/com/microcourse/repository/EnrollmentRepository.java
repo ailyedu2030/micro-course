@@ -43,31 +43,39 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
      */
     @Select("<script>" +
             "SELECT course_id, COUNT(*) AS cnt FROM enrollments " +
-            "WHERE deleted_at IS NULL AND enrollment_status = 'COMPLETED' AND course_id IN " +
+            "WHERE deleted_at IS NULL AND enrollment_status = #{completed} AND course_id IN " +
             "<foreach collection='courseIds' item='id' open='(' separator=',' close=')'>" +
             "#{id}" +
             "</foreach>" +
             " GROUP BY course_id" +
             "</script>")
-    List<Map<String, Object>> countCompletedByCourseIds(@Param("courseIds") List<Long> courseIds);
+    List<Map<String, Object>> countCompletedByCourseIds(@Param("courseIds") List<Long> courseIds,
+                                                        @Param("completed") String completed);
 
     /**
      * Phase 14: 批量统计多门课程进行中+已完成选课数（按 course_id 分组）
+     * 使用 ENROLLED（历史存量值）+ APPROVED（契约值）+ COMPLETED 覆盖全部在读/已完成记录
      */
     @Select("<script>" +
             "SELECT course_id, COUNT(*) AS cnt FROM enrollments " +
-            "WHERE deleted_at IS NULL AND enrollment_status IN ('IN_PROGRESS','COMPLETED') AND course_id IN " +
+            "WHERE deleted_at IS NULL AND enrollment_status IN (#{enrolled}, #{approved}, #{completed}) AND course_id IN " +
             "<foreach collection='courseIds' item='id' open='(' separator=',' close=')'>" +
             "#{id}" +
             "</foreach>" +
             " GROUP BY course_id" +
             "</script>")
-    List<Map<String, Object>> countInProgressOrCompletedByCourseIds(@Param("courseIds") List<Long> courseIds);
+    List<Map<String, Object>> countInProgressOrCompletedByCourseIds(@Param("courseIds") List<Long> courseIds,
+                                                                    @Param("enrolled") String enrolled,
+                                                                    @Param("approved") String approved,
+                                                                    @Param("completed") String completed);
 
     /**
      * 客户体验修复 v1.7.0: 物理删除 (绕过 @TableLogic 软删)
      * 退课后重新选课场景: 旧 CANCELLED 记录软删后, 硬唯一 uk_enroll_user_course (无 WHERE) 仍阻挡
-     * → 必须物理删除 (历史在 enrollment_histories 表保留)
+     * → 必须物理删除
+     * NOTE: enrollment_histories/grade_components/score_histories 等关联表设 ON DELETE CASCADE,
+     *       物理删除会级联清除审计历史。退课重选场景下，cancelEnrollment 步骤已预先写入审计，
+     *       此处级联删除仅移除旧 CANCELLED 记录的变更历史，不影响主流程审计完整性。
      */
     @org.apache.ibatis.annotations.Delete("DELETE FROM enrollments WHERE id = #{id}")
     int physicalDeleteById(@Param("id") Long id);
@@ -78,7 +86,7 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
      * 本方法在单条 INSERT ... SELECT ... WHERE 中同时检查：</p>
      * <ol>
      *   <li>课程存在且未删除 (c.deleted_at IS NULL)</li>
-     *   <li>课程状态为 PUBLISHED (c.status = 4)</li>
+     *   <li>课程状态为 APPROVED(2) 或 PUBLISHED(4) — c.status IN (2, 4)，覆盖核心 seed 课程（状态=2, published_at 已设）</li>
      *   <li>学生不存在重复选课（同 user_id+course_id 在同事务中）</li>
      *   <li>未达人数上限 (max_students = 0 OR student_count < max_students)</li>
      * </ol>
@@ -125,26 +133,33 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
      * 统计某课程 WAITLIST 状态的学生数（用于计算候补位置）
      */
     @org.apache.ibatis.annotations.Select("SELECT COUNT(*) FROM enrollments " +
-            "WHERE course_id = #{courseId} AND enrollment_status = 'WAITLIST'")
-    int countWaitlistByCourseId(@Param("courseId") Long courseId);
+            "WHERE course_id = #{courseId} AND enrollment_status = #{waitlist}")
+    int countWaitlistByCourseId(@Param("courseId") Long courseId,
+                                @Param("waitlist") String waitlist);
 
     /**
      * 客户体验修复 v1.7.0: 找课程的有效选课学生 (用于下架通知)
-     * 返回所有 ENROLLED/IN_PROGRESS/COMPLETED 状态的学生 user_id
-     * (WAITLIST 已被拒, DROPPED/CANCELLED 已退出, 都不需要通知)
+     * 返回所有 ENROLLED/APPROVED/COMPLETED 状态的学生 user_id
+     * (WAITLIST 未被录取, DROPPED/CANCELLED 已退出, 都不需要通知)
      */
     @org.apache.ibatis.annotations.Select("SELECT DISTINCT user_id FROM enrollments " +
             "WHERE course_id = #{courseId} " +
             "  AND deleted_at IS NULL " +
-            "  AND enrollment_status IN ('ENROLLED', 'IN_PROGRESS', 'COMPLETED') " +
+            "  AND enrollment_status IN (#{enrolled}, #{approved}, #{completed}) " +
             "LIMIT 5000")
-    List<Long> findActiveUserIdsByCourseId(@Param("courseId") Long courseId);
+    List<Long> findActiveUserIdsByCourseId(@Param("courseId") Long courseId,
+                                           @Param("enrolled") String enrolled,
+                                           @Param("approved") String approved,
+                                           @Param("completed") String completed);
 
     /** R12 P1-C-4: 统计教师在授课程中某一学生的选课数（>0 则有权查看） */
     @org.apache.ibatis.annotations.Select("SELECT COUNT(*) FROM enrollments e " +
             "JOIN courses c ON e.course_id = c.id " +
             "WHERE c.teacher_id = #{teacherId} AND e.user_id = #{studentId} " +
-            "  AND e.deleted_at IS NULL AND e.enrollment_status IN ('ENROLLED','COMPLETED')")
+            "  AND e.deleted_at IS NULL AND e.enrollment_status IN (#{enrolled}, #{approved}, #{completed})")
     long countByTeacherAndStudent(@Param("teacherId") Long teacherId,
-                                   @Param("studentId") Long studentId);
+                                   @Param("studentId") Long studentId,
+                                   @Param("enrolled") String enrolled,
+                                   @Param("approved") String approved,
+                                   @Param("completed") String completed);
 }

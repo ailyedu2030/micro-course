@@ -162,17 +162,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
                 }
                 if (checkStatus == null || !CourseStatus.fromCode(checkStatus).isSelectable()) {
-                    // 客户体验修复 v1.7.0: 区分下架 (CLOSED=5) vs 未发布 (DRAFT=0) vs 审核中 (PENDING=1) vs 驳回 (REJECTED=3)
-                    // 之前都返回"课程未发布"不精确
-                    String statusDesc = checkStatus == null ? "未知" :
-                        checkStatus == 5 ? "已下架" :
-                        checkStatus == 4 ? "已发布" :     // 实际不会到这里
-                        checkStatus == 2 ? "已通过" :     // 实际不会到这里
-                        checkStatus == 0 ? "未发布" :
-                        checkStatus == 1 ? "审核中" :
-                        checkStatus == 3 ? "已驳回" : "状态不可选";
                     throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
-                        "课程" + statusDesc + "，无法重新选课");
+                        "课程" + describeCourseStatus(checkStatus) + "，无法重新选课");
                 }
                 // 物理删除旧 enrollment (走 @TableLogic 会被软删,但 uk_enroll_user_course 是硬唯一,阻挡)
                 // 走独立事务 (TransactionTemplate REQUIRES_NEW), 避免主事务回滚时撤销删除
@@ -213,14 +204,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
         }
         if (lockedStatus == null || !CourseStatus.fromCode(lockedStatus).isSelectable()) {
-            // 客户体验修复 v1.7.0: 区分下架 vs 未发布 vs 审核中
-            String statusDesc = lockedStatus == null ? "未知" :
-                lockedStatus == 5 ? "已下架" :
-                lockedStatus == 0 ? "未发布" :
-                lockedStatus == 1 ? "审核中" :
-                lockedStatus == 3 ? "已驳回" : "状态不可选";
             throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
-                "课程" + statusDesc + "，无法选课");
+                "课程" + describeCourseStatus(lockedStatus) + "，无法选课");
         }
 
         // SECURITY: 付费课程必须通过订单支付,不能直接选课
@@ -274,7 +259,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                         request.getSourceChannel());
                 if (waitlistInserted > 0) {
                     // 计算候补位置
-                    int position = enrollmentRepository.countWaitlistByCourseId(request.getCourseId());
+                    int position = enrollmentRepository.countWaitlistByCourseId(request.getCourseId(), EnrollmentStatus.WAITLIST.getValue());
                     Enrollment waitlistEnrollment = enrollmentRepository.selectOne(new LambdaQueryWrapper<Enrollment>()
                             .eq(Enrollment::getUserId, request.getUserId())
                             .eq(Enrollment::getCourseId, request.getCourseId()));
@@ -292,14 +277,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     }
                 }
             }
-            // 客户体验修复 v1.7.0: 区分下架 vs 其他状态
-            String statusDesc = lockedStatus == null ? "未知" :
-                lockedStatus == 5 ? "已下架" :
-                lockedStatus == 0 ? "未发布" :
-                lockedStatus == 1 ? "审核中" :
-                lockedStatus == 3 ? "已驳回" : "状态不可选";
             throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
-                "课程" + statusDesc + "或已选过，无法选课");
+                "课程" + describeCourseStatus(lockedStatus) + "或已选过，无法选课");
         }
 
         // 双闸门：原子增计数也带容量检查（防御深度）
@@ -346,89 +325,50 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         int page = query.getPage() != null ? query.getPage() : 0;
         int size = query.getSize() != null ? query.getSize() : 10;
 
-        // 预处理：studentName → userIds，courseName → courseIds
-        java.util.Set<Long> filterUserIds = null;
-        if (query.getStudentName() != null && !query.getStudentName().isBlank()) {
-            LambdaQueryWrapper<User> uWrapper = new LambdaQueryWrapper<>();
-            uWrapper.like(User::getRealName, escapeLike(query.getStudentName().trim()));
-            filterUserIds = userRepository.selectList(uWrapper).stream()
-                    .map(User::getId).collect(java.util.stream.Collectors.toSet());
-            if (filterUserIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
-            }
-        }
-
-        // P0-4: className → classIds → userIds（服务端关联过滤）
-        if (query.getClassName() != null && !query.getClassName().isBlank()) {
-            LambdaQueryWrapper<Classes> clsWrapper = new LambdaQueryWrapper<>();
-            clsWrapper.like(Classes::getName, escapeLike(query.getClassName().trim()));
-            java.util.Set<Long> classIds = classesRepository.selectList(clsWrapper).stream()
-                    .map(Classes::getId).collect(java.util.stream.Collectors.toSet());
-            if (classIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
-            }
-            LambdaQueryWrapper<User> cuWrapper = new LambdaQueryWrapper<>();
-            cuWrapper.in(User::getClassId, classIds);
-            java.util.Set<Long> classUserIds = userRepository.selectList(cuWrapper).stream()
-                    .map(User::getId).collect(java.util.stream.Collectors.toSet());
-            if (classUserIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
-            }
-            filterUserIds = filterUserIds != null
-                    ? filterUserIds.stream().filter(classUserIds::contains).collect(java.util.stream.Collectors.toSet())
-                    : classUserIds;
-            if (filterUserIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
-            }
-        }
-
-        // P0-4: majorName → majorIds → userIds（服务端关联过滤）
-        if (query.getMajorName() != null && !query.getMajorName().isBlank()) {
-            LambdaQueryWrapper<Major> mjWrapper = new LambdaQueryWrapper<>();
-            mjWrapper.like(Major::getName, escapeLike(query.getMajorName().trim()));
-            java.util.Set<Long> majorIds = majorRepository.selectList(mjWrapper).stream()
-                    .map(Major::getId).collect(java.util.stream.Collectors.toSet());
-            if (majorIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
-            }
-            LambdaQueryWrapper<User> muWrapper = new LambdaQueryWrapper<>();
-            muWrapper.in(User::getMajorId, majorIds);
-            java.util.Set<Long> majorUserIds = userRepository.selectList(muWrapper).stream()
-                    .map(User::getId).collect(java.util.stream.Collectors.toSet());
-            if (majorUserIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
-            }
-            filterUserIds = filterUserIds != null
-                    ? filterUserIds.stream().filter(majorUserIds::contains).collect(java.util.stream.Collectors.toSet())
-                    : majorUserIds;
-            if (filterUserIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
-            }
-        }
-
-        java.util.Set<Long> filterCourseIds = null;
-        // teacherId 过滤：获取该教师的所有课程
-        if (query.getTeacherId() != null) {
-            filterCourseIds = getCourseIdsByTeacherId(query.getTeacherId());
-            if (filterCourseIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
-            }
-        } else if (query.getCourseName() != null && !query.getCourseName().isBlank()) {
-            LambdaQueryWrapper<Course> cWrapper = new LambdaQueryWrapper<>();
-            cWrapper.like(Course::getTitle, escapeLike(query.getCourseName().trim()));
-            filterCourseIds = courseRepository.selectList(cWrapper).stream()
-                    .map(Course::getId).collect(java.util.stream.Collectors.toSet());
-            if (filterCourseIds.isEmpty()) {
-                return PageResult.of(java.util.Collections.emptyList(), 0, page, size);
-            }
-        }
-
         // 构建查询条件
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
-        if (filterUserIds != null) wrapper.in(Enrollment::getUserId, filterUserIds);
-        if (filterCourseIds != null) wrapper.in(Enrollment::getCourseId, filterCourseIds);
+
+        // 预处理：studentName → 子查询条件
+        if (query.getStudentName() != null && !query.getStudentName().isBlank()) {
+            String escaped = escapeLike(query.getStudentName().trim());
+            wrapper.apply("EXISTS (SELECT 1 FROM users WHERE users.id = enrollment.user_id"
+                    + " AND users.real_name LIKE {0} AND users.deleted_at IS NULL)", "%" + escaped + "%");
+        }
+
+        // P0-4 / P3: class name → EXISTS 子查询（替代多次内存查询，减少 DB round-trip）
+        if (query.getClassName() != null && !query.getClassName().isBlank()) {
+            String escaped = escapeLike(query.getClassName().trim());
+            wrapper.apply("EXISTS (SELECT 1 FROM users u2 JOIN classes c2 ON u2.class_id = c2.id"
+                    + " WHERE u2.id = enrollment.user_id AND c2.name LIKE {0}"
+                    + " AND c2.deleted_at IS NULL AND u2.deleted_at IS NULL)", "%" + escaped + "%");
+        }
+
+        // P0-4 / P3: majorName → EXISTS 子查询
+        if (query.getMajorName() != null && !query.getMajorName().isBlank()) {
+            String escaped = escapeLike(query.getMajorName().trim());
+            wrapper.apply("EXISTS (SELECT 1 FROM users u3 JOIN majors m3 ON u3.major_id = m3.id"
+                    + " WHERE u3.id = enrollment.user_id AND m3.name LIKE {0}"
+                    + " AND m3.deleted_at IS NULL AND u3.deleted_at IS NULL)", "%" + escaped + "%");
+        }
+
+        // teacherId / courseName 过滤
+        if (query.getTeacherId() != null) {
+            wrapper.apply("EXISTS (SELECT 1 FROM courses c4"
+                    + " WHERE c4.id = enrollment.course_id AND c4.teacher_id = {0}"
+                    + " AND c4.deleted_at IS NULL)", query.getTeacherId());
+        } else if (query.getCourseName() != null && !query.getCourseName().isBlank()) {
+            String escaped = escapeLike(query.getCourseName().trim());
+            wrapper.apply("EXISTS (SELECT 1 FROM courses c5"
+                    + " WHERE c5.id = enrollment.course_id AND c5.title LIKE {0}"
+                    + " AND c5.deleted_at IS NULL)", "%" + escaped + "%");
+        }
         if (query.getStatus() != null && !query.getStatus().isBlank()) {
-            wrapper.eq(Enrollment::getEnrollmentStatus, query.getStatus());
+            // P1-C: ENROLLED 和 APPROVED 语义等价，查询时同时匹配兼容存量与未来迁移
+            if (EnrollmentStatus.LEGACY_ENROLLED_VALUE.equals(query.getStatus()) || EnrollmentStatus.APPROVED.getValue().equals(query.getStatus())) {
+                wrapper.in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue());
+            } else {
+                wrapper.eq(Enrollment::getEnrollmentStatus, query.getStatus());
+            }
         }
         wrapper.orderByDesc(Enrollment::getEnrolledAt);
 
@@ -466,7 +406,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, Math.max(1, Math.min(limit, 100)));
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Enrollment::getCourseId, courseId)
-                .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE)
+                .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue())
                 .orderByDesc(Enrollment::getProgress);
         com.baomidou.mybatisplus.core.metadata.IPage<Enrollment> paged =
                 enrollmentRepository.selectPage(page, wrapper);
@@ -1010,15 +950,25 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         } catch (Exception e) {
             log.warn("[notifyNextInQueue] 获取课程标题失败, courseId={}, error={}", courseId, e.getMessage());
         }
-        try {
-            notificationService.notifyAsync(
-                    next.getUserId(),
-                    NotificationType.ENROLLMENT_SUCCESS,
-                    "候补录取通知",
-                    "您已从候补队列中被录取《" + (courseTitle != null ? courseTitle : "课程 ID=" + courseId) + "》,可开始学习。",
-                    courseId);
-        } catch (Exception e) {
-            log.warn("候补通知发送失败, id={}, userId={}", next.getId(), next.getUserId(), e);
+        String finalCourseTitle = courseTitle;
+        // P0: 仅在事务提交后发送通知，避免事务回滚导致虚假通知
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            notificationService.notifyAsync(
+                                    next.getUserId(),
+                                    NotificationType.ENROLLMENT_SUCCESS,
+                                    "候补录取通知",
+                                    "您已从候补队列中被录取《" + (finalCourseTitle != null ? finalCourseTitle : "课程 ID=" + courseId) + "》,可开始学习。",
+                                    courseId);
+                        } catch (Exception e) {
+                            log.warn("候补通知发送失败, id={}, userId={}", next.getId(), next.getUserId(), e);
+                        }
+                    }
+                });
         }
 
         log.info("候补晋升完成: courseId={}, userId={}, enrollmentId={}",
@@ -1085,7 +1035,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public List<Long> findActiveUserIdsByCourseId(Long courseId) {
-        return enrollmentRepository.findActiveUserIdsByCourseId(courseId);
+        return enrollmentRepository.findActiveUserIdsByCourseId(
+                courseId,
+                EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                EnrollmentStatus.APPROVED.getValue(),
+                EnrollmentStatus.COMPLETED.getValue());
     }
 
     @Override
@@ -1102,6 +1056,23 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private static String escapeLike(String input) {
         if (input == null) return null;
         return input.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
+    /** 课程 Integer 状态码 → 中文描述（消除 3 处重复 if-else 链） */
+    private static String describeCourseStatus(Integer status) {
+        if (status == null) return "未知";
+        CourseStatus cs = CourseStatus.fromCode(status);
+        if (cs == null) return "状态不可选";
+        switch (cs) {
+            case DRAFT: return "未发布";
+            case PENDING_REVIEW: return "审核中";
+            case APPROVED: return "已通过";
+            case REJECTED: return "已驳回";
+            case PUBLISHED: return "已发布";
+            case CLOSED: return "已下架";
+            case ARCHIVED: return "已归档";
+            default: return "状态不可选";
+        }
     }
 
     /** P2: 提取教师课程 ID 集合的公共方法，消除重复代码 */

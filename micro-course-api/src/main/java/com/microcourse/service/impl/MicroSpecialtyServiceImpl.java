@@ -28,6 +28,7 @@ import com.microcourse.entity.MicroSpecialtyFeaturedAudit;
 import com.microcourse.entity.MicroSpecialtyProposal;
 import com.microcourse.entity.MicroSpecialtyTeacher;
 import com.microcourse.entity.User;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
@@ -919,14 +920,14 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         new LambdaQueryWrapper<Enrollment>()
                                 .eq(Enrollment::getCourseId, mc.getCourseId())
                                 .eq(Enrollment::getUserId, en.getUserId())
-                                .ne(Enrollment::getEnrollmentStatus, "COMPLETED"));
-                if (courseEn != null && !"CANCELLED".equals(courseEn.getEnrollmentStatus())) {
+                                .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.COMPLETED.getValue()));
+                if (courseEn != null && !EnrollmentStatus.CANCELLED.getValue().equals(courseEn.getEnrollmentStatus())) {
                     // Mark as CANCELLED instead of hard delete
                     enrollmentRepository.update(null,
                             new LambdaUpdateWrapper<Enrollment>()
                                     .eq(Enrollment::getId, courseEn.getId())
                                     .eq(Enrollment::getVersion, courseEn.getVersion())
-                                    .set(Enrollment::getEnrollmentStatus, "CANCELLED")
+                                    .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
                                     .set(Enrollment::getUpdatedAt, LocalDateTime.now())
                                     .setSql("version = version + 1"));
                 }

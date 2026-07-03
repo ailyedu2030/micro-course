@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyCourseRepository;
@@ -165,11 +166,15 @@ public class MicroSpecialtyQualityScoreServiceImpl implements MicroSpecialtyQual
         // 3. 批量拉完成数 / 进行中+完成数
         Map<Long, Long> completedMap = batchCountToMap(
                 allCourseIds.isEmpty() ? Collections.emptyList() : new ArrayList<>(allCourseIds),
-                enrollmentRepository::countCompletedByCourseIds);
+                ids -> enrollmentRepository.countCompletedByCourseIds(ids,
+                        EnrollmentStatus.COMPLETED.getValue()));
 
         Map<Long, Long> inProgressOrCompletedMap = batchCountToMap(
                 allCourseIds.isEmpty() ? Collections.emptyList() : new ArrayList<>(allCourseIds),
-                enrollmentRepository::countInProgressOrCompletedByCourseIds);
+                ids -> enrollmentRepository.countInProgressOrCompletedByCourseIds(ids,
+                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                        EnrollmentStatus.APPROVED.getValue(),
+                        EnrollmentStatus.COMPLETED.getValue()));
 
         // 4. 批量拉平均评分
         Map<Long, BigDecimal> ratingMap = new HashMap<>();

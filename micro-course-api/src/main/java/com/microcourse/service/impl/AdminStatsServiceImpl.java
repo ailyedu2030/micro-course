@@ -17,6 +17,7 @@ import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
 import com.microcourse.entity.Video;
 import com.microcourse.enums.CourseStatus;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.CertificateRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DiscussionPostRepository;
@@ -131,8 +132,8 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         // 总选课数
         vo.setTotalEnrollments(enrollmentRepository.selectCount(
                 new LambdaQueryWrapper<Enrollment>()
-                        .ne(Enrollment::getEnrollmentStatus, "CANCELLED")
-                        .ne(Enrollment::getEnrollmentStatus, "WAITLIST")));
+                        .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
+                        .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())));
 
         // 总视频数
         vo.setTotalVideos(videoRepository.selectCount(null));
