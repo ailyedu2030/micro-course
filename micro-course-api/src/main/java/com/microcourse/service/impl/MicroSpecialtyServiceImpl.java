@@ -336,19 +336,9 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         }
 
         MicroSpecialtyDetailVO detail = new MicroSpecialtyDetailVO();
+        // P1-2 修复: copyToVO 已填充 departmentName/leadTeacherName,
+        // 删除下方重复的 selectById
         copyToVO(ms, detail);
-
-        // 预加载部门名、教师名
-        if (ms.getOfferDepartmentId() != null) {
-            Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());
-            if (dept != null) {
-                detail.setDepartmentName(dept.getName());
-            }
-        }
-        if (ms.getLeadTeacherId() != null) {
-            User lead = userRepository.selectById(ms.getLeadTeacherId());
-            if (lead != null) detail.setLeadTeacherName(lead.getRealName());
-        }
 
         // 课程编排
         List<MicroSpecialtyCourse> courses = msCourseRepository.selectList(

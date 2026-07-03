@@ -63,9 +63,11 @@ public class MicroSpecialtyMaterializationServiceImpl implements MicroSpecialtyM
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审批或已审批状态可物化");
 
         // 1. 查找关联的微专业
+        // P1 修复: 加 status IN(DRAFT,RECRUITING) 限制,避免同名+同教师的历史关闭微专业被误关联
         MicroSpecialty ms = msRepo.selectOne(new LambdaQueryWrapper<MicroSpecialty>()
                 .eq(MicroSpecialty::getTitle, proposal.getTitle())
                 .eq(MicroSpecialty::getLeadTeacherId, proposal.getProposerId())
+                .in(MicroSpecialty::getStatus, "DRAFT", "RECRUITING")
                 .orderByDesc(MicroSpecialty::getCreatedAt)
                 .last("LIMIT 1"));
         if (ms == null) {
@@ -98,12 +100,13 @@ public class MicroSpecialtyMaterializationServiceImpl implements MicroSpecialtyM
 
                     if ("existing".equals(assign.getSource()) && assign.getSourceChapterId() != null) {
                         // Phase 3 教师选了已有章节: 直接引用
+                        // P0 修复: sourceChapterId 是章节 ID,不是课程 ID。
+                        // 用 assign.getSourceCourseId() 正确查找课程
                         targetChapterId = assign.getSourceChapterId();
                         sourceLabel = "existing";
-                        var sourceCh = courseRepo.selectById(assign.getSourceChapterId());
-                        if (sourceCh != null) {
-                            targetCourse = courseRepo.selectById(sourceCh.getId());
-                        }
+                        targetCourse = assign.getSourceCourseId() != null
+                                ? courseRepo.selectById(assign.getSourceCourseId())
+                                : null;
                     } else {
                         // 教师选了新建或 TBD: 创建新课程
                         if (!createdCourses.containsKey(pc.getId())) {

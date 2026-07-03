@@ -85,6 +85,10 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
+        // P2-2 修复: 确认微专业仍处于招生中(可能审批时已被关闭)
+        if (!"RECRUITING".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业当前非招生状态，不可审批置顶");
+        }
 
         if (!"PENDING".equals(ms.getFeaturedStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可审批置顶");
@@ -185,6 +189,10 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         // 终态检查
         if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+        // P2-2 修复: 金标仅可在招生中设置
+        if (!"RECRUITING".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业当前非招生状态，不可设金标");
         }
 
         // 全校金标数量 < 2（§9 铁律）
