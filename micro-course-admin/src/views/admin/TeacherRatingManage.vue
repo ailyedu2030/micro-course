@@ -126,7 +126,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Medal, Refresh } from '@element-plus/icons-vue'
-import { getAllRatings, getRatingsByTier, adjustTeacherTier, recalculateTeacherRating } from '@/api/teacher-rating'
+import { getAllRatings, getRatingsByTier, adjustTeacherTier, recalculateAllTeacherRatings } from '@/api/teacher-rating'
 
 const loading = ref(false)
 const ratingList = ref([])
@@ -221,15 +221,9 @@ async function handleRecalculateAll() {
   }
   recalculatingAll.value = true
   try {
-    // 逐个触发重新计算（后端暂无批量接口）
-    for (const row of ratingList.value) {
-      try {
-        await recalculateTeacherRating(row.teacherId)
-      } catch (e) {
-        console.warn(`[TeacherRatingManage] recalc failed for teacherId=${row.teacherId}`, e)
-      }
-    }
-    ElMessage.success('全部教师重新评级完成')
+    // P1-I 修复: 用批量端点替代串行循环
+    const res = await recalculateAllTeacherRatings()
+    ElMessage.success(`全部教师重新评级完成: ${res.data || 0} 人`)
     await fetchList()
   } catch (e) {
     ElMessage.error('重新评级失败')

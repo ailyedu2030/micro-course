@@ -7,6 +7,7 @@ import com.microcourse.entity.Department;
 import com.microcourse.entity.Order;
 import com.microcourse.entity.TeacherRating;
 import com.microcourse.entity.User;
+import org.springframework.transaction.support.TransactionTemplate;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.TeacherRatingRepository;
@@ -68,7 +69,7 @@ class RatingPricingRevenueUnitTest {
         MockitoAnnotations.openMocks(this);
         rateResolver = new PlatformShareRateResolver(configService);
         ratingService = new TeacherRatingServiceImpl(
-                ratingRepository, tierLogRepository, userRepository, rateResolver);
+                ratingRepository, tierLogRepository, userRepository, rateResolver, null);
     }
 
     // ====== 1. 评级公式边界测试 ======

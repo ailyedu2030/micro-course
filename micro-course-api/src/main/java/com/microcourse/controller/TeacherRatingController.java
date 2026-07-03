@@ -28,6 +28,7 @@ public class TeacherRatingController {
      * GET /api/teacher-ratings/my
      */
     @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
     public R<TeacherRatingVO> getMyRating() {
         Long userId = SecurityUtil.getCurrentUserId();
         return R.ok(ratingService.getMyRating(userId));
@@ -58,6 +59,7 @@ public class TeacherRatingController {
      * GET /api/teacher-ratings/my/history
      */
     @GetMapping("/my/history")
+    @PreAuthorize("isAuthenticated()")
     public R<List<TeacherTierLogVO>> getMyTierHistory() {
         Long userId = SecurityUtil.getCurrentUserId();
         return R.ok(ratingService.getTierHistory(userId));
@@ -85,5 +87,15 @@ public class TeacherRatingController {
     @PreAuthorize("hasRole('ADMIN')")
     public R<TeacherRatingVO> recalculate(@PathVariable Long teacherId) {
         return R.ok(ratingService.recalculate(teacherId));
+    }
+
+    /**
+     * P1-I 修复: 全部教师重新评级(批量端点,替代前端串行循环)
+     * POST /api/teacher-ratings/recalculate-all
+     */
+    @PostMapping("/recalculate-all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<Integer> recalculateAll() {
+        return R.ok(ratingService.recalculateAll());
     }
 }

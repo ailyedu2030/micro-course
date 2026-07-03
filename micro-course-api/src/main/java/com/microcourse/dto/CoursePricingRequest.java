@@ -2,16 +2,25 @@ package com.microcourse.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 
 public class CoursePricingRequest {
+    @NotNull @PositiveOrZero
     private BigDecimal basePrice;
+
+    @Pattern(regexp = "^(none|same_department|same_college|same_school)?$")
     private String freeAccessScope;
+
     private String freeDeptIds;
 
     @Min(0) @Max(100)
     private Integer discountPercent;
+
+    @Pattern(regexp = "^(none|same_college|same_school)?$")
     private String discountScope;
 
     public BigDecimal getBasePrice() { return basePrice; }

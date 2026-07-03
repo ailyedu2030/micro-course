@@ -41,6 +41,14 @@ export function recalculateTeacherRating(teacherId) {
 }
 
 /**
+ * P1-I 修复: 批量重算所有教师评级
+ * POST /api/teacher-ratings/recalculate-all
+ */
+export function recalculateAllTeacherRatings() {
+  return request({ method: 'POST', url: '/teacher-ratings/recalculate-all' })
+}
+
+/**
  * 教师查看自己的等级变更历史
  * GET /api/teacher-ratings/my/history
  */

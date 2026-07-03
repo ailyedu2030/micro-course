@@ -176,6 +176,10 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
         if (rating == null) {
             throw new IllegalArgumentException("教师评级记录不存在，请先执行评级计算");
         }
+        // P2 修复: 校验 tier 合法值
+        if (!TIER_LABELS.containsKey(newTier)) {
+            throw new IllegalArgumentException("无效的等级: " + newTier);
+        }
         String oldTier = rating.getTier();
 
         // P2-1 修复: 加乐观锁(用 oldTier 作状态检测),防止两个管理员并发调整互相覆盖

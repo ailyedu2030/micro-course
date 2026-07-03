@@ -426,6 +426,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         // 修复 P0-3: 按每个订单所属教师等级分别计算分账率累加
         // 之前硬编码 30% 导致 admin 看到的分成数据错误
         BigDecimal platformShare = BigDecimal.ZERO;
+        Map<Long, String> teacherTierMap = new HashMap<>();
         if (!ordersByCourse.isEmpty()) {
             // 收集涉及的 course → teacher 映射
             List<com.microcourse.entity.Course> courseList = courseRepository.selectBatchIds(ordersByCourse.keySet());
@@ -433,7 +434,6 @@ public class AdminStatsServiceImpl implements AdminStatsService {
                     .collect(Collectors.toMap(com.microcourse.entity.Course::getId, com.microcourse.entity.Course::getTeacherId));
             // 教师 → tier 映射(批量预加载,避免 N+1)
             Set<Long> teacherIds = courseTeacherMap.values().stream().collect(Collectors.toSet());
-            Map<Long, String> teacherTierMap = new HashMap<>();
             if (!teacherIds.isEmpty()) {
                 // P0 修复: selectBatchIds 按主键(id)查询,但 teacherIds 是 User.id
                 // 需要用 LambdaQueryWrapper 按 teacher_id 列查询
@@ -523,6 +523,8 @@ public class AdminStatsServiceImpl implements AdminStatsService {
                     item.setRevenue(entry.getValue());
                     item.setOrderCount(teacherOrders.getOrDefault(entry.getKey(), 0));
                     item.setTeacherName(teacherNameMap.getOrDefault(entry.getKey(), "未知"));
+                    // P1-C 修复: 填充教师等级字段
+                    item.setTier(teacherTierMap.getOrDefault(entry.getKey(), "UNKNOWN"));
                     return item;
                 })
                 .collect(Collectors.toList());
