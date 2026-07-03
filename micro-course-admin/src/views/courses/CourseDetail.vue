@@ -277,6 +277,7 @@
             <el-option label="📹 视频讲解" value="VIDEO" />
             <el-option label="🎯 互动课件" value="INTERACTIVE" />
             <el-option label="📝 随堂练习" value="EXERCISE" />
+            <el-option label="🏫 线下课" value="OFFLINE" />
           </el-select>
           <div class="form-tip" style="margin-top:4px">
             <template v-if="chapterFormData.chapterType === 'VIDEO'">学生点击后进入视频播放器，教师需上传教学视频</template>
