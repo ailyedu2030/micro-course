@@ -149,4 +149,8 @@ public class Course {
     public void setListPrice(BigDecimal listPrice) { this.listPrice = listPrice; }
     public String getPricingStatus() { return pricingStatus; }
     public void setPricingStatus(String pricingStatus) { this.pricingStatus = pricingStatus; }
+    public LocalDateTime getPricingReviewedAt() { return pricingReviewedAt; }
+    public void setPricingReviewedAt(LocalDateTime pricingReviewedAt) { this.pricingReviewedAt = pricingReviewedAt; }
+    public Long getPricingReviewedBy() { return pricingReviewedBy; }
+    public void setPricingReviewedBy(Long pricingReviewedBy) { this.pricingReviewedBy = pricingReviewedBy; }
 }

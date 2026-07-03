@@ -62,6 +62,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -525,6 +526,7 @@ public class CourseServiceImpl implements CourseService {
         course.setTitle(com.microcourse.util.XssSanitizer.sanitizePlainText(request.getTitle()));
         course.setCourseType(courseType);
         course.setPrice(request.getPrice());
+        course.setListPrice(request.getPrice()); // V111: listPrice = price
         course.setIsFree(request.getPrice() == null || request.getPrice().compareTo(java.math.BigDecimal.ZERO) == 0);
         course.setFreeAccessScope(request.getFreeAccessScope());
         course.setFreeDeptIds(request.getFreeDeptIds());
@@ -613,7 +615,7 @@ public class CourseServiceImpl implements CourseService {
             }
             course.setCourseType(request.getCourseType());
         }
-        if (request.getPrice() != null) { course.setPrice(request.getPrice()); course.setIsFree(request.getPrice().compareTo(java.math.BigDecimal.ZERO) == 0); }
+        if (request.getPrice() != null) { course.setPrice(request.getPrice()); course.setListPrice(request.getPrice()); course.setIsFree(request.getPrice().compareTo(java.math.BigDecimal.ZERO) == 0); }
         if (request.getIsFree() != null) course.setIsFree(request.getIsFree());
         // Phase 4: 课程定价字段
         if (request.getFreeAccessScope() != null) course.setFreeAccessScope(request.getFreeAccessScope());
@@ -985,6 +987,7 @@ public class CourseServiceImpl implements CourseService {
         newCourse.setTags(source.getTags());
         newCourse.setCourseType(source.getCourseType());
         newCourse.setPrice(source.getPrice());
+        newCourse.setListPrice(source.getListPrice());
         newCourse.setIsFree(source.getIsFree());
         newCourse.setStatus(CourseStatus.DRAFT.getCode());
         newCourse.setCreatedAt(LocalDateTime.now());
@@ -1233,10 +1236,53 @@ public class CourseServiceImpl implements CourseService {
         if (!course.getTeacherId().equals(userId) && !SecurityUtil.isAdmin())
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         course.setPrice(request.getBasePrice());
+        course.setListPrice(request.getBasePrice()); // V111: 保持 listPrice 与 price 同步
         course.setFreeAccessScope(request.getFreeAccessScope());
         course.setFreeDeptIds(request.getFreeDeptIds());
         course.setDiscountScope(request.getDiscountScope());
         course.setDiscountPercent(request.getDiscountPercent());
+        course.setUpdatedAt(LocalDateTime.now());
+        courseRepository.updateById(course);
+        evictCourseCacheAfterCommit(courseId);
+    }
+
+    @Override
+    public void submitPricingForReview(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!course.getTeacherId().equals(userId) && !SecurityUtil.isAdmin())
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        if (!"DRAFT".equals(course.getPricingStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
+                    "当前定价状态 " + course.getPricingStatus() + " 不允许提交审核");
+        }
+        course.setPricingStatus("PENDING");
+        course.setUpdatedAt(LocalDateTime.now());
+        courseRepository.updateById(course);
+        evictCourseCacheAfterCommit(courseId);
+    }
+
+    @Override
+    public void reviewPricing(Long courseId, boolean approved, String reason) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (!SecurityUtil.isAdmin())
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        if (!"PENDING".equals(course.getPricingStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
+                    "当前定价状态 " + course.getPricingStatus() + " 不允许审核");
+        }
+        if (approved) {
+            if (course.getListPrice() == null || course.getListPrice().compareTo(java.math.BigDecimal.ZERO) == 0) {
+                course.setListPrice(course.getPrice());
+            }
+            course.setPricingStatus("APPROVED");
+        } else {
+            course.setPricingStatus("REJECTED");
+        }
+        course.setPricingReviewedAt(LocalDateTime.now());
+        course.setPricingReviewedBy(SecurityUtil.getCurrentUserId());
         course.setUpdatedAt(LocalDateTime.now());
         courseRepository.updateById(course);
         evictCourseCacheAfterCommit(courseId);
@@ -1283,7 +1329,7 @@ public class CourseServiceImpl implements CourseService {
                 if ("same_school".equals(course.getDiscountScope())) {
                     result.put("sameSchool", true);
                     long percent = course.getDiscountPercent() != null ? course.getDiscountPercent() : 70;
-                    BigDecimal finalPrice = basePrice.multiply(BigDecimal.valueOf(100 - percent)).divide(BigDecimal.valueOf(100));
+                    BigDecimal finalPrice = basePrice.multiply(BigDecimal.valueOf(100 - percent)).divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
                     result.put("finalPrice", finalPrice);
                     result.put("feeNote", percent + "% 折扣 (同校)");
                     return result;
@@ -1307,6 +1353,14 @@ public class CourseServiceImpl implements CourseService {
         vo.setFreeAccessScopeLabel(getFreeAccessScopeLabel(course.getFreeAccessScope()));
         vo.setDiscountScope(course.getDiscountScope());
         vo.setDiscountPercent(course.getDiscountPercent());
+
+        // P0 修复: 定价被驳回 → 不允许购买
+        if ("REJECTED".equals(course.getPricingStatus())) {
+            vo.setFinalPrice(listPrice);
+            vo.setFree(false);
+            vo.setFeeNote("定价已被驳回，请联系教师或管理员");
+            return vo;
+        }
 
         // 免费课程
         if (Boolean.TRUE.equals(course.getIsFree()) || (listPrice.compareTo(BigDecimal.ZERO) == 0)) {
@@ -1360,7 +1414,7 @@ public class CourseServiceImpl implements CourseService {
         if ("same_school".equals(course.getDiscountScope())) {
             long percent = course.getDiscountPercent() != null ? course.getDiscountPercent() : 70;
             BigDecimal finalPrice = listPrice.multiply(BigDecimal.valueOf(100 - percent))
-                    .divide(BigDecimal.valueOf(100));
+                    .divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
             vo.setFinalPrice(finalPrice);
             vo.setFree(false);
             vo.setFeeNote(percent + "% 折扣（同校）");

@@ -83,4 +83,10 @@ public interface CourseService {
 
     /** Round 1: 查询课程对当前登录用户的价格（学生端可见） */
     com.microcourse.dto.CoursePricingInfoVO getMyPricing(Long courseId);
+
+    /** P0 修复: 提交定价审核 (DRAFT → PENDING) */
+    void submitPricingForReview(Long courseId);
+
+    /** P0 修复: 审核定价 (PENDING → APPROVED / REJECTED) */
+    void reviewPricing(Long courseId, boolean approved, String reason);
 }

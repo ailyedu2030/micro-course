@@ -16,14 +16,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * Phase 14: 微专业教师邀请流程集成测试。
  * 覆盖：发送邀请→接收→移除→重新邀请 完整生命周期。
  */
-@org.junit.jupiter.api.Disabled("Phase15: requires seed data update")
 class MicroSpecialtyInviteFlowTest extends BaseIntegrationTest {
 
-    private String adminToken;
+    private String teacherToken;
 
     @BeforeEach
     void setUp() throws Exception {
-        adminToken = bearerAdmin().replace("Bearer ", "");
+        teacherToken = loginAs("p0_teacher", "student123");
     }
 
     @Test
@@ -31,23 +30,23 @@ class MicroSpecialtyInviteFlowTest extends BaseIntegrationTest {
     void testInviteLifecycle() throws Exception {
         // 获取一个微专业
         MvcResult listResult = mockMvc.perform(get("/api/micro-specialties")
-                .header("Authorization", "Bearer " + adminToken))
+                .header("Authorization", "Bearer " + teacherToken))
                 .andExpect(status().isOk())
                 .andReturn();
         Number msId = JsonPath.read(listResult.getResponse().getContentAsString(), "$.data.items[0].id");
         assertNotNull(msId, "至少需要一个微专业");
 
-        // 获取现有教师团队
+        // 获取现有教师团队（permitAll）
         MvcResult teamResult = mockMvc.perform(get("/api/micro-specialties/{id}/teachers", msId.longValue())
-                .header("Authorization", "Bearer " + adminToken))
+                .header("Authorization", "Bearer " + teacherToken))
                 .andExpect(status().isOk())
                 .andReturn();
         String teamJson = teamResult.getResponse().getContentAsString();
         Object currentCount = JsonPath.read(teamJson, "$.data.length()");
 
-        // 邀请教师（使用p0_teacher作为被邀请人）
+        // 邀请教师（需要 TEACHER 角色）
         MvcResult inviteResult = mockMvc.perform(post("/api/micro-specialties/{id}/teachers", msId.longValue())
-                .header("Authorization", "Bearer " + adminToken)
+                .header("Authorization", "Bearer " + teacherToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"teacherId\":22,\"role\":\"MEMBER\"}"))
                 .andExpect(status().isOk())
@@ -55,7 +54,7 @@ class MicroSpecialtyInviteFlowTest extends BaseIntegrationTest {
         Number inviteId = JsonPath.read(inviteResult.getResponse().getContentAsString(), "$.data.id");
         assertNotNull(inviteId, "邀请应返回 inviteId");
 
-        // 管理员可以直接邀请通过（或检查邀请状态）
+        // 教师可以邀请通过（或检查邀请状态）
         String inviteStatus = JsonPath.read(inviteResult.getResponse().getContentAsString(), "$.data.inviteStatus");
         assertNotNull(inviteStatus, "应有邀请状态");
     }
@@ -66,14 +65,14 @@ class MicroSpecialtyInviteFlowTest extends BaseIntegrationTest {
         // 跨学院测试需要两个不同部门的教师 - 使用p0_teacher(部门1)和已存在的teacher3(部门1是同一个)
         // 这里只验证基础邀请API是否正常响应
         MvcResult listResult = mockMvc.perform(get("/api/micro-specialties")
-                .header("Authorization", "Bearer " + adminToken))
+                .header("Authorization", "Bearer " + teacherToken))
                 .andExpect(status().isOk())
                 .andReturn();
         Number msId = JsonPath.read(listResult.getResponse().getContentAsString(), "$.data.items[0].id");
 
-        // 验证邀请列表端点
+        // 验证邀请列表端点（permitAll）
         mockMvc.perform(get("/api/micro-specialties/{id}/teachers", msId.longValue())
-                .header("Authorization", "Bearer " + adminToken))
+                .header("Authorization", "Bearer " + teacherToken))
                 .andExpect(status().isOk());
     }
 }

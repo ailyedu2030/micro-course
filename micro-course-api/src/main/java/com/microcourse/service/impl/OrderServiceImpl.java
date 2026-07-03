@@ -21,6 +21,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.PaymentRepository;
+import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.OrderService;
 import org.springframework.context.annotation.Lazy;
@@ -52,6 +53,7 @@ public class OrderServiceImpl implements OrderService {
     private final CourseBundleItemRepository bundleItemRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentService enrollmentService;
+    private final CourseService courseService;
 
     /** J9-01: 支付模式 — mock(dev) / real(生产) */
     @Value("${payment.mode:mock}")
@@ -66,13 +68,15 @@ public class OrderServiceImpl implements OrderService {
                             CourseRepository courseRepository,
                             CourseBundleItemRepository bundleItemRepository,
                             EnrollmentRepository enrollmentRepository,
-                            @Lazy EnrollmentService enrollmentService) {
+                            @Lazy EnrollmentService enrollmentService,
+                            CourseService courseService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.courseRepository = courseRepository;
         this.bundleItemRepository = bundleItemRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentService = enrollmentService;
+        this.courseService = courseService;
     }
 
     @Override
@@ -84,6 +88,9 @@ public class OrderServiceImpl implements OrderService {
         // v1.7.0: 旧版检查 == PUBLISHED(4) 误伤 status=2 的 seed 课程,导致"¥9.99 课程不能购买"
         if (course.getStatus() == null || !com.microcourse.enums.CourseStatus.fromCode(course.getStatus()).isSelectable()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程未发布，无法购买");
+        }
+        if ("REJECTED".equals(course.getPricingStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程定价已被驳回，无法购买");
         }
 
         // 幂等性: 存在同一课程的 PENDING/PAID 订单时直接返回
@@ -107,8 +114,10 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS, "您已选课，无需重复购买");
         }
 
-        BigDecimal price = course.getPrice();
-        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+        com.microcourse.dto.CoursePricingInfoVO pricing = courseService.getMyPricing(courseId);
+        java.math.BigDecimal finalPrice = pricing != null ? pricing.getFinalPrice() : java.math.BigDecimal.ZERO;
+
+        if (pricing == null || pricing.isFree() || finalPrice.compareTo(java.math.BigDecimal.ZERO) <= 0) {
             autoEnroll(userId, courseId);
             OrderVO vo = new OrderVO();
             vo.setStatus("PAID");
@@ -121,7 +130,7 @@ public class OrderServiceImpl implements OrderService {
         order.setUserId(userId);
         order.setCourseId(courseId);
         order.setBundleId(bundleId);
-        order.setAmount(price);
+        order.setAmount(finalPrice);
         order.setStatus("PENDING");
         order.setCreatedAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());

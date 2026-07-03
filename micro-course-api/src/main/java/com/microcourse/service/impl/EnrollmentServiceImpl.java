@@ -36,6 +36,7 @@ import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.CertificateService;
 import com.microcourse.service.BadgeService;
 import com.microcourse.service.NotificationService;
+import com.microcourse.service.CourseService;
 import com.microcourse.service.OrderService;
 import com.microcourse.enums.NotificationType;
 import org.springframework.security.core.Authentication;
@@ -69,6 +70,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final BadgeService badgeService;
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final CourseService courseService;
     private final NotificationService notificationService;
     private final com.microcourse.metrics.EnrollmentMetrics metrics;
     private final org.springframework.transaction.support.TransactionTemplate txTemplate;
@@ -84,6 +86,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                  BadgeService badgeService,
                                  OrderRepository orderRepository,
                                  OrderService orderService,
+                                 CourseService courseService,
                                  NotificationService notificationService,
                                  com.microcourse.metrics.EnrollmentMetrics metrics,
                                  org.springframework.transaction.PlatformTransactionManager txManager) {
@@ -98,6 +101,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         this.majorRepository = majorRepository;
         this.orderRepository = orderRepository;
         this.orderService = orderService;
+        this.courseService = courseService;
         this.notificationService = notificationService;
         this.metrics = metrics;
         this.txTemplate = new org.springframework.transaction.support.TransactionTemplate(txManager);
@@ -226,10 +230,15 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (!"PAYMENT".equals(request.getSourceChannel())
-                && course.getPrice() != null && course.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0
-                && Boolean.FALSE.equals(course.getIsFree())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程为付费课程，请先购买");
+        if (!"PAYMENT".equals(request.getSourceChannel())) {
+            com.microcourse.dto.CoursePricingInfoVO pricing = courseService.getMyPricing(request.getCourseId());
+            boolean studentShouldPay = pricing != null
+                    && !pricing.isFree()
+                    && pricing.getFinalPrice() != null
+                    && pricing.getFinalPrice().compareTo(java.math.BigDecimal.ZERO) > 0;
+            if (studentShouldPay) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程为付费课程，请先购买");
+            }
         }
         // Check user exists
         User user = userRepository.selectById(request.getUserId());

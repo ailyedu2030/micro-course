@@ -48,11 +48,9 @@ import org.springframework.beans.factory.annotation.Autowired;
  * <ul>
  *   <li>R 成功响应 {@code code=200}（见 {@code R.ok}）；BusinessException 经
  *       {@code GlobalExceptionHandler} 映射为 ErrorCode.httpStatus。</li>
- *   <li>付费课程判定（{@code OrderServiceImpl.createOrder}）依据 {@code price>0}；
- *       而选课付费拦截（{@code EnrollmentServiceImpl.enroll}）依据
- *       {@code price>0 && is_free=FALSE}。支付链路内部 {@code autoEnroll→enroll} 必须放行，
- *       故付费课程 fixture 配置为 <b>price=99.00 且 is_free=TRUE</b>：
- *       既触发建单（price&gt;0），又使支付时自动选课不被拦截（is_free=TRUE）。</li>
+ *   <li>付费课程判定使用 {@code getMyPricing} 取代旧 price 直读，
+ *       fixture 配置为 <b>price=99.00 且 is_free=FALSE、pricing_status=APPROVED、list_price=99.00</b>，
+ *       确保定价审核通过，学生方可创建付费订单。</li>
  *   <li>回调端点为 {@code POST /api/orders/callback}（无路径 id，靠 body.orderNo 定位），
  *       需 ADMIN 角色；仅 PENDING 订单可被回调推进，重复回调因状态非 PENDING 直接幂等返回。</li>
  *   <li>取消端点为 {@code POST /api/orders/{id}/cancel}；仅 PENDING 可取消，
@@ -423,10 +421,10 @@ class OrderPaymentFlowE2ETest extends BaseIntegrationTest {
     private Long insertPaidCourse(Long categoryId, Long teacherId) {
         Long id = jdbc.queryForObject(
                 "INSERT INTO courses(title, category_id, teacher_id, status, is_free, price, "
-                        + "course_type, version, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, 4, true, ?, 'VIDEO', 0, now(), now()) RETURNING id",
+                        + "list_price, pricing_status, course_type, version, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, 4, false, ?, ?, 'APPROVED', 'VIDEO', 0, now(), now()) RETURNING id",
                 Long.class, "ord-paid-course-" + System.nanoTime(), categoryId, teacherId,
-                new BigDecimal(PAID_COURSE_PRICE));
+                new BigDecimal(PAID_COURSE_PRICE), new BigDecimal(PAID_COURSE_PRICE));
         createdCourseIds.add(id);
         return id;
     }
