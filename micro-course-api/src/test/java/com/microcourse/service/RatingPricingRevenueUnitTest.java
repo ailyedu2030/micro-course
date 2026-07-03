@@ -68,8 +68,13 @@ class RatingPricingRevenueUnitTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         rateResolver = new PlatformShareRateResolver(configService);
+        // P1-I-1 修复: 用真实 TransactionTemplate + mock PlatformTransactionManager
+        // 避免 null 导致 recalculateAll 触发 NPE
+        org.springframework.transaction.PlatformTransactionManager ptm =
+                org.mockito.Mockito.mock(org.springframework.transaction.PlatformTransactionManager.class);
         ratingService = new TeacherRatingServiceImpl(
-                ratingRepository, tierLogRepository, userRepository, rateResolver, null);
+                ratingRepository, tierLogRepository, userRepository, rateResolver,
+                new org.springframework.transaction.support.TransactionTemplate(ptm));
     }
 
     // ====== 1. 评级公式边界测试 ======

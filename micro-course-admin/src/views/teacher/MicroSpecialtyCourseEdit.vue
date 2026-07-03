@@ -139,6 +139,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyDetail, getCourses, addCourse, updateCourseItem, removeCourse, getTeachers, inviteTeacher } from '@/api/microSpecialty'
+import { getCourses as getAllCourses } from '@/api/course'
 
 const route = useRoute()
 const msId = computed(() => route.params.id)
@@ -191,10 +192,16 @@ const fetchData = async () => {
   finally { loading.value = false; coursesLoading.value = false }
 }
 
-const showAddDialog = () => {
+const showAddDialog = async () => {
   const maxOrder = courses.value.length > 0 ? Math.max(...courses.value.map(c => c.sortOrder || 0)) : 0
   addForm.value = { courseId: null, sortOrder: maxOrder + 1, isRequired: true, credits: 2, hours: 32, minScore: 60 }
-  availableCourses.value = []
+  try {
+    const { data } = await getAllCourses({ page: 0, size: 1000 })
+    availableCourses.value = data?.items || data || []
+  } catch (e) {
+    availableCourses.value = []
+    ElMessage.error('获取课程列表失败')
+  }
   addVisible.value = true
 }
 const resetAddForm = () => { addFormRef.value?.clearValidate() }

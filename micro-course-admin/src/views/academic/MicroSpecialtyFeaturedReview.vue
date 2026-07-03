@@ -122,7 +122,7 @@ const handleReject = async (row) => {
 }
 const confirmReject = async () => {
   actingId.value = rejectTarget.value.id
-  try { await rejectFeatured(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
+  try { await rejectFeatured(rejectTarget.value.id, rejectReason.value); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }

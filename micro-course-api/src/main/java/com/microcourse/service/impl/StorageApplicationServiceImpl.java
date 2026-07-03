@@ -421,6 +421,15 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
 
         switch (module) {
             case MODULE_COURSES:
+                // P1-C-1 修复: 重置课程前检查是否有已接受的教师分配
+                // CASCADE DELETE 会连带删除 chapter_teacher_assignments
+                if (assignmentRepository.selectCount(
+                        new LambdaQueryWrapper<ChapterTeacherAssignment>()
+                                .eq(ChapterTeacherAssignment::getProposalId, proposalId)
+                                .eq(ChapterTeacherAssignment::getAcceptStatus, "ACCEPTED")) > 0) {
+                    throw new BusinessException(ErrorCode.MS_STATUS_INVALID,
+                            "已有已接受的教师分配，无法重置课程模块");
+                }
                 courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
                         .eq(ProposalCourse::getProposalId, proposalId));
                 break;

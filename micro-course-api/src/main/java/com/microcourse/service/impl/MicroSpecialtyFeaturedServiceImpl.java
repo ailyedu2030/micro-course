@@ -126,6 +126,10 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
+        // P2-3 修复: 与 approveFeatured/setGoldFeatured 一致,加 RECRUITING 检查
+        if (!"RECRUITING".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业当前非招生状态");
+        }
 
         if (!"PENDING".equals(ms.getFeaturedStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可驳回置顶");

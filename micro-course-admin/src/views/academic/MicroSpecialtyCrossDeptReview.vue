@@ -110,7 +110,7 @@ const handleApprove = async (row) => {
   try { await ElMessageBox.confirm(`确定批准教师「${row.teacherName}」的跨学院邀请？`, '确认批准', { type: 'info', confirmButtonText: '批准', cancelButtonText: '取消' }) }
   catch { return }
   actingId.value = row.id
-  try { await reviewCrossDept(row.id, { approved: true }); ElMessage.success('已批准'); fetchData() }
+  try { await reviewCrossDept(row.id, { action: 'approve' }); ElMessage.success('已批准'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }
@@ -122,7 +122,7 @@ const handleReject = async (row) => {
 }
 const confirmReject = async () => {
   actingId.value = rejectTarget.value.id
-  try { await reviewCrossDept(rejectTarget.value.id, { approved: false, reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
+  try { await reviewCrossDept(rejectTarget.value.id, { action: 'reject', reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }
