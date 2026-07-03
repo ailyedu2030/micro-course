@@ -346,9 +346,9 @@
           <el-button type="warning" plain size="small" @click="handleResetModule('module4')">重置模块</el-button>
         </div>
       </template>
-      <SignatureBlock title="① 微专业负责人意见" v-model="signatures[0]" :upload-handler="signatureUploadHandler" />
-      <SignatureBlock title="② 学院意见" v-model="signatures[1]" :upload-handler="sealUploadHandler" />
-      <SignatureBlock title="③ 学校意见" v-model="signatures[2]" :upload-handler="sealUploadHandler" />
+      <SignatureBlock title="① 微专业负责人意见" v-model="signatures[0]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
+      <SignatureBlock title="② 学院意见" v-model="signatures[1]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
+      <SignatureBlock title="③ 学校意见" v-model="signatures[2]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
     </el-card>
 
     <!-- ========== 模块5：共建共享单位 ========== -->
@@ -388,12 +388,22 @@
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="负责人签字">
-                <SignatureUploader v-model="unit.signature" :upload-handler="sharedUnitSignatureHandler" />
+                <SignatureUploader
+                  label="签字"
+                  :image-url="unit.signatureImageUrl"
+                  :uploader="makeUploader('SHARED_SIGNATURE')"
+                  @update:image-url="val => { unit.signatureImageUrl = val }"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="公章">
-                <SignatureUploader v-model="unit.seal" :upload-handler="sharedUnitSealHandler" />
+                <SignatureUploader
+                  label="公章"
+                  :image-url="unit.sealImageUrl"
+                  :uploader="makeUploader('SHARED_SEAL')"
+                  @update:image-url="val => { unit.sealImageUrl = val }"
+                />
               </el-form-item>
             </el-col>
           </el-row>
@@ -667,6 +677,20 @@ watch(courses, () => {
   }
 }, { deep: true })
 
+/** P2-2 修复: 章节学时之和 vs 课程学时汇总校验警告 */
+watch(courses, () => {
+  for (const row of courses.value) {
+    const courseHrs = Number(row.hours) || 0
+    const chapters = row.chapters || []
+    if (courseHrs > 0 && chapters.length > 0) {
+      const chapterSum = chapters.reduce((s, ch) => s + (Number(ch.hours) || 0), 0)
+      if (chapterSum !== courseHrs) {
+        console.warn(`[章节·学时] 课程「${row.courseName || ''}」课程学时 ${courseHrs} 与 ${chapters.length} 个章节学时之和 ${chapterSum} 不一致`)
+      }
+    }
+  }
+}, { deep: true })
+
 // 表单是否完整(用于禁用"提交审核"按钮,防止误点)
 const formComplete = computed(() => {
   return !!(
@@ -714,10 +738,10 @@ function addSharedUnit() {
     unitType: 'SHARE_UNIV',  // P1-C-5 修复
     sortOrder: sharedUnits.value.length + 1,
     opinionText: '',
-    signature: { type: 'TEXT', text: '', imageUrl: '' },
-    seal: { type: 'TEXT', text: '', imageUrl: '' },
+    signatureImageUrl: '',  // P1-UX: 顶层字段，与 SignatureUploader image-url 直接对接
+    sealImageUrl: '',       // P1-UX: 顶层字段
     signDate: '',
-    remark: ''  // B2 fix: add remark field for shared units
+    remark: ''
   })
 }
 
@@ -725,25 +749,14 @@ function removeSharedUnit(index) {
   sharedUnits.value.splice(index, 1)
 }
 
-// ==================== 上传处理器 ====================
-function signatureUploadHandler(file) {
-  if (!draftId.value) return Promise.reject(new Error('请先保存草稿'))
-  return uploadStorageImage(draftId.value, file, 'SIGNATURE')
-}
-
-function sealUploadHandler(file) {
-  if (!draftId.value) return Promise.reject(new Error('请先保存草稿'))
-  return uploadStorageImage(draftId.value, file, 'SEAL')
-}
-
-function sharedUnitSignatureHandler(file) {
-  if (!draftId.value) return Promise.reject(new Error('请先保存草稿'))
-  return uploadStorageImage(draftId.value, file, 'SHARED_SIGNATURE')
-}
-
-function sharedUnitSealHandler(file) {
-  if (!draftId.value) return Promise.reject(new Error('请先保存草稿'))
-  return uploadStorageImage(draftId.value, file, 'SHARED_SEAL')
+// ==================== 上传工厂 ====================
+// P1-UX: 返回符合 SignatureUploader 期望的 (file, onProgress) => Promise<{url}> 函数
+// 让组件可以真实上传到后端并接收 0-100% 进度
+function makeUploader(type) {
+  return async (file, onProgress) => {
+    if (!draftId.value) throw new Error('草稿初始化未完成，请稍候')
+    return await uploadStorageImage(draftId.value, file, type, onProgress)
+  }
 }
 
 // ==================== 保存 ====================
@@ -828,8 +841,13 @@ watch(() => JSON.stringify(teamMembers.value), scheduleAutoSave)
 watch(() => JSON.stringify(signatures.value), scheduleAutoSave)
 watch(() => JSON.stringify(sharedUnits.value), scheduleAutoSave)
 
-// Phase 2: 自动维护 teamMembers._index
-watch(teamMembers, () => { teamMembers.value.forEach((m,i) => m._index = i) }, { immediate: true, deep: true })
+// Phase 2: 自动维护 teamMembers._index — P1-UX: 修复递归更新死循环
+// Vue 3 watch 会对整个数组重新触发 (包括 deep 修改成员 _index)
+// 改用 length 监听 + 计算属性，触发时机更精准
+const teamMembersIndex = computed(() => teamMembers.value.map((_, i) => i))
+watch(teamMembersIndex, () => {
+  teamMembers.value.forEach((m, i) => { if (m._index !== i) m._index = i })
+})
 
 // ==================== 提交审核 ====================
 async function handleSubmit() {
@@ -850,7 +868,17 @@ async function handleSubmit() {
   // P1-C-11 修复：增加程序化表单校验
   try {
     await formRef1.value?.validate()
-  } catch {
+  } catch (errors) {
+    // P1-UX: 滚动到第一个错误字段 + 焦点, 用户立即知道改哪里
+    const firstErrorField = Object.keys(errors || {})[0]
+    if (firstErrorField) {
+      const el = document.querySelector(`[prop="${firstErrorField}"]`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        const input = el.querySelector('input, textarea, select')
+        if (input) input.focus()
+      }
+    }
     ElMessage.warning('请补全必填项后再提交')
     return
   }
@@ -869,7 +897,20 @@ async function handleSubmit() {
     ElMessage.success('提交成功，等待审核')
     router.push('/teacher/micro-specialties/my-proposals')
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '提交失败')
+    // P1-UX: 提交失败的详细错误滚动定位（同上）
+    const errorData = e?.response?.data
+    if (errorData?.errors) {
+      const firstErrorField = Object.keys(errorData.errors)[0]
+      if (firstErrorField) {
+        const el = document.querySelector(`[prop="${firstErrorField}"]`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          const input = el.querySelector('input, textarea, select')
+          if (input) input.focus()
+        }
+      }
+    }
+    ElMessage.error(errorData?.message || '提交失败')
   } finally {
     submitting.value = false
   }
@@ -1013,6 +1054,8 @@ async function initDraft() {
     const res = await initStorageDraft()
     const id = typeof res.data === 'object' ? res.data.id : res.data
     draftId.value = id
+    // P1-UX: 写入 URL query, 刷新页面或分享链接不会丢失数据
+    router.replace({ query: { ...route.query, id } })
     // 自动填充当前教师的姓名和联系方式
     const currentUser = useUserStore()
     if (currentUser.realName) form.value.leadName = currentUser.realName
@@ -1021,6 +1064,18 @@ async function initDraft() {
     saveStatus.value = ''
     initialLoadComplete.value = true
     autoSaveEnabled.value = true
+    // P1-C-12-07 fix: 自动保存初始草稿,让 draftId 立即可用
+    // 之前用户必须先手动点「保存」才能上传签名/公章
+    // 现在 initDraft 后自动触发一次保存,图片上传按钮立即可用
+    try {
+      saving.value = true
+      await saveStorageApplication(draftId.value, buildSavePayload())
+      dirty.value = false
+    } catch (e) {
+      console.warn('[MicroSpecialtyProposal] 自动初始化保存失败:', e?.message)
+    } finally {
+      saving.value = false
+    }
   } catch (e) {
     loadError.value = true  // P1-C-13: 显示错误状态
     ElMessage.error(e?.response?.data?.message || '初始化草稿失败')

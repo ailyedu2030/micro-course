@@ -272,7 +272,7 @@ public class TeacherServiceImpl implements TeacherService {
         }
 
         java.math.BigDecimal platformShare = totalRevenue.multiply(platformRate)
-                .divide(java.math.BigDecimal.valueOf(100));
+                .divide(java.math.BigDecimal.valueOf(100), java.math.RoundingMode.HALF_UP);
         java.math.BigDecimal netEarnings = totalRevenue.subtract(platformShare);
 
         vo.setTotalRevenue(totalRevenue);
@@ -293,7 +293,7 @@ public class TeacherServiceImpl implements TeacherService {
             item.setRevenue(courseRevenue);
             item.setOrderCount(entry.getValue().size());
             java.math.BigDecimal coursePlatform = courseRevenue.multiply(platformRate)
-                    .divide(java.math.BigDecimal.valueOf(100));
+                    .divide(java.math.BigDecimal.valueOf(100), java.math.RoundingMode.HALF_UP);
             item.setPlatformShare(coursePlatform);
             item.setNetEarnings(courseRevenue.subtract(coursePlatform));
             breakdown.add(item);
@@ -310,7 +310,7 @@ public class TeacherServiceImpl implements TeacherService {
                     t.setCourseTitle(courseTitleMap.getOrDefault(o.getCourseId(), "未知课程"));
                     t.setAmount(o.getAmount() != null ? o.getAmount() : java.math.BigDecimal.ZERO);
                     java.math.BigDecimal txPlatform = t.getAmount().multiply(platformRate)
-                            .divide(java.math.BigDecimal.valueOf(100));
+                            .divide(java.math.BigDecimal.valueOf(100), java.math.RoundingMode.HALF_UP);
                     t.setPlatformShare(txPlatform);
                     t.setNetEarnings(t.getAmount().subtract(txPlatform));
                     t.setPaidAt(o.getPaidAt());

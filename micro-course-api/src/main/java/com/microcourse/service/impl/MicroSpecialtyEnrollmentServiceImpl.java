@@ -175,6 +175,21 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业当前未在招生中，无法通过审批");
         }
 
+        // P1-C-12-05 fix: 审批时双重检查人数上限
+        // apply() 时已检查人数上限,但可能存在两个 PENDING 申请,
+        // 当第一个被审批通过后 studentCount+1, 第二个在审批时 studentCount 仍为旧值
+        // 必须在审批时再检查一次,确保不超过 maxStudents
+        if (ms.getMaxStudents() != null && ms.getMaxStudents() > 0) {
+            long currentCount = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                    .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, en.getMicroSpecialtyId())
+                    .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
+            if (currentCount >= ms.getMaxStudents()) {
+                throw new BusinessException(ErrorCode.MS_MAX_STUDENTS_REACHED,
+                    "微专业已招满（" + currentCount + "/" + ms.getMaxStudents() + "）");
+            }
+        }
+
         int oldVersion = en.getVersion();
         int affected = enrollmentRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
@@ -338,7 +353,11 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    // P1-C-12-04 fix: 班级导入大事务超时
+    // 50 人班级 × 10 门课程 = 500 次 enroll() 调用在同一 DB 事务中执行
+    // PostgreSQL 事务超时默认 30s,大型班级会触发 timeout 导致整批失败
+    // 显式设置 5 分钟上限,适配 100 人 × 20 门课程 = 2000 次调用的极端场景
+    @Transactional(rollbackFor = Exception.class, timeout = 300)
     public int classImport(Long msId, Long classId) {
         MicroSpecialty ms = msRepository.selectForUpdate(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);

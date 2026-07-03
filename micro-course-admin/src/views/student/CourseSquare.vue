@@ -91,7 +91,7 @@
               <p class="rec-meta">{{ course.teacherName || '未知教师' }} · {{ formatStudentCount(course.studentCount) }}</p>
               <div class="rec-footer">
                 <span class="rec-rating"><el-icon :size="12"><Star /></el-icon> {{ formatRating(course.avgRating) }}</span>
-                <span class="rec-price" :class="{ 'rec-price--free': !course.price }">{{ course.price ? `¥${course.price}` : '免费' }}</span>
+                <span class="rec-price" :class="{ 'rec-price--free': !displayPrice(course) }">{{ displayPrice(course) ? `¥${displayPrice(course)}` : '免费' }}</span>
               </div>
             </div>
           </article>
@@ -207,12 +207,12 @@ v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
                     <span class="rating-count" v-if="course.ratingCount">({{ course.ratingCount }})</span>
                     <span class="rating-none" v-else>暂无评分</span>
                   </div>
-                  <div class="price" :class="{ 'price--free': !course.price || course.isFree }">
+                  <div class="price" :class="{ 'price--free': !displayPrice(course) || course.isFree }">
                     <template v-if="course.freeAccessScopeLabel">
                       <el-tag size="small" type="success" effect="light" class="free-tag">{{ course.freeAccessScopeLabel }}</el-tag>
                     </template>
-                    <template v-else-if="course.isFree || !course.price">免费</template>
-                    <template v-else>¥{{ course.price }}</template>
+                    <template v-else-if="course.isFree || !displayPrice(course)">免费</template>
+                    <template v-else>¥{{ displayPrice(course) }}</template>
                   </div>
                 </div>
               </div>
@@ -251,11 +251,11 @@ v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
       </div>
     </section>
 
-    <!-- ============ 微专业 (仅当有数据时显示,搜索时也隐藏) ============ -->
-    <section v-if="hasMSData && !isSearchActive" class="section micro-specialty-section" aria-label="微专业">
+    <!-- ============ 微专业 (加载完成时显示,有数据/无数据/加载中三态) ============ -->
+    <section v-if="!isSearchActive" class="section micro-specialty-section" aria-label="微专业">
       <header class="section-header">
         <h2 class="section-title">微专业</h2>
-        <el-button text type="primary" @click="showAllMS = true; fetchAllMS()">查看更多 →</el-button>
+        <el-button v-if="hasMSData" text type="primary" @click="showAllMS = true; fetchAllMS()">查看更多 →</el-button>
       </header>
       <div v-if="msLoading" class="rec-scroll-wrap">
         <div class="ms-loading-row">
@@ -277,7 +277,7 @@ v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
           <el-button type="primary" @click="fetchMicroSpecialties">重试</el-button>
         </template>
       </el-result>
-      <template v-else>
+      <template v-else-if="hasMSData">
         <div v-if="goldFeatured.length" class="ms-gold-row">
           <div
 v-for="item in goldFeatured" :key="'gold-'+item.id"
@@ -317,6 +317,8 @@ v-for="item in featured" :key="'feat-'+item.id"
           </div>
         </div>
       </template>
+      <!-- P1-C-12-03 fix: 无数据时显示空态文案,不再整段隐藏 -->
+      <el-empty v-else description="暂无微专业项目，敬请期待" />
     </section>
 
     <!-- 全部微专业弹窗 -->
@@ -487,6 +489,9 @@ const formatStudentCount = (n) => {
 
 // 评分格式化
 const formatRating = (r) => (r ? Number(r).toFixed(1) : '—')
+
+/** P0 修复: 使用 listPrice 作为标价展示, 兼容旧 price 字段 */
+const displayPrice = (course) => course?.listPrice || course?.price || 0
 
 // 日期格式化
 const formatDate = (dateStr) => {

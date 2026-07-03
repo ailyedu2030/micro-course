@@ -126,6 +126,7 @@
               <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">📹 视频课</el-tag>
               <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">🎯 互动课</el-tag>
               <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="warning" size="small">📝 练习</el-tag>
+              <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">🏫 线下课</el-tag>
               <el-tag v-else type="info" size="small">—</el-tag>
             </template>
           </el-table-column>
@@ -512,6 +513,8 @@ const handleManageChapterContent = (row) => {
     router.push(`/teacher/courses/${cid}/slides/manage`)
   } else if (row.chapterType === 'EXERCISE') {
     router.push(`/courses/${cid}/exercises`)
+  } else if (row.chapterType === 'OFFLINE') {
+    router.push(`/teacher/chapters/${row.id}/offline-sessions`)
   } else {
     router.push(`/courses/${cid}/videos?chapterId=${row.id}`)
   }

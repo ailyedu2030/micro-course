@@ -116,7 +116,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setTitle(request.getTitle());
         chapter.setDescription(request.getDescription());
         chapter.setSortOrder(request.getSortOrder());
-        chapter.setChapterType(request.getChapterType() != null ? request.getChapterType() : "VIDEO");
+        String chapterType = request.getChapterType() != null ? request.getChapterType() : "VIDEO";
+        validateChapterType(chapterType);
+        chapter.setChapterType(chapterType);
         chapter.setDuration(request.getDuration());
         chapter.setCreatedAt(LocalDateTime.now());
         chapter.setUpdatedAt(LocalDateTime.now());
@@ -140,7 +142,10 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (request.getTitle() != null) chapter.setTitle(request.getTitle());
         if (request.getDescription() != null) chapter.setDescription(request.getDescription());
         if (request.getSortOrder() != null) chapter.setSortOrder(request.getSortOrder());
-        if (request.getChapterType() != null) chapter.setChapterType(request.getChapterType());
+        if (request.getChapterType() != null) {
+            validateChapterType(request.getChapterType());
+            chapter.setChapterType(request.getChapterType());
+        }
         if (request.getDuration() != null) chapter.setDuration(request.getDuration());
 
         chapter.setUpdatedAt(LocalDateTime.now());
@@ -241,6 +246,16 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private void assertCourseOwner(Course course) {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+    }
+
+    private static final java.util.Set<String> VALID_CHAPTER_TYPES = java.util.Set.of(
+        "VIDEO", "INTERACTIVE", "EXERCISE", "OFFLINE"
+    );
+
+    private void validateChapterType(String chapterType) {
+        if (chapterType != null && !VALID_CHAPTER_TYPES.contains(chapterType)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无效的章节类型: " + chapterType);
         }
     }
 }

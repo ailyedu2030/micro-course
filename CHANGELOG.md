@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.19.0] - 2026-07-03
+
+### Added
+- **线下课章节支持** — 章节新增 OFFLINE 类型，教师可创建线下课章节混排在教学大纲中
+- **排期管理** — 教师为线下课章节设置上课日期、时间、地点、备注，支持多条排期
+- **学生签到** — 学生一键签到，时间窗口内可操作（课前15分~课后30分），幂等防重复
+- **签到记录** — `attendance_records` 表记录签到状态（PRESENT/LATE/ABSENT/EXCUSED），带操作追溯
+- **QR 码签到** — 教师界面展示 QR 码，学生扫码签到（并行签到方式）
+- **签到分析看板** — 教师查看签到率、出勤趋势、缺勤名单
+- **上课提醒通知** — 上课前 30 分钟站内通知提醒学生
+- **学生自助请假** — 学生在线提交请假申请，教师审批
+- **考勤参与成绩** — 签到次数可参与课程成绩计算
+- **移动端适配** — 签到页面响应式优化，支持手机操作
+- **chapterType 白名单校验** — 后端校验章节类型（VIDEO/INTERACTIVE/EXERCISE/OFFLINE），防止脏数据
+
+### Changed
+- **CourseChapterServiceImpl** — 新增 `validateChapterType()` 白名单校验
+
+### Quality
+- ✅ mvn compile 0 ERROR
+- ✅ mvn test 345/345 PASS
+- ✅ vite build 0 ERROR
+
+---
+
 ## [1.7.0] - 2026-06-25
 
 ### 🎯 Status: 技术侧 100% 就绪, 可进入灰度 2 周

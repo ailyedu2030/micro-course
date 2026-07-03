@@ -3,8 +3,12 @@
     <!-- 顶部操作栏 -->
     <div class="toolbar">
       <el-button @click="$router.back()">返回</el-button>
-      <el-button type="primary" @click="handleExport('word')">下载Word</el-button>
-      <el-button type="primary" @click="handleExport('pdf')">下载PDF</el-button>
+      <el-button type="primary" :loading="exportingType === 'word'" :disabled="!!exportingType" @click="handleExport('word')">
+        {{ exportingType === 'word' ? '正在导出 Word…' : '下载Word' }}
+      </el-button>
+      <el-button type="primary" :loading="exportingType === 'pdf'" :disabled="!!exportingType" @click="handleExport('pdf')">
+        {{ exportingType === 'pdf' ? '正在导出 PDF…' : '下载PDF' }}
+      </el-button>
     </div>
 
     <!-- 错误状态 -->
@@ -14,8 +18,18 @@
 
     <!-- A4 纸样式预览 -->
     <div v-else-if="data" class="a4-paper" id="preview-content">
-      <!-- 标题 -->
-      <h1 class="preview-title">高校开放共享"微专业"资源平台推荐表</h1>
+  <!-- 状态徽章 — 用户一眼看出当前阶段 -->
+  <div v-if="data?.status" class="status-banner" :class="`status-${(data.status || '').toLowerCase()}`">
+    <el-icon><DocumentCopy v-if="data.status === 'DRAFT'" /><Loading v-else-if="data.status === 'PENDING_REVIEW'" /><CircleCheck v-else-if="data.status === 'APPROVED'" /><CircleClose v-else-if="data.status === 'REJECTED'" /><Refresh v-else /></el-icon>
+    <span class="status-text">{{ statusLabel(data.status) }}</span>
+    <span v-if="data.status === 'DRAFT'" class="status-tip">仅供预览，尚未提交审核</span>
+    <span v-else-if="data.status === 'PENDING_REVIEW'" class="status-tip">审核中，暂不可编辑</span>
+    <span v-else-if="data.status === 'REJECTED' && data.reviewComment" class="status-tip">驳回原因：{{ data.reviewComment }}</span>
+    <span v-else-if="data.status === 'WITHDRAWN'" class="status-tip">已撤回，可继续编辑</span>
+  </div>
+
+  <!-- 标题 -->
+  <h1 class="preview-title">高校开放共享"微专业"资源平台推荐表</h1>
 
       <!-- 模块1：基本信息 -->
       <table class="preview-table">
@@ -285,7 +299,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { DocumentCopy, Loading, CircleCheck, CircleClose, Refresh } from '@element-plus/icons-vue'
 import { getStoragePreview, exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 
 // RT-2 fix: Enhanced HTML sanitizer with case-insensitive patterns and wider vector coverage
@@ -308,6 +323,7 @@ function sanitizeHtml(html) {
 
 const route = useRoute()
 const loading = ref(true)
+const exportingType = ref(null)  // P1-UX: 跟踪当前导出格式（word/pdf）用于按钮 loading 态
 const error = ref(false)
 const errorMessage = ref('')  // P2-F: 具体错误信息
 const data = ref(null)
@@ -328,13 +344,23 @@ const loadData = async () => {
 
 const handleExport = async (type) => {
   const fn = type === 'word' ? exportStorageWord : exportStoragePdf
+  exportingType.value = type  // P1-UX: 立即设置 loading 态，避免双击
   try {
     const res = await fn(route.params.id)
     // B4 fix: check if response is actually a JSON error disguised as blob
     if (res.data && res.data.type === 'application/json') {
       const text = await new Response(res.data).text()
       const err = JSON.parse(text)
-      ElMessage.error(err.message || '导出校验失败')
+      // P1-UX: 校验失败显示具体错误清单，而非"导出失败"模糊提示
+      if (err.errors && Array.isArray(err.errors) && err.errors.length) {
+        ElMessageBox.alert(
+          err.errors.map(e => `• ${e}`).join('\n'),
+          err.message || '请补全必填项后再导出',
+          { type: 'warning', confirmButtonText: '我知道了' }
+        )
+      } else {
+        ElMessage.error(err.message || '导出校验失败')
+      }
       return
     }
     const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
@@ -342,14 +368,19 @@ const handleExport = async (type) => {
     const a = document.createElement('a')
     a.href = url
     const ext = type === 'word' ? 'docx' : 'pdf'
-    const title = data.value?.title || '申报'
-    a.download = `【${title}】申请表_${new Date().toISOString().slice(0, 10)}.${ext}`
+    // P1-UX: 文件名更专业 - 含微专业名+日期
+    const title = data.value?.title || data.value?.microSpecialtyName || '微专业'
+    const date = new Date().toISOString().slice(0, 10)
+    a.download = `【${title}】整理收纳微专业申请表_${date}.${ext}`
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
+    ElMessage.success(`${ext.toUpperCase()} 导出成功`)
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || '导出失败'  // P2-F: 显示具体错误
     ElMessage.error(msg)
+  } finally {
+    // P1-UX: 恢复按钮可点状态
+    exportingType.value = null
   }
 }
 
@@ -367,6 +398,12 @@ const signLevelLabel = (level) => {
     SHARED_UNIT: '共享单位意见'
   }
   return map[level] || level || ''
+}
+
+// P1-UX: 状态徽章文本映射
+const statusLabel = (s) => {
+  const map = { DRAFT: '草稿', PENDING_REVIEW: '审核中', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回' }
+  return map[s] || s || ''
 }
 
 const unitTypeLabel = (type) => {
@@ -533,5 +570,55 @@ onMounted(loadData)
     width: 100%;
     padding: 15mm 12mm;
   }
+}
+
+/* P1-UX: 状态徽章 — 用户预览时一眼看出当前阶段 */
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  border: 1px solid;
+}
+.status-banner .el-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.status-banner .status-text {
+  font-weight: 600;
+  font-size: 15px;
+}
+.status-banner .status-tip {
+  margin-left: 8px;
+  color: #606266;
+  font-size: 13px;
+}
+.status-banner.status-draft {
+  background: #f4f4f5;
+  border-color: #d3d4d6;
+  color: #606266;
+}
+.status-banner.status-pending_review {
+  background: #fdf6ec;
+  border-color: #faecd8;
+  color: #e6a23c;
+}
+.status-banner.status-approved {
+  background: #f0f9eb;
+  border-color: #d9ead3;
+  color: #67c23a;
+}
+.status-banner.status-rejected {
+  background: #fef0f0;
+  border-color: #fde2e2;
+  color: #f56c6c;
+}
+.status-banner.status-withdrawn {
+  background: #ecf5ff;
+  border-color: #d9ecff;
+  color: #909399;
 }
 </style>

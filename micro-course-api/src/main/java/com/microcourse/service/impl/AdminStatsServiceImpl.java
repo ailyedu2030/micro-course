@@ -17,7 +17,6 @@ import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
 import com.microcourse.entity.Video;
 import com.microcourse.enums.CourseStatus;
-import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CertificateRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DiscussionPostRepository;
@@ -42,6 +41,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -129,7 +129,10 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         ));
 
         // 总选课数
-        vo.setTotalEnrollments(enrollmentRepository.selectCount(null));
+        vo.setTotalEnrollments(enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                        .ne(Enrollment::getEnrollmentStatus, "CANCELLED")
+                        .ne(Enrollment::getEnrollmentStatus, "WAITLIST")));
 
         // 总视频数
         vo.setTotalVideos(videoRepository.selectCount(null));
@@ -456,7 +459,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
                         .map(o -> o.getAmount() != null ? o.getAmount() : BigDecimal.ZERO)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 platformShare = platformShare.add(
-                        courseRevenue.multiply(rate).divide(BigDecimal.valueOf(100)));
+                        courseRevenue.multiply(rate).divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP));
             }
         }
         BigDecimal teacherPayout = totalRevenue.subtract(platformShare);

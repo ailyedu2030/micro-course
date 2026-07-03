@@ -413,9 +413,54 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         }
 
         MicroSpecialtyDetailVO detail = new MicroSpecialtyDetailVO();
-        // P1-2 修复: copyToVO 已填充 departmentName/leadTeacherName,
-        // 删除下方重复的 selectById
-        copyToVO(ms, detail);
+        // P1-C-12-08 fix: 消除 getDetail() 的 N+1
+        // 之前调用单参数 copyToVO 触发 5+ 次 selectById（部门/创建者/负责教师/
+        // 课程数/待审数/总报名数/角色）
+        // 单条记录详情页也是 P1-C 体验问题:每次打开详情多查 5-7 次
+        // 改用批量预加载 map 模式（与 page() 一致）
+        Long msId = ms.getId();
+        Map<Long, String> deptNameMap = new java.util.HashMap<>();
+        if (ms.getOfferDepartmentId() != null) {
+            Department d = departmentRepository.selectById(ms.getOfferDepartmentId());
+            if (d != null) deptNameMap.put(d.getId(), d.getName());
+        }
+        Map<Long, String> teacherNameMap = new java.util.HashMap<>();
+        if (ms.getLeadTeacherId() != null) {
+            User lead = userRepository.selectById(ms.getLeadTeacherId());
+            if (lead != null) teacherNameMap.put(lead.getId(), lead.getRealName());
+        }
+        Map<Long, String> creatorNameMap = new java.util.HashMap<>();
+        if (ms.getCreatorId() != null) {
+            User creator = userRepository.selectById(ms.getCreatorId());
+            if (creator != null) creatorNameMap.put(creator.getId(), creator.getRealName());
+        }
+        Map<Long, Integer> courseCountMap = new java.util.HashMap<>();
+        Map<Long, Integer> pendingEnrollCountMap = new java.util.HashMap<>();
+        Map<Long, Integer> totalEnrollmentsMap = new java.util.HashMap<>();
+        Map<Long, String> roleMap = new java.util.HashMap<>();
+        Long courseCount = msCourseRepository.selectCount(
+            new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                .eq(MicroSpecialtyCourse::getMicroSpecialtyId, msId));
+        courseCountMap.put(msId, courseCount != null ? courseCount.intValue() : 0);
+        Long pendingCount = msEnrollmentRepository.selectCount(
+            new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
+                .eq(MicroSpecialtyEnrollment::getStatus, "PENDING"));
+        pendingEnrollCountMap.put(msId, pendingCount != null ? pendingCount.intValue() : 0);
+        Long totalCount = msEnrollmentRepository.selectCount(
+            new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId));
+        totalEnrollmentsMap.put(msId, totalCount != null ? totalCount.intValue() : 0);
+        if (userId != null) {
+            MicroSpecialtyTeacher teacher = msTeacherRepository.selectOne(
+                new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                    .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
+                    .eq(MicroSpecialtyTeacher::getTeacherId, userId)
+                    .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
+            if (teacher != null) roleMap.put(msId, teacher.getRole());
+        }
+        copyToVO(ms, detail, deptNameMap, teacherNameMap, creatorNameMap,
+                courseCountMap, pendingEnrollCountMap, totalEnrollmentsMap, roleMap);
 
         // 课程编排
         List<MicroSpecialtyCourse> courses = msCourseRepository.selectList(
@@ -823,7 +868,12 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
-        requireLeadOf(id);
+        // P1-C-12-02 fix: cancel 是 ACADEMIC 核心管理功能，Controller @PreAuthorize 允许
+        // ACADEMIC/ADMIN，但 Service 层 requireLeadOf 阻挡非 LEAD 的 ACADEMIC，导致教务处
+        // 永远点不动"取消"按钮。改为：LEAD/ADMIN 走 LEAD 校验，ACADEMIC 直接放行。
+        if (!SecurityUtil.isAdminOrAcademic()) {
+            requireLeadOf(id);
+        }
 
         // 禁止重复取消
         if ("CANCELLED".equals(ms.getStatus())) throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已被取消");

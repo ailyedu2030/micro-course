@@ -146,6 +146,24 @@ public class CourseController {
         return R.ok(courseService.getMyPricing(id));
     }
 
+    /** P0 修复: 提交定价审核 (DRAFT → PENDING) */
+    @PostMapping("/{id}/pricing/submit-review")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
+    public R<Void> submitPricingForReview(@PathVariable Long id) {
+        courseService.submitPricingForReview(id);
+        return R.ok();
+    }
+
+    /** P0 修复: 审核定价 (PENDING → APPROVED / REJECTED) */
+    @PostMapping("/{id}/pricing/review")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
+    public R<Void> reviewPricing(@PathVariable Long id,
+                                  @RequestParam boolean approved,
+                                  @RequestParam(required = false) String reason) {
+        courseService.reviewPricing(id, approved, reason);
+        return R.ok();
+    }
+
     /**
      * PUT /api/courses/{id}/status — 课程状态变更
      *

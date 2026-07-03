@@ -43,15 +43,15 @@
             <template v-if="row.status === 'DRAFT'">
               <el-button size="small" type="primary" @click="openEditor(row)">编辑</el-button>
               <el-button size="small" @click="handlePreview(row)">预览</el-button>
-              <el-button size="small" @click="handleExportWord(row)">Word</el-button>
-              <el-button size="small" @click="handleExportPdf(row)">PDF</el-button>
-              <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+              <el-button size="small" :loading="exportingRowId === row.id && exportingType === 'word'" :disabled="!!exportingRowId" @click="handleExportWord(row)">Word</el-button>
+              <el-button size="small" :loading="exportingRowId === row.id && exportingType === 'pdf'" :disabled="!!exportingRowId" @click="handleExportPdf(row)">PDF</el-button>
+              <el-button size="small" type="danger" :disabled="!!exportingRowId" @click="handleDelete(row)">删除</el-button>
             </template>
             <template v-else-if="row.status === 'APPROVED'">
               <el-button size="small" type="success" @click="$router.push(`/teacher/micro-specialties/${row.microSpecialtyId || row.id}/manage`)">进入管理</el-button>
               <el-button size="small" @click="handlePreview(row)">预览</el-button>
-              <el-button size="small" @click="handleExportWord(row)">Word</el-button>
-              <el-button size="small" @click="handleExportPdf(row)">PDF</el-button>
+              <el-button size="small" :loading="exportingRowId === row.id && exportingType === 'word'" :disabled="!!exportingRowId" @click="handleExportWord(row)">Word</el-button>
+              <el-button size="small" :loading="exportingRowId === row.id && exportingType === 'pdf'" :disabled="!!exportingRowId" @click="handleExportPdf(row)">PDF</el-button>
             </template>
             <template v-else-if="row.status === 'REJECTED'">
               <el-button size="small" type="warning" @click="openEditor(row)">编辑重提</el-button>
@@ -128,48 +128,73 @@ const handlePreview = (row) => {
   router.push(`/teacher/micro-specialties/storage-preview/${row.id}`)
 }
 
+// P1-UX: 跟踪正在导出的行+格式，按钮显示 loading 并禁用
+const exportingRowId = ref(null)
+const exportingType = ref(null)
+
 const handleExportWord = async (row) => {
+  exportingRowId.value = row.id
+  exportingType.value = 'word'
   try {
     const res = await exportStorageWord(row.id)
     const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
-    // 检查响应是否为 JSON 错误而非有效文件
     if (blob.type === 'application/json') {
       const text = await new Response(blob).text()
       const err = JSON.parse(text)
-      ElMessage.error(err?.message || '导出失败')
+      if (err.errors && Array.isArray(err.errors) && err.errors.length) {
+        ElMessageBox.alert(err.errors.map(e => `• ${e}`).join('\n'), err.message || '请补全必填项后再导出', { type: 'warning' })
+      } else {
+        ElMessage.error(err?.message || '导出失败')
+      }
       return
     }
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `【${row.title || '申报'}】申请表.docx`
+    const title = row.title || row.microSpecialtyName || '微专业'
+    const date = new Date().toISOString().slice(0, 10)
+    a.download = `【${title}】整理收纳微专业申请表_${date}.docx`
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
+    ElMessage.success('Word 导出成功')
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '导出失败')
+  } finally {
+    exportingRowId.value = null
+    exportingType.value = null
   }
 }
 
 const handleExportPdf = async (row) => {
+  exportingRowId.value = row.id
+  exportingType.value = 'pdf'
   try {
     const res = await exportStoragePdf(row.id)
     const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
     if (blob.type === 'application/json') {
       const text = await new Response(blob).text()
       const err = JSON.parse(text)
-      ElMessage.error(err?.message || '导出失败')
+      if (err.errors && Array.isArray(err.errors) && err.errors.length) {
+        ElMessageBox.alert(err.errors.map(e => `• ${e}`).join('\n'), err.message || '请补全必填项后再导出', { type: 'warning' })
+      } else {
+        ElMessage.error(err?.message || '导出失败')
+      }
       return
     }
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `【${row.title || '申报'}】申请表.pdf`
+    const title = row.title || row.microSpecialtyName || '微专业'
+    const date = new Date().toISOString().slice(0, 10)
+    a.download = `【${title}】整理收纳微专业申请表_${date}.pdf`
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
+    ElMessage.success('PDF 导出成功')
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '导出失败')
+  } finally {
+    exportingRowId.value = null
+    exportingType.value = null
   }
 }
 
