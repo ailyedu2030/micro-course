@@ -125,16 +125,25 @@ public class MicroSpecialtyProgressAggregator {
         }
 
         // Recalculate student_count for all affected micro specialties
+        // P1-C-5 修复: 增加 version 乐观锁，防止并发覆盖
         for (Long msId : affectedMsIds) {
             try {
+                MicroSpecialty ms = msRepository.selectById(msId);
+                if (ms == null) continue;
+                Integer oldVersion = ms.getVersion() != null ? ms.getVersion() : 0;
                 Long count = enrollmentRepository.selectCount(
                         new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
                                 .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
                                 .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
                 LambdaUpdateWrapper<MicroSpecialty> uw = new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
-                        .set(MicroSpecialty::getStudentCount, count.intValue());
-                msRepository.update(null, uw);
+                        .eq(MicroSpecialty::getVersion, oldVersion)
+                        .set(MicroSpecialty::getStudentCount, count.intValue())
+                        .setSql("version = version + 1");
+                int rows = msRepository.update(null, uw);
+                if (rows == 0) {
+                    log.warn("[MS-Progress] student_count version conflict for msId={}, oldVersion={}", msId, oldVersion);
+                }
             } catch (Exception e) {
                 // ERR-002 修复: 异常升级为 error 日志
                 log.error("[MS-Progress] student_count recalibration failed msId={}: {}", msId, e.getMessage(), e);

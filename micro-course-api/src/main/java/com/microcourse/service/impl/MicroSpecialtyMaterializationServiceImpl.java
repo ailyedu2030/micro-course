@@ -74,6 +74,8 @@ public class MicroSpecialtyMaterializationServiceImpl implements MicroSpecialtyM
             log.warn("materialize: no MicroSpecialty found for proposal {}, skipping", proposalId);
             return;
         }
+        // P1-I-2 修复: 悲观锁锁定 micro_specialty 行，防止并发重复物化
+        ms = msRepo.selectForUpdate(ms.getId());
 
         // 2. 物化每门课程
         List<ProposalCourse> pCourses = proposalCourseRepo.selectList(
