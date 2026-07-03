@@ -667,6 +667,20 @@ watch(courses, () => {
   }
 }, { deep: true })
 
+/** P2-2 修复: 章节学时之和 vs 课程学时汇总校验警告 */
+watch(courses, () => {
+  for (const row of courses.value) {
+    const courseHrs = Number(row.hours) || 0
+    const chapters = row.chapters || []
+    if (courseHrs > 0 && chapters.length > 0) {
+      const chapterSum = chapters.reduce((s, ch) => s + (Number(ch.hours) || 0), 0)
+      if (chapterSum !== courseHrs) {
+        console.warn(`[章节·学时] 课程「${row.courseName || ''}」课程学时 ${courseHrs} 与 ${chapters.length} 个章节学时之和 ${chapterSum} 不一致`)
+      }
+    }
+  }
+}, { deep: true })
+
 // 表单是否完整(用于禁用"提交审核"按钮,防止误点)
 const formComplete = computed(() => {
   return !!(

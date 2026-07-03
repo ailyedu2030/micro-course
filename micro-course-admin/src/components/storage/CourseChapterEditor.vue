@@ -193,7 +193,11 @@ function openChapterDrawer(row, index) {
 function addChapter() {
   if (!currentCourse.value.chapters) currentCourse.value.chapters = []
   const maxSort = currentCourse.value.chapters.length
+  // P2-1 修复: 新章节生成临时负 ID,确保 toggleChapter 引用有效,
+  // 后端通过 oldIdToNewChapterMap 正确映射到新自增 ID
+  const tempId = Date.now() + Math.floor(Math.random() * 10000)
   currentCourse.value.chapters.push({
+    id: -tempId,
     title: '',
     description: '',
     hours: 0,
