@@ -1064,18 +1064,8 @@ async function initDraft() {
     saveStatus.value = ''
     initialLoadComplete.value = true
     autoSaveEnabled.value = true
-    // P1-C-12-07 fix: 自动保存初始草稿,让 draftId 立即可用
-    // 之前用户必须先手动点「保存」才能上传签名/公章
-    // 现在 initDraft 后自动触发一次保存,图片上传按钮立即可用
-    try {
-      saving.value = true
-      await saveStorageApplication(draftId.value, buildSavePayload())
-      dirty.value = false
-    } catch (e) {
-      console.warn('[MicroSpecialtyProposal] 自动初始化保存失败:', e?.message)
-    } finally {
-      saving.value = false
-    }
+    // draftId 已经在 initDraft() 返回时拿到，图片上传按钮立即可用
+    // 不再自动保存（避免空表单 PUT 400），改为图片上传时才要求表单已存在
   } catch (e) {
     loadError.value = true  // P1-C-13: 显示错误状态
     ElMessage.error(e?.response?.data?.message || '初始化草稿失败')
