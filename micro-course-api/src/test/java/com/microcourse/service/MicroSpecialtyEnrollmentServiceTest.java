@@ -193,6 +193,27 @@ class MicroSpecialtyEnrollmentServiceTest {
     }
 
     @Test
+    @DisplayName("approve: 人数上限双重检查 — 满员时拒绝（修复 P1-C 越级）")
+    void approve_maxStudentsReached() {
+        // P1-C-12-05 回归: apply() 时检查上限,但两个 PENDING 同时申请,
+        // 第一个被审批通过后 studentCount 才会 +1;第二个审批时必须再次检查
+        MicroSpecialtyEnrollment en = pendingEnrollment(1L);
+        when(enrollmentRepository.selectById(1L)).thenReturn(en);
+        MicroSpecialty ms = specialtyWithStatus("RECRUITING", 50, 50);  // max=50, current=50
+        when(msRepository.selectById(anyLong())).thenReturn(ms);
+        when(msService.isLeadOf(anyLong(), anyLong())).thenReturn(true);
+        // 当前已有 50 个 APPROVED/IN_PROGRESS
+        when(enrollmentRepository.selectCount(any())).thenReturn(50L);
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
+
+            BusinessException ex = assertThrows(BusinessException.class, () -> service.approve(1L));
+            assertEquals(ErrorCode.MS_MAX_STUDENTS_REACHED.getCode(), ex.getCode());
+        }
+    }
+
+    @Test
     @DisplayName("approve: 版本冲突抛出 MS_CONCURRENT_MODIFICATION")
     void approve_versionConflict() {
         MicroSpecialtyEnrollment en = pendingEnrollment(1L);
