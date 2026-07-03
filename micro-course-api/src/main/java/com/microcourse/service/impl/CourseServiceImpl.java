@@ -1241,33 +1241,46 @@ public class CourseServiceImpl implements CourseService {
         course.setFreeDeptIds(request.getFreeDeptIds());
         course.setDiscountScope(request.getDiscountScope());
         course.setDiscountPercent(request.getDiscountPercent());
+        // 教师修改定价后: REJECTED→DRAFT 可重新提交; APPROVED→DRAFT 需重新审批
+        if ("REJECTED".equals(course.getPricingStatus()) || "APPROVED".equals(course.getPricingStatus())) {
+            course.setPricingStatus("DRAFT");
+            course.setPricingReviewedAt(null);
+            course.setPricingReviewedBy(null);
+        }
         course.setUpdatedAt(LocalDateTime.now());
         courseRepository.updateById(course);
         evictCourseCacheAfterCommit(courseId);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void submitPricingForReview(Long courseId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         Long userId = SecurityUtil.getCurrentUserId();
         if (!course.getTeacherId().equals(userId) && !SecurityUtil.isAdmin())
             throw new BusinessException(ErrorCode.NO_PERMISSION);
-        if (!"DRAFT".equals(course.getPricingStatus())) {
+        // 支持 DRAFT → PENDING 和 REJECTED → PENDING (重新提交审核)
+        if (!"DRAFT".equals(course.getPricingStatus()) && !"REJECTED".equals(course.getPricingStatus())) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
                     "当前定价状态 " + course.getPricingStatus() + " 不允许提交审核");
         }
         course.setPricingStatus("PENDING");
         course.setUpdatedAt(LocalDateTime.now());
-        courseRepository.updateById(course);
+        int affected = courseRepository.updateById(course);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "提交定价审核失败，请重试");
+        }
         evictCourseCacheAfterCommit(courseId);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void reviewPricing(Long courseId, boolean approved, String reason) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        if (!SecurityUtil.isAdmin())
+        // ACADEMIC 和 ADMIN 都可审核 (与 approve/reject 保持一致)
+        if (!SecurityUtil.isAdminOrAcademic())
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         if (!"PENDING".equals(course.getPricingStatus())) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
@@ -1279,12 +1292,19 @@ public class CourseServiceImpl implements CourseService {
             }
             course.setPricingStatus("APPROVED");
         } else {
+            if (reason == null || reason.trim().length() < 2) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因不能为空");
+            }
             course.setPricingStatus("REJECTED");
+            course.setRejectReason(com.microcourse.util.XssSanitizer.sanitizePlainText(reason));
         }
         course.setPricingReviewedAt(LocalDateTime.now());
         course.setPricingReviewedBy(SecurityUtil.getCurrentUserId());
         course.setUpdatedAt(LocalDateTime.now());
-        courseRepository.updateById(course);
+        int affected = courseRepository.updateById(course);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "审核定价失败，请重试");
+        }
         evictCourseCacheAfterCommit(courseId);
     }
 
