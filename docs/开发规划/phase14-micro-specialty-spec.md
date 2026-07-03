@@ -732,7 +732,8 @@ ALTER TABLE certificates
         (cert_type = 'COURSE' AND course_id IS NOT NULL AND micro_specialty_id IS NULL)
      OR (cert_type = 'MICRO_SPECIALTY' AND micro_specialty_id IS NOT NULL AND course_id IS NULL)
     ),
-    ADD CONSTRAINT uk_cert_ms UNIQUE (cert_type, micro_specialty_id, user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS uk_cert_ms ON certificates(cert_type, micro_specialty_id, user_id)
+        WHERE cert_type = 'MICRO_SPECIALTY';
 ```
 
 ### 6.8 统计算法
