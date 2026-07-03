@@ -37,6 +37,29 @@ public interface TeacherRatingRepository extends BaseMapper<TeacherRating> {
     List<TeacherRatingStatRow> selectTeacherStats();
 
     /**
+     * P1-2: 单教师统计查询,替代 selectTeacherStats+遍历过滤
+     */
+    @Select("SELECT " +
+            "  u.id AS teacher_id, " +
+            "  COALESCE(c.course_count, 0) AS course_count, " +
+            "  COALESCE(e.student_count, 0) AS student_count, " +
+            "  COALESCE(e.completion_rate, 0) AS completion_rate, " +
+            "  COALESCE(r.avg_rating, 0) AS avg_rating " +
+            "FROM users u " +
+            "LEFT JOIN (SELECT teacher_id, COUNT(*) AS course_count FROM courses WHERE deleted_at IS NULL GROUP BY teacher_id) c ON u.id = c.teacher_id " +
+            "LEFT JOIN (SELECT c2.teacher_id, COUNT(DISTINCT e2.user_id) AS student_count, " +
+            "                  CASE WHEN COUNT(DISTINCT e2.user_id) > 0 " +
+            "                       THEN COUNT(DISTINCT CASE WHEN e2.completed THEN e2.user_id END) * 100.0 / COUNT(DISTINCT e2.user_id) " +
+            "                       ELSE 0 END AS completion_rate " +
+            "           FROM enrollments e2 JOIN courses c2 ON e2.course_id = c2.id AND c2.deleted_at IS NULL " +
+            "           WHERE e2.deleted_at IS NULL GROUP BY c2.teacher_id) e ON u.id = e.teacher_id " +
+            "LEFT JOIN (SELECT c3.teacher_id, AVG(cr.rating) AS avg_rating " +
+            "           FROM course_reviews cr JOIN courses c3 ON cr.course_id = c3.id AND c3.deleted_at IS NULL " +
+            "           WHERE cr.deleted_at IS NULL GROUP BY c3.teacher_id) r ON u.id = r.teacher_id " +
+            "WHERE u.id = #{teacherId} AND u.role = 'TEACHER' AND u.deleted_at IS NULL")
+    TeacherRatingStatRow selectTeacherStat(@Param("teacherId") Long teacherId);
+
+    /**
      * 统计行映射接口
      */
     interface TeacherRatingStatRow {

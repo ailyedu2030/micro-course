@@ -111,15 +111,8 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TeacherRatingVO recalculate(Long teacherId) {
-        // 单教师重新计算
-        List<TeacherRatingRepository.TeacherRatingStatRow> stats = ratingRepository.selectTeacherStats();
-        TeacherRatingRepository.TeacherRatingStatRow target = null;
-        for (TeacherRatingRepository.TeacherRatingStatRow row : stats) {
-            if (row.getTeacherId().equals(teacherId)) {
-                target = row;
-                break;
-            }
-        }
+        // P1-2 修复: 用单教师 SQL,替代 selectTeacherStats()+遍历过滤
+        TeacherRatingRepository.TeacherRatingStatRow target = ratingRepository.selectTeacherStat(teacherId);
         if (target == null) {
             log.warn("[TeacherRating] 未找到教师数据 teacherId={}", teacherId);
             return createDefaultVO(teacherId);
@@ -127,8 +120,12 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
         return calculateAndSave(target);
     }
 
+    /**
+     * 全部教师重新评级。
+     * P2-5 修复: 移除 @Transactional,因为循环内 catch 了异常并继续处理,
+     * 单个失败不应回滚所有已完成的写入(每个教师独立事务)
+     */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public int recalculateAll() {
         List<TeacherRatingRepository.TeacherRatingStatRow> stats = ratingRepository.selectTeacherStats();
         int processed = 0;
@@ -256,13 +253,11 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
         BigDecimal bdAvgRating = BigDecimal.valueOf(avgRating).setScale(2, RoundingMode.HALF_UP);
         BigDecimal bdCompletionRate = BigDecimal.valueOf(completionRate).setScale(2, RoundingMode.HALF_UP);
 
-        // 检查等级变更（查询旧记录）
-        TeacherRating existing = ratingRepository.selectOne(
-                new LambdaQueryWrapper<TeacherRating>()
-                        .eq(TeacherRating::getTeacherId, teacherId));
+        // P2-4 修复: 复用 preCheck 作为 existing,消除重复 selectOne
+        // preCheck 已在 calculateAndSave 开头查询,这里直接复用
 
-        if (existing != null) {
-            String oldTier = existing.getTier();
+        if (preCheck != null) {
+            String oldTier = preCheck.getTier();
             if (!oldTier.equals(tier)) {
                 TeacherTierLog logEntry = new TeacherTierLog();
                 logEntry.setTeacherId(teacherId);
@@ -290,7 +285,17 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
         ratingRepository.upsertRating(teacherId, score, tier,
                 bdAvgRating, bdCompletionRate, studentCount, courseCount);
 
-        return getMyRating(teacherId);
+        // P2-4 修复: 直接构造 VO,不再额外 selectOne
+        TeacherRating mockRating = new TeacherRating();
+        mockRating.setTeacherId(teacherId);
+        mockRating.setRatingScore(score);
+        mockRating.setTier(tier);
+        mockRating.setAvgStudentRating(bdAvgRating);
+        mockRating.setCompletionRate(bdCompletionRate);
+        mockRating.setTotalStudents(studentCount);
+        mockRating.setTotalCourses(courseCount);
+        mockRating.setCalculatedAt(LocalDateTime.now());
+        return toVO(mockRating);
     }
 
     /**

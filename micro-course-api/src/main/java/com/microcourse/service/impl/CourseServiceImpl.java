@@ -48,6 +48,11 @@ import com.microcourse.service.CourseService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.Collections;
 import com.microcourse.util.XssSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +87,9 @@ public class CourseServiceImpl implements CourseService {
     // ★ Round 9-2 修复：课程统计缓存（1 小时）—— 聚合查询昂贵，命中 3ms
     private static final String COURSE_STATS_CACHE_PREFIX = "mc:course:stats:";
     private static final long COURSE_STATS_CACHE_TTL = 3600; // 秒
+
+    // P2-1: 线程安全的 JSON 解析器,替代手动 replace+split 解析 freeDeptIds
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
@@ -1256,14 +1264,13 @@ public class CourseServiceImpl implements CourseService {
             if (adopterDept != null) {
                 // 同院系检查
                 if ("same_department".equals(course.getFreeAccessScope()) && course.getFreeDeptIds() != null) {
-                    String[] ids = course.getFreeDeptIds().replace("[","").replace("]","").replace("\"","").split(",");
-                    for (String id : ids) {
-                        if (String.valueOf(adopter.getDepartmentId()).equals(id.trim())) {
+                    // P2-1 修复: 用 Jackson 解析 JSON 数组,替代脆弱的 replace+split
+                     java.util.List<Long> deptIds = parseDeptIds(course.getFreeDeptIds());
+                    if (deptIds.contains(adopter.getDepartmentId())) {
                             result.put("finalPrice", BigDecimal.ZERO);
                             result.put("freeAccess", true);
                             result.put("feeNote", "免费（同院系）");
                             return result;
-                        }
                     }
                 }
                 if ("same_college".equals(course.getFreeAccessScope())) {
@@ -1330,17 +1337,14 @@ public class CourseServiceImpl implements CourseService {
             return vo;
         }
 
-        // 同院系免费检查
+        // 同院系免费检查 (P2-1 修复: Jackson 解析替代脆弱的 replace+split)
         if ("same_department".equals(course.getFreeAccessScope()) && course.getFreeDeptIds() != null) {
-            String[] ids = course.getFreeDeptIds()
-                    .replace("[", "").replace("]", "").replace("\"", "").split(",");
-            for (String id : ids) {
-                if (String.valueOf(user.getDepartmentId()).equals(id.trim())) {
-                    vo.setFinalPrice(BigDecimal.ZERO);
-                    vo.setFree(true);
-                    vo.setFeeNote("免费（同院系）");
-                    return vo;
-                }
+            java.util.List<Long> deptIds = parseDeptIds(course.getFreeDeptIds());
+            if (deptIds.contains(user.getDepartmentId())) {
+                vo.setFinalPrice(BigDecimal.ZERO);
+                vo.setFree(true);
+                vo.setFeeNote("免费（同院系）");
+                return vo;
             }
         }
 
@@ -1376,5 +1380,32 @@ public class CourseServiceImpl implements CourseService {
         vo.setFree(false);
         vo.setFeeNote("");
         return vo;
+    }
+
+    /**
+     * P2-1: Jackson 解析 freeDeptIds(JSON数组字符串→Long列表)
+     * 替代之前脆弱的 replace("[\"", "").split(",")
+     */
+    private java.util.List<Long> parseDeptIds(String freeDeptIds) {
+        if (freeDeptIds == null || freeDeptIds.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return objectMapper.readValue(freeDeptIds, new TypeReference<>() {});
+        } catch (Exception e) {
+            LOG.warn("[parseDeptIds] JSON解析失败, fallback 到手动解析: {}", freeDeptIds, e);
+            // 兜底: 兼容旧的手动字符串格式
+            try {
+                String[] parts = freeDeptIds.replace("[", "").replace("]", "")
+                        .replace("\"", "").split(",");
+                java.util.List<Long> ids = new java.util.ArrayList<>();
+                for (String p : parts) {
+                    try { ids.add(Long.parseLong(p.trim())); } catch (NumberFormatException ignored) {}
+                }
+                return ids;
+            } catch (Exception ignored) {
+                return Collections.emptyList();
+            }
+        }
     }
 }
