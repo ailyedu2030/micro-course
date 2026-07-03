@@ -69,7 +69,7 @@ public enum MicroSpecialtyStatus {
             case PENDING_REVIEW:
                 return target == APPROVED || target == REJECTED;
             case REJECTED:
-                return target == DRAFT || target == PENDING_REVIEW || target == ARCHIVED;
+                return target == DRAFT || target == PENDING_REVIEW;
             case APPROVED:
                 return target == RECRUITING;
             case RECRUITING:
