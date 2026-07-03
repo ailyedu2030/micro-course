@@ -35,7 +35,7 @@ public class OfflineSessionController {
     }
 
     @GetMapping("/chapters/{chapterId}/offline-sessions")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','STUDENT')")
     public R<PageResult<OfflineSessionVO>> pageByChapter(
             @PathVariable Long chapterId,
             @RequestParam(defaultValue = "0") int page,

@@ -178,9 +178,9 @@ async function fetchAttendance() {
     const { data } = await getMyAttendance(chapterId.value)
     const map = {}
     if (Array.isArray(data)) {
-      data.forEach(r => { map[r.offlineSessionId] = r })
+      data.forEach(r => { map[r.sessionId] = r })
     } else if (data?.items) {
-      data.items.forEach(r => { map[r.offlineSessionId] = r })
+      data.items.forEach(r => { map[r.sessionId] = r })
     }
     attendanceMap.value = map
   } catch {
