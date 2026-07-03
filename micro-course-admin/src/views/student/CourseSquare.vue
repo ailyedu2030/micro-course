@@ -91,7 +91,7 @@
               <p class="rec-meta">{{ course.teacherName || '未知教师' }} · {{ formatStudentCount(course.studentCount) }}</p>
               <div class="rec-footer">
                 <span class="rec-rating"><el-icon :size="12"><Star /></el-icon> {{ formatRating(course.avgRating) }}</span>
-                <span class="rec-price" :class="{ 'rec-price--free': !course.price }">{{ course.price ? `¥${course.price}` : '免费' }}</span>
+                <span class="rec-price" :class="{ 'rec-price--free': !displayPrice(course) }">{{ displayPrice(course) ? `¥${displayPrice(course)}` : '免费' }}</span>
               </div>
             </div>
           </article>
@@ -207,12 +207,12 @@ v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
                     <span class="rating-count" v-if="course.ratingCount">({{ course.ratingCount }})</span>
                     <span class="rating-none" v-else>暂无评分</span>
                   </div>
-                  <div class="price" :class="{ 'price--free': !course.price || course.isFree }">
+                  <div class="price" :class="{ 'price--free': !displayPrice(course) || course.isFree }">
                     <template v-if="course.freeAccessScopeLabel">
                       <el-tag size="small" type="success" effect="light" class="free-tag">{{ course.freeAccessScopeLabel }}</el-tag>
                     </template>
-                    <template v-else-if="course.isFree || !course.price">免费</template>
-                    <template v-else>¥{{ course.price }}</template>
+                    <template v-else-if="course.isFree || !displayPrice(course)">免费</template>
+                    <template v-else>¥{{ displayPrice(course) }}</template>
                   </div>
                 </div>
               </div>
@@ -487,6 +487,9 @@ const formatStudentCount = (n) => {
 
 // 评分格式化
 const formatRating = (r) => (r ? Number(r).toFixed(1) : '—')
+
+/** P0 修复: 使用 listPrice 作为标价展示, 兼容旧 price 字段 */
+const displayPrice = (course) => course?.listPrice || course?.price || 0
 
 // 日期格式化
 const formatDate = (dateStr) => {
