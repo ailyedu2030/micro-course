@@ -823,7 +823,12 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
-        requireLeadOf(id);
+        // P1-C-12-02 fix: cancel 是 ACADEMIC 核心管理功能，Controller @PreAuthorize 允许
+        // ACADEMIC/ADMIN，但 Service 层 requireLeadOf 阻挡非 LEAD 的 ACADEMIC，导致教务处
+        // 永远点不动"取消"按钮。改为：LEAD/ADMIN 走 LEAD 校验，ACADEMIC 直接放行。
+        if (!SecurityUtil.isAdminOrAcademic()) {
+            requireLeadOf(id);
+        }
 
         // 禁止重复取消
         if ("CANCELLED".equals(ms.getStatus())) throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已被取消");

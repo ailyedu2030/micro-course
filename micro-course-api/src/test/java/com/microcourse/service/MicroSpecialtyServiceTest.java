@@ -380,6 +380,35 @@ class MicroSpecialtyServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("cancel: ACADEMIC 角色（教务处）可执行取消（修复 P1-C 越级）")
+    void cancel_byAcademic_allowed() {
+        // P1-C-12-02 回归测试: 教务处不应被 requireLeadOf 阻挡
+        // ACADEMIC 调用 cancel 是教务处核心管理功能
+        MicroSpecialty ms = msWithStatus("RECRUITING");
+        ms.setLeadTeacherId(100L);
+        when(msRepository.selectById(1L)).thenReturn(ms);
+        when(msRepository.update(any(), any())).thenReturn(1);
+        when(msEnrollmentRepository.selectList(any())).thenReturn(Collections.emptyList());
+        when(msCourseRepository.selectList(any())).thenReturn(Collections.emptyList());
+        // selectCount 用于 isLeadOf 内部判断；ACADEMIC 路径不走，但仍 stub 避免其他顺序触发
+        Mockito.lenient().when(msTeacherRepository.selectCount(any())).thenReturn(0L);
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            // 当前用户是 ACADEMIC (id=999), 不是 LEAD (id=100)
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(999L);
+            su.when(SecurityUtil::isAdmin).thenReturn(false);
+            su.when(SecurityUtil::isAdminOrAcademic).thenReturn(true);
+
+            // 不应抛 BusinessException
+            service.cancel(1L);
+
+            // 验证级联 + 通知被触发
+            verify(notificationService).notifyAsync(eq(100L), eq(NotificationType.MS_CANCELLED),
+                    anyString(), anyString(), eq(1L));
+        }
+    }
+
     // ==================== archive() ====================
 
     @Test
