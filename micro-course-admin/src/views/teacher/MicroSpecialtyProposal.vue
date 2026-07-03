@@ -388,12 +388,22 @@
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="负责人签字">
-                <SignatureUploader v-model="unit.signature" :upload-handler="sharedUnitSignatureHandler" />
+                <SignatureUploader
+                  label="签字"
+                  :image-url="unit.signatureImageUrl"
+                  :uploader="makeUploader('SHARED_SIGNATURE')"
+                  @update:image-url="val => { unit.signatureImageUrl = val }"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="公章">
-                <SignatureUploader v-model="unit.seal" :upload-handler="sharedUnitSealHandler" />
+                <SignatureUploader
+                  label="公章"
+                  :image-url="unit.sealImageUrl"
+                  :uploader="makeUploader('SHARED_SEAL')"
+                  @update:image-url="val => { unit.sealImageUrl = val }"
+                />
               </el-form-item>
             </el-col>
           </el-row>
@@ -728,10 +738,10 @@ function addSharedUnit() {
     unitType: 'SHARE_UNIV',  // P1-C-5 修复
     sortOrder: sharedUnits.value.length + 1,
     opinionText: '',
-    signature: { type: 'TEXT', text: '', imageUrl: '' },
-    seal: { type: 'TEXT', text: '', imageUrl: '' },
+    signatureImageUrl: '',  // P1-UX: 顶层字段，与 SignatureUploader image-url 直接对接
+    sealImageUrl: '',       // P1-UX: 顶层字段
     signDate: '',
-    remark: ''  // B2 fix: add remark field for shared units
+    remark: ''
   })
 }
 
