@@ -14,10 +14,13 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.entity.CourseReviewLog;
+import com.microcourse.entity.Enrollment;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.CourseReviewRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.NotificationService;
@@ -55,6 +58,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final UserRepository userRepository;
     private final CourseReviewRepository reviewRepository;
     private final CourseReviewLogRepository reviewLogRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
 
     @Value("${upload.base-dir:uploads}")
@@ -66,6 +70,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   UserRepository userRepository,
                                   CourseReviewRepository reviewRepository,
                                   CourseReviewLogRepository reviewLogRepository,
+                                  EnrollmentRepository enrollmentRepository,
                                   NotificationService notificationService) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
@@ -73,6 +78,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.reviewLogRepository = reviewLogRepository;
+        this.enrollmentRepository = enrollmentRepository;
         this.notificationService = notificationService;
     }
 
@@ -179,13 +185,40 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Course course = getCourseOrThrow(id);
-        CourseStatus status = CourseStatus.fromCode(course.getStatus());
-        // 仅允许删除草稿、驳回或归档状态的课程
-        if (status != CourseStatus.DRAFT && status != CourseStatus.REJECTED && status != CourseStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.COURSE_INVALID_STATUS, "仅草稿、驳回或归档状态的课程可删除");
+        Integer currentStatus = course.getStatus() != null ? course.getStatus() : CourseStatus.DRAFT.getCode();
+        CourseStatus fromStatus = CourseStatus.fromCode(currentStatus);
+
+        if (fromStatus == CourseStatus.ARCHIVED) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "已归档课程不可操作");
         }
-        courseRepository.deleteById(id);
-        LOG.info("课程删除成功, id={}, operator={}", id);
+
+        // TEACHER 只能删除自己的课程
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        // FK 检查：有活跃选课记录时禁止关闭
+        long enrollCount = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getCourseId, id)
+                        .notIn(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue(),
+                                EnrollmentStatus.WAITLIST.getValue()));
+        if (enrollCount > 0) {
+            throw new BusinessException(ErrorCode.COURSE_HAS_ENROLLMENTS);
+        }
+
+        // DRAFT / REJECTED → CLOSED CAS（非物理删除，@TableLogic 仅用于已归档课程）
+        int affected = courseRepository.update(null,
+                new LambdaUpdateWrapper<Course>()
+                        .eq(Course::getId, id)
+                        .eq(Course::getStatus, currentStatus)
+                        .set(Course::getStatus, CourseStatus.CLOSED.getCode())
+                        .set(Course::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = COALESCE(version, 0) + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+        }
+        LOG.info("课程已关闭, id={}", id);
     }
 
     /* ================================================================
