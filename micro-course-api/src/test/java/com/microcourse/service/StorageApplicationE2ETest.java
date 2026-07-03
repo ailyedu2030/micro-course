@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * Phase 15: 微专业申请表系统端到端集成测试。
  * 覆盖完整客户旅程：创建草稿→保存→预览→提交→导出。
  */
-@org.junit.jupiter.api.Disabled("Phase 15: 需适配自动保存校验逻辑")
 class StorageApplicationE2ETest extends BaseIntegrationTest {
 
     private String teacherToken;
@@ -92,18 +91,26 @@ class StorageApplicationE2ETest extends BaseIntegrationTest {
                 .andReturn();
         Number pid = JsonPath.read(initResult.getResponse().getContentAsString(), "$.data");
 
-        // 保存空表单（只填最少数据）
-        String minimalForm = "{\"title\":\"\",\"microSpecialtyName\":\"\",\"leadName\":\"\"}";
+        // 保存最少表单数据（title 必须非空通过 @Valid 校验，但缺少其他必填项）
+        String minimalForm = "{"
+            + "\"title\":\"测试大学\","
+            + "\"microSpecialtyName\":\"\","
+            + "\"leadName\":\"\","
+            + "\"contactPhone\":\"13800138000\","
+            + "\"enrollmentQuota\":50,"
+            + "\"classSize\":25"
+            + "}";
         mockMvc.perform(put("/api/storage-applications/{id}", pid.longValue())
                 .header("Authorization", "Bearer " + teacherToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(minimalForm))
                 .andExpect(status().isOk());
 
-        // 提交→应失败
+        // 提交→应失败（缺少课程、团队、签字等必填内容）
         mockMvc.perform(post("/api/storage-applications/{id}/submit", pid.longValue())
                 .header("Authorization", "Bearer " + teacherToken))
-                .andExpect(status().isOk())
+                // SA_FORM_INCOMPLETE → http 400, code 19003
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(19003));
     }
 
@@ -125,7 +132,7 @@ class StorageApplicationE2ETest extends BaseIntegrationTest {
         Number pid = JsonPath.read(initResult.getResponse().getContentAsString(), "$.data");
         Long proposalId = pid.longValue();
 
-        String form = "{\"title\":\"测试\",\"microSpecialtyName\":\"微专业\",\"leadName\":\"李\",\"contactPhone\":\"13800138000\",\"applyDate\":\"2026.9.1\",\"type\":\"急需紧缺型\",\"targetAudience\":\"本科\",\"totalCredits\":12,\"courseCount\":4,\"introduction\":\"<p>t</p>\",\"courses\":[{\"moduleName\":\"M\",\"courseName\":\"C\",\"hours\":32,\"credits\":2,\"semester\":\"S1\"}],\"teamMembers\":[{\"name\":\"N\",\"age\":30,\"title\":\"T\",\"organization\":\"O\",\"profession\":\"P\"}],\"signatures\":[{\"signLevel\":\"LEAD\",\"opinionText\":\"OK\",\"signature\":{\"type\":\"TEXT\",\"text\":\"L\"},\"signDate\":\"2026.9.1\"}]}";
+        String form = "{\"title\":\"测试\",\"microSpecialtyName\":\"微专业\",\"leadName\":\"李\",\"contactPhone\":\"13800138000\",\"applyDate\":\"2026.9.1\",\"type\":\"急需紧缺型\",\"targetAudience\":\"本科\",\"totalCredits\":12,\"courseCount\":4,\"enrollmentQuota\":50,\"classSize\":25,\"introduction\":\"<p>t</p>\",\"courses\":[{\"moduleName\":\"M\",\"courseName\":\"C\",\"hours\":32,\"credits\":2,\"semester\":\"S1\"}],\"teamMembers\":[{\"name\":\"N\",\"age\":30,\"title\":\"T\",\"organization\":\"O\",\"profession\":\"P\"}],\"signatures\":[{\"signLevel\":\"LEAD\",\"opinionText\":\"OK\",\"signature\":{\"type\":\"TEXT\",\"text\":\"L\"},\"signDate\":\"2026.9.1\"}]}";
         mockMvc.perform(put("/api/storage-applications/{id}", proposalId)
                 .header("Authorization", "Bearer " + teacherToken)
                 .contentType(MediaType.APPLICATION_JSON).content(form))
