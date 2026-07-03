@@ -19,9 +19,10 @@
       :disabled="disabled"
       class="upload-box"
     >
-      <div v-if="uploading" class="upload-placeholder">
-        <el-icon class="upload-icon" :size="24"><UploadFilled /></el-icon>
-        <span>上传中...</span>
+      <div v-if="uploading" class="upload-placeholder uploading">
+        <el-icon class="upload-icon is-loading" :size="24"><Loading /></el-icon>
+        <span>上传中... {{ uploadProgress }}%</span>
+        <el-progress v-if="uploadProgress > 0 && uploadProgress < 100" :percentage="uploadProgress" :stroke-width="3" class="upload-progress" />
       </div>
       <div v-else class="upload-placeholder">
         <el-icon class="upload-icon" :size="24"><Plus /></el-icon>
@@ -34,23 +35,25 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, UploadFilled } from '@element-plus/icons-vue'
+import { Plus, Loading } from '@element-plus/icons-vue'
 
 const props = defineProps({
   imageUrl: { type: String, default: '' },
   label: { type: String, default: '签名' },
   disabled: { type: Boolean, default: false },
-  uploadUrl: { type: String, default: '/api/storage-applications/{id}/upload-image' }
+  // P1-UX: 接受外部传入的上传函数 (file, onProgress) => Promise<{url, fileName, fileSize}>
+  // 父组件需实现真实后端调用 + 进度回调
+  uploader: { type: Function, default: null }
 })
 
 const emit = defineEmits(['update:imageUrl'])
 
 const uploadRef = ref(null)
 const uploading = ref(false)
+const uploadProgress = ref(0)  // P1-UX: 0-100% 进度
 const localUrl = ref(props.imageUrl || '')
 
 const acceptTypes = 'image/jpeg,image/png'
-
 const uploadText = '点击上传'
 
 watch(
@@ -75,13 +78,36 @@ function beforeUpload(file) {
 
 async function handleUpload({ file }) {
   uploading.value = true
+  uploadProgress.value = 0
+  // P1-UX: 先显示本地预览（立即反馈）
+  const localPreview = URL.createObjectURL(file)
+  localUrl.value = localPreview
   try {
-    localUrl.value = URL.createObjectURL(file)
-    emit('update:imageUrl', localUrl.value)
-  } catch {
-    ElMessage.error('上传失败')
+    // P1-UX: 调用外部 uploader 真实上传，传 progress 回调
+    if (props.uploader) {
+      const result = await props.uploader(file, (p) => { uploadProgress.value = p })
+      // P1-UX: 替换为后端 URL
+      if (result?.url) {
+        URL.revokeObjectURL(localPreview)
+        localUrl.value = result.url
+        emit('update:imageUrl', result.url)
+        ElMessage.success(`${props.label || '图片'}上传成功`)
+      } else {
+        throw new Error('上传未返回 URL')
+      }
+    } else {
+      // P1-UX: 无 uploader 时保留本地预览，但提示用户
+      ElMessage.warning('未配置上传通道，请联系管理员')
+    }
+  } catch (e) {
+    ElMessage.error(e?.message || '上传失败，请重试')
+    // P1-UX: 上传失败时清除预览，避免假成功
+    URL.revokeObjectURL(localPreview)
+    localUrl.value = ''
+    emit('update:imageUrl', '')
   } finally {
     uploading.value = false
+    uploadProgress.value = 0
   }
 }
 
@@ -117,6 +143,26 @@ function handleRemove() {
   gap: 6px;
   font-size: 12px;
   color: #909399;
+}
+/* P1-UX: 上传中样式 — 蓝色边框 + Loading 旋转图标 */
+.upload-placeholder.uploading {
+  border-color: #409eff;
+  border-style: solid;
+  background: #ecf5ff;
+  color: #409eff;
+  cursor: not-allowed;
+}
+.upload-placeholder.uploading .upload-icon {
+  color: #409eff;
+  animation: rotating 1.2s linear infinite;
+}
+@keyframes rotating {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.upload-progress {
+  width: 100px;
+  margin-top: 2px;
 }
 .upload-placeholder:hover {
   border-color: #409eff;

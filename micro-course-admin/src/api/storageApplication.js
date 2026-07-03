@@ -26,7 +26,8 @@ export function autoSaveStorageApplication(id, data) {
 }
 
 // 6. 上传图片（签名/公章）
-export function uploadStorageImage(id, file, type) {
+// P1-UX: onProgress(percent: 0-100) 用于组件显示进度条
+export function uploadStorageImage(id, file, type, onProgress) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('type', type)
@@ -34,7 +35,12 @@ export function uploadStorageImage(id, file, type) {
     method: 'POST',
     url: `/storage-applications/${id}/upload-image`,
     data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) {
+        onProgress(Math.round((e.loaded * 100) / e.total))
+      }
+    }
   })
 }
 

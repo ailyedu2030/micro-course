@@ -346,9 +346,9 @@
           <el-button type="warning" plain size="small" @click="handleResetModule('module4')">重置模块</el-button>
         </div>
       </template>
-      <SignatureBlock title="① 微专业负责人意见" v-model="signatures[0]" :upload-handler="signatureUploadHandler" />
-      <SignatureBlock title="② 学院意见" v-model="signatures[1]" :upload-handler="sealUploadHandler" />
-      <SignatureBlock title="③ 学校意见" v-model="signatures[2]" :upload-handler="sealUploadHandler" />
+      <SignatureBlock title="① 微专业负责人意见" v-model="signatures[0]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
+      <SignatureBlock title="② 学院意见" v-model="signatures[1]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
+      <SignatureBlock title="③ 学校意见" v-model="signatures[2]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
     </el-card>
 
     <!-- ========== 模块5：共建共享单位 ========== -->
@@ -739,25 +739,14 @@ function removeSharedUnit(index) {
   sharedUnits.value.splice(index, 1)
 }
 
-// ==================== 上传处理器 ====================
-function signatureUploadHandler(file) {
-  if (!draftId.value) return Promise.reject(new Error('请先保存草稿'))
-  return uploadStorageImage(draftId.value, file, 'SIGNATURE')
-}
-
-function sealUploadHandler(file) {
-  if (!draftId.value) return Promise.reject(new Error('请先保存草稿'))
-  return uploadStorageImage(draftId.value, file, 'SEAL')
-}
-
-function sharedUnitSignatureHandler(file) {
-  if (!draftId.value) return Promise.reject(new Error('请先保存草稿'))
-  return uploadStorageImage(draftId.value, file, 'SHARED_SIGNATURE')
-}
-
-function sharedUnitSealHandler(file) {
-  if (!draftId.value) return Promise.reject(new Error('请先保存草稿'))
-  return uploadStorageImage(draftId.value, file, 'SHARED_SEAL')
+// ==================== 上传工厂 ====================
+// P1-UX: 返回符合 SignatureUploader 期望的 (file, onProgress) => Promise<{url}> 函数
+// 让组件可以真实上传到后端并接收 0-100% 进度
+function makeUploader(type) {
+  return async (file, onProgress) => {
+    if (!draftId.value) throw new Error('请先保存草稿')
+    return await uploadStorageImage(draftId.value, file, type, onProgress)
+  }
 }
 
 // ==================== 保存 ====================

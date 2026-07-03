@@ -38,6 +38,7 @@
             <SignatureUploader
               :image-url="signatureImageUrl"
               :disabled="readonly"
+              :uploader="signatureUploader"
               @update:image-url="handleSignatureUpdate"
             />
           </div>
@@ -47,6 +48,7 @@
               :image-url="sealImageUrl"
               label="公章"
               :disabled="readonly"
+              :uploader="sealUploader"
               @update:image-url="handleSealUpdate"
             />
           </div>
@@ -77,7 +79,10 @@ const props = defineProps({
   signDate: { type: [String, Number], default: '' },
   readonly: { type: Boolean, default: false },
   title: { type: String, default: '' },
-  removable: { type: Boolean, default: false }
+  removable: { type: Boolean, default: false },
+  // P1-UX: 父组件传入真实的上传函数 (file, onProgress) => Promise<{url, fileName, fileSize}>
+  signatureUploader: { type: Function, default: null },
+  sealUploader: { type: Function, default: null }
 })
 
 const emit = defineEmits([
