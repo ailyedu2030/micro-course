@@ -251,11 +251,11 @@ v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
       </div>
     </section>
 
-    <!-- ============ 微专业 (仅当有数据时显示,搜索时也隐藏) ============ -->
-    <section v-if="hasMSData && !isSearchActive" class="section micro-specialty-section" aria-label="微专业">
+    <!-- ============ 微专业 (加载完成时显示,有数据/无数据/加载中三态) ============ -->
+    <section v-if="!isSearchActive" class="section micro-specialty-section" aria-label="微专业">
       <header class="section-header">
         <h2 class="section-title">微专业</h2>
-        <el-button text type="primary" @click="showAllMS = true; fetchAllMS()">查看更多 →</el-button>
+        <el-button v-if="hasMSData" text type="primary" @click="showAllMS = true; fetchAllMS()">查看更多 →</el-button>
       </header>
       <div v-if="msLoading" class="rec-scroll-wrap">
         <div class="ms-loading-row">
@@ -277,7 +277,7 @@ v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
           <el-button type="primary" @click="fetchMicroSpecialties">重试</el-button>
         </template>
       </el-result>
-      <template v-else>
+      <template v-else-if="hasMSData">
         <div v-if="goldFeatured.length" class="ms-gold-row">
           <div
 v-for="item in goldFeatured" :key="'gold-'+item.id"
@@ -317,6 +317,8 @@ v-for="item in featured" :key="'feat-'+item.id"
           </div>
         </div>
       </template>
+      <!-- P1-C-12-03 fix: 无数据时显示空态文案,不再整段隐藏 -->
+      <el-empty v-else description="暂无微专业项目，敬请期待" />
     </section>
 
     <!-- 全部微专业弹窗 -->
