@@ -754,7 +754,7 @@ function removeSharedUnit(index) {
 // 让组件可以真实上传到后端并接收 0-100% 进度
 function makeUploader(type) {
   return async (file, onProgress) => {
-    if (!draftId.value) throw new Error('请先保存草稿')
+    if (!draftId.value) throw new Error('草稿初始化未完成，请稍候')
     return await uploadStorageImage(draftId.value, file, type, onProgress)
   }
 }
@@ -1064,6 +1064,18 @@ async function initDraft() {
     saveStatus.value = ''
     initialLoadComplete.value = true
     autoSaveEnabled.value = true
+    // P1-C-12-07 fix: 自动保存初始草稿,让 draftId 立即可用
+    // 之前用户必须先手动点「保存」才能上传签名/公章
+    // 现在 initDraft 后自动触发一次保存,图片上传按钮立即可用
+    try {
+      saving.value = true
+      await saveStorageApplication(draftId.value, buildSavePayload())
+      dirty.value = false
+    } catch (e) {
+      console.warn('[MicroSpecialtyProposal] 自动初始化保存失败:', e?.message)
+    } finally {
+      saving.value = false
+    }
   } catch (e) {
     loadError.value = true  // P1-C-13: 显示错误状态
     ElMessage.error(e?.response?.data?.message || '初始化草稿失败')
