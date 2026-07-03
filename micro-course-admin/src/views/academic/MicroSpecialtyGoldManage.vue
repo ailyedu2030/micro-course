@@ -85,15 +85,13 @@ const fetchMicroSpecialties = async () => {
   error.value = false
   try {
     const res = await getMicroSpecialtyList({
-      // 移除 isGoldFeatured=false 过滤, 需要拿全量 RECRUITING 数据来统计金标数量
-
       page: page.value,
-      size: size.value
+      size: size.value,
+      status: 'RECRUITING'
     })
-    // Filter for RECRUITING status
-    items.value = (res.data.items || res.data || [])
-      .filter(item => item.status === 'RECRUITING')
-    total.value = items.value.length
+    // Server-side already filtered by RECRUITING status
+    items.value = res.data?.items || res.data || []
+    total.value = res.data?.totalElements || items.value.length
   } catch (e) {
     error.value = true
     ElMessage.error('获取微专业列表失败')
