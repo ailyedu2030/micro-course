@@ -15,9 +15,12 @@ public class CourseBundleItem {
     private Long bundleId;
     @TableField("course_id")
     private Long courseId;
+    @TableField("sort_order")
     private Integer sortOrder;
+    @TableField("is_required")
     private Boolean isRequired;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
@@ -35,6 +38,8 @@ public class CourseBundleItem {
     public void setIsRequired(Boolean isRequired) { this.isRequired = isRequired; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 }

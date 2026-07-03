@@ -218,6 +218,7 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         item.setSortOrder(sortOrder != null ? sortOrder : 0);
         item.setIsRequired(isRequired != null ? isRequired : true);
         item.setCreatedAt(LocalDateTime.now());
+        item.setUpdatedAt(LocalDateTime.now());
         try {
             itemRepository.insert(item);
         } catch (org.springframework.dao.DuplicateKeyException e) {

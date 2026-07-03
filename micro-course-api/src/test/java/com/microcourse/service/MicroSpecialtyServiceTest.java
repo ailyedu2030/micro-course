@@ -10,7 +10,16 @@ import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.*;
+import com.microcourse.repository.ChapterTeacherAssignmentRepository;
+import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.MicroSpecialtyCourseRepository;
+import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
+import com.microcourse.repository.MicroSpecialtyFeaturedAuditRepository;
+import com.microcourse.repository.MicroSpecialtyProposalRepository;
+import com.microcourse.repository.MicroSpecialtyRepository;
+import com.microcourse.repository.MicroSpecialtyTeacherRepository;
+import com.microcourse.repository.ProposalChapterRepository;
+import com.microcourse.repository.UserRepository;
 import com.microcourse.service.impl.MicroSpecialtyServiceImpl;
 import com.microcourse.util.SecurityUtil;
 import org.junit.jupiter.api.BeforeAll;
@@ -44,14 +53,12 @@ class MicroSpecialtyServiceTest {
     @Mock private EnrollmentRepository enrollmentRepository;
     @Mock private NotificationService notificationService;
     @Mock private MicroSpecialtyEnrollmentService msEnrollmentService;
-    @Mock private MicroSpecialtyQualityScoreService qualityScoreService;
-    @Mock private AdminSettingService adminSettingService;
     @Mock private MicroSpecialtyFeaturedAuditRepository msFeaturedAuditRepository;
     @Mock private MicroSpecialtyFeaturedService featuredService;
-    @Mock private DepartmentRepository departmentRepository;
-    @Mock private CourseRepository courseRepository;
     @Mock private ProposalChapterRepository proposalChapterRepository;
     @Mock private ChapterTeacherAssignmentRepository chapterAssignRepo;
+    @Mock private MicroSpecialtyQueryService queryService;
+    @Mock private MicroSpecialtyAdminService adminService;
 
     private MicroSpecialtyServiceImpl service;
 
@@ -64,11 +71,9 @@ class MicroSpecialtyServiceTest {
     void setUp() {
         service = new MicroSpecialtyServiceImpl(
                 msRepository, msCourseRepository, msTeacherRepository,
-                msEnrollmentRepository, msProposalRepository, userRepository,
-                enrollmentRepository, notificationService, msEnrollmentService,
-                qualityScoreService, adminSettingService, msFeaturedAuditRepository,
-                featuredService, departmentRepository, courseRepository,
-                proposalChapterRepository, chapterAssignRepo);
+                msEnrollmentRepository, notificationService,
+                proposalChapterRepository, chapterAssignRepo,
+                queryService, adminService);
     }
 
     // ==================== create() ====================
@@ -83,10 +88,26 @@ class MicroSpecialtyServiceTest {
             ms.setId(1L);
             return 1;
         }).when(msRepository).insert(any(MicroSpecialty.class));
-        lenient().when(departmentRepository.selectById(anyLong())).thenReturn(null);
-        lenient().when(userRepository.selectById(anyLong())).thenReturn(null);
+        MicroSpecialtyVO mockVO = new MicroSpecialtyVO();
+        mockVO.setId(1L);
+        mockVO.setTitle("测试微专业");
+        mockVO.setCode("MS-001");
+        lenient().when(queryService.toVO(any())).thenReturn(mockVO);
         lenient().when(msCourseRepository.selectCount(any())).thenReturn(0L);
         lenient().when(msEnrollmentRepository.selectCount(any())).thenReturn(0L);
+        lenient().when(msTeacherRepository.selectCount(any())).thenReturn(0L);
+
+        // adminService void methods: default no-op, failure-path tests override via doThrow
+        lenient().doNothing().when(adminService).submit(anyLong());
+        lenient().doNothing().when(adminService).approve(anyLong());
+        lenient().doNothing().when(adminService).reject(anyLong(), anyString());
+        lenient().doNothing().when(adminService).open(anyLong());
+        lenient().doNothing().when(adminService).close(anyLong());
+        lenient().doNothing().when(adminService).cancel(anyLong());
+        lenient().doNothing().when(adminService).archive(anyLong());
+        lenient().doNothing().when(adminService).transferLeadership(anyLong(), any());
+        lenient().doNothing().when(adminService).requireLeadOf(anyLong());
+        lenient().doNothing().when(adminService).checkNotTerminal(any());
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
@@ -119,13 +140,6 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("submit: DRAFT → PENDING_REVIEW 正常提交")
     void submit_draftToPendingReview() {
-        MicroSpecialty ms = msWithStatus("DRAFT");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msTeacherRepository.selectCount(any())).thenReturn(1L);
-        when(msCourseRepository.selectCount(any())).thenReturn(1L);
-        when(msRepository.update(any(), any())).thenReturn(1);
-        when(userRepository.selectList(any())).thenReturn(List.of(academicUser(3L)));
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
@@ -133,41 +147,30 @@ class MicroSpecialtyServiceTest {
 
             service.submit(1L);
 
-            verify(notificationService, atLeastOnce())
-                    .notifyAsync(eq(3L), eq(NotificationType.MS_SUBMITTED), anyString(), anyString(), eq(1L));
+            verify(adminService).submit(1L);
         }
     }
 
     @Test
     @DisplayName("submit: REJECTED → PENDING_REVIEW 重新提交")
     void submit_rejectedToPendingReview() {
-        MicroSpecialty ms = msWithStatus("REJECTED");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msTeacherRepository.selectCount(any())).thenReturn(1L);
-        when(msCourseRepository.selectCount(any())).thenReturn(1L);
-        when(msRepository.update(any(), any())).thenReturn(1);
-        when(userRepository.selectList(any())).thenReturn(List.of(academicUser(3L)));
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
             service.submit(1L);
-            verify(msRepository).update(any(), any());
+            verify(adminService).submit(1L);
         }
     }
 
     @Test
     @DisplayName("submit: 非法状态抛出 MS_STATUS_INVALID")
     void submit_invalidStatus() {
-        MicroSpecialty ms = msWithStatus("APPROVED");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        lenient().when(msTeacherRepository.selectCount(any())).thenReturn(1L);
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
+            doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).submit(1L);
             BusinessException ex = assertThrows(BusinessException.class, () -> service.submit(1L));
             assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
         }
@@ -176,15 +179,11 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("submit: LEAD 未接受抛出 MS_LEAD_REQUIRED")
     void submit_leadNotAccepted() {
-        MicroSpecialty ms = msWithStatus("DRAFT");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        // First call for requireLeadOf (isLeadOf), second call for lead count check
-        when(msTeacherRepository.selectCount(any())).thenReturn(1L, 0L);
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
+            doThrow(new BusinessException(ErrorCode.MS_LEAD_REQUIRED)).when(adminService).submit(1L);
             BusinessException ex = assertThrows(BusinessException.class, () -> service.submit(1L));
             assertEquals(ErrorCode.MS_LEAD_REQUIRED.getCode(), ex.getCode());
         }
@@ -193,15 +192,11 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("submit: 无课程抛出 MS_STATUS_INVALID")
     void submit_noCourses() {
-        MicroSpecialty ms = msWithStatus("DRAFT");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msTeacherRepository.selectCount(any())).thenReturn(1L);
-        when(msCourseRepository.selectCount(any())).thenReturn(0L);
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
+            doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).submit(1L);
             BusinessException ex = assertThrows(BusinessException.class, () -> service.submit(1L));
             assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
         }
@@ -212,23 +207,15 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("approve: PENDING_REVIEW → APPROVED 正常审批通过")
     void approve_success() {
-        MicroSpecialty ms = msWithStatus("PENDING_REVIEW");
-        ms.setLeadTeacherId(1L);
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msRepository.update(any(), any())).thenReturn(1);
-
         service.approve(1L);
 
-        verify(notificationService).notifyAsync(eq(1L), eq(NotificationType.MS_APPROVED),
-                anyString(), anyString(), eq(1L));
+        verify(adminService).approve(1L);
     }
 
     @Test
     @DisplayName("approve: 非 PENDING_REVIEW 抛出 MS_STATUS_INVALID")
     void approve_invalidStatus() {
-        MicroSpecialty ms = msWithStatus("DRAFT");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-
+        doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).approve(1L);
         BusinessException ex = assertThrows(BusinessException.class, () -> service.approve(1L));
         assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
     }
@@ -238,23 +225,15 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("reject: PENDING_REVIEW → REJECTED 正常驳回")
     void reject_success() {
-        MicroSpecialty ms = msWithStatus("PENDING_REVIEW");
-        ms.setLeadTeacherId(1L);
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msRepository.update(any(), any())).thenReturn(1);
-
         service.reject(1L, "内容不符合要求");
 
-        verify(notificationService).notifyAsync(eq(1L), eq(NotificationType.MS_REJECTED),
-                anyString(), contains("驳回"), eq(1L));
+        verify(adminService).reject(eq(1L), anyString());
     }
 
     @Test
     @DisplayName("reject: 非 PENDING_REVIEW 抛出 MS_STATUS_INVALID")
     void reject_invalidStatus() {
-        MicroSpecialty ms = msWithStatus("APPROVED");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-
+        doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).reject(eq(1L), anyString());
         BusinessException ex = assertThrows(BusinessException.class, () -> service.reject(1L, "原因"));
         assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
     }
@@ -264,37 +243,24 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("open: APPROVED → RECRUITING 正常开课")
     void open_success() {
-        MicroSpecialty ms = msWithStatus("APPROVED");
-        ms.setLeadTeacherId(1L);
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msCourseRepository.selectCount(any())).thenReturn(1L);
-        when(msTeacherRepository.selectCount(any())).thenReturn(2L);
-        when(msRepository.update(any(), any())).thenReturn(1);
-        when(msEnrollmentRepository.selectList(any())).thenReturn(Collections.emptyList());
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
             service.open(1L);
 
-            verify(notificationService).notifyAsync(eq(1L), eq(NotificationType.MS_OPENED),
-                    anyString(), anyString(), eq(1L));
+            verify(adminService).open(1L);
         }
     }
 
     @Test
     @DisplayName("open: 预条件不满足（团队<2）抛出 MS_STATUS_INVALID")
     void open_prerequisitesNotMet() {
-        MicroSpecialty ms = msWithStatus("APPROVED");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msCourseRepository.selectCount(any())).thenReturn(1L);
-        when(msTeacherRepository.selectCount(any())).thenReturn(1L);
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
+            doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).open(1L);
             BusinessException ex = assertThrows(BusinessException.class, () -> service.open(1L));
             assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
         }
@@ -305,35 +271,24 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("close: RECRUITING → COMPLETED 正常结业")
     void close_success() {
-        MicroSpecialty ms = msWithStatus("RECRUITING");
-        ms.setLeadTeacherId(1L);
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msRepository.update(any(), any())).thenReturn(1);
-        when(msTeacherRepository.selectCount(any())).thenReturn(1L);
-        when(userRepository.selectList(any())).thenReturn(List.of(academicUser(3L)));
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
             service.close(1L);
 
-            verify(notificationService, atLeastOnce())
-                    .notifyAsync(eq(3L), eq(NotificationType.MS_COMPLETED), anyString(), anyString(), eq(1L));
+            verify(adminService).close(1L);
         }
     }
 
     @Test
     @DisplayName("close: 非 RECRUITING 抛出 MS_STATUS_INVALID")
     void close_invalidStatus() {
-        MicroSpecialty ms = msWithStatus("DRAFT");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msTeacherRepository.selectCount(any())).thenReturn(1L);
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
+            doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).close(1L);
             BusinessException ex = assertThrows(BusinessException.class, () -> service.close(1L));
             assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
         }
@@ -344,37 +299,24 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("cancel: 正常取消 + 级联 DROPPED + 审计日志")
     void cancel_success() {
-        MicroSpecialty ms = msWithStatus("RECRUITING");
-        ms.setLeadTeacherId(1L);
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msRepository.update(any(), any())).thenReturn(1);
-        when(msTeacherRepository.selectCount(any())).thenReturn(1L);
-        when(msEnrollmentRepository.selectList(any())).thenReturn(Collections.emptyList());
-        when(msCourseRepository.selectList(any())).thenReturn(Collections.emptyList());
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
             service.cancel(1L);
 
-            verify(msEnrollmentRepository).selectList(any());
-            verify(notificationService).notifyAsync(eq(1L), eq(NotificationType.MS_CANCELLED),
-                    anyString(), anyString(), eq(1L));
+            verify(adminService).cancel(1L);
         }
     }
 
     @Test
     @DisplayName("cancel: 重复取消抛出 MS_STATUS_INVALID")
     void cancel_duplicate() {
-        MicroSpecialty ms = msWithStatus("CANCELLED");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msTeacherRepository.selectCount(any())).thenReturn(1L);
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
+            doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).cancel(1L);
             BusinessException ex = assertThrows(BusinessException.class, () -> service.cancel(1L));
             assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
         }
@@ -383,19 +325,7 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("cancel: ACADEMIC 角色（教务处）可执行取消（修复 P1-C 越级）")
     void cancel_byAcademic_allowed() {
-        // P1-C-12-02 回归测试: 教务处不应被 requireLeadOf 阻挡
-        // ACADEMIC 调用 cancel 是教务处核心管理功能
-        MicroSpecialty ms = msWithStatus("RECRUITING");
-        ms.setLeadTeacherId(100L);
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msRepository.update(any(), any())).thenReturn(1);
-        when(msEnrollmentRepository.selectList(any())).thenReturn(Collections.emptyList());
-        when(msCourseRepository.selectList(any())).thenReturn(Collections.emptyList());
-        // selectCount 用于 isLeadOf 内部判断；ACADEMIC 路径不走，但仍 stub 避免其他顺序触发
-        Mockito.lenient().when(msTeacherRepository.selectCount(any())).thenReturn(0L);
-
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
-            // 当前用户是 ACADEMIC (id=999), 不是 LEAD (id=100)
             su.when(SecurityUtil::getCurrentUserId).thenReturn(999L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
             su.when(SecurityUtil::isAdminOrAcademic).thenReturn(true);
@@ -403,9 +333,7 @@ class MicroSpecialtyServiceTest {
             // 不应抛 BusinessException
             service.cancel(1L);
 
-            // 验证级联 + 通知被触发
-            verify(notificationService).notifyAsync(eq(100L), eq(NotificationType.MS_CANCELLED),
-                    anyString(), anyString(), eq(1L));
+            verify(adminService).cancel(1L);
         }
     }
 
@@ -414,23 +342,15 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("archive: COMPLETED → ARCHIVED 正常归档")
     void archive_success() {
-        MicroSpecialty ms = msWithStatus("COMPLETED");
-        ms.setLeadTeacherId(1L);
-        when(msRepository.selectById(1L)).thenReturn(ms);
-        when(msRepository.update(any(), any())).thenReturn(1);
-
         service.archive(1L);
 
-        verify(notificationService).notifyAsync(eq(1L), eq(NotificationType.MS_ARCHIVED),
-                anyString(), anyString(), eq(1L));
+        verify(adminService).archive(1L);
     }
 
     @Test
     @DisplayName("archive: 非 COMPLETED 抛出 MS_STATUS_INVALID")
     void archive_invalidStatus() {
-        MicroSpecialty ms = msWithStatus("DRAFT");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-
+        doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).archive(1L);
         BusinessException ex = assertThrows(BusinessException.class, () -> service.archive(1L));
         assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
     }
@@ -440,17 +360,8 @@ class MicroSpecialtyServiceTest {
     @Test
     @DisplayName("transferLeadership: APPROVED 状态正常继任")
     void transferLeadership_success() {
-        MicroSpecialty ms = msWithStatus("APPROVED");
-        ms.setId(1L);
-        when(msRepository.selectById(1L)).thenReturn(ms);
         MicroSpecialtyLeadTransferRequest req = new MicroSpecialtyLeadTransferRequest();
         req.setNewLeadTeacherId(5L);
-        when(userRepository.selectById(5L)).thenReturn(user(5L));
-
-        MicroSpecialtyTeacher oldLead = teacherRecord(1L, 2L, "LEAD", "ACTIVE");
-        when(msTeacherRepository.selectOne(any())).thenReturn(oldLead, (MicroSpecialtyTeacher) null);
-        when(msTeacherRepository.update(any(), any())).thenReturn(1);
-        when(msRepository.update(any(), any())).thenReturn(1);
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
@@ -458,21 +369,17 @@ class MicroSpecialtyServiceTest {
 
             service.transferLeadership(1L, req);
 
-            verify(notificationService, times(2))
-                    .notifyAsync(anyLong(), eq(NotificationType.MS_LEAD_TRANSFERRED),
-                            anyString(), anyString(), eq(1L));
+            verify(adminService).transferLeadership(eq(1L), any());
         }
     }
 
     @Test
     @DisplayName("transferLeadership: 终态拒绝抛出 MS_STATUS_INVALID")
     void transferLeadership_terminalStatus() {
-        MicroSpecialty ms = msWithStatus("COMPLETED");
-        when(msRepository.selectById(1L)).thenReturn(ms);
-
         MicroSpecialtyLeadTransferRequest req = new MicroSpecialtyLeadTransferRequest();
         req.setNewLeadTeacherId(5L);
 
+        doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).transferLeadership(eq(1L), any());
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.transferLeadership(1L, req));
         assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());

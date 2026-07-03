@@ -119,7 +119,7 @@ const loading = ref(false)
 const saving = ref(false)
 const userStore = useUserStore()
 const bundles = ref([])
-const page = ref(0)
+const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 
@@ -148,7 +148,7 @@ const availableCourses = ref([])
 const fetchBundles = async () => {
   loading.value = true
   try {
-    const { data } = await getBundles({ page: page.value, size: size.value })
+    const { data } = await getBundles({ page: page.value - 1, size: size.value })
     bundles.value = data.items || []
     total.value = data.totalElements || 0
   } catch (e) { ElMessage.error(e?.response?.data?.message || '加载套件列表失败') }

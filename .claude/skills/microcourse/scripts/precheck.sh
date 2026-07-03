@@ -115,7 +115,7 @@ check_business_code() {
         FAIL=1
     fi
     # Service（有 Service 接口 + ServiceImpl 实现类是 Phase 3 预期状态）
-    local svc_whitelist="AuthService\|AuthServiceImpl\|DepartmentService\|DepartmentServiceImpl\|MajorService\|MajorServiceImpl\|ClassService\|ClassServiceImpl\|UserService\|UserServiceImpl\|OperationLogService\|OperationLogServiceImpl\|CourseCategoryService\|CourseCategoryServiceImpl\|CourseService\|CourseServiceImpl\|CourseChapterService\|CourseChapterServiceImpl\|TagService\|TagServiceImpl\|EnrollmentService\|EnrollmentServiceImpl\|CourseFavoriteService\|CourseFavoriteServiceImpl\|VideoService\|VideoServiceImpl\|VideoAccessService\|VideoAccessServiceImpl\|QuestionService\|QuestionServiceImpl\|ExerciseService\|ExerciseServiceImpl\|ExerciseRecordService\|ExerciseRecordServiceImpl\|WrongQuestionService\|WrongQuestionServiceImpl\|DiscussionPostService\|DiscussionPostServiceImpl\|DiscussionCommentService\|DiscussionCommentServiceImpl\|LearningProgressService\|LearningProgressServiceImpl\|CheckInService\|CheckInServiceImpl\|NotificationService\|NotificationServiceImpl\|NotificationPreferenceService\|NotificationPreferenceServiceImpl\|CourseReviewService\|CourseReviewServiceImpl\|AdminSettingService\|AdminSettingServiceImpl\|AdminStatsService\|AdminStatsServiceImpl\|VideoTranscodeService\|VideoTranscodeServiceImpl\|BadgeService\|BadgeServiceImpl\|CertificateService\|CertificateServiceImpl\|TeacherService\|TeacherServiceImpl\|GradeService\|GradeServiceImpl\|TeachingClassService\|TeachingClassServiceImpl\|AcademicStatsService\|AcademicStatsServiceImpl\|BannerService\|BannerServiceImpl\|VideoBookmarkService\|VideoBookmarkServiceImpl\|SlideService\|SlideServiceImpl\|NarrationService\|NarrationServiceImpl\|SlideRenderService\|LessonService\|LessonServiceImpl\|TtsService\|TtsServiceImpl\|OrderService\|OrderServiceImpl\|CourseBundleService\|CourseBundleServiceImpl\|NarrationSettingService\|NarrationSettingServiceImpl\|FrontendErrorService\|FrontendErrorServiceImpl\|CourseReviewLogService\|CourseReviewLogServiceImpl\|MicroSpecialtyService\|MicroSpecialtyServiceImpl\|MicroSpecialtyEnrollmentService\|MicroSpecialtyEnrollmentServiceImpl\|MicroSpecialtyFeaturedService\|MicroSpecialtyFeaturedServiceImpl\|MicroSpecialtyInviteService\|MicroSpecialtyInviteServiceImpl\|MicroSpecialtyProposalService\|MicroSpecialtyProposalServiceImpl\|MicroSpecialtyQualityScoreService\|MicroSpecialtyQualityScoreServiceImpl\|CartService\|CartServiceImpl\|StorageApplicationService\|StorageApplicationServiceImpl\|StorageApplicationExportService\|StorageApplicationExportServiceImpl\|MicroSpecialtyMaterializationService\|MicroSpecialtyMaterializationServiceImpl\|PlatformShareConfigService\|PlatformShareConfigServiceImpl\|TeacherRatingService\|TeacherRatingServiceImpl\|OfflineSessionService\|OfflineSessionServiceImpl"
+    local svc_whitelist="AuthService\|AuthServiceImpl\|DepartmentService\|DepartmentServiceImpl\|MajorService\|MajorServiceImpl\|ClassService\|ClassServiceImpl\|UserService\|UserServiceImpl\|OperationLogService\|OperationLogServiceImpl\|CourseCategoryService\|CourseCategoryServiceImpl\|CourseService\|CourseServiceImpl\|CourseChapterService\|CourseChapterServiceImpl\|TagService\|TagServiceImpl\|EnrollmentService\|EnrollmentServiceImpl\|CourseFavoriteService\|CourseFavoriteServiceImpl\|VideoService\|VideoServiceImpl\|VideoAccessService\|VideoAccessServiceImpl\|QuestionService\|QuestionServiceImpl\|ExerciseService\|ExerciseServiceImpl\|ExerciseRecordService\|ExerciseRecordServiceImpl\|WrongQuestionService\|WrongQuestionServiceImpl\|DiscussionPostService\|DiscussionPostServiceImpl\|DiscussionCommentService\|DiscussionCommentServiceImpl\|LearningProgressService\|LearningProgressServiceImpl\|CheckInService\|CheckInServiceImpl\|NotificationService\|NotificationServiceImpl\|NotificationPreferenceService\|NotificationPreferenceServiceImpl\|CourseReviewService\|CourseReviewServiceImpl\|AdminSettingService\|AdminSettingServiceImpl\|AdminStatsService\|AdminStatsServiceImpl\|VideoTranscodeService\|VideoTranscodeServiceImpl\|BadgeService\|BadgeServiceImpl\|CertificateService\|CertificateServiceImpl\|TeacherService\|TeacherServiceImpl\|GradeService\|GradeServiceImpl\|TeachingClassService\|TeachingClassServiceImpl\|AcademicStatsService\|AcademicStatsServiceImpl\|BannerService\|BannerServiceImpl\|VideoBookmarkService\|VideoBookmarkServiceImpl\|SlideService\|SlideServiceImpl\|NarrationService\|NarrationServiceImpl\|SlideRenderService\|LessonService\|LessonServiceImpl\|TtsService\|TtsServiceImpl\|OrderService\|OrderServiceImpl\|CourseBundleService\|CourseBundleServiceImpl\|NarrationSettingService\|NarrationSettingServiceImpl\|FrontendErrorService\|FrontendErrorServiceImpl\|CourseReviewLogService\|CourseReviewLogServiceImpl\|MicroSpecialtyService\|MicroSpecialtyServiceImpl\|MicroSpecialtyEnrollmentService\|MicroSpecialtyEnrollmentServiceImpl\|MicroSpecialtyFeaturedService\|MicroSpecialtyFeaturedServiceImpl\|MicroSpecialtyInviteService\|MicroSpecialtyInviteServiceImpl\|MicroSpecialtyProposalService\|MicroSpecialtyProposalServiceImpl\|MicroSpecialtyQualityScoreService\|MicroSpecialtyQualityScoreServiceImpl\|CartService\|CartServiceImpl\|StorageApplicationService\|StorageApplicationServiceImpl\|StorageApplicationExportService\|StorageApplicationExportServiceImpl\|MicroSpecialtyMaterializationService\|MicroSpecialtyMaterializationServiceImpl\|PlatformShareConfigService\|PlatformShareConfigServiceImpl\|TeacherRatingService\|TeacherRatingServiceImpl\|OfflineSessionService\|OfflineSessionServiceImpl\|CoursePricingService\|CoursePricingServiceImpl\|EnrollmentStatsService\|EnrollmentStatsServiceImpl\|CourseQueryService\|CourseQueryServiceImpl\|CourseAdminService\|CourseAdminServiceImpl\|EnrollmentQueryService\|EnrollmentQueryServiceImpl\|MicroSpecialtyQueryService\|MicroSpecialtyQueryServiceImpl\|MicroSpecialtyAdminService\|MicroSpecialtyAdminServiceImpl\|StorageApplicationQueryService\|StorageApplicationQueryServiceImpl\|StorageApplicationCudService\|StorageApplicationCudServiceImpl\|UserQueryService\|UserQueryServiceImpl\|AuthQueryService\|AuthQueryServiceImpl\|MicroSpecialtyEnrollmentQueryService\|MicroSpecialtyEnrollmentQueryServiceImpl\|MicroSpecialtyProgressService\|MicroSpecialtyProgressServiceImpl"
     hits=$(grep -rln "public class.*Service" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$svc_whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Service 出现（$hits 个文件，不在白名单）")
@@ -348,8 +348,150 @@ check_no_evidence_claims() {
     fi
 }
 
+# ----------------------------------------------------------------------------
+# 14. Controller @RequestBody 必须带 @Valid（根因：CourseBundleController 缺 @Valid）
+# ----------------------------------------------------------------------------
+check_controller_valid() {
+    local hits=0
+    local issues=""
+    while IFS= read -r file; do
+        local linenos
+        linenos=$(grep -n "@RequestBody" "$file" 2>/dev/null | cut -d: -f1)
+        for ln in $linenos; do
+            local body_line
+            body_line=$(sed -n "${ln}p" "$file")
+            # 跳过 Map/List/Set/Collection/原生类型（@Valid 对其无意义）
+            if echo "$body_line" | grep -qE "Map<|List<|Set<|Collection<|String\b|Integer\b|Long\b"; then
+                continue
+            fi
+            # 检查@Valid是否在同一行或上一行（多行声明时@Valid在上一行）
+            local prev_line
+            prev_line=$(sed -n "$((ln-1))p" "$file")
+            local is_valid=false
+            if echo "$body_line" | grep -q "@Valid\|@Validated"; then
+                is_valid=true
+            fi
+            if echo "$prev_line" | grep -q "@Valid\|@Validated"; then
+                is_valid=true
+            fi
+            if [ "$is_valid" = false ]; then
+                issues="$issues  ${file#$ROOT/}:$ln\n"
+                hits=$((hits+1))
+            fi
+        done
+    done < <(find "$ROOT/micro-course-api/src/main/java/com/microcourse/controller/" -name "*.java" 2>/dev/null)
+    if [ "$hits" -gt 0 ]; then
+        FAILS+=("[自愈] Controller 有 $hits 处 @RequestBody 缺少 @Valid 注解")
+        echo -e "$issues" >&2
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# 15. 核心 Entity 必须带 @Version 乐观锁（根因：CourseBundle 缺 @Version）
+# ----------------------------------------------------------------------------
+check_entity_version() {
+    local core_entities="Course Enrollment CourseChapter CourseBundle"
+    local hits=0
+    for entity in $core_entities; do
+        local file="$ROOT/micro-course-api/src/main/java/com/microcourse/entity/$entity.java"
+        if [ -f "$file" ]; then
+            if ! grep -q "@Version" "$file" 2>/dev/null; then
+                echo "  ${file#$ROOT/}  缺少 @Version 乐观锁" >&2
+                hits=$((hits+1))
+            fi
+        fi
+    done
+    if [ "$hits" -gt 0 ]; then
+        FAILS+=("[自愈] $hits 个核心 Entity 缺少 @Version 乐观锁")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# 16. Entity 必须带 updatedAt 审计字段（根因：CourseBundleItem 缺 updatedAt）
+# ----------------------------------------------------------------------------
+check_entity_updated_at() {
+    local entities="Course CourseBundle CourseBundleItem Enrollment CourseChapter"
+    local hits=0
+    for entity in $entities; do
+        local file="$ROOT/micro-course-api/src/main/java/com/microcourse/entity/$entity.java"
+        if [ -f "$file" ]; then
+            if ! grep -q "updatedAt\|updated_at" "$file" 2>/dev/null; then
+                echo "  ${file#$ROOT/}  缺少 updatedAt 字段" >&2
+                hits=$((hits+1))
+            fi
+        fi
+    done
+    if [ "$hits" -gt 0 ]; then
+        FAILS+=("[自愈] $hits 个 Entity 缺少 updatedAt 审计字段")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# 17. Service 实现类大小限制（根因：CourseServiceImpl 1485 行 / EnrollmentServiceImpl 1090 行）
+# ----------------------------------------------------------------------------
+check_service_class_size() {
+    local max_lines=800
+    local hits=0
+    while IFS= read -r file; do
+        local lines
+        lines=$(wc -l < "$file" 2>/dev/null | tr -d ' ')
+        if [ "$lines" -gt "$max_lines" ]; then
+            echo "  ${file#$ROOT/}  ${lines}行（超过 ${max_lines} 行限制）" >&2
+            hits=$((hits+1))
+        fi
+    done < <(find "$ROOT/micro-course-api/src/main/java/com/microcourse/service/impl/" -name "*ServiceImpl.java" 2>/dev/null)
+    if [ "$hits" -gt 0 ]; then
+        FAILS+=("[自愈] $hits 个 ServiceImpl 超过 ${max_lines} 行限制，应考虑拆分")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# 18. Flyway 迁移版本号唯一性检查（根因：V100 版本冲突阻塞全部集成测试）
+# ----------------------------------------------------------------------------
+check_flyway_version_unique() {
+    local hits
+    hits=$(find "$ROOT/micro-course-api/src/main/resources/db/migration/" -name "V*.sql" 2>/dev/null \
+        | sed 's/.*\/V\([0-9]*\)__.*/\1/' \
+        | sort \
+        | uniq -c \
+        | sort -rn \
+        | awk '$1 > 1 {print $2}' \
+        | wc -l | tr -d ' ')
+    if [ "$hits" -gt 0 ]; then
+        local duplicates
+        duplicates=$(find "$ROOT/micro-course-api/src/main/resources/db/migration/" -name "V*.sql" 2>/dev/null \
+            | sed 's/.*\/V\([0-9]*\)__.*/\1/' \
+            | sort \
+            | uniq -c \
+            | sort -rn \
+            | awk '$1 > 1 {print "  V"$2" 出现 "$1" 次"}')
+        echo "$duplicates" >&2
+        FAILS+=("[自愈] Flyway 迁移版本号冲突（$hits 个版本重复），根因阻塞全部集成测试")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
 check_bak_files
 check_no_evidence_claims
+check_controller_valid
+check_entity_version
+check_entity_updated_at
+check_service_class_size
+check_flyway_version_unique
 
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC}"

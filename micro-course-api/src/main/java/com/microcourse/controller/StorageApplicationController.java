@@ -105,7 +105,7 @@ public class StorageApplicationController {
     @PreAuthorize("hasRole('TEACHER')")
     public R<Void> autoSave(
             @PathVariable Long id,
-            @RequestBody StorageApplicationSaveRequest request) {
+            @Valid @RequestBody StorageApplicationSaveRequest request) {
         Long userId = SecurityUtil.getCurrentUserId();
         storageApplicationService.autoSave(id, userId, request);
         return R.ok();

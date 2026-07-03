@@ -9,6 +9,7 @@ import com.microcourse.dto.bundle.BundleUpdateRequest;
 import com.microcourse.dto.bundle.BundleVO;
 import com.microcourse.service.CourseBundleService;
 import com.microcourse.util.SecurityUtil;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 
@@ -45,14 +46,14 @@ public class CourseBundleController {
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("创建课程套餐")
-    public R<BundleVO> create(@RequestBody BundleCreateRequest request) {
+    public R<BundleVO> create(@Valid @RequestBody BundleCreateRequest request) {
         return R.ok(bundleService.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("编辑课程套餐")
-    public R<BundleVO> update(@PathVariable Long id, @RequestBody BundleUpdateRequest request) {
+    public R<BundleVO> update(@PathVariable Long id, @Valid @RequestBody BundleUpdateRequest request) {
         return R.ok(bundleService.update(id, request));
     }
 
@@ -75,7 +76,7 @@ public class CourseBundleController {
     @PostMapping("/{id}/items")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("向套餐添加课程")
-    public R<Void> addCourse(@PathVariable Long id, @RequestBody @Validated AddCourseRequest request) {
+    public R<Void> addCourse(@PathVariable Long id, @Valid @RequestBody AddCourseRequest request) {
         bundleService.addCourse(id, request.getCourseId(), request.getSortOrder(), request.getIsRequired());
         return R.ok();
     }

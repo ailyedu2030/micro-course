@@ -20,6 +20,8 @@ public final class SecurityUtil {
 
     /**
      * 获取当前登录用户 ID
+     * <p>类型安全：兼容 Long / String / Number 三种 principal 类型。
+     * 解决 Controller 和 Service 中重复定义的问题（P1-I-1 全量修复）。
      *
      * @return 当前用户 ID
      * @throws BusinessException TOKEN_INVALID 当未登录或 token 无效时
@@ -32,6 +34,16 @@ public final class SecurityUtil {
         Object principal = auth.getPrincipal();
         if (principal instanceof Long) {
             return (Long) principal;
+        }
+        if (principal instanceof Number num) {
+            return num.longValue();
+        }
+        if (principal instanceof String str) {
+            try {
+                return Long.parseLong(str);
+            } catch (NumberFormatException ignored) {
+                // fall through
+            }
         }
         throw new BusinessException(ErrorCode.TOKEN_INVALID);
     }

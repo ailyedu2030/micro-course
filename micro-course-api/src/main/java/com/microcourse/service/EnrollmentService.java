@@ -58,4 +58,13 @@ public interface EnrollmentService {
      * @return userId 列表
      */
     List<Long> findActiveUserIdsByCourseId(Long courseId);
+
+    /**
+     * R12 P1-C-4: 校验某学生是否在指定教师授课课程中。
+     * 用于 Controller 层数据隔离：TEACHER 仅能查询自己课程中的学生详情。
+     * @param teacherId 教师 ID
+     * @param studentId 学生 ID
+     * @throws BusinessException 若该学生不在教师授课课程中
+     */
+    void assertStudentInTeachersCourses(Long teacherId, Long studentId);
 }

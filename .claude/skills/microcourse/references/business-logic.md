@@ -205,7 +205,134 @@ DELETE /api/classes/{id}
 
 ---
 
-## 8. 微专业状态机（Phase 14）
+## 7. 课程状态机（CourseStatus，Phase 2+）
+
+> **源文档**：`enums/CourseStatus.java`（代码实现）
+> **实现类**：`com.microcourse.enums.CourseStatus`
+
+### 7.1 状态定义
+
+| 状态值 | 名称 | 业务含义 |
+|--------|------|---------|
+| 0 | DRAFT | 草稿（教师创建后初始状态） |
+| 1 | PENDING_REVIEW | 待审核（教师提交后） |
+| 2 | APPROVED | 审核通过（管理员/教务处审批） |
+| 3 | REJECTED | 驳回（附驳回原因） |
+| 4 | PUBLISHED | 已发布（admin 上架，学生可见可选） |
+| 5 | CLOSED | 已下架（admin 操作，学生不可选但已选学生可继续学） |
+| 6 | ARCHIVED | 已归档（终态，不可做任何操作） |
+
+### 7.2 状态转换图
+
+```
+DRAFT ──submit──→ PENDING_REVIEW
+  ↑                   ↓ approve
+  │                APPROVED ──publish──→ PUBLISHED
+  │                   ↓                     ↓
+  ↑                   │                  CLOSED
+  │                   ↓                     ↓
+  └──┐              REJECTED             ARCHIVED
+     │                 │
+     └──resubmit───────┘
+  REJECTED ──submit(rework)──→ PENDING_REVIEW
+  PUBLISHED ──unpublish──→ CLOSED
+  CLOSED ──publish──→ PUBLISHED
+  CLOSED ──archive──→ ARCHIVED
+  APPROVED ──close──→ CLOSED
+  REJECTED ──close──→ CLOSED
+  REJECTED ──archive──→ ARCHIVED
+```
+
+### 7.3 转换规则
+
+| 从状态 | 到状态 | 触发操作 | Controller 端点 |
+|--------|--------|---------|----------------|
+| DRAFT | PENDING_REVIEW | submitForReview() | POST /api/courses/{id}/submit |
+| PENDING_REVIEW | APPROVED | approve() | POST /api/courses/{id}/approve |
+| PENDING_REVIEW | REJECTED | reject(reason) | POST /api/courses/{id}/reject |
+| PENDING_REVIEW | DRAFT | update() + submit | (草稿修改后重新提交) |
+| APPROVED | PUBLISHED | publish() | POST /api/courses/{id}/publish |
+| APPROVED | CLOSED | updateStatus(CLOSED) | PUT /api/courses/{id}/status |
+| REJECTED | PENDING_REVIEW | submitForReview() | POST /api/courses/{id}/submit |
+| REJECTED | CLOSED | updateStatus(CLOSED) | PUT /api/courses/{id}/status |
+| REJECTED | DRAFT | update() | PUT /api/courses/{id}（保存为草稿） |
+| REJECTED | ARCHIVED | updateStatus(ARCHIVED) | PUT /api/courses/{id}/status |
+| PUBLISHED | CLOSED | unpublish() | POST /api/courses/{id}/unpublish |
+| CLOSED | PUBLISHED | publish() | POST /api/courses/{id}/publish |
+| CLOSED | ARCHIVED | updateStatus(ARCHIVED) | PUT /api/courses/{id}/status |
+
+**关键约束**：
+- ARCHIVED 是终态，不接收任何状态转换
+- 所有状态变更使用 version 乐观锁（CAS）防止并发冲突
+- `isSelectable()` 返回 true 当 status == APPROVED 或 PUBLISHED（学生可选该课程）
+- DRAFT/PENDING_REVIEW/REJECTED → 学生选不到；PUBLISHED/CLOSED → 已选学生可继续学
+
+---
+
+## 8. 选课状态机（EnrollmentStatus，Phase 2+）
+
+> **源文档**：`enums/EnrollmentStatus.java`（代码实现）
+> **历史兼容**：存量数据使用 `ENROLLED` 值，新代码统一走 `APPROVED`。`fromString()` 将 `ENROLLED` 映射为 `APPROVED`。
+
+### 8.1 状态定义
+
+| 状态值 | 含义 | 说明 |
+|--------|------|------|
+| PENDING | 待审核 | 学生选课后需要教师审批 |
+| APPROVED | 已录取（*含历史 ENROLLED*） | 选课成功（存量 ENROLLED 映射到此值） |
+| WAITLIST | 候补 | 课程满员时自动进入候补队列 |
+| CANCELLED | 已取消 | 学生主动退课（终态） |
+| REJECTED | 已拒绝 | 教师拒绝选课申请（终态） |
+| COMPLETED | 已完成 | 学习结束、证书可颁发（终态） |
+| DROPPED | 已退出 | 教师/管理员操作退出（终态） |
+
+### 8.2 状态转换图
+
+```
+PENDING ──approve──→ APPROVED
+  │                    ↓
+  ↓                 COMPLETED
+REJECTED              ↓
+  │                CANCELLED（退课）
+  ↓                    │
+WAITLIST ──promote──→ DROPPED
+  │   (退课后候补晋升)
+  ↓
+CANCELLED
+```
+
+**历史兼容**：
+- `ENROLLED`（旧值）在 `fromString()` 中映射到 `APPROVED`
+- 查询 API 兼容 ENROLLED/APPROVED 双值：`in(enrollment_status, 'ENROLLED', 'APPROVED')`
+
+### 8.3 转换矩阵
+
+| 从状态 | 到状态 | 触发 | 说明 |
+|--------|--------|------|------|
+| PENDING | APPROVED | approve | 教师审批通过 |
+| PENDING | REJECTED | reject | 教师拒绝 |
+| PENDING | WAITLIST | (系统) | 满员时自动入候补 |
+| PENDING | CANCELLED | cancel | 学生取消申请 |
+| APPROVED | COMPLETED | markComplete | 学习完成（证书+徽章自动颁发） |
+| APPROVED | CANCELLED | cancel | 学生主动退课（触发候补晋升） |
+| APPROVED | DROPPED | drop | 管理员强制退出 |
+| WAITLIST | APPROVED | promote | 课程有空位时自动晋升（行级锁+CAS） |
+| WAITLIST | CANCELLED | cancel | 取消候补 |
+| REJECTED | — | — | 终态 |
+| CANCELLED | — | — | 终态（退课后重新选课走物理删除+重建） |
+| COMPLETED | — | — | 终态 |
+| DROPPED | — | — | 终态 |
+
+**关键约束**：
+- ALL 状态变更使用 version 乐观锁（防并发状态冲突）
+- 退课（CANCELLED）自动触发：student_count -1 + 候补晋升
+- 选课 + 容量检查通过原子 INSERT...SELECT 实现（atomicInsertIfCapacity）
+- 满员时自动插入 WAITLIST 记录（atomicInsertIfEnrollable）
+- CANCELLED 后重新选课：物理删除旧记录（REQUIRES_NEW 独立事务）+ 正常选课流程
+
+---
+
+## 9. 微专业状态机（Phase 14）
 
 > **源文档**：[`docs/开发规划/phase14-micro-specialty-spec.md` §2 状态机全集](../../../docs/开发规划/phase14-micro-specialty-spec.md)
 > **完整规则**：6 个状态机、转换矩阵、触发角色、前置条件，详见 phase14-spec §2.1-§2.5

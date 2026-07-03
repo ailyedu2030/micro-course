@@ -13,6 +13,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.entity.OperationLog;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AdminSettingService;
+import com.microcourse.service.AuthQueryService;
 import com.microcourse.service.AuthService;
 import com.microcourse.service.OperationLogService;
 import com.microcourse.util.IpUtil;
@@ -33,7 +34,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.StringReader;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -63,10 +63,7 @@ public class AuthServiceImpl implements AuthService {
     private final HttpServletRequest httpServletRequest;
     private final AdminSettingService adminSettingService;
     private final RestTemplate restTemplate;
-
-    /** 登录失败次数本地缓存兜底(Redis 不可用时使用),带自动过期 SEC-006 **/
-    private final java.util.Map<String, LocalLoginFailureEntry> localLoginFailCache =
-            new java.util.concurrent.ConcurrentHashMap<>();
+    private final AuthQueryService queryService;
 
     /** Self-reference for @Transactional proxy access (via @Lazy constructor injection) */
     private final AuthServiceImpl self;
@@ -76,6 +73,7 @@ public class AuthServiceImpl implements AuthService {
                            OperationLogService operationLogService,
                            HttpServletRequest httpServletRequest,
                            AdminSettingService adminSettingService,
+                           AuthQueryService queryService,
                            @Lazy AuthServiceImpl self) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
@@ -85,6 +83,7 @@ public class AuthServiceImpl implements AuthService {
         this.httpServletRequest = httpServletRequest;
         this.adminSettingService = adminSettingService;
         this.restTemplate = new RestTemplate();
+        this.queryService = queryService;
         this.self = self;
     }
 
@@ -147,14 +146,14 @@ public class AuthServiceImpl implements AuthService {
             // Step 0: IP 级别防暴 — 同一 IP 连续失败 20 次封禁 15 分钟
             String clientIp = IpUtil.getClientIp();
             if (clientIp != null) {
-                int ipFailureCount = getLoginFailureCount("ip:" + clientIp);
+                int ipFailureCount = queryService.getLoginFailureCount("ip:" + clientIp);
                 if (ipFailureCount >= 20) {
                     throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
                 }
             }
 
             // Step 1: 检查登录失败次数
-            int failureCount = getLoginFailureCount(request.getUsername());
+            int failureCount = queryService.getLoginFailureCount(request.getUsername());
             if (failureCount >= 5) {
                 throw new BusinessException(ErrorCode.LOGIN_LOCKED);
             }
@@ -162,15 +161,15 @@ public class AuthServiceImpl implements AuthService {
             // Step 2: 查询用户
             User user = userRepository.findByUsername(request.getUsername())
                     .orElseThrow(() -> {
-                        incrLoginFailureQuietly(request.getUsername());
-                        if (clientIp != null) incrLoginFailureQuietly("ip:" + clientIp);
+                        queryService.incrLoginFailureQuietly(request.getUsername());
+                        if (clientIp != null) queryService.incrLoginFailureQuietly("ip:" + clientIp);
                         return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
                     });
 
             // Step 3: 验证密码
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                incrLoginFailureQuietly(request.getUsername());
-                if (clientIp != null) incrLoginFailureQuietly("ip:" + clientIp);
+                queryService.incrLoginFailureQuietly(request.getUsername());
+                if (clientIp != null) queryService.incrLoginFailureQuietly("ip:" + clientIp);
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
 
@@ -186,9 +185,9 @@ public class AuthServiceImpl implements AuthService {
             }
 
             // Step 5: 登录成功，清除失败计数
-            clearLoginFailureQuietly(request.getUsername());
+            queryService.clearLoginFailureQuietly(request.getUsername());
             if (clientIp != null) {
-                clearLoginFailureQuietly("ip:" + clientIp);
+                queryService.clearLoginFailureQuietly("ip:" + clientIp);
             }
 
             // Step 6: 生成 JWT
@@ -227,22 +226,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserVO getCurrentUser() {
-        // Phase 3.1: 从 SecurityContextHolder 获取当前 userId
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-            throw new BusinessException(ErrorCode.TOKEN_INVALID);
-        }
-        Object principal = authentication.getPrincipal();
-        if (principal == null) {
-            throw new BusinessException(ErrorCode.TOKEN_INVALID);
-        }
-        Long userId = (Long) principal;
-        // Phase 3.2: 查询用户
-        User user = userRepository.selectById(userId);
-        if (user == null) {
-            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        }
-        return convertToUserVO(user);
+        return queryService.getCurrentUser();
     }
 
     @Override
@@ -250,13 +234,13 @@ public class AuthServiceImpl implements AuthService {
         // Step 0: IP 级别防刷新 — 同一 IP 每小时最多刷新 20 次
         String clientIp = IpUtil.getClientIp();
         if (clientIp != null) {
-            int refreshCount = getLoginFailureCount("refresh:" + clientIp);
+            int refreshCount = queryService.getLoginFailureCount("refresh:" + clientIp);
             if (refreshCount >= 20) {
                 throw new BusinessException(ErrorCode.TOKEN_INVALID);
             }
         }
         // Step 0.5: 记录 refresh 尝试
-        if (clientIp != null) incrLoginFailureQuietly("refresh:" + clientIp);
+        if (clientIp != null) queryService.incrLoginFailureQuietly("refresh:" + clientIp);
 
         // Step 1: 验证 refreshToken 有效性
         if (!jwtUtil.validateRefreshToken(refreshToken)) {
@@ -566,7 +550,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserVO updateProfile(UpdateProfileRequest request) {
-        Long userId = getCurrentUserId();
+        Long userId = queryService.getCurrentUserId();
         User user = userRepository.selectById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
@@ -591,13 +575,13 @@ public class AuthServiceImpl implements AuthService {
             user.setGender(request.getGender());
         }
         userRepository.updateById(user);
-        return convertToUserVO(user);
+        return queryService.getCurrentUser();
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void changePassword(ChangePasswordRequest request) {
-        Long userId = getCurrentUserId();
+        Long userId = queryService.getCurrentUserId();
         User user = userRepository.selectById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
@@ -646,7 +630,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String uploadAvatar(MultipartFile file) {
-        Long userId = getCurrentUserId();
+        Long userId = queryService.getCurrentUserId();
         User user = userRepository.selectById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
@@ -672,7 +656,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像文件大小不能超过 2MB");
         }
         // P1 安全修复: 文件魔数校验（JPEG/PNG/WebP）
-        validateImageMagic(file);
+        queryService.validateImageMagic(file);
         try {
             String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
             java.io.File dir = new java.io.File(uploadDir);
@@ -701,121 +685,9 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    /** 本地登录失败条目,含过期时间 **/
-    private static class LocalLoginFailureEntry {
-        int count;
-        long expiresAtNanos;
-        LocalLoginFailureEntry() { this.count = 0; this.expiresAtNanos = System.nanoTime() + 30L * 60 * 1_000_000_000L; }
-        boolean isExpired() { return System.nanoTime() > expiresAtNanos; }
-    }
-
-    /** SEC-006: Redis 限流兜底 — 含本地缓存 + 日志可见 **/
-    private int getLoginFailureCount(String username) {
-        try {
-            return redisUtil.getLoginFailureCount(username);
-        } catch (Exception e) {
-            log.warn("[Auth] Redis 不可用,回退本地限流缓存 username={}", username);
-            LocalLoginFailureEntry entry = localLoginFailCache.get(username);
-            if (entry == null || entry.isExpired()) return 0;
-            return entry.count;
-        }
-    }
-
-    private void incrLoginFailureQuietly(String username) {
-        try {
-            redisUtil.incrLoginFailure(username);
-        } catch (Exception e) {
-            log.warn("[Auth] Redis incrLoginFailure 失败 username={}", username);
-            LocalLoginFailureEntry entry = localLoginFailCache.computeIfAbsent(username,
-                    k -> new LocalLoginFailureEntry());
-            if (entry.isExpired()) { localLoginFailCache.put(username, new LocalLoginFailureEntry()); entry = localLoginFailCache.get(username); }
-            if (entry != null) entry.count++;
-        }
-    }
-
     @Override
     public void resetLoginLockout() {
-        localLoginFailCache.clear();
-    }
-
-    /** P1 安全修复: 图片魔数校验（JPEG: FFD8FF, PNG: 89504E47, WebP: 52494646） */
-    private void validateImageMagic(MultipartFile file) {
-        try (java.io.InputStream is = file.getInputStream()) {
-            byte[] magic = new byte[12];
-            int read = is.read(magic);
-            if (read < 4) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小，无法验证图片格式");
-            }
-            boolean isJpeg = (magic[0] & 0xFF) == 0xFF
-                    && (magic[1] & 0xFF) == 0xD8
-                    && (magic[2] & 0xFF) == 0xFF;
-            boolean isPng = (magic[0] & 0xFF) == 0x89
-                    && magic[1] == 'P'
-                    && magic[2] == 'N'
-                    && magic[3] == 'G';
-            boolean isWebp = (magic[0] & 0xFF) == 'R'
-                    && (magic[1] & 0xFF) == 'I'
-                    && (magic[2] & 0xFF) == 'F'
-                    && (magic[3] & 0xFF) == 'F'
-                    && magic.length >= 12
-                    && magic[8] == 'W'
-                    && magic[9] == 'E'
-                    && magic[10] == 'B'
-                    && magic[11] == 'P';
-            if (!isJpeg && !isPng && !isWebp) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像必须为 JPEG/PNG/WebP 格式（魔数校验失败）");
-            }
-        } catch (java.io.IOException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取头像文件");
-        }
-    }
-
-    private void clearLoginFailureQuietly(String username) {
-        try {
-            redisUtil.clearLoginFailure(username);
-        } catch (Exception e) {
-            log.warn("[Auth] Redis clearLoginFailure 失败 username={}", username);
-            localLoginFailCache.remove(username);
-        }
-    }
-
-    private Long getCurrentUserId() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-            throw new BusinessException(ErrorCode.TOKEN_INVALID);
-        }
-        Object principal = authentication.getPrincipal();
-        if (principal == null) {
-            throw new BusinessException(ErrorCode.TOKEN_INVALID);
-        }
-        return (Long) principal;
-    }
-
-    private UserVO convertToUserVO(User user) {
-        UserVO vo = new UserVO();
-        vo.setId(user.getId());
-        vo.setUsername(user.getUsername());
-        vo.setRealName(user.getRealName());
-        vo.setEmail(user.getEmail());
-        vo.setPhone(user.getPhone());
-        vo.setGender(user.getGender());
-        vo.setAvatar(user.getAvatar());
-        vo.setRole(user.getRole());
-        vo.setDepartmentId(user.getDepartmentId());
-        vo.setMajorId(user.getMajorId());
-        vo.setClassId(user.getClassId());
-        vo.setGrade(user.getGrade());
-        vo.setEnrollmentYear(user.getEnrollmentYear());
-        vo.setStudentNo(user.getStudentNo());
-        vo.setTeacherNo(user.getTeacherNo());
-        vo.setGraduationYear(user.getGraduationYear());
-        vo.setPoliticalStatus(user.getPoliticalStatus());
-        vo.setCasBound(user.getCasBound());
-        vo.setStatus(user.getStatus());
-        vo.setTeacherStatus(user.getTeacherStatus());
-        vo.setLastLoginAt(user.getLastLoginAt());
-        vo.setCreatedAt(user.getCreatedAt());
-        return vo;
+        queryService.resetLoginLockout();
     }
 
     /**

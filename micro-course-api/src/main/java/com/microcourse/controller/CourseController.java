@@ -15,6 +15,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.security.RequireRole;
+import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.NotificationService;
@@ -37,13 +38,16 @@ import java.util.Map;
 public class CourseController {
 
     private final CourseService courseService;
+    private final CourseQueryService courseQueryService;
     private final EnrollmentService enrollmentService;
     private final NotificationService notificationService;
 
     public CourseController(CourseService courseService,
+                            CourseQueryService courseQueryService,
                             EnrollmentService enrollmentService,
                             NotificationService notificationService) {
         this.courseService = courseService;
+        this.courseQueryService = courseQueryService;
         this.enrollmentService = enrollmentService;
         this.notificationService = notificationService;
     }
@@ -182,7 +186,7 @@ public class CourseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         courseService.delete(id);
         return R.ok();

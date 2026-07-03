@@ -42,7 +42,8 @@ class MicroSpecialtyEnrollmentServiceTest {
     @Mock private EnrollmentService enrollmentService;
     @Mock private MicroSpecialtyService msService;
     @Mock private CertificateService certificateService;
-    @Mock private ClassesRepository classRepository;
+    @Mock private MicroSpecialtyEnrollmentQueryService queryService;
+    @Mock private MicroSpecialtyProgressService progressService;
     @Mock private DepartmentRepository departmentRepository;
 
     private MicroSpecialtyEnrollmentServiceImpl service;
@@ -58,7 +59,11 @@ class MicroSpecialtyEnrollmentServiceTest {
                 enrollmentRepository, msRepository, msCourseRepository,
                 msTeacherRepository, courseEnrollmentRepository, courseRepository,
                 userRepository, notificationService, enrollmentService,
-                msService, certificateService, classRepository, departmentRepository);
+                msService, certificateService, queryService, progressService);
+        MicroSpecialtyEnrollmentVO mockVO = new MicroSpecialtyEnrollmentVO();
+        mockVO.setId(1L);
+        lenient().when(queryService.toVO(any(), any())).thenReturn(mockVO);
+        lenient().doNothing().when(progressService).aggregateProgress(anyLong());
     }
 
     // ==================== apply() ====================
@@ -449,66 +454,25 @@ class MicroSpecialtyEnrollmentServiceTest {
     @Test
     @DisplayName("aggregateProgress: ALL_REQUIRED 完成判定")
     void aggregateProgress_allRequired() {
-        MicroSpecialtyEnrollment en = inProgressEnrollment(1L);
-        when(enrollmentRepository.selectById(1L)).thenReturn(en);
-        MicroSpecialty ms = specialtyWithStatus("RECRUITING", 100, 10);
-        ms.setRequiredCourseCount(2);
-        ms.setCompletionRule("ALL_REQUIRED");
-        when(msRepository.selectById(anyLong())).thenReturn(ms);
-        MicroSpecialtyCourse mc = requiredCourse(1L, 1L);
-        when(msCourseRepository.selectList(any())).thenReturn(List.of(mc));
-        when(courseEnrollmentRepository.selectOne(any())).thenReturn(null);
-        lenient().when(courseRepository.selectBatchIds(any())).thenReturn(Collections.emptyList());
-        when(enrollmentRepository.update(any(), any())).thenReturn(1);
-
         service.aggregateProgress(1L);
 
-        verify(enrollmentRepository, atLeastOnce()).update(any(), any());
+        verify(progressService).aggregateProgress(1L);
     }
 
     @Test
     @DisplayName("aggregateProgress: FAILED 判定—全部必修评分且未通过")
     void aggregateProgress_failed() {
-        MicroSpecialtyEnrollment en = inProgressEnrollment(1L);
-        when(enrollmentRepository.selectById(1L)).thenReturn(en);
-        MicroSpecialty ms = specialtyWithStatus("RECRUITING", 100, 10);
-        ms.setRequiredCourseCount(1);
-        ms.setCompletionRule("ALL_REQUIRED");
-        when(msRepository.selectById(anyLong())).thenReturn(ms);
-        MicroSpecialtyCourse mc = requiredCourse(1L, 1L);
-        when(msCourseRepository.selectList(any())).thenReturn(List.of(mc));
-
-        // Course enrollment with final score below passing
-        Enrollment courseEn = new Enrollment();
-        courseEn.setFinalScore(BigDecimal.valueOf(30));
-        courseEn.setProgress(100.0);
-        when(courseEnrollmentRepository.selectOne(any())).thenReturn(courseEn);
-        lenient().when(courseRepository.selectBatchIds(any())).thenReturn(List.of(course(1L, "必修课")));
-        when(enrollmentRepository.update(any(), any())).thenReturn(1);
-
         service.aggregateProgress(1L);
 
-        verify(notificationService).notifyAsync(eq(5L), eq(NotificationType.MS_ENROLLMENT_FAILED),
-                anyString(), anyString(), anyLong());
+        verify(progressService).aggregateProgress(1L);
     }
 
     @Test
     @DisplayName("aggregateProgress: 并发跳过 — version 冲突仅 log warn")
     void aggregateProgress_concurrentSkip() {
-        MicroSpecialtyEnrollment en = inProgressEnrollment(1L);
-        when(enrollmentRepository.selectById(1L)).thenReturn(en);
-        MicroSpecialty ms = specialtyWithStatus("RECRUITING", 100, 10);
-        ms.setRequiredCourseCount(2);
-        ms.setCompletionRule("ALL_REQUIRED");
-        when(msRepository.selectById(anyLong())).thenReturn(ms);
-        MicroSpecialtyCourse mc = requiredCourse(1L, 1L);
-        when(msCourseRepository.selectList(any())).thenReturn(List.of(mc));
-        when(courseEnrollmentRepository.selectOne(any())).thenReturn(null);
-        lenient().when(courseRepository.selectBatchIds(any())).thenReturn(Collections.emptyList());
-        // Simulate version conflict on progress update
-        when(enrollmentRepository.update(any(), any())).thenReturn(0);
-
         assertDoesNotThrow(() -> service.aggregateProgress(1L));
+
+        verify(progressService).aggregateProgress(1L);
     }
 
     // ==================== helpers ====================

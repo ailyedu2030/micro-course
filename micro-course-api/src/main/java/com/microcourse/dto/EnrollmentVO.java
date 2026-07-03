@@ -8,10 +8,14 @@ public class EnrollmentVO {
     private Long id;
     private Long courseId;
     private String courseName;
+    /** @deprecated 语义同 courseName，前端迁移后删除。请使用 courseName。 */
+    @Deprecated
     private String courseTitle;
     private String teacherName;
     private String coverUrl;
     private Long userId;
+    /** @deprecated 语义同 realName，前端迁移后删除。请使用 realName。 */
+    @Deprecated
     private String userName;
     private Double progress;
     private Boolean completed;

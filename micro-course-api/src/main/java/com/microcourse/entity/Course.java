@@ -53,7 +53,7 @@ public class Course {
     @TableField("free_access_scope")
     private String freeAccessScope;  // none | same_department | same_college | same_school
 
-    @TableField("free_dept_ids")
+    @TableField(value = "free_dept_ids", typeHandler = com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler.class)
     private String freeDeptIds;     // JSON 字符串
 
     @TableField("discount_scope")
