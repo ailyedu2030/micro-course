@@ -8,6 +8,7 @@ import 'nprogress/nprogress.css'
 NProgress.configure({ showSpinner: false })
 
 const routes = [
+  { path: '/micro-specialties', name: 'MicroSpecialtySquare', component: () => import('../views/public/MicroSpecialtySquare.vue'), meta: { requiresAuth: false, title: '微专业' } },
   { path: '/login', name: 'Login', component: () => import('../views/auth/Login.vue'), meta: { requiresAuth: false } },
   { path: '/', name: 'Home', redirect: '/admin/dashboard' },
   // P0-2: 从 userStore 读取角色（beforeEach 中已填充），避免与 sessionStorage 双源不一致
