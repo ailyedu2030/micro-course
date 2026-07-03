@@ -46,3 +46,12 @@ CROSS JOIN (VALUES
 ) AS v(from_tier, to_tier, reason, triggered_by, days_offset)
 WHERE tr.tier IN ('GOLD', 'PLATINUM')
   AND NOT EXISTS (SELECT 1 FROM teacher_tier_log l WHERE l.teacher_id = tr.teacher_id);
+
+-- 2b) P2-3 修复: 为 PLATINUM 教师补 GOLD→PLATINUM 升级记录
+INSERT INTO teacher_tier_log (teacher_id, from_tier, to_tier, reason, triggered_by, created_at)
+SELECT tr.teacher_id, 'GOLD', 'PLATINUM', '评分 88.10 → 升级', 'CRON',
+       CURRENT_TIMESTAMP - INTERVAL '2 hours'
+FROM teacher_ratings tr
+WHERE tr.tier = 'PLATINUM'
+  AND NOT EXISTS (SELECT 1 FROM teacher_tier_log l
+                  WHERE l.teacher_id = tr.teacher_id AND l.to_tier = 'PLATINUM');

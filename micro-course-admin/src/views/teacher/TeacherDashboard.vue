@@ -224,8 +224,8 @@
           </div>
           <div class="rating-share">
             <span class="share-label">当前平台分成</span>
-            <span class="share-value">{{ platformShareRate }}%</span>
-            <span class="share-hint">教师占 {{ 100 - platformShareRate }}%</span>
+            <span class="share-value">{{ platformSharePercent }}%</span>
+            <span class="share-hint">教师占 {{ 100 - platformSharePercent }}%</span>
           </div>
         </div>
         <el-divider />
@@ -511,6 +511,7 @@ const revenueLoading = ref(false)
 const revenueData = ref({})
 // 修复 P0-2: 优先用后端返回的 tierRate(从 platform_share_config 实时读)
 // 后端没返回时用兜底映射(GOLD=25,与后端 V111 默认值一致)
+// P1-1 修复: 删除重复的 platformShareRate，统一用 platformSharePercent
 const platformSharePercent = computed(() => {
   if (ratingData.value.tierRate != null) {
     return Number(ratingData.value.tierRate)
@@ -557,18 +558,7 @@ const nextTierInfo = computed(() => {
   // NEW 等级
   return { label: '青铜', gap: (40 - score).toFixed(1) }
 })
-// 修复 P0-2: 优先用后端返回的 tierRate(从 platform_share_config 实时读)
-// 后端没返回时用兜底映射(只在 V111 默认值生效时使用)
-const platformShareRate = computed(() => {
-  // 优先使用后端返回值
-  if (ratingData.value.tierRate != null) {
-    return Number(ratingData.value.tierRate)
-  }
-  // 兜底映射(后端未升级时使用,值与 V111 默认一致)
-  const fallback = { PLATINUM: 20, GOLD: 25, SILVER: 28, BRONZE: 32, NEW: 35 }
-  return fallback[ratingData.value.tier] || 30
-})
-
+// P1-1 已移除重复的 platformShareRate，统一用 platformSharePercent (第 514 行)
 // 定时刷新
 const refreshInterval = ref(60000)
 let refreshTimer = null

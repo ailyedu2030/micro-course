@@ -503,7 +503,13 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         }
         vo.setTeacherCount(teacherRevenue.size());
 
-        // 填充教师姓名
+        // 填充教师姓名 (P1-3 修复: 使用 batch 预加载避免 N+1)
+        Set<Long> topTeacherIds = teacherRevenue.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(10).map(Map.Entry::getKey).collect(Collectors.toSet());
+        Map<Long, String> teacherNameMap = topTeacherIds.isEmpty() ? new HashMap<>()
+                : userRepository.selectBatchIds(topTeacherIds).stream()
+                        .collect(Collectors.toMap(User::getId, User::getRealName));
         List<AdminRevenueVO.TopTeacherItem> topTeachers = teacherRevenue.entrySet().stream()
                 .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
                 .limit(10)
@@ -512,8 +518,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
                     item.setTeacherId(entry.getKey());
                     item.setRevenue(entry.getValue());
                     item.setOrderCount(teacherOrders.getOrDefault(entry.getKey(), 0));
-                    User teacher = userRepository.selectById(entry.getKey());
-                    item.setTeacherName(teacher != null ? teacher.getRealName() : "未知");
+                    item.setTeacherName(teacherNameMap.getOrDefault(entry.getKey(), "未知"));
                     return item;
                 })
                 .collect(Collectors.toList());

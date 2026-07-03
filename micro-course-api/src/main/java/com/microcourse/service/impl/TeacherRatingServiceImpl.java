@@ -32,7 +32,7 @@ import java.util.Map;
  * ratingScore = avgStudentRating * 20 * 0.4
  *             + completionRate * 0.3
  *             + enrollmentRate * 100 * 0.15
- *             + courseCountFactor * 0.15
+ *             + courseCountFactor * 100 * 0.15
  * <br>
  * 其中 enrollmentRate = min(totalStudents / 100, 1)
  *      courseCountFactor = min(totalCourses / 5, 1)
