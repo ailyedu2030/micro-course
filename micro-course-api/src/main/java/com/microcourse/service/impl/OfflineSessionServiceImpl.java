@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.AttendanceRecordVO;
 import com.microcourse.dto.OfflineSessionCreateRequest;
+import com.microcourse.enums.AttendanceStatus;
 import com.microcourse.dto.OfflineSessionUpdateRequest;
 import com.microcourse.dto.OfflineSessionVO;
 import com.microcourse.dto.PageResult;
@@ -31,9 +32,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -199,7 +205,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         AttendanceRecord record = new AttendanceRecord();
         record.setSessionId(sessionId);
         record.setUserId(userId);
-        record.setStatus("PRESENT");
+        record.setStatus(AttendanceStatus.PRESENT.getValue());
         record.setCheckinTime(LocalDateTime.now());
 
         try {
@@ -222,9 +228,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
                 new LambdaQueryWrapper<AttendanceRecord>()
                         .eq(AttendanceRecord::getSessionId, sessionId));
 
-        List<AttendanceRecordVO> vos = ipage.getRecords().stream()
-                .map(this::convertToAttendanceVO)
-                .collect(Collectors.toList());
+        List<AttendanceRecordVO> vos = convertToAttendanceVOs(ipage.getRecords());
 
         return PageResult.of(vos, ipage.getTotal(), page, size);
     }
@@ -249,9 +253,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
                         .in(AttendanceRecord::getSessionId, sessionIds)
                         .eq(AttendanceRecord::getUserId, userId));
 
-        return records.stream()
-                .map(this::convertToAttendanceVO)
-                .collect(Collectors.toList());
+        return convertToAttendanceVOs(records);
     }
 
     @Override
@@ -330,21 +332,35 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         return vo;
     }
 
-    private AttendanceRecordVO convertToAttendanceVO(AttendanceRecord record) {
-        AttendanceRecordVO vo = new AttendanceRecordVO();
-        vo.setId(record.getId());
-        vo.setSessionId(record.getSessionId());
-        vo.setUserId(record.getUserId());
-        vo.setStatus(record.getStatus());
-        vo.setCheckinTime(record.getCheckinTime());
-
-        User user = userRepository.selectById(record.getUserId());
-        if (user != null) {
-            vo.setStudentName(user.getRealName());
-            vo.setStudentNumber(user.getStudentNo());
+    private List<AttendanceRecordVO> convertToAttendanceVOs(List<AttendanceRecord> records) {
+        Set<Long> userIds = records.stream()
+                .map(AttendanceRecord::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, User> userMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            List<User> users = userRepository.selectBatchIds(userIds);
+            userMap = users.stream().collect(Collectors.toMap(User::getId, u -> u));
         }
 
-        return vo;
+        List<AttendanceRecordVO> result = new ArrayList<>();
+        for (AttendanceRecord record : records) {
+            AttendanceRecordVO vo = new AttendanceRecordVO();
+            vo.setId(record.getId());
+            vo.setSessionId(record.getSessionId());
+            vo.setUserId(record.getUserId());
+            vo.setStatus(record.getStatus());
+            vo.setCheckinTime(record.getCheckinTime());
+
+            User user = userMap.get(record.getUserId());
+            if (user != null) {
+                vo.setStudentName(user.getRealName());
+                vo.setStudentNumber(user.getStudentNo());
+            }
+
+            result.add(vo);
+        }
+        return result;
     }
 
     private void assertCourseOwnerByCourseId(Long courseId) {

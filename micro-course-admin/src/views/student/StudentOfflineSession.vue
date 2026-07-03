@@ -161,13 +161,7 @@ async function fetchChapter() {
 async function fetchSessions() {
   try {
     const { data } = await getOfflineSessions(chapterId.value, { page: 0, size: 100 })
-    const items = (data?.items || data || [])
-    items.sort((a, b) => {
-      if (!a.sessionDate) return 1
-      if (!b.sessionDate) return -1
-      return new Date(a.sessionDate) - new Date(b.sessionDate)
-    })
-    sessions.value = items
+    sessions.value = (data?.items || data || [])
   } catch {
     sessions.value = []
   }
