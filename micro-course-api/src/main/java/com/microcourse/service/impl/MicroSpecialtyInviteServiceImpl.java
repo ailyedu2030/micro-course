@@ -455,8 +455,18 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         User teacher = userRepository.selectById(userId);
         if (teacher == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "用户不存在");
 
+        // P1-C-12-06 fix: 跨学院检测（与 acceptInvite 一致的逻辑）
+        // 之前 acceptWithChapters 无条件设为 ACTIVE,跨学院场景下会绕过 ACADEMIC 审批
+        // 与 acceptInvite 行为对齐:同学院→ACTIVE,跨学院→PENDING_ACADEMIC
+        MicroSpecialty msForCheck = msRepository.selectById(record.getMicroSpecialtyId());
+        boolean isCrossDept = false;
+        if (msForCheck != null && msForCheck.getOfferDepartmentId() != null) {
+            isCrossDept = !msForCheck.getOfferDepartmentId().equals(teacher.getDepartmentId());
+        }
+        String targetStatus = isCrossDept ? "PENDING_ACADEMIC" : "ACTIVE";
+
         // 4. 更新 MicroSpecialtyTeacher 的微专业状态
-        record.setInviteStatus("ACTIVE");
+        record.setInviteStatus(targetStatus);
         record.setRespondedAt(LocalDateTime.now());
         record.setVersion(record.getVersion() != null ? record.getVersion() : 0);
         int updatedRows = teacherRepository.updateById(record);
