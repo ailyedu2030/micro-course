@@ -87,7 +87,7 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
         // 预处理：studentName → 子查询条件
         if (query.getStudentName() != null && !query.getStudentName().isBlank()) {
             String escaped = escapeLike(query.getStudentName().trim());
-            wrapper.apply("EXISTS (SELECT 1 FROM users WHERE users.id = enrollment.user_id"
+            wrapper.apply("EXISTS (SELECT 1 FROM users WHERE users.id = enrollments.user_id"
                     + " AND users.real_name LIKE {0} AND users.deleted_at IS NULL)", "%" + escaped + "%");
         }
 
@@ -95,7 +95,7 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
         if (query.getClassName() != null && !query.getClassName().isBlank()) {
             String escaped = escapeLike(query.getClassName().trim());
             wrapper.apply("EXISTS (SELECT 1 FROM users u2 JOIN classes c2 ON u2.class_id = c2.id"
-                    + " WHERE u2.id = enrollment.user_id AND c2.name LIKE {0}"
+                    + " WHERE u2.id = enrollments.user_id AND c2.name LIKE {0}"
                     + " AND c2.deleted_at IS NULL AND u2.deleted_at IS NULL)", "%" + escaped + "%");
         }
 
@@ -103,19 +103,19 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
         if (query.getMajorName() != null && !query.getMajorName().isBlank()) {
             String escaped = escapeLike(query.getMajorName().trim());
             wrapper.apply("EXISTS (SELECT 1 FROM users u3 JOIN majors m3 ON u3.major_id = m3.id"
-                    + " WHERE u3.id = enrollment.user_id AND m3.name LIKE {0}"
+                    + " WHERE u3.id = enrollments.user_id AND m3.name LIKE {0}"
                     + " AND m3.deleted_at IS NULL AND u3.deleted_at IS NULL)", "%" + escaped + "%");
         }
 
         // teacherId / courseName 过滤
         if (query.getTeacherId() != null) {
             wrapper.apply("EXISTS (SELECT 1 FROM courses c4"
-                    + " WHERE c4.id = enrollment.course_id AND c4.teacher_id = {0}"
+                    + " WHERE c4.id = enrollments.course_id AND c4.teacher_id = {0}"
                     + " AND c4.deleted_at IS NULL)", query.getTeacherId());
         } else if (query.getCourseName() != null && !query.getCourseName().isBlank()) {
             String escaped = escapeLike(query.getCourseName().trim());
             wrapper.apply("EXISTS (SELECT 1 FROM courses c5"
-                    + " WHERE c5.id = enrollment.course_id AND c5.title LIKE {0}"
+                    + " WHERE c5.id = enrollments.course_id AND c5.title LIKE {0}"
                     + " AND c5.deleted_at IS NULL)", "%" + escaped + "%");
         }
         if (query.getStatus() != null && !query.getStatus().isBlank()) {
