@@ -191,11 +191,46 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
             userRepository.selectBatchIds(creatorIds).forEach(u -> creatorNameMap.put(u.getId(), u.getRealName()));
         }
 
+        // P1-C-4: 批量预计算统计字段
+        java.util.Map<Long, Integer> courseCountMapBatch = new java.util.HashMap<>();
+        java.util.Map<Long, Integer> pendingEnrollCountMapBatch = new java.util.HashMap<>();
+        java.util.Map<Long, Integer> totalEnrollmentsMapBatch = new java.util.HashMap<>();
+        java.util.Map<Long, String> roleMapBatch = new java.util.HashMap<>();
+        if (!records.isEmpty()) {
+            java.util.List<Long> msIds = records.stream().map(MicroSpecialty::getId).collect(java.util.stream.Collectors.toList());
+
+            // 课程数
+            msCourseRepository.selectList(new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                            .in(MicroSpecialtyCourse::getMicroSpecialtyId, msIds))
+                    .forEach(mc -> courseCountMapBatch.merge(mc.getMicroSpecialtyId(), 1, Integer::sum));
+
+            // 待审报名数
+            msEnrollmentRepository.selectList(new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                            .in(MicroSpecialtyEnrollment::getMicroSpecialtyId, msIds)
+                            .eq(MicroSpecialtyEnrollment::getStatus, "PENDING"))
+                    .forEach(e -> pendingEnrollCountMapBatch.merge(e.getMicroSpecialtyId(), 1, Integer::sum));
+
+            // 总报名数
+            msEnrollmentRepository.selectList(new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                            .in(MicroSpecialtyEnrollment::getMicroSpecialtyId, msIds))
+                    .forEach(e -> totalEnrollmentsMapBatch.merge(e.getMicroSpecialtyId(), 1, Integer::sum));
+
+            // 当前用户的角色
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            if (currentUserId != null) {
+                msTeacherRepository.selectList(new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                                .in(MicroSpecialtyTeacher::getMicroSpecialtyId, msIds)
+                                .eq(MicroSpecialtyTeacher::getTeacherId, currentUserId))
+                        .forEach(t -> roleMapBatch.put(t.getMicroSpecialtyId(), t.getRole()));
+            }
+        }
+
         for (MicroSpecialty ms : records) {
             MicroSpecialtyVO vo = new MicroSpecialtyVO();
-            // P1-2 修复: 传预加载 map,避免 copyToVO 内重复 selectById
-            copyToVO(ms, vo, deptNameMap, teacherNameMap);
-            if (ms.getCreatorId() != null) vo.setCreatorName(creatorNameMap.get(ms.getCreatorId()));
+            // P1-C-4 修复: 传所有预加载 map,避免 copyToVO 内任何 selectById
+            copyToVO(ms, vo, deptNameMap, teacherNameMap, creatorNameMap,
+                    courseCountMapBatch, pendingEnrollCountMapBatch,
+                    totalEnrollmentsMapBatch, roleMapBatch);
             vos.add(vo);
         }
         return PageResult.of(vos, ipage.getTotal(), page, size);
@@ -213,7 +248,6 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .isNull(MicroSpecialty::getDeletedAt)
                         .orderByDesc(MicroSpecialty::getGoldFeaturedAt)
                         .last("LIMIT 2"));
-        result.setGoldFeatured(goldList.stream().map(this::toFeaturedVO).collect(Collectors.toList()));
 
         // 置顶已审批
         List<MicroSpecialty> featuredList = msRepository.selectList(
@@ -224,7 +258,6 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .isNull(MicroSpecialty::getDeletedAt)
                         .orderByAsc(MicroSpecialty::getFeaturedRank)
                         .orderByDesc(MicroSpecialty::getApprovedAt));
-        result.setFeatured(featuredList.stream().map(this::toFeaturedVO).collect(Collectors.toList()));
 
         // 普通招生中（排除已置顶的）— 修复 G1：按质量分降序排序（次按 approvedAt DESC）
         List<MicroSpecialty> recruitingList = msRepository.selectList(
@@ -236,13 +269,61 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .and(w -> w.eq(MicroSpecialty::getIsGoldFeatured, false)
                                 .or().isNull(MicroSpecialty::getIsGoldFeatured))
                         .orderByDesc(MicroSpecialty::getApprovedAt));
+
+        // P1-C-3: 一次性批量加载所有关联数据，消除 N+1
+        List<MicroSpecialty> allList = new ArrayList<>();
+        allList.addAll(goldList);
+        allList.addAll(featuredList);
+        allList.addAll(recruitingList);
+
+        List<Long> allIds = allList.stream().map(MicroSpecialty::getId).collect(Collectors.toList());
+        java.util.Set<Long> allDeptIds = allList.stream()
+                .map(MicroSpecialty::getOfferDepartmentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        java.util.Set<Long> allTeacherIds = allList.stream()
+                .map(MicroSpecialty::getLeadTeacherId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // 质量分批量计算
+        Map<Long, BigDecimal> qualityScoreMap = qualityScoreService.calculateBatch(allIds);
+
+        // 部门名称批量加载
+        Map<Long, String> deptNameMap = new HashMap<>();
+        if (!allDeptIds.isEmpty()) {
+            departmentRepository.selectBatchIds(allDeptIds)
+                    .forEach(d -> deptNameMap.put(d.getId(), d.getName()));
+        }
+
+        // 教师名称批量加载
+        Map<Long, String> teacherNameMap = new HashMap<>();
+        if (!allTeacherIds.isEmpty()) {
+            userRepository.selectBatchIds(allTeacherIds)
+                    .forEach(u -> teacherNameMap.put(u.getId(), u.getRealName()));
+        }
+
+        // 课程数批量计算
+        Map<Long, Integer> courseCountMap = new HashMap<>();
+        if (!allIds.isEmpty()) {
+            msCourseRepository.selectList(new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                            .in(MicroSpecialtyCourse::getMicroSpecialtyId, allIds))
+                    .forEach(mc -> courseCountMap.merge(mc.getMicroSpecialtyId(), 1, Integer::sum));
+        }
+
+        result.setGoldFeatured(goldList.stream()
+                .map(ms -> toFeaturedVO(ms, qualityScoreMap, teacherNameMap, deptNameMap, courseCountMap))
+                .collect(Collectors.toList()));
+
+        result.setFeatured(featuredList.stream()
+                .map(ms -> toFeaturedVO(ms, qualityScoreMap, teacherNameMap, deptNameMap, courseCountMap))
+                .collect(Collectors.toList()));
+
         // G1: 用质量分降序重排（次按 approvedAt DESC）
-        List<Long> recruitingIds = recruitingList.stream().map(MicroSpecialty::getId).collect(Collectors.toList());
-        Map<Long, BigDecimal> scoreMap = qualityScoreService.calculateBatch(recruitingIds);
         recruitingList = recruitingList.stream()
                 .sorted((a, b) -> {
-                    BigDecimal sa = scoreMap.getOrDefault(a.getId(), BigDecimal.ZERO);
-                    BigDecimal sb = scoreMap.getOrDefault(b.getId(), BigDecimal.ZERO);
+                    BigDecimal sa = qualityScoreMap.getOrDefault(a.getId(), BigDecimal.ZERO);
+                    BigDecimal sb = qualityScoreMap.getOrDefault(b.getId(), BigDecimal.ZERO);
                     int cmp = sb.compareTo(sa); // 质量分 DESC
                     if (cmp != 0) return cmp;
                     // 次按 approvedAt DESC
@@ -254,12 +335,21 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                     return tb.compareTo(ta);
                 })
                 .collect(Collectors.toList());
-        result.setRecruiting(recruitingList.stream().map(this::toFeaturedVO).collect(Collectors.toList()));
+        result.setRecruiting(recruitingList.stream()
+                .map(ms -> toFeaturedVO(ms, qualityScoreMap, teacherNameMap, deptNameMap, courseCountMap))
+                .collect(Collectors.toList()));
 
         return result;
     }
 
-    private MicroSpecialtySquareVO.FeaturedVO toFeaturedVO(MicroSpecialty ms) {
+    /**
+     * P1-C-3: 使用批量预加载 map 的 toFeaturedVO，消除 N+1 selectById。
+     */
+    private MicroSpecialtySquareVO.FeaturedVO toFeaturedVO(MicroSpecialty ms,
+                                                           Map<Long, BigDecimal> qualityScoreMap,
+                                                           Map<Long, String> teacherNameMap,
+                                                           Map<Long, String> deptNameMap,
+                                                           Map<Long, Integer> courseCountMap) {
         MicroSpecialtySquareVO.FeaturedVO vo = new MicroSpecialtySquareVO.FeaturedVO();
         vo.setId(ms.getId());
         vo.setTitle(ms.getTitle());
@@ -268,30 +358,19 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         vo.setStudentCount(ms.getStudentCount());
         vo.setStatus(ms.getStatus());
         vo.setIsGoldFeatured(ms.getIsGoldFeatured());
-        // G1: 设置质量分
-        vo.setQualityScore(qualityScoreService.calculate(ms.getId()));
+        // 使用批量预加载的质量分
+        vo.setQualityScore(qualityScoreMap.getOrDefault(ms.getId(), BigDecimal.ZERO));
         // G3: 7 天保护期内显示 NEW 角标
         vo.setIsNew(isNewlyCreated(ms));
         if (ms.getLeadTeacherId() != null) {
-            User lead = userRepository.selectById(ms.getLeadTeacherId());
-            if (lead != null) {
-                vo.setLeadTeacherName(lead.getRealName());
-            } else {
-                vo.setLeadTeacherName("—");
-            }
+            String name = teacherNameMap.get(ms.getLeadTeacherId());
+            vo.setLeadTeacherName(name != null ? name : "—");
         }
-        // Query department name
         if (ms.getOfferDepartmentId() != null) {
-            Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());
-            if (dept != null) {
-                vo.setDepartmentName(dept.getName());
-            }
+            String name = deptNameMap.get(ms.getOfferDepartmentId());
+            if (name != null) vo.setDepartmentName(name);
         }
-        // Count courses
-        Long courseCount = msCourseRepository.selectCount(
-                new LambdaQueryWrapper<MicroSpecialtyCourse>()
-                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, ms.getId()));
-        vo.setCourseCount(courseCount.intValue());
+        vo.setCourseCount(courseCountMap.getOrDefault(ms.getId(), 0));
         return vo;
     }
 
@@ -754,6 +833,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, id)
                         .eq(MicroSpecialty::getVersion, oldVersion)
+                        .eq(MicroSpecialty::getStatus, ms.getStatus())
                         .set(MicroSpecialty::getStatus, "CANCELLED")
                         .set(MicroSpecialty::getClosedAt, LocalDateTime.now())
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
@@ -795,6 +875,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                     enrollmentRepository.update(null,
                             new LambdaUpdateWrapper<Enrollment>()
                                     .eq(Enrollment::getId, courseEn.getId())
+                                    .eq(Enrollment::getVersion, courseEn.getVersion())
                                     .set(Enrollment::getEnrollmentStatus, "CANCELLED")
                                     .set(Enrollment::getUpdatedAt, LocalDateTime.now())
                                     .setSql("version = version + 1"));
@@ -1421,13 +1502,55 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     }
 
     /**
-     * P1-2: 批量列表场景用预加载 map,避免 N+1 selectById
+     * P1-2/P1-C-4: 批量列表场景用预加载 map,避免 N+1 selectById。
+     * 不调用单参数版本，直接复制基础字段 + 使用所有预加载 map。
      */
     private void copyToVO(MicroSpecialty ms, MicroSpecialtyVO vo,
                           java.util.Map<Long, String> deptNameMap,
-                          java.util.Map<Long, String> teacherNameMap) {
-        copyToVO(ms, vo); // 复制基础字段
-        // 覆盖 N+1 字段为预加载值
+                          java.util.Map<Long, String> teacherNameMap,
+                          java.util.Map<Long, String> creatorNameMap,
+                          java.util.Map<Long, Integer> courseCountMap,
+                          java.util.Map<Long, Integer> pendingEnrollCountMap,
+                          java.util.Map<Long, Integer> totalEnrollmentsMap,
+                          java.util.Map<Long, String> roleMap) {
+        // 复制基础字段（同单参数版本 L1276-1310，不调用来避免 N+1）
+        vo.setId(ms.getId());
+        vo.setCode(ms.getCode());
+        vo.setTitle(ms.getTitle());
+        vo.setSubtitle(ms.getSubtitle());
+        vo.setCoverUrl(ms.getCoverUrl());
+        vo.setDescription(ms.getDescription());
+        vo.setOfferDepartmentId(ms.getOfferDepartmentId());
+        vo.setLeadTeacherId(ms.getLeadTeacherId());
+        vo.setTargetAudience(ms.getTargetAudience());
+        vo.setTrainingObjective(ms.getTrainingObjective());
+        vo.setAdmissionRequirement(ms.getAdmissionRequirement());
+        vo.setCompletionRule(ms.getCompletionRule());
+        vo.setTotalCredits(ms.getTotalCredits());
+        vo.setTotalHours(ms.getTotalHours());
+        vo.setRequiredCourseCount(ms.getRequiredCourseCount());
+        vo.setElectiveCourseCount(ms.getElectiveCourseCount());
+        vo.setMinCredits(ms.getMinCredits());
+        vo.setMaxStudents(ms.getMaxStudents());
+        vo.setStudentCount(ms.getStudentCount());
+        vo.setSemester(ms.getSemester());
+        vo.setIsFeatured(ms.getIsFeatured());
+        vo.setFeaturedRank(ms.getFeaturedRank());
+        vo.setFeaturedStatus(ms.getFeaturedStatus());
+        vo.setIsGoldFeatured(ms.getIsGoldFeatured());
+        vo.setStatus(ms.getStatus());
+        vo.setRejectReason(ms.getRejectReason());
+        vo.setSubmittedAt(ms.getSubmittedAt());
+        vo.setApprovedAt(ms.getApprovedAt());
+        vo.setOpenedAt(ms.getOpenedAt());
+        vo.setClosedAt(ms.getClosedAt());
+        vo.setCreatorId(ms.getCreatorId());
+        vo.setCreatedAt(ms.getCreatedAt());
+        vo.setUpdatedAt(ms.getUpdatedAt());
+        vo.setFeaturedApplyAt(ms.getFeaturedApplyAt());
+        vo.setFeaturedApplyReason(ms.getFeaturedApplyReason());
+
+        // 使用预加载 map 填充关联字段
         if (ms.getOfferDepartmentId() != null) {
             String deptName = deptNameMap.get(ms.getOfferDepartmentId());
             if (deptName != null) vo.setDepartmentName(deptName);
@@ -1435,6 +1558,24 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         if (ms.getLeadTeacherId() != null) {
             String teacherName = teacherNameMap.get(ms.getLeadTeacherId());
             if (teacherName != null) vo.setLeadTeacherName(teacherName);
+        }
+        if (ms.getCreatorId() != null) {
+            String creatorName = creatorNameMap.get(ms.getCreatorId());
+            if (creatorName != null) vo.setCreatorName(creatorName);
+        }
+        // 使用批量预计算统计值
+        if (courseCountMap != null) {
+            vo.setCourseCount(courseCountMap.getOrDefault(ms.getId(), 0));
+        }
+        if (pendingEnrollCountMap != null) {
+            vo.setPendingEnrollCount(pendingEnrollCountMap.getOrDefault(ms.getId(), 0));
+        }
+        if (totalEnrollmentsMap != null) {
+            vo.setTotalEnrollments(totalEnrollmentsMap.getOrDefault(ms.getId(), 0));
+        }
+        if (roleMap != null) {
+            String role = roleMap.get(ms.getId());
+            if (role != null) vo.setRole(role);
         }
     }
 }
