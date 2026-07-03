@@ -1,5 +1,6 @@
 package com.microcourse;
 
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * 微课平台后端入口。
@@ -42,6 +44,11 @@ public class MicroCourseApplication {
     @Value("${payment.mode:mock}")
     private String paymentMode;
 
+    @PostConstruct
+    public void initSecurityContextPropagation() {
+        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(MicroCourseApplication.class, args);
     }
@@ -51,7 +58,7 @@ public class MicroCourseApplication {
      * 若 active profile 包含 prod 且 payment.mode 为 mock，启动直接失败。
      * P0-4: 非 prod 环境使用 mock 模式时记录警告日志。
      */
-    @jakarta.annotation.PostConstruct
+    @PostConstruct
     public void checkPaymentMode() {
         if ("mock".equals(paymentMode)) {
             if (activeProfile.contains("prod")) {

@@ -170,7 +170,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
-import { loadAuthImage, clearImageCache } from '@/utils/authImage'
+import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loading, RefreshRight, PictureFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -202,6 +202,8 @@ let countdownTimer = null
 
 const currentPage = computed(() => pages.value[current.value] || null)
 
+let pageNavLock = false
+
 async function loadPages() {
   pageLoading.value = true
   pageError.value = false
@@ -212,7 +214,7 @@ async function loadPages() {
       const idx = page.pageNumber - 1
       const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`
       try {
-        const blobUrl = await loadAuthImage(relUrl)
+        const blobUrl = await loadAuthResource(relUrl)
         if (blobUrl) {
           imageUrls.value[idx] = blobUrl
           delete imageErrors[idx]
@@ -239,7 +241,7 @@ async function retryImage(pageIndex) {
   imageRetrying[pageIndex] = true
   const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`
   try {
-    const blobUrl = await loadAuthImage(relUrl)
+    const blobUrl = await loadAuthResource(relUrl)
     if (blobUrl) {
       imageUrls.value[pageIndex] = blobUrl
       delete imageErrors[pageIndex]
@@ -256,6 +258,8 @@ async function retryImage(pageIndex) {
 
 function goTo(index) {
   if (index < 0 || index >= pages.value.length) return
+  if (pageNavLock) return
+  pageNavLock = true
   lastDirection.value = index > current.value ? 1 : -1
   transitionName.value = index > current.value ? 'slide-next' : 'slide-prev'
   current.value = index
@@ -263,7 +267,27 @@ function goTo(index) {
   audioProgress.value = 0
   autoCountdown.value = 0
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
-  nextTick(() => { loadAudio(index); if (autoMode.value) playAudio() })
+  nextTick(() => { loadAudio(index); if (autoMode.value) playAudio(); preloadAdjacentImages(index); pageNavLock = false })
+}
+
+function preloadAdjacentImages(currentIdx) {
+  const indices = [currentIdx + 1, currentIdx + 2].filter(i => i < pages.value.length)
+  indices.forEach(async idx => {
+    if (imageUrls.value[idx] || imageErrors[idx]) return
+    const page = pages.value[idx]
+    if (!page) return
+    const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`
+    try {
+      const blobUrl = await loadAuthResource(relUrl)
+      if (blobUrl) {
+        imageUrls.value[idx] = blobUrl
+      } else {
+        imageErrors[idx] = true
+      }
+    } catch {
+      imageErrors[idx] = true
+    }
+  })
 }
 
 async function loadAudio(index) {
@@ -273,11 +297,27 @@ async function loadAudio(index) {
   if (audioBlobUrls.value[relUrl]) { audioRef.value.src = audioBlobUrls.value[relUrl]; audioRef.value.load() }
   else {
     try {
-      const blobUrl = await loadAuthImage(relUrl)
+      const blobUrl = await loadAuthResource(relUrl)
       if (blobUrl) { audioBlobUrls.value[relUrl] = blobUrl; audioRef.value.src = blobUrl; audioRef.value.load() }
     } catch { ElMessage.warning('音频加载失败') }
   }
   audioDuration.value = page.audioDuration || 0
+  cleanAudioBlobCache(index)
+}
+
+function cleanAudioBlobCache(currentIdx) {
+  const keepRange = new Set([currentIdx - 1, currentIdx, currentIdx + 1, currentIdx + 2].filter(i => i >= 0))
+  for (const url of Object.keys(audioBlobUrls.value)) {
+    const pageMatch = url.match(/\/pages\/(\d+)\/audio$/)
+    if (pageMatch) {
+      const pageNum = parseInt(pageMatch[1])
+      const zeroIdx = pageNum - 1
+      if (!keepRange.has(zeroIdx)) {
+        URL.revokeObjectURL(audioBlobUrls.value[url])
+        delete audioBlobUrls.value[url]
+      }
+    }
+  }
 }
 
 function playAudio() {

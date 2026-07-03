@@ -14,7 +14,6 @@ import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.util.SecurityUtil;
-import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.slf4j.Logger;
@@ -25,12 +24,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -108,6 +107,7 @@ public class SlideServiceImpl implements SlideService {
         existing.eq(CourseSlide::getCourseId, courseId);
         CourseSlide oldSlide = courseSlideMapper.selectOne(existing);
         if (oldSlide != null) {
+            cleanupSlideFiles(courseId);
             courseSlideMapper.deleteById(oldSlide.getId());
             LambdaQueryWrapper<SlidePage> oldPages = new LambdaQueryWrapper<>();
             oldPages.eq(SlidePage::getSlideId, oldSlide.getId());
@@ -203,8 +203,11 @@ public class SlideServiceImpl implements SlideService {
                     String.valueOf(pageVO.getSlideId()), "images",
                     "page_" + pageNumber + ".png");
             return Files.readAllBytes(imagePath);
-        } catch (IOException e) {
+        } catch (NoSuchFileException e) {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+        } catch (IOException e) {
+            log.error("[Slide] 读取课件图片失败 courseId={} page={}", courseId, pageNumber, e);
+            throw new BusinessException(ErrorCode.PPT_PARSE_FAILED, "课件图片读取失败");
         }
     }
 
@@ -216,8 +219,11 @@ public class SlideServiceImpl implements SlideService {
                     String.valueOf(pageVO.getSlideId()), "thumbnails",
                     "page_" + pageNumber + ".png");
             return Files.readAllBytes(thumbPath);
-        } catch (IOException e) {
+        } catch (NoSuchFileException e) {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+        } catch (IOException e) {
+            log.error("[Slide] 读取课件缩略图失败 courseId={} page={}", courseId, pageNumber, e);
+            throw new BusinessException(ErrorCode.PPT_PARSE_FAILED, "课件缩略图读取失败");
         }
     }
 
@@ -360,6 +366,7 @@ public class SlideServiceImpl implements SlideService {
     @Transactional(rollbackFor = Exception.class)
     public void reorderPages(Long courseId, List<Map<String, Integer>> order) {
         verifyCourseOwner(courseId);
+        // Phase 1: move all pages to temp negative numbers to avoid UK conflict
         for (Map<String, Integer> item : order) {
             Integer oldNum = item.get("pageNumber");
             Integer newNum = item.get("newPageNumber");
@@ -368,6 +375,21 @@ public class SlideServiceImpl implements SlideService {
                     new LambdaQueryWrapper<SlidePage>()
                             .eq(SlidePage::getCourseId, courseId)
                             .eq(SlidePage::getPageNumber, oldNum));
+            if (page != null) {
+                page.setPageNumber(-oldNum);
+                page.setUpdatedAt(LocalDateTime.now());
+                slidePageMapper.updateById(page);
+            }
+        }
+        // Phase 2: set the actual new numbers
+        for (Map<String, Integer> item : order) {
+            Integer oldNum = item.get("pageNumber");
+            Integer newNum = item.get("newPageNumber");
+            if (oldNum == null || newNum == null || oldNum.equals(newNum)) continue;
+            SlidePage page = slidePageMapper.selectOne(
+                    new LambdaQueryWrapper<SlidePage>()
+                            .eq(SlidePage::getCourseId, courseId)
+                            .eq(SlidePage::getPageNumber, -oldNum));
             if (page != null) {
                 page.setPageNumber(newNum);
                 page.setUpdatedAt(LocalDateTime.now());
@@ -402,6 +424,22 @@ public class SlideServiceImpl implements SlideService {
         } catch (NoSuchAlgorithmException e) {
             log.error("SHA-256 algorithm not available on this JVM", e);
             return "";
+        }
+    }
+
+    private void cleanupSlideFiles(Long courseId) {
+        Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
+        if (Files.exists(courseDir)) {
+            try {
+                Files.walk(courseDir)
+                        .sorted(java.util.Comparator.reverseOrder())
+                        .forEach(p -> {
+                            try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                        });
+                log.info("[SlideUpload] 已清理旧课件文件 courseId={}", courseId);
+            } catch (IOException e) {
+                log.warn("[SlideUpload] 清理旧课件文件失败 courseId={}", courseId, e);
+            }
         }
     }
 }

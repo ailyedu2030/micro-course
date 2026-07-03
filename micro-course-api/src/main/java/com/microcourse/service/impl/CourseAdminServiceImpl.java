@@ -21,6 +21,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.NotificationService;
@@ -59,6 +60,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final CourseReviewRepository reviewRepository;
     private final CourseReviewLogRepository reviewLogRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final PluginGrantRepository pluginGrantRepository;
     private final NotificationService notificationService;
 
     @Value("${upload.base-dir:uploads}")
@@ -71,6 +73,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   CourseReviewRepository reviewRepository,
                                   CourseReviewLogRepository reviewLogRepository,
                                   EnrollmentRepository enrollmentRepository,
+                                  PluginGrantRepository pluginGrantRepository,
                                   NotificationService notificationService) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
@@ -79,12 +82,25 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.reviewRepository = reviewRepository;
         this.reviewLogRepository = reviewLogRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.pluginGrantRepository = pluginGrantRepository;
         this.notificationService = notificationService;
     }
 
     /* ================================================================
      *  CUD Methods
      * ================================================================ */
+
+    private void checkPluginGrant(Long teacherId, String courseType) {
+        if (courseType == null || "VIDEO".equals(courseType)) return;
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.PluginGrant> q =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        q.eq(com.microcourse.entity.PluginGrant::getPluginId, "interactive")
+                .eq(com.microcourse.entity.PluginGrant::getGrantType, "TEACHER")
+                .eq(com.microcourse.entity.PluginGrant::getGranteeId, teacherId);
+        if (pluginGrantRepository.selectCount(q) == 0) {
+            throw new BusinessException(ErrorCode.PLUGIN_NO_GRANT);
+        }
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -96,6 +112,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (request.getTeacherId() != null && userRepository.selectById(request.getTeacherId()) == null) {
             throw new BusinessException(ErrorCode.COURSE_TEACHER_NOT_FOUND);
         }
+        checkPluginGrant(request.getTeacherId(), request.getCourseType());
 
         Course course = new Course();
         course.setTitle(request.getTitle());
@@ -165,7 +182,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (request.getDifficulty() != null) course.setDifficulty(request.getDifficulty());
         if (request.getDescription() != null) course.setDescription(request.getDescription());
         if (request.getTags() != null) course.setTags(request.getTags());
-        if (request.getCourseType() != null) course.setCourseType(request.getCourseType());
+        if (request.getCourseType() != null) {
+            checkPluginGrant(course.getTeacherId(), request.getCourseType());
+            course.setCourseType(request.getCourseType());
+        }
         if (request.getPrice() != null) {
             course.setPrice(request.getPrice());
             course.setIsFree(BigDecimal.ZERO.compareTo(request.getPrice()) >= 0);

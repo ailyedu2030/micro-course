@@ -22,20 +22,58 @@
         <el-button @click="handleDownloadSlide" :icon="Download">
           下载 PPT
         </el-button>
+        <el-button :type="batchMode ? 'primary' : 'default'" @click="toggleBatchMode" :icon="batchMode ? 'CircleCheck' : 'Select'">
+          {{ batchMode ? '退出批量' : '批量操作' }}
+        </el-button>
         <el-button :loading="aiGenerating" @click="handleGenerateAllAI" :icon="MagicStick">
-          批量 AI 生成
+          批量 AI
         </el-button>
         <el-button type="success" :loading="ttsGenerating" @click="handleGenerateAllTTS" :icon="Headset">
-          批量生成音频
+          批量 TTS
         </el-button>
         <el-button @click="showPreview = true" :icon="View">
           预览
         </el-button>
       </div>
+      <div v-if="batchMode && selectedBatch.length > 0" class="batch-bar">
+        <span class="batch-count">已选 {{ selectedBatch.length }} 页</span>
+        <el-button size="small" :loading="aiLoading" @click="handleBatchAI" :icon="MagicStick">
+          批量 AI 生成
+        </el-button>
+        <el-button size="small" type="success" :loading="ttsLoading" @click="handleBatchTTS" :icon="Headset">
+          批量生成音频
+        </el-button>
+        <el-button size="small" type="danger" plain @click="handleBatchDelete" :icon="Delete">
+          批量删除
+        </el-button>
+        <el-button size="small" @click="selectedBatch = []">取消选择</el-button>
+      </div>
     </header>
 
     <!-- Upload Zone -->
     <section v-if="!slide" class="upload-hero">
+      <div class="create-guide">
+        <div class="guide-step active">
+          <span class="step-num">1</span>
+          <span class="step-text">上传 .pptx 课件</span>
+        </div>
+        <div class="guide-step">
+          <span class="step-num">2</span>
+          <span class="step-text">等待自动渲染</span>
+        </div>
+        <div class="guide-step">
+          <span class="step-num">3</span>
+          <span class="step-text">AI 生成讲述稿</span>
+        </div>
+        <div class="guide-step">
+          <span class="step-num">4</span>
+          <span class="step-text">TTS 配音</span>
+        </div>
+        <div class="guide-step">
+          <span class="step-num">5</span>
+          <span class="step-text">预览发布</span>
+        </div>
+      </div>
       <div class="upload-card">
         <div class="upload-icon-wrapper">
           <el-icon :size="40"><UploadFilled /></el-icon>
@@ -75,18 +113,47 @@ drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx" :disab
 
     <!-- Main Workspace -->
     <section v-else-if="slide.status === 2" class="workspace">
+      <div class="create-guide" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:5;gap:4px;background:var(--el-bg-color-page);padding:6px 14px;border-radius:20px;box-shadow:var(--el-box-shadow-light);">
+        <div class="guide-step done" style="background:var(--el-color-success-light-9);color:var(--el-color-success);">
+          <span class="step-num" style="background:var(--el-color-success);">✓</span>
+          <span class="step-text">已上传</span>
+        </div>
+        <div class="guide-step done" style="background:var(--el-color-success-light-9);color:var(--el-color-success);">
+          <span class="step-num" style="background:var(--el-color-success);">✓</span>
+          <span class="step-text">已渲染</span>
+        </div>
+        <div class="guide-step" :class="progressStep === 3 ? 'active' : ''">
+          <span class="step-num">{{ narrationDoneCount }}/{{ pages.length }}</span>
+          <span class="step-text">讲述稿</span>
+        </div>
+        <div class="guide-step" :class="progressStep === 4 ? 'active' : ''">
+          <span class="step-num">{{ audioDoneCount }}/{{ pages.length }}</span>
+          <span class="step-text">音频</span>
+        </div>
+        <div class="guide-step" :class="progressStep === 5 ? 'active done' : ''">
+          <span class="step-num" v-if="progressStep === 5" style="background:var(--el-color-success);">✓</span>
+          <span class="step-num" v-else>5</span>
+          <span class="step-text">预览发布</span>
+        </div>
+      </div>
       <!-- Thumbnail Grid -->
       <div class="thumb-grid">
         <div
 v-for="page in pages" :key="page.pageNumber"
-          class="thumb-card" :class="{ active: selectedPage?.pageNumber === page.pageNumber }"
+          class="thumb-card" :class="{
+            active: selectedPage?.pageNumber === page.pageNumber,
+            'batch-selected': batchSelected.has(page.pageNumber)
+          }"
           :data-page="page.pageNumber"
           tabindex="0" role="button"
           :aria-label="'第' + page.pageNumber + '页'"
-          @click="selectPage(page)"
-          @keydown.enter="selectPage(page)"
-          @keydown.space.prevent="selectPage(page)"
+          @click="batchMode ? toggleBatchSelect(page) : selectPage(page)"
+          @keydown.enter="batchMode ? toggleBatchSelect(page) : selectPage(page)"
+          @keydown.space.prevent="batchMode ? toggleBatchSelect(page) : selectPage(page)"
 >
+          <div class="batch-checkbox" v-if="batchMode" @click.stop="toggleBatchSelect(page)">
+            <el-checkbox :model-value="batchSelected.has(page.pageNumber)" />
+          </div>
           <div class="thumb-img-wrap">
             <img
 v-if="thumbUrls[page.pageNumber]" :src="thumbUrls[page.pageNumber]"
@@ -186,7 +253,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete, Download } from '@element-plus/icons-vue'
 import { uploadSlide, getSlides, getSlidePages, getSlidePage, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio, deleteSlide, deleteSlidePage, reorderSlidePages, downloadOriginalSlide } from '@/plugins/interactive/api/slide'
 import SlidePreview from '@/plugins/interactive/components/SlidePreview.vue'
-import { loadAuthImage, clearImageCache } from '@/utils/authImage'
+import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import Sortable from 'sortablejs'
 
 const route = useRoute()
@@ -209,6 +276,20 @@ let pollTimer = null
 let progressSim = null
 let sortableInstance = null
 
+const narrationDoneCount = computed(() => pages.value.filter(p => p.narrationStatus && p.narrationStatus !== 'PENDING').length)
+const audioDoneCount = computed(() => pages.value.filter(p => p.narrationStatus === 'AUDIO_READY').length)
+const progressStep = computed(() => {
+  if (!slide.value || slide.value.status !== 2) return 1
+  const nDone = narrationDoneCount.value
+  const aDone = audioDoneCount.value
+  const total = pages.value.length
+  if (total === 0) return 2
+  if (aDone === total) return 5
+  if (nDone === total) return 4
+  if (nDone > 0) return 3
+  return 2
+})
+
 const statusTag = computed(() => {
   if (!slide.value) return null
   const map = [{ type: 'info', text: '上传中' }, { type: 'warning', text: '渲染中' }, { type: 'success', text: '就绪' }, { type: 'danger', text: '失败' }]
@@ -221,6 +302,65 @@ const audioInfo = computed(() => {
   const s = String(selectedPage.value.audioDuration % 60).padStart(2, '0')
   return `音频时长 ${m}:${s}`
 })
+
+const batchMode = ref(false)
+const selectedBatch = ref([])
+const batchSelected = computed(() => new Set(selectedBatch.value.map(p => p.pageNumber)))
+
+function toggleBatchMode() {
+  batchMode.value = !batchMode.value
+  if (!batchMode.value) selectedBatch.value = []
+}
+
+function toggleBatchSelect(page) {
+  const idx = selectedBatch.value.findIndex(p => p.pageNumber === page.pageNumber)
+  if (idx >= 0) {
+    selectedBatch.value.splice(idx, 1)
+  } else {
+    selectedBatch.value.push(page)
+  }
+}
+
+async function handleBatchAI() {
+  for (const page of selectedBatch.value) {
+    if (page.narrationStatus !== 'AI_GENERATED' && page.narrationStatus !== 'AUDIO_READY') {
+      try {
+        await generateNarration(courseId.value, page.pageNumber)
+        page.narrationStatus = 'AI_GENERATED'
+      } catch { /* skip failed pages */ }
+    }
+  }
+  ElMessage.success(`批量 AI 生成完成，共处理 ${selectedBatch.value.length} 页`)
+}
+
+async function handleBatchTTS() {
+  for (const page of selectedBatch.value) {
+    if (page.narrationScript && page.narrationStatus !== 'AUDIO_READY') {
+      try {
+        const res = await generateAudio(courseId.value, page.pageNumber)
+        Object.assign(page, res.data)
+      } catch { /* skip failed pages */ }
+    }
+  }
+  ElMessage.success(`批量 TTS 完成，共处理 ${selectedBatch.value.length} 页`)
+}
+
+async function handleBatchDelete() {
+  try {
+    await ElMessageBox.confirm(`确定删除选中的 ${selectedBatch.value.length} 页吗？`, '批量删除', {
+      confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning'
+    })
+    for (const page of selectedBatch.value) {
+      try {
+        await deleteSlidePage(courseId.value, page.pageNumber)
+        const idx = pages.value.findIndex(p => p.pageNumber === page.pageNumber)
+        if (idx >= 0) pages.value.splice(idx, 1)
+      } catch { /* skip failed pages */ }
+    }
+    selectedBatch.value = []
+    ElMessage.success('批量删除完成')
+  } catch { /* cancelled */ }
+}
 
 function statusDotClass(s) {
   if (s === 'AUDIO_READY') return 'dot-ready'
@@ -316,7 +456,7 @@ async function loadData() {
 async function loadThumbnails() {
   const cid = courseId.value
   for (const page of pages.value) {
-    const blobUrl = await loadAuthImage(`/courses/${cid}/slides/pages/${page.pageNumber}/thumbnail`)
+    const blobUrl = await loadAuthResource(`/courses/${cid}/slides/pages/${page.pageNumber}/thumbnail`)
     if (blobUrl) thumbUrls.value[page.pageNumber] = blobUrl
   }
   await nextTick()
@@ -353,7 +493,7 @@ function initPageSort() {
 }
 
 async function loadPreviewImage(page) {
-  previewUrl.value = await loadAuthImage(`/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`)
+  previewUrl.value = await loadAuthResource(`/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`)
 }
 
 function selectPage(page) {
@@ -589,6 +729,42 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
   .editor-panel { width: 100%; max-height: 50vh; border-left: none; border-top: 1px solid var(--el-border-color-light); }
   .thumb-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2); padding: var(--space-3); }
 }
+.create-guide {
+  display: flex; justify-content: center; gap: 4px; margin-bottom: 24px; flex-wrap: wrap;
+}
+.guide-step {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 20px;
+  background: var(--el-fill-color-light); color: var(--el-text-color-placeholder);
+  font-size: 12px; transition: all var(--duration-fast) var(--ease-out);
+}
+.guide-step.active {
+  background: var(--el-color-primary-light-9); color: var(--el-color-primary);
+  font-weight: var(--weight-semibold);
+}
+.step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--el-text-color-placeholder); color: #fff; font-size: 10px; font-weight: var(--weight-bold);
+}
+.guide-step.active .step-num { background: var(--el-color-primary); }
+.guide-step.done { background: var(--el-color-success-light-9); color: var(--el-color-success); }
+.guide-step.done .step-num { background: var(--el-color-success); }
+
+.batch-checkbox {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  background: rgba(255,255,255,0.9); border-radius: 4px; padding: 2px;
+}
+.thumb-card.batch-selected {
+  border-color: var(--el-color-primary); box-shadow: 0 0 0 3px var(--el-color-primary-light-8);
+}
+.batch-bar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+  background: var(--el-color-primary-light-9); border-bottom: 1px solid var(--el-border-color-light);
+  font-size: 13px;
+}
+.batch-count { font-weight: 600; margin-right: 8px; color: var(--el-color-primary); }
+
 @media (max-width: 640px) {
   .manage-header { padding: var(--space-3); flex-wrap: wrap; }
   .header-actions { width: 100%; }

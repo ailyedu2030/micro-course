@@ -9,8 +9,11 @@ import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.dto.SlideVO;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.enums.EnrollmentStatus;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.util.SecurityUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -32,11 +35,11 @@ public class SlideController {
 
     private final SlideService slideService;
     private final CourseRepository courseRepository;
-    private final com.microcourse.repository.EnrollmentRepository enrollmentRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     public SlideController(SlideService slideService,
                            CourseRepository courseRepository,
-                           com.microcourse.repository.EnrollmentRepository enrollmentRepository) {
+                           EnrollmentRepository enrollmentRepository) {
         this.slideService = slideService;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -162,7 +165,7 @@ public class SlideController {
     @GetMapping("/download")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ResponseEntity<byte[]> downloadOriginal(@PathVariable Long courseId) {
-        com.microcourse.plugin.interactive.dto.SlideVO slide = slideService.getByCourseId(courseId);
+        SlideVO slide = slideService.getByCourseId(courseId);
         byte[] fileBytes = slideService.getOriginalFile(courseId);
         String filename = slide.getFileName() != null ? slide.getFileName() : "slide.pptx";
         return ResponseEntity.ok()
@@ -193,10 +196,10 @@ public class SlideController {
         if (!allowed && SecurityUtil.hasRole("STUDENT")) {
             Long currentUserId = SecurityUtil.getCurrentUserId();
             long count = enrollmentRepository.selectCount(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.Enrollment>()
-                            .eq(com.microcourse.entity.Enrollment::getUserId, currentUserId)
-                            .eq(com.microcourse.entity.Enrollment::getCourseId, courseId)
-                            .ne(com.microcourse.entity.Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
+                    new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, currentUserId)
+                            .eq(Enrollment::getCourseId, courseId)
+                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
             if (count > 0) {
                 allowed = true;
             }

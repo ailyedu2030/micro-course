@@ -7,4 +7,6 @@ public interface TtsService {
     SlidePageVO generate(Long courseId, Integer pageNumber);
 
     void generateAll(Long courseId);
+
+    byte[] getAudio(Long courseId, Integer pageNumber);
 }

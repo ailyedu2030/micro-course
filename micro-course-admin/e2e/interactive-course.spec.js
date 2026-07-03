@@ -129,4 +129,109 @@ test.describe('教师互动课件管理', () => {
     const table = page.locator('.el-table').first()
     await expect(table).toBeVisible()
   })
+
+  test('课件管理页显示上传区域', async ({ page }) => {
+    await page.goto('/teacher/courses/1/slides')
+    await page.waitForTimeout(3000)
+    // 检查是否有上传区域或幻灯片管理内容
+    const uploadSection = page.locator('.upload-hero, .workspace').first()
+    await expect(uploadSection).toBeVisible({ timeout: 10000 })
+  })
+
+  test('课件创建向导步骤可见', async ({ page }) => {
+    await page.goto('/teacher/courses/1/slides')
+    await page.waitForTimeout(3000)
+    // 验证创建向导步骤指示器存在
+    const guideSteps = page.locator('.create-guide')
+    const count = await guideSteps.count()
+    // 可能有向导（无课件时）或进度条（有课件时）
+    if (count > 0) {
+      await expect(guideSteps.first()).toBeVisible()
+    }
+  })
+})
+
+test.describe('互动课件批量操作', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/login')
+    await page.fill('input[type="text"]', 'teacher')
+    await page.fill('input[type="password"]', '123456')
+    await page.click('button:has-text("登 录")')
+    await page.waitForURL('**/teacher/**')
+  })
+
+  test('课件管理页加载批量和预览按钮', async ({ page }) => {
+    await page.goto('/teacher/courses/1/slides')
+    await page.waitForTimeout(3000)
+    // 如果幻灯片已就绪，检查批量操作按钮
+    const batchBtn = page.locator('button:has-text("批量操作")')
+    if (await batchBtn.isVisible()) {
+      await batchBtn.click()
+      await page.waitForTimeout(500)
+      // 批量模式下应该可以操作
+      const exitBtn = page.locator('button:has-text("退出批量")')
+      await expect(exitBtn).toBeVisible()
+    }
+  })
+})
+
+test.describe('SlidePlayer 播放器', () => {
+  test.beforeEach(async ({ page }) => {
+    // 学生登录
+    await page.goto('/login')
+    await page.fill('input[type="text"]', 'student')
+    await page.fill('input[type="password"]', '123456')
+    await page.click('button:has-text("登 录")')
+    try {
+      await page.waitForURL('**/student/**', { timeout: 15000 })
+    } catch {
+      if (!page.url().includes('/student/')) {
+        throw new Error(`学生登录失败，当前URL: ${page.url()}`)
+      }
+    }
+  })
+
+  test('SlidePlayer 加载显示', async ({ page }) => {
+    await page.goto('/student/courses/1/slides/player')
+    await page.waitForTimeout(5000)
+    // 验证播放器主要元素存在
+    const player = page.locator('.slide-player')
+    const playerExists = await player.count()
+    if (playerExists > 0) {
+      await expect(player).toBeVisible()
+      // 检查播放器关键组件
+      await expect(page.locator('.player-header')).toBeVisible()
+      await expect(page.locator('.player-footer')).toBeVisible()
+    }
+    // 如果没有幻灯片但进入了播放页，应该能看到加载状态或错误提示
+    const loadingState = page.locator('.player-loading')
+    const mainContent = page.locator('.player-main')
+    await expect(loadingState.or(mainContent)).toBeVisible({ timeout: 10000 })
+  })
+
+  test('SlidePlayer 键盘快捷键可用', async ({ page }) => {
+    await page.goto('/student/courses/1/slides/player')
+    await page.waitForTimeout(5000)
+    // 检查键盘提示是否显示（首次访问）
+    const hint = page.locator('.keyboard-hint')
+    if (await hint.isVisible()) {
+      await expect(page.locator('kbd')).toHaveCount(4)
+    }
+  })
+
+  test('SlidePlayer 全屏切换', async ({ page }) => {
+    await page.goto('/student/courses/1/slides/player')
+    await page.waitForTimeout(5000)
+    const player = page.locator('.slide-player')
+    if (await player.count() > 0) {
+      const fullscreenBtn = page.locator('button[aria-label="全屏"], button[aria-label="退出全屏"]').first()
+      if (await fullscreenBtn.isVisible()) {
+        await fullscreenBtn.click()
+        await page.waitForTimeout(500)
+        // 全屏按钮的aria-label应该切换
+        const exitBtn = page.locator('button[aria-label="退出全屏"]')
+        await expect(exitBtn).toBeVisible()
+      }
+    }
+  })
 })
