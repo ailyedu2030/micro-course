@@ -170,6 +170,11 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
 
+        // P1-C-1: 校验 MS 必须是 RECRUITING 状态
+        if (!"RECRUITING".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业当前未在招生中，无法通过审批");
+        }
+
         int oldVersion = en.getVersion();
         int affected = enrollmentRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
@@ -267,7 +272,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
         if (affected2 == 0) {
-            log.warn("第二段学分统计 UPDATE 版本冲突: enrollmentId={}, expectedVersion={}", id, oldVersion + 1);
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
         }
 
         // Fix 5: 更新 student_count（乐观锁 + affected 校验）
@@ -614,7 +619,13 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                                 .eq(Enrollment::getUserId, en.getUserId())
                                 .ne(Enrollment::getEnrollmentStatus, "CANCELLED"));
                 if (courseEn != null) {
-                    courseEnrollmentRepository.deleteById(courseEn.getId());
+                    courseEnrollmentRepository.update(null,
+                            new LambdaUpdateWrapper<Enrollment>()
+                                    .eq(Enrollment::getId, courseEn.getId())
+                                    .eq(Enrollment::getVersion, courseEn.getVersion())
+                                    .set(Enrollment::getEnrollmentStatus, "CANCELLED")
+                                    .set(Enrollment::getUpdatedAt, LocalDateTime.now())
+                                    .setSql("version = version + 1"));
                 }
             }
         }

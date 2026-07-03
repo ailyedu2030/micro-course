@@ -300,9 +300,12 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
 
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        if (!proposal.getProposerId().equals(currentUserId)) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        // P1-C-2: ACADEMIC/ADMIN 角色豁免，允许查看任何 proposal
+        if (!SecurityUtil.isAdminOrAcademic()) {
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            if (!proposal.getProposerId().equals(currentUserId)) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
         }
 
         MicroSpecialtyProposalRequest vo = new MicroSpecialtyProposalRequest();
