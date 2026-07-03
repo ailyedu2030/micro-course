@@ -12,18 +12,30 @@
 | 缓存 | Redis 7 / Lettuce |
 | 视频 | FFmpeg / HLS (hls.js) / OpenPDF |
 
-## 快速启动
+## 快速启动（Demo 环境）
 
 ```bash
-# 1. 克隆并配置环境变量
+# 一键启动 Demo 环境（PostgreSQL + Redis + 后端 + 前端）
+bash scripts/demo-deploy.sh --seed --open
+
+# 访问 http://localhost:5173
+# 管理员: admin / admin123
+# 教师:   teacher / teacher123
+# 学生:   student / student123
+```
+
+## 生产部署
+
+```bash
+# 1. 配置环境变量
 cp .env.example .env
 # 编辑 .env 填入 DB_PASSWORD / JWT_SECRET / VIDEO_SIGN_SECRET
 
 # 2. 一键启动全栈
 docker compose up -d
 
-# 3. 访问
-open http://localhost
+# 3. 验证健康检查
+curl http://localhost/health
 ```
 
 ## 手动启动（开发）
@@ -128,14 +140,13 @@ bash .claude/skills/microcourse/scripts/precheck.sh
 
 ## CI/CD 状态
 
-- **Backend**: 228/228 tests pass · 0 failures · 0 errors · JaCoCo coverage
-- **Frontend**: 0 ESLint errors · 0 ESLint warnings · `npm run build` SUCCESS
-- **Precheck**: 13/13 PASS
+- **Backend**: 345/345 tests pass · 0 failures · 0 errors
+- **Frontend**: 0 ESLint errors · `npm run build` SUCCESS
 - **Workflow**: `.github/workflows/ci.yml` (3 jobs 并行: backend / frontend / docker)
 
 ## 当前版本
 
-**v1.16.0** (2026-06-22) — 全量交叉验证收官 · CI/CD 零警告流水线 · 228/228 tests pass
+**v1.19.0** (2026-07-03) — 线下课章节 · Phase 15 全部完成 · 345/345 tests pass
 
 ## 环境变量
 
@@ -148,22 +159,7 @@ bash .claude/skills/microcourse/scripts/precheck.sh
 | `REDIS_PASSWORD` | ❌ | Redis 密码（生产环境建议设置） |
 | `CORS_ALLOWED_ORIGINS` | ❌ | 跨域来源（默认 localhost:80） |
 
-## 生产部署
 
-```bash
-# 1. 配置环境变量
-cp .env.example .env
-# 编辑 .env 填入真实密钥
-
-# 2. 启动
-docker compose up -d
-
-# 3. 验证健康检查
-curl http://localhost/health
-
-# 4. 查看日志
-docker compose logs -f
-```
 
 ### Nginx 安全配置
 
