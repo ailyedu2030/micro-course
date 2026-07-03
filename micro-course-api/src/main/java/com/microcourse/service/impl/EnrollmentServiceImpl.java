@@ -748,6 +748,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         vo.setFinalGrade(enrollment.getFinalGrade());
         vo.setEnrollmentStatus(enrollment.getEnrollmentStatus());
         vo.setSourceChannel(enrollment.getSourceChannel());
+        vo.setBundleId(enrollment.getBundleId());
         vo.setEnrolledAt(enrollment.getEnrolledAt());
         vo.setCompletedAt(enrollment.getCompletedAt());
         vo.setUpdatedAt(enrollment.getUpdatedAt());
@@ -809,6 +810,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         vo.setFinalGrade(enrollment.getFinalGrade());
         vo.setEnrollmentStatus(enrollment.getEnrollmentStatus());
         vo.setSourceChannel(enrollment.getSourceChannel());
+        vo.setBundleId(enrollment.getBundleId());
         vo.setEnrolledAt(enrollment.getEnrolledAt());
         vo.setCompletedAt(enrollment.getCompletedAt());
         vo.setUpdatedAt(enrollment.getUpdatedAt());

@@ -1,9 +1,3 @@
-<!--
-  课程套件详情
-  路由路径: /student/bundles/:id
-  Phase 9
-  Author: Phase9-Development-Team
--->
 <template>
   <div class="bundle-detail">
     <el-page-header @back="$router.back()" :content="bundle?.title" class="mg-bottom-16" />
@@ -69,9 +63,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowRight } from '@element-plus/icons-vue'
-import { getBundleById } from '@/api/bundle'
+import { getBundleById, getBundleEnrollmentStatus } from '@/api/bundle'
 import { createOrder, payOrder } from '@/api/order'
-import { getMyEnrollments } from '@/api/enrollment'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -92,21 +85,20 @@ const electiveCount = computed(() => items.value.filter(i => !i.isRequired).leng
 onMounted(async () => {
   loading.value = true
   try {
-    const { data } = await getBundleById(bundleId.value)
-    bundle.value = data
-    items.value = data.items || []
+    // 并行拉取套餐详情 + （登录时）报名状态，避免串行等待导致的"已购买"按钮闪烁
+    const promises = [getBundleById(bundleId.value)]
+    if (isLoggedIn.value) {
+      promises.push(getBundleEnrollmentStatus(bundleId.value))
+    }
+    const results = await Promise.all(promises)
+    const bundleResp = results[0]
+    bundle.value = bundleResp.data
+    items.value = bundleResp.data.items || []
+    if (results.length > 1) {
+      isEnrolled.value = results[1].data.enrolled
+    }
   } catch (e) { ElMessage.error(e?.response?.data?.message || '加载套件失败') }
   finally { loading.value = false }
-
-  if (isLoggedIn.value) {
-    try {
-      // P1-修复: 不传 userId，后端从 JWT 获取用户 ID（避免 number 被序列化为 ?0=N 查询参数）
-      const { data } = await getMyEnrollments()
-      const enrolledCourseIds = new Set((data.items || data || []).map(e => e.courseId))
-      const requiredIds = items.value.filter(i => i.isRequired).map(i => i.courseId)
-      isEnrolled.value = requiredIds.every(id => enrolledCourseIds.has(id))
-    } catch { ElMessage.warning('课程信息加载失败') }
-  }
 })
 
 const goLogin = () => router.push('/login')
@@ -115,17 +107,27 @@ const goCourse = (id) => router.push(`/student/courses/${id}`)
 const handleBuy = async () => {
   buyLoading.value = true
   try {
-    // Buy through first required course as entry point
     const firstRequired = items.value.find(i => i.isRequired)
     if (!firstRequired) { ElMessage.warning('套件无必修课'); return }
-    const { data: order } = await createOrder({ userId: userStore.userInfo.id, courseId: firstRequired.courseId, bundleId: bundleId.value })
+    const { data: order } = await createOrder({ courseId: firstRequired.courseId, bundleId: bundleId.value })
     if (order.status === 'PAID') {
       isEnrolled.value = true
       ElMessage.success('加入成功')
+      // 重新拉取套餐数据，更新 studentCount 等
+      const { data } = await getBundleById(bundleId.value)
+      bundle.value = data
+      items.value = data.items || []
       return
     }
     await payOrder(order.id, 'BALANCE')
-    isEnrolled.value = true
+    // 重新拉取最新状态
+    try {
+      const { data: status } = await getBundleEnrollmentStatus(bundleId.value)
+      isEnrolled.value = status.enrolled
+      const { data: bundleData } = await getBundleById(bundleId.value)
+      bundle.value = bundleData
+      items.value = bundleData.items || []
+    } catch { /* 静默 */ }
     ElMessage.success('购买成功，已选修所有必修课')
   } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { buyLoading.value = false }

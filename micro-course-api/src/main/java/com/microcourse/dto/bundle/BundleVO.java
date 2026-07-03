@@ -17,6 +17,7 @@ public class BundleVO {
     private Integer status;
     private List<BundleItemVO> items;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public BundleVO() {}
     public Long getId() { return id; }
@@ -43,4 +44,6 @@ public class BundleVO {
     public void setItems(List<BundleItemVO> items) { this.items = items; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

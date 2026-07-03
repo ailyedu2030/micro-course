@@ -1,17 +1,21 @@
 package com.microcourse.controller;
 
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.dto.bundle.AddCourseRequest;
 import com.microcourse.dto.bundle.BundleCreateRequest;
+import com.microcourse.dto.bundle.BundleUpdateRequest;
 import com.microcourse.dto.bundle.BundleVO;
 import com.microcourse.service.CourseBundleService;
+import com.microcourse.util.SecurityUtil;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
+
+import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/course-bundles")
@@ -40,22 +44,45 @@ public class CourseBundleController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("创建课程套餐")
     public R<BundleVO> create(@RequestBody BundleCreateRequest request) {
         return R.ok(bundleService.create(request));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("编辑课程套餐")
+    public R<BundleVO> update(@PathVariable Long id, @RequestBody BundleUpdateRequest request) {
+        return R.ok(bundleService.update(id, request));
+    }
+
+    @PatchMapping("/{id}/publish")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("上架课程套餐")
+    public R<Void> publish(@PathVariable Long id) {
+        bundleService.publish(id);
+        return R.ok();
+    }
+
+    @PatchMapping("/{id}/unpublish")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("下架课程套餐")
+    public R<Void> unpublish(@PathVariable Long id) {
+        bundleService.unpublish(id);
+        return R.ok();
+    }
+
     @PostMapping("/{id}/items")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<Void> addCourse(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        Long courseId = body.get("courseId") instanceof Number ? ((Number) body.get("courseId")).longValue() : null;
-        Integer sortOrder = body.get("sortOrder") instanceof Number ? ((Number) body.get("sortOrder")).intValue() : 0;
-        Boolean isRequired = body.get("isRequired") instanceof Boolean ? (Boolean) body.get("isRequired") : true;
-        bundleService.addCourse(id, courseId, sortOrder, isRequired);
+    @AuditedLog("向套餐添加课程")
+    public R<Void> addCourse(@PathVariable Long id, @RequestBody @Validated AddCourseRequest request) {
+        bundleService.addCourse(id, request.getCourseId(), request.getSortOrder(), request.getIsRequired());
         return R.ok();
     }
 
     @DeleteMapping("/{id}/items/{itemId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("从套餐移除课程")
     public R<Void> removeCourse(@PathVariable Long id, @PathVariable Long itemId) {
         bundleService.removeCourse(id, itemId);
         return R.ok();
@@ -63,8 +90,16 @@ public class CourseBundleController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN')")
+    @AuditedLog("删除课程套餐")
     public R<Void> delete(@PathVariable Long id) {
         bundleService.delete(id);
         return R.ok();
+    }
+
+    @GetMapping("/{id}/my-enrollment")
+    @PreAuthorize("isAuthenticated()")
+    public R<Map<String, Object>> getMyEnrollmentStatus(@PathVariable Long id) {
+        boolean enrolled = bundleService.isUserEnrolledInBundle(SecurityUtil.getCurrentUserId(), id);
+        return R.ok(Map.of("enrolled", enrolled));
     }
 }

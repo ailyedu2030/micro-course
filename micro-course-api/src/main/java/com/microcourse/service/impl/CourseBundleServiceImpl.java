@@ -5,20 +5,25 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.bundle.BundleCreateRequest;
+import com.microcourse.dto.bundle.BundleUpdateRequest;
 import com.microcourse.dto.bundle.BundleItemVO;
 import com.microcourse.dto.bundle.BundleVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseBundle;
 import com.microcourse.entity.CourseBundleItem;
+import com.microcourse.entity.Order;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseBundleItemRepository;
 import com.microcourse.repository.CourseBundleRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseBundleService;
 import com.microcourse.util.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,19 +34,24 @@ import java.util.stream.Collectors;
 @Service
 public class CourseBundleServiceImpl implements CourseBundleService {
 
+    private static final Logger log = LoggerFactory.getLogger(CourseBundleServiceImpl.class);
+
     private final CourseBundleRepository bundleRepository;
     private final CourseBundleItemRepository itemRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
 
     public CourseBundleServiceImpl(CourseBundleRepository bundleRepository,
                                    CourseBundleItemRepository itemRepository,
                                    CourseRepository courseRepository,
-                                   UserRepository userRepository) {
+                                   UserRepository userRepository,
+                                   OrderRepository orderRepository) {
         this.bundleRepository = bundleRepository;
         this.itemRepository = itemRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
+        this.orderRepository = orderRepository;
     }
 
     @Override
@@ -59,13 +69,40 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         bundle.setCreatedAt(LocalDateTime.now());
         bundle.setUpdatedAt(LocalDateTime.now());
         bundleRepository.insert(bundle);
-        return toVO(bundle);
+        BundleVO vo = toVO(bundle);
+        vo.setItems(Collections.emptyList());
+        return vo;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BundleVO update(Long id, BundleUpdateRequest request) {
+        CourseBundle bundle = bundleRepository.selectById(id);
+        if (bundle == null) throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(bundle.getCreatorId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        bundle.setTitle(request.getTitle());
+        bundle.setDescription(request.getDescription());
+        bundle.setCoverUrl(request.getCoverUrl());
+        bundle.setPrice(request.getPrice());
+        bundle.setIsFree(request.getIsFree() != null ? request.getIsFree() : (request.getPrice() == null));
+        bundle.setUpdatedAt(LocalDateTime.now());
+        bundleRepository.updateById(bundle);
+        return getById(id);
     }
 
     @Override
     public BundleVO getById(Long id) {
         CourseBundle bundle = bundleRepository.selectById(id);
-        if (bundle == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (bundle == null) throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND);
+
+        // 学生只能看已上架的套餐；教师/管理员/教务处可看任意状态
+        boolean isStudentOnly = SecurityUtil.hasRole("STUDENT")
+                && !SecurityUtil.isAdminOrAcademic();
+        if (isStudentOnly && (bundle.getStatus() == null || bundle.getStatus() == 0)) {
+            throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND, "套餐未上架");
+        }
 
         BundleVO vo = toVO(bundle);
 
@@ -77,7 +114,6 @@ public class CourseBundleServiceImpl implements CourseBundleService {
             return vo;
         }
 
-        // R8 P0-3 N+1 修复：批量预加载 course 和 teacher（原来 teacher 是逐条查）
         Set<Long> courseIds = items.stream()
                 .map(CourseBundleItem::getCourseId).filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -85,7 +121,6 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         Map<Long, User> teacherMap = new HashMap<>();
         if (!courseIds.isEmpty()) {
             List<Course> courses = courseRepository.selectBatchIds(courseIds);
-            // P0-3: 收集所有 teacherId 后批量查，避免逐条 selectById
             Set<Long> teacherIds = courses.stream()
                     .map(Course::getTeacherId).filter(Objects::nonNull).collect(Collectors.toSet());
             if (!teacherIds.isEmpty()) {
@@ -102,17 +137,21 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         List<BundleItemVO> itemVOs = new ArrayList<>();
         for (CourseBundleItem item : items) {
             Course course = courseMap.get(item.getCourseId());
-            if (course == null) continue;
             BundleItemVO ivo = new BundleItemVO();
             ivo.setId(item.getId());
             ivo.setBundleId(item.getBundleId());
             ivo.setCourseId(item.getCourseId());
-            ivo.setCourseTitle(course.getTitle());
-            ivo.setCourseType(course.getCourseType());
+            if (course == null) {
+                ivo.setCourseTitle("[课程已删除]");
+                log.warn("Bundle {} item {} references deleted course {}", id, item.getId(), item.getCourseId());
+            } else {
+                ivo.setCourseTitle(course.getTitle());
+                ivo.setCourseType(course.getCourseType());
+                User teacher = teacherMap.get(course.getTeacherId());
+                if (teacher != null) ivo.setTeacherName(teacher.getRealName());
+            }
             ivo.setSortOrder(item.getSortOrder());
             ivo.setIsRequired(item.getIsRequired());
-            User teacher = teacherMap.get(course.getTeacherId());
-            if (teacher != null) ivo.setTeacherName(teacher.getRealName());
             itemVOs.add(ivo);
         }
         vo.setItems(itemVOs);
@@ -122,13 +161,18 @@ public class CourseBundleServiceImpl implements CourseBundleService {
     @Override
     public PageResult<BundleVO> page(int page, int size) {
         LambdaQueryWrapper<CourseBundle> wrapper = new LambdaQueryWrapper<>();
-        if (!SecurityUtil.isAdmin()) {
+
+        if (SecurityUtil.hasRole("STUDENT")) {
+            // 学生：仅看已上架
+            wrapper.eq(CourseBundle::getStatus, 1);
+        } else if (!SecurityUtil.isAdminOrAcademic()) {
+            // 教师：仅看自己创建的
             wrapper.eq(CourseBundle::getCreatorId, SecurityUtil.getCurrentUserId());
         }
+        // ADMIN/ACADEMIC：看全部
         wrapper.orderByDesc(CourseBundle::getCreatedAt);
         IPage<CourseBundle> ipage = bundleRepository.selectPage(new Page<>(page + 1, size), wrapper);
 
-        // N+1 修复：批量预加载 creator 名称
         Set<Long> creatorIds = ipage.getRecords().stream()
                 .map(CourseBundle::getCreatorId).filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -152,9 +196,21 @@ public class CourseBundleServiceImpl implements CourseBundleService {
     @Transactional(rollbackFor = Exception.class)
     public void addCourse(Long bundleId, Long courseId, Integer sortOrder, Boolean isRequired) {
         CourseBundle bundle = bundleRepository.selectById(bundleId);
-        if (bundle == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (bundle == null) throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND);
         if (!SecurityUtil.isOwnerOrAdmin(bundle.getCreatorId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        // 验证课程存在且未软删除
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程不存在或已删除");
+        }
+        // 防止重复添加（与数据库 uk_cbi_bundle_course_active 部分索引对应）
+        LambdaQueryWrapper<CourseBundleItem> dupWrapper = new LambdaQueryWrapper<>();
+        dupWrapper.eq(CourseBundleItem::getBundleId, bundleId)
+                .eq(CourseBundleItem::getCourseId, courseId);
+        if (itemRepository.selectCount(dupWrapper) > 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程已在套餐中");
         }
         CourseBundleItem item = new CourseBundleItem();
         item.setBundleId(bundleId);
@@ -162,7 +218,12 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         item.setSortOrder(sortOrder != null ? sortOrder : 0);
         item.setIsRequired(isRequired != null ? isRequired : true);
         item.setCreatedAt(LocalDateTime.now());
-        itemRepository.insert(item);
+        try {
+            itemRepository.insert(item);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // 兜底：并发两管理员同时添加 → check-then-act 竞态，让数据库部分唯一索引挡住
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程已在套餐中");
+        }
     }
 
     @Override
@@ -170,7 +231,7 @@ public class CourseBundleServiceImpl implements CourseBundleService {
     public void removeCourse(Long bundleId, Long itemId) {
         CourseBundleItem item = itemRepository.selectById(itemId);
         if (item == null || !item.getBundleId().equals(bundleId)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "套餐课程项不存在或不属于该套餐");
+            throw new BusinessException(ErrorCode.BUNDLE_ITEM_NOT_FOUND);
         }
         CourseBundle bundle = bundleRepository.selectById(bundleId);
         if (bundle != null && !SecurityUtil.isOwnerOrAdmin(bundle.getCreatorId())) {
@@ -181,15 +242,89 @@ public class CourseBundleServiceImpl implements CourseBundleService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void publish(Long id) {
+        CourseBundle bundle = bundleRepository.selectById(id);
+        if (bundle == null) throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(bundle.getCreatorId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        // 上架前必须至少有 1 门课程
+        LambdaQueryWrapper<CourseBundleItem> itemWrapper = new LambdaQueryWrapper<>();
+        itemWrapper.eq(CourseBundleItem::getBundleId, id);
+        if (itemRepository.selectCount(itemWrapper) == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "套餐至少需要 1 门课程才能上架");
+        }
+        // 上架前必须至少有 1 门已存在的（未软删）课程，防止学生购买后看到"[课程已删除]"
+        List<CourseBundleItem> items = itemRepository.selectList(itemWrapper);
+        Set<Long> courseIds = items.stream()
+                .map(CourseBundleItem::getCourseId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        long activeCourseCount = 0;
+        if (!courseIds.isEmpty()) {
+            List<Course> courses = courseRepository.selectBatchIds(courseIds);
+            activeCourseCount = courses.stream()
+                    .filter(c -> c.getStatus() != null
+                            && com.microcourse.enums.CourseStatus.fromCode(c.getStatus()).isSelectable())
+                    .count();
+        }
+        if (activeCourseCount == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "套餐内所有课程都已下架，无法上架");
+        }
+        bundle.setStatus(1);
+        bundle.setUpdatedAt(LocalDateTime.now());
+        bundleRepository.updateById(bundle);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unpublish(Long id) {
+        CourseBundle bundle = bundleRepository.selectById(id);
+        if (bundle == null) throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(bundle.getCreatorId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        bundle.setStatus(0);
+        bundle.setUpdatedAt(LocalDateTime.now());
+        bundleRepository.updateById(bundle);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        if (bundleRepository.selectById(id) == null) {
+        CourseBundle bundle = bundleRepository.selectById(id);
+        if (bundle == null) {
             throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND);
         }
-        // 先删子表再删主表（避免 FK 约束冲突）
+        // 检查是否仍有 PAID 订单 — 有则拒绝删除，避免已购课学生失去套餐可见性
+        LambdaQueryWrapper<Order> paidOrderWrapper = new LambdaQueryWrapper<>();
+        paidOrderWrapper.eq(Order::getBundleId, id).eq(Order::getStatus, "PAID");
+        if (orderRepository.selectCount(paidOrderWrapper) > 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "该套餐仍有已支付订单，请先下架并联系运营处理");
+        }
+        // 同时拒绝 PENDING 订单（防止用户付完款后套餐突然消失）
+        paidOrderWrapper = new LambdaQueryWrapper<>();
+        paidOrderWrapper.eq(Order::getBundleId, id).eq(Order::getStatus, "PENDING");
+        if (orderRepository.selectCount(paidOrderWrapper) > 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "该套餐有待支付订单，请等待支付完成或取消后再删除");
+        }
         LambdaQueryWrapper<CourseBundleItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseBundleItem::getBundleId, id);
         itemRepository.delete(wrapper);
         bundleRepository.deleteById(id);
+    }
+
+    @Override
+    public boolean isUserEnrolledInBundle(Long userId, Long bundleId) {
+        // 仅检查是否存在 PAID 订单——订单一旦 PAID 即视作已购买，
+        // 课程后续添加/移除不影响购买事实。
+        LambdaQueryWrapper<Order> orderWrapper = new LambdaQueryWrapper<>();
+        orderWrapper.eq(Order::getBundleId, bundleId)
+                .eq(Order::getUserId, userId)
+                .eq(Order::getStatus, "PAID");
+        Long paidCount = orderRepository.selectCount(orderWrapper);
+        return paidCount != null && paidCount > 0;
     }
 
     private BundleVO toVO(CourseBundle bundle) {
@@ -204,6 +339,7 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         vo.setStudentCount(bundle.getStudentCount());
         vo.setStatus(bundle.getStatus());
         vo.setCreatedAt(bundle.getCreatedAt());
+        vo.setUpdatedAt(bundle.getUpdatedAt());
 
         if (bundle.getCreatorId() != null) {
             User creator = userRepository.selectById(bundle.getCreatorId());
@@ -224,6 +360,7 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         vo.setStudentCount(bundle.getStudentCount());
         vo.setStatus(bundle.getStatus());
         vo.setCreatedAt(bundle.getCreatedAt());
+        vo.setUpdatedAt(bundle.getUpdatedAt());
         vo.setCreatorName(creatorNameMap.get(bundle.getCreatorId()));
         return vo;
     }

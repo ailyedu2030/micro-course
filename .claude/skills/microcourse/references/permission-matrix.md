@@ -171,3 +171,18 @@ http.authorizeHttpRequests(auth -> auth
 | 课程排行 GET /api/enrollments/course/{id}/ranking | `isAuthenticated()` | 仅本人可见真实 userId（数据隔离） |
 | 导出学员 GET /api/enrollments/export | `hasAnyRole('TEACHER','ADMIN','ACADEMIC')` | TEACHER: `assertCourseOwnership()` |
 | 学员详情 GET /api/enrollments/student-detail/{userId} | `hasAnyRole('TEACHER','ADMIN','ACADEMIC')` | TEACHER: `countByTeacherAndStudent()` 交集检查 |
+
+### 5.4 课程套餐（course-bundles）API 权限映射
+
+| 操作 | Controller @PreAuthorize | Service 层二次校验 |
+|------|------------------------|-------------------|
+| 列表 GET /api/course-bundles | `isAuthenticated()` | STUDENT 仅 status=1；TEACHER 仅本人；ADMIN 全部 |
+| 详情 GET /api/course-bundles/{id} | `isAuthenticated()` | — |
+| 创建 POST /api/course-bundles | `hasAnyRole('TEACHER','ADMIN')` | creatorId 取自 JWT（不接受客户端传入） |
+| 更新 PUT /api/course-bundles/{id} | `hasAnyRole('TEACHER','ADMIN')` | `isOwnerOrAdmin()` |
+| 上架 PATCH /api/course-bundles/{id}/publish | `hasAnyRole('TEACHER','ADMIN')` | `isOwnerOrAdmin()` |
+| 下架 PATCH /api/course-bundles/{id}/unpublish | `hasAnyRole('TEACHER','ADMIN')` | `isOwnerOrAdmin()` |
+| 添加子课 POST /api/course-bundles/{id}/items | `hasAnyRole('TEACHER','ADMIN')` | `isOwnerOrAdmin()` |
+| 移除子课 DELETE /api/course-bundles/{id}/items/{itemId} | `hasAnyRole('TEACHER','ADMIN')` | `isOwnerOrAdmin()` |
+| 删除套餐 DELETE /api/course-bundles/{id} | `hasRole('ADMIN')` | — |
+| 我的报名状态 GET /api/course-bundles/{id}/my-enrollment | `isAuthenticated()` | 从 JWT 取 userId，仅返回本人 |

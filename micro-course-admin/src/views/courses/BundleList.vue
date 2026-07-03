@@ -1,9 +1,3 @@
-<!--
-  课程套餐管理
-  路由路径: /bundles
-  Phase 9
-  Author: Phase9-Development-Team
--->
 <template>
   <div class="bundle-list">
     <el-page-header @back="$router.push('/courses')" content="课程套餐管理" />
@@ -28,10 +22,21 @@
           </template>
         </el-table-column>
         <el-table-column prop="studentCount" label="学习人数" width="100" align="center" />
-        <el-table-column label="操作" width="240" align="center" fixed="right">
+        <el-table-column label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.status === 1" type="success" size="small">已上架</el-tag>
+            <el-tag v-else type="info" size="small">草稿</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="300" align="center" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="openDetail(row)">管理子课</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button size="small" @click="showEditDialog(row)">编辑</el-button>
+            <template v-if="canManage(row)">
+              <el-button v-if="row.status === 1" size="small" type="warning" @click="handleUnpublish(row)">下架</el-button>
+              <el-button v-else size="small" type="success" @click="handlePublish(row)">上架</el-button>
+            </template>
+            <el-button v-if="canDelete" size="small" type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -104,10 +109,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
-import { getBundles, getBundleById, createBundle, addBundleCourse, removeBundleCourse, deleteBundle } from '@/api/bundle'
+import { getBundles, getBundleById, createBundle, updateBundle, publishBundle, unpublishBundle, addBundleCourse, removeBundleCourse, deleteBundle } from '@/api/bundle'
 import { getCourses } from '@/api/course'
 
 const loading = ref(false)
@@ -117,6 +122,12 @@ const bundles = ref([])
 const page = ref(0)
 const size = ref(20)
 const total = ref(0)
+
+const canManage = (row) => {
+  // ADMIN 可管理所有，TEACHER 只可管理自己创建的
+  return userStore.role === 'ADMIN' || (userStore.role === 'TEACHER' && row.creatorId === userStore.userId)
+}
+const canDelete = computed(() => userStore.role === 'ADMIN')
 
 const dialogVisible = ref(false)
 const editingBundle = ref(null)
@@ -150,6 +161,22 @@ const showCreateDialog = () => {
   dialogVisible.value = true
 }
 
+const showEditDialog = async (row) => {
+  // 先拉最新数据，再开 modal — 避免弹窗闪烁/旧数据先填充后被覆盖
+  try {
+    const { data } = await getBundleById(row.id)
+    editingBundle.value = data
+    formData.value = {
+      title: data.title || '',
+      description: data.description || '',
+      price: data.price
+    }
+    dialogVisible.value = true
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '加载详情失败')
+  }
+}
+
 const resetForm = () => {
   formData.value = { title: '', description: '', price: null }
   editingBundle.value = null
@@ -165,12 +192,39 @@ const handleSave = async () => {
   }
   saving.value = true
   try {
-    await createBundle({ title: formData.value.title, description: formData.value.description, price: formData.value.price, isFree: !formData.value.price, creatorId: userStore.userId })
-    ElMessage.success('创建成功')
+    if (editingBundle.value) {
+      await updateBundle(editingBundle.value.id, { title: formData.value.title, description: formData.value.description, price: formData.value.price })
+      ElMessage.success('更新成功')
+    } else {
+      await createBundle({ title: formData.value.title, description: formData.value.description, price: formData.value.price })
+      ElMessage.success('创建成功')
+    }
     dialogVisible.value = false
     fetchBundles()
   } catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
   finally { saving.value = false }
+}
+
+const handlePublish = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定上架「${row.title}」？上架后学生可见。`, '提示', { type: 'info' })
+  } catch { return }
+  try {
+    await publishBundle(row.id)
+    ElMessage.success('上架成功')
+    fetchBundles()
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '上架失败') }
+}
+
+const handleUnpublish = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定下架「${row.title}」？下架后学生不可见。`, '提示', { type: 'warning' })
+  } catch { return }
+  try {
+    await unpublishBundle(row.id)
+    ElMessage.success('下架成功')
+    fetchBundles()
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '下架失败') }
 }
 
 const handleDelete = async (row) => {
@@ -184,16 +238,21 @@ const handleDelete = async (row) => {
   } catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
 }
 
+const loadDetailData = async (bundleId) => {
+  // 仅刷新数据，不重置 currentBundle（避免表单值丢失）
+  const { data } = await getBundleById(bundleId)
+  bundleItems.value = data.items || []
+  const params = { size: 200 }
+  if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
+  const { data: coursesData } = await getCourses(params)
+  const existingIds = new Set(bundleItems.value.map(i => i.courseId))
+  availableCourses.value = (coursesData.items || []).filter(c => !existingIds.has(c.id))
+}
+
 const openDetail = async (row) => {
   currentBundle.value = row
   try {
-    const { data } = await getBundleById(row.id)
-    bundleItems.value = data.items || []
-    const params = { size: 200 }
-    if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
-    const { data: coursesData } = await getCourses(params)
-    const existingIds = new Set(bundleItems.value.map(i => i.courseId))
-    availableCourses.value = (coursesData.items || []).filter(c => !existingIds.has(c.id))
+    await loadDetailData(row.id)
     itemDialog.value = true
   } catch (e) { ElMessage.error(e?.response?.data?.message || '加载子课失败') }
 }
@@ -203,7 +262,7 @@ const handleAddItem = async () => {
   try {
     await addBundleCourse(currentBundle.value.id, { courseId: selectedCourseId.value, sortOrder: newSortOrder.value, isRequired: newIsRequired.value })
     ElMessage.success('添加成功')
-    await openDetail(currentBundle.value)
+    await loadDetailData(currentBundle.value.id)
     selectedCourseId.value = null
     newSortOrder.value = (bundleItems.value.length || 0) + 1
   } catch (e) { ElMessage.error(e?.response?.data?.message || '添加失败') }
@@ -216,7 +275,7 @@ const handleRemoveItem = async (row) => {
   try {
     await removeBundleCourse(currentBundle.value.id, row.id)
     ElMessage.success('移除成功')
-    await openDetail(currentBundle.value)
+    await loadDetailData(currentBundle.value.id)
   } catch (e) { ElMessage.error(e?.response?.data?.message || '移除失败') }
 }
 

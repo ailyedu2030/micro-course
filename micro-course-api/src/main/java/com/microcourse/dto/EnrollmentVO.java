@@ -19,6 +19,7 @@ public class EnrollmentVO {
     private String finalGrade;
     private String enrollmentStatus;
     private String sourceChannel;
+    private Long bundleId;
     private LocalDateTime enrolledAt;
     private LocalDateTime completedAt;
     private LocalDateTime updatedAt;
@@ -60,6 +61,8 @@ public class EnrollmentVO {
     public void setEnrollmentStatus(String enrollmentStatus) { this.enrollmentStatus = enrollmentStatus; }
     public String getSourceChannel() { return sourceChannel; }
     public void setSourceChannel(String sourceChannel) { this.sourceChannel = sourceChannel; }
+    public Long getBundleId() { return bundleId; }
+    public void setBundleId(Long bundleId) { this.bundleId = bundleId; }
     public LocalDateTime getEnrolledAt() { return enrolledAt; }
     public void setEnrolledAt(LocalDateTime enrolledAt) { this.enrolledAt = enrolledAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }

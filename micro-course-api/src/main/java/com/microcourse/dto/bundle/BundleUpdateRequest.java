@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
-public class BundleCreateRequest {
+public class BundleUpdateRequest {
     @NotBlank(message = "套餐名称不能为空")
     @Size(max = 200, message = "套餐名称不能超过 200 字符")
     private String title;
@@ -20,7 +20,7 @@ public class BundleCreateRequest {
     private BigDecimal price;
     private Boolean isFree;
 
-    public BundleCreateRequest() {}
+    public BundleUpdateRequest() {}
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }

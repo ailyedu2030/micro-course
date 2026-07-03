@@ -2,6 +2,7 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.EnrollmentCreateRequest;
@@ -13,10 +14,12 @@ import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Order;
 import com.microcourse.entity.Payment;
 import com.microcourse.entity.CourseBundleItem;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.enums.OrderStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseBundleItemRepository;
+import com.microcourse.repository.CourseBundleRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.OrderRepository;
@@ -50,6 +53,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final CourseRepository courseRepository;
+    private final CourseBundleRepository bundleRepository;
     private final CourseBundleItemRepository bundleItemRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentService enrollmentService;
@@ -66,6 +70,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderServiceImpl(OrderRepository orderRepository,
                             PaymentRepository paymentRepository,
                             CourseRepository courseRepository,
+                            CourseBundleRepository bundleRepository,
                             CourseBundleItemRepository bundleItemRepository,
                             EnrollmentRepository enrollmentRepository,
                             @Lazy EnrollmentService enrollmentService,
@@ -73,6 +78,7 @@ public class OrderServiceImpl implements OrderService {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.courseRepository = courseRepository;
+        this.bundleRepository = bundleRepository;
         this.bundleItemRepository = bundleItemRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentService = enrollmentService;
@@ -91,6 +97,34 @@ public class OrderServiceImpl implements OrderService {
         }
         if ("REJECTED".equals(course.getPricingStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程定价已被驳回，无法购买");
+        }
+
+        // 套餐查询（一次，后续校验 + 价格读取复用）
+        com.microcourse.entity.CourseBundle bundle = null;
+        if (bundleId != null) {
+            bundle = bundleRepository.selectById(bundleId);
+            if (bundle == null) {
+                throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND, "套餐不存在");
+            }
+            if (bundle.getStatus() == null || bundle.getStatus() != 1) {
+                throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND, "套餐未上架，无法购买");
+            }
+            // 套餐购买时，课程必须是套餐的成员
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.CourseBundleItem> checkItem =
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+            checkItem.eq(com.microcourse.entity.CourseBundleItem::getBundleId, bundleId)
+                    .eq(com.microcourse.entity.CourseBundleItem::getCourseId, courseId);
+            if (bundleItemRepository.selectCount(checkItem) == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程不属于指定套餐");
+            }
+            // 套餐必须至少有一门必修课（防止空套餐被购买）
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.CourseBundleItem> requiredItem =
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+            requiredItem.eq(com.microcourse.entity.CourseBundleItem::getBundleId, bundleId)
+                    .eq(com.microcourse.entity.CourseBundleItem::getIsRequired, true);
+            if (bundleItemRepository.selectCount(requiredItem) == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "套餐无必修课，无法购买");
+            }
         }
 
         // 幂等性: 存在同一课程的 PENDING/PAID 订单时直接返回
@@ -114,15 +148,40 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(ErrorCode.ENROLLMENT_ALREADY_EXISTS, "您已选课，无需重复购买");
         }
 
-        com.microcourse.dto.CoursePricingInfoVO pricing = courseService.getMyPricing(courseId);
-        java.math.BigDecimal finalPrice = pricing != null ? pricing.getFinalPrice() : java.math.BigDecimal.ZERO;
+        // 价格计算：套餐购买走套餐价（bundle.price），单课程购买走课程价
+        java.math.BigDecimal finalPrice;
+        boolean isFreeOrder;
+        com.microcourse.dto.CoursePricingInfoVO pricing = null;
+        if (bundle != null) {
+            // 复用上面的 bundle 查询，不再 selectById
+            finalPrice = bundle.getPrice() == null ? java.math.BigDecimal.ZERO : bundle.getPrice();
+            isFreeOrder = Boolean.TRUE.equals(bundle.getIsFree()) || finalPrice.compareTo(java.math.BigDecimal.ZERO) <= 0;
+        } else {
+            pricing = courseService.getMyPricing(courseId);
+            finalPrice = pricing != null ? pricing.getFinalPrice() : java.math.BigDecimal.ZERO;
+            isFreeOrder = pricing == null || pricing.isFree() || finalPrice.compareTo(java.math.BigDecimal.ZERO) <= 0;
+        }
 
-        if (pricing == null || pricing.isFree() || finalPrice.compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            autoEnroll(userId, courseId);
-            OrderVO vo = new OrderVO();
-            vo.setStatus("PAID");
-            vo.setStatusText("已选课（免费）");
-            return vo;
+        if (isFreeOrder) {
+            // 套餐购买场景：让 enrollBundleCourses 统一处理所有必修课（sourceChannel=BUNDLE）
+            // 单课程购买场景：autoEnroll 处理（sourceChannel=PAYMENT）
+            if (bundleId != null) {
+                enrollBundleCourses(userId, bundleId);
+            } else {
+                autoEnroll(userId, courseId);
+            }
+            // 免费套餐/课程也持久化订单为 PAID（带审计、可退款、student_count 防重）
+            Order freeOrder = new Order();
+            freeOrder.setOrderNo(generateOrderNo());
+            freeOrder.setUserId(userId);
+            freeOrder.setCourseId(courseId);
+            freeOrder.setBundleId(bundleId);
+            freeOrder.setAmount(java.math.BigDecimal.ZERO);
+            freeOrder.setStatus("PAID");
+            freeOrder.setCreatedAt(LocalDateTime.now());
+            freeOrder.setUpdatedAt(LocalDateTime.now());
+            orderRepository.insert(freeOrder);
+            return toVO(freeOrder);
         }
 
         Order order = new Order();
@@ -192,9 +251,11 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // SECURITY: 先选课再标记支付——防止支付成功但选课失败导致钱课两空
-        autoEnroll(order.getUserId(), order.getCourseId());
+        // 套餐购买场景：只调 enrollBundleCourses（统一 sourceChannel=BUNDLE）
         if (order.getBundleId() != null) {
             enrollBundleCourses(order.getUserId(), order.getBundleId());
+        } else {
+            autoEnroll(order.getUserId(), order.getCourseId());
         }
 
         // SECURITY: CAS 乐观锁更新状态——防止并发重复支付
@@ -308,6 +369,12 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+        // 退款时同步取消套餐下的其他必修课（必修课都来自 bundle）
+        // unenrollBundleCourses 内部已 decrement student_count，此处不再重复
+        if (order.getBundleId() != null && order.getUserId() != null) {
+            unenrollBundleCourses(order.getUserId(), order.getBundleId());
+        }
+
         log.info("退款成功: orderId={}, refundTxnId={}, amount={}", orderId, refundTxnId, order.getAmount());
         return toVO(orderRepository.selectById(orderId));
     }
@@ -402,10 +469,11 @@ public class OrderServiceImpl implements OrderService {
         }
         if (!"PENDING".equals(order.getStatus())) return;
 
-        // 先选课再标记支付
-        autoEnroll(order.getUserId(), order.getCourseId());
+        // 先选课再标记支付——套餐购买场景：仅调 enrollBundleCourses（统一 sourceChannel=BUNDLE）
         if (order.getBundleId() != null) {
             enrollBundleCourses(order.getUserId(), order.getBundleId());
+        } else {
+            autoEnroll(order.getUserId(), order.getCourseId());
         }
 
         // CAS 更新
@@ -448,32 +516,110 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void enrollBundleCourses(Long userId, Long bundleId) {
+        // 先查必修课是否存在，避免对"已软删/空套餐"误增 student_count
         LambdaQueryWrapper<CourseBundleItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseBundleItem::getBundleId, bundleId)
                 .eq(CourseBundleItem::getIsRequired, true);
         List<CourseBundleItem> items = bundleItemRepository.selectList(wrapper);
+        if (items.isEmpty()) {
+            // 套餐在订单创建后被删除或清空 → 不入账 student_count，调用方需回滚订单
+            throw new BusinessException(ErrorCode.BUNDLE_NOT_FOUND, "套餐已下架或无课程");
+        }
+
+        // 首次购买原子条件 increment：仅当该用户无 PAID 订单时 +1（数据库层面并发安全）
+        bundleRepository.atomicIncrementIfFirstTime(bundleId, userId);
+
         for (CourseBundleItem item : items) {
             try {
                 EnrollmentCreateRequest req = new EnrollmentCreateRequest();
                 req.setCourseId(item.getCourseId());
                 req.setUserId(userId);
                 req.setSourceChannel("BUNDLE");
-                enrollmentService.enroll(req);
+                EnrollmentVO enrollment = enrollmentService.enroll(req);
+                enrollmentRepository.update(null,
+                        new LambdaUpdateWrapper<Enrollment>()
+                                .eq(Enrollment::getId, enrollment.getId())
+                                .set(Enrollment::getBundleId, bundleId));
             } catch (BusinessException e) {
-                if (e.getCode() != ErrorCode.ENROLLMENT_ALREADY_EXISTS.getCode()) {
-                    // P0#3 修复：套餐必选课程选课失败必须抛异常回滚整个支付事务，
-                    // 防止用户支付成功但部分课程未选课（钱课两空）
+                if (e.getCode() == ErrorCode.ENROLLMENT_ALREADY_EXISTS.getCode()) {
+                    // 选课记录已存在（用户可能通过其他路径已选过该课程），也补上 bundleId 以追溯来源
+                    enrollmentRepository.update(null,
+                            new LambdaUpdateWrapper<Enrollment>()
+                                    .eq(Enrollment::getUserId, userId)
+                                    .eq(Enrollment::getCourseId, item.getCourseId())
+                                    .set(Enrollment::getBundleId, bundleId));
+                } else {
                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
                             "套餐课程「" + item.getCourseId() + "」选课失败，订单已取消");
                 }
             } catch (DuplicateKeyException e) {
                 log.debug("Bundle enrollment already exists: userId={}, courseId={}", userId, item.getCourseId());
+                enrollmentRepository.update(null,
+                        new LambdaUpdateWrapper<Enrollment>()
+                                .eq(Enrollment::getUserId, userId)
+                                .eq(Enrollment::getCourseId, item.getCourseId())
+                                .set(Enrollment::getBundleId, bundleId));
             }
         }
     }
 
     private String generateOrderNo() {
         return "ORD" + System.currentTimeMillis() + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
+    }
+
+    /**
+     * 取消套餐下所有 bundle_id 关联的必修选课记录（用于退款/取消场景）。
+     * 直接根据 enrollments.bundle_id 查询，不依赖 course_bundle_items 的可用性，
+     * 避免"课程已退选/课程被删/套餐被删"导致退不了款。
+     * 只在确实取消了选课时才 decrement student_count（防止重复退款导致负数）。
+     */
+    private void unenrollBundleCourses(Long userId, Long bundleId) {
+        LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
+        enrollWrapper.eq(Enrollment::getUserId, userId)
+                .eq(Enrollment::getBundleId, bundleId)
+                .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
+        List<Enrollment> enrollments = enrollmentRepository.selectList(enrollWrapper);
+        int cancelledCount = 0;
+        for (Enrollment enrollment : enrollments) {
+            try {
+                enrollmentService.cancelEnrollment(enrollment.getId(), userId);
+                cancelledCount++;
+            } catch (Exception e) {
+                log.warn("Bundle enrollment cancel failed: userId={}, enrollId={}, reason={}",
+                        userId, enrollment.getId(), e.getMessage());
+            }
+        }
+        // 只有确实取消了选课时才回退学生计数器
+        if (cancelledCount > 0) {
+            bundleRepository.atomicDecrementStudentCount(bundleId);
+        }
+    }
+
+    /**
+     * 旧版实现保留为兜底（courses-via-items 方式），便于排查。
+     */
+    @SuppressWarnings("unused")
+    private void unenrollBundleCoursesViaItems(Long userId, Long bundleId) {
+        LambdaQueryWrapper<CourseBundleItem> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CourseBundleItem::getBundleId, bundleId)
+                .eq(CourseBundleItem::getIsRequired, true);
+        List<CourseBundleItem> items = bundleItemRepository.selectList(wrapper);
+        for (CourseBundleItem item : items) {
+            try {
+                LambdaQueryWrapper<Enrollment> enrollWrapper2 = new LambdaQueryWrapper<>();
+                enrollWrapper2.eq(Enrollment::getUserId, userId)
+                        .eq(Enrollment::getCourseId, item.getCourseId())
+                        .eq(Enrollment::getBundleId, bundleId)
+                        .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
+                Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper2);
+                if (enrollment != null) {
+                    enrollmentService.cancelEnrollment(enrollment.getId(), userId);
+                }
+            } catch (Exception e) {
+                log.warn("Bundle course unenroll failed: userId={}, courseId={}, reason={}",
+                        userId, item.getCourseId(), e.getMessage());
+            }
+        }
     }
 
     private OrderVO toVO(Order order) {

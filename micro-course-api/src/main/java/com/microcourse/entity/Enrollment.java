@@ -38,6 +38,9 @@ public class Enrollment {
     @TableField("source_channel")
     private String sourceChannel;
 
+    @TableField("bundle_id")
+    private Long bundleId;
+
     @TableField("enrolled_at")
     private LocalDateTime enrolledAt;
 
@@ -78,6 +81,8 @@ public class Enrollment {
     public void setEnrollmentStatus(String enrollmentStatus) { this.enrollmentStatus = enrollmentStatus; }
     public String getSourceChannel() { return sourceChannel; }
     public void setSourceChannel(String sourceChannel) { this.sourceChannel = sourceChannel; }
+    public Long getBundleId() { return bundleId; }
+    public void setBundleId(Long bundleId) { this.bundleId = bundleId; }
     public LocalDateTime getEnrolledAt() { return enrolledAt; }
     public void setEnrolledAt(LocalDateTime enrolledAt) { this.enrolledAt = enrolledAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }
