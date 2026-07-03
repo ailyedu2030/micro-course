@@ -338,7 +338,11 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    // P1-C-12-04 fix: 班级导入大事务超时
+    // 50 人班级 × 10 门课程 = 500 次 enroll() 调用在同一 DB 事务中执行
+    // PostgreSQL 事务超时默认 30s,大型班级会触发 timeout 导致整批失败
+    // 显式设置 5 分钟上限,适配 100 人 × 20 门课程 = 2000 次调用的极端场景
+    @Transactional(rollbackFor = Exception.class, timeout = 300)
     public int classImport(Long msId, Long classId) {
         MicroSpecialty ms = msRepository.selectForUpdate(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
