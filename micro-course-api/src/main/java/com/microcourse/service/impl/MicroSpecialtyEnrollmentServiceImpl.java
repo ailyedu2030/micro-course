@@ -163,6 +163,13 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可审批");
         }
 
+        // P1-2 修复: 在 update 前做终态检查,防止 enrollment→APPROVED 时 MS 已关闭
+        MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
+        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+
         int oldVersion = en.getVersion();
         int affected = enrollmentRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
@@ -175,13 +182,6 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
-
-        MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
-        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
-        // Fix 1: 微专业终态校验
-        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
-        }
 
         // 自动 enroll 必修课（§9.5）
         List<MicroSpecialtyCourse> requiredCourses = msCourseRepository.selectList(

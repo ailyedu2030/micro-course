@@ -128,13 +128,18 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
 
         if (isCrossDept) {
             int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
-            teacherRepository.update(null,
+            // P1-1 修复: 加 status 筛选防止与 reviewCrossDept 并发覆盖
+            int crossAffected = teacherRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                             .eq(MicroSpecialtyTeacher::getId, inviteId)
                             .eq(MicroSpecialtyTeacher::getVersion, oldVersion)
+                            .eq(MicroSpecialtyTeacher::getInviteStatus, "INVITED")
                             .set(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC")
                             .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            if (crossAffected == 0) {
+                throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+            }
 
             // P0-2 修复：通知所有 ACADEMIC 角色用户（而非非法 userId 0L）
             List<User> academicUsers = userRepository.selectList(
@@ -146,14 +151,19 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
             }
         } else {
             int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
-            teacherRepository.update(null,
+            // P1-1 修复: 加 status 筛选防止并发
+            int selfAffected = teacherRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
                             .eq(MicroSpecialtyTeacher::getId, inviteId)
                             .eq(MicroSpecialtyTeacher::getVersion, oldVersion)
+                            .eq(MicroSpecialtyTeacher::getInviteStatus, "INVITED")
                             .set(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE")
                             .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now())
                             .set(MicroSpecialtyTeacher::getJoinedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            if (selfAffected == 0) {
+                throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+            }
 
             // 如果是 LEAD 角色，双重确认更新 lead_teacher_id
             if ("LEAD".equals(record.getRole()) && ms != null) {
@@ -454,14 +464,23 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
             throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION, "邀请已被其他操作修改，请刷新后重试");
         }
 
-        // 5. 更新 chapter_teacher_assignments 中属于该邀请的章节决策
-        LambdaUpdateWrapper<ChapterTeacherAssignment> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(ChapterTeacherAssignment::getTeacherId, userId)
-                     .eq(ChapterTeacherAssignment::getAcceptStatus, "PENDING");
-        ChapterTeacherAssignment update = new ChapterTeacherAssignment();
-        update.setAcceptStatus("ACCEPTED");
-        update.setAcceptedAt(LocalDateTime.now());
-        chapterAssignRepository.update(update, updateWrapper);
+        // 5. P0 修复: 仅更新本次邀请对应的章节决策(加 proposalId 过滤,防止跨微专业污染)
+        // 之前缺少 proposalId→仅按 teacherId+acceptStatus 匹配,教师在不同微专业的
+        // PENDING 章节都会被误标 ACCEPTED
+        List<Long> affectedChapterIds = request.getChapterDecisions().stream()
+                .map(ChapterDecisionItem::getChapterId)
+                .filter(id -> id != null)
+                .collect(Collectors.toList());
+        if (!affectedChapterIds.isEmpty()) {
+            LambdaUpdateWrapper<ChapterTeacherAssignment> updateWrapper = new LambdaUpdateWrapper<>();
+            updateWrapper.eq(ChapterTeacherAssignment::getTeacherId, userId)
+                         .eq(ChapterTeacherAssignment::getAcceptStatus, "PENDING")
+                         .in(ChapterTeacherAssignment::getChapterId, affectedChapterIds);
+            ChapterTeacherAssignment update = new ChapterTeacherAssignment();
+            update.setAcceptStatus("ACCEPTED");
+            update.setAcceptedAt(LocalDateTime.now());
+            chapterAssignRepository.update(update, updateWrapper);
+        }
 
         // 6. 发送团队通知
         if (record.getInvitedBy() != null) {
