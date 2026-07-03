@@ -193,10 +193,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         for (MicroSpecialty ms : records) {
             MicroSpecialtyVO vo = new MicroSpecialtyVO();
-            copyToVO(ms, vo);
-            // 批量预加载赋值（覆盖 copyToVO 内的 N+1 查询）
-            if (ms.getOfferDepartmentId() != null) vo.setDepartmentName(deptNameMap.get(ms.getOfferDepartmentId()));
-            if (ms.getLeadTeacherId() != null) vo.setLeadTeacherName(teacherNameMap.get(ms.getLeadTeacherId()));
+            // P1-2 修复: 传预加载 map,避免 copyToVO 内重复 selectById
+            copyToVO(ms, vo, deptNameMap, teacherNameMap);
             if (ms.getCreatorId() != null) vo.setCreatorName(creatorNameMap.get(ms.getCreatorId()));
             vos.add(vo);
         }
@@ -1420,5 +1418,23 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
             }
         }
         return vo;
+    }
+
+    /**
+     * P1-2: 批量列表场景用预加载 map,避免 N+1 selectById
+     */
+    private void copyToVO(MicroSpecialty ms, MicroSpecialtyVO vo,
+                          java.util.Map<Long, String> deptNameMap,
+                          java.util.Map<Long, String> teacherNameMap) {
+        copyToVO(ms, vo); // 复制基础字段
+        // 覆盖 N+1 字段为预加载值
+        if (ms.getOfferDepartmentId() != null) {
+            String deptName = deptNameMap.get(ms.getOfferDepartmentId());
+            if (deptName != null) vo.setDepartmentName(deptName);
+        }
+        if (ms.getLeadTeacherId() != null) {
+            String teacherName = teacherNameMap.get(ms.getLeadTeacherId());
+            if (teacherName != null) vo.setLeadTeacherName(teacherName);
+        }
     }
 }

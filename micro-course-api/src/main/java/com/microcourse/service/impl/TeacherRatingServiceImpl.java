@@ -15,7 +15,10 @@ import com.microcourse.service.TeacherRatingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -53,6 +56,7 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
     private final TeacherTierLogRepository tierLogRepository;
     private final UserRepository userRepository;
     private final PlatformShareRateResolver rateResolver;
+    private final TransactionTemplate transactionTemplate;
 
     // 等级阈值配置
     private static final BigDecimal BRONZE_THRESHOLD = new BigDecimal("0");
@@ -73,11 +77,13 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
     public TeacherRatingServiceImpl(TeacherRatingRepository ratingRepository,
                                     TeacherTierLogRepository tierLogRepository,
                                     UserRepository userRepository,
-                                    PlatformShareRateResolver rateResolver) {
+                                    PlatformShareRateResolver rateResolver,
+                                    TransactionTemplate transactionTemplate) {
         this.ratingRepository = ratingRepository;
         this.tierLogRepository = tierLogRepository;
         this.userRepository = userRepository;
         this.rateResolver = rateResolver;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Override
@@ -131,7 +137,13 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
         int processed = 0;
         for (TeacherRatingRepository.TeacherRatingStatRow row : stats) {
             try {
-                calculateAndSave(row);
+                // P1-1 修复: 每个教师独立事务(upsertRating+insertTierLog 原子)
+                transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+                    @Override
+                    protected void doInTransactionWithoutResult(TransactionStatus status) {
+                        calculateAndSave(row);
+                    }
+                });
                 processed++;
             } catch (Exception e) {
                 log.error("[TeacherRating] 评级计算失败 teacherId={}", row.getTeacherId(), e);
