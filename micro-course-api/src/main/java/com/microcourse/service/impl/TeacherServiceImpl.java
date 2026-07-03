@@ -8,6 +8,7 @@ import com.microcourse.dto.PendingTaskVO;
 import com.microcourse.dto.StudentActivityVO;
 import com.microcourse.dto.TeacherCourseVO;
 import com.microcourse.dto.TeacherNotificationVO;
+import com.microcourse.dto.TeacherRevenueVO;
 import com.microcourse.dto.TeacherStatsVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.DiscussionComment;
@@ -17,6 +18,7 @@ import com.microcourse.entity.Exercise;
 import com.microcourse.entity.ExerciseRecord;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.Notification;
+import com.microcourse.entity.Order;
 import com.microcourse.entity.Question;
 import com.microcourse.entity.User;
 import com.microcourse.repository.CourseRepository;
@@ -27,7 +29,9 @@ import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.NotificationRepository;
+import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.QuestionRepository;
+import com.microcourse.repository.TeacherRatingRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.TeacherService;
@@ -53,6 +57,9 @@ public class TeacherServiceImpl implements TeacherService {
     private final ExerciseRepository exerciseRepository;
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
+    private final TeacherRatingRepository teacherRatingRepository;
+    private final OrderRepository orderRepository;
+    private final com.microcourse.service.PlatformShareRateResolver rateResolver;
     private final EnrollmentService enrollmentService;
 
     public TeacherServiceImpl(
@@ -66,6 +73,9 @@ public class TeacherServiceImpl implements TeacherService {
             ExerciseRepository exerciseRepository,
             QuestionRepository questionRepository,
             UserRepository userRepository,
+            TeacherRatingRepository teacherRatingRepository,
+            OrderRepository orderRepository,
+            com.microcourse.service.PlatformShareRateResolver rateResolver,
             EnrollmentService enrollmentService) {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -77,6 +87,9 @@ public class TeacherServiceImpl implements TeacherService {
         this.exerciseRepository = exerciseRepository;
         this.questionRepository = questionRepository;
         this.userRepository = userRepository;
+        this.teacherRatingRepository = teacherRatingRepository;
+        this.orderRepository = orderRepository;
+        this.rateResolver = rateResolver;
         this.enrollmentService = enrollmentService;
     }
 
@@ -195,6 +208,118 @@ public class TeacherServiceImpl implements TeacherService {
         stats.setAvgScore(avgScore);
 
         return stats;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TeacherRevenueVO getRevenue(Long teacherId) {
+        // 1) 获取教师所有课程
+        List<Course> courses = courseRepository.selectList(
+                new LambdaQueryWrapper<Course>()
+                        .eq(Course::getTeacherId, teacherId)
+                        .isNull(Course::getDeletedAt));
+        List<Long> courseIds = courses.stream().map(Course::getId).collect(Collectors.toList());
+        Map<Long, String> courseTitleMap = courses.stream()
+                .collect(Collectors.toMap(Course::getId, Course::getTitle));
+
+        TeacherRevenueVO vo = new TeacherRevenueVO();
+        if (courseIds.isEmpty()) {
+            vo.setTotalRevenue(java.math.BigDecimal.ZERO);
+            vo.setPlatformShare(java.math.BigDecimal.ZERO);
+            vo.setNetEarnings(java.math.BigDecimal.ZERO);
+            vo.setOrderCount(0);
+            vo.setStudentCount(0);
+            vo.setCourseBreakdown(new ArrayList<>());
+            vo.setRecentTransactions(new ArrayList<>());
+            return vo;
+        }
+
+        // 2) 查询所有 PAID 订单
+        List<Order> paidOrders = orderRepository.selectList(
+                new LambdaQueryWrapper<Order>()
+                        .in(Order::getCourseId, courseIds)
+                        .eq(Order::getStatus, "PAID")
+                        .orderByDesc(Order::getPaidAt));
+
+        if (paidOrders.isEmpty()) {
+            vo.setTotalRevenue(java.math.BigDecimal.ZERO);
+            vo.setPlatformShare(java.math.BigDecimal.ZERO);
+            vo.setNetEarnings(java.math.BigDecimal.ZERO);
+            vo.setOrderCount(0);
+            vo.setStudentCount(0);
+            vo.setCourseBreakdown(new ArrayList<>());
+            vo.setRecentTransactions(new ArrayList<>());
+            return vo;
+        }
+
+        // 3) 聚合统计
+        java.math.BigDecimal totalRevenue = java.math.BigDecimal.ZERO;
+        Set<Long> uniqueStudents = new HashSet<>();
+        Map<Long, List<Order>> ordersByCourse = paidOrders.stream()
+                .collect(Collectors.groupingBy(Order::getCourseId));
+
+        // 从教师等级获取实际分账率(修复 P0-1: 从 config 表读,不再硬编码)
+        com.microcourse.entity.TeacherRating teacherRating = teacherRatingRepository.selectOne(
+                new LambdaQueryWrapper<com.microcourse.entity.TeacherRating>()
+                        .eq(com.microcourse.entity.TeacherRating::getTeacherId, teacherId));
+        java.math.BigDecimal platformRate = teacherRating != null
+                ? rateResolver.getRateByTier(teacherRating.getTier())
+                : rateResolver.getDefaultGlobalRate();
+
+        for (Order o : paidOrders) {
+            totalRevenue = totalRevenue.add(o.getAmount() != null ? o.getAmount() : java.math.BigDecimal.ZERO);
+            if (o.getUserId() != null) uniqueStudents.add(o.getUserId());
+        }
+
+        java.math.BigDecimal platformShare = totalRevenue.multiply(platformRate)
+                .divide(java.math.BigDecimal.valueOf(100));
+        java.math.BigDecimal netEarnings = totalRevenue.subtract(platformShare);
+
+        vo.setTotalRevenue(totalRevenue);
+        vo.setPlatformShare(platformShare);
+        vo.setNetEarnings(netEarnings);
+        vo.setOrderCount(paidOrders.size());
+        vo.setStudentCount(uniqueStudents.size());
+
+        // 4) 按课程分解
+        List<TeacherRevenueVO.CourseRevenueItem> breakdown = new ArrayList<>();
+        for (Map.Entry<Long, List<Order>> entry : ordersByCourse.entrySet()) {
+            TeacherRevenueVO.CourseRevenueItem item = new TeacherRevenueVO.CourseRevenueItem();
+            item.setCourseId(entry.getKey());
+            item.setCourseTitle(courseTitleMap.getOrDefault(entry.getKey(), "未知课程"));
+            java.math.BigDecimal courseRevenue = entry.getValue().stream()
+                    .map(o -> o.getAmount() != null ? o.getAmount() : java.math.BigDecimal.ZERO)
+                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            item.setRevenue(courseRevenue);
+            item.setOrderCount(entry.getValue().size());
+            java.math.BigDecimal coursePlatform = courseRevenue.multiply(platformRate)
+                    .divide(java.math.BigDecimal.valueOf(100));
+            item.setPlatformShare(coursePlatform);
+            item.setNetEarnings(courseRevenue.subtract(coursePlatform));
+            breakdown.add(item);
+        }
+        breakdown.sort((a, b) -> b.getRevenue().compareTo(a.getRevenue()));
+        vo.setCourseBreakdown(breakdown);
+
+        // 5) 最近交易（最多 10 条）
+        List<TeacherRevenueVO.RecentTransaction> recent = paidOrders.stream()
+                .limit(10)
+                .map(o -> {
+                    TeacherRevenueVO.RecentTransaction t = new TeacherRevenueVO.RecentTransaction();
+                    t.setOrderNo(o.getOrderNo());
+                    t.setCourseTitle(courseTitleMap.getOrDefault(o.getCourseId(), "未知课程"));
+                    t.setAmount(o.getAmount() != null ? o.getAmount() : java.math.BigDecimal.ZERO);
+                    java.math.BigDecimal txPlatform = t.getAmount().multiply(platformRate)
+                            .divide(java.math.BigDecimal.valueOf(100));
+                    t.setPlatformShare(txPlatform);
+                    t.setNetEarnings(t.getAmount().subtract(txPlatform));
+                    t.setPaidAt(o.getPaidAt());
+                    return t;
+                })
+                .collect(Collectors.toList());
+        vo.setRecentTransactions(recent);
+
+        return vo;
     }
 
     @Override
@@ -378,4 +503,6 @@ public class TeacherServiceImpl implements TeacherService {
 
         return PageResult.of(vos, coursePage.getTotal(), page, size);
     }
+
+    // getPlatformShareRate 已被 PlatformShareRateResolver 取代 (修复 P0-1)
 }

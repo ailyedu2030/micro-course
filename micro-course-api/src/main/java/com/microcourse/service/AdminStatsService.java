@@ -12,6 +12,9 @@ import java.util.List;
  */
 public interface AdminStatsService {
 
+    /** 获取平台营收数据 */
+    com.microcourse.dto.AdminRevenueVO getRevenueStats();
+
     /**
      * 获取数据看板概览
      */

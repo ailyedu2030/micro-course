@@ -4,11 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.microcourse.dto.CourseTrendVO;
 import com.microcourse.dto.DailyActivityVO;
+import com.microcourse.dto.AdminRevenueVO;
 import com.microcourse.dto.DashboardOverviewVO;
 import com.microcourse.dto.UserTrendVO;
 import com.microcourse.entity.Certificate;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.DiscussionPost;
+import com.microcourse.entity.Order;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Exercise;
 import com.microcourse.entity.LearningProgress;
@@ -17,10 +19,12 @@ import com.microcourse.entity.Video;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CertificateRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.LearningProgressRepository;
+import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.AdminStatsService;
@@ -37,11 +41,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 管理后台数据统计服务实现
@@ -59,6 +67,9 @@ public class AdminStatsServiceImpl implements AdminStatsService {
     private final DiscussionPostRepository discussionPostRepository;
     private final LearningProgressRepository learningProgressRepository;
     private final CertificateRepository certificateRepository;
+    private final OrderRepository orderRepository;
+    private final com.microcourse.repository.TeacherRatingRepository teacherRatingRepository;
+    private final com.microcourse.service.PlatformShareRateResolver rateResolver;
     private final RedisUtil redisUtil;
     private final DataSource dataSource;
 
@@ -72,9 +83,12 @@ public class AdminStatsServiceImpl implements AdminStatsService {
                                   ExerciseRepository exerciseRepository,
                                   DiscussionPostRepository discussionPostRepository,
                                   LearningProgressRepository learningProgressRepository,
-                                  CertificateRepository certificateRepository,
-                                  RedisUtil redisUtil,
-                                  DataSource dataSource) {
+                                   CertificateRepository certificateRepository,
+                                   OrderRepository orderRepository,
+                                   com.microcourse.repository.TeacherRatingRepository teacherRatingRepository,
+                                   com.microcourse.service.PlatformShareRateResolver rateResolver,
+                                   RedisUtil redisUtil,
+                                   DataSource dataSource) {
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -82,7 +96,10 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         this.exerciseRepository = exerciseRepository;
         this.discussionPostRepository = discussionPostRepository;
         this.learningProgressRepository = learningProgressRepository;
+        this.orderRepository = orderRepository;
         this.certificateRepository = certificateRepository;
+        this.teacherRatingRepository = teacherRatingRepository;
+        this.rateResolver = rateResolver;
         this.redisUtil = redisUtil;
         this.dataSource = dataSource;
     }
@@ -363,5 +380,145 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         }
 
         return health;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminRevenueVO getRevenueStats() {
+        AdminRevenueVO vo = new AdminRevenueVO();
+
+        // 1) 查所有 PAID 订单
+        List<Order> paidOrders = orderRepository.selectList(
+                new LambdaQueryWrapper<Order>()
+                        .eq(Order::getStatus, "PAID"));
+
+        if (paidOrders.isEmpty()) {
+            vo.setTotalRevenue(BigDecimal.ZERO);
+            vo.setPlatformShareTotal(BigDecimal.ZERO);
+            vo.setTeacherPayoutTotal(BigDecimal.ZERO);
+            vo.setTotalOrders(0);
+            vo.setPaidStudentCount(0);
+            vo.setTeacherCount(0);
+            vo.setMonthlyTrend(new ArrayList<>());
+            vo.setTopTeachers(new ArrayList<>());
+            return vo;
+        }
+
+        // 2) 聚合
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        Set<Long> uniqueStudents = new HashSet<>();
+        Map<String, List<Order>> ordersByMonth = new LinkedHashMap<>();
+        Map<Long, List<Order>> ordersByCourse = paidOrders.stream()
+                .collect(Collectors.groupingBy(Order::getCourseId));
+        DateTimeFormatter monthFmt = DateTimeFormatter.ofPattern("yyyy-MM");
+
+        for (Order o : paidOrders) {
+            BigDecimal amt = o.getAmount() != null ? o.getAmount() : BigDecimal.ZERO;
+            totalRevenue = totalRevenue.add(amt);
+            if (o.getUserId() != null) uniqueStudents.add(o.getUserId());
+
+            if (o.getPaidAt() != null) {
+                String monthKey = o.getPaidAt().format(monthFmt);
+                ordersByMonth.computeIfAbsent(monthKey, k -> new ArrayList<>()).add(o);
+            }
+        }
+
+        // 修复 P0-3: 按每个订单所属教师等级分别计算分账率累加
+        // 之前硬编码 30% 导致 admin 看到的分成数据错误
+        BigDecimal platformShare = BigDecimal.ZERO;
+        if (!ordersByCourse.isEmpty()) {
+            // 收集涉及的 course → teacher 映射
+            List<com.microcourse.entity.Course> courseList = courseRepository.selectBatchIds(ordersByCourse.keySet());
+            Map<Long, Long> courseTeacherMap = courseList.stream()
+                    .collect(Collectors.toMap(com.microcourse.entity.Course::getId, com.microcourse.entity.Course::getTeacherId));
+            // 教师 → tier 映射(批量预加载,避免 N+1)
+            Set<Long> teacherIds = courseTeacherMap.values().stream().collect(Collectors.toSet());
+            Map<Long, String> teacherTierMap = new HashMap<>();
+            if (!teacherIds.isEmpty()) {
+                List<com.microcourse.entity.TeacherRating> ratings = teacherRatingRepository.selectBatchIds(teacherIds);
+                for (com.microcourse.entity.TeacherRating r : ratings) {
+                    teacherTierMap.put(r.getTeacherId(), r.getTier());
+                }
+            }
+            // 按订单计算实际分账
+            for (Map.Entry<Long, List<Order>> entry : ordersByCourse.entrySet()) {
+                Long cId = entry.getKey();
+                Long teacherId = courseTeacherMap.get(cId);
+                String tier = teacherId != null ? teacherTierMap.get(teacherId) : null;
+                BigDecimal rate = (tier != null)
+                        ? rateResolver.getRateByTier(tier)
+                        : rateResolver.getDefaultGlobalRate();
+                BigDecimal courseRevenue = entry.getValue().stream()
+                        .map(o -> o.getAmount() != null ? o.getAmount() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                platformShare = platformShare.add(
+                        courseRevenue.multiply(rate).divide(BigDecimal.valueOf(100)));
+            }
+        }
+        BigDecimal teacherPayout = totalRevenue.subtract(platformShare);
+
+        vo.setTotalRevenue(totalRevenue);
+        vo.setPlatformShareTotal(platformShare);
+        vo.setTeacherPayoutTotal(teacherPayout);
+        vo.setTotalOrders(paidOrders.size());
+        vo.setPaidStudentCount(uniqueStudents.size());
+
+        // 3) 月度趋势
+        List<AdminRevenueVO.MonthlyRevenueItem> monthlyTrend = new ArrayList<>();
+        for (Map.Entry<String, List<Order>> entry : ordersByMonth.entrySet()) {
+            AdminRevenueVO.MonthlyRevenueItem item = new AdminRevenueVO.MonthlyRevenueItem();
+            item.setMonth(entry.getKey());
+            BigDecimal monthRev = entry.getValue().stream()
+                    .map(o -> o.getAmount() != null ? o.getAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            item.setRevenue(monthRev);
+            item.setOrderCount(entry.getValue().size());
+            monthlyTrend.add(item);
+        }
+        monthlyTrend.sort((a, b) -> b.getMonth().compareTo(a.getMonth()));
+        vo.setMonthlyTrend(monthlyTrend);
+
+        // 4) 教师排行（通过课程 → 订单）
+        Map<Long, BigDecimal> teacherRevenue = new HashMap<>();
+        Map<Long, Integer> teacherOrders = new HashMap<>();
+        Set<Long> courseIds = ordersByCourse.keySet();
+        if (!courseIds.isEmpty()) {
+            List<Course> courses = courseRepository.selectBatchIds(courseIds);
+            Map<Long, Long> courseTeacherMap = courses.stream()
+                    .collect(Collectors.toMap(Course::getId, Course::getTeacherId));
+            Map<Long, String> courseTitleMap = courses.stream()
+                    .collect(Collectors.toMap(Course::getId, Course::getTitle));
+
+            for (Map.Entry<Long, List<Order>> entry : ordersByCourse.entrySet()) {
+                Long cId = entry.getKey();
+                BigDecimal cRev = entry.getValue().stream()
+                        .map(o -> o.getAmount() != null ? o.getAmount() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                Long tId = courseTeacherMap.get(cId);
+                if (tId != null) {
+                    teacherRevenue.merge(tId, cRev, BigDecimal::add);
+                    teacherOrders.merge(tId, entry.getValue().size(), Integer::sum);
+                }
+            }
+        }
+        vo.setTeacherCount(teacherRevenue.size());
+
+        // 填充教师姓名
+        List<AdminRevenueVO.TopTeacherItem> topTeachers = teacherRevenue.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(10)
+                .map(entry -> {
+                    AdminRevenueVO.TopTeacherItem item = new AdminRevenueVO.TopTeacherItem();
+                    item.setTeacherId(entry.getKey());
+                    item.setRevenue(entry.getValue());
+                    item.setOrderCount(teacherOrders.getOrDefault(entry.getKey(), 0));
+                    User teacher = userRepository.selectById(entry.getKey());
+                    item.setTeacherName(teacher != null ? teacher.getRealName() : "未知");
+                    return item;
+                })
+                .collect(Collectors.toList());
+        vo.setTopTeachers(topTeachers);
+
+        return vo;
     }
 }

@@ -138,6 +138,150 @@
       <span>统计数据加载失败，请刷新重试</span>
     </div>
 
+    <!-- 教师收益卡片 -->
+    <div class="revenue-card" v-loading="revenueLoading">
+      <div class="revenue-card-header">
+        <span class="revenue-card-title">
+          <el-icon><TrendCharts /></el-icon> 收益概况
+        </span>
+        <span class="revenue-subtitle">共 {{ revenueData.orderCount ?? 0 }} 笔付费订单</span>
+      </div>
+      <div class="revenue-card-body">
+        <el-row :gutter="16">
+          <el-col :xs="24" :sm="8">
+            <div class="revenue-stat">
+              <span class="revenue-label">总收入</span>
+              <span class="revenue-value primary">¥{{ formatRevenue(revenueData.totalRevenue) }}</span>
+            </div>
+          </el-col>
+          <el-col :xs="24" :sm="8">
+            <div class="revenue-stat">
+              <span class="revenue-label">平台分成 ({{ platformSharePercent }}%)</span>
+              <span class="revenue-value muted">-¥{{ formatRevenue(revenueData.platformShare) }}</span>
+            </div>
+          </el-col>
+          <el-col :xs="24" :sm="8">
+            <div class="revenue-stat">
+              <span class="revenue-label">教师净收入</span>
+              <span class="revenue-value success">¥{{ formatRevenue(revenueData.netEarnings) }}</span>
+            </div>
+          </el-col>
+        </el-row>
+
+        <!-- 按课程分解 -->
+        <template v-if="revenueData.courseBreakdown && revenueData.courseBreakdown.length > 0">
+          <el-divider />
+          <div class="revenue-subtitle">按课程</div>
+          <div class="revenue-course-list">
+            <div v-for="item in revenueData.courseBreakdown.slice(0, 5)" :key="item.courseId" class="revenue-course-item">
+              <span class="rc-title" :title="item.courseTitle">{{ item.courseTitle }}</span>
+              <span class="rc-orders">{{ item.orderCount }} 单</span>
+              <span class="rc-revenue">¥{{ formatRevenue(item.revenue) }}</span>
+              <span class="rc-earnings">净 ¥{{ formatRevenue(item.netEarnings) }}</span>
+            </div>
+          </div>
+        </template>
+
+        <!-- 最近交易 -->
+        <template v-if="revenueData.recentTransactions && revenueData.recentTransactions.length > 0">
+          <el-divider />
+          <div class="revenue-subtitle">最近交易</div>
+          <div class="revenue-tx-list">
+            <div v-for="tx in revenueData.recentTransactions.slice(0, 5)" :key="tx.orderNo" class="revenue-tx-item">
+              <span class="tx-course">{{ tx.courseTitle }}</span>
+              <span class="tx-amount">¥{{ formatRevenue(tx.amount) }}</span>
+              <span class="tx-time">{{ formatTxTime(tx.paidAt) }}</span>
+            </div>
+          </div>
+        </template>
+
+        <div v-else-if="!revenueLoading" class="revenue-empty">
+          暂无收益数据
+        </div>
+      </div>
+    </div>
+
+    <!-- 教师评级卡片 -->
+    <div class="rating-card" v-loading="ratingLoading">
+      <div class="rating-card-header">
+        <span class="rating-card-title">
+          <el-icon><Medal /></el-icon> 我的教师等级
+        </span>
+        <span class="rating-update" v-if="ratingData.calculatedAt">更新于 {{ formatTime(ratingData.calculatedAt) }}</span>
+      </div>
+      <div class="rating-card-body">
+        <div class="rating-tier-section">
+          <div class="rating-tier-badge" :class="'tier-badge--' + (ratingData.tier || 'NEW').toLowerCase()">
+            <span class="tier-icon">{{ tierIcon }}</span>
+            <span class="tier-name">{{ ratingData.tierLabel || '新教师' }}</span>
+          </div>
+          <div class="rating-score-section">
+            <div class="rating-score">{{ ratingData.ratingScore ?? 0 }}</div>
+            <div class="rating-score-label">综合评分</div>
+            <div class="rating-next" v-if="nextTierInfo">
+              距 {{ nextTierInfo.label }} 还差 {{ nextTierInfo.gap }} 分
+            </div>
+          </div>
+          <div class="rating-share">
+            <span class="share-label">当前平台分成</span>
+            <span class="share-value">{{ platformShareRate }}%</span>
+            <span class="share-hint">教师占 {{ 100 - platformShareRate }}%</span>
+          </div>
+        </div>
+        <el-divider />
+        <div class="rating-metrics">
+          <div class="metric-item">
+            <span class="metric-value">{{ ratingData.avgStudentRating ?? '-' }}</span>
+            <span class="metric-label">学生评价</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-value">{{ ratingData.completionRate ?? 0 }}%</span>
+            <span class="metric-label">完成率</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-value">{{ ratingData.totalStudents ?? 0 }}</span>
+            <span class="metric-label">学员数</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-value">{{ ratingData.totalCourses ?? 0 }}</span>
+            <span class="metric-label">课程数</span>
+          </div>
+        </div>
+        <!-- 提升指南 -->
+        <el-collapse v-if="ratingData.tier" class="rating-guide">
+          <el-collapse-item title="💡 如何提升等级？" name="guide">
+            <div class="guide-list">
+              <div class="guide-item" :class="{ 'guide-done': (ratingData.avgStudentRating || 0) >= 4.5 }">
+                <span class="guide-icon">{{ (ratingData.avgStudentRating || 0) >= 4.5 ? '✅' : '⬜' }}</span>
+                <span class="guide-text">学生评价 ≥ 4.5 分（当前 {{ (ratingData.avgStudentRating || 0).toFixed(1) }}）</span>
+              </div>
+              <div class="guide-item" :class="{ 'guide-done': (ratingData.completionRate || 0) >= 80 }">
+                <span class="guide-icon">{{ (ratingData.completionRate || 0) >= 80 ? '✅' : '⬜' }}</span>
+                <span class="guide-text">课程完成率 ≥ 80%（当前 {{ (ratingData.completionRate || 0).toFixed(1) }}%）</span>
+              </div>
+              <div class="guide-item" :class="{ 'guide-done': (ratingData.totalStudents || 0) >= 200 }">
+                <span class="guide-icon">{{ (ratingData.totalStudents || 0) >= 200 ? '✅' : '⬜' }}</span>
+                <span class="guide-text">累计学员 ≥ 200 人（当前 {{ ratingData.totalStudents || 0 }}）</span>
+              </div>
+              <div class="guide-item" :class="{ 'guide-done': (ratingData.totalCourses || 0) >= 5 }">
+                <span class="guide-icon">{{ (ratingData.totalCourses || 0) >= 5 ? '✅' : '⬜' }}</span>
+                <span class="guide-text">课程数 ≥ 5 门（当前 {{ ratingData.totalCourses || 0 }}）</span>
+              </div>
+            </div>
+          </el-collapse-item>
+          <el-collapse-item v-if="tierHistory.length > 0" title="📜 等级变更记录" name="history">
+            <div class="history-list">
+              <div v-for="h in tierHistory" :key="h.createdAt" class="history-item">
+                <span class="history-arrow">{{ h.fromTierLabel }} → {{ h.toTierLabel }}</span>
+                <span class="history-reason">{{ h.reason || '-' }}</span>
+                <span class="history-time">{{ formatTxTime(h.createdAt) }}</span>
+              </div>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
+    </div>
+
     <!-- 客户体验修复 v1.7.0: 教师快捷操作区,让"创建课程"等核心入口一目了然 -->
     <div class="quick-actions">
       <router-link to="/teacher/courses" class="quick-action-card" aria-label="创建新课程">
@@ -314,10 +458,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star, Plus, OfficeBuilding, ChatDotRound } from '@element-plus/icons-vue'
+import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star, Plus, OfficeBuilding, ChatDotRound, Medal, TrendCharts } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useUserStore } from '@/store/user'
 import { getStats, getStudentActivity, getPendingTasks, getNotifications, getMyCourses } from '@/api/teacher'
+import { getMyRating, getMyTierHistory } from '@/api/teacher-rating'
+import { getTeacherRevenue } from '@/api/teacher'
 
 const userStore = useUserStore()
 
@@ -360,6 +506,69 @@ const coursesLoading = ref(true)
 const coursesError = ref(false)
 const courses = ref([])
 
+// 收益
+const revenueLoading = ref(false)
+const revenueData = ref({})
+// 修复 P0-2: 优先用后端返回的 tierRate(从 platform_share_config 实时读)
+// 后端没返回时用兜底映射(GOLD=25,与后端 V111 默认值一致)
+const platformSharePercent = computed(() => {
+  if (ratingData.value.tierRate != null) {
+    return Number(ratingData.value.tierRate)
+  }
+  const fallback = { PLATINUM: 20, GOLD: 25, SILVER: 28, BRONZE: 32, NEW: 35 }
+  return fallback[ratingData.value.tier] || 30
+})
+
+function formatRevenue(val) {
+  if (!val && val !== 0) return '0.00'
+  return Number(val).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function formatTxTime(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}`
+}
+
+// 评级
+const ratingLoading = ref(false)
+const ratingData = ref({})
+const tierHistory = ref([])
+const tierIcon = computed(() => {
+  const icons = { PLATINUM: '💎', GOLD: '🥇', SILVER: '🥈', BRONZE: '🥉', NEW: '🌱' }
+  return icons[ratingData.value.tier] || '📊'
+})
+const nextTierInfo = computed(() => {
+  const score = Number(ratingData.value.ratingScore) || 0
+  const thresholds = [
+    { tier: 'BRONZE', label: '青铜', min: 0 },
+    { tier: 'SILVER', label: '白银', min: 40 },
+    { tier: 'GOLD', label: '黄金', min: 60 },
+    { tier: 'PLATINUM', label: '铂金', min: 80 }
+  ]
+  const current = ratingData.value.tier
+  const idx = thresholds.findIndex(t => t.tier === current)
+  if (idx >= 0 && idx < thresholds.length - 1) {
+    const next = thresholds[idx + 1]
+    return { label: next.label, gap: (next.min - score).toFixed(1) }
+  }
+  if (idx === thresholds.length - 1) return null // 已达最高
+  // NEW 等级
+  return { label: '青铜', gap: (40 - score).toFixed(1) }
+})
+// 修复 P0-2: 优先用后端返回的 tierRate(从 platform_share_config 实时读)
+// 后端没返回时用兜底映射(只在 V111 默认值生效时使用)
+const platformShareRate = computed(() => {
+  // 优先使用后端返回值
+  if (ratingData.value.tierRate != null) {
+    return Number(ratingData.value.tierRate)
+  }
+  // 兜底映射(后端未升级时使用,值与 V111 默认一致)
+  const fallback = { PLATINUM: 20, GOLD: 25, SILVER: 28, BRONZE: 32, NEW: 35 }
+  return fallback[ratingData.value.tier] || 30
+})
+
 // 定时刷新
 const refreshInterval = ref(60000)
 let refreshTimer = null
@@ -370,7 +579,9 @@ async function refreshAll() {
     loadActivity(),
     loadTasks(),
     loadNotifications(),
-    loadCourses()
+    loadCourses(),
+    loadRating(),
+    loadRevenue()
   ])
 }
 
@@ -525,6 +736,35 @@ async function loadCourses() {
     ElMessage.error('课程数据加载失败')
   } finally {
     coursesLoading.value = false
+  }
+}
+
+async function loadRating() {
+  ratingLoading.value = true
+  try {
+    const [ratingRes, historyRes] = await Promise.all([
+      getMyRating(),
+      getMyTierHistory()
+    ])
+    ratingData.value = ratingRes.data || {}
+    tierHistory.value = historyRes.data || []
+  } catch {
+    ratingData.value = {}
+    tierHistory.value = []
+  } finally {
+    ratingLoading.value = false
+  }
+}
+
+async function loadRevenue() {
+  revenueLoading.value = true
+  try {
+    const res = await getTeacherRevenue()
+    revenueData.value = res.data || {}
+  } catch {
+    revenueData.value = {}
+  } finally {
+    revenueLoading.value = false
   }
 }
 
@@ -1084,6 +1324,266 @@ onBeforeUnmount(() => {
 
   .stat-value {
     font-size: var(--text-2xl);
+  }
+}
+
+/* 教师收益卡片 */
+.revenue-card {
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  margin-bottom: var(--space-6);
+  overflow: hidden;
+}
+.revenue-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.revenue-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+}
+.revenue-subtitle {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+.revenue-card-body {
+  padding: var(--space-5);
+}
+.revenue-stat {
+  text-align: center;
+  padding: var(--space-4);
+  background: var(--el-fill-color-lighter);
+  border-radius: var(--radius-md);
+}
+.revenue-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  margin-bottom: var(--space-1);
+}
+.revenue-value {
+  display: block;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+.revenue-value.primary { color: var(--role-primary); }
+.revenue-value.muted { color: var(--el-text-color-secondary); }
+.revenue-value.success { color: var(--el-color-success); }
+
+.revenue-course-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.revenue-course-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--el-fill-color-lighter);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+.rc-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-orders { color: var(--el-text-color-secondary); min-width: 40px; text-align: right; }
+.rc-revenue { min-width: 70px; text-align: right; font-weight: var(--weight-medium); }
+.rc-earnings { min-width: 70px; text-align: right; color: var(--el-color-success); }
+
+.revenue-tx-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+.revenue-tx-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+}
+.tx-course { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-amount { min-width: 70px; text-align: right; font-weight: var(--weight-medium); }
+.tx-time { min-width: 50px; text-align: right; color: var(--el-text-color-secondary); font-size: 11px; }
+
+.revenue-empty {
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  padding: var(--space-6);
+}
+
+/* 教师评级卡片 */
+.rating-card {
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+  margin-bottom: var(--space-6);
+  overflow: hidden;
+}
+
+.rating-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.rating-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+}
+
+.rating-update {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+
+.rating-card-body {
+  padding: var(--space-5);
+}
+
+.rating-tier-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.rating-tier-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
+  min-width: 100px;
+}
+
+.tier-icon { font-size: 32px; }
+.tier-name { font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+
+.tier-badge--new { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); color: #2e7d32; }
+.tier-badge--bronze { background: linear-gradient(135deg, #fff3e0, #ffe0b2); color: #e65100; }
+.tier-badge--silver { background: linear-gradient(135deg, #f5f5f5, #e0e0e0); color: #616161; }
+.tier-badge--gold { background: linear-gradient(135deg, #fff8e1, #ffecb3); color: #f57f17; }
+.tier-badge--platinum { background: linear-gradient(135deg, #e8eaf6, #c5cae9); color: #283593; }
+
+.rating-score-section {
+  text-align: center;
+}
+
+.rating-score {
+  font-size: 36px;
+  font-weight: var(--weight-bold);
+  color: var(--role-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.rating-score-label {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  margin-top: var(--space-1);
+}
+
+.rating-next {
+  font-size: var(--text-xs);
+  color: var(--el-color-warning);
+  margin-top: var(--space-1);
+}
+
+.rating-share {
+  text-align: center;
+  padding: var(--space-2) var(--space-4);
+  background: var(--el-fill-color-lighter);
+  border-radius: var(--radius-md);
+}
+
+.share-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+}
+
+.share-value {
+  display: block;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--el-color-danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.share-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--el-color-success);
+}
+
+.rating-metrics {
+  display: flex;
+  justify-content: space-around;
+  gap: var(--space-4);
+}
+
+.metric-item {
+  text-align: center;
+}
+
+.metric-value {
+  display: block;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--el-text-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-label {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-secondary);
+  margin-top: 2px;
+}
+
+/* 提升指南 */
+.rating-guide { margin-top: var(--space-4); }
+.rating-guide :deep(.el-collapse-item__header) { font-size: var(--text-sm); font-weight: var(--weight-medium); }
+.guide-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.guide-item { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); padding: var(--space-1) 0; }
+.guide-done { opacity: 0.6; }
+.guide-icon { font-size: 14px; flex-shrink: 0; }
+.guide-text { color: var(--el-text-color-regular); }
+.guide-done .guide-text { color: var(--el-text-color-disabled); text-decoration: line-through; }
+
+/* 等级历史 */
+.history-list { display: flex; flex-direction: column; gap: var(--space-1); }
+.history-item { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); padding: var(--space-1) 0; }
+.history-arrow { min-width: 120px; font-weight: var(--weight-medium); }
+.history-reason { flex: 1; color: var(--el-text-color-secondary); }
+.history-time { color: var(--el-text-color-disabled); font-size: 11px; }
+
+@media (max-width: 768px) {
+  .rating-tier-section {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .rating-metrics {
+    flex-wrap: wrap;
+  }
+  .metric-item {
+    flex: 1 1 45%;
   }
 }
 </style>
