@@ -353,7 +353,7 @@ const handleViewFailedCourses = (item) => {
 
 const contactAcademic = () => {
   ElMessageBox.alert(
-    '如有疑问，请联系教务处：\n电话：010-12345678\n邮箱：academic@example.edu.cn\n办公时间：周一至周五 9:00-17:00',
+    '如有疑问，请联系教务处获取更多信息。',
     '联系教务处',
     { confirmButtonText: '知道了', type: 'info' }
   )

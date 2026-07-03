@@ -185,7 +185,7 @@ const fetchEnrollments = async () => {
 
 const fetchProgress = async () => {
   progressLoading.value = true
-  try { const { data } = await getStats(msId.value); progressData.value = data || {} }
+  try { progressData.value = detail.value?.stats || {} }
   catch (e) { ElMessage.error(e?.response?.data?.message || '获取进度数据失败') }
   finally { progressLoading.value = false }
 }

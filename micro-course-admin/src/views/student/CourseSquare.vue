@@ -522,6 +522,8 @@ const fetchCourses = async () => {
     if (searchForm.keyword) params.keyword = searchForm.keyword
     if (selectedCategoryId.value) params.categoryId = selectedCategoryId.value
     if (searchForm.difficulty) params.difficulty = searchForm.difficulty
+    if (courseSort.value === 'hot') { params.sortBy = 'studentCount'; params.sortOrder = 'desc' }
+    if (courseSort.value === 'new') { params.sortBy = 'createdAt'; params.sortOrder = 'desc' }
 
     const { data } = await getCourses(params)
     // 兜底: 数据库 coverUrl 通常为 null, 用类别感知的默认封面补全

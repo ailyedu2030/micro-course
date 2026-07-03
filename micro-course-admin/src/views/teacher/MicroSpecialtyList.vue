@@ -206,7 +206,7 @@ const fetchInvites = async () => {
         deadlineText: deadline ? (remaining > 0 ? `剩余 ${remaining} 天` : '已过期') : ''
       }
     })
-    pendingInviteCount.value = invites.value.filter(i => i.deadlineText !== '已过期').length
+    pendingInviteCount.value = invites.value.filter(i => i.inviteStatus === 'INVITED' || i.inviteStatus === 'PENDING_ACADEMIC').length
   } catch (e) { ElMessage.error(e?.response?.data?.message || '获取邀请列表失败'); inviteError.value = true }
   finally { inviteLoading.value = false }
 }

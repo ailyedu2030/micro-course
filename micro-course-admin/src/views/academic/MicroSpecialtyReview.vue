@@ -53,10 +53,10 @@
     </el-card>
 
     <!-- 驳回原因 Dialog -->
-    <el-dialog v-model="rejectVisible" title="驳回原因" width="480px">
+    <el-dialog v-model="rejectVisible" title="驳回原因" width="480px" @close="rejectTarget.value = null">
       <el-input v-model="rejectReason" type="textarea" :rows="3" placeholder="请填写驳回原因" />
       <template #footer>
-        <el-button @click="rejectVisible = false">取消</el-button>
+        <el-button @click="rejectVisible = false; rejectTarget.value = null">取消</el-button>
         <el-button type="danger" :loading="actingId !== null" @click="confirmReject">确认驳回</el-button>
       </template>
     </el-dialog>

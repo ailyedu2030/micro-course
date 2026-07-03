@@ -88,12 +88,12 @@ const fetchMicroSpecialties = async () => {
       // 移除 isGoldFeatured=false 过滤, 需要拿全量 RECRUITING 数据来统计金标数量
 
       page: page.value,
-      size: 100
+      size: size.value
     })
     // Filter for RECRUITING status
     items.value = (res.data.items || res.data || [])
       .filter(item => item.status === 'RECRUITING')
-    total.value = res.data.totalElements || 0
+    total.value = items.value.length
   } catch (e) {
     error.value = true
     ElMessage.error('获取微专业列表失败')
