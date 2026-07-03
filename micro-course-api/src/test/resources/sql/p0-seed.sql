@@ -1,5 +1,11 @@
 -- =============================================================================
 -- p0-seed.sql  ·  P0 回归测试种子数据 fixture
+-- =============================================================================
+-- 清理：删除可能来自之前测试运行的微专业报名/邀请/申请数据
+DELETE FROM micro_specialty_enrollments;
+DELETE FROM micro_specialty_teachers WHERE id > 1;
+DELETE FROM micro_specialty_courses WHERE id > 1;
+DELETE FROM micro_specialties WHERE id > 1;
 -- -----------------------------------------------------------------------------
 -- 根因：测试库（micro_course_test）经 Flyway 迁移后仅含 V1 种子的 admin(id=1)，
 --       无任何 student 账号 / course / chapter / category。而 4 个 P0 回归测试
@@ -68,3 +74,45 @@ SELECT setval(pg_get_serial_sequence('courses', 'id'),
               GREATEST((SELECT COALESCE(MAX(id), 4) FROM courses), 4));
 SELECT setval(pg_get_serial_sequence('course_chapters', 'id'),
               GREATEST((SELECT COALESCE(MAX(id), 5) FROM course_chapters), 5));
+
+-- =============================================================================
+-- 7) 微专业种子数据（供 MicroSpecialtyEnrollmentFlowTest / InviteFlowTest）
+-- =============================================================================
+-- 7a) 额外测试用户 ID=22（供 InviteFlowTest 邀请使用）
+INSERT INTO users (id, username, password, real_name, role, status, cas_bound, created_at, updated_at)
+VALUES (22, 'invite_teacher',
+        '$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK',
+        '被邀请教师', 'TEACHER', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+-- 7b) 微专业主表（status=RECRUITING，依赖 departments(id=1) + users(id=6)）
+INSERT INTO micro_specialties (id, code, title, offer_department_id, lead_teacher_id, status,
+                               total_credits, total_hours, required_course_count, student_count,
+                               is_featured, featured_status, is_gold_featured, creator_id,
+                               created_at, updated_at, version)
+VALUES (1, 'P0_TEST_MS', 'P0测试微专业', 1, 6, 'RECRUITING',
+        3, 48, 1, 0,
+        FALSE, 'NONE', FALSE, 6,
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+ON CONFLICT (id) DO NOTHING;
+
+-- 7c) 课程编排（依赖 micro_specialties(id=1) + courses(id=1)）
+INSERT INTO micro_specialty_courses (id, micro_specialty_id, course_id, sort_order, is_required,
+                                     credits, hours, min_score, created_at)
+VALUES (1, 1, 1, 1, TRUE, 3, 48, 60, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+-- 7d) 教师团队（LEAD，依赖 micro_specialties(id=1) + users(id=6)）
+INSERT INTO micro_specialty_teachers (id, micro_specialty_id, teacher_id, role, invite_status,
+                                      invited_by, invited_at, invite_expires_at, joined_at, created_at)
+VALUES (1, 1, 6, 'LEAD', 'ACTIVE',
+        1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '7 days', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+-- 7e) 推进序列
+SELECT setval(pg_get_serial_sequence('micro_specialties', 'id'),
+              GREATEST((SELECT COALESCE(MAX(id), 1) FROM micro_specialties), 1));
+SELECT setval(pg_get_serial_sequence('micro_specialty_courses', 'id'),
+              GREATEST((SELECT COALESCE(MAX(id), 1) FROM micro_specialty_courses), 1));
+SELECT setval(pg_get_serial_sequence('micro_specialty_teachers', 'id'),
+              GREATEST((SELECT COALESCE(MAX(id), 1) FROM micro_specialty_teachers), 1));
