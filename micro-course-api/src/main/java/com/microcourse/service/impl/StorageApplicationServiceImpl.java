@@ -1,6 +1,9 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.microcourse.dto.PageResult;
 import com.microcourse.dto.storage.*;
 import com.microcourse.entity.Department;
 import com.microcourse.entity.MicroSpecialtyProposal;
@@ -24,6 +27,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -37,6 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -51,6 +61,12 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     private static final Logger log = LoggerFactory.getLogger(StorageApplicationServiceImpl.class);
 
     private static final String MODULE_COURSES = "courses";
+
+    private static final int TARGET_IMAGE_SIZE = 150;
+
+    private static final long AUTO_SAVE_MIN_INTERVAL_MS = 1000;
+
+    private final ConcurrentHashMap<Long, Long> lastAutoSaveTime = new ConcurrentHashMap<>();
     private static final String MODULE_LEAD_COURSES = "leadCourses";
     private static final String MODULE_TEAM_MEMBERS = "teamMembers";
     private static final String MODULE_SIGNATURES = "signatures";
@@ -132,13 +148,15 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // 2. getMyDrafts
     // ================================================================
     @Override
-    public List<StorageApplicationSummaryVO> getMyDrafts(Long userId) {
-        List<MicroSpecialtyProposal> proposals = proposalRepository.selectList(
+    public PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size) {
+        IPage<MicroSpecialtyProposal> ipage = proposalRepository.selectPage(
+                new Page<>(page + 1, size),
                 new LambdaQueryWrapper<MicroSpecialtyProposal>()
                         .eq(MicroSpecialtyProposal::getProposerId, userId)
                         .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
 
-        // A5 修复：批量加载院系名称，避免 N+1 查询
+        List<MicroSpecialtyProposal> proposals = ipage.getRecords();
+
         Set<Long> deptIds = proposals.stream()
                 .map(MicroSpecialtyProposal::getOfferDepartmentId)
                 .filter(Objects::nonNull)
@@ -163,7 +181,14 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             vo.setUpdatedAt(p.getUpdatedAt());
             result.add(vo);
         }
-        return result;
+
+        PageResult<StorageApplicationSummaryVO> pr = new PageResult<>();
+        pr.setItems(result);
+        pr.setPage(page);
+        pr.setSize(size);
+        pr.setTotalElements(ipage.getTotal());
+        pr.setTotalPages(ipage.getPages());
+        return pr;
     }
 
     // ================================================================
@@ -222,6 +247,15 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void autoSave(Long proposalId, Long userId, StorageApplicationSaveRequest request) {
+        // 限流检查：1 秒内最多一次 autoSave
+        long now = System.currentTimeMillis();
+        Long lastTs = lastAutoSaveTime.get(proposalId);
+        if (lastTs != null && (now - lastTs) < AUTO_SAVE_MIN_INTERVAL_MS) {
+            log.debug("autoSave rate limited: proposalId={}, interval={}ms", proposalId, now - lastTs);
+            return;
+        }
+        lastAutoSaveTime.put(proposalId, now);
+
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) {
             log.warn("autoSave skipped: proposal {} not found", proposalId);
@@ -342,7 +376,24 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             String ext = lowerName.endsWith(".png") ? ".png" : ".jpg";
             String newFileName = type + "_" + UUID.randomUUID().toString().substring(0, 8) + ext;
             Path destPath = uploadPath.resolve(newFileName);
-            file.transferTo(destPath.toFile());
+
+            // 缩放图片至 150×150
+            try (InputStream is = file.getInputStream()) {
+                BufferedImage original = ImageIO.read(is);
+                if (original != null) {
+                    BufferedImage resized = new BufferedImage(TARGET_IMAGE_SIZE, TARGET_IMAGE_SIZE, BufferedImage.TYPE_INT_RGB);
+                    Graphics2D g = resized.createGraphics();
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g.drawImage(original, 0, 0, TARGET_IMAGE_SIZE, TARGET_IMAGE_SIZE, null);
+                    g.dispose();
+                    ImageIO.write(resized, ext.equals(".png") ? "png" : "jpg", destPath.toFile());
+                } else {
+                    file.transferTo(destPath.toFile());
+                }
+            } catch (Exception e) {
+                log.warn("Image resize failed, saving original: proposalId={}", proposalId, e);
+                file.transferTo(destPath.toFile());
+            }
 
             String url = "/" + uploadDir + "/" + newFileName;
 

@@ -2,6 +2,7 @@ package com.microcourse.controller;
 
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.storage.*;
 import com.microcourse.entity.MicroSpecialtyProposal;
@@ -10,6 +11,8 @@ import com.microcourse.service.StorageApplicationService;
 import com.microcourse.service.StorageApplicationExportService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -60,9 +63,11 @@ public class StorageApplicationController {
      */
     @GetMapping("/my-drafts")
     @PreAuthorize("hasRole('TEACHER')")
-    public R<List<StorageApplicationSummaryVO>> getMyDrafts() {
+    public R<PageResult<StorageApplicationSummaryVO>> getMyDrafts(
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         Long userId = SecurityUtil.getCurrentUserId();
-        return R.ok(storageApplicationService.getMyDrafts(userId));
+        return R.ok(storageApplicationService.getMyDrafts(userId, page, size));
     }
 
     /**

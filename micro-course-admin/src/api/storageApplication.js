@@ -7,7 +7,7 @@ export function initStorageDraft() {
 
 // 2. 我的申请列表
 export function getMyStorageDrafts() {
-  return request({ method: 'GET', url: '/storage-applications/my-drafts' })
+  return request({ method: 'GET', url: '/storage-applications/my-drafts', params: { page: params?.page || 0, size: params?.size || 20 } })
 }
 
 // 3. 获取详情
