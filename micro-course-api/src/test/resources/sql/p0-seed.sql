@@ -86,15 +86,15 @@ VALUES (22, 'invite_teacher',
 ON CONFLICT (id) DO NOTHING;
 
 -- 7b) 微专业主表（status=RECRUITING，依赖 departments(id=1) + users(id=6)）
-INSERT INTO micro_specialties (id, code, title, offer_department_id, lead_teacher_id, status,
+INSERT INTO micro_specialties (id, code, title, offer_department_id, lead_teacher_id, status, max_students,
                                total_credits, total_hours, required_course_count, student_count,
                                is_featured, featured_status, is_gold_featured, creator_id,
                                created_at, updated_at, version)
-VALUES (1, 'P0_TEST_MS', 'P0测试微专业', 1, 6, 'RECRUITING',
+VALUES (1, 'P0_TEST_MS', 'P0测试微专业', 1, 6, 'RECRUITING', 100,
         3, 48, 1, 0,
         FALSE, 'NONE', FALSE, 6,
         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET max_students = EXCLUDED.max_students, student_count = 0;
 
 -- 7c) 课程编排（依赖 micro_specialties(id=1) + courses(id=1)）
 INSERT INTO micro_specialty_courses (id, micro_specialty_id, course_id, sort_order, is_required,
