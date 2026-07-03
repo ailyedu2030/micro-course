@@ -6,6 +6,7 @@ import com.microcourse.dto.R;
 import com.microcourse.dto.StudentActivityVO;
 import com.microcourse.dto.TeacherCourseVO;
 import com.microcourse.dto.TeacherNotificationVO;
+import com.microcourse.dto.TeacherRevenueVO;
 import com.microcourse.dto.TeacherStatsVO;
 import com.microcourse.service.TeacherService;
 import com.microcourse.util.SecurityUtil;
@@ -50,6 +51,12 @@ public class TeacherController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<TeacherNotificationVO>> getNotifications(@RequestParam(defaultValue = "5") @Range(min = 1, max = 100) int size) {
         return R.ok(teacherService.getNotifications(SecurityUtil.getCurrentUserId(), size));
+    }
+
+    @GetMapping("/revenue")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    public R<TeacherRevenueVO> getRevenue() {
+        return R.ok(teacherService.getRevenue(SecurityUtil.getCurrentUserId()));
     }
 
     @GetMapping("/courses")

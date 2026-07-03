@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.AdminRevenueVO;
 import com.microcourse.dto.CourseTrendVO;
 import com.microcourse.dto.DailyActivityVO;
 import com.microcourse.dto.DashboardOverviewVO;
@@ -105,6 +106,15 @@ public class AdminStatsController {
         }
         List<DailyActivityVO> list = adminStatsService.getDailyActivity(days);
         return R.ok(list);
+    }
+
+    /**
+     * GET /api/admin/stats/revenue
+     * 返回平台营收数据
+     */
+    @GetMapping("/revenue")
+    public R<AdminRevenueVO> getRevenue() {
+        return R.ok(adminStatsService.getRevenueStats());
     }
 
     /**

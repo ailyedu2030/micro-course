@@ -40,6 +40,12 @@ public class CourseVO {
     private String courseType;
     private java.math.BigDecimal price;
     private Boolean isFree;
+    private java.math.BigDecimal listPrice;
+    private String freeAccessScope;
+    private String freeAccessScopeLabel;
+    private String discountScope;
+    private Integer discountPercent;
+    private String pricingStatus;
 
     public CourseVO() {}
 
@@ -107,4 +113,16 @@ public class CourseVO {
     public void setPrice(java.math.BigDecimal price) { this.price = price; }
     public Boolean getIsFree() { return isFree; }
     public void setIsFree(Boolean isFree) { this.isFree = isFree; }
+    public java.math.BigDecimal getListPrice() { return listPrice; }
+    public void setListPrice(java.math.BigDecimal listPrice) { this.listPrice = listPrice; }
+    public String getFreeAccessScope() { return freeAccessScope; }
+    public void setFreeAccessScope(String freeAccessScope) { this.freeAccessScope = freeAccessScope; }
+    public String getFreeAccessScopeLabel() { return freeAccessScopeLabel; }
+    public void setFreeAccessScopeLabel(String freeAccessScopeLabel) { this.freeAccessScopeLabel = freeAccessScopeLabel; }
+    public String getDiscountScope() { return discountScope; }
+    public void setDiscountScope(String discountScope) { this.discountScope = discountScope; }
+    public Integer getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(Integer discountPercent) { this.discountPercent = discountPercent; }
+    public String getPricingStatus() { return pricingStatus; }
+    public void setPricingStatus(String pricingStatus) { this.pricingStatus = pricingStatus; }
 }

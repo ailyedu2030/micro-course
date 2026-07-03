@@ -80,4 +80,7 @@ public interface CourseService {
 
     /** Phase 4: 查询课程对某教师的费用 */
     Map<String, Object> getPricingForAdopter(Long courseId);
+
+    /** Round 1: 查询课程对当前登录用户的价格（学生端可见） */
+    com.microcourse.dto.CoursePricingInfoVO getMyPricing(Long courseId);
 }

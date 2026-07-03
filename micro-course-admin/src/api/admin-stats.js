@@ -66,3 +66,11 @@ export function getDailyActivity(days = 30) {
 export function getHealth() {
   return request({ method: 'GET', url: '/admin/stats/health' })
 }
+
+/**
+ * 获取平台营收数据
+ * GET /admin/stats/revenue
+ */
+export function getRevenueStats() {
+  return request({ method: 'GET', url: '/admin/stats/revenue' })
+}

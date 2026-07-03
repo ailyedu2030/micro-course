@@ -48,6 +48,9 @@ const routes = [
   { path: '/admin/operation-logs', redirect: '/admin/logs' },
   { path: '/admin/roles', redirect: '/admin/users' },
   { path: '/admin/settings', name: 'AdminSettings', component: () => import('../views/admin/AdminSettings.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
+  { path: '/admin/platform-share-config', name: 'PlatformShareConfig', component: () => import('../views/settings/PlatformShareConfig.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/admin/teacher-ratings', name: 'TeacherRatingManage', component: () => import('../views/admin/TeacherRatingManage.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/admin/revenue', name: 'AdminRevenueDashboard', component: () => import('../views/admin/RevenueDashboard.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/admin/banners', name: 'BannerList', component: () => import('../views/admin/BannerList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/admin/teaching-classes', name: 'TeachingClassList', component: () => import('../views/admin/TeachingClassList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
 

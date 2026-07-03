@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.ChapterVO;
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
+import com.microcourse.dto.CoursePricingInfoVO;
 import com.microcourse.dto.CoursePricingRequest;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
@@ -1054,6 +1055,12 @@ public class CourseServiceImpl implements CourseService {
         vo.setCourseType(course.getCourseType());
         vo.setPrice(course.getPrice());
         vo.setIsFree(course.getIsFree());
+        vo.setListPrice(course.getListPrice());
+        vo.setFreeAccessScope(course.getFreeAccessScope());
+        vo.setFreeAccessScopeLabel(getFreeAccessScopeLabel(course.getFreeAccessScope()));
+        vo.setDiscountScope(course.getDiscountScope());
+        vo.setDiscountPercent(course.getDiscountPercent());
+        vo.setPricingStatus(course.getPricingStatus());
 
         if (course.getStatus() != null) {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
@@ -1078,6 +1085,16 @@ public class CourseServiceImpl implements CourseService {
         }
 
         return vo;
+    }
+
+    private String getFreeAccessScopeLabel(String scope) {
+        if (scope == null) return null;
+        switch (scope) {
+            case "same_department": return "同院系免费";
+            case "same_college":    return "同学院免费";
+            case "same_school":     return "同校免费";
+            default:                return null;
+        }
     }
 
     private CourseVO convertToVOFromMaps(Course course, java.util.Map<Long, CourseCategory> categoryMap,
@@ -1111,6 +1128,12 @@ public class CourseServiceImpl implements CourseService {
         vo.setCourseType(course.getCourseType());
         vo.setPrice(course.getPrice());
         vo.setIsFree(course.getIsFree());
+        vo.setListPrice(course.getListPrice());
+        vo.setFreeAccessScope(course.getFreeAccessScope());
+        vo.setFreeAccessScopeLabel(getFreeAccessScopeLabel(course.getFreeAccessScope()));
+        vo.setDiscountScope(course.getDiscountScope());
+        vo.setDiscountPercent(course.getDiscountPercent());
+        vo.setPricingStatus(course.getPricingStatus());
 
         if (course.getStatus() != null) {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
@@ -1262,5 +1285,96 @@ public class CourseServiceImpl implements CourseService {
         }
         result.put("feeNote", "跨院系选课，按原价计费");
         return result;
+    }
+
+    @Override
+    public CoursePricingInfoVO getMyPricing(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+
+        CoursePricingInfoVO vo = new CoursePricingInfoVO();
+        BigDecimal listPrice = course.getListPrice() != null ? course.getListPrice()
+                : (course.getPrice() != null ? course.getPrice() : BigDecimal.ZERO);
+        vo.setListPrice(listPrice);
+        vo.setFreeAccessScope(course.getFreeAccessScope());
+        vo.setFreeAccessScopeLabel(getFreeAccessScopeLabel(course.getFreeAccessScope()));
+        vo.setDiscountScope(course.getDiscountScope());
+        vo.setDiscountPercent(course.getDiscountPercent());
+
+        // 免费课程
+        if (Boolean.TRUE.equals(course.getIsFree()) || (listPrice.compareTo(BigDecimal.ZERO) == 0)) {
+            vo.setFinalPrice(BigDecimal.ZERO);
+            vo.setFree(true);
+            vo.setFeeNote("免费课程");
+            return vo;
+        }
+
+        // 尝试计算当前用户的定价
+        Long userId;
+        try {
+            userId = SecurityUtil.getCurrentUserId();
+        } catch (Exception e) {
+            // 未登录：显示原价
+            vo.setFinalPrice(listPrice);
+            vo.setFree(false);
+            vo.setFeeNote("登录后查看您的专属价格");
+            return vo;
+        }
+
+        // 查用户院系
+        User user = userRepository.selectById(userId);
+        if (user == null || user.getDepartmentId() == null) {
+            vo.setFinalPrice(listPrice);
+            vo.setFree(false);
+            vo.setFeeNote("");
+            return vo;
+        }
+
+        // 同院系免费检查
+        if ("same_department".equals(course.getFreeAccessScope()) && course.getFreeDeptIds() != null) {
+            String[] ids = course.getFreeDeptIds()
+                    .replace("[", "").replace("]", "").replace("\"", "").split(",");
+            for (String id : ids) {
+                if (String.valueOf(user.getDepartmentId()).equals(id.trim())) {
+                    vo.setFinalPrice(BigDecimal.ZERO);
+                    vo.setFree(true);
+                    vo.setFeeNote("免费（同院系）");
+                    return vo;
+                }
+            }
+        }
+
+        // 同学院免费检查
+        if ("same_college".equals(course.getFreeAccessScope())) {
+            vo.setFinalPrice(BigDecimal.ZERO);
+            vo.setFree(true);
+            vo.setFeeNote("免费（同学院）");
+            return vo;
+        }
+
+        // 同校折扣检查
+        if ("same_school".equals(course.getDiscountScope())) {
+            long percent = course.getDiscountPercent() != null ? course.getDiscountPercent() : 70;
+            BigDecimal finalPrice = listPrice.multiply(BigDecimal.valueOf(100 - percent))
+                    .divide(BigDecimal.valueOf(100));
+            vo.setFinalPrice(finalPrice);
+            vo.setFree(false);
+            vo.setFeeNote(percent + "% 折扣（同校）");
+            return vo;
+        }
+
+        // 同校免费（非折扣）
+        if ("same_school".equals(course.getFreeAccessScope())) {
+            vo.setFinalPrice(BigDecimal.ZERO);
+            vo.setFree(true);
+            vo.setFeeNote("免费（同校）");
+            return vo;
+        }
+
+        // 默认：原价
+        vo.setFinalPrice(listPrice);
+        vo.setFree(false);
+        vo.setFeeNote("");
+        return vo;
     }
 }

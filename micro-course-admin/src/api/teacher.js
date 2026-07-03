@@ -48,3 +48,11 @@ export function getNotifications(size = 5) {
 export function getMyCourses() {
   return request({ method: 'GET', url: '/teachers/courses', params: { page: 0, size: 999 } })
 }
+
+/**
+ * 获取教师收益看板
+ * GET /api/teachers/revenue
+ */
+export function getTeacherRevenue() {
+  return request({ method: 'GET', url: '/teachers/revenue' })
+}

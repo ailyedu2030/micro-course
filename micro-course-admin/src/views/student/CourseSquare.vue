@@ -190,6 +190,7 @@ class="course-card" :style="{ '--card-index': cIndex }" role="button" tabindex="
                 <div class="cover-placeholder" aria-hidden="true"><el-icon :size="48"><VideoPlay /></el-icon></div>
                 <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="cover-img" @error="handleImgError" />
                 <el-tag v-if="course.categoryName" class="category-chip" type="info" effect="plain" size="small">{{ course.categoryName }}</el-tag>
+                <el-tag v-if="course.freeAccessScopeLabel" class="free-chip" type="success" effect="dark" size="small">{{ course.freeAccessScopeLabel }}</el-tag>
                 <span v-if="course.difficulty" class="difficulty-label" :class="'difficulty-label--' + getDifficultyType(course.difficulty)">{{ getDifficultyLabel(course.difficulty) }}</span>
                 <span
 v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
@@ -206,7 +207,13 @@ v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
                     <span class="rating-count" v-if="course.ratingCount">({{ course.ratingCount }})</span>
                     <span class="rating-none" v-else>暂无评分</span>
                   </div>
-                  <div class="price" :class="{ 'price--free': !course.price }">{{ course.price ? `¥${course.price}` : '免费' }}</div>
+                  <div class="price" :class="{ 'price--free': !course.price || course.isFree }">
+                    <template v-if="course.freeAccessScopeLabel">
+                      <el-tag size="small" type="success" effect="light" class="free-tag">{{ course.freeAccessScopeLabel }}</el-tag>
+                    </template>
+                    <template v-else-if="course.isFree || !course.price">免费</template>
+                    <template v-else>¥{{ course.price }}</template>
+                  </div>
                 </div>
               </div>
             </article>
@@ -868,6 +875,13 @@ onMounted(async () => {
   font-weight: var(--weight-medium); font-size: 11px; padding: 2px 8px;
   background: rgba(255,255,255,.88); backdrop-filter: blur(8px);
   color: var(--el-text-color-regular); z-index: 2;
+}
+
+.free-chip {
+  position: absolute; bottom: var(--space-3); right: var(--space-3);
+  border: none !important; border-radius: var(--radius-sm) !important;
+  font-weight: var(--weight-medium); font-size: 11px; padding: 2px 8px;
+  z-index: 2;
 }
 
 .course-info { padding: var(--space-4); }

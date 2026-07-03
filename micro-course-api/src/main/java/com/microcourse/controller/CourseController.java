@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
+import com.microcourse.dto.CoursePricingInfoVO;
 import com.microcourse.dto.CoursePricingRequest;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
@@ -136,6 +137,13 @@ public class CourseController {
     @PreAuthorize("hasRole('TEACHER')")
     public R<Map<String, Object>> getPricingForAdopter(@PathVariable Long id) {
         return R.ok(courseService.getPricingForAdopter(id));
+    }
+
+    /** Round 1: 查询课程对当前登录用户的价格（学生端可见，公开端点） */
+    @GetMapping("/{id}/my-price")
+    @PreAuthorize("isAuthenticated()")
+    public R<CoursePricingInfoVO> getMyPricing(@PathVariable Long id) {
+        return R.ok(courseService.getMyPricing(id));
     }
 
     /**

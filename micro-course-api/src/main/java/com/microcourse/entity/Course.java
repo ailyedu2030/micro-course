@@ -145,4 +145,8 @@ public class Course {
     public void setDiscountPercent(Integer discountPercent) { this.discountPercent = discountPercent; }
     public Boolean getIsFree() { return isFree; }
     public void setIsFree(Boolean isFree) { this.isFree = isFree; }
+    public BigDecimal getListPrice() { return listPrice; }
+    public void setListPrice(BigDecimal listPrice) { this.listPrice = listPrice; }
+    public String getPricingStatus() { return pricingStatus; }
+    public void setPricingStatus(String pricingStatus) { this.pricingStatus = pricingStatus; }
 }

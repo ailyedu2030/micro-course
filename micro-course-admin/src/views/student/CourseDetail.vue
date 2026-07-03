@@ -68,8 +68,33 @@
           <div class="hero-stats">
             <span v-if="course.avgRating" class="hero-stat"><el-icon><Star /></el-icon> <strong>{{ course.avgRating.toFixed(1) }}</strong> 分</span>
             <span v-if="course.studentCount" class="hero-stat"><el-icon><User /></el-icon> <strong>{{ course.studentCount }}</strong> 人学习</span>
-            <span v-if="course.price && !course.isFree" class="hero-price">¥{{ course.price }}</span>
-            <span v-else class="hero-price hero-price--free">免费</span>
+          </div>
+
+          <!-- 定价面板 -->
+          <div v-if="pricingInfo" class="hero-pricing">
+            <div v-if="pricingInfo.free" class="pricing-free">
+              <el-tag type="success" size="large" effect="dark">免费</el-tag>
+              <span v-if="pricingInfo.feeNote" class="pricing-note">{{ pricingInfo.feeNote }}</span>
+            </div>
+            <div v-else class="pricing-paid">
+              <span v-if="pricingInfo.listPrice && pricingInfo.listPrice > 0 && pricingInfo.finalPrice < pricingInfo.listPrice" class="pricing-original">¥{{ pricingInfo.listPrice }}</span>
+              <span class="pricing-final">¥{{ pricingInfo.finalPrice }}</span>
+              <span v-if="pricingInfo.feeNote" class="pricing-note">{{ pricingInfo.feeNote }}</span>
+              <span v-else class="pricing-note">原价</span>
+            </div>
+          </div>
+          <div v-else-if="!pricingLoading" class="hero-price-info">
+            <span v-if="course.freeAccessScopeLabel" class="hero-price hero-price--free">
+              <el-tag type="success" size="small" effect="light">{{ course.freeAccessScopeLabel }}</el-tag>
+            </span>
+            <span v-else-if="course.isFree || !course.price" class="hero-price hero-price--free">免费</span>
+            <span v-else class="hero-price">
+              <template v-if="course.listPrice && course.listPrice > 0">¥{{ course.listPrice }}</template>
+              <template v-else>¥{{ course.price }}</template>
+            </span>
+          </div>
+          <div v-else class="hero-price-info">
+            <el-icon class="loading-icon"><Loading /></el-icon>
           </div>
           <div class="hero-actions">
             <template v-if="!isLoggedIn">
@@ -80,9 +105,9 @@
             </template>
             <template v-else>
               <el-button type="primary" size="large" :loading="enrollLoading" @click="handleEnroll">
-                {{ course.price && !course.isFree ? '立即购买' : '立即参加' }}
+                {{ isPaidForMe ? '立即购买' : '立即参加' }}
               </el-button>
-              <el-button v-if="course.price && !course.isFree" size="large" @click="handleAddCart">
+              <el-button v-if="isPaidForMe" size="large" @click="handleAddCart">
                 <el-icon><ShoppingCart /></el-icon>加入购物车
               </el-button>
             </template>
@@ -181,7 +206,20 @@
             <h3 class="side-card-title">课程信息</h3>
             <div class="info-list">
               <div class="info-item"><span class="info-label">课程类型</span><span class="info-value">{{ isInteractive ? '互动课程' : '视频课程' }}</span></div>
-              <div class="info-item" v-if="course.price && !course.isFree"><span class="info-label">价格</span><span class="info-value price">¥{{ course.price }}</span></div>
+              <div class="info-item" v-if="pricingInfo">
+                <span class="info-label">价格</span>
+                <span class="info-value price">
+                  <template v-if="pricingInfo.free">
+                    <el-tag type="success" size="small" effect="light">免费</el-tag>
+                    <span v-if="pricingInfo.feeNote" class="pricing-side-note">{{ pricingInfo.feeNote }}</span>
+                  </template>
+                  <template v-else>
+                    <span v-if="pricingInfo.listPrice && pricingInfo.listPrice > 0 && pricingInfo.finalPrice < pricingInfo.listPrice" class="price-original">¥{{ pricingInfo.listPrice }}</span>
+                    ¥{{ pricingInfo.finalPrice }}
+                  </template>
+                </span>
+              </div>
+              <div class="info-item" v-else-if="course.price && !course.isFree"><span class="info-label">价格</span><span class="info-value price">¥{{ course.price }}</span></div>
               <div class="info-item" v-if="course.studentCount"><span class="info-label">学习人数</span><span class="info-value">{{ course.studentCount }}</span></div>
               <div class="info-item" v-if="course.creditHours"><span class="info-label">学分</span><span class="info-value">{{ course.creditHours }}</span></div>
             </div>
@@ -240,7 +278,7 @@ import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading, ShoppingCart } from '@element-plus/icons-vue'
-import { getCourseById } from '@/api/course'
+import { getCourseById, getMyCoursePrice } from '@/api/course'
 import { getPublicProfile } from '@/api/user'
 import { getVideos } from '@/api/video'
 import { enroll as enrollApi, getMyEnrollments, getCourseRanking } from '@/api/enrollment'
@@ -260,6 +298,12 @@ const cartStore = useCartStore()
 
 const courseId = computed(() => route.params.id)
 const course = ref({})
+const pricingInfo = ref(null)
+const pricingLoading = ref(false)
+const isPaidForMe = computed(() => {
+  if (pricingInfo.value) return !pricingInfo.value.free && (pricingInfo.value.finalPrice || 0) > 0
+  return !!(course.value.price && !course.value.isFree)
+})
 const courseChapters = computed(() => course.value.chapters || [])
 const isInteractive = computed(() => course.value.courseType === 'INTERACTIVE')
 const slides = ref([])
@@ -370,6 +414,20 @@ const fetchCourse = async () => {
   finally { courseLoading.value = false }
 }
 
+const fetchPricingInfo = async () => {
+  if (!courseId.value || !isLoggedIn.value) return
+  pricingLoading.value = true
+  try {
+    const { data } = await getMyCoursePrice(courseId.value)
+    pricingInfo.value = data || null
+  } catch (e) {
+    // 静默失败，使用默认价格展示
+    pricingInfo.value = null
+  } finally {
+    pricingLoading.value = false
+  }
+}
+
 const fetchTeacher = async () => {
   if (!course.value.teacherId) return; teacherLoading.value = true
   try { const { data } = await getPublicProfile(course.value.teacherId); teacher.value = data || {} }
@@ -389,15 +447,24 @@ const handleEnroll = async () => {
   const uid = userStore.userInfo?.id; if (!uid) { ElMessage.error('用户信息未加载'); return }
   enrollLoading.value = true
   try {
-    if (course.value.price && !course.value.isFree) {
+    // 使用 pricingInfo 判断是否免费（考虑了免费范围/折扣）
+    const isFreeForMe = pricingInfo.value?.free || !course.value.price || course.value.isFree
+    const finalPrice = pricingInfo.value?.finalPrice ?? course.value.price ?? 0
+
+    if (!isFreeForMe && finalPrice > 0) {
       const { data: order } = await createOrder({ courseId: courseId.value })
       if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); router.push('/student/my-courses'); return }
-      await ElMessageBox.confirm(`确认支付 ¥${course.value.price}？`, '确认支付', { confirmButtonText: '支付', cancelButtonText: '取消', type: 'info' })
+      await ElMessageBox.confirm(
+        `确认支付 ¥${Number(finalPrice).toFixed(2)}？${pricingInfo.value?.feeNote ? '\n' + pricingInfo.value.feeNote : ''}`,
+        '确认支付',
+        { confirmButtonText: '支付', cancelButtonText: '取消', type: 'info' }
+      )
       await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功'); router.push('/student/my-courses')
       return
     }
     // 免费课程：增加确认环节
-    await ElMessageBox.confirm('确认加入学习？', '加入课程', { confirmButtonText: '确认加入', cancelButtonText: '取消', type: 'info' })
+    const freeNote = pricingInfo.value?.feeNote ? `（${pricingInfo.value.feeNote}）` : ''
+    await ElMessageBox.confirm(`确认加入学习？${freeNote}`, '加入课程', { confirmButtonText: '确认加入', cancelButtonText: '取消', type: 'info' })
     await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push('/student/my-courses')
   } catch (e) {
     if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
@@ -407,12 +474,14 @@ const handleEnroll = async () => {
 function handleAddCart() {
   const c = course.value
   if (!c) return
+  // 使用 pricingInfo 中的实际价格
+  const displayPrice = pricingInfo.value?.finalPrice ?? c.price
   const added = cartStore.addItem({
     id: Number(courseId.value),
     title: c.title,
     coverUrl: c.coverUrl,
-    price: c.price,
-    isFree: c.isFree,
+    price: displayPrice,
+    isFree: pricingInfo.value?.free ?? c.isFree,
     teacherName: c.teacherName,
   })
   if (added) ElMessage.success('已加入购物车')
@@ -455,7 +524,7 @@ const handleSubmitReview = async () => {
 
 const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchSlides 获取课件失败', e); ElMessage.warning('课件加载失败'); slides.value = [] } finally { slidesLoading.value = false } }
 
-onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; if (isInteractive.value) fetchSlides(); await Promise.all([fetchTeacher(), checkEnrollment(), fetchReviews(), fetchRanking()]) })
+onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; if (isInteractive.value) fetchSlides(); await Promise.all([fetchTeacher(), checkEnrollment(), fetchReviews(), fetchRanking(), fetchPricingInfo()]) })
 </script>
 
 <style scoped>
@@ -599,6 +668,19 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   font-variant-numeric: tabular-nums;
 }
 .hero-price--free { color: var(--el-color-success); font-weight: var(--weight-medium); font-size: 22px; }
+
+/* 定价面板 */
+.hero-pricing { margin: var(--space-2) 0; }
+.pricing-free { display: flex; align-items: center; gap: var(--space-2); }
+.pricing-paid { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.pricing-original { font-size: var(--text-base); color: var(--el-text-color-disabled); text-decoration: line-through; }
+.pricing-final { font-size: 28px; font-weight: var(--weight-bold); color: var(--role-primary); font-variant-numeric: tabular-nums; }
+.pricing-note { font-size: var(--text-xs); color: var(--el-color-success); }
+.hero-price-info { margin: var(--space-2) 0; display: flex; align-items: center; gap: var(--space-2); }
+.pricing-side-note { font-size: var(--text-xs); color: var(--el-color-success); margin-left: var(--space-1); }
+.price-original { font-size: var(--text-xs); color: var(--el-text-color-disabled); text-decoration: line-through; margin-right: var(--space-1); }
+.hero-price-info .loading-icon { animation: rotating 1s linear infinite; }
+
 .hero-actions { margin-top: auto; }
 .hero-actions .el-button--primary {
   background: linear-gradient(135deg, var(--role-primary), var(--role-primary-dark));

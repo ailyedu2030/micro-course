@@ -80,6 +80,9 @@ const ADMIN = [
     icon: 'Setting',
     children: [
       { label: '系统设置', path: '/admin/settings', icon: 'Tools' },
+      { label: '平台分账', path: '/admin/platform-share-config', icon: 'TrendCharts' },
+      { label: '教师评级', path: '/admin/teacher-ratings', icon: 'Medal' },
+      { label: '营收看板', path: '/admin/revenue', icon: 'TrendCharts' },
       { label: '操作日志', path: '/admin/logs', icon: 'Clock' },
       { label: '通知管理', path: '/notifications', icon: 'Bell' },
       { label: '学习数据分析', path: '/academic/stats', icon: 'TrendCharts' },

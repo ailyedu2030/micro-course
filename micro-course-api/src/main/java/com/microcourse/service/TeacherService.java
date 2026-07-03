@@ -12,6 +12,9 @@ public interface TeacherService {
 
     TeacherStatsVO getStats(Long teacherId);
 
+    /** Phase 2.3: 获取教师收益看板 */
+    com.microcourse.dto.TeacherRevenueVO getRevenue(Long teacherId);
+
     List<StudentActivityVO> getStudentActivity(Long teacherId, int days);
 
     List<PendingTaskVO> getPendingTasks(Long teacherId, int size);

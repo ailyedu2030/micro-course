@@ -8,6 +8,14 @@ export function getCourseById(id) {
   return request({ method: 'GET', url: `/courses/${id}` })
 }
 
+/**
+ * 获取课程对当前用户的定价
+ * GET /api/courses/{id}/my-price
+ */
+export function getMyCoursePrice(id) {
+  return request({ method: 'GET', url: `/courses/${id}/my-price` })
+}
+
 export function createCourse(data) {
   return request({ method: 'POST', url: '/courses', data })
 }
