@@ -3,8 +3,12 @@
     <!-- 顶部操作栏 -->
     <div class="toolbar">
       <el-button @click="$router.back()">返回</el-button>
-      <el-button type="primary" @click="handleExport('word')">下载Word</el-button>
-      <el-button type="primary" @click="handleExport('pdf')">下载PDF</el-button>
+      <el-button type="primary" :loading="exportingType === 'word'" :disabled="!!exportingType" @click="handleExport('word')">
+        {{ exportingType === 'word' ? '正在导出 Word…' : '下载Word' }}
+      </el-button>
+      <el-button type="primary" :loading="exportingType === 'pdf'" :disabled="!!exportingType" @click="handleExport('pdf')">
+        {{ exportingType === 'pdf' ? '正在导出 PDF…' : '下载PDF' }}
+      </el-button>
     </div>
 
     <!-- 错误状态 -->
@@ -295,7 +299,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { DocumentCopy, Loading, CircleCheck, CircleClose, Refresh } from '@element-plus/icons-vue'
 import { getStoragePreview, exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 
@@ -319,6 +323,7 @@ function sanitizeHtml(html) {
 
 const route = useRoute()
 const loading = ref(true)
+const exportingType = ref(null)  // P1-UX: 跟踪当前导出格式（word/pdf）用于按钮 loading 态
 const error = ref(false)
 const errorMessage = ref('')  // P2-F: 具体错误信息
 const data = ref(null)
@@ -339,13 +344,23 @@ const loadData = async () => {
 
 const handleExport = async (type) => {
   const fn = type === 'word' ? exportStorageWord : exportStoragePdf
+  exportingType.value = type  // P1-UX: 立即设置 loading 态，避免双击
   try {
     const res = await fn(route.params.id)
     // B4 fix: check if response is actually a JSON error disguised as blob
     if (res.data && res.data.type === 'application/json') {
       const text = await new Response(res.data).text()
       const err = JSON.parse(text)
-      ElMessage.error(err.message || '导出校验失败')
+      // P1-UX: 校验失败显示具体错误清单，而非"导出失败"模糊提示
+      if (err.errors && Array.isArray(err.errors) && err.errors.length) {
+        ElMessageBox.alert(
+          err.errors.map(e => `• ${e}`).join('\n'),
+          err.message || '请补全必填项后再导出',
+          { type: 'warning', confirmButtonText: '我知道了' }
+        )
+      } else {
+        ElMessage.error(err.message || '导出校验失败')
+      }
       return
     }
     const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
@@ -353,14 +368,19 @@ const handleExport = async (type) => {
     const a = document.createElement('a')
     a.href = url
     const ext = type === 'word' ? 'docx' : 'pdf'
-    const title = data.value?.title || '申报'
-    a.download = `【${title}】申请表_${new Date().toISOString().slice(0, 10)}.${ext}`
+    // P1-UX: 文件名更专业 - 含微专业名+日期
+    const title = data.value?.title || data.value?.microSpecialtyName || '微专业'
+    const date = new Date().toISOString().slice(0, 10)
+    a.download = `【${title}】整理收纳微专业申请表_${date}.${ext}`
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
+    ElMessage.success(`${ext.toUpperCase()} 导出成功`)
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || '导出失败'  // P2-F: 显示具体错误
     ElMessage.error(msg)
+  } finally {
+    // P1-UX: 恢复按钮可点状态
+    exportingType.value = null
   }
 }
 
