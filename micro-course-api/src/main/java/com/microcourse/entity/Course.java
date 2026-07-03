@@ -62,6 +62,18 @@ public class Course {
     @TableField("discount_percent")
     private Integer discountPercent; // 0-100
 
+    @TableField("list_price")
+    private BigDecimal listPrice; // 课程标价 (alias for price, 教学员看)
+
+    @TableField("pricing_status")
+    private String pricingStatus; // DRAFT | PENDING | APPROVED | REJECTED
+
+    @TableField("pricing_reviewed_at")
+    private LocalDateTime pricingReviewedAt;
+
+    @TableField("pricing_reviewed_by")
+    private Long pricingReviewedBy;
+
     private Boolean isFree;
 
     @TableLogic(value = "NULL", delval = "now()")
