@@ -114,7 +114,14 @@ public class MicroSpecialtyMaterializationServiceImpl implements MicroSpecialtyM
                         if (!createdCourses.containsKey(pc.getId())) {
                             Course newCourse = new Course();
                             newCourse.setTitle(pc.getCourseName());
-                            newCourse.setPrice(assign.getFrozenPrice());
+                            // P1-I-2 修复: frozen_price 可能为 NULL,兜底为 BigDecimal.ZERO
+                            if (assign.getFrozenPrice() != null) {
+                                newCourse.setPrice(assign.getFrozenPrice());
+                            } else {
+                                newCourse.setPrice(java.math.BigDecimal.ZERO);
+                                log.warn("materialize: frozen_price is NULL for assignment chapterId={}, teacherId={}, defaulting to 0",
+                                        assign.getChapterId(), assign.getTeacherId());
+                            }
                             newCourse.setTeacherId(assign.getTeacherId());
                             newCourse.setStatus(CourseStatus.PENDING_REVIEW.getCode()); // 待审核 → 待发布
                             newCourse.setCreatedAt(LocalDateTime.now());

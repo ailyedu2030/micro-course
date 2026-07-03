@@ -871,12 +871,18 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 }
 
                 // Phase 1: 同步保存章节(嵌套在课程循环内,确保 course.id 可用)
-                // P0 修复: 维护 oldId → newChapter 映射,DELETE+INSERT 后前端旧ID不再有效
+                // P0-1 修复: 维护 oldId → newChapter 映射,DELETE+INSERT 后前端旧ID不再有效
+                // P1-C-1 修复: 同时维护 oldToNewCourseIdMap 用于 courseId 回退查询
                 List<ProposalChapter> allChapters = new ArrayList<>();
                 Map<Long, ProposalChapter> oldIdToNewChapterMap = new HashMap<>();
+                Map<Long, Long> oldToNewCourseIdMap = new HashMap<>();
                 for (int i = 0; i < request.getCourses().size(); i++) {
                     ProposalCourseItem item = request.getCourses().get(i);
                     ProposalCourse courseEntity = entities.get(i);
+                    // 记录旧→新课程序号映射
+                    if (item.getId() != null) {
+                        oldToNewCourseIdMap.put(item.getId(), courseEntity.getId());
+                    }
                     if (item.getChapters() != null && !item.getChapters().isEmpty()) {
                         int chapterSort = 0;
                         for (ProposalChapterItem chItem : item.getChapters()) {
@@ -905,8 +911,10 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 }
 
                 // Phase 2: 章节-教师分配同步
-                // P0 修复: 用 oldIdToNewChapterMap 获取新章节 ID,解决 DELETE+INSERT 后
+                // P0-1 修复: 用 oldIdToNewChapterMap 获取新章节 ID,解决 DELETE+INSERT 后
                 // 前端旧 ID 导致 FK 约束 violation
+                // P1-C-1 修复: 当映射找不到时,用 resolvedCourseId 在 allChapters 中回退匹配,
+                // 仍然找不到则跳过该条 assignment 并记 warning,避免用过期 ID 插入 FK 崩溃
                 if (request.getChapterAssignments() != null && !request.getChapterAssignments().isEmpty()) {
                     assignmentRepository.delete(new LambdaQueryWrapper<ChapterTeacherAssignment>()
                             .eq(ChapterTeacherAssignment::getProposalId, proposalId));
@@ -915,8 +923,29 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                         for (ChapterAssignmentItem assignItem : request.getChapterAssignments()) {
                             Long oldChapterId = assignItem.getChapterId();
                             ProposalChapter mappedCh = oldIdToNewChapterMap.get(oldChapterId);
-                            Long newChapterId = mappedCh != null ? mappedCh.getId() : oldChapterId;
-                            Long newCourseId = mappedCh != null ? mappedCh.getCourseId() : assignItem.getCourseId();
+
+                            // 回退查找: 当直接 ID 映射失败时(如章节刚创建无旧 ID),
+                            // 解析新课程序号后在 allChapters 中按课程匹配第一个章节
+                            if (mappedCh == null) {
+                                Long resolvedCourseId = oldToNewCourseIdMap.getOrDefault(
+                                        assignItem.getCourseId(), assignItem.getCourseId());
+                                for (ProposalChapter fallbackCh : allChapters) {
+                                    if (Objects.equals(fallbackCh.getCourseId(), resolvedCourseId)) {
+                                        mappedCh = fallbackCh;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (mappedCh == null) {
+                                // P0-1 修复: 找不到匹配章节时跳过,避免用过期 ID 触发 FK 约束崩溃
+                                log.warn("replaceSubTables: 跳过 assignment(courseId={}, chapterId={}, teacherId={}) — 未找到匹配章节",
+                                        assignItem.getCourseId(), oldChapterId, assignItem.getTeacherId());
+                                continue;
+                            }
+
+                            Long newChapterId = mappedCh.getId();
+                            Long newCourseId = mappedCh.getCourseId();
                             ChapterTeacherAssignment entity = new ChapterTeacherAssignment();
                             entity.setProposalId(proposalId);
                             entity.setCourseId(newCourseId);

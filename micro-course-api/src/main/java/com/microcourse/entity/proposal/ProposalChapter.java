@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -33,6 +34,9 @@ public class ProposalChapter {
 
     private Integer hours;
 
+    // P1-I-1: 章节级别学分（V115 新增）,用于学时+学分汇总校验
+    private BigDecimal credits;
+
     @Version
     private Integer version;
 
@@ -56,6 +60,8 @@ public class ProposalChapter {
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
     public Integer getHours() { return hours; }
     public void setHours(Integer hours) { this.hours = hours; }
+    public BigDecimal getCredits() { return credits; }
+    public void setCredits(BigDecimal credits) { this.credits = credits; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getCreatedAt() { return createdAt; }
