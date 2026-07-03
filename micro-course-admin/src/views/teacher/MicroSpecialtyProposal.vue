@@ -864,7 +864,17 @@ async function handleSubmit() {
   // P1-C-11 修复：增加程序化表单校验
   try {
     await formRef1.value?.validate()
-  } catch {
+  } catch (errors) {
+    // P1-UX: 滚动到第一个错误字段 + 焦点, 用户立即知道改哪里
+    const firstErrorField = Object.keys(errors || {})[0]
+    if (firstErrorField) {
+      const el = document.querySelector(`[prop="${firstErrorField}"]`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        const input = el.querySelector('input, textarea, select')
+        if (input) input.focus()
+      }
+    }
     ElMessage.warning('请补全必填项后再提交')
     return
   }
@@ -883,7 +893,20 @@ async function handleSubmit() {
     ElMessage.success('提交成功，等待审核')
     router.push('/teacher/micro-specialties/my-proposals')
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '提交失败')
+    // P1-UX: 提交失败的详细错误滚动定位（同上）
+    const errorData = e?.response?.data
+    if (errorData?.errors) {
+      const firstErrorField = Object.keys(errorData.errors)[0]
+      if (firstErrorField) {
+        const el = document.querySelector(`[prop="${firstErrorField}"]`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          const input = el.querySelector('input, textarea, select')
+          if (input) input.focus()
+        }
+      }
+    }
+    ElMessage.error(errorData?.message || '提交失败')
   } finally {
     submitting.value = false
   }
@@ -1027,6 +1050,8 @@ async function initDraft() {
     const res = await initStorageDraft()
     const id = typeof res.data === 'object' ? res.data.id : res.data
     draftId.value = id
+    // P1-UX: 写入 URL query, 刷新页面或分享链接不会丢失数据
+    router.replace({ query: { ...route.query, id } })
     // 自动填充当前教师的姓名和联系方式
     const currentUser = useUserStore()
     if (currentUser.realName) form.value.leadName = currentUser.realName

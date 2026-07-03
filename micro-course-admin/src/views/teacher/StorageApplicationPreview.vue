@@ -14,8 +14,18 @@
 
     <!-- A4 纸样式预览 -->
     <div v-else-if="data" class="a4-paper" id="preview-content">
-      <!-- 标题 -->
-      <h1 class="preview-title">高校开放共享"微专业"资源平台推荐表</h1>
+  <!-- 状态徽章 — 用户一眼看出当前阶段 -->
+  <div v-if="data?.status" class="status-banner" :class="`status-${(data.status || '').toLowerCase()}`">
+    <el-icon><DocumentCopy v-if="data.status === 'DRAFT'" /><Loading v-else-if="data.status === 'PENDING_REVIEW'" /><CircleCheck v-else-if="data.status === 'APPROVED'" /><CircleClose v-else-if="data.status === 'REJECTED'" /><Refresh v-else /></el-icon>
+    <span class="status-text">{{ statusLabel(data.status) }}</span>
+    <span v-if="data.status === 'DRAFT'" class="status-tip">仅供预览，尚未提交审核</span>
+    <span v-else-if="data.status === 'PENDING_REVIEW'" class="status-tip">审核中，暂不可编辑</span>
+    <span v-else-if="data.status === 'REJECTED' && data.reviewComment" class="status-tip">驳回原因：{{ data.reviewComment }}</span>
+    <span v-else-if="data.status === 'WITHDRAWN'" class="status-tip">已撤回，可继续编辑</span>
+  </div>
+
+  <!-- 标题 -->
+  <h1 class="preview-title">高校开放共享"微专业"资源平台推荐表</h1>
 
       <!-- 模块1：基本信息 -->
       <table class="preview-table">
@@ -286,6 +296,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { DocumentCopy, Loading, CircleCheck, CircleClose, Refresh } from '@element-plus/icons-vue'
 import { getStoragePreview, exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 
 // RT-2 fix: Enhanced HTML sanitizer with case-insensitive patterns and wider vector coverage
@@ -367,6 +378,12 @@ const signLevelLabel = (level) => {
     SHARED_UNIT: '共享单位意见'
   }
   return map[level] || level || ''
+}
+
+// P1-UX: 状态徽章文本映射
+const statusLabel = (s) => {
+  const map = { DRAFT: '草稿', PENDING_REVIEW: '审核中', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回' }
+  return map[s] || s || ''
 }
 
 const unitTypeLabel = (type) => {
@@ -533,5 +550,55 @@ onMounted(loadData)
     width: 100%;
     padding: 15mm 12mm;
   }
+}
+
+/* P1-UX: 状态徽章 — 用户预览时一眼看出当前阶段 */
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  border: 1px solid;
+}
+.status-banner .el-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.status-banner .status-text {
+  font-weight: 600;
+  font-size: 15px;
+}
+.status-banner .status-tip {
+  margin-left: 8px;
+  color: #606266;
+  font-size: 13px;
+}
+.status-banner.status-draft {
+  background: #f4f4f5;
+  border-color: #d3d4d6;
+  color: #606266;
+}
+.status-banner.status-pending_review {
+  background: #fdf6ec;
+  border-color: #faecd8;
+  color: #e6a23c;
+}
+.status-banner.status-approved {
+  background: #f0f9eb;
+  border-color: #d9ead3;
+  color: #67c23a;
+}
+.status-banner.status-rejected {
+  background: #fef0f0;
+  border-color: #fde2e2;
+  color: #f56c6c;
+}
+.status-banner.status-withdrawn {
+  background: #ecf5ff;
+  border-color: #d9ecff;
+  color: #909399;
 }
 </style>
