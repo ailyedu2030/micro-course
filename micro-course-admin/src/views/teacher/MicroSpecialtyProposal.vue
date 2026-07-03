@@ -831,8 +831,13 @@ watch(() => JSON.stringify(teamMembers.value), scheduleAutoSave)
 watch(() => JSON.stringify(signatures.value), scheduleAutoSave)
 watch(() => JSON.stringify(sharedUnits.value), scheduleAutoSave)
 
-// Phase 2: 自动维护 teamMembers._index
-watch(teamMembers, () => { teamMembers.value.forEach((m,i) => m._index = i) }, { immediate: true, deep: true })
+// Phase 2: 自动维护 teamMembers._index — P1-UX: 修复递归更新死循环
+// Vue 3 watch 会对整个数组重新触发 (包括 deep 修改成员 _index)
+// 改用 length 监听 + 计算属性，触发时机更精准
+const teamMembersIndex = computed(() => teamMembers.value.map((_, i) => i))
+watch(teamMembersIndex, () => {
+  teamMembers.value.forEach((m, i) => { if (m._index !== i) m._index = i })
+})
 
 // ==================== 提交审核 ====================
 async function handleSubmit() {
