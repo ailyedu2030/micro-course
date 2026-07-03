@@ -1,0 +1,43 @@
+name: "Trivy Security Scan"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 8 * * 1'  # 每周一早 8 点
+
+jobs:
+  scan:
+    name: Trivy Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan (CRITICAL + HIGH only)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # 不阻断 pipeline，仅作为告警
+          ignore-unfixed: true
+          output: 'trivy-fs-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+
+      - name: Trivy config (rootfs + secrets) scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'rootfs'
+          format: 'table'
+          ignore-unfixed: true
