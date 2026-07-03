@@ -29,14 +29,14 @@
 3. 计算字段 (前端自行维护)
 
 
-### 可疑前端孤儿 (1 个)
+### 可疑前端孤儿 (0 个)
 
 
 | # | 字段名 | 出现位置 | 建议行动 |
 
 |---|--------|---------|---------|
 
-| 1 | `newTier` | micro-course-admin/src/views/admin/TeacherRatingManage.vue:newTier | ❓ 需人工判断 |
+(无)
 
 
 

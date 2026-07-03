@@ -285,8 +285,10 @@ def main():
                    'row', 'contentHtml', 'inviteStatus', 'classIds', 'chapterIds',
                    # System setting fields (AdminSetting entity)
                    'platformName', 'serverUrl', 'smtpHost',
-                   # Frontend temp variables (mapped to correct entity field before submit)
-                   'partialScoreRule',
+                    # Frontend temp variables (mapped to correct entity field before submit)
+                    'partialScoreRule',
+                    # Teacher rating adjustment form field (frontend-only, not an entity field)
+                    'newTier',
                    # JOIN display / computed fields (not entity fields)
                    'completionRate', 'confirmPassword', 'courseTitle',
                    'creatorName', 'enrollmentCount', 'featuredAt', 'keyword',
