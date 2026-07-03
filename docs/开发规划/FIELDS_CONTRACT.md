@@ -709,7 +709,7 @@
 
 | Teacher | /api/teachers | 6 | - |
 
-| TeacherRating | /api/teacher-ratings | 6 | - |
+| TeacherRating | /api/teacher-ratings | 7 | - |
 
 | TeachingClass | /api/teaching-classes | 12 | - |
 
