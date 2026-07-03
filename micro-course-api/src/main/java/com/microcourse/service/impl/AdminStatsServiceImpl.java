@@ -17,7 +17,6 @@ import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
 import com.microcourse.entity.Video;
 import com.microcourse.enums.CourseStatus;
-import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CertificateRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DiscussionPostRepository;
