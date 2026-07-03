@@ -43,7 +43,7 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
      */
     @Select("<script>" +
             "SELECT course_id, COUNT(*) AS cnt FROM enrollments " +
-            "WHERE deleted_at IS NULL AND status = 'COMPLETED' AND course_id IN " +
+            "WHERE deleted_at IS NULL AND enrollment_status = 'COMPLETED' AND course_id IN " +
             "<foreach collection='courseIds' item='id' open='(' separator=',' close=')'>" +
             "#{id}" +
             "</foreach>" +
@@ -56,7 +56,7 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
      */
     @Select("<script>" +
             "SELECT course_id, COUNT(*) AS cnt FROM enrollments " +
-            "WHERE deleted_at IS NULL AND status IN ('IN_PROGRESS','COMPLETED') AND course_id IN " +
+            "WHERE deleted_at IS NULL AND enrollment_status IN ('IN_PROGRESS','COMPLETED') AND course_id IN " +
             "<foreach collection='courseIds' item='id' open='(' separator=',' close=')'>" +
             "#{id}" +
             "</foreach>" +
