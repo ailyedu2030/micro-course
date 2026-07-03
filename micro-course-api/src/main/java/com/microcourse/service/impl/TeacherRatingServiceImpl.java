@@ -166,12 +166,18 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
         }
         String oldTier = rating.getTier();
 
-        // 更新评级
+        // P2-1 修复: 加乐观锁(用 oldTier 作状态检测),防止两个管理员并发调整互相覆盖
         LambdaUpdateWrapper<TeacherRating> uw = new LambdaUpdateWrapper<TeacherRating>()
                 .eq(TeacherRating::getTeacherId, teacherId)
+                .eq(TeacherRating::getTier, oldTier)
                 .set(TeacherRating::getTier, newTier)
                 .set(TeacherRating::getUpdatedAt, LocalDateTime.now());
-        ratingRepository.update(null, uw);
+        int affected = ratingRepository.update(null, uw);
+        if (affected == 0) {
+            throw new com.microcourse.exception.BusinessException(
+                    com.microcourse.exception.ErrorCode.MS_CONCURRENT_MODIFICATION,
+                    "等级已被其他操作修改,请刷新后重试");
+        }
 
         // 记录日志
         TeacherTierLog logEntry = new TeacherTierLog();

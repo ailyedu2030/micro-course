@@ -435,7 +435,11 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             Set<Long> teacherIds = courseTeacherMap.values().stream().collect(Collectors.toSet());
             Map<Long, String> teacherTierMap = new HashMap<>();
             if (!teacherIds.isEmpty()) {
-                List<com.microcourse.entity.TeacherRating> ratings = teacherRatingRepository.selectBatchIds(teacherIds);
+                // P0 修复: selectBatchIds 按主键(id)查询,但 teacherIds 是 User.id
+                // 需要用 LambdaQueryWrapper 按 teacher_id 列查询
+                List<com.microcourse.entity.TeacherRating> ratings = teacherRatingRepository.selectList(
+                        new LambdaQueryWrapper<com.microcourse.entity.TeacherRating>()
+                                .in(com.microcourse.entity.TeacherRating::getTeacherId, teacherIds));
                 for (com.microcourse.entity.TeacherRating r : ratings) {
                     teacherTierMap.put(r.getTeacherId(), r.getTier());
                 }

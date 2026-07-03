@@ -862,7 +862,9 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 }
 
                 // Phase 1: 同步保存章节(嵌套在课程循环内,确保 course.id 可用)
+                // P0 修复: 维护 oldId → newChapter 映射,DELETE+INSERT 后前端旧ID不再有效
                 List<ProposalChapter> allChapters = new ArrayList<>();
+                Map<Long, ProposalChapter> oldIdToNewChapterMap = new HashMap<>();
                 for (int i = 0; i < request.getCourses().size(); i++) {
                     ProposalCourseItem item = request.getCourses().get(i);
                     ProposalCourse courseEntity = entities.get(i);
@@ -877,6 +879,9 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                             ch.setHours(chItem.getHours());
                             ch.setSortOrder(chapterSort++);
                             allChapters.add(ch);
+                            if (chItem.getId() != null) {
+                                oldIdToNewChapterMap.put(chItem.getId(), ch);
+                            }
                         }
                     }
                 }
@@ -890,21 +895,19 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                     }
                 }
 
-                // Phase 2: 章节-教师分配同步 (必须在 chapters flush 后, allChapters 有正确 ID)
+                // Phase 2: 章节-教师分配同步
+                // P0 修复: 用 oldIdToNewChapterMap 获取新章节 ID,解决 DELETE+INSERT 后
+                // 前端旧 ID 导致 FK 约束 violation
                 if (request.getChapterAssignments() != null && !request.getChapterAssignments().isEmpty()) {
                     assignmentRepository.delete(new LambdaQueryWrapper<ChapterTeacherAssignment>()
                             .eq(ChapterTeacherAssignment::getProposalId, proposalId));
                     try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
                         ChapterTeacherAssignmentRepository batchRepo = sqlSession.getMapper(ChapterTeacherAssignmentRepository.class);
                         for (ChapterAssignmentItem assignItem : request.getChapterAssignments()) {
-                            Long newChapterId = assignItem.getChapterId();
-                            Long newCourseId = assignItem.getCourseId();
-                            for (ProposalChapter ch : allChapters) {
-                                if (ch.getId().equals(newChapterId)) {
-                                    newCourseId = ch.getCourseId();
-                                    break;
-                                }
-                            }
+                            Long oldChapterId = assignItem.getChapterId();
+                            ProposalChapter mappedCh = oldIdToNewChapterMap.get(oldChapterId);
+                            Long newChapterId = mappedCh != null ? mappedCh.getId() : oldChapterId;
+                            Long newCourseId = mappedCh != null ? mappedCh.getCourseId() : assignItem.getCourseId();
                             ChapterTeacherAssignment entity = new ChapterTeacherAssignment();
                             entity.setProposalId(proposalId);
                             entity.setCourseId(newCourseId);
