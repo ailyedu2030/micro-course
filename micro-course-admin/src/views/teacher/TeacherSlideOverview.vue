@@ -112,6 +112,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus } from '@element-plus/icons-vue'
 import { getCourses, createCourse } from '@/api/course'
+import { createChapter } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 import { getSlides, getSlidePages, deleteSlide } from '@/plugins/interactive/api/slide'
 import { useUserStore } from '@/store/user'
@@ -269,6 +270,20 @@ async function handleCreateCourse() {
       teacherId: userStore.userInfo?.id,
     })
     const newId = res?.data?.id
+    if (newId) {
+      // 创建默认章节，使课件与章节关联
+      try {
+        await createChapter({
+          courseId: newId,
+          title: '课件章节',
+          chapterType: 'INTERACTIVE',
+          sortOrder: 1,
+        })
+      } catch (e) {
+        // 章节创建失败不影响课件管理，仅记日志
+        console.warn('创建默认章节失败', e)
+      }
+    }
     showCreateDialog.value = false
     createForm.value = { title: '', categoryId: null, description: '' }
     ElMessage.success('互动课程创建成功')
