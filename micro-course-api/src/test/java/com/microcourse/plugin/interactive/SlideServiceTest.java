@@ -98,7 +98,7 @@ class SlideServiceTest {
             p2.setCourseId(1L); p2.setNarrationStatus("AI_GENERATED");
             when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(p1, p2));
 
-            List<SlidePageVO> pages = slideService.getPages(1L);
+            List<SlidePageVO> pages = slideService.getPages(1L, null);
             assertEquals(2, pages.size());
             assertEquals(1, pages.get(0).getPageNumber());
             assertEquals("PENDING", pages.get(0).getNarrationStatus());
@@ -108,7 +108,7 @@ class SlideServiceTest {
         @DisplayName("无课件时返回空列表")
         void getPages_NoSlide() {
             when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
-            assertTrue(slideService.getPages(1L).isEmpty());
+            assertTrue(slideService.getPages(1L, null).isEmpty());
         }
     }
 
