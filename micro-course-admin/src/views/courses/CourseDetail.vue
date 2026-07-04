@@ -8,7 +8,7 @@
     <div class="page-breadcrumb">
       <el-breadcrumb>
         <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item :to="{ path: '/courses' }">课程管理</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: userRole === 'TEACHER' ? '/teacher/courses' : '/courses' }">课程管理</el-breadcrumb-item>
         <el-breadcrumb-item>{{ isEditMode ? '编辑课程' : (courseData.title || '课程详情') }}</el-breadcrumb-item>
       </el-breadcrumb>
     </div>
@@ -20,7 +20,7 @@
         <h1 class="course-title">{{ courseData.title || '未命名课程' }}</h1>
         <div class="action-buttons">
           <template v-if="courseData.status === 0">
-            <el-button type="primary" @click="handleSubmitForReview">提交审核</el-button>
+            <el-button type="primary" @click="handleSubmitForReview" :loading="submitLoading">提交审核</el-button>
           </template>
           <template v-if="courseData.status === 1">
             <el-button type="success" @click="handleApprove">审核通过</el-button>
@@ -120,7 +120,7 @@
           </div>
         </template>
         <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe row-key="id">
-          <template #empty><el-empty description="暂无章节" /></template>
+          <template #empty><el-empty description="暂无章节，点击上方「新增章节」添加内容" /></template>
           <el-table-column type="index" label="#" width="60" align="center" />
           <el-table-column prop="title" label="章节标题" min-width="180" show-overflow-tooltip />
           <el-table-column label="内容形式" width="120" align="center">
@@ -469,15 +469,24 @@ const initSortable = () => {
 }
 
 // ===== 页面操作 =====
-const handleBack = () => router.push('/courses')
+const handleBack = () => {
+  const role = userStore.role
+  if (role === 'TEACHER') {
+    router.push('/teacher/courses')
+  } else {
+    router.push('/courses')
+  }
+}
 const goSlides = () => router.push(`/teacher/courses/${route.params.id}/slides/manage`)
 const switchToEdit = () => router.push(`/courses/${courseId.value}/edit`)
 const switchToView = () => router.push(`/courses/${courseId.value}`)
 
 const handleSubmitForReview = async () => {
   try { await ElMessageBox.confirm('确定提交审核？', '提示', { type: 'info' }) } catch { return }
+  submitLoading.value = true
   try { await submitCourseForReview(courseId.value); ElMessage.success('已提交审核'); fetchCourse() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  finally { submitLoading.value = false }
 }
 const handleApprove = async () => {
   try { await ElMessageBox.confirm('确定审核通过？', '提示', { type: 'info' }) } catch { return }

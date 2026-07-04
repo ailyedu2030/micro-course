@@ -14,7 +14,7 @@
         <el-breadcrumb-item v-if="isContextualMode">{{ chapterTitle || '章节视频' }}</el-breadcrumb-item>
         <el-breadcrumb-item v-else>视频管理</el-breadcrumb-item>
         <el-breadcrumb-item v-if="isContextualMode">
-          <el-link type="primary" :underline="'never'" :to="{ path: `/courses/${courseIdFromRoute}` }">
+          <el-link type="primary" :underline="'never'" :to="{ path: isTeacherRole ? `/teacher/courses/${courseIdFromRoute}` : `/courses/${courseIdFromRoute}` }">
             ← 返回课程
           </el-link>
         </el-breadcrumb-item>
@@ -57,7 +57,7 @@
 
       <el-table v-loading="loading" :aria-busy="loading" :data="tableData" stripe border class="data-table">
         <template #empty>
-          <el-empty description="暂无视频数据" />
+          <el-empty description="暂无视频数据，选择课程和章节后点击「添加视频」上传" />
         </template>
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
@@ -224,6 +224,7 @@ const lockedChapterId = computed(() => {
 })
 const isContextualMode = computed(() => lockedChapterId.value !== null)
 const userRole = computed(() => userStore.role)
+const isTeacherRole = computed(() => userStore.role === 'TEACHER')
 
 const loading = ref(false)
 const submitLoading = ref(false)

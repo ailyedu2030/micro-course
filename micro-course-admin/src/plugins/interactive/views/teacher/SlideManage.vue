@@ -2,7 +2,7 @@
   <div class="slide-manage fade-in">
     <!-- Page Header -->
     <header class="manage-header">
-      <button class="back-btn" @click="$router.back()" aria-label="返回上一页">
+      <button class="back-btn" @click="$router.push('/teacher/courses/' + courseId)" aria-label="返回课程">
         <el-icon :size="20"><ArrowLeft /></el-icon>
       </button>
       <div class="header-info">

@@ -17,7 +17,7 @@
     </div>
 
     <div v-loading="loading">
-      <el-empty v-if="!loading && sessions.length === 0" description="暂未安排线下课程" :image-size="120" />
+      <el-empty v-if="!loading && sessions.length === 0" description="暂未安排线下课程，点击「新增场次」添加" :image-size="120" />
 
       <el-card v-for="session in sessions" :key="session.id" class="session-card" shadow="never">
         <div class="session-header">
@@ -66,7 +66,7 @@
     </div>
 
     <!-- 新增/编辑 弹窗 -->
-    <el-dialog v-model="formDialogVisible" :title="isEditing ? '编辑场次' : '新增场次'" width="520px">
+    <el-dialog v-model="formDialogVisible" :title="isEditing ? '编辑场次' : '新增场次'" width="520px" @close="handleDialogClose">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
         <el-form-item label="所属课程" v-if="courseTitle">
           <el-tag type="primary" effect="plain">{{ courseTitle }}</el-tag>
@@ -274,6 +274,10 @@ async function fetchAttendanceSummary(sessionId) {
   } catch {
     attendanceMap.value[sessionId] = []
   }
+}
+
+function handleDialogClose() {
+  formRef.value?.resetFields()
 }
 
 function openCreateDialog() {

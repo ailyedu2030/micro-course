@@ -8,7 +8,8 @@
     </header>
 
     <el-card class="table-card" shadow="never">
-      <el-table :data="exams" stripe v-loading="loading" empty-text="暂未创建试卷">
+      <el-table :data="exams" stripe v-loading="loading">
+        <template #empty><el-empty description="暂未创建试卷，点击「新增试卷」一键组卷" /></template>
         <el-table-column prop="title" label="试卷标题" min-width="180" />
         <el-table-column label="所属课程" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">{{ getCourseTitle(row.courseId) }}</template>

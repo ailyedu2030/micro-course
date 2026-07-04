@@ -41,7 +41,7 @@
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无练习数据" />
+      <el-empty v-else-if="tableData.length === 0" description="暂无练习数据，请先选择课程和章节后点击「新增练习」" />
       <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
