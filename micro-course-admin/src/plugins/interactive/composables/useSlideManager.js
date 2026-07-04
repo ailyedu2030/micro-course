@@ -2,7 +2,7 @@ import { ref, onScopeDispose } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSlides, getSlidePages, getSlidePage, uploadSlide, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio } from '@/plugins/interactive/api/slide'
 
-export function useSlideManager(courseId) {
+export function useSlideManager(courseId, chapterId) {
   const slide = ref(null)
   const pages = ref([])
   const selectedPage = ref(null)
@@ -38,7 +38,7 @@ export function useSlideManager(courseId) {
     try {
       await uploadSlide(courseId.value, file, (e) => {
         uploadingProgress.value = Math.round((e.loaded / e.total) * 100)
-      })
+      }, chapterId?.value)
       ElMessage.success('上传成功，正在后台渲染...')
       startPolling()
     } catch (e) { ElMessage.error(e?.response?.data?.message || '上传失败') }

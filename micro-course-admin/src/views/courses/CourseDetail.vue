@@ -142,10 +142,33 @@
             <template #default="{ row }">{{ row.duration || '-' }}</template>
           </el-table-column>
           <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
-          <el-table-column label="操作" width="200" align="center" fixed="right">
+          <el-table-column label="内容管理" width="260" fixed="right">
+            <template #default="{ row }">
+              <template v-if="row.chapterType === 'VIDEO'">
+                <el-button link type="primary" @click.stop="gotoChapterContent(row.id, 'manage-videos')">
+                  📹 管理视频
+                </el-button>
+              </template>
+              <template v-else-if="row.chapterType === 'INTERACTIVE'">
+                <el-button link type="success" @click.stop="gotoChapterContent(row.id, 'manage-slides')">
+                  📊 管理课件
+                </el-button>
+              </template>
+              <template v-else-if="row.chapterType === 'OFFLINE'">
+                <el-button link type="info" @click.stop="gotoChapterContent(row.id, 'manage-offline')">
+                  📍 配置场次
+                </el-button>
+              </template>
+              <template v-else-if="row.chapterType === 'EXERCISE'">
+                <el-button link type="warning" @click.stop="gotoChapterContent(row.id, 'manage-exam')">
+                  📝 智能组卷
+                </el-button>
+              </template>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
-              <el-button type="success" link size="small" @click="handleManageChapterContent(row)">内容</el-button>
               <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">删除</el-button>
             </template>
           </el-table-column>
@@ -528,17 +551,8 @@ const handleEditChapter = (row) => {
   chapterFormData.chapterType = row.chapterType || 'VIDEO'; chapterFormData.duration = row.duration ?? 0
   chapterDialogVisible.value = true
 }
-const handleManageChapterContent = (row) => {
-  const cid = courseId.value
-  if (row.chapterType === 'INTERACTIVE') {
-    router.push(`/teacher/courses/${cid}/slides/manage`)
-  } else if (row.chapterType === 'EXERCISE') {
-    router.push(`/courses/${cid}/exercises`)
-  } else if (row.chapterType === 'OFFLINE') {
-    router.push(`/teacher/chapters/${row.id}/offline-sessions`)
-  } else {
-    router.push(`/courses/${cid}/videos?chapterId=${row.id}`)
-  }
+const gotoChapterContent = (chapterId, type) => {
+  router.push(`/teacher/courses/${courseId.value}/chapters/${chapterId}/${type}`)
 }
 const handleDeleteChapter = async (row) => {
   try { await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' }) } catch { return }

@@ -74,13 +74,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getExamList, generateExam, deleteExam } from '@/api/exam'
 import { useUserStore } from '@/store/user'
+
+const route = useRoute()
+const chapterIdFromRoute = computed(() => route.params.chapterId || route.query.chapterId)
 
 const userStore = useUserStore()
 const loading = ref(false)
@@ -201,14 +205,18 @@ async function handleGenerate() {
 
   generating.value = true
   try {
-    await generateExam({
+    const examReq = {
       title: createForm.title,
       courseId: createForm.courseId,
       chapterIds: createForm.chapterIds.length > 0 ? createForm.chapterIds : [],
       questionCounts: counts,
       totalScore: createForm.totalScore,
       timeLimit: createForm.timeLimit > 0 ? createForm.timeLimit : null,
-    })
+    }
+    if (chapterIdFromRoute.value) {
+      examReq.chapterId = Number(chapterIdFromRoute.value)
+    }
+    await generateExam(examReq)
     ElMessage.success('组卷成功')
     showCreate.value = false
     page.value = 1

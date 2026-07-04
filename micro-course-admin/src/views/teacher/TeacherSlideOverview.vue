@@ -7,7 +7,7 @@
       <h1>互动课件工作台</h1>
       <span class="page-subtitle" v-if="!loading">{{ filteredSlides.length }} 份课件</span>
       <div class="header-actions">
-        <el-button type="primary" :icon="Plus" @click="openCreateDialog">新增互动课程</el-button>
+        <el-button type="primary" @click="router.push('/teacher/courses')">查看我的课程</el-button>
       </div>
     </header>
 
@@ -42,8 +42,8 @@
 
     <section class="content-card">
       <div v-if="!loading && filteredSlides.length === 0" class="empty-tip">
-        <el-empty v-if="courses.length === 0" description="您还没有互动课程，点击下方按钮快速创建。">
-          <el-button type="primary" @click="openCreateDialog">新增互动课程</el-button>
+        <el-empty v-if="courses.length === 0" description="您还没有互动课程，去课程列表创建。">
+          <el-button type="primary" @click="router.push('/teacher/courses')">前往课程列表</el-button>
         </el-empty>
         <el-empty v-else description="已选课程尚未上传课件。从左侧课程列表选择一门课程，进入后上传 PPT 即可。">
           <el-button @click="handleReset">查看全部课程</el-button>
@@ -84,25 +84,7 @@
       </el-table>
     </section>
 
-    <el-dialog v-model="showCreateDialog" title="新增互动课程" width="500px" :close-on-click-modal="false" @closed="resetCreateForm">
-      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="80px">
-        <el-form-item label="课程标题" prop="title">
-          <el-input v-model="createForm.title" placeholder="请输入课程标题" />
-        </el-form-item>
-        <el-form-item label="分类" prop="categoryId">
-          <el-select v-model="createForm.categoryId" placeholder="请选择分类" class="full-width">
-            <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="课程简介（选填）" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreateCourse">创建并管理课件</el-button>
-      </template>
-    </el-dialog>
+
   </div>
 </template>
 
@@ -110,10 +92,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Plus } from '@element-plus/icons-vue'
-import { getCourses, createCourse } from '@/api/course'
-import { createChapter } from '@/api/chapter'
-import { getCategories } from '@/api/course-category'
+import { ArrowLeft } from '@element-plus/icons-vue'
+import { getCourses } from '@/api/course'
 import { getSlides, getSlidePages, deleteSlide } from '@/plugins/interactive/api/slide'
 import { useUserStore } from '@/store/user'
 
@@ -130,16 +110,7 @@ const searchForm = ref({
   status: ''
 })
 
-const showCreateDialog = ref(false)
-const creating = ref(false)
-const categories = ref([])
-const createFormRef = ref(null)
-let categoriesFetched = false
-const createForm = ref({ title: '', categoryId: null, description: '' })
-const createRules = {
-  title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }]
-}
+
 
 const stats = computed(() => {
   const all = slides.value
@@ -241,59 +212,7 @@ async function handleDelete(row) {
   }
 }
 
-function openCreateDialog() {
-  if (!categoriesFetched) {
-    categoriesFetched = true
-    getCategories({ size: 100 }).then(({ data }) => { categories.value = data?.items || [] }).catch(() => {})
-  }
-  showCreateDialog.value = true
-}
 
-function resetCreateForm() {
-  createForm.value = { title: '', categoryId: null, description: '' }
-  createFormRef.value?.clearValidate()
-}
-
-async function handleCreateCourse() {
-  if (!createFormRef.value) return
-  try {
-    const valid = await createFormRef.value.validate()
-    if (!valid) return
-  } catch { return }
-  creating.value = true
-  try {
-    const res = await createCourse({
-      title: createForm.value.title,
-      categoryId: createForm.value.categoryId,
-      description: createForm.value.description || '',
-      courseType: 'INTERACTIVE',
-      teacherId: userStore.userInfo?.id,
-    })
-    const newId = res?.data?.id
-    if (newId) {
-      // 创建默认章节，使课件与章节关联
-      try {
-        await createChapter({
-          courseId: newId,
-          title: '课件章节',
-          chapterType: 'INTERACTIVE',
-          sortOrder: 1,
-        })
-      } catch (e) {
-        // 章节创建失败不影响课件管理，仅记日志
-        console.warn('创建默认章节失败', e)
-      }
-    }
-    showCreateDialog.value = false
-    createForm.value = { title: '', categoryId: null, description: '' }
-    ElMessage.success('互动课程创建成功')
-    if (newId) router.push(`/teacher/courses/${newId}/slides/manage`)
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '创建失败')
-  } finally {
-    creating.value = false
-  }
-}
 
 onMounted(() => loadData())
 </script>
