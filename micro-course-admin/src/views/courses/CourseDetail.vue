@@ -32,7 +32,7 @@
           <template v-if="courseData.status === 4 && userRole === 'ADMIN'">
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
-          <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">管理课件</el-button>
+          <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">课件总览</el-button>
           <el-button type="primary" plain @click="switchToEdit">编辑</el-button>
           <el-button type="warning" plain @click="handleCopy" v-if="!isEditMode">复制</el-button>
           <el-button @click="handleBack">返回</el-button>
