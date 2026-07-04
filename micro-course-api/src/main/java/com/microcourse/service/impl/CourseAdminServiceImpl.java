@@ -137,6 +137,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         }
         checkPluginGrant(request.getTeacherId(), request.getCourseType());
 
+        // TEACHER 角色强制覆盖 teacherId 为当前用户
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            request.setTeacherId(SecurityUtil.getCurrentUserId());
+        }
+
         Course course = new Course();
         course.setTitle(request.getTitle());
         course.setSubtitle(request.getSubtitle());
@@ -293,6 +298,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public CourseVO copy(Long id) {
         Course original = getCourseOrThrow(id);
+        if (!SecurityUtil.isOwnerOrAdmin(original.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
 
         Course course = new Course();
         course.setTitle(original.getTitle() + " - 副本");

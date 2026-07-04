@@ -58,7 +58,7 @@ public class SlideRenderService {
     }
 
     @Async("slideRenderExecutor")
-    public void renderAsync(Long slideId, byte[] pptxBytes) {
+    public void renderAsync(Long slideId, Long chapterId, byte[] pptxBytes) {
         CourseSlide slide = courseSlideMapper.selectById(slideId);
         if (slide == null) return;
 
@@ -124,7 +124,7 @@ public class SlideRenderService {
                     SlidePage sp = new SlidePage();
                     sp.setSlideId(slideId);
                     sp.setCourseId(slide.getCourseId());
-                    sp.setChapterId(slide.getChapterId());
+                    sp.setChapterId(chapterId);
                     sp.setPageNumber(pageNumber);
                     sp.setFileUuid(fileUuid);
                     sp.setImageUrl("/api/courses/" + slide.getCourseId() + "/slides/pages/" + pageNumber + "/image");

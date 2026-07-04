@@ -454,7 +454,10 @@ const fetchChapters = async () => {
   if (!courseId.value) return
   chapterLoading.value = true
   try { const { data } = await getChapters({ courseId: courseId.value, size: 999 }); chapters.value = data?.items || data || [] }
-  catch { chapters.value = [] }
+  catch {
+    chapters.value = []
+    ElMessage.warning('章节列表加载失败')
+  }
   finally { chapterLoading.value = false; await nextTick(); initSortable() }
 }
 

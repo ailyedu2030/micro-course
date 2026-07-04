@@ -262,6 +262,7 @@ async function fetchSessions() {
     await Promise.all(items.map(s => fetchAttendanceSummary(s.id)))
   } catch {
     sessions.value = []
+    ElMessage.warning('场次数据加载失败')
   }
 }
 

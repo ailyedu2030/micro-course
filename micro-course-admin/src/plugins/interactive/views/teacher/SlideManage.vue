@@ -456,9 +456,10 @@ async function loadData() {
       pages.value = p.data || []
       await loadThumbnails()
     }
-  } catch (e) {
-    console.warn('[SlideManage] loadData failed', e?.message)
-  }
+    } catch (e) {
+      console.warn('[SlideManage] loadData failed', e?.message)
+      ElMessage.warning('课件数据加载失败')
+    }
 }
 
 async function loadThumbnails() {

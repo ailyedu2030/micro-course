@@ -149,11 +149,12 @@ public class SlideServiceImpl implements SlideService {
         }
 
         final Long slideId = slide.getId();
+        final Long finalChapterId = chapterId;
         final byte[] bytesForRender = fileBytes;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                slideRenderService.renderAsync(slideId, bytesForRender);
+                slideRenderService.renderAsync(slideId, finalChapterId, bytesForRender);
             }
         });
 

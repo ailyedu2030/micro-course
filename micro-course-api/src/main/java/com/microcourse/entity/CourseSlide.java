@@ -25,7 +25,7 @@ public class CourseSlide {
     @TableField(exist = false)
     private Long lessonId;
 
-    @TableField(exist = false)
+    @TableField("chapter_id")
     private Long chapterId;
 
     @TableField("file_name")

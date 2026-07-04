@@ -17,7 +17,7 @@ public class CourseSlide {
     @TableField(exist = false)
     private Long lessonId;
     /** 上传时指定的章节ID，用于新建 SlidePage 时填充 chapter_id */
-    @TableField(exist = false)
+    @TableField("chapter_id")
     private Long chapterId;
     private String fileName;
     private String fileUrl;

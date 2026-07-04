@@ -342,6 +342,18 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
             assertCourseOwner(exercise.getCourseId());
         }
+        // SECURITY: STUDENT 只能查看已选课程的练习
+        if (SecurityUtil.hasRole("STUDENT") && exercise.getCourseId() != null) {
+            Long count = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                    .eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
+                    .eq(Enrollment::getCourseId, exercise.getCourseId())
+                    .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
+            );
+            if (count == 0) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
         return convertToVO(exercise);
     }
 

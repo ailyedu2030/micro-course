@@ -257,18 +257,29 @@ async function loadCourse(cid) {
       let lessons = []
       if (ch.chapterType === 'VIDEO') {
         const videos = videosByChapter[ch.id] || []
-        lessons = videos.map(v => {
-          const prog = progressMap.value[v.id]
-          return {
-            id: v.id,
-            title: v.title,
-            duration: v.duration,
+        if (videos.length === 0) {
+          lessons = [{
+            id: `empty-${ch.id}`,
+            title: '本章节暂无视频',
             type: 'VIDEO',
-            video: { ...v, url: v.url, coverUrl: v.coverUrl, playUrl: v.url },
-            status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED',
-            chapterId: ch.id
-          }
-        })
+            chapterId: ch.id,
+            status: 'NOT_STARTED',
+            duration: 0
+          }]
+        } else {
+          lessons = videos.map(v => {
+            const prog = progressMap.value[v.id]
+            return {
+              id: v.id,
+              title: v.title,
+              duration: v.duration,
+              type: 'VIDEO',
+              video: { ...v, url: v.url, coverUrl: v.coverUrl, playUrl: v.url },
+              status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED',
+              chapterId: ch.id
+            }
+          })
+        }
       } else if (ch.chapterType === 'INTERACTIVE') {
         lessons = [{
           id: `slide-${ch.id}`,

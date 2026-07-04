@@ -472,7 +472,7 @@ const handleCreate = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑练习'
   isEdit.value = true
   currentId.value = row.id
