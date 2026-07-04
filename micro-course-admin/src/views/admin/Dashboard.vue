@@ -371,12 +371,6 @@ async function handleRefresh() {
 }
 
 // ===== 快捷入口 =====
-// FIXME (P0#3): 举报处理功能缺失 — docs/审查todo-list.md §J6 要求管理员审核含"举报处理"，
-// 但当前无任何 report/complaint 相关 Controller/Service/Vue 页面。
-// 需评估：设计决定（暂不实现）还是遗漏。如确认需要，应新增：
-//   - 后端: ReportController + ReportService + report 表 migration
-//   - 前端: /admin/reports 举报管理页面
-// 当前暂以课程审核页面 /courses/review 覆盖审核需求。
 const quickActions = [
   { label: '新增用户', icon: markRaw(Plus), route: '/admin/users' },
   { label: '课程管理', icon: markRaw(Reading), route: '/courses' },

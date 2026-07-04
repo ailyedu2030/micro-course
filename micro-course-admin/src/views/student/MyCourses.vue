@@ -687,9 +687,6 @@ const fetchEnrollments = async () => {
         let completedVideos = 0
         const progressPercent = completionMap[courseId]?.progress ?? inProgress[idx].progress ?? 0
         if (progressEntry && totalChapters > 0) {
-          // P1-修复: 优先使用 getLearningProgress 返回的实际完成数（如果后端提供）
-          // 如果后端未提供精确视频完成计数，使用 Math.round(章节总数 × 进度百分比 / 100) 作为近似值
-          // TODO: 待后端 getLearningProgress 接口返回 completedVideos 字段后替换此近似计算
           completedVideos = progressEntry.completedVideos
             ?? Math.min(Math.round(totalChapters * progressPercent / 100), totalChapters)
         }
