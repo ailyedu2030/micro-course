@@ -27,6 +27,8 @@ import com.microcourse.repository.VideoRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.ExerciseRepository;
+import com.microcourse.entity.Exercise;
 import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseAdminService;
@@ -70,6 +72,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final PluginGrantRepository pluginGrantRepository;
     private final VideoRepository videoRepository;
     private final LearningProgressRepository learningProgressRepository;
+    private final ExerciseRepository exerciseRepository;
     private final NotificationService notificationService;
     private final CourseSlideMapper courseSlideMapper;
 
@@ -86,6 +89,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   EnrollmentRepository enrollmentRepository,
                                   PluginGrantRepository pluginGrantRepository,
                                   LearningProgressRepository learningProgressRepository,
+                                  ExerciseRepository exerciseRepository,
                                   NotificationService notificationService,
                                   CourseSlideMapper courseSlideMapper) {
         this.courseRepository = courseRepository;
@@ -98,6 +102,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.pluginGrantRepository = pluginGrantRepository;
         this.videoRepository = videoRepository;
         this.learningProgressRepository = learningProgressRepository;
+        this.exerciseRepository = exerciseRepository;
         this.notificationService = notificationService;
         this.courseSlideMapper = courseSlideMapper;
     }
@@ -270,6 +275,12 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         // Phase F 修复:级联清理学习进度(防止孤儿数据导致学生看到对不上)
         learningProgressRepository.delete(new LambdaQueryWrapper<LearningProgress>()
                 .eq(LearningProgress::getCourseId, id));
+
+        // P1-C: 补全课程删除级联 — 软删除关联练习
+        exerciseRepository.update(null,
+                new LambdaUpdateWrapper<Exercise>()
+                        .eq(Exercise::getCourseId, id)
+                        .set(Exercise::getDeletedAt, LocalDateTime.now()));
 
         LOG.info("课程已关闭（含级联清理）, id={}", id);
     }

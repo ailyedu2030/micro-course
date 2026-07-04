@@ -11,11 +11,13 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Video;
+import com.microcourse.entity.VideoBookmark;
 import com.microcourse.entity.VideoStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.VideoService;
 import com.microcourse.util.SecurityUtil;
@@ -48,6 +50,7 @@ public class VideoServiceImpl implements VideoService {
     private final VideoRepository videoRepository;
     private final CourseChapterRepository chapterRepository;
     private final CourseRepository courseRepository;
+    private final VideoBookmarkRepository videoBookmarkRepository;
 
     /** P1-1: 从配置读取存储目录 */
     @Value("${video.storage-base-dir:/data/videos}")
@@ -58,10 +61,12 @@ public class VideoServiceImpl implements VideoService {
 
     public VideoServiceImpl(VideoRepository videoRepository,
                            CourseChapterRepository chapterRepository,
-                           CourseRepository courseRepository) {
+                           CourseRepository courseRepository,
+                           VideoBookmarkRepository videoBookmarkRepository) {
         this.videoRepository = videoRepository;
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
+        this.videoBookmarkRepository = videoBookmarkRepository;
     }
 
     @Override
@@ -221,6 +226,10 @@ public class VideoServiceImpl implements VideoService {
         }
         // Owner check
         assertCourseOwnership(video.getCourseId());
+
+        // 级联清理书签
+        videoBookmarkRepository.delete(new LambdaQueryWrapper<VideoBookmark>()
+                .eq(VideoBookmark::getVideoId, id));
 
         // 删除数据库记录（事务内）
         videoRepository.deleteById(id);

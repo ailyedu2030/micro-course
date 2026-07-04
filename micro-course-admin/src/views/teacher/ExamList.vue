@@ -226,9 +226,6 @@ async function handleGenerate() {
       totalScore: createForm.totalScore,
       timeLimit: createForm.timeLimit > 0 ? createForm.timeLimit : null,
     }
-    if (chapterIdFromRoute.value) {
-      examReq.chapterId = Number(chapterIdFromRoute.value)
-    }
     await generateExam(examReq)
     ElMessage.success('组卷成功')
     showCreate.value = false

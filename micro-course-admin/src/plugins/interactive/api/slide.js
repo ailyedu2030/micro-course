@@ -13,8 +13,9 @@ export function uploadSlide(courseId, file, onProgress, chapterId) {
   })
 }
 
-export function getSlides(courseId) {
-  return request({ method: 'GET', url: `/courses/${courseId}/slides` })
+export function getSlides(courseId, chapterId) {
+  const params = chapterId ? { chapterId } : {}
+  return request({ method: 'GET', url: `/courses/${courseId}/slides`, params })
 }
 
 export function getSlidePages(courseId, chapterId) {

@@ -95,6 +95,7 @@
         <el-table-column label="类型" width="90" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.courseType === 'INTERACTIVE'" type="success" size="small" effect="plain">互动</el-tag>
+            <el-tag v-else-if="row.courseType === 'OFFLINE'" type="info" size="small" effect="plain">线下</el-tag>
             <el-tag v-else type="primary" size="small" effect="plain">视频</el-tag>
           </template>
         </el-table-column>
@@ -145,6 +146,13 @@
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
         <el-form-item label="课程标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入课程标题" />
+        </el-form-item>
+        <el-form-item label="课程类型" prop="courseType">
+          <el-select v-model="formData.courseType" class="full-width">
+            <el-option label="视频课程" value="VIDEO" />
+            <el-option label="互动课程" value="INTERACTIVE" />
+            <el-option label="线下课程" value="OFFLINE" />
+          </el-select>
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
@@ -591,7 +599,7 @@ const handleExport = async () => {
     const exportData = allData.map((item, index) => ({
       '序号': index + 1,
       '标题': item.title || '',
-      '类型': item.courseType === 'INTERACTIVE' ? '互动' : '视频',
+      '类型': item.courseType === 'VIDEO' ? '视频' : item.courseType === 'INTERACTIVE' ? '互动' : '线下',
       '分类': item.categoryName || '',
       '教师': item.teacherName || '',
       '学员数': item.studentCount || 0,

@@ -435,7 +435,7 @@ async function handleUpload(file) {
   try {
     await uploadSlide(courseId.value, file, (e) => {
       uploadProgress.value = Math.round((e.loaded / e.total) * 100)
-    }, chapterId.value)
+    }, Number(chapterId.value) || null)
     ElMessage.success('上传成功，正在后台渲染...')
     await loadData()
     startPolling()
@@ -449,7 +449,7 @@ async function handleUpload(file) {
 
 async function loadData() {
   try {
-    const s = await getSlides(courseId.value)
+    const s = await getSlides(courseId.value, chapterId.value)
     slide.value = s.data
     if (s.data?.status === 2) {
       const p = await getSlidePages(courseId.value, chapterId.value)

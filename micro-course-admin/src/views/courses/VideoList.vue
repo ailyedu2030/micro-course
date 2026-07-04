@@ -256,12 +256,12 @@ const formData = reactive({
   file: null
 })
 
-const formRules = {
+const formRules = computed(() => ({
   title: courseIdFromRoute.value ? [] : [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
   courseId: courseIdFromRoute.value ? [] : [{ required: true, message: '请选择所属课程', trigger: 'change' }],
   chapterId: [{ required: true, message: '请选择所属章节', trigger: 'change' }],
-  file: [{ required: true, message: '请选择视频文件', trigger: 'change' }]
-}
+  file: isEdit.value ? [] : [{ required: true, message: '请选择视频文件', trigger: 'change' }]
+}))
 
 const dialogUploadRef = ref(null)
 

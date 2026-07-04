@@ -64,6 +64,9 @@ public class SlidePage {
     @TableField("narration_status")
     private String narrationStatus;
 
+    @TableField("file_uuid")
+    private String fileUuid;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -104,6 +107,8 @@ public class SlidePage {
     public void setAudioDuration(Integer audioDuration) { this.audioDuration = audioDuration; }
     public String getNarrationStatus() { return narrationStatus; }
     public void setNarrationStatus(String narrationStatus) { this.narrationStatus = narrationStatus; }
+    public String getFileUuid() { return fileUuid; }
+    public void setFileUuid(String fileUuid) { this.fileUuid = fileUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

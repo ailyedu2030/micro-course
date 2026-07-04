@@ -16,11 +16,15 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ChapterOfflineSessionRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.ExerciseChapterRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.CourseNote;
+import com.microcourse.entity.ExerciseChapter;
+import com.microcourse.entity.QuestionChapter;
 import com.microcourse.repository.CourseNoteRepository;
 import com.microcourse.repository.LearningProgressRepository;
+import com.microcourse.repository.QuestionChapterRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseChapterService;
 import com.microcourse.util.SecurityUtil;
@@ -45,6 +49,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private final ChapterOfflineSessionRepository chapterOfflineSessionRepository;
     private final LearningProgressRepository learningProgressRepository;
     private final CourseNoteRepository courseNoteRepository;
+    private final QuestionChapterRepository questionChapterRepository;
+    private final ExerciseChapterRepository exerciseChapterRepository;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
                                      CourseRepository courseRepository,
@@ -52,7 +58,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
                                      ExerciseRepository exerciseRepository,
                                      ChapterOfflineSessionRepository chapterOfflineSessionRepository,
                                      LearningProgressRepository learningProgressRepository,
-                                     CourseNoteRepository courseNoteRepository) {
+                                     CourseNoteRepository courseNoteRepository,
+                                     QuestionChapterRepository questionChapterRepository,
+                                     ExerciseChapterRepository exerciseChapterRepository) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.videoRepository = videoRepository;
@@ -60,6 +68,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         this.chapterOfflineSessionRepository = chapterOfflineSessionRepository;
         this.learningProgressRepository = learningProgressRepository;
         this.courseNoteRepository = courseNoteRepository;
+        this.questionChapterRepository = questionChapterRepository;
+        this.exerciseChapterRepository = exerciseChapterRepository;
     }
 
     @Override
@@ -201,6 +211,11 @@ public class CourseChapterServiceImpl implements CourseChapterService {
                 .eq(LearningProgress::getChapterId, id));
         courseNoteRepository.delete(new LambdaQueryWrapper<CourseNote>()
                 .eq(CourseNote::getChapterId, id));
+        // P1-C: 补全章节删除级联 — 清理题目-章节和练习-章节关联
+        questionChapterRepository.delete(new LambdaQueryWrapper<QuestionChapter>()
+                .eq(QuestionChapter::getChapterId, id));
+        exerciseChapterRepository.delete(new LambdaQueryWrapper<ExerciseChapter>()
+                .eq(ExerciseChapter::getChapterId, id));
         chapterRepository.deleteById(id);
     }
 

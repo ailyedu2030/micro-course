@@ -134,8 +134,22 @@
           </el-table-column>
           <el-table-column label="内容状态" width="120" align="center">
             <template #default="{ row }">
-              <el-tag v-if="(row.videoCount || 0) > 0" type="success" size="small">● {{ row.videoCount }} 个视频</el-tag>
-              <el-tag v-else type="info" size="small">○ 待添加</el-tag>
+              <template v-if="row.chapterType === 'VIDEO'">
+                <el-tag v-if="(row.videoCount || 0) > 0" type="success" size="small">● {{ row.videoCount }} 个视频</el-tag>
+                <el-tag v-else type="info" size="small">○ 待添加</el-tag>
+              </template>
+              <template v-else-if="row.chapterType === 'INTERACTIVE'">
+                <el-tag v-if="(row.slideCount || 0) > 0" type="success" size="small">● {{ row.slideCount }} 页课件</el-tag>
+                <el-tag v-else type="info" size="small">○ 待上传</el-tag>
+              </template>
+              <template v-else-if="row.chapterType === 'OFFLINE'">
+                <el-tag v-if="(row.sessionCount || 0) > 0" type="success" size="small">● {{ row.sessionCount }} 场次</el-tag>
+                <el-tag v-else type="info" size="small">○ 待配置</el-tag>
+              </template>
+              <template v-else-if="row.chapterType === 'EXERCISE'">
+                <el-tag v-if="(row.exerciseCount || 0) > 0" type="success" size="small">● {{ row.exerciseCount }} 题</el-tag>
+                <el-tag v-else type="info" size="small">○ 待组卷</el-tag>
+              </template>
             </template>
           </el-table-column>
           <el-table-column prop="duration" label="时长" width="80" align="center">
@@ -298,7 +312,7 @@
           <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 环境搭建" />
         </el-form-item>
         <el-form-item label="内容形式" prop="chapterType">
-          <el-select v-model="chapterFormData.chapterType" placeholder="选择本章节的内容形式" class="full-width">
+          <el-select v-model="chapterFormData.chapterType" :disabled="isChapterEdit" placeholder="选择本章节的内容形式" class="full-width">
             <el-option label="📹 视频讲解" value="VIDEO" />
             <el-option label="🎯 互动课件" value="INTERACTIVE" />
             <el-option label="📝 随堂练习" value="EXERCISE" />
