@@ -147,7 +147,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="所属章节" prop="chapterId">
-          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width">
+          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width" :disabled="isContextualMode">
             <el-option v-for="item in chapterOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
