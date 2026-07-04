@@ -154,7 +154,7 @@ const formRules = {
   courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
   title: [{ required: true, message: '请输入章节标题', trigger: 'blur' }],
   chapterType: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  sortOrder: [{ required: true, message: '请输入排序值', trigger: 'blur' }]
+  sortOrder: [{ required: true, message: '请输入排序号', trigger: 'blur' }, { type: 'number', min: 0, message: '最小为0', trigger: 'blur' }]
 }
 
 const fetchData = async () => {

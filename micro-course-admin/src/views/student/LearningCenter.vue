@@ -1,6 +1,6 @@
 <!--
   学习中心
-  路由路径: /student/learning
+  路由路径: /student/learning-stats
   Phase 5
   Author: jackie
 -->
@@ -729,7 +729,7 @@ async function getStats(sharedEnrollments) {
     const userId = userStore.userInfo?.id
     const [totalTimeData, enrollmentData, studyDaysData, certData] = await Promise.all([
       getTotalTime().catch(() => ({ data: { totalSeconds: 0 } })),
-      sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments(userId),
+      sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments(),
       getStudyDays().catch(() => ({ data: { totalDays: 0 } })),
       getMyCertificates().catch(() => ({ data: [] }))
     ])
@@ -785,7 +785,7 @@ async function getRecent(sharedEnrollments) {
       enrollments = sharedEnrollments
     } else {
       const userId = userStore.userInfo?.id
-      const { data } = await getMyEnrollments(userId)
+      const { data } = await getMyEnrollments()
       enrollments = Array.isArray(data) ? data : []
     }
 
@@ -799,7 +799,7 @@ async function getRecent(sharedEnrollments) {
         // 取最后一个已完成的章节，或第一个进度条目
         const lastEntry = [...progressList].reverse().find(p => p.completed) || progressList[0]
         if (lastEntry?.chapterId) {
-          currentChapter = Number(lastEntry.chapterId)
+          currentChapter = 1  // P1-I: 暂不显示 DB ID,待后端返回 sortOrder
         }
       } catch (e) {
         console.warn('[LearningCenter] 获取学习进度失败', e)
@@ -884,7 +884,7 @@ async function getRecommendations(sharedEnrollments) {
       enrollments = sharedEnrollments
     } else {
       const userId = userStore.userInfo?.id
-      const { data } = await getMyEnrollments(userId)
+      const { data } = await getMyEnrollments()
       enrollments = Array.isArray(data) ? data : []
     }
 
@@ -936,7 +936,7 @@ async function getRecentRecords(sharedEnrollments) {
       enrollments = sharedEnrollments
     } else {
       const userId = userStore.userInfo?.id
-      const { data } = await getMyEnrollments(userId)
+      const { data } = await getMyEnrollments()
       enrollments = Array.isArray(data) ? data : []
     }
 
@@ -976,7 +976,7 @@ async function loadData() {
     const userId = userStore.userInfo?.id
     let sharedEnrollments = []
     try {
-      const { data: enrollmentData } = await getMyEnrollments(userId)
+      const { data: enrollmentData } = await getMyEnrollments()
       sharedEnrollments = Array.isArray(enrollmentData) ? enrollmentData : []
     } catch (e) {
       sharedEnrollments = []

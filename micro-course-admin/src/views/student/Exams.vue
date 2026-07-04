@@ -332,7 +332,7 @@ async function checkPrerequisiteChapters(exam) {
     // 3. 检查所有 sortOrder < currentSortOrder 的章节是否已完成
     const previousChapters = chapters.filter(c => (c.sortOrder || 0) < currentSortOrder)
     for (const prev of previousChapters) {
-      const progress = progressList.find(p => p.chapterId === prev.id)
+      const progress = progressList.find(p => Number(p.chapterId) === Number(prev.id))
       if (!progress || !progress.completed) {
         return false
       }

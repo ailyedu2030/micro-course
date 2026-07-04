@@ -648,7 +648,7 @@ const fetchEnrollments = async () => {
     const list = res.data || []
 
     // P1-5: 使用 Promise.allSettled 替代 Promise.all，防止单个失败导致全部中断
-    const completionData = await getCompletion({ userId }).catch(() => ({}))
+    const completionData = await getCompletion().catch(() => ({}))
     const completionMap = completionData?.data || {}
 
     // R8 P0-3: 批量获取学习进度（替代 per-course N+1）

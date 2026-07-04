@@ -108,7 +108,7 @@
       <!-- 课程描述 -->
       <el-card shadow="never" class="info-card" v-if="courseData.description">
         <template #header><span class="card-title">课程描述</span></template>
-        <div class="description-html" v-html="courseData.description"></div>
+        <div class="description-html" v-html="safeHtml(courseData.description)"></div>
       </el-card>
 
       <!-- 章节管理 -->
@@ -408,6 +408,12 @@ const chapterFormRules = {
   chapterType: [{ required: true, message: '请选择内容类型', trigger: 'change' }]
 }
 const onChapterTypeChange = () => {}
+
+// P2: v-html XSS 防护——剥离 <script> 标签
+function safeHtml(html) {
+  if (!html) return ''
+  return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+}
 
 let sortableInstance = null
 
