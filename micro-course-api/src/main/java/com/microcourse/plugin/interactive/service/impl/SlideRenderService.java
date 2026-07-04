@@ -124,6 +124,7 @@ public class SlideRenderService {
                     SlidePage sp = new SlidePage();
                     sp.setSlideId(slideId);
                     sp.setCourseId(slide.getCourseId());
+                    sp.setChapterId(slide.getChapterId());
                     sp.setPageNumber(pageNumber);
                     sp.setFileUuid(fileUuid);
                     sp.setImageUrl("/api/courses/" + slide.getCourseId() + "/slides/pages/" + pageNumber + "/image");
