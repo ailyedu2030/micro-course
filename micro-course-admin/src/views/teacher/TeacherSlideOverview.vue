@@ -258,8 +258,9 @@ async function onCourseChange(courseId) {
   uploadForm.value.chapterId = null
   if (!courseId) { chapterOptions.value = []; return }
   try {
-    const { data } = await getChapters({ courseId, chapterType: 'INTERACTIVE', size: 100 })
-    chapterOptions.value = data?.items || []
+    const { data } = await getChapters({ courseId, size: 100 })
+    // 前端过滤:只显示 INTERACTIVE 类型的章节
+    chapterOptions.value = (data?.items || []).filter(ch => ch.chapterType === 'INTERACTIVE')
   } catch { chapterOptions.value = [] }
 }
 
