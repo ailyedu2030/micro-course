@@ -25,6 +25,9 @@ public class SlidePage {
     @TableField("course_id")
     private Long courseId;
 
+    @TableField("chapter_id")
+    private Long chapterId;
+
     @TableField("page_number")
     private Integer pageNumber;
 
@@ -75,6 +78,8 @@ public class SlidePage {
     public void setSlideId(Long slideId) { this.slideId = slideId; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
+    public Long getChapterId() { return chapterId; }
+    public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public Integer getPageNumber() { return pageNumber; }
     public void setPageNumber(Integer pageNumber) { this.pageNumber = pageNumber; }
     public String getImageUrl() { return imageUrl; }
