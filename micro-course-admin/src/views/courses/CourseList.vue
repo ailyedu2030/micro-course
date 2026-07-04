@@ -37,6 +37,13 @@
             <el-option label="归档" :value="6" />
           </el-select>
         </el-form-item>
+        <el-form-item label="课程类型">
+          <el-select v-model="searchForm.courseType" placeholder="全部类型" clearable class="filter-input-w140" @change="handleSearch">
+            <el-option label="视频课程" value="VIDEO" />
+            <el-option label="互动课程" value="INTERACTIVE" />
+            <el-option label="线下课程" value="OFFLINE" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
@@ -48,7 +55,7 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">{{ userRole === 'TEACHER' ? '我的课程' : '课程列表' }}</span>
+          <span class="card-title">{{ pageTitle }}</span>
           <div class="header-actions">
             <el-button
               type="warning"
@@ -261,6 +268,17 @@ const { bindToQuery } = useUrlPagination()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 
+// NN/g IA 原则: 标签精度比覆盖更重要。courseType filter 由 URL 驱动,
+// 落地直接显示"我的视频课/互动课/线下课"避免泛词
+const courseTypeLabels = { VIDEO: '视频课', INTERACTIVE: '互动课', OFFLINE: '线下课' }
+const pageTitle = computed(() => {
+  const base = userRole.value === 'TEACHER' ? '我的' : ''
+  if (searchForm.courseType && courseTypeLabels[searchForm.courseType]) {
+    return `${base}${courseTypeLabels[searchForm.courseType]}`
+  }
+  return `${base}课程`
+})
+
 const loading = ref(false)
 const submitLoading = ref(false)
 const actingId = ref(null)
@@ -275,11 +293,12 @@ const searchForm = reactive({
   keyword: '',
   categoryId: '',
   teacherName: '',
-  status: ''
+  status: '',
+  courseType: ''
 })
 
 // P2-14: URL 分页同步
-bindToQuery(page, size, searchForm, ['keyword', 'categoryId', 'teacherName', 'status'])
+bindToQuery(page, size, searchForm, ['keyword', 'categoryId', 'teacherName', 'status', 'courseType'])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增课程')
@@ -338,6 +357,7 @@ const fetchData = async () => {
     categoryId: searchForm.categoryId || undefined,
     teacherName: searchForm.teacherName || undefined,
     status: searchForm.status !== '' ? searchForm.status : undefined,
+    courseType: searchForm.courseType !== '' ? searchForm.courseType : undefined,
     // 教师自动过滤为自己的课程
     teacherId: userStore.role === 'TEACHER' ? userStore.userId : null
   }
@@ -378,6 +398,7 @@ const handleReset = () => {
   searchForm.categoryId = ''
   searchForm.teacherName = ''
   searchForm.status = ''
+  searchForm.courseType = ''
   page.value = 1
   fetchData()
 }
