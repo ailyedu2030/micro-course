@@ -177,7 +177,7 @@ public class SlideServiceImpl implements SlideService {
     }
 
     @Override
-    public List<SlidePageVO> getPages(Long courseId) {
+    public List<SlidePageVO> getPages(Long courseId, Long chapterId) {
         SlideVO slideVO = getByCourseId(courseId);
         if (slideVO == null) {
             return java.util.Collections.emptyList();
@@ -185,6 +185,9 @@ public class SlideServiceImpl implements SlideService {
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getSlideId, slideVO.getId())
                 .orderByAsc(SlidePage::getPageNumber);
+        if (chapterId != null) {
+            wrapper.eq(SlidePage::getChapterId, chapterId);
+        }
         return slidePageMapper.selectList(wrapper).stream()
                 .map(this::toPageVO)
                 .collect(Collectors.toList());

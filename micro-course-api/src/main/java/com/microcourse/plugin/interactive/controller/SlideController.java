@@ -86,9 +86,10 @@ public class SlideController {
 
     @GetMapping("/pages")
     @PreAuthorize("isAuthenticated()")
-    public R<List<SlidePageVO>> getPages(@PathVariable Long courseId) {
+    public R<List<SlidePageVO>> getPages(@PathVariable Long courseId,
+                                        @RequestParam(required = false) Long chapterId) {
         verifyAccess(courseId);
-        return R.ok(slideService.getPages(courseId));
+        return R.ok(slideService.getPages(courseId, chapterId));
     }
 
     @GetMapping("/pages/{pageNumber}")

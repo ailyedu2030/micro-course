@@ -175,6 +175,7 @@ import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loa
 
 const route = useRoute()
 const courseId = computed(() => route.params.courseId)
+const chapterId = computed(() => route.query.chapterId)
 
 const pages = ref([])
 const current = ref(0)
@@ -208,7 +209,7 @@ async function loadPages() {
   pageLoading.value = true
   pageError.value = false
   try {
-    const res = await getSlidePages(courseId.value)
+    const res = await getSlidePages(courseId.value, chapterId.value)
     pages.value = res.data || []
     for (const page of pages.value) {
       const idx = page.pageNumber - 1

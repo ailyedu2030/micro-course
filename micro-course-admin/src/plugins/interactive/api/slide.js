@@ -17,8 +17,9 @@ export function getSlides(courseId) {
   return request({ method: 'GET', url: `/courses/${courseId}/slides` })
 }
 
-export function getSlidePages(courseId) {
-  return request({ method: 'GET', url: `/courses/${courseId}/slides/pages` })
+export function getSlidePages(courseId, chapterId) {
+  const params = chapterId ? { chapterId } : {}
+  return request({ method: 'GET', url: `/courses/${courseId}/slides/pages`, params })
 }
 
 export function getSlidePage(courseId, pageNumber) {

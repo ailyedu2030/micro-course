@@ -12,7 +12,7 @@ public interface SlideService {
 
     SlideVO getByCourseId(Long courseId);
 
-    List<SlidePageVO> getPages(Long courseId);
+    List<SlidePageVO> getPages(Long courseId, Long chapterId);
 
     SlidePageVO getPage(Long courseId, Integer pageNumber);
 

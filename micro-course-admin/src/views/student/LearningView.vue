@@ -270,29 +270,23 @@ async function loadCourse(cid) {
           }
         })
       } else if (ch.chapterType === 'INTERACTIVE') {
-        // 互动课件:生成一个可点击的"进入课件"条目
-        if (ch.slides?.length > 0 || ch.slideCount > 0) {
-          lessons = [{
-            id: `slide-${ch.id}`,
-            title: '互动课件',
-            type: 'INTERACTIVE',
-            chapterId: ch.id,
-            status: 'NOT_STARTED',
-            duration: ch.duration || 0
-          }]
-        }
+        lessons = [{
+          id: `slide-${ch.id}`,
+          title: '互动课件',
+          type: 'INTERACTIVE',
+          chapterId: ch.id,
+          status: 'NOT_STARTED',
+          duration: ch.duration || 0
+        }]
       } else if (ch.chapterType === 'OFFLINE') {
-        // 线下课:生成一个可点击的"线下课签到"条目
-        if (ch.offlineSessions?.length > 0 || ch.hasOfflineSessions) {
-          lessons = [{
-            id: `offline-${ch.id}`,
-            title: '线下课签到',
-            type: 'OFFLINE',
-            chapterId: ch.id,
-            status: 'NOT_STARTED',
-            duration: 0
-          }]
-        }
+        lessons = [{
+          id: `offline-${ch.id}`,
+          title: '线下课签到',
+          type: 'OFFLINE',
+          chapterId: ch.id,
+          status: 'NOT_STARTED',
+          duration: 0
+        }]
       } else if (ch.chapterType === 'EXERCISE') {
         // 练习:生成一个可点击的"开始练习"条目
         lessons = [{

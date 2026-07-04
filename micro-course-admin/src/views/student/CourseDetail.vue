@@ -492,8 +492,8 @@ function handleAddCart() {
 const handleChapterClick = (row) => {
   if (row.chapterType === 'EXERCISE') {
     router.push(`/student/chapters/${row.id}/exercises`)
-  } else if (row.chapterType === 'INTERACTIVE' || course.value.courseType === 'INTERACTIVE') {
-    router.push(`/student/courses/${courseId.value}/slides/player`)
+  } else if (row.chapterType === 'INTERACTIVE') {
+    router.push(`/student/courses/${courseId.value}/slides/player?chapterId=${row.id}`)
   } else if (row.chapterType === 'OFFLINE') {
     router.push(`/student/chapters/${row.id}/offline`)
   } else {
