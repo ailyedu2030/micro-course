@@ -264,6 +264,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <excludedGroups>${surefire.excludedGroups}</excludedGroups>
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
                     <!-- CI 慢根因修复尝试(agent 报告 P0-1):
                          后端 246 测试串行 ~50s,CI 慢 3-5x.
                          ★ 纪律 2 警示: 开启 <parallel>classes</parallel> 后
