@@ -98,7 +98,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课件文件" prop="file">
-          <el-upload :show-file-list="true" :before-upload="handleUploadFile" accept=".pptx" :auto-upload="false" ref="uploadRef">
+          <el-upload :show-file-list="true" accept=".pptx" :auto-upload="false" :on-change="onFileChange">
             <el-button type="primary" :icon="UploadFilled">选择文件</el-button>
             <template #tip><div class="el-upload__tip">仅支持 .pptx 格式，最大 50MB</div></template>
           </el-upload>
@@ -134,7 +134,6 @@ const uploadDialogVisible = ref(false)
 const uploading = ref(false)
 const uploadForm = ref({ courseId: null, chapterId: null, file: null })
 const chapterOptions = ref([])
-const uploadRef = ref(null)
 
 const searchForm = ref({
   courseId: '',
@@ -264,9 +263,10 @@ async function onCourseChange(courseId) {
   } catch { chapterOptions.value = [] }
 }
 
-function handleUploadFile(file) {
-  uploadForm.value.file = file
-  return false  // 阻止自动上传
+function onFileChange(uploadFile) {
+  // 从 el-upload 的 change 事件中获取原始文件
+  uploadForm.value.file = uploadFile.raw
+  return false
 }
 
 async function submitUpload() {
