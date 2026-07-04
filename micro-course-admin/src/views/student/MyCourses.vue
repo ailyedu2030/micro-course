@@ -55,7 +55,7 @@
         <!-- Loading 状态 -->
         <div v-if="loading" class="course-grid">
           <el-row :gutter="24">
-            <el-col v-for="n in 8" :key="n" :xs="24" :sm="12" :md="8" :lg="6">
+            <el-col v-for="n in size" :key="n" :xs="24" :sm="12" :md="8" :lg="6">
               <el-card class="course-card skeleton-card" shadow="never">
                 <el-skeleton animated>
                   <template #template>
@@ -298,7 +298,7 @@
 
       <!-- Loading 状态 -->
       <div v-if="loading" class="h5-course-list">
-        <el-card v-for="n in 3" :key="n" class="h5-course-card" shadow="never">
+          <el-card v-for="n in size" :key="n" class="h5-course-card" shadow="never">
           <el-skeleton animated>
             <template #template>
               <div class="skeleton-cover h5-skeleton-cover" />

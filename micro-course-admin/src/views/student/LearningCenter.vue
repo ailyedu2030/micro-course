@@ -534,6 +534,7 @@ import { useUserStore } from '@/store/user'
 import { getStudyDays, getTotalTime, getLearningProgress } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
+import { getCourses } from '@/api/course'
 import { getMyCertificates } from '@/api/certificate'
 import { getMyCheckIns, createCheckIn, getCheckInStreak } from '@/api/checkin'
 import { getAccuracyTrend } from '@/api/exercise-record'
@@ -570,7 +571,14 @@ function onResize() {
 }
 
 onMounted(() => window.addEventListener('resize', onResize))
-onUnmounted(() => window.removeEventListener('resize', onResize))
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  // P1-I: 清理 RAF 动画
+  if (rafId) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+})
 
 // ---------------------------------------------------------------------------
 // 用户信息
@@ -586,6 +594,8 @@ const currentDate = computed(() => {
 // ---------------------------------------------------------------------------
 const loading = ref(true)
 const chartLoading = ref(true)
+/** P1-I: RAF ID，用于组件卸载时清理动画 */
+let rafId = null
 const checkInLoading = ref(false)
 const checkedInToday = ref(false)
 const statsError = ref(false)
@@ -616,9 +626,11 @@ function animateNumber(target, setter, duration = 1200) {
     // easeOutCubic
     const eased = 1 - Math.pow(1 - progress, 3)
     setter(Math.round(from + (target - from) * eased))
-    if (progress < 1) requestAnimationFrame(step)
+    if (progress < 1) {
+      rafId = requestAnimationFrame(step)
+    }
   }
-  requestAnimationFrame(step)
+  rafId = requestAnimationFrame(step)
 }
 
 // ---------------------------------------------------------------------------
@@ -993,6 +1005,25 @@ async function loadData() {
     ])
     // 检查今日是否已打卡
     await checkTodayStatus()
+
+    // P2: 推荐课程为空时（新用户无选课），从课程广场拉取热门课程兜底
+    if (!recommendations.value.length) {
+      try {
+        const { data } = await getCourses({ page: 0, size: 3, sortBy: 'studentCount', sortOrder: 'desc' })
+        const items = data?.items || data || []
+        if (Array.isArray(items) && items.length > 0) {
+          recommendations.value = items.slice(0, 3).map(c => ({
+            id: c.id,
+            title: c.title || c.courseTitle,
+            cover: c.coverUrl || c.cover,
+            tag: '热门推荐',
+            author: c.teacherName || c.teacher || '',
+            students: c.studentCount || 0,
+            rating: c.avgRating || 0
+          }))
+        }
+      } catch { /* 兜底失败不阻塞页面 */ }
+    }
   } catch (e) {
     console.warn("[LearningCenter] loadData 加载失败", e)
     statsError.value = true
