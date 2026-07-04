@@ -145,6 +145,8 @@ public class ExamController {
         ExerciseCreateRequest createReq = new ExerciseCreateRequest();
         createReq.setCourseId(courseId);
         createReq.setChapterIds(chapterIds);
+        // 同时设置单值 chapterId,确保 Exercise.chapterId 被填充(loadExams 过滤用)
+        createReq.setChapterId(chapterIds.isEmpty() ? null : chapterIds.get(0));
         createReq.setTitle(title);
         createReq.setIsExam(true);
         createReq.setQuestions(items);
