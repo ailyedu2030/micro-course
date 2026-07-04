@@ -10,11 +10,13 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.NarrationSettingService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/courses/{courseId}/narration-settings")
+@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 public class NarrationSettingController {
 
     private final NarrationSettingService narrationSettingService;

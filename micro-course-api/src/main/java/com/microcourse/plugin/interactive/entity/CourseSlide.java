@@ -1,6 +1,7 @@
 package com.microcourse.plugin.interactive.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -12,7 +13,8 @@ public class CourseSlide {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long courseId;
-    /** 保留字段：未来用于按章节分配课件 */
+    /** 保留字段：未来用于按章节分配课件，数据库暂无对应列 */
+    @TableField(exist = false)
     private Long lessonId;
     private String fileName;
     private String fileUrl;

@@ -28,6 +28,7 @@ import com.microcourse.service.OfflineSessionService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,10 +58,12 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
 
     private final UserRepository userRepository;
 
-    /** 签到时间窗口：课前 N 分钟（可通过配置文件或其他配置中心修改） */
-    private static final int CHECKIN_WINDOW_BEFORE_MINUTES = 15;
-    /** 签到时间窗口：课后 N 分钟（可通过配置文件或其他配置中心修改） */
-    private static final int CHECKIN_WINDOW_AFTER_MINUTES = 30;
+    /** 签到时间窗口：课前 N 分钟（可通过配置文件调整） */
+    @Value("${course.offline.checkin-before-minutes:15}")
+    private int checkinBeforeMinutes;
+    /** 签到时间窗口：课后 N 分钟（可通过配置文件调整） */
+    @Value("${course.offline.checkin-after-minutes:30}")
+    private int checkinAfterMinutes;
 
     public OfflineSessionServiceImpl(ChapterOfflineSessionRepository sessionRepository,
                                       AttendanceRecordRepository attendanceRepository,
@@ -192,10 +195,10 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         }
 
         LocalTime now = LocalTime.now();
-        LocalTime windowStart = session.getStartTime().minusMinutes(CHECKIN_WINDOW_BEFORE_MINUTES);
-        LocalTime windowEnd = session.getStartTime().plusMinutes(CHECKIN_WINDOW_AFTER_MINUTES);
+        LocalTime windowStart = session.getStartTime().minusMinutes(checkinBeforeMinutes);
+        LocalTime windowEnd = session.getStartTime().plusMinutes(checkinAfterMinutes);
         if (now.isBefore(windowStart) || now.isAfter(windowEnd)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不在签到时间窗口内（课前" + CHECKIN_WINDOW_BEFORE_MINUTES + "分钟至课后" + CHECKIN_WINDOW_AFTER_MINUTES + "分钟）");
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不在签到时间窗口内（课前" + checkinBeforeMinutes + "分钟至课后" + checkinAfterMinutes + "分钟）");
         }
 
         CourseChapter chapter = chapterRepository.selectById(session.getChapterId());

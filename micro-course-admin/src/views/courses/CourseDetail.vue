@@ -34,6 +34,7 @@
           </template>
           <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">管理课件</el-button>
           <el-button type="primary" plain @click="switchToEdit">编辑</el-button>
+          <el-button type="warning" plain @click="handleCopy" v-if="!isEditMode">复制</el-button>
           <el-button @click="handleBack">返回</el-button>
         </div>
       </div>
@@ -313,7 +314,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
 import { useUserStore } from '@/store/user'
-import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse } from '@/api/course'
+import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse, copyCourse } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 import { QuillEditor } from '@vueup/vue-quill'
@@ -454,6 +455,18 @@ const handleUnpublish = async () => {
   try { await ElMessageBox.confirm('确定下架？', '提示', { type: 'info' }) } catch { return }
   try { await unpublishCourse(courseId.value); ElMessage.success('已下架'); fetchCourse() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+}
+
+const handleCopy = async () => {
+  try { await ElMessageBox.confirm('复制课程后,视频需手动重新上传。是否继续?', '提示', { type: 'info' }) } catch { return }
+  try {
+    const res = await copyCourse(courseId.value)
+    ElMessage.success('已复制,视频需手动上传')
+    if (res.data?.videoCopied === false) {
+      ElMessageBox.alert('副本课程已创建,但视频内容未复制,请逐个章节手动上传', '提示')
+    }
+    router.push(`/courses/${res.data.id}`)
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '复制失败') }
 }
 
 // ===== 编辑提交 =====
