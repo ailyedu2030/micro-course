@@ -486,6 +486,13 @@ const handleEdit = (row) => {
   formData.shuffleQuestions = row.shuffleQuestions || false
   formData.shuffleOptions = row.shuffleOptions || false
   formChapterOptions.value = chapterOptions.value
+  if (row.courseId && formChapterOptions.value.length === 0) {
+    // P1-I: 搜索区未选课程时,直接按练习所属课程加载章节列表
+    try {
+      const { data } = await getChapters({ courseId: row.courseId })
+      formChapterOptions.value = data?.items || []
+    } catch { /* ignore */ }
+  }
   dialogVisible.value = true
 }
 
