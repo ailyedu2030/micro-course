@@ -212,9 +212,11 @@ public class SlideServiceImpl implements SlideService {
             log.warn("[Slide] slideId 为空 courseId={} pageNumber={}", courseId, pageNumber);
             return generateFallbackImage(pageImageWidth, "第" + pageNumber + "页");
         }
+        String imageFileName = pageVO.getFileUuid() != null
+                ? pageVO.getFileUuid() + ".png"
+                : "page_" + pageNumber + ".png";
         Path imagePath = Paths.get(storagePath, String.valueOf(courseId),
-                String.valueOf(pageVO.getSlideId()), "images",
-                "page_" + pageNumber + ".png");
+                String.valueOf(pageVO.getSlideId()), "images", imageFileName);
         byte[] result = readImageOrFallback(imagePath, pageImageWidth, "第" + pageNumber + "页");
         if (result.length == 0) {
             result = generateFallbackImage(pageImageWidth, "第" + pageNumber + "页");
@@ -235,9 +237,11 @@ public class SlideServiceImpl implements SlideService {
             log.warn("[Slide] slideId 为空 courseId={} pageNumber={}", courseId, pageNumber);
             return generateFallbackImage(thumbnailWidth, "第" + pageNumber + "页");
         }
+        String thumbFileName = pageVO.getFileUuid() != null
+                ? pageVO.getFileUuid() + "_thumbnail.png"
+                : "page_" + pageNumber + ".png";
         Path thumbPath = Paths.get(storagePath, String.valueOf(courseId),
-                String.valueOf(pageVO.getSlideId()), "thumbnails",
-                "page_" + pageNumber + ".png");
+                String.valueOf(pageVO.getSlideId()), "thumbnails", thumbFileName);
         byte[] result = readImageOrFallback(thumbPath, thumbnailWidth, "第" + pageNumber + "页");
         if (result.length == 0) {
             result = generateFallbackImage(thumbnailWidth, "第" + pageNumber + "页");
@@ -303,6 +307,7 @@ public class SlideServiceImpl implements SlideService {
         vo.setSlideId(page.getSlideId());
         vo.setCourseId(page.getCourseId());
         vo.setPageNumber(page.getPageNumber());
+        vo.setFileUuid(page.getFileUuid());
         vo.setImageUrl(page.getImageUrl());
         vo.setThumbnailUrl(page.getThumbnailUrl());
         vo.setImageWidth(page.getImageWidth());
@@ -404,7 +409,26 @@ public class SlideServiceImpl implements SlideService {
                         .eq(SlidePage::getPageNumber, pageNumber));
         if (page == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         verifyCourseOwner(courseId);
+        // S-16: 先删除磁盘文件（按 file_uuid），再删 DB 记录
+        if (page.getFileUuid() != null) {
+            deletePageDiskFiles(courseId, page.getSlideId(), page.getFileUuid());
+        }
         slidePageMapper.deleteById(page.getId());
+    }
+
+    /**
+     * S-16: 按 file_uuid 删除此页对应的磁盘文件（全尺寸图 + 缩略图）。
+     * 静默吞异常——磁盘文件缺失不应阻止 DB 删除。
+     */
+    private void deletePageDiskFiles(Long courseId, Long slideId, String fileUuid) {
+        try {
+            Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
+            Path slideDir = courseDir.resolve(String.valueOf(slideId));
+            try { Files.deleteIfExists(slideDir.resolve("images").resolve(fileUuid + ".png")); } catch (IOException ignored) {}
+            try { Files.deleteIfExists(slideDir.resolve("thumbnails").resolve(fileUuid + "_thumbnail.png")); } catch (IOException ignored) {}
+        } catch (Exception e) {
+            log.warn("[SlideDelete] 清理磁盘文件异常 courseId={} fileUuid={}", courseId, fileUuid, e);
+        }
     }
 
     @Override

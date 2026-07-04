@@ -16,6 +16,7 @@ import com.microcourse.service.WrongQuestionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -93,35 +94,36 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
                 : courseRepository.selectBatchIds(courseIds).stream()
                 .collect(Collectors.toMap(Course::getId, c -> c));
 
-        // P1-3: 批量预加载 QuestionChapter 映射（questionId → chapterId）
-        Map<Long, Long> questionChapterMap = new HashMap<>();
+        // P0 修复: 批量预加载 QuestionChapter 映射（questionId → List<chapterId>），
+        // 使用 computeIfAbsent 保留多章节关联
+        Map<Long, List<Long>> questionChaptersMap = new HashMap<>();
         Map<Long, CourseChapter> chapterMap = Collections.emptyMap();
         if (!questionIds.isEmpty()) {
             List<QuestionChapter> qcs = questionChapterRepository.selectList(
                     new LambdaQueryWrapper<QuestionChapter>().in(QuestionChapter::getQuestionId, questionIds));
             for (QuestionChapter qc : qcs) {
-                questionChapterMap.put(qc.getQuestionId(), qc.getChapterId());
+                questionChaptersMap.computeIfAbsent(qc.getQuestionId(), k -> new ArrayList<>()).add(qc.getChapterId());
             }
             // 批量预加载 CourseChapter 以填充 chapterTitle
-            Set<Long> chapterIds = qcs.stream()
-                    .map(QuestionChapter::getChapterId)
+            Set<Long> allChapterIds = questionChaptersMap.values().stream()
+                    .flatMap(List::stream)
                     .filter(java.util.Objects::nonNull)
                     .collect(Collectors.toSet());
-            if (!chapterIds.isEmpty()) {
-                chapterMap = courseChapterRepository.selectBatchIds(chapterIds).stream()
+            if (!allChapterIds.isEmpty()) {
+                chapterMap = courseChapterRepository.selectBatchIds(allChapterIds).stream()
                         .collect(Collectors.toMap(CourseChapter::getId, ch -> ch));
             }
         }
 
         final Map<Long, CourseChapter> finalChapterMap = chapterMap;
         return wrongQuestions.stream()
-                .map(wq -> convertToVO(wq, questionMap, courseMap, questionChapterMap, finalChapterMap))
+                .map(wq -> convertToVO(wq, questionMap, courseMap, questionChaptersMap, finalChapterMap))
                 .toList();
     }
 
     private WrongQuestionVO convertToVO(WrongQuestion wrongQuestion, Map<Long, Question> questionMap,
                                          Map<Long, Course> courseMap,
-                                         Map<Long, Long> questionChapterMap,
+                                         Map<Long, List<Long>> questionChaptersMap,
                                          Map<Long, CourseChapter> chapterMap) {
         WrongQuestionVO vo = new WrongQuestionVO();
         vo.setId(wrongQuestion.getId());
@@ -149,11 +151,12 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
             }
         }
 
-        // P1-3: 通过 question_chapters 关联表填充章节ID和章节标题
-        Long chapterId = questionChapterMap.get(wrongQuestion.getQuestionId());
-        if (chapterId != null) {
-            vo.setChapterId(chapterId);
-            CourseChapter chapter = chapterMap.get(chapterId);
+        // P0 修复: 一题多章节时取第一个章节关联（最相关的）
+        Long firstChapterId = questionChaptersMap.getOrDefault(wrongQuestion.getQuestionId(), Collections.emptyList())
+                .stream().findFirst().orElse(null);
+        if (firstChapterId != null) {
+            vo.setChapterId(firstChapterId);
+            CourseChapter chapter = chapterMap.get(firstChapterId);
             if (chapter != null) {
                 vo.setChapterTitle(chapter.getTitle());
             }

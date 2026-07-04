@@ -45,8 +45,8 @@ v-for="item in items" :key="item.id" class="course-row student-card-item"
             <el-button v-if="!isLoggedIn" type="primary" size="large" class="buy-btn" @click="goLogin">
               请先登录
             </el-button>
-            <el-button v-else-if="isEnrolled" type="primary" size="large" class="buy-btn" disabled>
-              已购买
+            <el-button v-else-if="isEnrolled" type="primary" size="large" class="buy-btn" @click="startLearning">
+              开始学习
             </el-button>
             <el-button v-else type="primary" size="large" class="buy-btn" :loading="buyLoading" @click="handleBuy">
               {{ bundle?.isFree || !bundle?.price ? '立即加入' : '立即购买 · ¥' + bundle?.price }}
@@ -103,6 +103,15 @@ onMounted(async () => {
 
 const goLogin = () => router.push('/login')
 const goCourse = (id) => router.push(`/student/courses/${id}`)
+
+const startLearning = () => {
+  const firstCourse = bundle.value?.courses?.[0] || items.value?.[0]
+  if (firstCourse) {
+    router.push(`/student/courses/${firstCourse.courseId || firstCourse.id}`)
+  } else {
+    ElMessage.warning('套餐内暂无课程')
+  }
+}
 
 const handleBuy = async () => {
   buyLoading.value = true

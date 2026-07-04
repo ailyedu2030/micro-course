@@ -46,6 +46,8 @@ public class CourseVO {
     private String discountScope;
     private Integer discountPercent;
     private String pricingStatus;
+    /** 复制课程时标记：视频未随课程复制，需手动上传 */
+    private Boolean videoCopied;
 
     public CourseVO() {}
 
@@ -125,4 +127,6 @@ public class CourseVO {
     public void setDiscountPercent(Integer discountPercent) { this.discountPercent = discountPercent; }
     public String getPricingStatus() { return pricingStatus; }
     public void setPricingStatus(String pricingStatus) { this.pricingStatus = pricingStatus; }
+    public Boolean getVideoCopied() { return videoCopied; }
+    public void setVideoCopied(Boolean videoCopied) { this.videoCopied = videoCopied; }
 }

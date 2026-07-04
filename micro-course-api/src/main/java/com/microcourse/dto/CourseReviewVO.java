@@ -21,6 +21,7 @@ public class CourseReviewVO {
     private String content;
     private Boolean isAnonymous;
     private Long parentId;
+    private Integer status;
     private List<CourseReviewVO> replies;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -47,6 +48,8 @@ public class CourseReviewVO {
     public void setIsAnonymous(Boolean isAnonymous) { this.isAnonymous = isAnonymous; }
     public Long getParentId() { return parentId; }
     public void setParentId(Long parentId) { this.parentId = parentId; }
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
     public List<CourseReviewVO> getReplies() { return replies; }
     public void setReplies(List<CourseReviewVO> replies) { this.replies = replies; }
     public LocalDateTime getCreatedAt() { return createdAt; }

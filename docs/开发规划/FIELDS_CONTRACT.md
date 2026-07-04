@@ -12,9 +12,9 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 16 字段
 
-- 后端实体字段总数: 1804
+- 后端实体字段总数: 1807
 
-- 前端引用字段总数: 397
+- 前端引用字段总数: 398
 
 
 ## ⚠️ 前端孤儿字段
@@ -844,11 +844,11 @@
 
 | CourseChapter | 12 | 0 |
 
-| CourseCreateRequest | 19 | 0 |
+| CourseCreateRequest | 20 | 0 |
 
 | CourseFavorite | 5 | 0 |
 
-| CourseFavoriteVO | 9 | 0 |
+| CourseFavoriteVO | 8 | 0 |
 
 | CourseNote | 11 | 0 |
 
@@ -868,7 +868,7 @@
 
 | CourseReviewRequest | 4 | 0 |
 
-| CourseReviewVO | 13 | 0 |
+| CourseReviewVO | 14 | 0 |
 
 | CourseSlide | 10 | 0 |
 
@@ -880,7 +880,7 @@
 
 | CourseUpdateRequest | 21 | 0 |
 
-| CourseVO | 36 | 0 |
+| CourseVO | 37 | 0 |
 
 | DailyActivityVO | 2 | 0 |
 
@@ -932,7 +932,7 @@
 
 | ExerciseQuestion | 5 | 0 |
 
-| ExerciseRecord | 12 | 0 |
+| ExerciseRecord | 13 | 0 |
 
 | ExerciseRecordVO | 11 | 0 |
 

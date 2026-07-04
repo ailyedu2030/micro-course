@@ -53,7 +53,7 @@
             <span v-else class="no-thumb">—</span>
           </template>
         </el-table-column>
-        <el-table-column prop="courseName" label="课程名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="courseTitle" label="课程名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="teacherName" label="授课教师" min-width="120" />
         <el-table-column prop="createdAt" label="收藏时间" width="170" />
         <el-table-column label="操作" width="100" fixed="right" align="center">

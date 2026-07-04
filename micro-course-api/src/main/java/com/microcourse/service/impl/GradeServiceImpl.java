@@ -340,9 +340,8 @@ public class GradeServiceImpl implements GradeService {
     @Transactional(readOnly = true)
     public PageResult<ExerciseRecordVO> getPendingReview(int page, int size, Long currentUserId) {
         LambdaQueryWrapper<ExerciseRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.isNull(ExerciseRecord::getDeletedAt)
-               // answers JSON 中存在尚未人工批改的主观题
-               .like(ExerciseRecord::getAnswers, "\"needsManualGrading\":true");
+        wrapper.eq(ExerciseRecord::getNeedsManualGrading, true)
+               .isNull(ExerciseRecord::getDeletedAt);
 
         // TEACHER 数据隔离 — 仅返回自己授课课程下练习的记录；ADMIN 不限制
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
@@ -447,6 +446,9 @@ public class GradeServiceImpl implements GradeService {
             }
         }
 
+        // P0 修复: 检查是否所有主观题已批改完毕，若全部已批改则更新 needsManualGrading = false
+        boolean allGraded = items.stream().noneMatch(i -> Boolean.TRUE.equals(i.get("needsManualGrading")));
+
         String newAnswers;
         try {
             newAnswers = objectMapper.writeValueAsString(items);
@@ -458,6 +460,7 @@ public class GradeServiceImpl implements GradeService {
         record.setAnswers(newAnswers);
         record.setScore(total);
         record.setPassed(passed);
+        record.setNeedsManualGrading(!allGraded);
         exerciseRecordRepository.updateById(record);
 
         // 同步更新 grades 表对应记录（优先按 attemptNo 精确匹配本次作答）

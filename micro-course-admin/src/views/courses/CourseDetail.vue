@@ -26,10 +26,10 @@
             <el-button type="success" @click="handleApprove">审核通过</el-button>
             <el-button type="danger" @click="handleReject">驳回</el-button>
           </template>
-          <template v-if="courseData.status === 2">
+          <template v-if="courseData.status === 2 && userRole === 'ADMIN'">
             <el-button type="primary" @click="handlePublish">发布</el-button>
           </template>
-          <template v-if="courseData.status === 4">
+          <template v-if="courseData.status === 4 && userRole === 'ADMIN'">
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
           <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">管理课件</el-button>
@@ -313,7 +313,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
 import { useUserStore } from '@/store/user'
-import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover } from '@/api/course'
+import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 import { QuillEditor } from '@vueup/vue-quill'
@@ -447,12 +447,12 @@ const handleReject = async () => {
 }
 const handlePublish = async () => {
   try { await ElMessageBox.confirm('确定发布？', '提示', { type: 'info' }) } catch { return }
-  try { await updateCourseStatus(courseId.value, 4); ElMessage.success('已发布'); fetchCourse() }
+  try { await publishCourse(courseId.value); ElMessage.success('已发布'); fetchCourse() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 const handleUnpublish = async () => {
   try { await ElMessageBox.confirm('确定下架？', '提示', { type: 'info' }) } catch { return }
-  try { await updateCourseStatus(courseId.value, 5); ElMessage.success('已下架'); fetchCourse() }
+  try { await unpublishCourse(courseId.value); ElMessage.success('已下架'); fetchCourse() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 

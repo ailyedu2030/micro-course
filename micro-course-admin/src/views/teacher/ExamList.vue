@@ -103,6 +103,9 @@ const createForm = reactive({
     { type: 'SINGLE', count: 0 },
     { type: 'MULTIPLE', count: 0 },
     { type: 'JUDGE', count: 0 },
+    { type: 'FILL', count: 0 },
+    { type: 'SHORT_ANSWER', count: 0 },
+    { type: 'ESSAY', count: 0 },
   ],
   totalScore: 100,
   timeLimit: 0,
@@ -116,7 +119,14 @@ const createRules = {
 const deleting = ref(null)
 
 function typeLabel(t) {
-  const m = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题' }
+  const m = {
+    SINGLE: '单选题',
+    MULTIPLE: '多选题',
+    JUDGE: '判断题',
+    FILL: '填空题（需人工批改）',
+    SHORT_ANSWER: '简答题（需人工批改）',
+    ESSAY: '论述题（需人工批改）',
+  }
   return m[t] || t
 }
 

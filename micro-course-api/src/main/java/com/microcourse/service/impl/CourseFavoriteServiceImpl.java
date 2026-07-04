@@ -151,7 +151,6 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
             Course course = courseMap.get(fav.getCourseId());
             if (course != null) {
                 vo.setCourseTitle(course.getTitle());
-                vo.setCourseName(course.getTitle());
                 vo.setCoverUrl(course.getCoverUrl());
             }
             User teacher = course != null ? userMap.get(course.getTeacherId()) : null;

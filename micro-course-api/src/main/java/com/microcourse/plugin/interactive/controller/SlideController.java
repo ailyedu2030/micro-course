@@ -249,7 +249,7 @@ public class SlideController {
                 && magic[3] == 'G';
         if (!isZip && !isJpeg && !isPng) {
             throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID,
-                    "不支持的课件格式（仅支持 PPTX/PDF，或 JPEG/PNG 图片）");
+                    "不支持的课件格式（仅支持 PPTX/JPEG/PNG 格式）");
         }
     }
 }

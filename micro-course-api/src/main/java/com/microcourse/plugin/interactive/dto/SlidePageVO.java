@@ -8,6 +8,7 @@ public class SlidePageVO {
     private Long slideId;
     private Long courseId;
     private Integer pageNumber;
+    private String fileUuid;
     private String imageUrl;
     private String thumbnailUrl;
     private Integer imageWidth;
@@ -33,6 +34,8 @@ public class SlidePageVO {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Integer getPageNumber() { return pageNumber; }
     public void setPageNumber(Integer pageNumber) { this.pageNumber = pageNumber; }
+    public String getFileUuid() { return fileUuid; }
+    public void setFileUuid(String fileUuid) { this.fileUuid = fileUuid; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public String getThumbnailUrl() { return thumbnailUrl; }

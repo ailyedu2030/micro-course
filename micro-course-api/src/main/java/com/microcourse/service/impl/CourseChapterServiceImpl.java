@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
@@ -191,14 +192,15 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         List<CourseChapter> chapters = chapterRepository.selectBatchIds(ids);
 
         // 校验所有章节存在且属于同一课程
-        Long courseId = null;
-        for (CourseChapter chapter : chapters) {
-            if (courseId == null) {
-                courseId = chapter.getCourseId();
-                assertCourseOwnerByCourseId(courseId);
-                break;
-            }
+        if (chapters.isEmpty()) return;
+        Set<Long> courseIds = chapters.stream()
+                .map(CourseChapter::getCourseId)
+                .collect(Collectors.toSet());
+        if (courseIds.size() > 1) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "章节必须属于同一课程");
         }
+        Long courseId = courseIds.iterator().next();
+        assertCourseOwnerByCourseId(courseId);
 
         // P0-SEC-FIX: 使用逐条 updateById 替代 CASE WHEN 字符串拼接，消除 SQL 注入风险
         // P3 性能优化: 使用 Map 查找替代双重循环 O(N*M) → O(N+M)

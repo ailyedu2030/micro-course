@@ -349,7 +349,8 @@ const handleSubmitPost = async () => {
     await createPost({
       title: postForm.value.title,
       content: postForm.value.content,
-      isAnonymous: postForm.value.isAnonymous
+      isAnonymous: postForm.value.isAnonymous,
+      chapterId: Number(chapterId.value) || null
     })
     ElMessage.success('发布成功')
     postDialogVisible.value = false

@@ -6,7 +6,7 @@ export default {
 
   routes: [
     {
-      path: '/teacher/courses/:id/slides',
+      path: '/teacher/courses/:courseId/slides/manage',
       name: 'SlideManage',
       component: () => import('./views/teacher/SlideManage.vue'),
       meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] }

@@ -21,6 +21,7 @@ public class SlidePage {
     private String extractedText;
     private Boolean hasAnimation;
     private Boolean hasEmbeddedMedia;
+    private String fileUuid;
     private String narrationScript;
     private String narrationAudioUrl;
     private Integer audioDuration;
@@ -38,6 +39,8 @@ public class SlidePage {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Integer getPageNumber() { return pageNumber; }
     public void setPageNumber(Integer pageNumber) { this.pageNumber = pageNumber; }
+    public String getFileUuid() { return fileUuid; }
+    public void setFileUuid(String fileUuid) { this.fileUuid = fileUuid; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public String getThumbnailUrl() { return thumbnailUrl; }
