@@ -201,7 +201,7 @@ size="small" type="success" :loading="ttsLoading[idx]"
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, CircleCheckFilled, CopyDocument, EditPen, Headset, MagicStick, Microphone, Plus, UploadFilled } from '@element-plus/icons-vue'
 import { getCourseById, submitCourseForReview } from '@/api/course'
@@ -209,6 +209,7 @@ import { getSlides, getSlidePages, uploadSlide, generateNarration, updateNarrati
 import NarrationSettingsDialog from '@/plugins/interactive/components/NarrationSettingsDialog.vue'
 
 const route = useRoute()
+const router = useRouter()
 const courseId = computed(() => route.params.id)
 const course = ref({})
 const loading = ref(true)
@@ -272,7 +273,11 @@ async function loadCourse() {
   try {
     const { data } = await getCourseById(courseId.value)
     course.value = data || {}
-    // 非互动课程提示并阻止后续加载
+    if (data && data.courseType === 'INTERACTIVE') {
+      ElMessage.info('互动课程请使用课件管理页面')
+      router.replace(`/teacher/courses/${courseId.value}/slides/manage`)
+      return
+    }
     if (data && data.courseType !== 'INTERACTIVE') {
       notInteractive.value = true
       ElMessage.warning('此课程为视频课程，不支持互动课件编辑')

@@ -108,7 +108,7 @@
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button v-if="row.courseType === 'INTERACTIVE'" type="primary" link size="small" @click.stop="goWorkspace(row)">工作台</el-button>
+            <el-button v-if="row.courseType !== 'INTERACTIVE'" type="primary" link size="small" @click.stop="goWorkspace(row)">工作台</el-button>
             <el-button type="primary" link size="small" @click.stop="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.courseType === 'INTERACTIVE'" type="success" link size="small" @click.stop="goSlides(row)">课件</el-button>
             <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">审核通过</el-button>
