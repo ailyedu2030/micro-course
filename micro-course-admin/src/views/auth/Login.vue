@@ -194,8 +194,8 @@ const isDev = import.meta.env.DEV
 const quickAccounts = isDev ? [
   { label: '管理员', type: 'danger', username: 'admin', password: 'admin123' },
   { label: '教务处', type: 'warning', username: 'academic', password: 'password123' },
-  { label: '教师', type: 'success', username: 'teacher', password: 'password123' },
-  { label: '学生', type: 'primary', username: 'student', password: 'password123' }
+  { label: '教师', type: 'success', username: 'p0_teacher', password: 'teacher123' },
+  { label: '学生', type: 'primary', username: 'student', password: 'student123' }
 ] : []
 
 const fillAccount = (acc) => {
