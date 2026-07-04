@@ -275,7 +275,7 @@ const handleSubmit = async () => {
 }
 
 const onCourseChange = (val) => {
-  console.log('[ChapterList] 课程切换', val)
+  // 课程切换—预留联动逻辑
 }
 
 const handleDialogClose = () => {
