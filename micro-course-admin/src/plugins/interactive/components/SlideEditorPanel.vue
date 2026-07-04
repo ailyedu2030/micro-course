@@ -11,27 +11,27 @@
         <el-button size="small" :loading="aiLoading" @click="$emit('generateAI')">
           <el-icon><MagicStick /></el-icon> AI 生成
         </el-button>
-        <el-button size="small" type="success" :loading="ttsLoading" @click="$emit('generateTTS')" v-if="script">
+        <el-button size="small" type="success" :loading="ttsLoading" @click="$emit('generateTTS')" v-if="localScript">
           <el-icon><Headset /></el-icon> 生成音频
         </el-button>
       </div>
-      <el-input v-model="script" type="textarea" :rows="6" @blur="$emit('saveScript', script)" resize="none" />
+      <el-input v-model="localScript" type="textarea" :rows="6" @blur="$emit('saveScript', localScript)" resize="none" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, watch } from 'vue'
 const props = defineProps({
   page: { type: Object, default: () => ({}) },
   aiLoading: { type: Boolean, default: false },
   ttsLoading: { type: Boolean, default: false }
 })
 defineEmits(['generateAI', 'generateTTS', 'saveScript'])
-const script = computed({
-  get: () => props.page?.narrationScript || '',
-  set: () => {}
-})
+const localScript = ref(props.page?.narrationScript || '')
+watch(() => props.page, (newPage) => {
+  localScript.value = newPage?.narrationScript || ''
+}, { immediate: true })
 </script>
 
 <style scoped>

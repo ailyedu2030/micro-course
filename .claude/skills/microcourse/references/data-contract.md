@@ -129,6 +129,8 @@ departments (1) → majors (N) → classes (N) → users (N)
 
 ## 3. 59 张表概览（Phase 1 仅前 4 张，Phase 2+ 详见源文档）
 
+> 课程管理表（courses/enrollments/course_bundles/course_bundle_items）的完整字段定义见 docs/数据字典.md §2.2/§2.7/附录B
+
 ```
 1. users                  ← Phase 1
 2. departments            ← Phase 1

@@ -6,8 +6,12 @@ import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
-import org.apache.poi.xslf.usermodel.XSLFSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.xml.sax.InputSource;
+import java.io.StringReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -124,8 +128,8 @@ public class SlideRenderService {
                     sp.setImageWidth(pageImageWidth);
                     sp.setImageHeight(scaledHeight);
                     sp.setExtractedText(extractedText);
-                    sp.setHasAnimation(false);
-                    sp.setHasEmbeddedMedia(false);
+                    sp.setHasAnimation(detectAnimation(xslfSlide));
+                    sp.setHasEmbeddedMedia(detectEmbeddedMedia(xslfSlide));
                     sp.setNarrationStatus("PENDING");
                     sp.setCreatedAt(LocalDateTime.now());
                     sp.setUpdatedAt(LocalDateTime.now());
@@ -180,5 +184,49 @@ public class SlideRenderService {
             }
         }
         return sb.toString().trim();
+    }
+
+    private boolean detectAnimation(XSLFSlide slide) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setNamespaceAware(true);
+            String xmlText = slide.getXmlObject().xmlText();
+            if (xmlText == null || xmlText.isBlank()) return false;
+            Document doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xmlText)));
+            NodeList animNodes = doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/drawingml/2006/main", "anim");
+            if (animNodes != null && animNodes.getLength() > 0) return true;
+            NodeList animGrpNodes = doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/presentationml/2006/main", "animGrp");
+            if (animGrpNodes != null && animGrpNodes.getLength() > 0) return true;
+            NodeList setNodes = doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/drawingml/2006/main", "set");
+            if (setNodes != null && setNodes.getLength() > 0) return true;
+        } catch (Exception e) {
+            log.debug("[SlideRender] 检测动画异常 slideNum={}", slide.getSlideNumber(), e);
+        }
+        return false;
+    }
+
+    private boolean detectEmbeddedMedia(XSLFSlide slide) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setNamespaceAware(true);
+            String xmlText = slide.getXmlObject().xmlText();
+            if (xmlText == null || xmlText.isBlank()) return false;
+            Document doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xmlText)));
+            NodeList videoNodes = doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/presentationml/2006/main", "video");
+            if (videoNodes != null && videoNodes.getLength() > 0) return true;
+            NodeList audioNodes = doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/presentationml/2006/main", "audio");
+            if (audioNodes != null && audioNodes.getLength() > 0) return true;
+            NodeList cMediaNodes = doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/presentationml/2006/main", "cMediaNode");
+            if (cMediaNodes != null && cMediaNodes.getLength() > 0) return true;
+        } catch (Exception e) {
+            log.debug("[SlideRender] 检测嵌入媒体异常 slideNum={}", slide.getSlideNumber(), e);
+        }
+        return false;
     }
 }

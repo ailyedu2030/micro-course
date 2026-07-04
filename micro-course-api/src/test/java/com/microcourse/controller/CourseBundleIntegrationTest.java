@@ -81,7 +81,7 @@ public class CourseBundleIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("PATCH /api/course-bundles/{id}/publish 上架成功")
+    @DisplayName("PATCH /api/course-bundles/{id}/publish 上架成功（需要先添加子课）")
     void publishBundle_Success() throws Exception {
         String adminToken = bearerAdmin();
         String createResp = mockMvc.perform(post("/api/course-bundles")
@@ -90,6 +90,13 @@ public class CourseBundleIntegrationTest extends BaseIntegrationTest {
                         .content("{\"title\":\"可上架套餐\"}"))
                 .andReturn().getResponse().getContentAsString();
         int id = JsonPath.read(createResp, "$.data.id");
+
+        // 必须先添加 1 门课程才能上架
+        mockMvc.perform(post("/api/course-bundles/" + id + "/items")
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"courseId\":1}"))
+                .andExpect(status().isOk());
 
         mockMvc.perform(patch("/api/course-bundles/" + id + "/publish")
                         .header("Authorization", adminToken))
@@ -113,6 +120,12 @@ public class CourseBundleIntegrationTest extends BaseIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         int id = JsonPath.read(createResp, "$.data.id");
 
+        // 先添加课程再上架，才能下架
+        mockMvc.perform(post("/api/course-bundles/" + id + "/items")
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"courseId\":1}"))
+                .andExpect(status().isOk());
         mockMvc.perform(patch("/api/course-bundles/" + id + "/publish")
                 .header("Authorization", adminToken));
         mockMvc.perform(patch("/api/course-bundles/" + id + "/unpublish")

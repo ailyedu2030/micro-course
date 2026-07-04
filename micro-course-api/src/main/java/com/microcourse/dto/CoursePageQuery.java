@@ -1,6 +1,15 @@
 package com.microcourse.dto;
 
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public class CoursePageQuery {
+
+    /** 有效排序字段白名单：studentCount / avgRating / updatedAt */
+    public static final Set<String> VALID_SORT_BY = Set.of("studentCount", "avgRating", "updatedAt");
+    /** 有效排序方向白名单：asc / desc */
+    public static final Set<String> VALID_SORT_ORDER = Set.of("asc", "desc");
 
     private String title;
     private String keyword;

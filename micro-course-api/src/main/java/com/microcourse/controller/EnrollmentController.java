@@ -9,17 +9,14 @@ import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.StudentDetailVO;
-import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,22 +32,16 @@ import cn.hutool.poi.excel.ExcelWriter;
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
-    private final EnrollmentRepository enrollmentRepository;
 
-    public EnrollmentController(EnrollmentService enrollmentService,
-                                 EnrollmentRepository enrollmentRepository) {
+    public EnrollmentController(EnrollmentService enrollmentService) {
         this.enrollmentService = enrollmentService;
-        this.enrollmentRepository = enrollmentRepository;
     }
 
     @PostMapping
     @PreAuthorize("hasRole('STUDENT')")
     @AuditedLog("创建选课")
     public R<EnrollmentVO> enroll(@Valid @RequestBody EnrollmentCreateRequest request) {
-        Long userId = getCurrentUserId();
-        if (userId == null) {
-            throw new BusinessException(ErrorCode.TOKEN_INVALID);
-        }
+        Long userId = SecurityUtil.getCurrentUserId();
         request.setUserId(userId);
         EnrollmentVO vo = enrollmentService.enroll(request);
         return R.ok(vo);
@@ -60,7 +51,7 @@ public class EnrollmentController {
     @PreAuthorize("isAuthenticated()")
     public R<List<EnrollmentVO>> getMyEnrollments(
             @RequestParam(required = false) Boolean completed) {
-        Long userId = getCurrentUserId();
+        Long userId = SecurityUtil.getCurrentUserId();
         List<EnrollmentVO> list = enrollmentService.getMyEnrollments(userId, completed);
         return R.ok(list);
     }
@@ -68,8 +59,8 @@ public class EnrollmentController {
     @GetMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<EnrollmentVO>> getEnrollments(
-            @RequestParam(required = false) @PositiveOrZero Integer page,
-            @RequestParam(required = false) @Range(min = 1, max = 10000) Integer size,
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) Integer size,
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) String studentName,
             @RequestParam(required = false) String courseName,
@@ -77,8 +68,8 @@ public class EnrollmentController {
             @RequestParam(required = false) String className,
             @RequestParam(required = false) String majorName) {
         // SECURITY: TEACHER 只能查自己课程的学员，强制覆写 teacherId
-        if (hasRole("TEACHER")) {
-            teacherId = getCurrentUserId();
+        if (SecurityUtil.hasRole("TEACHER")) {
+            teacherId = SecurityUtil.getCurrentUserId();
         }
         EnrollmentQueryRequest query = new EnrollmentQueryRequest();
         query.setPage(page);
@@ -101,7 +92,7 @@ public class EnrollmentController {
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) int size) {
         // SECURITY: TEACHER 必须为课程 owner
-        if (hasRole("TEACHER")) {
+        if (SecurityUtil.hasRole("TEACHER")) {
             enrollmentService.assertCourseOwnership(courseId);
         }
         PageResult<EnrollmentVO> result = enrollmentService.getCourseEnrollmentPage(courseId, page, size);
@@ -112,17 +103,9 @@ public class EnrollmentController {
     @GetMapping("/student-detail/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<StudentDetailVO> getStudentDetail(@PathVariable Long userId) {
-        // R12 P1-C-4: TEACHER 仅能查询自己课程中的学生
+        // R12 P1-C-4: TEACHER 仅能查询自己课程中的学生（校验由 Service 层执行）
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            Long currentUserId = SecurityUtil.getCurrentUserId();
-            // 通过 DB 聚合查询：当前教师授课课程 + 学生选课，交集非空则通过
-            long count = enrollmentRepository.countByTeacherAndStudent(currentUserId, userId,
-                    EnrollmentStatus.LEGACY_ENROLLED_VALUE,
-                    EnrollmentStatus.APPROVED.getValue(),
-                    EnrollmentStatus.COMPLETED.getValue());
-            if (count == 0) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "该学生不在您的授课课程中");
-            }
+            enrollmentService.assertStudentInTeachersCourses(SecurityUtil.getCurrentUserId(), userId);
         }
         StudentDetailVO detail = enrollmentService.getStudentDetail(userId);
         return R.ok(detail);
@@ -133,7 +116,7 @@ public class EnrollmentController {
     public R<List<EnrollmentRankingVO>> getCourseRanking(
             @PathVariable Long courseId,
             @RequestParam(defaultValue = "10") int limit) {
-        Long userId = getCurrentUserId();
+        Long userId = SecurityUtil.getCurrentUserId();
         List<EnrollmentRankingVO> ranking = enrollmentService.getCourseRanking(courseId, limit, userId);
         return R.ok(ranking);
     }
@@ -160,7 +143,7 @@ public class EnrollmentController {
             return R.ok(vo);
         }
         // STUDENT：仅本人
-        Long currentUserId = getCurrentUserId();
+        Long currentUserId = SecurityUtil.getCurrentUserId();
         if (vo.getUserId() == null || !vo.getUserId().equals(currentUserId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
@@ -196,7 +179,7 @@ public class EnrollmentController {
             @RequestParam Long courseId,
             HttpServletResponse response) throws IOException {
         // P0-SEC-FIX: TEACHER 角色添加课程所有权校验，防止 IDOR 导出任意课程数据
-        if (hasRole("TEACHER")) {
+        if (SecurityUtil.hasRole("TEACHER")) {
             enrollmentService.assertCourseOwnership(courseId);
         }
         List<EnrollmentVO> enrollments = enrollmentService.getCourseEnrollments(courseId);
@@ -205,43 +188,28 @@ public class EnrollmentController {
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=enrollments_" + courseId + ".xlsx");
 
-        // 使用 Hutool ExcelWriter 导出
+        // 使用 Hutool ExcelWriter 导出（try-finally 确保资源释放）
         ExcelWriter writer = ExcelUtil.getWriter(true);
-        writer.addHeaderAlias("id", "选课ID");
-        writer.addHeaderAlias("courseId", "课程ID");
-        writer.addHeaderAlias("courseName", "课程名称");
-        writer.addHeaderAlias("userId", "用户ID");
-        writer.addHeaderAlias("userName", "学生姓名");
-        writer.addHeaderAlias("progress", "学习进度(%)");
-        writer.addHeaderAlias("completed", "是否完成");
-        writer.addHeaderAlias("finalScore", "总评成绩");
-        writer.addHeaderAlias("finalGrade", "成绩等级");
-        writer.addHeaderAlias("enrollmentStatus", "选课状态");
-        writer.addHeaderAlias("sourceChannel", "选课来源");
-        writer.addHeaderAlias("enrolledAt", "选课时间");
-        writer.addHeaderAlias("completedAt", "完成时间");
+        try {
+            writer.addHeaderAlias("id", "选课ID");
+            writer.addHeaderAlias("courseId", "课程ID");
+            writer.addHeaderAlias("courseName", "课程名称");
+            writer.addHeaderAlias("userId", "用户ID");
+            writer.addHeaderAlias("userName", "学生姓名");
+            writer.addHeaderAlias("progress", "学习进度(%)");
+            writer.addHeaderAlias("completed", "是否完成");
+            writer.addHeaderAlias("finalScore", "总评成绩");
+            writer.addHeaderAlias("finalGrade", "成绩等级");
+            writer.addHeaderAlias("enrollmentStatus", "选课状态");
+            writer.addHeaderAlias("sourceChannel", "选课来源");
+            writer.addHeaderAlias("enrolledAt", "选课时间");
+            writer.addHeaderAlias("completedAt", "完成时间");
 
-        writer.write(enrollments, true);
-        writer.flush(response.getOutputStream());
-        writer.close();
-    }
-
-    /** P1-3: getCurrentUserId 类型安全 —— 兼容 Long / String / Number 类型 principal */
-    private Long getCurrentUserId() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof Long) return (Long) principal;
-        if (principal instanceof Number) return ((Number) principal).longValue();
-        if (principal instanceof String str) {
-            try { return Long.parseLong(str); } catch (NumberFormatException ignored) { /* fall through */ }
+            writer.write(enrollments, true);
+            writer.flush(response.getOutputStream());
+        } finally {
+            writer.close();
         }
-        throw new BusinessException(ErrorCode.TOKEN_INVALID);
     }
 
-    /** 检查当前用户是否拥有指定角色 */
-    private boolean hasRole(String role) {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return false;
-        return auth.getAuthorities().stream()
-                .anyMatch(g -> g.getAuthority().equals("ROLE_" + role));
-    }
 }

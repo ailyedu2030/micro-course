@@ -2,25 +2,20 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
-import com.microcourse.entity.Classes;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyCourse;
 import com.microcourse.entity.MicroSpecialtyEnrollment;
 import com.microcourse.entity.User;
-import com.microcourse.entity.Department;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.dto.EnrollmentCreateRequest;
-import com.microcourse.repository.ClassesRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyCourseRepository;
@@ -28,10 +23,11 @@ import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
 import com.microcourse.repository.MicroSpecialtyTeacherRepository;
 import com.microcourse.repository.UserRepository;
-import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.service.CertificateService;
 import com.microcourse.service.EnrollmentService;
+import com.microcourse.service.MicroSpecialtyEnrollmentQueryService;
 import com.microcourse.service.MicroSpecialtyEnrollmentService;
+import com.microcourse.service.MicroSpecialtyProgressService;
 import com.microcourse.service.MicroSpecialtyService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
@@ -42,7 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.security.SecureRandom;
+
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -52,7 +48,6 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
 
     private static final Logger log = LoggerFactory.getLogger(MicroSpecialtyEnrollmentServiceImpl.class);
     private static final int BATCH_SIZE = 100;
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final MicroSpecialtyEnrollmentRepository enrollmentRepository;
     private final MicroSpecialtyRepository msRepository;
@@ -65,8 +60,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     private final EnrollmentService enrollmentService;
     private final MicroSpecialtyService msService;
     private final CertificateService certificateService;
-    private final ClassesRepository classRepository;
-    private final DepartmentRepository departmentRepository;
+    private final MicroSpecialtyEnrollmentQueryService queryService;
+    private final MicroSpecialtyProgressService progressService;
 
     public MicroSpecialtyEnrollmentServiceImpl(MicroSpecialtyEnrollmentRepository enrollmentRepository,
                                                MicroSpecialtyRepository msRepository,
@@ -79,8 +74,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                                                EnrollmentService enrollmentService,
                                                @Lazy MicroSpecialtyService msService,
                                                CertificateService certificateService,
-                                               ClassesRepository classRepository,
-                                               DepartmentRepository departmentRepository) {
+                                               MicroSpecialtyEnrollmentQueryService queryService,
+                                               MicroSpecialtyProgressService progressService) {
         this.enrollmentRepository = enrollmentRepository;
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
@@ -92,8 +87,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         this.enrollmentService = enrollmentService;
         this.msService = msService;
         this.certificateService = certificateService;
-        this.classRepository = classRepository;
-        this.departmentRepository = departmentRepository;
+        this.queryService = queryService;
+        this.progressService = progressService;
     }
 
     @Override
@@ -145,7 +140,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                     "微专业报名申请", studentName + " 申请加入《" + ms.getTitle() + "》", msId);
         }
 
-        return toVO(en, ms);
+        return queryService.toVO(en, ms);
     }
 
     @Override
@@ -311,7 +306,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                 "报名已通过", "您的微专业报名已通过", en.getMicroSpecialtyId());
 
         en.setStatus("APPROVED");
-        return toVO(en, ms);
+        return queryService.toVO(en, ms);
     }
 
     @Override
@@ -699,43 +694,17 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                 "重新申请已提交", "您的微专业重新申请已提交，请等待审批", en.getMicroSpecialtyId());
 
         en.setStatus("PENDING");
-        return toVO(en, ms);
+        return queryService.toVO(en, ms);
     }
 
     @Override
     public List<MicroSpecialtyEnrollmentVO> getMyEnrollments() {
-        Long userId = SecurityUtil.getCurrentUserId();
-        List<MicroSpecialtyEnrollment> list = enrollmentRepository.selectList(
-                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
-                        .eq(MicroSpecialtyEnrollment::getUserId, userId)
-                        .orderByDesc(MicroSpecialtyEnrollment::getCreatedAt));
-        return list.stream().map(en -> {
-            MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
-            return toVO(en, ms);
-        }).collect(Collectors.toList());
+        return queryService.getMyEnrollments();
     }
 
     @Override
     public PageResult<MicroSpecialtyEnrollmentVO> listEnrollments(Long msId, int page, int size, String status) {
-        LambdaQueryWrapper<MicroSpecialtyEnrollment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId);
-        if (status != null && !status.isEmpty()) {
-            wrapper.eq(MicroSpecialtyEnrollment::getStatus, status);
-        }
-        wrapper.orderByDesc(MicroSpecialtyEnrollment::getCreatedAt);
-
-        // Fix 4: 权限校验——仅负责人或管理员/教务处可查看报名列表
-        if (!SecurityUtil.isAdminOrAcademic()) {
-            msService.requireLeadOf(msId);
-        }
-
-        // page 参数为 0-based（前端约定），MyBatis-Plus 使用 1-based，需 +1 转换
-        IPage<MicroSpecialtyEnrollment> ipage = enrollmentRepository.selectPage(new Page<>(page + 1, size), wrapper);
-        MicroSpecialty ms = msRepository.selectById(msId);
-
-        List<MicroSpecialtyEnrollmentVO> vos = ipage.getRecords().stream()
-                .map(en -> toVO(en, ms)).collect(Collectors.toList());
-        return PageResult.of(vos, ipage.getTotal(), page, size);
+        return queryService.listEnrollments(msId, page, size, status);
     }
 
     @Override
@@ -774,292 +743,10 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .setSql("version = version + 1"));
     }
 
-    /**
-     * 聚合单个修读记录的进度（供 cron 调用）。
-     *
-     * <p>自动转换: APPROVED → IN_PROGRESS（version 乐观锁保护）。
-     * <p>判定完成: 根据 spec §6.8 公式计算 progress/creditsEarned/coursesCompleted/finalScore/finalGrade，
-     *   按 completionRule 判定 COMPLETED 或 FAILED。
-     * <p>颁发证书: COMPLETED → issueCertificate（幂等）。
-     * <p>并发安全: 每次 UPDATE 都带 version 条件；rows==0 时仅 log warn 不抛异常（cron 容错）。
-     *
-     * @param enrollmentId 修读记录 ID
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void aggregateProgress(Long enrollmentId) {
-        MicroSpecialtyEnrollment en = enrollmentRepository.selectById(enrollmentId);
-        if (en == null) return;
-
-        if (!"IN_PROGRESS".equals(en.getStatus()) && !"APPROVED".equals(en.getStatus())) return;
-
-        MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
-        if (ms == null) return;
-
-        // 获取所有必修课
-        List<MicroSpecialtyCourse> requiredCourses = msCourseRepository.selectList(
-                new LambdaQueryWrapper<MicroSpecialtyCourse>()
-                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, en.getMicroSpecialtyId())
-                        .eq(MicroSpecialtyCourse::getIsRequired, true));
-
-        // P0-11: 获取所有选修课
-        List<MicroSpecialtyCourse> electiveCourses = msCourseRepository.selectList(
-                new LambdaQueryWrapper<MicroSpecialtyCourse>()
-                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, en.getMicroSpecialtyId())
-                        .eq(MicroSpecialtyCourse::getIsRequired, false));
-
-        int coursesCompleted = 0;
-        double totalRequiredScore = 0;
-        int requiredCount = 0;
-        double totalElectiveScore = 0;
-        int electivePassedCount = 0;
-        BigDecimal creditsEarned = BigDecimal.ZERO;
-
-        // P1-11: progress = AVG(每门必修课 enrollment.progress × 100)
-        double totalProgress = 0;
-        int progressCount = 0;
-
-        // P0-5: FAILED 判定数据
-        boolean allCoursesGraded = !requiredCourses.isEmpty();
-        boolean anyPassed = false;
-        List<String> failedCourseNames = new ArrayList<>();
-
-        // 预加载课程名称（用于 FAILED 通知）
-        Set<Long> allCourseIds = new HashSet<>();
-        for (MicroSpecialtyCourse mc : requiredCourses) allCourseIds.add(mc.getCourseId());
-        for (MicroSpecialtyCourse mc : electiveCourses) allCourseIds.add(mc.getCourseId());
-        Map<Long, String> courseNameMap = new HashMap<>();
-        if (!allCourseIds.isEmpty()) {
-            List<Course> courses = courseRepository.selectBatchIds(allCourseIds);
-            for (Course c : courses) courseNameMap.put(c.getId(), c.getTitle());
-        }
-
-        // 必修课处理
-        for (MicroSpecialtyCourse mc : requiredCourses) {
-            Enrollment courseEn = courseEnrollmentRepository.selectOne(
-                    new LambdaQueryWrapper<Enrollment>()
-                            .eq(Enrollment::getCourseId, mc.getCourseId())
-                            .eq(Enrollment::getUserId, en.getUserId())
-                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
-            if (courseEn != null) {
-                // P1-11: 收集课程级 progress
-                if (courseEn.getProgress() != null) {
-                    totalProgress += courseEn.getProgress() * 100.0;
-                    progressCount++;
-                }
-                if (courseEn.getFinalScore() != null) {
-                    BigDecimal minScore = mc.getMinScore() != null ? mc.getMinScore() : BigDecimal.valueOf(60);
-                    boolean passed = courseEn.getFinalScore().compareTo(minScore) >= 0;
-                    if (passed) {
-                        coursesCompleted++;
-                        creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
-                        anyPassed = true;
-                    } else {
-                        String name = courseNameMap.getOrDefault(mc.getCourseId(), "课程#" + mc.getCourseId());
-                        failedCourseNames.add(name);
-                    }
-                    totalRequiredScore += courseEn.getFinalScore().doubleValue();
-                    requiredCount++;
-                }
-            } else {
-                // §9.10: 无 active enrollment 时，检查历史选课中是否有已通过成绩
-                Enrollment historyEn = courseEnrollmentRepository.selectOne(
-                        new LambdaQueryWrapper<Enrollment>()
-                                .eq(Enrollment::getCourseId, mc.getCourseId())
-                                .eq(Enrollment::getUserId, en.getUserId()));
-                if (historyEn != null && historyEn.getFinalScore() != null) {
-                    BigDecimal minScore = mc.getMinScore() != null ? mc.getMinScore() : BigDecimal.valueOf(60);
-                    boolean passed = historyEn.getFinalScore().compareTo(minScore) >= 0;
-                    if (passed) {
-                        coursesCompleted++;
-                        creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
-                        anyPassed = true;
-                    } else {
-                        String name = courseNameMap.getOrDefault(mc.getCourseId(), "课程#" + mc.getCourseId());
-                        failedCourseNames.add(name);
-                    }
-                    totalRequiredScore += historyEn.getFinalScore().doubleValue();
-                    requiredCount++;
-                } else {
-                    allCoursesGraded = false;
-                }
-            }
-        }
-
-        // P0-11: 选修课处理
-        for (MicroSpecialtyCourse mc : electiveCourses) {
-            Enrollment courseEn = courseEnrollmentRepository.selectOne(
-                    new LambdaQueryWrapper<Enrollment>()
-                            .eq(Enrollment::getCourseId, mc.getCourseId())
-                            .eq(Enrollment::getUserId, en.getUserId())
-                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
-            if (courseEn != null && courseEn.getFinalScore() != null) {
-                totalElectiveScore += courseEn.getFinalScore().doubleValue();
-                electivePassedCount++;
-                creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
-            }
-        }
-
-        // 计算进度（P1-11）
-        double progress = progressCount > 0 ? totalProgress / progressCount : 0;
-        double avgRequired = requiredCount > 0 ? totalRequiredScore / requiredCount : 0;
-        double avgElective = electivePassedCount > 0 ? totalElectiveScore / electivePassedCount : 0;
-        double finalScore = avgRequired * 0.7 + avgElective * 0.3;
-
-        // 判定完成（§6.8）
-        boolean isCompleted = false;
-        String rule = ms.getCompletionRule();
-        if ("ALL_REQUIRED".equals(rule)) {
-            isCompleted = coursesCompleted >= (ms.getRequiredCourseCount() != null ? ms.getRequiredCourseCount() : requiredCourses.size());
-        } else if ("CREDITS_MIN".equals(rule)) {
-            isCompleted = ms.getMinCredits() != null && creditsEarned.compareTo(ms.getMinCredits()) >= 0;
-        } else if ("MIXED".equals(rule)) {
-            boolean requiredOk = coursesCompleted >= (ms.getRequiredCourseCount() != null ? ms.getRequiredCourseCount() : requiredCourses.size());
-            boolean creditsOk = ms.getMinCredits() != null && creditsEarned.compareTo(ms.getMinCredits()) >= 0;
-            isCompleted = requiredOk && creditsOk;
-        }
-
-        int oldVersion = en.getVersion();
-
-        if (isCompleted) {
-            // P0-12: 计算 final_grade（§6.8）
-            String finalGrade;
-            if (finalScore >= 90) finalGrade = "EXCELLENT";
-            else if (finalScore >= 75) finalGrade = "GOOD";
-            else if (finalScore >= 60) finalGrade = "PASS";
-            else finalGrade = "FAIL";
-
-            int affected = enrollmentRepository.update(null,
-                    new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
-                            .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
-                            .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
-                            .set(MicroSpecialtyEnrollment::getStatus, "COMPLETED")
-                            .set(MicroSpecialtyEnrollment::getProgress, BigDecimal.valueOf(progress))
-                            .set(MicroSpecialtyEnrollment::getCreditsEarned, creditsEarned)
-                            .set(MicroSpecialtyEnrollment::getCoursesCompleted, coursesCompleted)
-                            .set(MicroSpecialtyEnrollment::getFinalScore, BigDecimal.valueOf(finalScore))
-                            .set(MicroSpecialtyEnrollment::getFinalGrade, finalGrade)
-                            .set(MicroSpecialtyEnrollment::getCompletedAt, LocalDateTime.now())
-                            .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
-                            .setSql("version = version + 1"));
-            if (affected == 0) {
-                log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (COMPLETED)", enrollmentId);
-            } else {
-                notificationService.notifyAsync(en.getUserId(), NotificationType.MS_COMPLETED,
-                        "微专业已结业", "恭喜！您已完成微专业《" + ms.getTitle() + "》的全部要求", en.getMicroSpecialtyId());
-                // 自动颁发证书
-                try {
-                    issueCertificate(enrollmentId);
-                } catch (Exception e) {
-                    log.error("颁发证书失败: enrollmentId={}", enrollmentId, e);
-                }
-            }
-        } else {
-            // P0-5: 检查是否可以判定为 FAILED（§9.2.e 步）
-            // 所有必修课均已评分 且 没有一门通过 → FAILED
-            if (allCoursesGraded && !anyPassed) {
-                int failedAffected = enrollmentRepository.update(null,
-                        new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
-                                .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
-                                .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
-                                .set(MicroSpecialtyEnrollment::getStatus, "FAILED")
-                                .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
-                                .setSql("version = version + 1"));
-                if (failedAffected == 0) {
-                    log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (FAILED)", enrollmentId);
-                }
-
-                String failedList = failedCourseNames.isEmpty() ? "无" : String.join("、", failedCourseNames);
-                notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_FAILED,
-                        "微专业未通过",
-                        "您未通过微专业《" + ms.getTitle() + "》的结业考核。不合格课程：" + failedList,
-                        en.getMicroSpecialtyId());
-                return;
-            }
-
-            // P0 FIX: APPROVED → IN_PROGRESS 自动转换 (学生首门必修课学习时触发)
-            if ("APPROVED".equals(en.getStatus()) && coursesCompleted > 0) {
-                int approvedAffected = enrollmentRepository.update(null,
-                        new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
-                                .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
-                                .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
-                                .set(MicroSpecialtyEnrollment::getStatus, "IN_PROGRESS")
-                                .setSql("version = version + 1"));
-                if (approvedAffected == 0) {
-                    log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (APPROVED→IN_PROGRESS)", enrollmentId);
-                } else {
-                    en.setStatus("IN_PROGRESS");
-                    log.info("enrollment.id={} APPROVED → IN_PROGRESS", enrollmentId);
-                }
-            }
-
-            // 仅更新进度
-            int progressAffected = enrollmentRepository.update(null,
-                    new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
-                            .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
-                            .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
-                            .set(MicroSpecialtyEnrollment::getProgress, BigDecimal.valueOf(progress))
-                            .set(MicroSpecialtyEnrollment::getCreditsEarned, creditsEarned)
-                            .set(MicroSpecialtyEnrollment::getCoursesCompleted, coursesCompleted)
-                            .set(MicroSpecialtyEnrollment::getFinalScore, BigDecimal.valueOf(finalScore))
-                            .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
-                            .setSql("version = version + 1"));
-            if (progressAffected == 0) {
-                log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (progress update)", enrollmentId);
-            }
-        }
+        progressService.aggregateProgress(enrollmentId);
     }
 
-    private MicroSpecialtyEnrollmentVO toVO(MicroSpecialtyEnrollment en, MicroSpecialty ms) {
-        MicroSpecialtyEnrollmentVO vo = new MicroSpecialtyEnrollmentVO();
-        vo.setId(en.getId());
-        vo.setMicroSpecialtyId(en.getMicroSpecialtyId());
-        vo.setUserId(en.getUserId());
-        vo.setSource(en.getSource());
-        vo.setClassId(en.getClassId());
-        vo.setStatus(en.getStatus());
-
-        // Set class name
-        if (en.getClassId() != null) {
-            Classes clazz = classRepository.selectById(en.getClassId());
-            if (clazz != null) {
-                vo.setClassName(clazz.getName());
-            }
-        }
-        vo.setProgress(en.getProgress());
-        vo.setCreditsEarned(en.getCreditsEarned());
-        vo.setCoursesCompleted(en.getCoursesCompleted());
-        vo.setCoursesRequired(en.getCoursesRequired());
-        vo.setFinalScore(en.getFinalScore());
-        vo.setFinalGrade(en.getFinalGrade());
-        vo.setCertificateId(en.getCertificateId());
-        vo.setCanDownloadCert(en.getCertificateId() != null);
-        vo.setPendingCourses(en.getPendingCourses());   // G2
-        vo.setAppliedAt(en.getAppliedAt());
-        vo.setApprovedAt(en.getApprovedAt());
-        vo.setCompletedAt(en.getCompletedAt());
-        vo.setDroppedAt(en.getDroppedAt());
-        vo.setDropReason(en.getDropReason());
-
-        if ("FAILED".equals(en.getStatus())) {
-            vo.setFailReason(en.getDropReason());
-        }
-
-        if (ms != null) {
-            vo.setMicroSpecialtyTitle(ms.getTitle());
-            vo.setCoverUrl(ms.getCoverUrl());
-            // Look up department name for the offering department
-            if (ms.getOfferDepartmentId() != null) {
-                Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());
-                if (dept != null) {
-                    vo.setDepartmentName(dept.getName());
-                }
-            }
-        }
-        if (en.getUserId() != null) {
-            User user = userRepository.selectById(en.getUserId());
-            if (user != null) vo.setUserName(user.getRealName());
-        }
-        return vo;
-    }
 }

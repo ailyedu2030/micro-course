@@ -67,7 +67,7 @@ const rules = {
   speakerIdentity: [{ required: true, message: '请输入演讲人身份', trigger: 'blur' }],
   targetAudience: [{ required: true, message: '请输入目标受众', trigger: 'blur' }],
   speakingStyle: [{ required: true, message: '请选择演讲风格', trigger: 'change' }],
-  totalDurationMinutes: [{ required: true, message: '请选择讲述时长', trigger: 'blur' }]
+  totalDurationMinutes: [{ required: true, message: '请选择讲述时长', trigger: 'change' }]
 }
 
 watch(() => visible.value, async (v) => {
@@ -79,7 +79,7 @@ watch(() => visible.value, async (v) => {
       form.targetAudience = data.targetAudience || '学生'
       form.speakingStyle = data.speakingStyle || '亲切自然，像在课堂上讲课'
       form.totalDurationMinutes = data.totalDurationMinutes || 15
-    } catch { /* 使用默认值 */ }
+    } catch (e) { console.warn('[NarrationSettings] 加载设置失败', e) }
   }
 })
 

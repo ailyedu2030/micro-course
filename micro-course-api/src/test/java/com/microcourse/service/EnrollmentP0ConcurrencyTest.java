@@ -21,10 +21,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("CON-001 Enrollment 幂等回归")
 // P0 修复：补齐 student/student123 + courseId 3/4 种子（详见 /sql/p0-seed.sql）
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-// P3-10 quarantine：CON-001 并发幂等回归依赖种子数据/共享状态，当前 ERROR，默认从 CI 排除。
-//   机制：pom.xml surefire <excludedGroups>quarantine</excludedGroups> 默认跳过；
-//   通过 -Dquarantine=true 显式启用（profile 清空 excludedGroups）。待修复后移除本标记。
-@Tag("quarantine")
+// 之前因种子数据问题被 quarantine，现已修复（precheck + integration tests all pass）。
+// 移除 quarantine 标记，纳入默认 CI 运行。
 class EnrollmentP0ConcurrencyTest extends BaseIntegrationTest {
 
     @Test

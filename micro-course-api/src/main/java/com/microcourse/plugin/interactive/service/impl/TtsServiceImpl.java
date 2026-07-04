@@ -18,26 +18,27 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class TtsServiceImpl implements TtsService {
@@ -46,6 +47,7 @@ public class TtsServiceImpl implements TtsService {
 
     private final SlidePageMapper slidePageMapper;
     private final CourseRepository courseRepository;
+    private final TransactionTemplate transactionTemplate;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
@@ -71,10 +73,6 @@ public class TtsServiceImpl implements TtsService {
 
     private static final String MMX_CMD = "mmx";
 
-    /** P1-1/P1-5: 存储目录从配置注入 */
-    @Value("${video.storage-base-dir:/data/videos}")
-    private String storageBaseDir;
-
     /** J8-01: 启动时检测 mmx CLI 是否可用 */
     private volatile boolean mmxAvailable = false;
     private volatile String mmxCheckMessage = "未检测";
@@ -84,9 +82,11 @@ public class TtsServiceImpl implements TtsService {
     private volatile String ttsLocalCheckMessage = "未检测";
 
     public TtsServiceImpl(SlidePageMapper slidePageMapper,
-                          CourseRepository courseRepository) {
+                          CourseRepository courseRepository,
+                          TransactionTemplate transactionTemplate) {
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
+        this.transactionTemplate = transactionTemplate;
     }
 
     /**
@@ -139,24 +139,16 @@ public class TtsServiceImpl implements TtsService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public SlidePageVO generate(Long courseId, Integer pageNumber) {
         checkOwner(courseId);
-
         SlidePage page = getPage(courseId, pageNumber);
+        return doGenerate(courseId, pageNumber, page);
+    }
+
+    private SlidePageVO doGenerate(Long courseId, Integer pageNumber, SlidePage page) {
         String script = page.getNarrationScript();
         if (script == null || script.isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "讲述稿为空，请先生成讲述稿");
-        }
-
-        // J8-01: 优先级 Qwen3-TTS 本地 > mmx > 纯文本
-        if (!ttsLocalAvailable && !mmxAvailable) {
-            log.warn("[TTS] 所有 TTS 后端不可用 (本地:{}, mmx:{}), 跳过 TTS 生成 courseId={} page={}",
-                    ttsLocalCheckMessage, mmxCheckMessage, courseId, pageNumber);
-            page.setNarrationStatus("TEACHER_EDITED");
-            page.setUpdatedAt(LocalDateTime.now());
-            slidePageMapper.updateById(page);
-            return toPageVO(page);
         }
 
         String audioFileName = "page_" + pageNumber + ".mp3";
@@ -166,21 +158,17 @@ public class TtsServiceImpl implements TtsService {
             Files.createDirectories(audioDir);
             Path audioPath = audioDir.resolve(audioFileName);
 
-            page.setNarrationStatus("AUDIO_GENERATING");
-            page.setUpdatedAt(LocalDateTime.now());
-            slidePageMapper.updateById(page);
+            markPageStatus(courseId, pageNumber, "AUDIO_GENERATING");
 
             boolean success = false;
             int audioDuration = 0;
 
-            // 优先用 Qwen3-TTS 本地服务
             if (ttsLocalAvailable) {
                 try {
                     audioDuration = callQwen3TtsService(script, audioPath);
                     success = true;
                 } catch (Exception e) {
-                    log.warn("[TTS] Qwen3-TTS 本地服务调用失败: {}，降级到 mmx", e.getMessage());
-                    // 失败时回退到 mmx
+                    log.warn("[TTS] Qwen3-TTS 调用失败: {}，降级到 mmx", e.getMessage());
                     if (mmxAvailable) {
                         audioDuration = callMmxCli(script, audioPath);
                         success = true;
@@ -192,9 +180,7 @@ public class TtsServiceImpl implements TtsService {
             }
 
             if (!success) {
-                page.setNarrationStatus("TEACHER_EDITED");
-                page.setUpdatedAt(LocalDateTime.now());
-                slidePageMapper.updateById(page);
+                markPageStatus(courseId, pageNumber, "TEACHER_EDITED");
                 throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED);
             }
 
@@ -203,27 +189,41 @@ public class TtsServiceImpl implements TtsService {
                 audioDuration = estimateDuration(fileSize);
             }
 
-            page.setNarrationAudioUrl("/api/courses/" + courseId + "/slides/pages/" + pageNumber + "/audio");
-            page.setAudioDuration(audioDuration);
-            page.setNarrationStatus("AUDIO_READY");
-            page.setUpdatedAt(LocalDateTime.now());
-            slidePageMapper.updateById(page);
+            final int finalDuration = audioDuration;
+            transactionTemplate.execute(tx -> {
+                SlidePage fresh = slidePageMapper.selectById(page.getId());
+                if (fresh == null) return null;
+                fresh.setNarrationAudioUrl("/api/courses/" + courseId + "/slides/pages/" + pageNumber + "/audio");
+                fresh.setAudioDuration(finalDuration);
+                fresh.setNarrationStatus("AUDIO_READY");
+                fresh.setUpdatedAt(LocalDateTime.now());
+                slidePageMapper.updateById(fresh);
+                return null;
+            });
 
             log.info("TTS complete: courseId={}, page={}, duration={}s, backend={}",
-                    courseId, pageNumber, audioDuration,
+                    courseId, pageNumber, finalDuration,
                     ttsLocalAvailable ? "qwen3-local" : "mmx");
 
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
             log.error("TTS failed for courseId={} page={}", courseId, pageNumber, e);
-            page.setNarrationStatus("TEACHER_EDITED");
-            page.setUpdatedAt(LocalDateTime.now());
-            slidePageMapper.updateById(page);
+            try { markPageStatus(courseId, pageNumber, "TEACHER_EDITED"); } catch (Exception ignored) {}
             throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED);
         }
 
         return toPageVO(page);
+    }
+
+    private void markPageStatus(Long courseId, Integer pageNumber, String status) {
+        transactionTemplate.execute(tx -> {
+            SlidePage p = getPage(courseId, pageNumber);
+            p.setNarrationStatus(status);
+            p.setUpdatedAt(LocalDateTime.now());
+            slidePageMapper.updateById(p);
+            return null;
+        });
     }
 
     /**
@@ -255,20 +255,38 @@ public class TtsServiceImpl implements TtsService {
         Object durationObj = result.get("duration");
         int duration = durationObj instanceof Number ? ((Number) durationObj).intValue() : 0;
 
-        // TTS 服务把文件写到它自己的输出目录，这里需要从响应里读出来或者重新下载
-        // 简化做法：TTS 服务返回的 path 字段就是文件路径
         Object pathObj = result.get("path");
-        if (pathObj == null) {
+        if (pathObj == null || pathObj.toString().isBlank()) {
             throw new IOException("TTS 响应缺少 path 字段");
         }
         Path ttsOutputPath = Paths.get(pathObj.toString());
+        if (!ttsOutputPath.isAbsolute()) {
+            throw new IOException("TTS 返回的路径不是绝对路径: " + ttsOutputPath);
+        }
         if (!Files.exists(ttsOutputPath)) {
             throw new IOException("TTS 生成的音频文件不存在: " + ttsOutputPath);
         }
+        if (!Files.isRegularFile(ttsOutputPath)) {
+            throw new IOException("TTS 返回的路径不是普通文件: " + ttsOutputPath);
+        }
+        long fileSize = Files.size(ttsOutputPath);
+        if (fileSize == 0) {
+            throw new IOException("TTS 生成的音频文件为空: " + ttsOutputPath);
+        }
+        // 校验 MP3 文件魔数（ID3 tag 或 MPEG sync）
+        try (InputStream is = Files.newInputStream(ttsOutputPath)) {
+            byte[] header = new byte[3];
+            int read = is.read(header);
+            boolean validMp3 = (read >= 3) &&
+                    ((header[0] == 'I' && header[1] == 'D' && header[2] == '3') ||
+                     ((header[0] & 0xFF) == 0xFF && (header[1] & 0xE0) == 0xE0));
+            if (!validMp3) {
+                throw new IOException("TTS 生成的文件不是有效的 MP3 格式");
+            }
+        }
 
-        // 移动到项目期望的目录
         Files.move(ttsOutputPath, audioPath, StandardCopyOption.REPLACE_EXISTING);
-        log.debug("[TTS] Qwen3-TTS 音频已保存到: {}", audioPath);
+        log.debug("[TTS] Qwen3-TTS 音频已保存到: {} (size={})", audioPath, fileSize);
 
         return duration;
     }
@@ -316,7 +334,6 @@ public class TtsServiceImpl implements TtsService {
 
     @Override
     @Async("slideRenderExecutor")
-    @Transactional(rollbackFor = Exception.class)
     public void generateAll(Long courseId) {
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getCourseId, courseId)
@@ -326,14 +343,31 @@ public class TtsServiceImpl implements TtsService {
 
         for (SlidePage page : pages) {
             try {
-                generate(courseId, page.getPageNumber());
-                Thread.sleep(2000);  // CPU 推理慢一些，2 秒间隔
+                doGenerate(courseId, page.getPageNumber(), page);
+                Thread.sleep(2000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
             } catch (BusinessException e) {
                 log.warn("TTS failed for page {}: {}", page.getPageNumber(), e.getMessage());
             }
+        }
+    }
+
+    @Override
+    public byte[] getAudio(Long courseId, Integer pageNumber) {
+        try {
+            Path basePath = Paths.get(storagePath, String.valueOf(courseId), "audio").toRealPath();
+            Path audioPath = basePath.resolve("page_" + pageNumber + ".mp3").normalize();
+            if (!audioPath.startsWith(basePath)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法的音频路径");
+            }
+            return Files.readAllBytes(audioPath);
+        } catch (NoSuchFileException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件不存在: " + pageNumber);
+        } catch (IOException e) {
+            log.error("[Tts] 读取音频文件失败 courseId={} page={}", courseId, pageNumber, e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件读取失败");
         }
     }
 

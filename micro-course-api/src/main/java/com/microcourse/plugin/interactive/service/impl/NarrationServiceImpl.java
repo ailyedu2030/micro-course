@@ -22,6 +22,13 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.transaction.support.TransactionTemplate;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,6 +43,10 @@ public class NarrationServiceImpl implements NarrationService {
     private final CourseRepository courseRepository;
     private final NarrationSettingService narrationSettingService;
     private final RestTemplate restTemplate;
+    private final TransactionTemplate transactionTemplate;
+
+    @Value("${plugin.interactive.slides.storage-path:/data/slides}")
+    private String storagePath;
 
     @Value("${plugin.interactive.deepseek.api-key:}")
     private String deepseekApiKey;
@@ -48,19 +59,17 @@ public class NarrationServiceImpl implements NarrationService {
 
     public NarrationServiceImpl(SlidePageMapper slidePageMapper,
                                 CourseRepository courseRepository,
-                                NarrationSettingService narrationSettingService) {
+                                NarrationSettingService narrationSettingService,
+                                RestTemplate interactiveRestTemplate,
+                                TransactionTemplate transactionTemplate) {
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
         this.narrationSettingService = narrationSettingService;
-        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
-                new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(30000);
-        this.restTemplate = new RestTemplate(factory);
+        this.restTemplate = interactiveRestTemplate;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public SlidePageVO generate(Long courseId, Integer pageNumber) {
         checkOwner(courseId);
 
@@ -75,7 +84,6 @@ public class NarrationServiceImpl implements NarrationService {
             currentText = "（本页无可提取文本）";
         }
 
-        // 加载上一页内容作为上下文，确保连贯性
         String prevContext = "";
         if (pageNumber > 1) {
             try {
@@ -99,18 +107,25 @@ public class NarrationServiceImpl implements NarrationService {
         String narrationScript;
         try {
             narrationScript = callDeepSeek(systemPrompt, userPrompt);
-        } catch (BusinessException e) {
-            throw e;
         } catch (Exception e) {
-            log.error("DeepSeek API failed for courseId={} pageNumber={}", courseId, pageNumber, e);
-            throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED,
-                    "AI 讲述稿生成服务暂时不可用，请稍后重试", e);
+            log.error("[Narration] DeepSeek API failed for courseId={} pageNumber={}", courseId, pageNumber, e);
+            throw e;
         }
+
+        final Long pageId = page.getId();
+        final String script = narrationScript;
+        transactionTemplate.execute(tx -> {
+            SlidePage p = slidePageMapper.selectById(pageId);
+            if (p == null) return null;
+            p.setNarrationScript(script);
+            p.setNarrationStatus("AI_GENERATED");
+            p.setUpdatedAt(LocalDateTime.now());
+            slidePageMapper.updateById(p);
+            return null;
+        });
 
         page.setNarrationScript(narrationScript);
         page.setNarrationStatus("AI_GENERATED");
-        page.setUpdatedAt(LocalDateTime.now());
-        slidePageMapper.updateById(page);
 
         return toPageVO(page);
     }
@@ -121,6 +136,7 @@ public class NarrationServiceImpl implements NarrationService {
         checkOwner(courseId);
 
         SlidePage page = getPage(courseId, pageNumber);
+        deleteOldAudioFile(courseId, pageNumber);
         page.setNarrationScript(narrationScript);
         page.setNarrationStatus("TEACHER_EDITED");
         page.setNarrationAudioUrl(null);
@@ -133,14 +149,12 @@ public class NarrationServiceImpl implements NarrationService {
 
     @Override
     @Async("slideRenderExecutor")
-    @Transactional(rollbackFor = Exception.class)
     public void generateAll(Long courseId) {
         if (deepseekApiKey == null || deepseekApiKey.isBlank()) {
             log.warn("[Narration] DEEPSEEK_API_KEY 未配置，跳过 AI 讲述稿批量生成 courseId={}", courseId);
             return;
         }
 
-        // 获取课件的全部页面（按页码排序）
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getCourseId, courseId)
                 .orderByAsc(SlidePage::getPageNumber);
@@ -150,7 +164,6 @@ public class NarrationServiceImpl implements NarrationService {
             return;
         }
 
-        // 构建全量 prompt：将所有页面内容一次性发送给 DeepSeek
         StringBuilder pagesContent = new StringBuilder();
         for (SlidePage p : allPages) {
             String text = p.getExtractedText();
@@ -161,8 +174,8 @@ public class NarrationServiceImpl implements NarrationService {
                     .append(text).append("\n\n");
         }
 
-        int totalMinutes = narrationSettingService.getByCourseId(courseId).getTotalDurationMinutes() != null
-                ? narrationSettingService.getByCourseId(courseId).getTotalDurationMinutes() : 15;
+        Integer rawMinutes = narrationSettingService.getByCourseId(courseId).getTotalDurationMinutes();
+        int totalMinutes = rawMinutes != null ? rawMinutes : 15;
 
         String systemPrompt = narrationSettingService.buildSystemPrompt(courseId);
         String userPrompt = "以下是一个课件的全部幻灯片内容（共 " + allPages.size() + " 页）：\n\n"
@@ -184,7 +197,6 @@ public class NarrationServiceImpl implements NarrationService {
             return;
         }
 
-        // 解析返回结果，按 【第N页】 标记拆分为各页讲述稿
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
                 "【第\\s*(\\d+)\\s*页】\\s*([\\s\\S]*?)(?=(【第\\s*\\d+\\s*页】|$))");
         java.util.regex.Matcher matcher = pattern.matcher(fullScript);
@@ -196,79 +208,127 @@ public class NarrationServiceImpl implements NarrationService {
             pageScriptMap.put(pageNum, script);
         }
 
-        // 将解析出的讲述稿写入对应页面
         if (pageScriptMap.isEmpty() && allPages.size() == 1) {
-            // 单页时可能没有标记，整篇作为当前页的讲述稿
             pageScriptMap.put(allPages.get(0).getPageNumber(), fullScript);
         }
 
-        int savedCount = 0;
-        for (SlidePage page : allPages) {
-            String script = pageScriptMap.get(page.getPageNumber());
-            if (script != null && !script.isBlank()) {
-                page.setNarrationScript(script);
-                page.setNarrationStatus("AI_GENERATED");
-                page.setUpdatedAt(LocalDateTime.now());
-                slidePageMapper.updateById(page);
-                savedCount++;
-                try { Thread.sleep(100); } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
+        final int totalPages = allPages.size();
+        final java.util.Map<Integer, String> finalMap = pageScriptMap;
+        int savedCount = transactionTemplate.execute(tx -> {
+            int n = 0;
+            for (SlidePage page : allPages) {
+                SlidePage fresh = slidePageMapper.selectById(page.getId());
+                if (fresh == null) continue;
+                String script = finalMap.get(fresh.getPageNumber());
+                if (script != null && !script.isBlank()) {
+                    fresh.setNarrationScript(script);
+                    fresh.setNarrationStatus("AI_GENERATED");
+                    fresh.setUpdatedAt(LocalDateTime.now());
+                    slidePageMapper.updateById(fresh);
+                    n++;
                 }
             }
-        }
+            return n;
+        });
+
         log.info("[Narration] 批量生成完成 courseId={}, 共 {} 页, 成功 {} 页",
-                courseId, allPages.size(), savedCount);
+                courseId, totalPages, savedCount);
     }
 
     private String callDeepSeek(String systemPrompt, String userPrompt) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(deepseekApiKey);
+        int maxRetries = 3;
+        int attempt = 0;
+        Exception lastException = null;
 
-        Map<String, Object> systemMsg = new LinkedHashMap<>();
-        systemMsg.put("role", "system");
-        systemMsg.put("content", systemPrompt);
+        while (attempt < maxRetries) {
+            attempt++;
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setBearerAuth(deepseekApiKey);
 
-        Map<String, Object> userMsg = new LinkedHashMap<>();
-        userMsg.put("role", "user");
-        userMsg.put("content", userPrompt);
+                Map<String, Object> systemMsg = new LinkedHashMap<>();
+                systemMsg.put("role", "system");
+                systemMsg.put("content", systemPrompt);
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("model", deepseekModel);
-        body.put("messages", List.of(systemMsg, userMsg));
-        body.put("temperature", 0.7);
-        body.put("max_tokens", 4096);
+                Map<String, Object> userMsg = new LinkedHashMap<>();
+                userMsg.put("role", "user");
+                userMsg.put("content", userPrompt);
 
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("model", deepseekModel);
+                body.put("messages", List.of(systemMsg, userMsg));
+                body.put("temperature", 0.7);
+                body.put("max_tokens", 4096);
 
-        String url = deepseekBaseUrl + "/v1/chat/completions";
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
+                String url = deepseekBaseUrl + "/v1/chat/completions";
 
-        if (response == null) {
-            throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
+
+                if (response == null) {
+                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED, "DeepSeek 返回空响应");
+                }
+
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+                if (choices == null || choices.isEmpty()) {
+                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED, "DeepSeek 返回空 choices");
+                }
+
+                @SuppressWarnings("unchecked")
+                Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+                if (message == null) {
+                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED, "DeepSeek 返回空 message");
+                }
+                String content = (String) message.get("content");
+
+                if (content == null || content.isBlank()) {
+                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED, "DeepSeek 返回空内容");
+                }
+
+                return content.trim();
+            } catch (ResourceAccessException e) {
+                lastException = e;
+                log.warn("[DeepSeek] 第 {}/{} 次调用超时，准备重试", attempt, maxRetries);
+                if (attempt < maxRetries) {
+                    try { Thread.sleep(1000L * attempt); } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            } catch (HttpClientErrorException e) {
+                if (e.getStatusCode().value() == 429 && attempt < maxRetries) {
+                    lastException = e;
+                    log.warn("[DeepSeek] 第 {}/{} 次调用限流(429)，准备重试", attempt, maxRetries);
+                    try { Thread.sleep(2000L * attempt); } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                } else {
+                    log.error("[DeepSeek] HTTP 错误 status={} body={}", e.getStatusCode(), e.getResponseBodyAsString());
+                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED,
+                            "AI 讲述稿生成服务暂时不可用", e);
+                }
+            } catch (BusinessException e) {
+                throw e;
+            } catch (Exception e) {
+                lastException = e;
+                log.error("[DeepSeek] 第 {}/{} 次调用异常", attempt, maxRetries, e);
+                if (attempt < maxRetries) {
+                    try { Thread.sleep(1000L * attempt); } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
         }
 
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-        if (choices == null || choices.isEmpty()) {
-            throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED);
-        }
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-        if (message == null) {
-            throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED);
-        }
-        String content = (String) message.get("content");
-
-        if (content == null || content.isBlank()) {
-            throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED);
-        }
-
-        return content.trim();
+        log.error("[DeepSeek] 重试 {} 次后仍失败", maxRetries, lastException);
+        throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED,
+                "AI 讲述稿生成服务暂时不可用，请稍后重试", lastException);
     }
 
     private SlidePage getPage(Long courseId, Integer pageNumber) {
@@ -293,25 +353,38 @@ public class NarrationServiceImpl implements NarrationService {
     }
 
     private SlidePageVO toPageVO(SlidePage page) {
-        return new SlidePageVO() {{
-            setId(page.getId());
-            setSlideId(page.getSlideId());
-            setCourseId(page.getCourseId());
-            setPageNumber(page.getPageNumber());
-            setImageUrl(page.getImageUrl());
-            setThumbnailUrl(page.getThumbnailUrl());
-            setImageWidth(page.getImageWidth());
-            setImageHeight(page.getImageHeight());
-            setExtractedText(page.getExtractedText());
-            setHasAnimation(page.getHasAnimation());
-            setHasEmbeddedMedia(page.getHasEmbeddedMedia());
-            setNarrationScript(page.getNarrationScript());
-            setNarrationAudioUrl(page.getNarrationAudioUrl());
-            setAudioDuration(page.getAudioDuration());
-            setNarrationStatus(page.getNarrationStatus());
-            setNarrationStatusText(SlidePageVO.narrationStatusText(page.getNarrationStatus()));
-            setCreatedAt(page.getCreatedAt());
-            setUpdatedAt(page.getUpdatedAt());
-        }};
+        SlidePageVO vo = new SlidePageVO();
+        vo.setId(page.getId());
+        vo.setSlideId(page.getSlideId());
+        vo.setCourseId(page.getCourseId());
+        vo.setPageNumber(page.getPageNumber());
+        vo.setImageUrl(page.getImageUrl());
+        vo.setThumbnailUrl(page.getThumbnailUrl());
+        vo.setImageWidth(page.getImageWidth());
+        vo.setImageHeight(page.getImageHeight());
+        vo.setExtractedText(page.getExtractedText());
+        vo.setHasAnimation(page.getHasAnimation());
+        vo.setHasEmbeddedMedia(page.getHasEmbeddedMedia());
+        vo.setNarrationScript(page.getNarrationScript());
+        vo.setNarrationAudioUrl(page.getNarrationAudioUrl());
+        vo.setAudioDuration(page.getAudioDuration());
+        vo.setNarrationStatus(page.getNarrationStatus());
+        vo.setNarrationStatusText(SlidePageVO.narrationStatusText(page.getNarrationStatus()));
+        vo.setCreatedAt(page.getCreatedAt());
+        vo.setUpdatedAt(page.getUpdatedAt());
+        return vo;
+    }
+
+    private void deleteOldAudioFile(Long courseId, Integer pageNumber) {
+        try {
+            Path audioPath = Paths.get(storagePath, String.valueOf(courseId), "audio",
+                    "page_" + pageNumber + ".mp3");
+            boolean deleted = Files.deleteIfExists(audioPath);
+            if (deleted) {
+                log.info("[Narration] 已清理旧音频 courseId={} page={}", courseId, pageNumber);
+            }
+        } catch (IOException e) {
+            log.warn("[Narration] 清理旧音频失败 courseId={} page={}", courseId, pageNumber, e);
+        }
     }
 }

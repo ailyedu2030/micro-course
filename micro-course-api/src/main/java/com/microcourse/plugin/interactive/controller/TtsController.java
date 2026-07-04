@@ -15,15 +15,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -33,9 +27,6 @@ public class TtsController {
     private final TtsService ttsService;
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
-
-    @Value("${plugin.interactive.slides.storage-path:/data/slides}")
-    private String storagePath;
 
     public TtsController(TtsService ttsService, CourseRepository courseRepository, EnrollmentRepository enrollmentRepository) {
         this.ttsService = ttsService;
@@ -62,23 +53,12 @@ public class TtsController {
     public ResponseEntity<byte[]> getAudio(@PathVariable Long courseId,
                                             @PathVariable Integer pageNumber) {
         verifyAccess(courseId);
-        try {
-            Path basePath = Paths.get(storagePath, String.valueOf(courseId), "audio").toRealPath();
-            Path audioPath = basePath.resolve("page_" + pageNumber + ".mp3").normalize();
-            if (!audioPath.startsWith(basePath)) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法的音频路径");
-            }
-            byte[] audioBytes = Files.readAllBytes(audioPath);
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_TYPE, "audio/mpeg")
-                    .header(HttpHeaders.CACHE_CONTROL,
-                            CacheControl.maxAge(1, TimeUnit.HOURS).getHeaderValue())
-                    .body(audioBytes);
-        } catch (NoSuchFileException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件不存在: " + e.getMessage());
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件未找到");
-        }
+        byte[] audioBytes = ttsService.getAudio(courseId, pageNumber);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, "audio/mpeg")
+                .header(HttpHeaders.CACHE_CONTROL,
+                        CacheControl.maxAge(1, TimeUnit.HOURS).getHeaderValue())
+                .body(audioBytes);
     }
 
     private void verifyAccess(Long courseId) {
@@ -88,6 +68,7 @@ public class TtsController {
 
         boolean allowed = false;
         if (SecurityUtil.hasRole("TEACHER")
+                && course.getTeacherId() != null
                 && course.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
             allowed = true;
         }

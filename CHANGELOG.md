@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.20.0] - 2026-07-04
+
+### Fixed (Phase 11 互动课程插件 — 全量审查修复)
+
+#### P0 安全/稳定性 (6)
+- **异步线程长事务占连接池** — `NarrationService.generateAll()`/`TtsService.generateAll()` 改为 `TransactionTemplate` 短事务
+- **@Transactional 包裹 HTTP API 调用 30s+** — DeepSeek API 调用改用手动重试 + 短事务隔离
+- **@Async SecurityContext 丢失** — `MicroCourseApplication` 设置 `MODE_INHERITABLETHREADLOCAL`
+- **NarrationSettingController IDOR** — 添加 `verifyCourseOwner()`
+- **SlideRenderService XXE 漏洞** — 禁用 DTD + 外部实体
+- **CourseAdminServiceImpl plugin_grants 校验缺失** — 教师创建 INTERACTIVE 课程前查授权
+
+#### P1-C 客户体验 (5)
+- **SlideEditorPanel textarea 不可编辑** — 空 setter 改为 ref + watch sync
+- **authImage.js 缓存失效** — 5 分钟 TTL 缓存修复
+- **SlidePlayer 翻页竞态** — pageNavLock 防快速点击
+- **SlidePlayer 图片无预加载** — preloadAdjacentImages()
+- **TtsServiceImpl.checkOwner 防御深度失效** — 移除 null auth 静默 bypass
+- **SlidePlayer 音频 blob 内存泄漏** — cleanAudioBlobCache()
+
+#### P1-I 代码质量 (14)
+- 重排唯一约束冲突改为两阶段提交 (temp 负数 → 目标)
+- IOException 区分 NoSuchFileException vs 其他错误
+- 编辑讲述稿同步清理磁盘旧音频
+- 重新上传 PPT 清理磁盘旧目录
+- DeepSeek API 3 次重试 + 429 限流
+- 移除 @Async Thread.sleep 反模式
+- Qwen3-TTS 响应 path 5 层校验 (isAbsolute/isRegularFile/MP3 魔数)
+- PPT XML 动画检测从硬编码 false 改为命名空间感知
+- NarrationService 双括号匿名类统一 setter
+- loadAuthImage 拆分为兼容 + loadAuthResource
+- NarrationSettingsDialog slider 校验 trigger + 静默 catch 修复
+- SlideServiceImpl 无用 import 清理 + 重排逻辑
+- NarrationSettingsDialog 错误日志
+- TtsController NPE getTeacherId() 防护
+- SlideController FQCN 全部替换为 import
+
+#### P2 增强 (8)
+- 课程广场互动课专属角标显示
+- 教师端创建互动课 5 步向导
+- 教师端批量操作 (多选 AI/TTS/删除)
+- SlideServiceTest 集成测试 10 个用例
+- interactive-course.spec.js E2E 测试增强 (课件管理/批量/SlidePlayer/键盘/全屏)
+- MicroCourseApplication 注解统一
+- SlideService 双倍 DB 调用缓存
+- getByCourseId 重复调用优化
+
+### Changed
+- **InteractivePluginAutoConfig** — 新增 `interactiveRestTemplate` @Bean
+- **TtsController.getAudio** — 委托给 TtsService.getAudio()（移除 Controller 直读磁盘）
+- **SlideController.verifyAccess** — 补空教师 ID 防护
+- **TtsServiceImpl** — 拆分 `doGenerate()` 内部方法，`generateAll()` 跳过 `checkOwner()` 由 @PreAuthorize 保障
+
+### Quality
+- ✅ mvn compile 0 ERROR
+- ✅ mvn test 399/399 PASS（含新增 10 个 SlideServiceTest）
+- ✅ vite build SUCCESS
+- ✅ precheck.sh 21/21 PASS
+- ✅ Trivy Security Scan PASS
+- ✅ 无 TODO/FIXME/HACK 残留
+
+---
+
 ## [1.19.0] - 2026-07-03
 
 ### Added

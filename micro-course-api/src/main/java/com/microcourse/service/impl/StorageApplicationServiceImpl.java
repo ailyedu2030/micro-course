@@ -1,8 +1,6 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.storage.*;
 import com.microcourse.entity.Department;
@@ -12,42 +10,30 @@ import com.microcourse.entity.proposal.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
+import com.microcourse.service.StorageApplicationCudService;
+import com.microcourse.service.StorageApplicationQueryService;
 import com.microcourse.service.StorageApplicationService;
 import com.microcourse.util.FileUploadUtil;
 import com.microcourse.util.SecurityUtil;
-import com.microcourse.util.StorageValidator;
-import org.apache.ibatis.session.ExecutorType;
-import org.apache.ibatis.session.SqlSession;
-import org.apache.ibatis.session.SqlSessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * Phase 15: 微专业申请表 Storage Application Service 实现
@@ -82,7 +68,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     private final UserRepository userRepository;
     private final ChapterTeacherAssignmentRepository assignmentRepository;
     private final DepartmentRepository departmentRepository;
-    private final SqlSessionFactory sqlSessionFactory;
+    private final StorageApplicationQueryService queryService;
+    private final StorageApplicationCudService cudService;
 
     public StorageApplicationServiceImpl(
             MicroSpecialtyProposalRepository proposalRepository,
@@ -95,7 +82,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             UserRepository userRepository,
             ChapterTeacherAssignmentRepository assignmentRepository,
             DepartmentRepository departmentRepository,
-            SqlSessionFactory sqlSessionFactory) {
+            StorageApplicationQueryService queryService,
+            StorageApplicationCudService cudService) {
         this.proposalRepository = proposalRepository;
         this.courseRepository = courseRepository;
         this.chapterRepository = chapterRepository;
@@ -106,7 +94,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         this.userRepository = userRepository;
         this.assignmentRepository = assignmentRepository;
         this.departmentRepository = departmentRepository;
-        this.sqlSessionFactory = sqlSessionFactory;
+        this.queryService = queryService;
+        this.cudService = cudService;
     }
 
     // ================================================================
@@ -149,46 +138,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // ================================================================
     @Override
     public PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size) {
-        IPage<MicroSpecialtyProposal> ipage = proposalRepository.selectPage(
-                new Page<>(page + 1, size),
-                new LambdaQueryWrapper<MicroSpecialtyProposal>()
-                        .eq(MicroSpecialtyProposal::getProposerId, userId)
-                        .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
-
-        List<MicroSpecialtyProposal> proposals = ipage.getRecords();
-
-        Set<Long> deptIds = proposals.stream()
-                .map(MicroSpecialtyProposal::getOfferDepartmentId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<Long, String> deptNameMap = new HashMap<>();
-        if (!deptIds.isEmpty()) {
-            List<Department> depts = departmentRepository.selectBatchIds(deptIds);
-            deptNameMap = depts.stream()
-                    .collect(Collectors.toMap(Department::getId, Department::getName));
-        }
-
-        List<StorageApplicationSummaryVO> result = new ArrayList<>();
-        for (MicroSpecialtyProposal p : proposals) {
-            StorageApplicationSummaryVO vo = new StorageApplicationSummaryVO();
-            vo.setId(p.getId());
-            vo.setTitle(p.getTitle());
-            vo.setMicroSpecialtyName(p.getMicroSpecialtyName());
-            vo.setStatus(p.getStatus());
-            vo.setType(p.getType());
-            vo.setDepartmentName(deptNameMap.getOrDefault(p.getOfferDepartmentId(), ""));
-            vo.setCreatedAt(p.getCreatedAt());
-            vo.setUpdatedAt(p.getUpdatedAt());
-            result.add(vo);
-        }
-
-        PageResult<StorageApplicationSummaryVO> pr = new PageResult<>();
-        pr.setItems(result);
-        pr.setPage(page);
-        pr.setSize(size);
-        pr.setTotalElements(ipage.getTotal());
-        pr.setTotalPages(ipage.getPages());
-        return pr;
+        return queryService.getMyDrafts(userId, page, size);
     }
 
     // ================================================================
@@ -196,17 +146,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // ================================================================
     @Override
     public StorageApplicationVO getDetail(Long proposalId, Long userId) {
-        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
-        }
-
-        // 权限校验：本人或 ADMIN
-        if (userId != null && !SecurityUtil.isOwnerOrAdmin(proposal.getProposerId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
-
-        return buildVO(proposal);
+        return queryService.getDetail(proposalId, userId);
     }
 
     // ================================================================
@@ -229,16 +169,16 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         }
 
         // 更新主表字段
-        applyRequestToProposal(proposal, request);
+        cudService.applyRequestToProposal(proposal, request);
         proposal.setUpdatedAt(LocalDateTime.now());
         if (proposalRepository.updateById(proposal) == 0) {
             throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "数据冲突，请重新加载后再试");
         }
 
         // 处理子表（先删后插，包含共享单位签字同步）
-        replaceSubTables(proposalId, request, true);
+        cudService.replaceSubTables(proposalId, request, true);
 
-        return buildVO(proposal);
+        return queryService.getDetail(proposalId, userId);
     }
 
     // ================================================================
@@ -274,7 +214,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         }
 
         // 仅更新非空字段到主表
-        applyRequestToProposal(proposal, request);
+        cudService.applyRequestToProposal(proposal, request);
         proposal.setUpdatedAt(LocalDateTime.now());
         // RT-1: 使用 @Version 乐观锁防止 autoSave 与 submit 的竞态条件
         // update(entity, wrapper) 将 WHERE 条件加入 version 检查，冲突时返回 0 行
@@ -288,7 +228,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         }
 
         // 子表在 autoSave 时也进行替换，但共享单位签字仅在 full save 时同步
-        replaceSubTables(proposalId, request, false);
+        cudService.replaceSubTables(proposalId, request, false);
     }
 
     // ================================================================
@@ -409,15 +349,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // ================================================================
     @Override
     public StorageApplicationPreviewVO buildPreview(Long proposalId, Long userId) {
-        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
-        }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
-
-        return buildPreview(proposal);
+        return queryService.buildPreview(proposalId, userId);
     }
 
     // ================================================================
@@ -439,9 +371,12 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿或已驳回状态可提交审核");
         }
 
-        // 执行提交前校验（使用 validateAndThrow 确保异常路径不会被遗漏）
-        StorageApplicationSaveRequest req = buildRequest(proposal);
-        StorageValidator.validateAndThrow(req);
+        // 执行提交前校验（委托至 queryService）
+        ExportValidationResult validation = queryService.validateForExport(proposalId, userId);
+        if (!validation.isValid()) {
+            throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
+                    "请补全以下必填项：\n" + String.join("\n", validation.getErrors()));
+        }
 
         proposal.setStatus("PENDING_REVIEW");
         proposal.setUpdatedAt(LocalDateTime.now());
@@ -580,13 +515,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
 
     @Override
     public void validateOwner(Long proposalId, Long userId) {
-        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
-        }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdminOrAcademic()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
+        queryService.validateOwner(proposalId, userId);
     }
 
     // ================================================================
@@ -594,793 +523,15 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // ================================================================
     @Override
     public ExportValidationResult validateForExport(Long proposalId, Long userId) {
-        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
-        }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
-
-        StorageApplicationSaveRequest req = buildRequest(proposal);
-        List<String> errors = StorageValidator.validateForSubmit(req);
-
-        ExportValidationResult result = new ExportValidationResult();
-        for (String error : errors) {
-            result.addError(error);
-        }
-
-        // 额外检查：导出模板存在性由导出 Service 检查，此处仅校验数据
-        return result;
+        return queryService.validateForExport(proposalId, userId);
     }
 
     // ================================================================
     // 内部辅助方法
     // ================================================================
 
-    /**
-     * 将主表 Entity 转换为 VO
-     */
-    private StorageApplicationVO buildVO(MicroSpecialtyProposal proposal) {
-        StorageApplicationVO vo = new StorageApplicationVO();
-        vo.setId(proposal.getId());
-        vo.setStatus(proposal.getStatus());
+    // buildVO, buildPreview(MicroSpecialtyProposal), buildRequest, build*Items,
+    // lookupUserName, buildAssignmentItems — extracted to StorageApplicationQueryServiceImpl
 
-        // 模块1：表头
-        vo.setTitle(proposal.getTitle());
-        vo.setMicroSpecialtyName(proposal.getMicroSpecialtyName());
-        vo.setLeadName(proposal.getLeadName());
-        vo.setContactPhone(proposal.getContactPhone());
-        vo.setApplyDate(proposal.getApplyDate() != null ?
-            java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d").format(proposal.getApplyDate()) : null);
 
-        // 模块2：基本情况
-        vo.setType(proposal.getType());
-        vo.setTargetAudience(proposal.getTargetAudience());
-        vo.setTargetDisciplines(proposal.getTargetDisciplines());
-        vo.setTotalCredits(proposal.getTotalCredits());
-        vo.setCourseCount(proposal.getCourseCount());
-        vo.setCoBuildUniversities(proposal.getCoBuildUniversities());
-        vo.setPlannedShareUniversities(proposal.getPlannedShareUniversities());
-        vo.setEnrollmentQuota(proposal.getEnrollmentQuota());
-        vo.setClassSize(proposal.getClassSize());
-        vo.setStartDate(proposal.getStartDate() != null ? proposal.getStartDate().toString() : null);
-        vo.setDuration(proposal.getDuration());
-        vo.setIsIndustryAcademic(proposal.getIsIndustryAcademic());
-        vo.setIndustryPartners(proposal.getIndustryPartners());
-
-        // 富文本
-        vo.setIntroduction(proposal.getIntroduction());
-        vo.setMarketDemandAnalysis(proposal.getMarketDemandAnalysis());
-        vo.setSpecialtyOverview(proposal.getSpecialtyOverview());
-        vo.setCurriculumDesign(proposal.getCurriculumDesign());
-        vo.setConstructionGuarantee(proposal.getConstructionGuarantee());
-
-        // 模块3：教学团队
-        vo.setLeadTitle(proposal.getLeadTitle());
-        vo.setLeadPosition(proposal.getLeadPosition());
-        vo.setLeadPhone(proposal.getLeadPhone());
-        vo.setLeadResearchDirection(proposal.getLeadResearchDirection());
-        vo.setLeadMainTasks(proposal.getLeadMainTasks());
-
-        // 子表数据
-        vo.setCourses(buildCourseItems(proposal.getId()));
-        vo.setLeadCourses(buildLeadCourseItems(proposal.getId()));
-        vo.setTeamMembers(buildTeamMemberItems(proposal.getId()));
-        vo.setSignatures(buildSignatureItems(proposal.getId()));
-        vo.setSharedUnits(buildSharedUnitItems(proposal.getId()));
-        vo.setChapterAssignments(buildAssignmentItems(proposal.getId()));
-
-        // 关联查询字段
-        vo.setProposerName(lookupUserName(proposal.getProposerId()));
-        if (proposal.getOfferDepartmentId() != null) {
-            Department dept = departmentRepository.selectById(proposal.getOfferDepartmentId());
-            if (dept != null) {
-                vo.setDepartmentName(dept.getName());
-            }
-        }
-        vo.setCreatedAt(proposal.getCreatedAt());
-        vo.setUpdatedAt(proposal.getUpdatedAt());
-
-        return vo;
-    }
-
-    /**
-     * 构建预览 VO
-     */
-    private StorageApplicationPreviewVO buildPreview(MicroSpecialtyProposal proposal) {
-        StorageApplicationPreviewVO vo = new StorageApplicationPreviewVO();
-        vo.setId(proposal.getId());
-        vo.setTitle(proposal.getTitle());
-        vo.setMicroSpecialtyName(proposal.getMicroSpecialtyName());
-        vo.setStatus(proposal.getStatus());
-        vo.setLeadName(proposal.getLeadName());
-        vo.setContactPhone(proposal.getContactPhone());
-        vo.setApplyDate(proposal.getApplyDate() != null ?
-            java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d").format(proposal.getApplyDate()) : null);
-        vo.setType(proposal.getType());
-        vo.setTargetAudience(proposal.getTargetAudience());
-        vo.setTargetDisciplines(proposal.getTargetDisciplines());
-        vo.setTotalCredits(proposal.getTotalCredits());
-        vo.setCourseCount(proposal.getCourseCount());
-        vo.setCoBuildUniversities(proposal.getCoBuildUniversities());
-        vo.setPlannedShareUniversities(proposal.getPlannedShareUniversities());
-        vo.setEnrollmentQuota(proposal.getEnrollmentQuota());
-        vo.setClassSize(proposal.getClassSize());
-        vo.setStartDate(proposal.getStartDate() != null ? proposal.getStartDate().toString() : null);
-        vo.setDuration(proposal.getDuration());
-        vo.setIsIndustryAcademic(proposal.getIsIndustryAcademic());
-        vo.setIndustryPartners(proposal.getIndustryPartners());
-        vo.setIntroduction(proposal.getIntroduction());
-        vo.setMarketDemandAnalysis(proposal.getMarketDemandAnalysis());
-        vo.setSpecialtyOverview(proposal.getSpecialtyOverview());
-        vo.setCurriculumDesign(proposal.getCurriculumDesign());
-        vo.setConstructionGuarantee(proposal.getConstructionGuarantee());
-        vo.setLeadTitle(proposal.getLeadTitle());
-        vo.setLeadPosition(proposal.getLeadPosition());
-        vo.setLeadResearchDirection(proposal.getLeadResearchDirection());
-        vo.setLeadMainTasks(proposal.getLeadMainTasks());
-
-        vo.setCourses(buildCourseItems(proposal.getId()));
-        vo.setLeadCourses(buildLeadCourseItems(proposal.getId()));
-        vo.setTeamMembers(buildTeamMemberItems(proposal.getId()));
-        vo.setSignatures(buildSignatureItems(proposal.getId()));
-        vo.setSharedUnits(buildSharedUnitItems(proposal.getId()));
-        vo.setChapterAssignments(buildAssignmentItems(proposal.getId()));
-
-        return vo;
-    }
-
-    /**
-     * 从 proposal 构建 StorageApplicationSaveRequest（用于校验）
-     */
-    private StorageApplicationSaveRequest buildRequest(MicroSpecialtyProposal proposal) {
-        StorageApplicationSaveRequest req = new StorageApplicationSaveRequest();
-        req.setTitle(proposal.getTitle());
-        req.setLeadName(proposal.getLeadName());
-        req.setContactPhone(proposal.getContactPhone());
-        req.setApplyDate(proposal.getApplyDate() != null ?
-                java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d").format(proposal.getApplyDate()) : null);
-        req.setType(proposal.getType());
-        req.setTargetAudience(proposal.getTargetAudience());
-        req.setTargetDisciplines(proposal.getTargetDisciplines());
-        req.setTotalCredits(proposal.getTotalCredits());
-        req.setCourseCount(proposal.getCourseCount());
-        req.setCoBuildUniversities(proposal.getCoBuildUniversities());
-        req.setPlannedShareUniversities(proposal.getPlannedShareUniversities());
-        req.setEnrollmentQuota(proposal.getEnrollmentQuota());
-        req.setClassSize(proposal.getClassSize());
-        req.setStartDate(proposal.getStartDate() != null ? proposal.getStartDate().toString() : null);
-        req.setDuration(proposal.getDuration());
-        req.setIsIndustryAcademic(proposal.getIsIndustryAcademic());
-        req.setIndustryPartners(proposal.getIndustryPartners());
-        req.setIntroduction(proposal.getIntroduction());
-        req.setMarketDemandAnalysis(proposal.getMarketDemandAnalysis());
-        req.setSpecialtyOverview(proposal.getSpecialtyOverview());
-        req.setCurriculumDesign(proposal.getCurriculumDesign());
-        req.setConstructionGuarantee(proposal.getConstructionGuarantee());
-        req.setLeadTitle(proposal.getLeadTitle());
-        req.setLeadPosition(proposal.getLeadPosition());
-        req.setLeadPhone(proposal.getLeadPhone());
-        req.setLeadResearchDirection(proposal.getLeadResearchDirection());
-        req.setLeadMainTasks(proposal.getLeadMainTasks());
-        req.setOfferDepartmentId(proposal.getOfferDepartmentId());
-        req.setCourses(buildCourseItems(proposal.getId()));
-        req.setLeadCourses(buildLeadCourseItems(proposal.getId()));
-        req.setTeamMembers(buildTeamMemberItems(proposal.getId()));
-        req.setSignatures(buildSignatureItems(proposal.getId()));
-        req.setSharedUnits(buildSharedUnitItems(proposal.getId()));
-        req.setChapterAssignments(buildAssignmentItems(proposal.getId()));
-        return req;
-    }
-
-    /**
-     * 对标 ProposalCourseItem 字段，将请求对象映射到主表 Entity
-     */
-    private void applyRequestToProposal(MicroSpecialtyProposal proposal, StorageApplicationSaveRequest request) {
-        if (request.getTitle() != null) {
-            proposal.setTitle(request.getTitle());
-        }
-        // P0-4 修复：持久化微专业名称
-        if (request.getMicroSpecialtyName() != null) {
-            proposal.setMicroSpecialtyName(request.getMicroSpecialtyName());
-        }
-        if (request.getLeadName() != null) {
-            proposal.setLeadName(request.getLeadName());
-        }
-        if (request.getContactPhone() != null) {
-            proposal.setContactPhone(request.getContactPhone());
-        }
-        // P1-C-1 修复：解析请求中的日期字符串，而非设为 now()
-        if (request.getApplyDate() != null && !request.getApplyDate().isEmpty()) {
-            try {
-                proposal.setApplyDate(parseDate(request.getApplyDate()));
-            } catch (Exception e) {
-                log.warn("applyDate parse failed: {}", request.getApplyDate(), e);
-            }
-        }
-        if (request.getType() != null) {
-            proposal.setType(request.getType());
-        }
-        if (request.getTargetAudience() != null) {
-            proposal.setTargetAudience(request.getTargetAudience());
-        }
-        if (request.getTargetDisciplines() != null) {
-            proposal.setTargetDisciplines(request.getTargetDisciplines());
-        }
-        if (request.getTotalCredits() != null) {
-            proposal.setTotalCredits(request.getTotalCredits());
-        }
-        if (request.getCourseCount() != null) {
-            proposal.setCourseCount(request.getCourseCount());
-        }
-        if (request.getCoBuildUniversities() != null) {
-            proposal.setCoBuildUniversities(request.getCoBuildUniversities());
-        }
-        if (request.getPlannedShareUniversities() != null) {
-            proposal.setPlannedShareUniversities(request.getPlannedShareUniversities());
-        }
-        if (request.getEnrollmentQuota() != null) {
-            proposal.setEnrollmentQuota(request.getEnrollmentQuota());
-        }
-        if (request.getClassSize() != null) {
-            proposal.setClassSize(request.getClassSize());
-        }
-        // P1-C-1 修复：解析请求中的日期字符串，而非设为 now()
-        if (request.getStartDate() != null && !request.getStartDate().isEmpty()) {
-            try {
-                proposal.setStartDate(parseDate(request.getStartDate()));
-            } catch (Exception e) {
-                log.warn("startDate parse failed: {}", request.getStartDate(), e);
-            }
-        }
-        if (request.getDuration() != null) {
-            proposal.setDuration(request.getDuration());
-        }
-        if (request.getIsIndustryAcademic() != null) {
-            proposal.setIsIndustryAcademic(request.getIsIndustryAcademic());
-        }
-        if (request.getIndustryPartners() != null) {
-            proposal.setIndustryPartners(request.getIndustryPartners());
-        }
-        if (request.getIntroduction() != null) {
-            proposal.setIntroduction(request.getIntroduction());
-        }
-        if (request.getMarketDemandAnalysis() != null) {
-            proposal.setMarketDemandAnalysis(request.getMarketDemandAnalysis());
-        }
-        if (request.getSpecialtyOverview() != null) {
-            proposal.setSpecialtyOverview(request.getSpecialtyOverview());
-        }
-        if (request.getCurriculumDesign() != null) {
-            proposal.setCurriculumDesign(request.getCurriculumDesign());
-        }
-        if (request.getConstructionGuarantee() != null) {
-            proposal.setConstructionGuarantee(request.getConstructionGuarantee());
-        }
-        if (request.getLeadTitle() != null) {
-            proposal.setLeadTitle(request.getLeadTitle());
-        }
-        if (request.getLeadPosition() != null) {
-            proposal.setLeadPosition(request.getLeadPosition());
-        }
-        if (request.getLeadPhone() != null) {
-            proposal.setLeadPhone(request.getLeadPhone());
-        }
-        if (request.getLeadResearchDirection() != null) {
-            proposal.setLeadResearchDirection(request.getLeadResearchDirection());
-        }
-        if (request.getLeadMainTasks() != null) {
-            proposal.setLeadMainTasks(request.getLeadMainTasks());
-        }
-        // A1 修复：持久化申报院系 ID
-        if (request.getOfferDepartmentId() != null) {
-            proposal.setOfferDepartmentId(request.getOfferDepartmentId());
-        }
-    }
-
-    /**
-     * 先删后插替换子表数据。
-     * A2/A4/A6 修复：仅当子表数组不为 null 时才执行删除+插入，防止 autoSave 传入空数组导致数据丢失。
-     * 事务保护由调用方 @Transactional 保证，本方法要求 Propagation.MANDATORY。
-     *
-     * @param proposalId         申请表 ID
-     * @param request            保存请求（子表数组为 null 表示不更新该子表）
-     * @param includeSharedUnits true=全量保存（含共享单位签字同步）；false=自动保存（跳过共享单位）
-     */
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void replaceSubTables(Long proposalId, StorageApplicationSaveRequest request, boolean includeSharedUnits) {
-        // A6 修复：运行为确保处于活跃事务中
-        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
-            throw new IllegalStateException("replaceSubTables 必须在事务上下文中调用");
-        }
-
-        // courses — A2: 仅当 courses 数组非 null 时更新 (R-002: 批量插入)
-        if (request.getCourses() != null) {
-            courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
-                    .eq(ProposalCourse::getProposalId, proposalId));
-            int sortOrder = 0;
-            List<ProposalCourse> entities = new ArrayList<>();
-            for (ProposalCourseItem item : request.getCourses()) {
-                ProposalCourse entity = new ProposalCourse();
-                entity.setProposalId(proposalId);
-                entity.setModuleName(item.getModuleName());
-                entity.setCourseName(item.getCourseName());
-                entity.setHours(item.getHours());
-                entity.setCredits(item.getCredits());
-                entity.setSemester(item.getSemester());
-                entity.setSortOrder(sortOrder++);
-                entities.add(entity);
-            }
-            if (!entities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalCourseRepository batchRepo = sqlSession.getMapper(ProposalCourseRepository.class);
-                    for (ProposalCourse entity : entities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.flushStatements();  // 必须先 flush 让 course.id 可用
-                }
-
-                // Phase 1: 同步保存章节(嵌套在课程循环内,确保 course.id 可用)
-                // P0-1 修复: 维护 oldId → newChapter 映射,DELETE+INSERT 后前端旧ID不再有效
-                // P1-C-1 修复: 同时维护 oldToNewCourseIdMap 用于 courseId 回退查询
-                List<ProposalChapter> allChapters = new ArrayList<>();
-                Map<Long, ProposalChapter> oldIdToNewChapterMap = new HashMap<>();
-                Map<Long, Long> oldToNewCourseIdMap = new HashMap<>();
-                for (int i = 0; i < request.getCourses().size(); i++) {
-                    ProposalCourseItem item = request.getCourses().get(i);
-                    ProposalCourse courseEntity = entities.get(i);
-                    // 记录旧→新课程序号映射
-                    if (item.getId() != null) {
-                        oldToNewCourseIdMap.put(item.getId(), courseEntity.getId());
-                    }
-                    if (item.getChapters() != null && !item.getChapters().isEmpty()) {
-                        int chapterSort = 0;
-                        for (ProposalChapterItem chItem : item.getChapters()) {
-                            ProposalChapter ch = new ProposalChapter();
-                            ch.setProposalId(proposalId);
-                            ch.setCourseId(courseEntity.getId());
-                            ch.setTitle(chItem.getTitle());
-                            ch.setDescription(chItem.getDescription());
-                            ch.setHours(chItem.getHours());
-                            ch.setSortOrder(chapterSort++);
-                            allChapters.add(ch);
-                            if (chItem.getId() != null) {
-                                oldIdToNewChapterMap.put(chItem.getId(), ch);
-                            }
-                        }
-                    }
-                }
-                if (!allChapters.isEmpty()) {
-                    try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                        ProposalChapterRepository chRepo = sqlSession.getMapper(ProposalChapterRepository.class);
-                        for (ProposalChapter ch : allChapters) {
-                            chRepo.insert(ch);
-                        }
-                        sqlSession.commit();
-                    }
-                }
-
-                // Phase 2: 章节-教师分配同步
-                // P0-1 修复: 用 oldIdToNewChapterMap 获取新章节 ID,解决 DELETE+INSERT 后
-                // 前端旧 ID 导致 FK 约束 violation
-                // P1-C-1 修复: 当映射找不到时,用 resolvedCourseId 在 allChapters 中回退匹配,
-                // 仍然找不到则跳过该条 assignment 并记 warning,避免用过期 ID 插入 FK 崩溃
-                if (request.getChapterAssignments() != null && !request.getChapterAssignments().isEmpty()) {
-                    assignmentRepository.delete(new LambdaQueryWrapper<ChapterTeacherAssignment>()
-                            .eq(ChapterTeacherAssignment::getProposalId, proposalId));
-                    try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                        ChapterTeacherAssignmentRepository batchRepo = sqlSession.getMapper(ChapterTeacherAssignmentRepository.class);
-                        for (ChapterAssignmentItem assignItem : request.getChapterAssignments()) {
-                            Long oldChapterId = assignItem.getChapterId();
-                            ProposalChapter mappedCh = oldIdToNewChapterMap.get(oldChapterId);
-
-                            // 回退查找: 当直接 ID 映射失败时(如章节刚创建无旧 ID),
-                            // 解析新课程序号后在 allChapters 中按课程匹配第一个章节
-                            if (mappedCh == null) {
-                                Long resolvedCourseId = oldToNewCourseIdMap.getOrDefault(
-                                        assignItem.getCourseId(), assignItem.getCourseId());
-                                for (ProposalChapter fallbackCh : allChapters) {
-                                    if (Objects.equals(fallbackCh.getCourseId(), resolvedCourseId)) {
-                                        mappedCh = fallbackCh;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (mappedCh == null) {
-                                // P0-1 修复: 找不到匹配章节时跳过,避免用过期 ID 触发 FK 约束崩溃
-                                log.warn("replaceSubTables: 跳过 assignment(courseId={}, chapterId={}, teacherId={}) — 未找到匹配章节",
-                                        assignItem.getCourseId(), oldChapterId, assignItem.getTeacherId());
-                                continue;
-                            }
-
-                            Long newChapterId = mappedCh.getId();
-                            Long newCourseId = mappedCh.getCourseId();
-                            ChapterTeacherAssignment entity = new ChapterTeacherAssignment();
-                            entity.setProposalId(proposalId);
-                            entity.setCourseId(newCourseId);
-                            entity.setChapterId(newChapterId);
-                            entity.setTeacherId(assignItem.getTeacherId());
-                            entity.setSource("TBD");
-                            entity.setAcceptStatus("PENDING");
-                            batchRepo.insert(entity);
-                        }
-                        sqlSession.commit();
-                    }
-                }
-            }
-        }
-
-        // leadCourses — A2: 仅当 leadCourses 数组非 null 时更新 (R-002: 批量插入)
-        if (request.getLeadCourses() != null) {
-            leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
-                    .eq(ProposalLeadCourse::getProposalId, proposalId));
-            int sortOrder = 0;
-            List<ProposalLeadCourse> entities = new ArrayList<>();
-            for (ProposalLeadCourseItem item : request.getLeadCourses()) {
-                ProposalLeadCourse entity = new ProposalLeadCourse();
-                entity.setProposalId(proposalId);
-                entity.setCourseName(item.getCourseName());
-                entity.setCredits(item.getCredits());
-                entity.setHours(item.getHours());
-                entity.setSortOrder(sortOrder++);
-                entities.add(entity);
-            }
-            if (!entities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalLeadCourseRepository batchRepo = sqlSession.getMapper(ProposalLeadCourseRepository.class);
-                    for (ProposalLeadCourse entity : entities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
-            }
-        }
-
-        // teamMembers — A2: 仅当 teamMembers 数组非 null 时更新 (R-002: 批量插入)
-        if (request.getTeamMembers() != null) {
-            teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
-                    .eq(ProposalTeamMember::getProposalId, proposalId));
-            List<ProposalTeamMember> entities = new ArrayList<>();
-            for (ProposalTeamMemberItem item : request.getTeamMembers()) {
-                ProposalTeamMember entity = new ProposalTeamMember();
-                entity.setProposalId(proposalId);
-                entity.setMemberType(item.getMemberType() != null ? item.getMemberType() : "MEMBER");
-                entity.setSeq(item.getSeq());
-                entity.setName(item.getName());
-                entity.setAge(item.getAge());
-                entity.setTitle(item.getTitle());
-                entity.setOrganization(item.getOrganization());
-                entity.setProfession(item.getProfession());
-                entity.setTaughtCourses(item.getTaughtCourses());
-                entity.setPlannedCourses(item.getPlannedCourses());
-                entities.add(entity);
-            }
-            if (!entities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalTeamMemberRepository batchRepo = sqlSession.getMapper(ProposalTeamMemberRepository.class);
-                    for (ProposalTeamMember entity : entities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
-            }
-        }
-
-        // signatures — A2: 仅当 signatures 数组非 null 时更新（不处理 SHARED_UNIT 级别）(R-002: 批量插入)
-        if (request.getSignatures() != null) {
-            signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
-                    .eq(ProposalSignature::getProposalId, proposalId)
-                    .ne(ProposalSignature::getSignLevel, "SHARED_UNIT"));
-            int sigSeq = 0;
-            List<ProposalSignature> entities = new ArrayList<>();
-            for (ProposalSignatureItem item : request.getSignatures()) {
-                ProposalSignature entity = new ProposalSignature();
-                entity.setProposalId(proposalId);
-                entity.setSignLevel(item.getSignLevel());
-                entity.setUnitSeq(sigSeq++);
-                entity.setOpinionText(item.getOpinionText());
-                entity.setSignatureType(item.getSignatureType());
-                entity.setSignatureText(item.getSignatureText());
-                entity.setSignatureImageUrl(item.getSignatureImageUrl());
-                entity.setSealImageUrl(item.getSealImageUrl());
-                entity.setSignDate(parseDate(item.getSignDate()));
-                entity.setRemark(item.getRemark());
-                entities.add(entity);
-            }
-            if (!entities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalSignatureRepository batchRepo = sqlSession.getMapper(ProposalSignatureRepository.class);
-                    for (ProposalSignature entity : entities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
-            }
-        }
-
-        // sharedUnits — 仅 full save 时处理，且仅当 sharedUnits 数组非 null 时更新 (R-002: 批量插入)
-        if (includeSharedUnits && request.getSharedUnits() != null) {
-            sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
-                    .eq(ProposalSharedUnit::getProposalId, proposalId));
-            // 先清除旧的 SHARED_UNIT 级别签字，再重新插入
-            signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
-                    .eq(ProposalSignature::getProposalId, proposalId)
-                    .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
-            int sortOrder = 0;
-            List<ProposalSharedUnit> unitEntities = new ArrayList<>();
-            List<ProposalSignature> sigEntities = new ArrayList<>();
-            for (ProposalSharedUnitItem item : request.getSharedUnits()) {
-                ProposalSharedUnit entity = new ProposalSharedUnit();
-                entity.setProposalId(proposalId);
-                entity.setUnitName(item.getUnitName());
-                entity.setUnitType(item.getUnitType());
-                entity.setSortOrder(sortOrder);
-                unitEntities.add(entity);
-
-                // 同步共享单位签字数据到 proposal_signatures 表
-                ProposalSignature sig = new ProposalSignature();
-                sig.setProposalId(proposalId);
-                sig.setSignLevel("SHARED_UNIT");
-                sig.setUnitSeq(sortOrder);
-                sig.setOpinionText(item.getOpinionText());
-                if (item.getSignature() != null) {
-                    sig.setSignatureType(item.getSignature().getType());
-                    sig.setSignatureText(item.getSignature().getText());
-                    sig.setSignatureImageUrl(item.getSignature().getImageUrl());
-                }
-                if (item.getSeal() != null) {
-                    sig.setSealImageUrl(item.getSeal().getImageUrl());
-                }
-                sig.setSignDate(item.getSignDate() != null && !item.getSignDate().isEmpty()
-                        ? parseDate(item.getSignDate()) : null);
-                sig.setRemark(item.getRemark());
-                sigEntities.add(sig);
-
-                sortOrder++;
-            }
-            // Batch insert shared units
-            if (!unitEntities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalSharedUnitRepository batchRepo = sqlSession.getMapper(ProposalSharedUnitRepository.class);
-                    for (ProposalSharedUnit entity : unitEntities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
-            }
-            // Batch insert shared unit signatures
-            if (!sigEntities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalSignatureRepository batchRepo = sqlSession.getMapper(ProposalSignatureRepository.class);
-                    for (ProposalSignature entity : sigEntities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
-            }
-        }
-    }
-
-    // ================================================================
-    // 子表 Items 构建
-    // ================================================================
-
-    private List<ProposalCourseItem> buildCourseItems(Long proposalId) {
-        List<ProposalCourse> entities = courseRepository.selectList(
-                new LambdaQueryWrapper<ProposalCourse>()
-                        .eq(ProposalCourse::getProposalId, proposalId)
-                        .orderByAsc(ProposalCourse::getSortOrder));
-        List<ProposalCourseItem> items = new ArrayList<>();
-        for (ProposalCourse e : entities) {
-            ProposalCourseItem item = new ProposalCourseItem();
-            item.setId(e.getId());
-            item.setModuleName(e.getModuleName());
-            item.setCourseName(e.getCourseName());
-            item.setHours(e.getHours());
-            item.setCredits(e.getCredits());
-            item.setSemester(e.getSemester());
-            // Phase 1: 加载该课程的章节
-            item.setChapters(buildChapterItems(e.getId()));
-            items.add(item);
-        }
-        return items;
-    }
-
-    private List<ProposalChapterItem> buildChapterItems(Long courseId) {
-        List<ProposalChapter> entities = chapterRepository.selectList(
-                new LambdaQueryWrapper<ProposalChapter>()
-                        .eq(ProposalChapter::getCourseId, courseId)
-                        .orderByAsc(ProposalChapter::getSortOrder));
-        List<ProposalChapterItem> items = new ArrayList<>();
-        for (ProposalChapter e : entities) {
-            ProposalChapterItem item = new ProposalChapterItem();
-            item.setId(e.getId());
-            item.setTitle(e.getTitle());
-            item.setDescription(e.getDescription());
-            item.setHours(e.getHours());
-            item.setSortOrder(e.getSortOrder());
-            items.add(item);
-        }
-        return items;
-    }
-
-    private List<ProposalLeadCourseItem> buildLeadCourseItems(Long proposalId) {
-        List<ProposalLeadCourse> entities = leadCourseRepository.selectList(
-                new LambdaQueryWrapper<ProposalLeadCourse>()
-                        .eq(ProposalLeadCourse::getProposalId, proposalId)
-                        .orderByAsc(ProposalLeadCourse::getSortOrder));
-        List<ProposalLeadCourseItem> items = new ArrayList<>();
-        for (ProposalLeadCourse e : entities) {
-            ProposalLeadCourseItem item = new ProposalLeadCourseItem();
-            item.setId(e.getId());
-            item.setCourseName(e.getCourseName());
-            item.setCredits(e.getCredits());
-            item.setHours(e.getHours());
-            items.add(item);
-        }
-        return items;
-    }
-
-    private List<ProposalTeamMemberItem> buildTeamMemberItems(Long proposalId) {
-        List<ProposalTeamMember> entities = teamMemberRepository.selectList(
-                new LambdaQueryWrapper<ProposalTeamMember>()
-                        .eq(ProposalTeamMember::getProposalId, proposalId)
-                        .orderByAsc(ProposalTeamMember::getSeq));
-        List<ProposalTeamMemberItem> items = new ArrayList<>();
-        for (ProposalTeamMember e : entities) {
-            ProposalTeamMemberItem item = new ProposalTeamMemberItem();
-            item.setId(e.getId());
-            item.setMemberType(e.getMemberType());
-            item.setSeq(e.getSeq());
-            item.setName(e.getName());
-            item.setAge(e.getAge());
-            item.setTitle(e.getTitle());
-            item.setOrganization(e.getOrganization());
-            item.setProfession(e.getProfession());
-            item.setTaughtCourses(e.getTaughtCourses());
-            item.setPlannedCourses(e.getPlannedCourses());
-            items.add(item);
-        }
-        return items;
-    }
-
-    private List<ProposalSignatureItem> buildSignatureItems(Long proposalId) {
-        List<ProposalSignature> entities = signatureRepository.selectList(
-                new LambdaQueryWrapper<ProposalSignature>()
-                        .eq(ProposalSignature::getProposalId, proposalId)
-                        .orderByAsc(ProposalSignature::getUnitSeq));
-        List<ProposalSignatureItem> items = new ArrayList<>();
-        for (ProposalSignature e : entities) {
-            ProposalSignatureItem item = new ProposalSignatureItem();
-            item.setId(e.getId());
-            item.setSignLevel(e.getSignLevel());
-            item.setOpinionText(e.getOpinionText());
-            item.setSignatureType(e.getSignatureType());
-            item.setSignatureText(e.getSignatureText());
-            item.setSignatureImageUrl(e.getSignatureImageUrl());
-            item.setSealImageUrl(e.getSealImageUrl());
-            item.setSignDate(e.getSignDate() != null ? e.getSignDate().toString() : null);
-            item.setRemark(e.getRemark());
-            items.add(item);
-        }
-        return items;
-    }
-
-    private List<ProposalSharedUnitItem> buildSharedUnitItems(Long proposalId) {
-        List<ProposalSharedUnit> entities = sharedUnitRepository.selectList(
-                new LambdaQueryWrapper<ProposalSharedUnit>()
-                        .eq(ProposalSharedUnit::getProposalId, proposalId)
-                        .orderByAsc(ProposalSharedUnit::getSortOrder));
-
-        // P0-2 修复：加载 SHARED_UNIT 级别签字，按 unitSeq 索引
-        List<ProposalSignature> sigs = signatureRepository.selectList(
-                new LambdaQueryWrapper<ProposalSignature>()
-                        .eq(ProposalSignature::getProposalId, proposalId)
-                        .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
-        java.util.Map<Integer, ProposalSignature> sigMap = new java.util.HashMap<>();
-        for (ProposalSignature sig : sigs) {
-            if (sig.getUnitSeq() != null) {
-                sigMap.put(sig.getUnitSeq(), sig);
-            }
-        }
-
-        List<ProposalSharedUnitItem> items = new ArrayList<>();
-        for (ProposalSharedUnit e : entities) {
-            ProposalSharedUnitItem item = new ProposalSharedUnitItem();
-            item.setId(e.getId());
-            item.setUnitName(e.getUnitName());
-            item.setUnitType(e.getUnitType());
-            item.setSortOrder(e.getSortOrder());
-
-            // P0-2 修复：从 proposal_signatures 回填签字数据
-            ProposalSignature sig = sigMap.get(e.getSortOrder());
-            if (sig != null) {
-                item.setOpinionText(sig.getOpinionText());
-                item.setSignature(new ProposalSignatureItem.SignatureFile(
-                        sig.getSignatureType(), sig.getSignatureText(), sig.getSignatureImageUrl()));
-                item.setSeal(new ProposalSignatureItem.SignatureFile(
-                        null, null, sig.getSealImageUrl()));
-                item.setSignDate(sig.getSignDate() != null ? sig.getSignDate().toString() : null);
-                item.setRemark(sig.getRemark());
-            }
-
-            items.add(item);
-        }
-        return items;
-    }
-
-    private String lookupUserName(Long userId) {
-        if (userId == null) {
-            return null;
-        }
-        User user = userRepository.selectById(userId);
-        return user != null ? user.getRealName() : null;
-    }
-
-    // Phase 2: 加载章节-教师分配
-    private List<ChapterAssignmentItem> buildAssignmentItems(Long proposalId) {
-        List<ChapterTeacherAssignment> entities = assignmentRepository.selectList(
-                new LambdaQueryWrapper<ChapterTeacherAssignment>()
-                        .eq(ChapterTeacherAssignment::getProposalId, proposalId)
-                        .eq(ChapterTeacherAssignment::getDeletedAt, null));
-        List<ChapterAssignmentItem> items = new ArrayList<>();
-        for (ChapterTeacherAssignment e : entities) {
-            ChapterAssignmentItem item = new ChapterAssignmentItem();
-            item.setId(e.getId());
-            item.setCourseId(e.getCourseId());
-            item.setChapterId(e.getChapterId());
-            item.setTeacherId(e.getTeacherId());
-            item.setSource(e.getSource() != null ? e.getSource() : "TBD");
-            item.setAcceptStatus(e.getAcceptStatus() != null ? e.getAcceptStatus() : "PENDING");
-            ProposalChapter ch = chapterRepository.selectById(e.getChapterId());
-            if (ch != null) {
-                item.setChapterTitle(ch.getTitle());
-                ProposalCourse course = courseRepository.selectById(ch.getCourseId());
-                if (course != null) {
-                    item.setCourseTitle(course.getCourseName());
-                }
-            }
-            items.add(item);
-        }
-        return items;
-    }
-
-    /**
-     * 解析前端传来的日期字符串，支持多种格式。
-     * A3 修复：解析失败时打印 ERROR 级别日志（含实际输入），不再静默忽略。
-     */
-    private static LocalDateTime parseDate(String dateStr) {
-        if (dateStr == null || dateStr.isBlank()) {
-            return null;
-        }
-        String trimmed = dateStr.trim();
-        try {
-            // yyyy.M 格式（如 "2025.9"）
-            if (trimmed.matches("\\d{4}\\.\\d{1,2}")) {
-                java.time.YearMonth ym = java.time.YearMonth.parse(trimmed,
-                        java.time.format.DateTimeFormatter.ofPattern("yyyy.M"));
-                return ym.atDay(1).atStartOfDay();
-            }
-            // yyyy.M.d 格式（如 "2025.9.15"）
-            if (trimmed.matches("\\d{4}\\.\\d{1,2}\\.\\d{1,2}")) {
-                return LocalDateTime.parse(trimmed + " 00:00:00",
-                        java.time.format.DateTimeFormatter.ofPattern("yyyy.M.d HH:mm:ss"));
-            }
-            // yyyy-MM 格式（如 "2025-09"）
-            if (trimmed.matches("\\d{4}-\\d{1,2}") && !trimmed.contains("T") && !trimmed.contains(" ")) {
-                java.time.YearMonth ym = java.time.YearMonth.parse(trimmed,
-                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
-                return ym.atDay(1).atStartOfDay();
-            }
-            // ISO 格式 / yyyy-MM-dd / yyyy-MM-dd'T'HH:mm:ss / yyyy-MM-dd HH:mm:ss
-            return LocalDateTime.parse(trimmed.replace(" ", "T"),
-                    java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        } catch (Exception e) {
-            String redacted = dateStr.length() > 20 ? dateStr.substring(0, 10) + "..." : dateStr;
-            log.error("日期解析失败: input='{}' (len={}), error={}", redacted, dateStr.length(), e.getMessage());
-            return null;
-        }
-    }
 }

@@ -4,6 +4,7 @@ import com.microcourse.dto.PlatformShareConfigDTO;
 import com.microcourse.dto.R;
 import com.microcourse.service.PlatformShareConfigService;
 import com.microcourse.util.SecurityUtil;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,7 +54,7 @@ public class PlatformShareConfigController {
      */
     @PutMapping("/{key}")
     public R<PlatformShareConfigDTO> upsert(@PathVariable String key,
-                                            @RequestBody PlatformShareConfigDTO dto) {
+                                            @Valid @RequestBody PlatformShareConfigDTO dto) {
         dto.setConfigKey(key);
         dto.setUpdatedBy(SecurityUtil.getCurrentUserId());
         service.upsert(dto);
