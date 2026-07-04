@@ -7,7 +7,7 @@
       <h1>互动课件工作台</h1>
       <span class="page-subtitle" v-if="!loading">{{ filteredSlides.length }} 份课件</span>
       <div class="header-actions">
-        <el-button type="primary" @click="router.push('/teacher/courses')">查看我的课程</el-button>
+        <el-button type="primary" :icon="Plus" @click="openUploadDialog">上传课件</el-button>
       </div>
     </header>
 
@@ -84,6 +84,31 @@
       </el-table>
     </section>
 
+    <!-- 上传课件对话框 -->
+    <el-dialog v-model="uploadDialogVisible" title="上传互动课件" width="500px" @close="resetUploadDialog">
+      <el-form label-width="100px">
+        <el-form-item label="所属课程" prop="courseId">
+          <el-select v-model="uploadForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onCourseChange">
+            <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属章节" prop="chapterId">
+          <el-select v-model="uploadForm.chapterId" placeholder="选择章节" class="full-width" :disabled="!uploadForm.courseId">
+            <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="课件文件" prop="file">
+          <el-upload :show-file-list="true" :before-upload="handleUploadFile" accept=".pptx" :auto-upload="false" ref="uploadRef">
+            <el-button type="primary" :icon="UploadFilled">选择文件</el-button>
+            <template #tip><div class="el-upload__tip">仅支持 .pptx 格式，最大 50MB</div></template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="uploadDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="uploading" @click="submitUpload">开始上传</el-button>
+      </template>
+    </el-dialog>
 
   </div>
 </template>
@@ -92,9 +117,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, UploadFilled } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
-import { getSlides, getSlidePages, deleteSlide } from '@/plugins/interactive/api/slide'
+import { getChapters } from '@/api/chapter'
+import { getSlides, getSlidePages, deleteSlide, uploadSlide } from '@/plugins/interactive/api/slide'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -104,6 +130,11 @@ const slides = ref([])
 const courses = ref([])
 const initialized = ref(false)
 const deleting = ref(null)
+const uploadDialogVisible = ref(false)
+const uploading = ref(false)
+const uploadForm = ref({ courseId: null, chapterId: null, file: null })
+const chapterOptions = ref([])
+const uploadRef = ref(null)
 
 const searchForm = ref({
   courseId: '',
@@ -212,7 +243,50 @@ async function handleDelete(row) {
   }
 }
 
+// 上传课件对话框
+function openUploadDialog() {
+  uploadDialogVisible.value = true
+}
 
+function resetUploadDialog() {
+  uploadForm.value = { courseId: null, chapterId: null, file: null }
+  chapterOptions.value = []
+  uploading.value = false
+}
+
+async function onCourseChange(courseId) {
+  uploadForm.value.chapterId = null
+  if (!courseId) { chapterOptions.value = []; return }
+  try {
+    const { data } = await getChapters({ courseId, chapterType: 'INTERACTIVE', size: 100 })
+    chapterOptions.value = data?.items || []
+  } catch { chapterOptions.value = [] }
+}
+
+function handleUploadFile(file) {
+  uploadForm.value.file = file
+  return false  // 阻止自动上传
+}
+
+async function submitUpload() {
+  if (!uploadForm.value.courseId || !uploadForm.value.chapterId || !uploadForm.value.file) {
+    ElMessage.warning('请选择课程、章节和文件')
+    return
+  }
+  uploading.value = true
+  try {
+    await uploadSlide(uploadForm.value.courseId, uploadForm.value.file, (e) => {
+      // progress callback, can add progress bar later
+    }, uploadForm.value.chapterId)
+    ElMessage.success('课件上传成功，后台渲染中...')
+    uploadDialogVisible.value = false
+    loadData()  // 刷新列表
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
 
 onMounted(() => loadData())
 </script>
