@@ -6,6 +6,7 @@ public class SlidePageVO {
 
     private Long id;
     private Long slideId;
+    private Long chapterId;
     private Long courseId;
     private Integer pageNumber;
     private String fileUuid;
@@ -30,6 +31,8 @@ public class SlidePageVO {
     public void setId(Long id) { this.id = id; }
     public Long getSlideId() { return slideId; }
     public void setSlideId(Long slideId) { this.slideId = slideId; }
+    public Long getChapterId() { return chapterId; }
+    public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Integer getPageNumber() { return pageNumber; }

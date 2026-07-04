@@ -16,6 +16,9 @@ public class CourseSlide {
     /** 保留字段：未来用于按章节分配课件，数据库暂无对应列 */
     @TableField(exist = false)
     private Long lessonId;
+    /** 上传时指定的章节ID，用于新建 SlidePage 时填充 chapter_id */
+    @TableField(exist = false)
+    private Long chapterId;
     private String fileName;
     private String fileUrl;
     private Integer totalPages;
@@ -33,6 +36,8 @@ public class CourseSlide {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Long getLessonId() { return lessonId; }
     public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
+    public Long getChapterId() { return chapterId; }
+    public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
     public String getFileUrl() { return fileUrl; }

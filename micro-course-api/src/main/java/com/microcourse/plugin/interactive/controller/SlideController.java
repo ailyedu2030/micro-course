@@ -48,7 +48,8 @@ public class SlideController {
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<SlideUploadResponse> upload(@PathVariable Long courseId,
-                                           @RequestParam("file") MultipartFile file) {
+                                           @RequestParam("file") MultipartFile file,
+                                           @RequestParam(required = false) Long chapterId) {
         try {
             if (file == null || file.isEmpty()) {
                 log.warn("[SlideUpload] 上传文件为空 courseId={}", courseId);
@@ -65,7 +66,7 @@ public class SlideController {
             }
             // P1 安全修复: 文件魔数校验（PPTX=ZIP PK 0x03 0x04, 图片=JPEG/PNG）
             validateSlideFileMagic(file);
-            SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes());
+            SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);
             return R.ok(resp);
         } catch (IOException e) {
             log.error("[SlideUpload] 文件读取IO异常 courseId={}", courseId, e);

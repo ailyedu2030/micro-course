@@ -82,7 +82,7 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public SlideUploadResponse upload(Long courseId, String originalFilename, byte[] fileBytes) {
+    public SlideUploadResponse upload(Long courseId, String originalFilename, byte[] fileBytes, Long chapterId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
@@ -124,6 +124,9 @@ public class SlideServiceImpl implements SlideService {
         slide.setFileUrl("pending");
         slide.setStatus(0);
         slide.setFileHash(fileHash);
+        if (chapterId != null) {
+            slide.setChapterId(chapterId);
+        }
         slide.setCreatedAt(LocalDateTime.now());
         slide.setUpdatedAt(LocalDateTime.now());
         courseSlideMapper.insert(slide);
@@ -305,6 +308,7 @@ public class SlideServiceImpl implements SlideService {
         SlidePageVO vo = new SlidePageVO();
         vo.setId(page.getId());
         vo.setSlideId(page.getSlideId());
+        vo.setChapterId(page.getChapterId());
         vo.setCourseId(page.getCourseId());
         vo.setPageNumber(page.getPageNumber());
         vo.setFileUuid(page.getFileUuid());
