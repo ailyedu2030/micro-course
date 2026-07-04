@@ -5,7 +5,7 @@
 -->
 <template>
   <div class="reports-page">
-    <el-breadcrumb separator="/" class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item>系统管理</el-breadcrumb-item>
       <el-breadcrumb-item>举报处理</el-breadcrumb-item>
     </el-breadcrumb>

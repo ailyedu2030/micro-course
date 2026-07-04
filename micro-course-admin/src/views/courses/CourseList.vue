@@ -7,7 +7,7 @@
 <template>
   <div class="course-list-page">
     <!-- 面包屑导航 -->
-    <el-breadcrumb separator="/" class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item>课程管理</el-breadcrumb-item>
       <el-breadcrumb-item>课程列表</el-breadcrumb-item>
     </el-breadcrumb>
@@ -293,7 +293,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showOfflineDialog = false">取消</el-button>
-        <el-button type="primary" :loading="offlineSubmitting" @click="submitOffline">创建</el-button>
+        <el-button type="primary" :loading="offlineSubmitting" @click="submitOffline">新增</el-button>
       </template>
     </el-dialog>
   </div>
@@ -787,6 +787,10 @@ async function submitOffline() {
 onMounted(() => {
   fetchCategories()
   fetchData()
+  // courseType=OFFLINE 時直接打開新增安排 dialog，減少點擊
+  if (route.query.courseType === 'OFFLINE') {
+    showOfflineDialog.value = true
+  }
 })
 </script>
 

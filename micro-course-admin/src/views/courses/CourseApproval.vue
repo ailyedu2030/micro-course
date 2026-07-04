@@ -5,7 +5,7 @@
 -->
 <template>
   <div class="approval-page">
-    <el-breadcrumb separator="/" class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item>课程管理</el-breadcrumb-item>
       <el-breadcrumb-item>课程审核</el-breadcrumb-item>
     </el-breadcrumb>

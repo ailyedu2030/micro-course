@@ -6,7 +6,7 @@
   <div class="course-detail-page" v-loading="loading" element-loading-text="加载课程信息...">
     <!-- 面包屑 -->
     <div class="page-breadcrumb">
-      <el-breadcrumb>
+      <el-breadcrumb separator="→">
         <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item :to="{ path: userRole === 'TEACHER' ? '/teacher/courses' : '/courses' }">课程管理</el-breadcrumb-item>
         <el-breadcrumb-item>{{ isEditMode ? '编辑课程' : (courseData.title || '课程详情') }}</el-breadcrumb-item>
@@ -29,12 +29,15 @@
           <template v-if="courseData.status === 2 && userRole === 'ADMIN'">
             <el-button type="primary" @click="handlePublish">发布</el-button>
           </template>
-          <template v-if="courseData.status === 4 && userRole === 'ADMIN'">
+          <template v-if="courseData.status === 4 && isOwner">
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
           <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">课件总览</el-button>
           <el-button type="primary" plain @click="switchToEdit">编辑</el-button>
           <el-button type="warning" plain @click="handleCopy" v-if="!isEditMode">复制</el-button>
+          <el-button type="info" plain @click="previewAsStudent">
+            <el-icon><View /></el-icon> 學生預覽
+          </el-button>
           <el-button @click="handleBack">返回</el-button>
         </div>
       </div>
@@ -108,7 +111,7 @@
       <!-- 课程描述 -->
       <el-card shadow="never" class="info-card" v-if="courseData.description">
         <template #header><span class="card-title">课程描述</span></template>
-        <div class="description-html" v-html="safeHtml(courseData.description)"></div>
+        <div class="description-html" v-html="sanitizeHtml(courseData.description)"></div>
       </el-card>
 
       <!-- 章节管理 -->
@@ -128,7 +131,7 @@
               <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">📹 视频课</el-tag>
               <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">🎯 互动课</el-tag>
               <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="warning" size="small">📝 练习</el-tag>
-              <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">🏫 线下课</el-tag>
+              <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">🏫 线下课 (需线下授课)</el-tag>
               <el-tag v-else type="info" size="small">—</el-tag>
             </template>
           </el-table-column>
@@ -354,15 +357,23 @@ import { useUserStore } from '@/store/user'
 import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse, copyCourse } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
+import { View } from '@element-plus/icons-vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { sanitizeHtml } from '@/utils/xss'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 
+const userId = computed(() => userStore.userId)
+
 const courseId = computed(() => route.params.id)
+const isOwner = computed(() => {
+  return userStore.role === 'ADMIN' ||
+    (userStore.role === 'TEACHER' && courseData.value?.teacherId === userStore.userId)
+})
 const isEditMode = computed(() => route.path.includes('/edit'))
 
 const loading = ref(true)
@@ -408,12 +419,6 @@ const chapterFormRules = {
   chapterType: [{ required: true, message: '请选择内容类型', trigger: 'change' }]
 }
 const onChapterTypeChange = () => {}
-
-// P2: v-html XSS 防护——剥离 <script> 标签
-function safeHtml(html) {
-  if (!html) return ''
-  return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-}
 
 let sortableInstance = null
 
@@ -478,6 +483,9 @@ const handleBack = () => {
   }
 }
 const goSlides = () => router.push(`/teacher/courses/${route.params.id}/slides/manage`)
+const previewAsStudent = () => {
+  window.open(`/student/courses/${courseId.value}`, '_blank')
+}
 const switchToEdit = () => router.push(`/courses/${courseId.value}/edit`)
 const switchToView = () => router.push(`/courses/${courseId.value}`)
 

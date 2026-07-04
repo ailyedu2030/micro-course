@@ -393,6 +393,13 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         if (post == null || post.getStatus() == 0) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
         }
+        // 仅课程授课教师可置顶
+        if (post.getCourseId() != null && !SecurityUtil.isAdmin()) {
+            Course c = courseRepository.selectById(post.getCourseId());
+            if (c != null && !SecurityUtil.isOwnerOrAdmin(c.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
         // is_pinned = !is_pinned (toggle)
         post.setIsPinned(!post.getIsPinned());
         post.setUpdatedAt(LocalDateTime.now());

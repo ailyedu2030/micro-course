@@ -1,7 +1,7 @@
 <template>
   <div class="teacher-offline-page">
     <div class="page-breadcrumb">
-      <el-breadcrumb>
+      <el-breadcrumb separator="→">
         <el-breadcrumb-item :to="{ path: '/teacher/dashboard' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item v-if="courseTitle">{{ courseTitle }}</el-breadcrumb-item>
       <el-breadcrumb-item>线下课管理</el-breadcrumb-item>

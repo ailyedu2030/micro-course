@@ -6,7 +6,7 @@
 <template>
   <div class="teaching-class-list">
     <!-- 面包屑导航 -->
-    <el-breadcrumb separator="/" class="breadcrumb-nav">
+    <el-breadcrumb separator="→" class="breadcrumb-nav">
       <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>教学班管理</el-breadcrumb-item>
     </el-breadcrumb>
@@ -145,7 +145,7 @@
               </el-button>
             </div>
             <el-button type="primary" link @click="addSchedule" aria-label="提交">
-<el-icon><Plus /></el-icon>添加时间段
+<el-icon><Plus /></el-icon>新增时间段
             </el-button>
           </div>
         </el-form-item>
@@ -254,7 +254,7 @@ function handleCourseChange(courseId) {
   }
 }
 
-// 添加时间段
+// 新增时间段
 function addSchedule() {
   formData.classSchedules.push({
     dayOfWeek: null,

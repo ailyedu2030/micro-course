@@ -127,7 +127,7 @@
             <el-card v-if="questionsLoading" class="question-card" shadow="never">
               <el-skeleton :rows="8" animated />
             </el-card>
-            <el-card v-else class="question-card" shadow="never">
+            <el-card v-else class="question-card" shadow="never" :data-question-index="currentIndex">
               <div class="question-type-bar">
                 <el-tag size="small" effect="plain" :type="questionTypeTagType(currentQuestion.questionType)">
                   {{ questionTypeLabel(currentQuestion.questionType) }}
@@ -354,7 +354,7 @@
           <el-card v-if="questionsLoading" class="question-card" shadow="never">
             <el-skeleton :rows="8" animated />
           </el-card>
-          <el-card v-else class="question-card" shadow="never">
+          <el-card v-else class="question-card" shadow="never" :data-question-index="currentIndex">
             <div class="question-type-bar">
               <el-tag size="small" effect="plain" :type="questionTypeTagType(currentQuestion.questionType)">
                 {{ questionTypeLabel(currentQuestion.questionType) }}
@@ -518,6 +518,34 @@
             </template>
           </template>
         </div>
+
+        <!-- 浮动答题卡（移动端） -->
+        <teleport to="body">
+          <div class="answer-sheet-fab" @click="sheetVisible = !sheetVisible">
+            <el-icon><Grid /></el-icon>
+            <span>答题卡</span>
+          </div>
+          <transition name="fade">
+            <div v-if="sheetVisible" class="answer-sheet-overlay" @click="sheetVisible = false"></div>
+          </transition>
+          <transition name="slide-up">
+            <div v-if="sheetVisible" class="answer-sheet-panel">
+              <div class="answer-sheet-header">
+                <span>答题卡</span>
+                <span class="sheet-progress">{{ answeredCount }}/{{ totalQuestions }}</span>
+                <el-button text @click="sheetVisible = false">✕</el-button>
+              </div>
+              <div class="answer-sheet-grid">
+                <div v-for="(q, idx) in questions" :key="q.id"
+                  class="answer-sheet-item"
+                  :class="{ answered: answers[q.id], current: currentIndex === idx }"
+                  @click="jumpToQuestion(idx); sheetVisible = false">
+                  {{ idx + 1 }}
+                </div>
+              </div>
+            </div>
+          </transition>
+        </teleport>
       </template>
 
       <!-- ===== 结果展示 ===== -->
@@ -531,7 +559,7 @@
 >
         <div class="result-content">
           <div class="result-score" :class="resultPassed ? 'passed' : 'failed'">
-            <div class="score-number">{{ submitResult.score }}</div>
+            <div class="score-number">{{ submitResult.needsManualGrading && submitResult.score === 0 ? '待批改' : submitResult.score }}</div>
             <div class="score-label">得分</div>
             <div class="score-total">满分 {{ submitResult.totalScore }}</div>
           </div>
@@ -566,7 +594,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Close, Timer, Loading, WarningFilled } from '@element-plus/icons-vue'
+import { Check, Close, Grid, Timer, Loading, WarningFilled } from '@element-plus/icons-vue'
 import { getExercises, getExerciseById, submitExerciseRecord } from '@/api/exercise'
 import { getQuestionById } from '@/api/question'
 import { getMyAttemptCount } from '@/api/exercise-record'
@@ -591,6 +619,7 @@ const exerciseList = ref([])
 const exerciseStarted = ref(false)
 const submitting = ref(false)
 const submitted = ref(false)
+const sheetVisible = ref(false)
 
 const chapterId = computed(() => route.params.chapterId)
 
@@ -668,6 +697,10 @@ function isQuestionWrong(qId) {
 
 function jumpToQuestion(idx) {
   currentIndex.value = idx
+  nextTick(() => {
+    const el = document.querySelector('.question-card')
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
 }
 
 // ===== 结果 =====
@@ -1690,5 +1723,134 @@ function formatCorrectAnswer(q) {
   .card-actions .el-button {
     width: 100%;
   }
+}
+
+/* ===== 浮动答题卡（移动端）===== */
+.answer-sheet-fab {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: var(--role-primary, #409eff);
+  color: #fff;
+  font-size: 10px;
+  gap: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.answer-sheet-fab:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.answer-sheet-fab .el-icon {
+  font-size: 20px;
+}
+
+.answer-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+}
+
+.answer-sheet-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 50vh;
+  background: #fff;
+  border-radius: 12px 12px 0 0;
+  z-index: 10001;
+  overflow-y: auto;
+  padding: 16px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.answer-sheet-panel .answer-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.sheet-progress {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  font-weight: normal;
+}
+
+.answer-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.answer-sheet-item {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #f0f0f0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-text-color-secondary);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.answer-sheet-item:active {
+  transform: scale(0.9);
+}
+
+.answer-sheet-item.answered {
+  background: #67c23a;
+  color: #fff;
+}
+
+.answer-sheet-item.current {
+  border: 2px solid #409eff;
+  background: #ecf5ff;
+  color: #409eff;
+}
+
+/* 过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
 }
 </style>

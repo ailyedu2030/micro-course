@@ -29,6 +29,8 @@ import com.microcourse.repository.VideoRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.DiscussionPostRepository;
+import com.microcourse.entity.DiscussionPost;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.entity.Exercise;
 import com.microcourse.repository.PluginGrantRepository;
@@ -74,6 +76,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final PluginGrantRepository pluginGrantRepository;
     private final VideoRepository videoRepository;
     private final LearningProgressRepository learningProgressRepository;
+    private final DiscussionPostRepository discussionPostRepository;
     private final ExerciseRepository exerciseRepository;
     private final NotificationService notificationService;
     private final CourseSlideMapper courseSlideMapper;
@@ -92,10 +95,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   EnrollmentRepository enrollmentRepository,
                                   PluginGrantRepository pluginGrantRepository,
                                   LearningProgressRepository learningProgressRepository,
-                                  ExerciseRepository exerciseRepository,
-                                  NotificationService notificationService,
-                                  CourseSlideMapper courseSlideMapper,
-                                  SlidePageMapper slidePageMapper) {
+                                   ExerciseRepository exerciseRepository,
+                                   NotificationService notificationService,
+                                   DiscussionPostRepository discussionPostRepository,
+                                   CourseSlideMapper courseSlideMapper,
+                                   SlidePageMapper slidePageMapper) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -108,6 +112,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.learningProgressRepository = learningProgressRepository;
         this.exerciseRepository = exerciseRepository;
         this.notificationService = notificationService;
+        this.discussionPostRepository = discussionPostRepository;
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
     }
@@ -297,6 +302,12 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                 .eq(CourseSlide::getCourseId, id));
         slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>()
                 .eq(SlidePage::getCourseId, id));
+
+        // P1-C: 课程删除级联 — 软删除关联讨论帖
+        discussionPostRepository.update(null,
+                new LambdaUpdateWrapper<DiscussionPost>()
+                        .eq(DiscussionPost::getCourseId, id)
+                        .set(DiscussionPost::getDeletedAt, LocalDateTime.now()));
 
         LOG.info("课程已关闭（含级联清理）, id={}", id);
     }
@@ -513,6 +524,22 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         Course course = getCourseOrThrow(id);
+
+        // 教師自己的草稿可直接發布（跳過審核流程）
+        if (CourseStatus.DRAFT.getCode() == course.getStatus() && SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            long chapterCount = chapterRepository.selectCount(
+                    new LambdaQueryWrapper<CourseChapter>().eq(CourseChapter::getCourseId, id));
+            if (chapterCount == 0) {
+                LOG.warn("课程 {} 无章节内容，仍直接发布", id);
+            }
+            course.setStatus(CourseStatus.PUBLISHED.getCode());
+            course.setPublishedAt(LocalDateTime.now());
+            courseRepository.updateById(course);
+            recordReviewLog(id, "PUBLISH", CourseStatus.DRAFT.getCode(), CourseStatus.PUBLISHED.getCode(), null);
+            LOG.info("课程从草稿直接发布成功, id={}", id);
+            return;
+        }
+
         // P2-7: INTERACTIVE 课程发布前必须检查课件是否已就绪（status=2）
         if ("INTERACTIVE".equals(course.getCourseType())) {
             LambdaQueryWrapper<CourseSlide> slideQuery = new LambdaQueryWrapper<>();

@@ -173,7 +173,7 @@
                       <el-tag v-if="ch.chapterType === 'VIDEO'" size="small" type="primary" effect="plain">📹 视频课</el-tag>
                       <el-tag v-else-if="ch.chapterType === 'INTERACTIVE'" size="small" type="success" effect="plain">🎯 互动课</el-tag>
                       <el-tag v-else-if="ch.chapterType === 'EXERCISE'" size="small" type="warning" effect="plain">📝 练习</el-tag>
-                      <el-tag v-else-if="ch.chapterType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课</el-tag>
+                      <el-tag v-else-if="ch.chapterType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课 (需线下授课)</el-tag>
                       <el-tag v-else size="small" type="info" effect="plain">—</el-tag>
                       <span class="outline-duration">{{ formatDuration(ch.duration) }}</span>
                     </template>

@@ -5,7 +5,7 @@
 -->
 <template>
   <div class="reviews-page">
-    <el-breadcrumb separator="/" class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item>课程管理</el-breadcrumb-item>
       <el-breadcrumb-item>评价管理</el-breadcrumb-item>
     </el-breadcrumb>

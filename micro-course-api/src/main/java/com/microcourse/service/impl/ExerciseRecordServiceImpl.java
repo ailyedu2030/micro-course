@@ -406,9 +406,34 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                 isCorrect = userAnswer.trim().equals(correctAnswer.trim());
                 break;
             case "FILL":
-                // 填空题：trim后忽略大小写对比
-                isCorrect = userAnswer.trim().equalsIgnoreCase(correctAnswer.trim());
-                break;
+                if (correctAnswer == null || correctAnswer.trim().isEmpty()) {
+                    result.score = 0;
+                    result.isCorrect = false;
+                    result.needsManualGrading = true;
+                    return result;
+                } else {
+                    String ua = userAnswer.trim().replaceAll("[\\s,，;；。、]+", " ").trim();
+                    String ca = correctAnswer.trim().replaceAll("[\\s,，;；。、]+", " ").trim();
+                    // 嘗試數值比較(容差5%)
+                    try {
+                        double numUser = Double.parseDouble(ua);
+                        double numCorrect = Double.parseDouble(ca);
+                        if (Math.abs(numUser - numCorrect) / Math.max(1.0, Math.abs(numCorrect)) <= 0.05) {
+                            result.isCorrect = true;
+                            result.score = fullScore;
+                        } else {
+                            result.score = 0;
+                            result.isCorrect = false;
+                        }
+                    } catch (NumberFormatException e) {
+                        // 文本比較:忽略大小寫+無視連續空格+忽略標點
+                        String uaNorm = ua.replaceAll("[^\\p{L}\\p{N}]+", "").toLowerCase();
+                        String caNorm = ca.replaceAll("[^\\p{L}\\p{N}]+", "").toLowerCase();
+                        result.isCorrect = uaNorm.equals(caNorm);
+                        result.score = result.isCorrect ? fullScore : 0;
+                    }
+                    return result;
+                }
             case "SHORT_ANSWER":
             case "ESSAY":
                 // 简答/论述：标记为待人工批改
