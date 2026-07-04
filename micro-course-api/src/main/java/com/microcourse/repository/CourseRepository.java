@@ -168,7 +168,7 @@ public interface CourseRepository extends BaseMapper<Course> {
             "AND e.enrolled_at >= CAST(#{startDate} AS TIMESTAMP) " +
             "</if>" +
             "<if test='endDate != null'>" +
-            "AND e.enrolled_at < CAST(#{endDate} AS TIMESTAMP) " +
+            "AND e.enrolled_at &lt; CAST(#{endDate} AS TIMESTAMP) " +
             "</if>" +
             "GROUP BY TO_CHAR(e.enrolled_at, 'YYYY-MM'), total_students " +
             "ORDER BY month ASC" +
@@ -195,7 +195,7 @@ public interface CourseRepository extends BaseMapper<Course> {
             "  AND e.enrolled_at >= CAST(#{startDate} AS TIMESTAMP) " +
             "  </if>" +
             "  <if test='endDate != null'>" +
-            "  AND e.enrolled_at < CAST(#{endDate} AS TIMESTAMP) " +
+            "  AND e.enrolled_at &lt; CAST(#{endDate} AS TIMESTAMP) " +
             "  </if>" +
             "  GROUP BY TO_CHAR(e.enrolled_at, 'YYYY-MM')" +
             ") AS sub " +
