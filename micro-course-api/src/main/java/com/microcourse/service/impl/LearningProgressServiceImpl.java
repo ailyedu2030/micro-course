@@ -62,22 +62,26 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         // P0-4: 计算课程级练习完成统计
         int completedEx = 0;
         int totalEx = 0;
+        int completedVideos = 0;
         for (LearningProgress p : list) {
             if (p.getLessonId() != null) { // 仅统计课时级记录
                 totalEx++;
                 if (Boolean.TRUE.equals(p.getExerciseCompleted())) {
                     completedEx++;
                 }
+                if (Boolean.TRUE.equals(p.getCompleted())) {
+                    completedVideos++;
+                }
             }
         }
-        if (totalEx > 0) {
-            final int ce = completedEx;
-            final int te = totalEx;
-            vos.forEach(vo -> {
-                vo.setCompletedExercises(ce);
-                vo.setTotalExercises(te);
-            });
-        }
+        final int ce = completedEx;
+        final int te = totalEx;
+        final int cv = completedVideos;
+        vos.forEach(vo -> {
+            vo.setCompletedExercises(ce);
+            vo.setTotalExercises(te);
+            vo.setCompletedVideos(cv);
+        });
         return vos;
     }
 
@@ -90,6 +94,20 @@ public class LearningProgressServiceImpl implements LearningProgressService {
                .in(LearningProgress::getCourseId, courseIds);
         java.util.List<LearningProgress> list = learningProgressRepository.selectList(wrapper);
         java.util.List<LearningProgressVO> vos = convertToVOList(list);
+
+        // 按 courseId 聚合已完成视频数
+        java.util.Map<Long, Integer> completedVideosByCourse = new java.util.HashMap<>();
+        for (LearningProgress p : list) {
+            if (p.getCourseId() != null && p.getLessonId() != null && Boolean.TRUE.equals(p.getCompleted())) {
+                completedVideosByCourse.merge(p.getCourseId(), 1, Integer::sum);
+            }
+        }
+        for (LearningProgressVO vo : vos) {
+            if (vo.getCourseId() != null) {
+                vo.setCompletedVideos(completedVideosByCourse.getOrDefault(vo.getCourseId(), 0));
+            }
+        }
+
         java.util.Map<Long, LearningProgressVO> byCourse = new java.util.HashMap<>();
         for (LearningProgressVO vo : vos) {
             byCourse.put(vo.getCourseId(), vo);

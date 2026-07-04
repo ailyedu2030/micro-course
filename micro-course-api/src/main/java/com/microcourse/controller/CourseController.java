@@ -65,6 +65,7 @@ public class CourseController {
             @RequestParam(required = false) Boolean recommended,
             @RequestParam(required = false) Integer difficulty,
             @RequestParam(required = false) String courseType,
+            @RequestParam(required = false) String teacherName,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortOrder) {
         CoursePageQuery query = new CoursePageQuery();
@@ -78,6 +79,7 @@ public class CourseController {
         query.setRecommended(recommended);
         query.setDifficulty(difficulty);
         query.setCourseType(courseType);
+        query.setTeacherName(teacherName);
         query.setSortBy(sortBy);
         query.setSortOrder(sortOrder);
         PageResult<CourseVO> result = courseService.page(query);

@@ -29,6 +29,9 @@ public class LearningProgressVO {
     private Integer completedExercises;
     private Integer totalExercises;
 
+    // 课程级已完成视频数：count(completed=true AND lesson_id IS NOT NULL)
+    private Integer completedVideos;
+
     public LearningProgressVO() {}
 
     public Long getId() { return id; }
@@ -75,4 +78,6 @@ public class LearningProgressVO {
     public void setCompletedExercises(Integer completedExercises) { this.completedExercises = completedExercises; }
     public Integer getTotalExercises() { return totalExercises; }
     public void setTotalExercises(Integer totalExercises) { this.totalExercises = totalExercises; }
+    public Integer getCompletedVideos() { return completedVideos; }
+    public void setCompletedVideos(Integer completedVideos) { this.completedVideos = completedVideos; }
 }

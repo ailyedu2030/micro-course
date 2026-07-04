@@ -107,6 +107,18 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         if (query.getTeacherId() != null && !teacherScoped) {
             wrapper.eq(Course::getTeacherId, query.getTeacherId());
         }
+        // P2 修复: 按教师姓名搜索（join users 表）
+        if (query.getTeacherName() != null && !query.getTeacherName().isBlank()) {
+            LambdaQueryWrapper<User> teacherNameWrapper = new LambdaQueryWrapper<>();
+            teacherNameWrapper.select(User::getId).like(User::getRealName, query.getTeacherName());
+            List<Long> teacherIds = userRepository.selectList(teacherNameWrapper)
+                    .stream().map(User::getId).collect(Collectors.toList());
+            if (teacherIds.isEmpty()) {
+                wrapper.eq(Course::getId, -1L);
+            } else {
+                wrapper.in(Course::getTeacherId, teacherIds);
+            }
+        }
         if (query.getStatus() != null) {
             wrapper.eq(Course::getStatus, query.getStatus());
         } else if (!teacherScoped) {

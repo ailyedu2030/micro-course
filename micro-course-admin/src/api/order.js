@@ -23,3 +23,7 @@ export function cancelOrder(id) {
 export function refundOrder(id) {
   return request({ method: 'POST', url: `/orders/${id}/refund` })
 }
+
+export function batchCreateOrders(courseIds, paymentMethod) {
+  return request({ method: 'POST', url: '/orders/batch', data: { courseIds, paymentMethod } })
+}

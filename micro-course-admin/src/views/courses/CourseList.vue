@@ -354,8 +354,7 @@ const fetchData = async () => {
     size: size.value,
     keyword: searchForm.keyword || undefined,
     categoryId: searchForm.categoryId || undefined,
-    // TODO: 后端尚未支持 teacherName 搜索参数，待 CourseController.page() 和 CoursePageQuery 支持后取消注释
-    // teacherName: searchForm.teacherName || undefined,
+    teacherName: searchForm.teacherName || undefined,
     status: searchForm.status !== '' ? searchForm.status : undefined,
     courseType: searchForm.courseType !== '' ? searchForm.courseType : undefined,
     // 教师自动过滤为自己的课程
@@ -582,8 +581,7 @@ const handleExport = async () => {
       size: 5000,
       keyword: searchForm.keyword || undefined,
       categoryId: searchForm.categoryId || undefined,
-      // TODO: 后端尚未支持 teacherName 搜索参数
-      // teacherName: searchForm.teacherName || undefined,
+      teacherName: searchForm.teacherName || undefined,
       status: searchForm.status !== '' ? searchForm.status : undefined,
       courseType: searchForm.courseType !== '' ? searchForm.courseType : undefined,
       teacherId: userStore.role === 'TEACHER' ? userStore.userId : null

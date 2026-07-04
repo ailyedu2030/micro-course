@@ -258,6 +258,7 @@ import Sortable from 'sortablejs'
 
 const route = useRoute()
 const courseId = computed(() => route.params.courseId)
+const chapterId = computed(() => route.params.chapterId || null)
 
 const slide = ref(null)
 const pages = ref([])
@@ -427,7 +428,7 @@ async function handleUpload(file) {
   try {
     await uploadSlide(courseId.value, file, (e) => {
       uploadProgress.value = Math.round((e.loaded / e.total) * 100)
-    })
+    }, chapterId.value)
     ElMessage.success('上传成功，正在后台渲染...')
     await loadData()
     startPolling()

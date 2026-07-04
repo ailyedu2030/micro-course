@@ -70,7 +70,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCartStore } from '@/store/cart'
 import { useUserStore } from '@/store/user'
-import { createOrder, payOrder } from '@/api/order'
+import { createOrder, payOrder, batchCreateOrders } from '@/api/order'
 import { Wallet } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -104,9 +104,25 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
-    // P1-修复: 当前为"尽力提交"模式——多课程串行下单，中间失败前面订单仍然有效
-    // TODO: 后续可改为后端批量下单接口（事务原子性）或 catch 中调用取消已成功订单逻辑
+    // 优先使用批量下单接口（事务原子性）
     const items = [...store.items]
+    try {
+      const { data: orders } = await batchCreateOrders(
+        items.map(i => i.courseId),
+        paymentMethod.value
+      )
+      // 全部清除购物车
+      items.forEach(i => store.removeItem(i.courseId))
+      paid.value = true
+      ElMessage.success('全部处理完成！')
+      setTimeout(() => router.push('/student/my-courses'), 1500)
+      return
+    } catch (batchError) {
+      // 批量失败，降级到逐一处理
+      ElMessage.warning('批量处理失败，正在逐一处理…')
+    }
+
+    // 降级：逐一创建订单并支付
     for (const item of items) {
       try {
         const { data: order } = await createOrder({ courseId: item.courseId })
