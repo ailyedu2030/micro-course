@@ -69,8 +69,8 @@
         <div class="detail-item"><label>学期</label><span>{{ detailRow.semester || '-' }}</span></div>
         <div class="detail-item"><label>招生上限</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
         <div class="detail-item"><label>状态</label><span><el-tag :type="statusType(detailRow.status)" size="small">{{ statusLabel(detailRow.status) }}</el-tag></span></div>
-        <div class="detail-item full-width"><label>说明</label><span v-html="detailRow.description || '-'" class="detail-html"></span></div>
-        <div class="detail-item full-width"><label>培养目标</label><span v-html="detailRow.trainingObjective || '-'" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>说明</label><span v-html="safeHtml(detailRow.description || '-')" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>培养目标</label><span v-html="safeHtml(detailRow.trainingObjective || '-')" class="detail-html"></span></div>
       </div>
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
@@ -164,6 +164,7 @@ const handleArchive = async (row) => {
 }
 
 onMounted(fetchData)
+function safeHtml(html) { if (!html) return ''; return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''); }
 </script>
 
 <style scoped>
