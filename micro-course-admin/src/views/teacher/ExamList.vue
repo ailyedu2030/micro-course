@@ -327,9 +327,20 @@ async function submitSchedule() {
   }
   scheduling.value = true
   try {
-    // 将本章节ID添加到试卷的章节关联中
+    // 先获取现有章节关联,追加当前章节(避免覆盖已有安排)
+    let existingChapterIds = []
+    try {
+      const { data } = await getExamById(scheduleForm.examId)
+      existingChapterIds = data?.chapterIds || []
+    } catch {}
+    const newChapterId = Number(chapterIdFromRoute.value)
+    const mergedIds = existingChapterIds.includes(newChapterId)
+      ? existingChapterIds
+      : [...existingChapterIds, newChapterId]
+
     await updateExercise(scheduleForm.examId, {
-      chapterIds: [Number(chapterIdFromRoute.value)],
+      chapterId: newChapterId,
+      chapterIds: mergedIds,
       timeLimit: scheduleForm.timeLimit > 0 ? scheduleForm.timeLimit : null,
       maxAttempts: scheduleForm.maxAttempts > 0 ? scheduleForm.maxAttempts : null,
       passScore: scheduleForm.passScore,
