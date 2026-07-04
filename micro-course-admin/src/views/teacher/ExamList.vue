@@ -3,7 +3,8 @@
     <header class="page-header">
       <h1>试卷管理</h1>
       <div class="header-actions">
-        <el-button type="primary" :icon="Plus" @click="showCreate = true">新增试卷</el-button>
+        <el-button type="primary" :icon="Plus" @click="showCreate = true">{{ chapterIdFromRoute ? '智能组卷' : '新增试卷' }}</el-button>
+        <el-button v-if="chapterIdFromRoute" type="success" :icon="Plus" @click="openScheduleDialog">安排考试</el-button>
       </div>
     </header>
 
@@ -58,6 +59,65 @@
       </div>
     </el-card>
 
+    <!-- 安排考试对话框 -->
+    <el-dialog v-model="showSchedule" title="安排考试到本章节" width="600px" @close="resetScheduleForm">
+      <el-form ref="scheduleFormRef" label-width="100px">
+        <el-form-item label="选择试卷">
+          <el-select v-model="scheduleForm.examId" placeholder="从已有试卷中选择" filterable class="full-width">
+            <el-option v-for="e in scheduleExamOptions" :key="e.id" :label="e.title" :value="e.id">
+              <span>{{ e.title }}</span>
+              <span style="float:right;color:#909399;font-size:12px">{{ getCourseTitle(e.courseId) }} · {{ e.questionCount }}题 · {{ e.totalScore }}分</span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-divider>考试配置</el-divider>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="限时(分)">
+              <el-input-number v-model="scheduleForm.timeLimit" :min="0" :step="10" class="full-width" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="答题次数">
+              <el-input-number v-model="scheduleForm.maxAttempts" :min="0" :step="1" class="full-width" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="及格分(%)">
+              <el-input-number v-model="scheduleForm.passScore" :min="0" :max="100" :step="5" class="full-width" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="显示答案">
+              <el-select v-model="scheduleForm.showAnswerWhen" class="full-width">
+                <el-option label="提交后立即显示" value="AFTER_SUBMIT" />
+                <el-option label="及格后显示" value="AFTER_PASS" />
+                <el-option label="不显示" value="NEVER" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="乱序题目">
+              <el-switch v-model="scheduleForm.shuffleQuestions" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="乱序选项">
+              <el-switch v-model="scheduleForm.shuffleOptions" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="showSchedule = false">取消</el-button>
+        <el-button type="primary" :loading="scheduling" @click="submitSchedule">确认安排</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="showCreate" title="新增试卷" width="600px" :close-on-click-modal="false" @closed="resetCreateForm">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
         <el-form-item label="试卷标题" prop="title">
@@ -102,6 +162,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
 import { getChapters, getChapterById } from '@/api/chapter'
 import { getExamList, generateExam, deleteExam } from '@/api/exam'
+import { updateExercise } from '@/api/exercise'
 import { useUserStore } from '@/store/user'
 
 const route = useRoute()
@@ -111,6 +172,14 @@ const userStore = useUserStore()
 const loading = ref(false)
 const exams = ref([])
 const showCreate = ref(false)
+const showSchedule = ref(false)
+const scheduling = ref(false)
+const scheduleFormRef = ref(null)
+const scheduleExamOptions = ref([])
+const scheduleForm = reactive({
+  examId: null, timeLimit: 0, maxAttempts: 0, passScore: 60,
+  showAnswerWhen: 'AFTER_SUBMIT', shuffleQuestions: false, shuffleOptions: false
+})
 const generating = ref(false)
 const courseOptions = ref([])
 const chapterOptions = ref([])
@@ -236,6 +305,46 @@ function handleReset() {
   searchChapterOptions.value = []
   page.value = 1
   loadExams()
+}
+
+// 安排考试
+async function openScheduleDialog() {
+  showSchedule.value = true
+  try {
+    const { data } = await getExamList({ isExam: true, size: 200 })
+    scheduleExamOptions.value = data?.items || []
+  } catch { scheduleExamOptions.value = [] }
+}
+function resetScheduleForm() {
+  scheduleForm.examId = null; scheduleForm.timeLimit = 0; scheduleForm.maxAttempts = 0
+  scheduleForm.passScore = 60; scheduleForm.showAnswerWhen = 'AFTER_SUBMIT'
+  scheduleForm.shuffleQuestions = false; scheduleForm.shuffleOptions = false
+}
+async function submitSchedule() {
+  if (!scheduleForm.examId || !chapterIdFromRoute.value) {
+    ElMessage.warning('请选择试卷')
+    return
+  }
+  scheduling.value = true
+  try {
+    // 将本章节ID添加到试卷的章节关联中
+    await updateExercise(scheduleForm.examId, {
+      chapterIds: [Number(chapterIdFromRoute.value)],
+      timeLimit: scheduleForm.timeLimit > 0 ? scheduleForm.timeLimit : null,
+      maxAttempts: scheduleForm.maxAttempts > 0 ? scheduleForm.maxAttempts : null,
+      passScore: scheduleForm.passScore,
+      showAnswerWhen: scheduleForm.showAnswerWhen,
+      shuffleQuestions: scheduleForm.shuffleQuestions,
+      shuffleOptions: scheduleForm.shuffleOptions,
+    })
+    ElMessage.success('考试已安排到本章节')
+    showSchedule.value = false
+    loadExams()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '安排失败')
+  } finally {
+    scheduling.value = false
+  }
 }
 
 function resetCreateForm() {
