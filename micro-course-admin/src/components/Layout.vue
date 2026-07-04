@@ -220,7 +220,27 @@ function handleWindowResize() {
 }
 
 // 当前激活菜单
-const activeMenu = computed(() => route.path)
+// NN/g 警告: activeMenu 需考虑 query string, 否则带 ?courseType= 的菜单项激活不到正确子项
+// 优先级: fullPath (path+query) > 去除 query 后的 path
+const activeMenu = computed(() => {
+  if (!route.path) return ''
+  const matched = currentMenu.value
+    .flatMap(g => g.children || [])
+    .find(c => {
+      const a = c.path
+      if (a === route.path) return true
+      // 处理 ?courseType= 之类 query: 仅当 path 部分相等且 key 集合一致
+      const aPath = a.split('?')[0]
+      if (aPath !== route.path) return false
+      const aQs = new URLSearchParams(a.split('?')[1] || '')
+      const rQs = route.query
+      for (const k of aQs.keys()) {
+        if (rQs[k] !== aQs.get(k)) return false
+      }
+      return true
+    })
+  return matched ? matched.path : route.path
+})
 
 // 角色标签文本
 const roleLabel = computed(() => {
