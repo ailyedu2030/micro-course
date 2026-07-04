@@ -136,7 +136,13 @@ public enum ErrorCode {
     SA_SIGNATURE_IMAGE_INVALID_TYPE(19005, "签名/公章仅支持jpg/png格式", 400),
     SA_EXPORT_TEMPLATE_MISSING(19006, "导出模板缺失", 500),
     SA_AUTO_SAVE_CONFLICT(19007, "自动保存冲突，请刷新后重试", 409),
-    SA_MODULE_NOT_FOUND(19008, "模块标识不存在", 400);
+    SA_MODULE_NOT_FOUND(19008, "模块标识不存在", 400),
+
+    // 举报处理 20xxx
+    REPORT_NOT_FOUND(20001, "举报记录不存在", 404),
+    REPORT_ALREADY_REVIEWED(20002, "该举报已被处理,不可重复操作", 400),
+    REPORT_INVALID_ACTION(20003, "无效的审核操作", 400),
+    REPORT_INVALID_TYPE(20004, "无效的举报类型", 400);
 
     private final int code;
     private final String message;

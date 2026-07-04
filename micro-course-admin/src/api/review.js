@@ -21,3 +21,16 @@ export { createReview, getMyReviews } from './course-review'
 export function approveReview(id) { return request({ method:'PUT', url:`/reviews/${id}/approve` }) }
 export function rejectReview(id) { return request({ method:'PUT', url:`/reviews/${id}/reject` }) }
 export function deleteReview(id) { return request({ method:'DELETE', url:`/reviews/${id}` }) }
+
+/**
+ * 举报处理 API
+ */
+
+/** 提交举报 */
+export function createReport(data) { return request({ method:'POST', url:'/reports', data }) }
+
+/** 管理员查看举报列表 */
+export function getAdminReports(params) { return request({ method:'GET', url:'/reports/admin', params }) }
+
+/** 管理员审核举报 */
+export function reviewReport(id, data) { return request({ method:'POST', url:`/reports/${id}/review`, data }) }
