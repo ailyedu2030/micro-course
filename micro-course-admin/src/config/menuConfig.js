@@ -162,9 +162,11 @@ const TEACHER = [
     children: [
       { label: '我的课程', path: '/teacher/courses', icon: 'VideoCamera' },
       { label: '课程套餐', path: '/bundles', icon: 'Tickets' },
-      { label: '收藏管理', path: '/teacher/favorites', icon: 'Star' },
       { label: '章节管理', path: '/chapters', icon: 'List' },
-      { label: '视频管理', path: '/teacher/videos', icon: 'VideoPlay' },
+      { label: '视频课程', path: '/teacher/videos', icon: 'VideoPlay' },
+      { label: '互动课程', path: '/teacher/interactive', icon: 'Present' },
+      { label: '线下课程', path: '/teacher/offline', icon: 'Calendar' },
+      { label: '题库管理', path: '/teacher/questions', icon: 'Document' },
     ],
   },
   {
@@ -175,14 +177,7 @@ const TEACHER = [
       { label: '成绩管理', path: '/teacher/grades', icon: 'Finished' },
       { label: '我的教学班', path: '/teacher/teaching-classes', icon: 'Reading' },
       { label: '讨论区', path: '/teacher/discussions', icon: 'ChatLineSquare' },
-    ],
-  },
-  {
-    group: '题库资源',
-    icon: 'Document',
-    children: [
-      { label: '题库管理', path: '/teacher/questions', icon: 'Document' },
-      { label: '练习管理', path: '/teacher/exercises', icon: 'Edit' },
+      { label: '收藏管理', path: '/teacher/favorites', icon: 'Star' },
     ],
   },
   {
