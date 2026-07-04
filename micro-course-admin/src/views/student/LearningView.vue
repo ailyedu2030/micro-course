@@ -405,6 +405,10 @@ function goToLesson(lesson) {
   }
   // 移动端关闭抽屉
   if (isMobile.value) drawerOpen.value = false
+  // P0-1: 非 VIDEO 课时点击时自动标记完成
+  if (lesson.type && lesson.type !== 'VIDEO') {
+    markLessonComplete()
+  }
 }
 
 // ==================== 进度保存（每 10 秒） ====================
@@ -535,6 +539,10 @@ function goExercise() {
 
 function goChapterContent(chapter, type) {
   const courseIdVal = courseId.value
+  // P0-1: 进入子资源页面前标记当前课时为已完成（非 VIDEO 章节仅通过此入口完成）
+  if (currentLessonId.value) {
+    markLessonComplete()
+  }
   if (type === 'INTERACTIVE') {
     router.push(`/student/courses/${courseIdVal}/slides/player?chapterId=${chapter.id}`)
   } else if (type === 'OFFLINE') {

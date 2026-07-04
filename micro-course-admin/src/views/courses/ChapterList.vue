@@ -36,7 +36,7 @@
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无章节数据" />
+      <el-empty v-else-if="tableData.length === 0" :description="searchForm.courseId ? '暂无章节数据' : '请先选择课程'" />
       <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />

@@ -794,7 +794,15 @@ const handlePageChange = () => {
   // displayCourses computed 会自动响应 page 变化
 }
 
-const handleContinue = (courseId) => {
+const handleContinue = async (courseId) => {
+  // P1-C: 根据课程 type 决定跳转（互动课件 → SlidePlayer，其他 → LearningView）
+  try {
+    const res = await getCourseById(courseId)
+    if (res.data?.courseType === 'INTERACTIVE') {
+      router.push(`/student/courses/${courseId}/slides/player`)
+      return
+    }
+  } catch { /* 查询失败则降级到 learning 页面 */ }
   router.push(`/student/learning?courseId=${courseId}`)
 }
 

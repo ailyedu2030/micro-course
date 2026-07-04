@@ -514,7 +514,7 @@ const handleCreate = () => {
   currentId.value = null
   formData.questionType = ''
   formData.difficulty = 1
-  formData.categoryId = ''
+  formData.categoryId = selectedCourse.value.categoryId || null
   formData.content = ''
   formData.score = 10
   formData.explanation = ''
