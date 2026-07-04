@@ -68,6 +68,12 @@
     <!-- 新增/编辑 弹窗 -->
     <el-dialog v-model="formDialogVisible" :title="isEditing ? '编辑场次' : '新增场次'" width="520px">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
+        <el-form-item label="所属课程" v-if="courseTitle">
+          <el-tag type="primary" effect="plain">{{ courseTitle }}</el-tag>
+        </el-form-item>
+        <el-form-item label="所属章节" v-if="chapterTitle">
+          <el-tag type="success" effect="plain">{{ chapterTitle }}</el-tag>
+        </el-form-item>
         <el-form-item label="日期" prop="sessionDate">
           <el-date-picker v-model="form.sessionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width:100%" />
         </el-form-item>

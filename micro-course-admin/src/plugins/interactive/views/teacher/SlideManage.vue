@@ -7,6 +7,10 @@
       </button>
       <div class="header-info">
         <h1 class="page-title">幻灯片管理</h1>
+        <div v-if="courseTitle || chapterTitle" class="context-tags">
+          <el-tag v-if="courseTitle" type="primary" size="small" effect="plain">{{ courseTitle }}</el-tag>
+          <el-tag v-if="chapterTitle" type="success" size="small" effect="plain">{{ chapterTitle }}</el-tag>
+        </div>
         <span class="page-subtitle" v-if="slide">{{ pages.length }} 页 · {{ slide.fileName }}</span>
         <el-tag v-if="statusTag" :type="statusTag.type" size="small" effect="plain" class="status-chip">
           {{ statusTag.text }}
@@ -250,6 +254,8 @@ v-model="editingScript" type="textarea" :rows="10"
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCourseById } from '@/api/course'
+import { getChapterById } from '@/api/chapter'
 import { ArrowLeft, UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete, Download } from '@element-plus/icons-vue'
 import { uploadSlide, getSlides, getSlidePages, getSlidePage, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio, deleteSlide, deleteSlidePage, reorderSlidePages, downloadOriginalSlide } from '@/plugins/interactive/api/slide'
 import SlidePreview from '@/plugins/interactive/components/SlidePreview.vue'
@@ -259,7 +265,8 @@ import Sortable from 'sortablejs'
 const route = useRoute()
 const courseId = computed(() => route.params.courseId)
 const chapterId = computed(() => route.params.chapterId || null)
-
+const courseTitle = ref('')
+const chapterTitle = ref('')
 const slide = ref(null)
 const pages = ref([])
 const selectedPage = ref(null)
@@ -583,7 +590,18 @@ async function handleDownloadSlide() {
   }
 }
 
-onMounted(() => loadData())
+async function loadContext() {
+  if (courseId.value) {
+    try { const r = await getCourseById(courseId.value); courseTitle.value = r.data?.title || '' } catch {}
+  }
+  if (chapterId.value) {
+    try { const r = await getChapterById(chapterId.value); chapterTitle.value = r.data?.title || '' } catch {}
+  }
+}
+onMounted(async () => {
+  await loadContext()
+  await loadData()
+})
 onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null } })
 </script>
 
@@ -607,6 +625,7 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 .header-info { flex: 1; display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 .page-title { font-size: var(--text-lg); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); margin: 0; }
 .page-subtitle { font-size: var(--text-xs); color: var(--el-text-color-placeholder); }
+.context-tags { display: flex; gap: 6px; margin: 4px 0; }
 .status-chip { flex-shrink: 0; }
 .header-actions { display: flex; gap: var(--space-2); flex-shrink: 0; }
 .header-actions .el-button + .el-button { margin-left: 0; }
