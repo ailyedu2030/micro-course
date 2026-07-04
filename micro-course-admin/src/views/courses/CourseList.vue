@@ -66,7 +66,8 @@
             >
               <el-icon><Download /></el-icon>导出
             </el-button>
-            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增课程</el-button>
+            <el-button type="primary" v-if="userRole !== 'ACADEMIC' && !route.query.courseType" @click="handleCreate">新增课程</el-button>
+            <el-button v-if="route.query.courseType" @click="router.push('/teacher/courses')">返回课程列表</el-button>
           </div>
         </div>
       </template>
@@ -257,7 +258,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUrlPagination } from '@/composables/useUrlPagination'
 import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -271,6 +272,7 @@ import { getCategories } from '@/api/course-category'
 import { getUsers } from '@/api/user'
 
 const router = useRouter()
+const route = useRoute()
 const { bindToQuery } = useUrlPagination()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
