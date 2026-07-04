@@ -74,12 +74,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
-import { getChapters } from '@/api/chapter'
+import { getChapters, getChapterById } from '@/api/chapter'
 import { getExamList, generateExam, deleteExam } from '@/api/exam'
 import { useUserStore } from '@/store/user'
 
@@ -145,10 +145,22 @@ function getCourseTitle(courseId) {
   return courseTitleMap.value[courseId] || `课程 #${courseId}`
 }
 
+// P1-修复: 在挂载时加载所有课程标题,避免列表显示"课程 #1"回退
+watch(courseOptions, (list) => {
+  if (Array.isArray(list)) {
+    list.forEach(c => { courseTitleMap.value[c.id] = c.title })
+  }
+})
+
 async function loadExams() {
   loading.value = true
   try {
-    const { data } = await getExamList({ page: page.value - 1, size: size.value, isExam: true })
+    const params = { page: page.value - 1, size: size.value, isExam: true }
+    // 按章节过滤 (P1-修复: manage-exam 路由应只显示本章试卷)
+    if (chapterIdFromRoute.value) {
+      params.chapterId = Number(chapterIdFromRoute.value)
+    }
+    const { data } = await getExamList(params)
     exams.value = data?.items || []
     totalElements.value = data?.totalElements || 0
   } catch {
@@ -160,7 +172,8 @@ async function loadExams() {
 
 async function loadCourses() {
   try {
-    const { data } = await getCourses({ size: 100, teacherId: userStore.userInfo?.id })
+    // P1-修复: 不按 teacherId 过滤,管理员也能看到所有课程
+    const { data } = await getCourses({ size: 200 })
     const list = data?.items || []
     courseOptions.value = list
     list.forEach(c => { courseTitleMap.value[c.id] = c.title })
@@ -244,8 +257,32 @@ async function handleDelete(row) {
   }
 }
 
-onMounted(() => {
-  loadCourses()
+// P1-修复: 从 manage-exam 路由打开时,预填课程+章节信息
+async function prefillFromRoute() {
+  if (!chapterIdFromRoute.value) return
+  try {
+    const r = await getChapterById(Number(chapterIdFromRoute.value))
+    const ch = r.data
+    if (ch && ch.courseId) {
+      const courseId = ch.courseId
+      createForm.courseId = courseId
+      // 触发章节选项加载
+      await onCourseChange(courseId)
+      // 预选本章节
+      createForm.chapterIds = [Number(chapterIdFromRoute.value)]
+    }
+  } catch { /* ignore */ }
+}
+
+watch(() => showCreate.value, (v) => {
+  if (v) prefillFromRoute()
+})
+
+onMounted(async () => {
+  await loadCourses()
+  if (chapterIdFromRoute.value) {
+    await prefillFromRoute()
+  }
   loadExams()
 })
 </script>
