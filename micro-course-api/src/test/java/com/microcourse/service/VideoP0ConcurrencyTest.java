@@ -4,7 +4,6 @@ import com.microcourse.BaseIntegrationTest;
 import com.microcourse.entity.Video;
 import com.microcourse.repository.VideoRepository;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.jdbc.Sql;
 
@@ -27,10 +26,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 @DisplayName("CON-002 Video 转码并发门控")
 // P0 修复：补齐 courseId=1 种子，满足 videos_course_id_fkey（详见 /sql/p0-seed.sql）
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-// P3-10 quarantine：CON-002 转码并发门控依赖种子数据/共享状态，当前 ERROR，默认从 CI 排除。
-//   机制：pom.xml surefire <excludedGroups>quarantine</excludedGroups> 默认跳过；
-//   通过 -Dquarantine=true 显式启用（profile 清空 excludedGroups）。待修复后移除本标记。
-@Tag("quarantine")
+// Phase K: 种子数据已修复,V137/V138 等 migration 已稳定 — @Tag("quarantine") 移除,
+//   测试默认纳入 CI 运行。Phase K 之前因依赖旧种子已通过手动修复(CON-002 转码并发门控),
+//   现在与默认 surefire 一起跑。
 class VideoP0ConcurrencyTest extends BaseIntegrationTest {
 
     @Autowired

@@ -117,8 +117,8 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         review.setParentId(parentId);
         review.setCreatedAt(LocalDateTime.now());
         review.setUpdatedAt(LocalDateTime.now());
-        // 新评价默认通过状态（原有行为：无审核流程）
-        review.setStatus(1);
+        // 新评价默认待审核状态，由管理员审核通过
+        review.setStatus(0);
 
         try {
             courseReviewRepository.insert(review);
@@ -286,6 +286,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         vo.setContent(review.getContent());
         vo.setIsAnonymous(review.getIsAnonymous());
         vo.setParentId(review.getParentId());
+        vo.setStatus(review.getStatus());
         vo.setCreatedAt(review.getCreatedAt());
         vo.setUpdatedAt(review.getUpdatedAt());
 

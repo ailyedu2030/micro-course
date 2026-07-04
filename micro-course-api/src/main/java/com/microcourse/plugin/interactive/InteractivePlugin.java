@@ -1,8 +1,14 @@
 package com.microcourse.plugin.interactive;
 
 import com.microcourse.plugin.CourseTypePlugin;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
+@Component
 public class InteractivePlugin implements CourseTypePlugin {
+
+    @Value("${plugin.interactive.enabled:true}")
+    private boolean enabled;
 
     @Override
     public String getType() { return "INTERACTIVE"; }
@@ -11,7 +17,7 @@ public class InteractivePlugin implements CourseTypePlugin {
     public String getDisplayName() { return "互动课程"; }
 
     @Override
-    public boolean isEnabled() { return true; }
+    public boolean isEnabled() { return enabled; }
 
     @Override
     public String getPlayerRoute(Long courseId) {
@@ -20,7 +26,7 @@ public class InteractivePlugin implements CourseTypePlugin {
 
     @Override
     public String getTeacherPanelRoute(Long courseId) {
-        return "/teacher/courses/" + courseId + "/slides";
+        return "/teacher/courses/" + courseId + "/slides/manage";
     }
 
     @Override

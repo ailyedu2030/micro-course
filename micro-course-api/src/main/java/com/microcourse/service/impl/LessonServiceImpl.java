@@ -127,6 +127,9 @@ public class LessonServiceImpl implements LessonService {
 
     /**
      * SEC-P0-01: 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
+     * <p>通用模式：实现逻辑与 ExerciseServiceImpl / VideoServiceImpl / CourseChapterServiceImpl /
+     * OfflineSessionServiceImpl / QuestionServiceImpl 中的同名方法一致（LessonServiceImpl 额外增加了
+     * courseId 为空校验）。若需统一重构，可抽取到公共工具类。</p>
      *
      * @param courseId 课程 ID
      * @throws BusinessException COURSE_NOT_FOUND 课程不存在，NO_PERMISSION 无权限

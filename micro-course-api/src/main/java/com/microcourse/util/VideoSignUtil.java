@@ -24,15 +24,22 @@ public class VideoSignUtil {
     @Value("${video.sign.secret:}")
     private String secret;
 
+    @Value("${spring.profiles.active:}")
+    private String activeProfiles;
+
     private SecretKey cachedKey;
 
     @PostConstruct
     void init() {
+        boolean isProduction = activeProfiles != null && activeProfiles.contains("prod");
         if (secret == null || secret.isEmpty()) {
-            // R8 修复 P0-1: 本地开发兜底密钥（生产必须通过 VIDEO_SIGN_SECRET 环境变量显式设置）
-            // 仅用于 mvn spring-boot:run 本地启动场景
+            if (isProduction) {
+                // 安全: 生产环境 fail-fast,绝不兜底密钥
+                throw new IllegalStateException("[SEC-004] VIDEO_SIGN_SECRET 未配置,生产环境拒绝启动");
+            }
+            // 仅本地开发环境兜底密钥(单元测试 / mvn spring-boot:run)
             secret = "dev-only-video-sign-secret-key-min-32-bytes-please-change";
-            System.err.println("[WARN] video.sign.secret 未配置，使用本地开发兜底密钥（仅限开发环境）");
+            System.err.println("[WARN] video.sign.secret 未配置,使用本地开发兜底密钥(仅限开发环境)");
         }
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {

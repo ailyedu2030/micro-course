@@ -23,10 +23,8 @@ public class InteractivePluginAutoConfig {
 
     private static final Logger log = LoggerFactory.getLogger(InteractivePluginAutoConfig.class);
 
-    @Bean
-    public CourseTypePlugin interactivePlugin() {
-        return new InteractivePlugin();
-    }
+    // Phase H 修复: InteractivePlugin 已用 @Component 注册(支持 @Value 注入),
+    // 此处不要重复 @Bean 注册,否则 BeanDefinitionOverrideException 导致 Spring 启动失败
 
     @Bean(name = "slideRenderExecutor")
     public Executor slideRenderExecutor() {

@@ -41,9 +41,10 @@ public class ExerciseController {
     public R<PageResult<ExerciseVO>> page(
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) Long chapterId,
+            @RequestParam(required = false) Boolean isExam,
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
             @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) Integer size) {
-        PageResult<ExerciseVO> result = exerciseService.page(courseId, chapterId, page, size);
+        PageResult<ExerciseVO> result = exerciseService.page(courseId, chapterId, isExam, page, size);
         return R.ok(result);
     }
 

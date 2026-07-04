@@ -25,10 +25,9 @@ public class RedisUtil {
     private static final long DEFAULT_TTL_SECONDS = 3600L;
 
     /**
-     * @deprecated Use {@link #set(String, Object, long, TimeUnit)} to always specify TTL.
-     *   This overload applies a default 1-hour TTL to prevent unbounded key growth.
+     * 设置 Key-Value，使用默认 1 小时 TTL (3600s) 防止无界 key 增长。
+     * 建议优先使用 {@link #set(String, Object, long, TimeUnit)} 明确指定过期时间。
      */
-    @Deprecated
     public void set(String key, Object value) {
         redisTemplate.opsForValue().set(key, value, DEFAULT_TTL_SECONDS, TimeUnit.SECONDS);
     }

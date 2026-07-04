@@ -133,7 +133,7 @@ async function handleReject(row) {
     })
     reason = res.value
   } catch { return }
-  try { await rejectCourse(row.id, { reason }); ElMessage.success('已驳回'); fetchData() }
+  try { await rejectCourse(row.id, reason); ElMessage.success('已驳回'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '驳回失败') }
 }
 

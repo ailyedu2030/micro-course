@@ -46,7 +46,7 @@
             <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
             <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="success" size="small">练习</el-tag>
             <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">互动课件</el-tag>
-            <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">🏫 线下课</el-tag>
+            <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">线下课</el-tag>
             <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
           </template>
         </el-table-column>
@@ -80,7 +80,7 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
         <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width">
+          <el-select v-model="formData.courseId" @change="onCourseChange" placeholder="请选择课程" class="full-width">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -272,6 +272,10 @@ const handleSubmit = async () => {
   } finally {
     submitLoading.value = false
   }
+}
+
+const onCourseChange = (val) => {
+  // 课程切换—预留联动逻辑
 }
 
 const handleDialogClose = () => {

@@ -1,8 +1,9 @@
 import request from '@/utils/request'
 
-export function uploadSlide(courseId, file, onProgress) {
+export function uploadSlide(courseId, file, onProgress, chapterId) {
   const fd = new FormData()
   fd.append('file', file)
+  if (chapterId) fd.append('chapterId', chapterId)
   return request({
     method: 'POST',
     url: `/courses/${courseId}/slides/upload`,

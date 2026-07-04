@@ -35,7 +35,8 @@
     <el-card class="table-card" shadow="never">
       <el-skeleton v-if="loading" :rows="6" animated />
       <el-empty v-else-if="tableData.length === 0" description="暂无分类数据" />
-      <el-table v-else :data="tableData" stripe border class="data-table" row-key="id" default-expand-all>
+      <!-- P2-19: 大数据量时 default-expand-all 可能卡顿，设为 false 按需展开 -->
+      <el-table v-else :data="tableData" stripe border class="data-table" row-key="id" :default-expand-all="false">
         <el-table-column prop="name" label="名称" min-width="180" />
         <el-table-column prop="sortOrder" label="排序" width="100" align="center" />
         <el-table-column label="操作" width="180" fixed="right" align="center">
@@ -120,9 +121,9 @@ const formData = reactive({
   sortOrder: 0
 })
 
+// P2-18: 表单中不存在 level 字段（formData.level 虽定义但无对应表单控件），移除无效校验规则
 const formRules = {
-  name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
-  level: [{ required: true, message: '请选择层级', trigger: 'change' }]
+  name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }]
 }
 
 const fetchData = async () => {

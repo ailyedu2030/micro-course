@@ -471,7 +471,7 @@ async function confirmGrade() {
   try {
     await submitGrade({
       enrollmentId: currentStudent.value.enrollmentId,
-      score: String(gradeForm.score),
+      score: gradeForm.score,
       comment: gradeForm.comment
     })
     ElMessage.success('成绩提交成功')

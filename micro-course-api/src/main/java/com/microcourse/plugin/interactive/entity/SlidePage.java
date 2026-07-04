@@ -1,6 +1,7 @@
 package com.microcourse.plugin.interactive.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -12,6 +13,8 @@ public class SlidePage {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long slideId;
+    @TableField("chapter_id")
+    private Long chapterId;
     private Long courseId;
     private Integer pageNumber;
     private String imageUrl;
@@ -21,6 +24,7 @@ public class SlidePage {
     private String extractedText;
     private Boolean hasAnimation;
     private Boolean hasEmbeddedMedia;
+    private String fileUuid;
     private String narrationScript;
     private String narrationAudioUrl;
     private Integer audioDuration;
@@ -34,10 +38,14 @@ public class SlidePage {
     public void setId(Long id) { this.id = id; }
     public Long getSlideId() { return slideId; }
     public void setSlideId(Long slideId) { this.slideId = slideId; }
+    public Long getChapterId() { return chapterId; }
+    public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Integer getPageNumber() { return pageNumber; }
     public void setPageNumber(Integer pageNumber) { this.pageNumber = pageNumber; }
+    public String getFileUuid() { return fileUuid; }
+    public void setFileUuid(String fileUuid) { this.fileUuid = fileUuid; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public String getThumbnailUrl() { return thumbnailUrl; }

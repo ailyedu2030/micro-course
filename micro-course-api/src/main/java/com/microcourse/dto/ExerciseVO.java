@@ -13,6 +13,7 @@ public class ExerciseVO {
     private Long courseId;
     private String courseTitle;
     private String title;
+    private String description;
     private Integer passScore;
     private Integer timeLimit;
     private Integer maxAttempts;
@@ -45,6 +46,8 @@ public class ExerciseVO {
     public void setCourseTitle(String courseTitle) { this.courseTitle = courseTitle; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public Integer getPassScore() { return passScore; }
     public void setPassScore(Integer passScore) { this.passScore = passScore; }
     public Integer getTimeLimit() { return timeLimit; }

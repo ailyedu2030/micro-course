@@ -9,7 +9,7 @@
       <el-icon size="28" color="var(--indigo-600)"><Edit /></el-icon>
       <div class="exam-info">
         <h3>章节练习</h3>
-        <p>共 {{ exerciseCount }} 道练习题</p>
+        <p>共 {{ exerciseCount }} 个练习</p>
       </div>
     </div>
     <el-button type="primary" size="large" round @click="$emit('start-exercise')">

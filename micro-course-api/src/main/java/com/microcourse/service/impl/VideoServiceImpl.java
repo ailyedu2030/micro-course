@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.VideoCreateRequest;
@@ -23,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -303,15 +303,24 @@ public class VideoServiceImpl implements VideoService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long videoId, int status) {
-        Video video = videoRepository.selectById(videoId);
-        if (video == null) {
+        LambdaQueryWrapper<Video> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Video::getId, videoId);
+        Video v = videoRepository.selectOne(wrapper);
+        if (v == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
-        video.setStatus(status);
-        video.setUpdatedAt(LocalDateTime.now());
-        videoRepository.updateById(video);
-    }
 
+        int affected = videoRepository.update(null,
+            new LambdaUpdateWrapper<Video>()
+                .eq(Video::getId, videoId)
+                .eq(Video::getStatus, v.getStatus())
+                .set(Video::getStatus, status)
+                .set(Video::getUpdatedAt, LocalDateTime.now())
+                .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION, "视频状态已被修改，请刷新");
+        }
+    }
     /**
      * P0-3 修复：封面 URL 改为可访问的 API 路径
      * P1-8 修复：封面文件魔数校验
@@ -484,6 +493,11 @@ public class VideoServiceImpl implements VideoService {
         return vo;
     }
 
+    /**
+     * 校验当前用户是否为课程 owner 或 ADMIN。
+     * <p>通用模式：实现逻辑与 CourseChapterServiceImpl.assertCourseOwner(Course) 一致。
+     * 若需统一重构，可抽取到公共工具类。</p>
+     */
     private void assertCourseOwner(Course course) {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);

@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class SlideRenderService {
@@ -90,6 +91,7 @@ public class SlideRenderService {
                 for (int i = 0; i < totalPages; i++) {
                     XSLFSlide xslfSlide = ppt.getSlides().get(i);
                     int pageNumber = i + 1;
+                    String fileUuid = UUID.randomUUID().toString();
                     BufferedImage image = null;
                     BufferedImage thumb = null;
                     Graphics2D g = null;
@@ -106,11 +108,11 @@ public class SlideRenderService {
                         g.dispose();
                         g = null;
 
-                        Path imagePath = imagesDir.resolve("page_" + pageNumber + ".png");
+                        Path imagePath = imagesDir.resolve(fileUuid + ".png");
                         ImageIO.write(image, "PNG", imagePath.toFile());
 
                         thumb = resizeImage(image, thumbnailWidth);
-                        Path thumbPath = thumbnailsDir.resolve("page_" + pageNumber + ".png");
+                        Path thumbPath = thumbnailsDir.resolve(fileUuid + "_thumbnail.png");
                         ImageIO.write(thumb, "PNG", thumbPath.toFile());
                     } finally {
                         if (g != null) g.dispose();
@@ -122,7 +124,9 @@ public class SlideRenderService {
                     SlidePage sp = new SlidePage();
                     sp.setSlideId(slideId);
                     sp.setCourseId(slide.getCourseId());
+                    sp.setChapterId(slide.getChapterId());
                     sp.setPageNumber(pageNumber);
+                    sp.setFileUuid(fileUuid);
                     sp.setImageUrl("/api/courses/" + slide.getCourseId() + "/slides/pages/" + pageNumber + "/image");
                     sp.setThumbnailUrl("/api/courses/" + slide.getCourseId() + "/slides/pages/" + pageNumber + "/thumbnail");
                     sp.setImageWidth(pageImageWidth);

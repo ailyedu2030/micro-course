@@ -29,6 +29,7 @@ public enum ErrorCode {
     RATE_LIMITED(429, "请求过于频繁", 429),
     COURSE_NOT_FOUND(6001, "课程不存在", 404),
     COURSE_HAS_ENROLLMENTS(6002, "该课程下有学生选课，无法关闭", 400),
+    COURSE_ARCHIVED(6009, "已归档课程不可操作", 400),
     COURSE_CATEGORY_NOT_FOUND(6008, "课程分类不存在", 404),
     COURSE_TEACHER_NOT_FOUND(6003, "教师不存在", 404),
     COURSE_INVALID_STATUS(6004, "无效的课程状态", 400),
@@ -117,6 +118,7 @@ public enum ErrorCode {
     // P2-3: 补充常用业务错误码
     LESSON_NOT_FOUND(18001, "课时不存在", 404),
     EXAM_NOT_FOUND(18004, "考试不存在", 404),
+    PREREQUISITE_NOT_MET(18003, "前置章节未完成，请先完成前置章节的学习", 400),
     EXAM_ALREADY_SUBMITTED(18005, "已提交考试，不可重复提交", 400),
     EXAM_TIME_EXPIRED(18006, "考试时间已过", 400),
     REVIEW_PENDING(18007, "课程正在审核中", 400),
@@ -134,7 +136,13 @@ public enum ErrorCode {
     SA_SIGNATURE_IMAGE_INVALID_TYPE(19005, "签名/公章仅支持jpg/png格式", 400),
     SA_EXPORT_TEMPLATE_MISSING(19006, "导出模板缺失", 500),
     SA_AUTO_SAVE_CONFLICT(19007, "自动保存冲突，请刷新后重试", 409),
-    SA_MODULE_NOT_FOUND(19008, "模块标识不存在", 400);
+    SA_MODULE_NOT_FOUND(19008, "模块标识不存在", 400),
+
+    // 举报处理 20xxx
+    REPORT_NOT_FOUND(20001, "举报记录不存在", 404),
+    REPORT_ALREADY_REVIEWED(20002, "该举报已被处理,不可重复操作", 400),
+    REPORT_INVALID_ACTION(20003, "无效的审核操作", 400),
+    REPORT_INVALID_TYPE(20004, "无效的举报类型", 400);
 
     private final int code;
     private final String message;

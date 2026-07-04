@@ -39,52 +39,48 @@
 
       <!-- Table card -->
       <el-card class="table-card" shadow="never">
-        <el-skeleton :loading="loading" animated>
-          <template #template>
-            <el-skeleton-item variant="text" style="width: 100%; height: 40px;" />
-            <el-skeleton-item variant="text" style="width: 100%; height: 40px; margin-top: var(--space-2);" />
-            <el-skeleton-item variant="text" style="width: 100%; height: 40px; margin-top: var(--space-2);" />
-          </template>
-          <template #default>
-            <el-table v-loading="loading" :data="reviews" class="data-table review-table" stripe border>
-              <el-table-column label="课程" min-width="180">
-                <template #default="{ row }">
-                  <router-link :to="`/student/courses/${row.courseId}`" class="course-link">
-                    {{ row.courseTitle || `课程 #${row.courseId}` }}
-                  </router-link>
-                </template>
-              </el-table-column>
-              <el-table-column label="评分" width="100" align="center">
-                <template #default="{ row }">
-                  <el-rate v-model="row.rating" disabled size="small" />
-                </template>
-              </el-table-column>
-              <el-table-column label="类型" width="70" align="center">
-                <template #default="{ row }">
-                  <el-tag v-if="row.parentId" type="info" size="small">回复</el-tag>
-                  <el-tag v-else type="" size="small">评价</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="评价内容" min-width="200" show-overflow-tooltip>
-                <template #default="{ row }">
-                  {{ row.content || '暂无评价内容' }}
-                </template>
-              </el-table-column>
-              <el-table-column label="评价时间" width="120" align="center">
-                <template #default="{ row }">
-                  {{ formatTime(row.createdAt) }}
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="80" align="center" fixed="right">
-                <template #default="{ row }">
-                  <el-button type="danger" size="small" text class="btn-delete" @click="handleDelete(row)">
-                    删除
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </template>
-        </el-skeleton>
+        <div v-if="loading">
+          <el-skeleton :rows="5" animated />
+        </div>
+        <template v-else>
+          <el-table :data="reviews" class="data-table review-table" stripe border>
+            <el-table-column label="课程" min-width="180">
+              <template #default="{ row }">
+                <router-link :to="`/student/courses/${row.courseId}`" class="course-link">
+                  {{ row.courseTitle || `课程 #${row.courseId}` }}
+                </router-link>
+              </template>
+            </el-table-column>
+            <el-table-column label="评分" width="100" align="center">
+              <template #default="{ row }">
+                <el-rate v-model="row.rating" disabled size="small" />
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" width="70" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="row.parentId" type="info" size="small">回复</el-tag>
+                <el-tag v-else type="" size="small">评价</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="评价内容" min-width="200" show-overflow-tooltip>
+              <template #default="{ row }">
+                {{ row.content || '暂无评价内容' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="评价时间" width="120" align="center">
+              <template #default="{ row }">
+                {{ formatTime(row.createdAt) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="80" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button type="danger" size="small" text class="btn-delete" @click="handleDelete(row)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </template>
 
         <div v-if="reviews.length === 0 && !loading" class="empty-wrap">
           <el-empty description="暂无评价记录" />
@@ -148,41 +144,35 @@
 
       <!-- Card list -->
       <div class="h5-card-list">
-        <el-skeleton :loading="loading" animated>
-          <template #template>
-            <div v-for="i in 3" :key="i" class="h5-skeleton-card">
-              <el-skeleton-item variant="text" style="width: 60%; height: 20px;" />
-              <el-skeleton-item variant="text" style="width: 40%; height: 16px; margin-top: var(--space-2);" />
-              <el-skeleton-item variant="text" style="width: 100%; height: 60px; margin-top: var(--space-3);" />
-            </div>
-          </template>
-          <template #default>
-            <template v-if="reviews.length > 0">
-              <div v-for="row in reviews" :key="row.id" class="review-card">
-                <div class="review-card-header">
-                  <router-link :to="`/student/courses/${row.courseId}`" class="h5-course-link">
-                    {{ row.courseTitle || `课程 #${row.courseId}` }}
-                  </router-link>
-                  <el-button type="danger" size="small" text class="btn-delete" @click="handleDelete(row)">
-                    删除
-                  </el-button>
-                </div>
-                <div class="review-card-rating">
-                  <el-rate v-model="row.rating" disabled size="small" />
-                </div>
-                <div class="review-card-content">
-                  {{ row.content || '暂无评价内容' }}
-                </div>
-                <div class="review-card-footer">
-                  <span class="review-card-time">{{ formatTime(row.createdAt) }}</span>
-                </div>
+        <div v-if="loading" class="h5-skeleton-wrap">
+          <el-skeleton :rows="3" animated />
+        </div>
+        <template v-else>
+          <template v-if="reviews.length > 0">
+            <div v-for="row in reviews" :key="row.id" class="review-card">
+              <div class="review-card-header">
+                <router-link :to="`/student/courses/${row.courseId}`" class="h5-course-link">
+                  {{ row.courseTitle || `课程 #${row.courseId}` }}
+                </router-link>
+                <el-button type="danger" size="small" text class="btn-delete" @click="handleDelete(row)">
+                  删除
+                </el-button>
               </div>
-            </template>
-            <div v-else-if="!errorState" class="h5-empty-wrap">
-              <el-empty description="暂无评价记录" />
+              <div class="review-card-rating">
+                <el-rate v-model="row.rating" disabled size="small" />
+              </div>
+              <div class="review-card-content">
+                {{ row.content || '暂无评价内容' }}
+              </div>
+              <div class="review-card-footer">
+                <span class="review-card-time">{{ formatTime(row.createdAt) }}</span>
+              </div>
             </div>
           </template>
-        </el-skeleton>
+          <div v-else-if="!errorState" class="h5-empty-wrap">
+            <el-empty description="暂无评价记录" />
+          </div>
+        </template>
 
         <div v-if="errorState" class="h5-error-wrap">
           <el-result icon="error" title="加载失败" sub-title="请稍后重试">

@@ -48,7 +48,8 @@ public class SlideController {
     @PostMapping("/upload")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<SlideUploadResponse> upload(@PathVariable Long courseId,
-                                           @RequestParam("file") MultipartFile file) {
+                                           @RequestParam("file") MultipartFile file,
+                                           @RequestParam(required = false) Long chapterId) {
         try {
             if (file == null || file.isEmpty()) {
                 log.warn("[SlideUpload] 上传文件为空 courseId={}", courseId);
@@ -65,7 +66,7 @@ public class SlideController {
             }
             // P1 安全修复: 文件魔数校验（PPTX=ZIP PK 0x03 0x04, 图片=JPEG/PNG）
             validateSlideFileMagic(file);
-            SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes());
+            SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);
             return R.ok(resp);
         } catch (IOException e) {
             log.error("[SlideUpload] 文件读取IO异常 courseId={}", courseId, e);
@@ -104,9 +105,11 @@ public class SlideController {
                                                 @PathVariable Integer pageNumber) {
         verifyAccess(courseId);
         byte[] imageBytes = slideService.getPageImage(courseId, pageNumber);
+        String etag = "W/\"" + pageNumber + "-" + imageBytes.length + "\"";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE)
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .header(HttpHeaders.ETAG, etag)
                 .body(imageBytes);
     }
 
@@ -116,9 +119,11 @@ public class SlideController {
                                                     @PathVariable Integer pageNumber) {
         verifyAccess(courseId);
         byte[] thumbBytes = slideService.getPageThumbnail(courseId, pageNumber);
+        String etag = "W/\"" + pageNumber + "-" + thumbBytes.length + "\"";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE)
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .header(HttpHeaders.ETAG, etag)
                 .body(thumbBytes);
     }
 
@@ -245,7 +250,7 @@ public class SlideController {
                 && magic[3] == 'G';
         if (!isZip && !isJpeg && !isPng) {
             throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID,
-                    "不支持的课件格式（仅支持 PPTX/PDF，或 JPEG/PNG 图片）");
+                    "不支持的课件格式（仅支持 PPTX/JPEG/PNG 格式）");
         }
     }
 }

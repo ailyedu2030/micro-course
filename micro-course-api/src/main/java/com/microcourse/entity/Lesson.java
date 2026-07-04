@@ -21,6 +21,7 @@ public class Lesson {
 
     private String title;
 
+    /** lessonType 可选值: "VIDEO"（视频课时，默认）, "OFFLINE"（线下课时，保留给未来使用） */
     @TableField("lesson_type")
     private String lessonType;
 

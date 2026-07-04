@@ -38,8 +38,9 @@
     <div class="learning-body" v-loading="loading" element-loading-text="正在加载课程..." element-loading-background="var(--el-bg-color-page)">
       <!-- 左：主内容区（60%） -->
       <main class="content-main">
-        <!-- 视频播放器 -->
+        <!-- 视频播放器 — 仅 VIDEO 章节显示 -->
         <VideoSection
+          v-if="currentChapter?.chapterType === 'VIDEO'"
           :current-video="currentVideo"
           :initial-position="initialPosition"
           :prev-lesson="prevLesson"
@@ -49,6 +50,23 @@
           @ended="markLessonComplete"
           @go-to-lesson="goToLesson"
         />
+
+        <!-- 非 VIDEO 章节:显示类型对应的操作按钮 -->
+        <div v-else-if="currentChapter?.chapterType === 'INTERACTIVE'" class="chapter-content-placeholder">
+          <el-empty description="此章节为互动课件">
+            <el-button type="primary" @click="goChapterContent(currentChapter, 'INTERACTIVE')">进入课件</el-button>
+          </el-empty>
+        </div>
+        <div v-else-if="currentChapter?.chapterType === 'OFFLINE'" class="chapter-content-placeholder">
+          <el-empty description="此章节为线下课程">
+            <el-button type="primary" @click="goChapterContent(currentChapter, 'OFFLINE')">查看场次</el-button>
+          </el-empty>
+        </div>
+        <div v-else-if="currentChapter?.chapterType === 'EXERCISE'" class="chapter-content-placeholder">
+          <el-empty description="此章节为练习">
+            <el-button type="primary" @click="goChapterContent(currentChapter, 'EXERCISE')">开始练习</el-button>
+          </el-empty>
+        </div>
 
         <!-- Tab 内容区 -->
         <div class="tab-content-area">
@@ -116,6 +134,7 @@ import { getMyFavorites, addFavorite, removeFavorite } from '@/api/favorite'
 const route = useRoute()
 const router = useRouter()
 const courseId = computed(() => parseInt(route.query.courseId) || null)
+const chapterIdFromQuery = computed(() => parseInt(route.query.chapterId) || null)
 
 // ==================== 响应式 ====================
 const isMobile = ref(window.innerWidth < 768)
@@ -232,24 +251,62 @@ async function loadCourse(cid) {
       videosByChapter[chId].push(v)
     })
 
-    // 构建章节-课时树
+    // 构建章节-课时树（根据 chapterType 构建不同的 lessons）
     const rawChapters = courseRes.data.chapters || []
     chapters.value = rawChapters.map(ch => {
-      const videos = videosByChapter[ch.id] || []
-      // 将视频作为该章节的 lessons（每个 lesson 独立查询进度）
-      const lessons = videos.map(v => {
-        const prog = progressMap.value[v.id]
-        return {
-          id: v.id,
-          title: v.title,
-          duration: v.duration,
-          video: { ...v, url: v.url, coverUrl: v.coverUrl, playUrl: v.url },
-          status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
+      let lessons = []
+      if (ch.chapterType === 'VIDEO') {
+        const videos = videosByChapter[ch.id] || []
+        lessons = videos.map(v => {
+          const prog = progressMap.value[v.id]
+          return {
+            id: v.id,
+            title: v.title,
+            duration: v.duration,
+            type: 'VIDEO',
+            video: { ...v, url: v.url, coverUrl: v.coverUrl, playUrl: v.url },
+            status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED',
+            chapterId: ch.id
+          }
+        })
+      } else if (ch.chapterType === 'INTERACTIVE') {
+        // 互动课件:生成一个可点击的"进入课件"条目
+        if (ch.slides?.length > 0 || ch.slideCount > 0) {
+          lessons = [{
+            id: `slide-${ch.id}`,
+            title: '互动课件',
+            type: 'INTERACTIVE',
+            chapterId: ch.id,
+            status: 'NOT_STARTED',
+            duration: ch.duration || 0
+          }]
         }
-      })
+      } else if (ch.chapterType === 'OFFLINE') {
+        // 线下课:生成一个可点击的"线下课签到"条目
+        if (ch.offlineSessions?.length > 0 || ch.hasOfflineSessions) {
+          lessons = [{
+            id: `offline-${ch.id}`,
+            title: '线下课签到',
+            type: 'OFFLINE',
+            chapterId: ch.id,
+            status: 'NOT_STARTED',
+            duration: 0
+          }]
+        }
+      } else if (ch.chapterType === 'EXERCISE') {
+        // 练习:生成一个可点击的"开始练习"条目
+        lessons = [{
+          id: `exercise-${ch.id}`,
+          title: '章节练习',
+          type: 'EXERCISE',
+          chapterId: ch.id,
+          status: 'NOT_STARTED',
+          duration: 0
+        }]
+      }
       return {
         ...ch,
-        lessons: lessons.length > 0 ? lessons : (ch.lessons || []),
+        lessons,
         exercises: ch.exercises || []
       }
     })
@@ -474,7 +531,23 @@ function goBack() {
 
 function goExercise() {
   if (!currentLessonId.value) return
-  router.push(`/student/chapters/${currentLessonId.value}/exercises`)
+  // 从 goToLesson 传递的 lesson 中取 chapterId
+  const lesson = allLessons.value.find(l => l.id === currentLessonId.value)
+  const chId = lesson?.chapterId || currentChapter.value?.id
+  if (chId) {
+    router.push(`/student/chapters/${chId}/exercises`)
+  }
+}
+
+function goChapterContent(chapter, type) {
+  const courseIdVal = courseId.value
+  if (type === 'INTERACTIVE') {
+    router.push(`/student/courses/${courseIdVal}/slides/player?chapterId=${chapter.id}`)
+  } else if (type === 'OFFLINE') {
+    router.push(`/student/chapters/${chapter.id}/offline`)
+  } else if (type === 'EXERCISE') {
+    router.push(`/student/chapters/${chapter.id}/exercises`)
+  }
 }
 
 function continueLearning() {
@@ -495,6 +568,15 @@ onMounted(async () => {
     return
   }
   await loadCourse(courseId.value)
+
+  // 如果 URL 中有 chapterId 参数，自动定位到该章节
+  if (chapterIdFromQuery.value) {
+    const targetChapter = chapters.value.find(ch => ch.id === chapterIdFromQuery.value)
+    if (targetChapter && targetChapter.lessons?.length > 0) {
+      selectLesson(targetChapter.lessons[0].id)
+    }
+  }
+
   await Promise.all([loadProgress(), checkFavorite()])
 
   // 启动进度保存定时器（每 10 秒，P1-10: saveVideoProgress 内部判断 isPlaying）

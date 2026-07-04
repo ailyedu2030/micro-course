@@ -23,6 +23,10 @@ public class Exercise {
 
     private String title;
 
+    /** 练习描述，支持图文说明 */
+    @TableField("description")
+    private String description;
+
     @TableField("pass_score")
     private Integer passScore;
 
@@ -73,6 +77,8 @@ public class Exercise {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public Integer getPassScore() { return passScore; }
     public void setPassScore(Integer passScore) { this.passScore = passScore; }
     public Integer getTimeLimit() { return timeLimit; }

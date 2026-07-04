@@ -275,7 +275,7 @@
                   <el-icon><Star /></el-icon>
                   {{ course.rating }}
                 </span>
-                <el-button type="primary" size="small" plain>开始学习</el-button>
+                <el-button type="primary" size="small" plain @click="goCourse(course.id)">开始学习</el-button>
               </div>
             </div>
           </el-card>
@@ -493,7 +493,7 @@
                     <el-icon><Star /></el-icon>
                     {{ course.rating }}
                   </span>
-                  <el-button type="primary" size="small" plain>开始学习</el-button>
+                  <el-button type="primary" size="small" plain @click="goCourse(course.id)">开始学习</el-button>
                 </div>
               </div>
             </div>
@@ -531,7 +531,7 @@ import AccuracyTrendChart from '@/components/learning-center/AccuracyTrendChart.
 import { ElMessage } from 'element-plus'
 import { Calendar, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { getStudyDays, getTotalTime } from '@/api/learning-progress'
+import { getStudyDays, getTotalTime, getLearningProgress } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
 import { getMyCertificates } from '@/api/certificate'
@@ -557,6 +557,8 @@ const quickEntries = [
 function navigateTo(path) {
   router.push(path)
 }
+
+const goCourse = (id) => router.push(`/student/courses/${id}`)
 
 // ---------------------------------------------------------------------------
 // 响应式
@@ -790,9 +792,21 @@ async function getRecent(sharedEnrollments) {
     // 取第一个进行中的课程作为"继续学习"
     const inProgress = enrollments.find(e => !e.completed && e.progress > 0)
     if (inProgress) {
+      let currentChapter = 1
+      try {
+        const res = await getLearningProgress({ courseId: inProgress.courseId })
+        const progressList = Array.isArray(res.data) ? res.data : []
+        // 取最后一个已完成的章节，或第一个进度条目
+        const lastEntry = [...progressList].reverse().find(p => p.completed) || progressList[0]
+        if (lastEntry?.chapterId) {
+          currentChapter = Number(lastEntry.chapterId)
+        }
+      } catch (e) {
+        console.warn('[LearningCenter] 获取学习进度失败', e)
+      }
       recentCourse.value = {
         title: inProgress.courseTitle || inProgress.title || '课程',
-        currentChapter: 1,
+        currentChapter,
         progress: inProgress.progress || 0,
         cover: inProgress.courseCover || inProgress.coverUrl || (import.meta.env.BASE_URL + 'placeholder.svg')
       }

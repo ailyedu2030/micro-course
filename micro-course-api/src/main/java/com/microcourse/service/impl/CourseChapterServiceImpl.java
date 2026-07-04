@@ -8,13 +8,19 @@ import com.microcourse.dto.ChapterUpdateRequest;
 import com.microcourse.dto.ChapterVO;
 import com.microcourse.dto.ChapterSortRequest;
 import com.microcourse.dto.PageResult;
+import com.microcourse.entity.ChapterOfflineSession;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.ChapterOfflineSessionRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.ExerciseRepository;
+import com.microcourse.entity.LearningProgress;
+import com.microcourse.entity.CourseNote;
+import com.microcourse.repository.CourseNoteRepository;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseChapterService;
 import com.microcourse.util.SecurityUtil;
@@ -22,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,15 +42,24 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private final CourseRepository courseRepository;
     private final VideoRepository videoRepository;
     private final ExerciseRepository exerciseRepository;
+    private final ChapterOfflineSessionRepository chapterOfflineSessionRepository;
+    private final LearningProgressRepository learningProgressRepository;
+    private final CourseNoteRepository courseNoteRepository;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
                                      CourseRepository courseRepository,
                                      VideoRepository videoRepository,
-                                     ExerciseRepository exerciseRepository) {
+                                     ExerciseRepository exerciseRepository,
+                                     ChapterOfflineSessionRepository chapterOfflineSessionRepository,
+                                     LearningProgressRepository learningProgressRepository,
+                                     CourseNoteRepository courseNoteRepository) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.videoRepository = videoRepository;
         this.exerciseRepository = exerciseRepository;
+        this.chapterOfflineSessionRepository = chapterOfflineSessionRepository;
+        this.learningProgressRepository = learningProgressRepository;
+        this.courseNoteRepository = courseNoteRepository;
     }
 
     @Override
@@ -97,7 +113,12 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (chapter == null) {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
-        return convertToVO(chapter);
+        ChapterVO vo = convertToVO(chapter);
+        Long vc = videoRepository.selectCount(
+            new LambdaQueryWrapper<com.microcourse.entity.Video>()
+                .eq(com.microcourse.entity.Video::getChapterId, id));
+        vo.setVideoCount(vc == null ? 0 : vc.intValue());
+        return vo;
     }
 
     @Override
@@ -124,7 +145,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setUpdatedAt(LocalDateTime.now());
 
         chapterRepository.insert(chapter);
-        return convertToVO(chapter);
+        ChapterVO vo = convertToVO(chapter);
+        // 新建章节时 videoCount 默认为 0
+        return vo;
     }
 
     @Override
@@ -150,7 +173,12 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setUpdatedAt(LocalDateTime.now());
 
         chapterRepository.updateById(chapter);
-        return convertToVO(chapter);
+        ChapterVO vo = convertToVO(chapter);
+        Long vc = videoRepository.selectCount(
+            new LambdaQueryWrapper<com.microcourse.entity.Video>()
+                .eq(com.microcourse.entity.Video::getChapterId, id));
+        vo.setVideoCount(vc == null ? 0 : vc.intValue());
+        return vo;
     }
 
     @Override
@@ -162,11 +190,17 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         }
         // Owner check: only course teacher or ADMIN can delete chapter
         assertCourseOwnerByCourseId(chapter.getCourseId());
-        // MISC-NEW-4 修复:级联删除章节下的视频和练习,避免孤儿记录
+        // MISC-NEW-4 修复:级联删除章节下的视频/练习/线下活动,避免孤儿记录
         videoRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Video>()
                 .eq(com.microcourse.entity.Video::getChapterId, id));
         exerciseRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Exercise>()
                 .eq(com.microcourse.entity.Exercise::getChapterId, id));
+        chapterOfflineSessionRepository.delete(new LambdaQueryWrapper<ChapterOfflineSession>()
+                .eq(ChapterOfflineSession::getChapterId, id));
+        learningProgressRepository.delete(new LambdaQueryWrapper<LearningProgress>()
+                .eq(LearningProgress::getChapterId, id));
+        courseNoteRepository.delete(new LambdaQueryWrapper<CourseNote>()
+                .eq(CourseNote::getChapterId, id));
         chapterRepository.deleteById(id);
     }
 
@@ -184,14 +218,15 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         List<CourseChapter> chapters = chapterRepository.selectBatchIds(ids);
 
         // 校验所有章节存在且属于同一课程
-        Long courseId = null;
-        for (CourseChapter chapter : chapters) {
-            if (courseId == null) {
-                courseId = chapter.getCourseId();
-                assertCourseOwnerByCourseId(courseId);
-                break;
-            }
+        if (chapters.isEmpty()) return;
+        Set<Long> courseIds = chapters.stream()
+                .map(CourseChapter::getCourseId)
+                .collect(Collectors.toSet());
+        if (courseIds.size() > 1) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "章节必须属于同一课程");
         }
+        Long courseId = courseIds.iterator().next();
+        assertCourseOwnerByCourseId(courseId);
 
         // P0-SEC-FIX: 使用逐条 updateById 替代 CASE WHEN 字符串拼接，消除 SQL 注入风险
         // P3 性能优化: 使用 Map 查找替代双重循环 O(N*M) → O(N+M)
@@ -216,6 +251,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         vo.setSortOrder(chapter.getSortOrder());
         vo.setChapterType(chapter.getChapterType());
         vo.setDuration(chapter.getDuration());
+        vo.setLearningObjectives(chapter.getLearningObjectives());
         vo.setCreatedAt(chapter.getCreatedAt());
         vo.setUpdatedAt(chapter.getUpdatedAt());
         vo.setVersion(chapter.getVersion());
@@ -223,7 +259,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     /**
-     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
+     * <p>通用模式：实现逻辑与 ExerciseServiceImpl / VideoServiceImpl / OfflineSessionServiceImpl /
+     * LessonServiceImpl / QuestionServiceImpl 中的同名方法一致。若需统一重构，可抽取到公共工具类。</p>
      *
      * @param courseId 课程 ID
      * @throws BusinessException NOT_FOUND 课程不存在，NO_PERMISSION 无权限
@@ -237,7 +275,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     /**
-     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
+     * <p>通用模式：实现逻辑与 VideoServiceImpl.assertCourseOwner(Course) 一致。</p>
      *
      * @param course 课程实体（非 null）
      * @throws BusinessException NO_PERMISSION 无权限

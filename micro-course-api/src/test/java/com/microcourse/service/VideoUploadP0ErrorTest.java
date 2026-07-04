@@ -29,10 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 @DisplayName("ERR-001 异步失败必须记录并更新状态")
 // P0 修复：补齐 courseId=1 种子，满足 videos_course_id_fkey（详见 /sql/p0-seed.sql）
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-// P3-10 quarantine：ERR-001 异步失败回归依赖种子数据/共享状态，当前 ERROR，默认从 CI 排除。
-//   机制：pom.xml surefire <excludedGroups>quarantine</excludedGroups> 默认跳过；
-//   通过 -Dquarantine=true 显式启用（profile 清空 excludedGroups）。待修复后移除本标记。
-@Tag("quarantine")
+// Phase K: 种子数据已修复,@Tag("quarantine") 移除纳入 CI 默认运行
 class VideoUploadP0ErrorTest extends BaseIntegrationTest {
 
     @Autowired

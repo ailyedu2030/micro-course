@@ -9,15 +9,21 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.User;
+import com.microcourse.entity.Video;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.entity.CourseSlide;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.entity.CourseReviewLog;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.entity.LearningProgress;
+import com.microcourse.repository.LearningProgressRepository;
+import com.microcourse.repository.VideoRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
@@ -25,6 +31,7 @@ import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.NotificationService;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.util.FileUploadUtil;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
@@ -61,7 +68,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final CourseReviewLogRepository reviewLogRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final PluginGrantRepository pluginGrantRepository;
+    private final VideoRepository videoRepository;
+    private final LearningProgressRepository learningProgressRepository;
     private final NotificationService notificationService;
+    private final CourseSlideMapper courseSlideMapper;
 
     @Value("${upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -69,12 +79,15 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     public CourseAdminServiceImpl(CourseRepository courseRepository,
                                   CourseCategoryRepository categoryRepository,
                                   CourseChapterRepository chapterRepository,
+                                  VideoRepository videoRepository,
                                   UserRepository userRepository,
                                   CourseReviewRepository reviewRepository,
                                   CourseReviewLogRepository reviewLogRepository,
                                   EnrollmentRepository enrollmentRepository,
                                   PluginGrantRepository pluginGrantRepository,
-                                  NotificationService notificationService) {
+                                  LearningProgressRepository learningProgressRepository,
+                                  NotificationService notificationService,
+                                  CourseSlideMapper courseSlideMapper) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -83,7 +96,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.reviewLogRepository = reviewLogRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.pluginGrantRepository = pluginGrantRepository;
+        this.videoRepository = videoRepository;
+        this.learningProgressRepository = learningProgressRepository;
         this.notificationService = notificationService;
+        this.courseSlideMapper = courseSlideMapper;
     }
 
     /* ================================================================
@@ -92,6 +108,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
 
     private void checkPluginGrant(Long teacherId, String courseType) {
         if (courseType == null || "VIDEO".equals(courseType)) return;
+        // ADMIN 可创建任意课程类型，不受 plugin_grant 限制
+        if (SecurityUtil.isAdmin()) return;
         com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.PluginGrant> q =
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
         q.eq(com.microcourse.entity.PluginGrant::getPluginId, "interactive")
@@ -209,7 +227,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         CourseStatus fromStatus = CourseStatus.fromCode(currentStatus);
 
         if (fromStatus == CourseStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "已归档课程不可操作");
+            throw new BusinessException(ErrorCode.COURSE_ARCHIVED);
         }
 
         // TEACHER 只能删除自己的课程
@@ -238,7 +256,22 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
-        LOG.info("课程已关闭, id={}", id);
+
+        // 软删除所有关联章节和视频（避免孤儿记录）
+        chapterRepository.update(null,
+                new LambdaUpdateWrapper<CourseChapter>()
+                        .eq(CourseChapter::getCourseId, id)
+                        .set(CourseChapter::getDeletedAt, LocalDateTime.now()));
+        videoRepository.update(null,
+                new LambdaUpdateWrapper<Video>()
+                        .eq(Video::getCourseId, id)
+                        .set(Video::getDeletedAt, LocalDateTime.now()));
+
+        // Phase F 修复:级联清理学习进度(防止孤儿数据导致学生看到对不上)
+        learningProgressRepository.delete(new LambdaQueryWrapper<LearningProgress>()
+                .eq(LearningProgress::getCourseId, id));
+
+        LOG.info("课程已关闭（含级联清理）, id={}", id);
     }
 
     /* ================================================================
@@ -295,7 +328,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         }
 
         LOG.info("课程复制成功, originalId={}, newId={}, operator={}", id, course.getId());
-        return convertToVO(course);
+        CourseVO vo = convertToVO(course);
+        vo.setVideoCopied(false); // 视频未复制，提示前端手动上传
+        return vo;
     }
 
     @Override
@@ -334,13 +369,24 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long id, Integer status) {
         Course course = getCourseOrThrow(id);
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         CourseStatus current = CourseStatus.fromCode(course.getStatus());
         CourseStatus target = CourseStatus.fromCode(status);
         if (current == null || target == null || !current.canTransitionTo(target)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
-        course.setStatus(target.getCode());
-        courseRepository.updateById(course);
+        int affected = courseRepository.update(null,
+                new LambdaUpdateWrapper<Course>()
+                        .eq(Course::getId, id)
+                        .eq(Course::getStatus, current.getCode())
+                        .set(Course::getStatus, target.getCode())
+                        .set(Course::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+        }
         LOG.info("课程状态更新, id={}, from={}, to={}", id, current, target);
     }
 
@@ -352,6 +398,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void submitForReview(Long id) {
         Course course = getCourseOrThrow(id);
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         CourseStatus current = CourseStatus.fromCode(course.getStatus());
         if (current == null || !current.canTransitionTo(CourseStatus.PENDING_REVIEW)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "当前状态不允许提交审核");
@@ -363,9 +412,17 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (chapterCount == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请至少添加一个章节再提交审核");
         }
-        course.setStatus(CourseStatus.PENDING_REVIEW.getCode());
-        course.setRejectReason(null);
-        courseRepository.updateById(course);
+        int affected = courseRepository.update(null,
+                new LambdaUpdateWrapper<Course>()
+                        .eq(Course::getId, id)
+                        .eq(Course::getStatus, current.getCode())
+                        .set(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
+                        .set(Course::getRejectReason, (String) null)
+                        .set(Course::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+        }
         LOG.info("课程提交审核, id={}", id);
     }
 
@@ -422,6 +479,16 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         Course course = getCourseOrThrow(id);
+        // P2-7: INTERACTIVE 课程发布前必须检查课件是否已就绪（status=2）
+        if ("INTERACTIVE".equals(course.getCourseType())) {
+            LambdaQueryWrapper<CourseSlide> slideQuery = new LambdaQueryWrapper<>();
+            slideQuery.eq(CourseSlide::getCourseId, id)
+                      .eq(CourseSlide::getStatus, 2);
+            long slideCount = courseSlideMapper.selectCount(slideQuery);
+            if (slideCount == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "互动课件尚未就绪，请先上传并等待课件渲染完成");
+            }
+        }
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
@@ -434,6 +501,19 @@ public class CourseAdminServiceImpl implements CourseAdminService {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "发布失败，请检查课程状态");
         }
         recordReviewLog(id, "PUBLISH", course.getStatus(), CourseStatus.PUBLISHED.getCode(), null);
+        // 通知所有已选课学生：课程已发布
+        List<Enrollment> activeEnrollments = enrollmentRepository.selectList(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getCourseId, id)
+                        .in(Enrollment::getEnrollmentStatus,
+                                EnrollmentStatus.APPROVED.getValue(),
+                                EnrollmentStatus.LEGACY_ENROLLED_VALUE));
+        for (Enrollment enrollment : activeEnrollments) {
+            notificationService.notifyAsync(enrollment.getUserId(),
+                    NotificationType.COURSE_PUBLISHED,
+                    "课程《" + course.getTitle() + "》已发布",
+                    "您已选修该课程，现在可以开始学习", id);
+        }
         LOG.info("课程发布成功, id={}", id);
     }
 
@@ -441,12 +521,38 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void unpublish(Long id) {
         Course course = getCourseOrThrow(id);
+        // 仅 ADMIN 可下架
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         CourseStatus current = CourseStatus.fromCode(course.getStatus());
         if (current == null || !current.canTransitionTo(CourseStatus.CLOSED)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "当前状态不允许下架");
         }
-        course.setStatus(CourseStatus.CLOSED.getCode());
-        courseRepository.updateById(course);
+        int affected = courseRepository.update(null,
+                new LambdaUpdateWrapper<Course>()
+                        .eq(Course::getId, id)
+                        .eq(Course::getStatus, current.getCode())
+                        .set(Course::getStatus, CourseStatus.CLOSED.getCode())
+                        .set(Course::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+        }
+        recordReviewLog(id, "UNPUBLISH", current.getCode(), CourseStatus.CLOSED.getCode(), null);
+        // 通知所有已选课学生：课程已下架
+        List<Enrollment> activeEnrollments = enrollmentRepository.selectList(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getCourseId, id)
+                        .in(Enrollment::getEnrollmentStatus,
+                                EnrollmentStatus.APPROVED.getValue(),
+                                EnrollmentStatus.LEGACY_ENROLLED_VALUE));
+        for (Enrollment enrollment : activeEnrollments) {
+            notificationService.notifyAsync(enrollment.getUserId(),
+                    NotificationType.COURSE_UNPUBLISHED,
+                    "课程《" + course.getTitle() + "》已下架",
+                    "请关注后续公告", id);
+        }
         LOG.info("课程下架成功, id={}, operator={}", id);
     }
 

@@ -40,11 +40,12 @@
         <el-form :inline="true" :model="searchForm" @submit.prevent>
           <el-form-item label="题型">
             <el-select v-model="searchForm.questionType" placeholder="请选择题型" clearable class="filter-input-w140">
-              <el-option label="单选题" value="SINGLE_CHOICE" />
-              <el-option label="多选题" value="MULTIPLE_CHOICE" />
-              <el-option label="判断题" value="TRUE_FALSE" />
+              <el-option label="单选题" value="SINGLE" />
+              <el-option label="多选题" value="MULTIPLE" />
+              <el-option label="判断题" value="JUDGE" />
               <el-option label="简答题" value="SHORT_ANSWER" />
-              <el-option label="综合题" value="COMPREHENSIVE" />
+              <el-option label="综合题" value="ESSAY" />
+              <el-option label="填空题" value="FILL" />
             </el-select>
           </el-form-item>
           <el-form-item label="难度">
@@ -52,6 +53,11 @@
               <el-option label="简单" value="EASY" />
               <el-option label="中等" value="MEDIUM" />
               <el-option label="困难" value="HARD" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="章节">
+            <el-select v-model="searchForm.chapterId" placeholder="全部章节" clearable class="filter-input-w160">
+              <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
             </el-select>
           </el-form-item>
           <el-form-item label="分类">
@@ -94,11 +100,12 @@
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="questionType" label="题型" width="120" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.questionType === 'SINGLE_CHOICE'" type="primary" size="small">单选题</el-tag>
-            <el-tag v-else-if="row.questionType === 'MULTIPLE_CHOICE'" type="success" size="small">多选题</el-tag>
-            <el-tag v-else-if="row.questionType === 'TRUE_FALSE'" type="warning" size="small">判断题</el-tag>
+            <el-tag v-if="row.questionType === 'SINGLE'" type="primary" size="small">单选题</el-tag>
+            <el-tag v-else-if="row.questionType === 'MULTIPLE'" type="success" size="small">多选题</el-tag>
+            <el-tag v-else-if="row.questionType === 'JUDGE'" type="warning" size="small">判断题</el-tag>
             <el-tag v-else-if="row.questionType === 'SHORT_ANSWER'" type="info" size="small">简答题</el-tag>
-            <el-tag v-else-if="row.questionType === 'COMPREHENSIVE'" type="danger" size="small">综合题</el-tag>
+            <el-tag v-else-if="row.questionType === 'ESSAY'" type="danger" size="small">综合题</el-tag>
+            <el-tag v-else-if="row.questionType === 'FILL'" type="info" size="small">填空题</el-tag>
             <el-tag v-else type="info" size="small">{{ row.questionType || '-' }}</el-tag>
           </template>
         </el-table-column>
@@ -121,11 +128,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="content" label="题目内容" min-width="250" show-overflow-tooltip />
-        <el-table-column prop="score" label="分值" width="80" align="center">
-          <template #default="{ row }">
-            {{ row.score ?? '-' }}
-          </template>
-        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="info" link size="small" @click="handlePreview(row)">预览</el-button>
@@ -159,11 +161,12 @@
         </el-form-item>
         <el-form-item label="题型" prop="questionType">
           <el-select v-model="formData.questionType" placeholder="请选择题型" class="full-width">
-            <el-option label="单选题" value="SINGLE_CHOICE" />
-            <el-option label="多选题" value="MULTIPLE_CHOICE" />
-            <el-option label="判断题" value="TRUE_FALSE" />
+            <el-option label="单选题" value="SINGLE" />
+            <el-option label="多选题" value="MULTIPLE" />
+            <el-option label="判断题" value="JUDGE" />
             <el-option label="简答题" value="SHORT_ANSWER" />
-            <el-option label="综合题" value="COMPREHENSIVE" />
+            <el-option label="综合题" value="ESSAY" />
+            <el-option label="填空题" value="FILL" />
           </el-select>
         </el-form-item>
         <el-form-item label="关联章节">
@@ -188,24 +191,24 @@
           <el-input v-model="formData.explanation" type="textarea" :rows="2" placeholder="请输入答案解析" />
         </el-form-item>
         <!-- 单选/多选选项编辑 -->
-        <el-form-item v-if="formData.questionType === 'SINGLE_CHOICE' || formData.questionType === 'MULTIPLE_CHOICE'" label="选项" prop="options">
+        <el-form-item v-if="formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE'" label="选项" prop="options">
           <div class="options-editor">
             <div v-for="(opt, idx) in optionList" :key="idx" class="option-item">
               <span class="option-label">{{ ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][idx] }}.</span>
               <el-input v-model="opt.label" placeholder="选项内容" class="option-input" />
-              <el-radio v-if="formData.questionType === 'SINGLE_CHOICE'" :model-value="opt.correct" @click="setSingleCorrect(idx)" title="设为正确答案">√</el-radio>
-              <el-checkbox v-if="formData.questionType === 'MULTIPLE_CHOICE'" v-model="opt.correct" title="设为正确答案">√</el-checkbox>
+              <el-radio v-if="formData.questionType === 'SINGLE'" :model-value="opt.correct" @click="setSingleCorrect(idx)" title="设为正确答案">√</el-radio>
+              <el-checkbox v-if="formData.questionType === 'MULTIPLE'" v-model="opt.correct" title="设为正确答案">√</el-checkbox>
               <el-button type="danger" link @click="removeOption(idx)">删除</el-button>
             </div>
             <el-button type="primary" plain size="small" @click="addOption">添加选项</el-button>
           </div>
         </el-form-item>
         <!-- 单选/多选题答案 -->
-        <el-form-item v-if="formData.questionType === 'SINGLE_CHOICE' || formData.questionType === 'MULTIPLE_CHOICE'" label="正确答案" prop="answer">
+        <el-form-item v-if="formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE'" label="正确答案" prop="answer">
           <el-input v-model="formData.answer" placeholder="请在选项中勾选正确答案" disabled class="full-width" />
         </el-form-item>
         <!-- 判断题答案 -->
-        <el-form-item v-if="formData.questionType === 'TRUE_FALSE'" label="正确答案" prop="answer">
+        <el-form-item v-if="formData.questionType === 'JUDGE'" label="正确答案" prop="answer">
           <el-radio-group v-model="formData.answer">
             <el-radio value="true">正确</el-radio>
             <el-radio value="false">错误</el-radio>
@@ -216,7 +219,7 @@
           <el-input v-model="formData.answer" placeholder="请输入正确答案" />
         </el-form-item>
         <!-- 多选题部分给分 -->
-        <el-form-item v-if="formData.questionType === 'MULTIPLE_CHOICE'" label="部分给分" prop="partialScore">
+        <el-form-item v-if="formData.questionType === 'MULTIPLE'" label="部分给分" prop="partialScore">
           <el-switch v-model="formData.partialScore" active-text="启用" inactive-text="关闭" />
           <div v-if="formData.partialScore" class="partial-score-rule">
             <el-input v-model="formData.partialScoreRule" type="textarea" :rows="2" placeholder="如: A=30;B=30;C=40;D=40 (选对部分得部分分)" />
@@ -269,6 +272,7 @@ const selectedCourse = computed(() => {
 const searchForm = reactive({
   questionType: '',
   difficulty: '',
+  chapterId: '',
   categoryId: '',
   keyword: ''
 })
@@ -384,7 +388,7 @@ const handleImportExcel = async (file) => {
     }
     fetchData()
   } catch (e) {
-    ElMessage.error('导入失败')
+    ElMessage.error(e?.response?.data?.message || '导入失败')
   }
   return false
 }
@@ -396,6 +400,7 @@ const handleExportExcel = async () => {
   }
   try {
     ElMessage.info('正在获取全部题目数据，请稍候…')
+    // P2-16: 导出使用 size: 10000 全量请求，若数据量极大可能内存紧张，可考虑分批导出
     // Fetch ALL filtered data (remove pagination limits by using a large size)
     const params = {
       size: 10000,
@@ -432,11 +437,12 @@ const handleExportExcel = async () => {
 
 function getQuestionTypeLabel(type) {
   const map = {
-    'SINGLE_CHOICE': '单选题',
-    'MULTIPLE_CHOICE': '多选题',
-    'TRUE_FALSE': '判断题',
+    'SINGLE': '单选题',
+    'MULTIPLE': '多选题',
+    'JUDGE': '判断题',
     'SHORT_ANSWER': '简答题',
-    'COMPREHENSIVE': '综合题'
+    'ESSAY': '综合题',
+    'FILL': '填空题'
   }
   return map[type] || type || ''
 }
@@ -455,12 +461,15 @@ const fetchData = async () => {
   if (!selectedCourseId.value) return
   loading.value = true
   try {
+    // P2-13: 搜索时 difficulty 为字符串 EASY/MEDIUM/HARD，经 resolveDifficulty 转为数字 1/2/3 发送给后端
+    // 后端返回的 difficulty 为数字 1/2/3，表格展示直接使用数字判断
     const params = {
       page: page.value - 1,
       size: size.value,
       courseId: selectedCourseId.value,
       questionType: searchForm.questionType || undefined,
       difficulty: resolveDifficulty(searchForm.difficulty),
+      chapterId: searchForm.chapterId || undefined,
       categoryId: searchForm.categoryId || undefined,
       keyword: searchForm.keyword || undefined
     }
@@ -482,6 +491,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.questionType = ''
   searchForm.difficulty = ''
+  searchForm.chapterId = ''
   searchForm.categoryId = ''
   searchForm.keyword = ''
   page.value = 1
@@ -578,8 +588,9 @@ const handleSubmit = async () => {
     if (!valid) return
     submitLoading.value = true
     try {
-      if (formData.questionType === 'SINGLE_CHOICE' || formData.questionType === 'MULTIPLE_CHOICE') {
-        formData.options = JSON.stringify(optionList.value)
+      if (formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE') {
+        // P2-14: 仅在 options 为对象时才 JSON.stringify，避免双重序列化
+        formData.options = typeof optionList.value === 'string' ? optionList.value : JSON.stringify(optionList.value)
         const correctOptions = optionList.value.filter(o => o.correct).map(o => o.label)
         formData.answer = correctOptions.join(',')
       }
@@ -589,7 +600,7 @@ const handleSubmit = async () => {
         categoryId: selectedCourse.value.categoryId || null,
         teacherId: userStore.userId
       }
-      if (formData.questionType === 'MULTIPLE_CHOICE' && formData.partialScore) {
+      if (formData.questionType === 'MULTIPLE' && formData.partialScore) {
         payload.partialScore = formData.partialScoreRule
       } else {
         payload.partialScore = null

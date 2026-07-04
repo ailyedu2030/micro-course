@@ -41,22 +41,6 @@
           </el-card>
         </div>
 
-        <!-- 空状态 -->
-        <el-empty
-          v-else-if="!errorState && examList.length === 0"
-          class="empty-state"
-        >
-          <template #image>
-            <el-icon class="empty-icon"><Tickets /></el-icon>
-          </template>
-          <template #description>
-            <p>暂无考试安排</p>
-          </template>
-          <template #default>
-            <p class="empty-tip">完成课程后可参加考试</p>
-          </template>
-        </el-empty>
-
         <!-- 错误状态 -->
         <el-result
           v-else-if="errorState"
@@ -70,10 +54,15 @@
           </template>
         </el-result>
 
-        <!-- 考试列表 -->
+        <!-- 考试列表（含分类 Tab） -->
         <div v-else class="exam-list">
+          <el-tabs v-model="activeTab" class="exam-tabs">
+            <el-tab-pane label="待参加" name="pending" :disabled="loading" />
+            <el-tab-pane label="已完成" name="completed" :disabled="loading" />
+          </el-tabs>
+
           <el-card
-            v-for="exam in examList"
+            v-for="exam in filteredExamList"
             :key="exam.examId"
             class="exam-card student-card-item"
             shadow="hover"
@@ -93,12 +82,38 @@
                 <span>时长：{{ exam.duration }}分钟</span>
               </p>
               <div class="exam-actions">
-                <el-button type="primary" size="small" @click="handleJoinExam(exam)">
+                <el-button
+                  v-if="!exam._attempted"
+                  type="primary"
+                  size="small"
+                  @click="handleJoinExam(exam)"
+                >
                   参加考试
+                </el-button>
+                <el-button
+                  v-else
+                  type="info"
+                  size="small"
+                  disabled
+                >
+                  已完成
                 </el-button>
               </div>
             </div>
           </el-card>
+
+          <!-- 空状态（当前 Tab 无数据） -->
+          <el-empty
+            v-if="filteredExamList.length === 0"
+            class="empty-state"
+          >
+            <template #image>
+              <el-icon class="empty-icon"><Tickets /></el-icon>
+            </template>
+            <template #description>
+              <p>{{ activeTab === 'pending' ? '暂无待参加的考试' : activeTab === 'completed' ? '暂无已完成的考试' : '暂无已截止的考试' }}</p>
+            </template>
+          </el-empty>
         </div>
       </div>
     </div>
@@ -131,22 +146,6 @@
         </el-card>
       </div>
 
-      <!-- 空状态 -->
-      <el-empty
-        v-else-if="!errorState && examList.length === 0"
-        class="empty-state"
-      >
-        <template #image>
-          <el-icon class="empty-icon"><Tickets /></el-icon>
-        </template>
-        <template #description>
-          <p>暂无考试安排</p>
-        </template>
-        <template #default>
-          <p class="empty-tip">你还没有报名的考试</p>
-        </template>
-      </el-empty>
-
       <!-- 错误状态 -->
       <el-result
         v-else-if="errorState"
@@ -160,10 +159,15 @@
         </template>
       </el-result>
 
-      <!-- 考试列表 -->
+      <!-- 考试列表（含分类 Tab） -->
       <div v-else class="h5-exam-list">
+        <el-tabs v-model="activeTab" class="exam-tabs h5-tabs">
+          <el-tab-pane label="待参加" name="pending" :disabled="loading" />
+          <el-tab-pane label="已完成" name="completed" :disabled="loading" />
+        </el-tabs>
+
         <el-card
-          v-for="exam in examList"
+          v-for="exam in filteredExamList"
           :key="exam.examId"
           class="h5-exam-card student-card-item"
           shadow="hover"
@@ -177,10 +181,38 @@
             <el-icon><Clock /></el-icon>
             {{ formatTime(exam.examTime) }}
           </p>
-          <el-button type="primary" size="small" class="h5-action-btn" @click="handleJoinExam(exam)">
+          <el-button
+            v-if="!exam._attempted"
+            type="primary"
+            size="small"
+            class="h5-action-btn"
+            @click="handleJoinExam(exam)"
+          >
             参加考试
           </el-button>
+          <el-button
+            v-else
+            type="info"
+            size="small"
+            class="h5-action-btn"
+            disabled
+          >
+            已完成
+          </el-button>
         </el-card>
+
+        <!-- 空状态（当前 Tab 无数据） -->
+        <el-empty
+          v-if="filteredExamList.length === 0"
+          class="empty-state"
+        >
+          <template #image>
+            <el-icon class="empty-icon"><Tickets /></el-icon>
+          </template>
+          <template #description>
+            <p>{{ activeTab === 'pending' ? '暂无待参加的考试' : '暂无已完成的考试' }}</p>
+          </template>
+        </el-empty>
       </div>
 
       <div class="h5-bottom-safe" />
@@ -189,12 +221,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Tickets, Reading, Clock, Timer } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
 import { getMyExams } from '../../api/exam'
+import { getChapters } from '../../api/chapter'
+import { getLearningProgress } from '../../api/learning-progress'
+import { getMyAttemptCount } from '../../api/exercise-record'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -215,6 +250,20 @@ onUnmounted(() => {
 const loading = ref(false)
 const errorState = ref(false)
 const examList = ref([])
+const activeTab = ref('pending')
+
+// 按状态分类的考试列表
+const pendingExams = computed(() => examList.value.filter(e => !e._attempted && !e._expired))
+const completedExams = computed(() => examList.value.filter(e => e._attempted))
+const expiredExams = computed(() => examList.value.filter(e => e._expired))
+
+// 根据当前 tab 显示的列表
+const filteredExamList = computed(() => {
+  if (activeTab.value === 'pending') return pendingExams.value
+  if (activeTab.value === 'completed') return completedExams.value
+  if (activeTab.value === 'expired') return expiredExams.value
+  return examList.value
+})
 
 const formatTime = (timeStr) => {
   if (!timeStr) return '未定'
@@ -228,14 +277,25 @@ const fetchExams = async () => {
   try {
     // J3-01: 调用真实的考试列表 API（基于 exercises 表 is_exam=true）
     const res = await getMyExams()
-    examList.value = (res.data || []).map(exam => ({
+    const rawList = (res.data || []).map(exam => ({
       ...exam,
       examId: exam.id,
       examTitle: exam.title,
       courseTitle: exam.courseTitle || '未知课程',
-      examTime: exam.examTime || exam.updatedAt || null,
-      duration: exam.duration || exam.timeLimit || null
+      examTime: exam.startTime || exam.createdAt || null,
+      duration: exam.timeLimit || null
     }))
+
+    // 批量查询每场考试是否已作答（用于状态分类）
+    const attemptResults = await Promise.allSettled(
+      rawList.map(exam => getMyAttemptCount(exam.examId))
+    )
+
+    examList.value = rawList.map((exam, idx) => {
+      const attemptRes = attemptResults[idx]
+      const attempted = attemptRes.status === 'fulfilled' && attemptRes.value?.data?.attemptCount > 0
+      return { ...exam, _attempted: attempted, _expired: false }
+    })
   } catch {
     errorState.value = true
     ElMessage.error('加载考试信息失败')
@@ -244,9 +304,60 @@ const fetchExams = async () => {
   }
 }
 
-const handleJoinExam = (exam) => {
-  // J3-01: 跳转到练习/考试页面
-  router.push(`/student/exercises/${exam.examId || exam.id}`)
+/** 检查前置章节是否全部完成 */
+async function checkPrerequisiteChapters(exam) {
+  const courseId = exam.courseId
+  const chapterId = exam.chapterId
+  if (!courseId || !chapterId) return true // 缺失信息则放行
+
+  try {
+    // 1. 获取课程下所有章节（按 sortOrder 排序）
+    const chaptersRes = await getChapters({ courseId, page: 0, size: 200 })
+    const chapters = chaptersRes.data?.items || chaptersRes.data || []
+    if (chapters.length === 0) return true
+
+    // 找到当前章节的 sortOrder
+    const currentChapter = chapters.find(c => c.id === chapterId || c.chapterId === chapterId)
+    if (!currentChapter) return true
+
+    const currentSortOrder = currentChapter.sortOrder || 0
+
+    // 2. 获取用户在全部章节的学习进度
+    const userId = userStore.userInfo?.id
+    if (!userId) return true
+
+    const progressRes = await getLearningProgress({ userId, courseId })
+    const progressList = progressRes.data || []
+
+    // 3. 检查所有 sortOrder < currentSortOrder 的章节是否已完成
+    const previousChapters = chapters.filter(c => (c.sortOrder || 0) < currentSortOrder)
+    for (const prev of previousChapters) {
+      const progress = progressList.find(p => p.chapterId === prev.id)
+      if (!progress || !progress.completed) {
+        return false
+      }
+    }
+    return true
+  } catch (e) {
+    console.warn('[Exams] 前置章节检查失败，放行:', e)
+    return true // 检查失败时放行，避免阻塞
+  }
+}
+
+const handleJoinExam = async (exam) => {
+  // P0: 检查前置章节是否全部完成
+  const canProceed = await checkPrerequisiteChapters(exam)
+  if (!canProceed) {
+    ElMessageBox.alert('请先完成前置章节的学习和练习，再参加本场考试', '章节未完成', {
+      confirmButtonText: '知道了',
+      type: 'warning'
+    })
+    return
+  }
+
+  // 导航到考试/练习页面（传 examId 以便 ExerciseTake 自动开始考试）
+  const chapterId = exam.chapterId || exam.id
+  router.push({ name: 'StudentExerciseTake', params: { chapterId }, query: { examId: exam.examId } })
 }
 </script>
 
@@ -317,6 +428,19 @@ const handleJoinExam = (exam) => {
 .exam-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg) !important;
+}
+
+/* Tab 样式 */
+.exam-tabs {
+  margin-bottom: var(--space-4);
+}
+
+.exam-tabs :deep(.el-tabs__header) {
+  margin: 0 0 var(--space-3);
+}
+
+.exam-tabs.h5-tabs :deep(.el-tabs__header) {
+  margin: 0 0 var(--space-3);
 }
 
 .exam-info {

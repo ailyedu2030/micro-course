@@ -29,10 +29,10 @@
         <!-- P0 CVE 修复：覆盖 Spring Boot BOM 管理的传递依赖版本 -->
         <tomcat.version>10.1.55</tomcat.version>
         <postgresql.version>42.7.11</postgresql.version>
-        <!-- P3-10 quarantine 机制：默认排除 @Tag("quarantine") 的损坏测试（种子数据/共享状态问题）。 -->
-        <!-- 默认值 = quarantine（CI 与本地 `mvn test` 均跳过）；通过 -Dquarantine=true 由下方 -->
-        <!-- profile 清空本属性，从而把 quarantine 测试纳入运行（用于每周回归/排查）。 -->
-        <surefire.excludedGroups>quarantine</surefire.excludedGroups>
+        <!-- Phase K: 解除 P3-10 quarantine 隔离 — VideoP0ConcurrencyTest / VideoUploadP0ErrorTest
+             种子数据修复后已能稳定 PASS,默认纳入 CI 运行。
+             如未来再有损坏测试,临时用 `@Tag("quarantine")` + `mvn test -Dquarantine=true` 仍可恢复隔离。 -->
+        <surefire.excludedGroups></surefire.excludedGroups>
     </properties>
 
     <dependencies>

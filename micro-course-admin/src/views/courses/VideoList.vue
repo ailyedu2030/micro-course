@@ -215,8 +215,9 @@ import { getToken } from '@/utils/auth'
 const route = useRoute()
 const userStore = useUserStore()
 const courseIdFromRoute = computed(() => route.params.courseId)
+const chapterIdFromRoute = computed(() => route.params.chapterId || route.query.chapterId)
 const lockedChapterId = computed(() => {
-  const id = route.query.chapterId
+  const id = route.params.chapterId || route.query.chapterId
   if (id === undefined || id === null || id === '') return null
   const num = Number(id)
   return Number.isNaN(num) ? null : num

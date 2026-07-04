@@ -99,7 +99,8 @@ const fetchPost = async () => {
 const fetchReplies = async () => {
   try {
     const { data } = await getComments({ postId: route.params.id })
-    replies.value = data || []
+    // P1I-15: 后端返回直接数组（R.ok(list)），但做 safety check 兼容可能的分页格式
+    replies.value = data?.items || data || []
   } catch {
     ElMessage.error('获取回复列表失败')
   }

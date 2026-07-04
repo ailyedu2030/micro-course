@@ -13,6 +13,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CoursePricingService;
+import com.microcourse.util.CourseCacheConstants;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.XssSanitizer;
@@ -34,8 +35,7 @@ public class CoursePricingServiceImpl implements CoursePricingService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CoursePricingServiceImpl.class);
 
-    private static final String COURSE_CACHE_PREFIX = "mc:course:detail:";
-    private static final long COURSE_CACHE_TTL = 300;
+    // 常量已迁移至 CourseCacheConstants
 
     private final ObjectMapper objectMapper;
     private final CourseRepository courseRepository;
@@ -271,7 +271,7 @@ public class CoursePricingServiceImpl implements CoursePricingService {
 
     private void evictCourseCache(Long courseId) {
         try {
-            redisUtil.delete(COURSE_CACHE_PREFIX + courseId);
+            redisUtil.delete(CourseCacheConstants.COURSE_CACHE_PREFIX + courseId);
         } catch (Exception e) {
             LOG.warn("[evictCourseCache] Redis 驱逐失败 courseId={}", courseId, e);
         }

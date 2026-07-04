@@ -23,6 +23,7 @@ public class CoursePageQuery {
     private String sortBy;
     private String sortOrder;
     private String courseType;
+    private String teacherName;
 
     public CoursePageQuery() {}
 
@@ -50,4 +51,6 @@ public class CoursePageQuery {
     public void setSortOrder(String sortOrder) { this.sortOrder = sortOrder; }
     public String getCourseType() { return courseType; }
     public void setCourseType(String courseType) { this.courseType = courseType; }
+    public String getTeacherName() { return teacherName; }
+    public void setTeacherName(String teacherName) { this.teacherName = teacherName; }
 }

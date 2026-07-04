@@ -161,11 +161,19 @@ const TEACHER = [
     icon: 'Notebook',
     children: [
       { label: '我的课程', path: '/teacher/courses', icon: 'VideoCamera' },
-      { label: '课程套餐', path: '/bundles', icon: 'Tickets' },
       { label: '章节管理', path: '/chapters', icon: 'List' },
       { label: '视频管理', path: '/teacher/videos', icon: 'VideoPlay' },
       { label: '互动课件', path: '/teacher/slides', icon: 'Present' },
-      { label: '题库管理', path: '/teacher/questions', icon: 'Document' },
+      { label: '线下课堂', path: '/teacher/courses?courseType=OFFLINE', icon: 'Calendar' },
+      { label: '课程套餐', path: '/bundles', icon: 'Tickets' },
+    ],
+  },
+  {
+    group: '题库管理',
+    icon: 'Document',
+    children: [
+      { label: '题库列表', path: '/teacher/questions', icon: 'List' },
+      { label: '试卷管理', path: '/teacher/exams', icon: 'Tickets' },
     ],
   },
   {

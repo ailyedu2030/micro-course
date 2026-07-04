@@ -13,89 +13,62 @@
         <span class="week-range">{{ weekRangeLabel }}</span>
       </div>
 
-      <!-- Stats Row -->
-      <el-row :gutter="16" class="stats-row">
-        <el-col :span="6">
-          <el-card class="stat-card student-stat-card" shadow="hover">
-            <el-skeleton :loading="loading" animated>
-              <template #template>
+      <!-- Stats Row (骨架屏合并) -->
+      <el-skeleton :loading="loading" animated>
+        <template #template>
+          <el-row :gutter="16" class="stats-row">
+            <el-col :span="6" v-for="i in 4" :key="i">
+              <div style="text-align:center;padding:24px 16px;">
                 <div class="skeleton-icon-wrap">
-                  <el-skeleton-item variant="circle" style="width: 48px; height: 48px;" />
+                  <el-skeleton-item variant="circle" style="width:48px;height:48px" />
                 </div>
-                <el-skeleton-item variant="text" style="width: 60%; margin: 12px auto 0;" />
-                <el-skeleton-item variant="text" style="width: 40%; margin: 8px auto 0;" />
-              </template>
-              <template #default>
+                <el-skeleton-item variant="text" style="width:60%;margin:12px auto 0" />
+                <el-skeleton-item variant="text" style="width:40%;margin:8px auto 0" />
+              </div>
+            </el-col>
+          </el-row>
+        </template>
+        <template #default>
+          <el-row :gutter="16" class="stats-row">
+            <el-col :span="6">
+              <el-card class="stat-card student-stat-card" shadow="hover">
                 <div class="stat-icon-wrap">
                   <el-icon class="stat-icon" aria-hidden="true"><Calendar /></el-icon>
                 </div>
                 <div class="stat-value">{{ reportData.learningDays }}</div>
                 <div class="stat-label">学习天数</div>
-              </template>
-            </el-skeleton>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card student-stat-card" shadow="hover">
-            <el-skeleton :loading="loading" animated>
-              <template #template>
-                <div class="skeleton-icon-wrap">
-                  <el-skeleton-item variant="circle" style="width: 48px; height: 48px;" />
-                </div>
-                <el-skeleton-item variant="text" style="width: 60%; margin: 12px auto 0;" />
-                <el-skeleton-item variant="text" style="width: 40%; margin: 8px auto 0;" />
-              </template>
-              <template #default>
+              </el-card>
+            </el-col>
+            <el-col :span="6">
+              <el-card class="stat-card student-stat-card" shadow="hover">
                 <div class="stat-icon-wrap">
                   <el-icon class="stat-icon" aria-hidden="true"><Timer /></el-icon>
                 </div>
                 <div class="stat-value">{{ formatDuration(reportData.videoMinutes) }}</div>
                 <div class="stat-label">视频学习时长</div>
-              </template>
-            </el-skeleton>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card student-stat-card" shadow="hover">
-            <el-skeleton :loading="loading" animated>
-              <template #template>
-                <div class="skeleton-icon-wrap">
-                  <el-skeleton-item variant="circle" style="width: 48px; height: 48px;" />
-                </div>
-                <el-skeleton-item variant="text" style="width: 60%; margin: 12px auto 0;" />
-                <el-skeleton-item variant="text" style="width: 40%; margin: 8px auto 0;" />
-              </template>
-              <template #default>
+              </el-card>
+            </el-col>
+            <el-col :span="6">
+              <el-card class="stat-card student-stat-card" shadow="hover">
                 <div class="stat-icon-wrap">
                   <el-icon class="stat-icon" aria-hidden="true"><Edit /></el-icon>
                 </div>
                 <div class="stat-value">{{ reportData.exerciseCount }}</div>
                 <div class="stat-label">完成练习数</div>
-              </template>
-            </el-skeleton>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card student-stat-card" shadow="hover">
-            <el-skeleton :loading="loading" animated>
-              <template #template>
-                <div class="skeleton-icon-wrap">
-                  <el-skeleton-item variant="circle" style="width: 48px; height: 48px;" />
-                </div>
-                <el-skeleton-item variant="text" style="width: 60%; margin: 12px auto 0;" />
-                <el-skeleton-item variant="text" style="width: 40%; margin: 8px auto 0;" />
-              </template>
-              <template #default>
+              </el-card>
+            </el-col>
+            <el-col :span="6">
+              <el-card class="stat-card student-stat-card" shadow="hover">
                 <div class="stat-icon-wrap">
                   <el-icon class="stat-icon" aria-hidden="true"><Aim /></el-icon>
                 </div>
                 <div class="stat-value">{{ reportData.accuracyPercent }}%</div>
                 <div class="stat-label">正确率</div>
-              </template>
-            </el-skeleton>
-          </el-card>
-        </el-col>
-      </el-row>
+              </el-card>
+            </el-col>
+          </el-row>
+        </template>
+      </el-skeleton>
 
       <!-- Cards Row -->
       <el-row :gutter="16" class="cards-row">
@@ -141,23 +114,12 @@
                 学习建议
               </div>
             </template>
-            <el-skeleton :loading="loading" animated>
-              <template #template>
-                <div class="skeleton-list">
-                  <el-skeleton-item variant="text" style="width: 90%; height: 20px; margin-bottom: var(--space-3);" />
-                  <el-skeleton-item variant="text" style="width: 75%; height: 20px; margin-bottom: var(--space-3);" />
-                  <el-skeleton-item variant="text" style="width: 85%; height: 20px;" />
-                </div>
-              </template>
-              <template #default>
-                <ul class="ai-suggestions">
-                  <li v-for="(tip, idx) in aiSuggestions" :key="idx" class="ai-tip-item">
-                    <el-icon class="tip-icon"><ArrowRight /></el-icon>
-                    <span>{{ tip }}</span>
-                  </li>
-                </ul>
-              </template>
-            </el-skeleton>
+            <ul class="ai-suggestions">
+              <li v-for="(tip, idx) in aiSuggestions" :key="idx" class="ai-tip-item">
+                <el-icon class="tip-icon"><ArrowRight /></el-icon>
+                <span>{{ tip }}</span>
+              </li>
+            </ul>
           </el-card>
         </el-col>
       </el-row>
@@ -170,21 +132,25 @@
         <span class="week-range-h5">{{ weekRangeLabel }}</span>
       </div>
 
-      <!-- Stats 2x2 Grid -->
-      <el-row :gutter="12" class="stats-row-h5">
-        <el-col :span="12">
-          <el-card class="stat-card-h5" shadow="hover">
-            <el-skeleton :loading="loading" animated>
-              <template #template>
-                <div style="display: flex; align-items: center; gap: var(--space-3);">
-                  <el-skeleton-item variant="circle" style="width: 40px; height: 40px;" />
-                  <div>
-                    <el-skeleton-item variant="text" style="width: 50px;" />
-                    <el-skeleton-item variant="text" style="width: 70px; margin-top: var(--space-2);" />
-                  </div>
+      <!-- Stats 2x2 Grid (骨架屏合并) -->
+      <el-skeleton :loading="loading" animated>
+        <template #template>
+          <el-row :gutter="12" class="stats-row-h5">
+            <el-col :span="12" v-for="i in 4" :key="i">
+              <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);">
+                <el-skeleton-item variant="circle" style="width:40px;height:40px" />
+                <div>
+                  <el-skeleton-item variant="text" style="width:50px" />
+                  <el-skeleton-item variant="text" style="width:70px;margin-top:var(--space-2)" />
                 </div>
-              </template>
-              <template #default>
+              </div>
+            </el-col>
+          </el-row>
+        </template>
+        <template #default>
+          <el-row :gutter="12" class="stats-row-h5">
+            <el-col :span="12">
+              <el-card class="stat-card-h5" shadow="hover">
                 <div class="stat-icon-wrap-h5">
                   <el-icon class="stat-icon-sm"><Calendar /></el-icon>
                 </div>
@@ -192,23 +158,10 @@
                   <div class="stat-value">{{ reportData.learningDays }}</div>
                   <div class="stat-label">学习天数</div>
                 </div>
-              </template>
-            </el-skeleton>
-          </el-card>
-        </el-col>
-        <el-col :span="12">
-          <el-card class="stat-card-h5" shadow="hover">
-            <el-skeleton :loading="loading" animated>
-              <template #template>
-                <div style="display: flex; align-items: center; gap: var(--space-3);">
-                  <el-skeleton-item variant="circle" style="width: 40px; height: 40px;" />
-                  <div>
-                    <el-skeleton-item variant="text" style="width: 80px;" />
-                    <el-skeleton-item variant="text" style="width: 70px; margin-top: var(--space-2);" />
-                  </div>
-                </div>
-              </template>
-              <template #default>
+              </el-card>
+            </el-col>
+            <el-col :span="12">
+              <el-card class="stat-card-h5" shadow="hover">
                 <div class="stat-icon-wrap-h5">
                   <el-icon class="stat-icon-sm"><Timer /></el-icon>
                 </div>
@@ -216,23 +169,10 @@
                   <div class="stat-value">{{ formatDuration(reportData.videoMinutes) }}</div>
                   <div class="stat-label">视频学习时长</div>
                 </div>
-              </template>
-            </el-skeleton>
-          </el-card>
-        </el-col>
-        <el-col :span="12">
-          <el-card class="stat-card-h5" shadow="hover">
-            <el-skeleton :loading="loading" animated>
-              <template #template>
-                <div style="display: flex; align-items: center; gap: var(--space-3);">
-                  <el-skeleton-item variant="circle" style="width: 40px; height: 40px;" />
-                  <div>
-                    <el-skeleton-item variant="text" style="width: 50px;" />
-                    <el-skeleton-item variant="text" style="width: 70px; margin-top: var(--space-2);" />
-                  </div>
-                </div>
-              </template>
-              <template #default>
+              </el-card>
+            </el-col>
+            <el-col :span="12">
+              <el-card class="stat-card-h5" shadow="hover">
                 <div class="stat-icon-wrap-h5">
                   <el-icon class="stat-icon-sm"><Edit /></el-icon>
                 </div>
@@ -240,23 +180,10 @@
                   <div class="stat-value">{{ reportData.exerciseCount }}</div>
                   <div class="stat-label">完成练习数</div>
                 </div>
-              </template>
-            </el-skeleton>
-          </el-card>
-        </el-col>
-        <el-col :span="12">
-          <el-card class="stat-card-h5" shadow="hover">
-            <el-skeleton :loading="loading" animated>
-              <template #template>
-                <div style="display: flex; align-items: center; gap: var(--space-3);">
-                  <el-skeleton-item variant="circle" style="width: 40px; height: 40px;" />
-                  <div>
-                    <el-skeleton-item variant="text" style="width: 50px;" />
-                    <el-skeleton-item variant="text" style="width: 70px; margin-top: var(--space-2);" />
-                  </div>
-                </div>
-              </template>
-              <template #default>
+              </el-card>
+            </el-col>
+            <el-col :span="12">
+              <el-card class="stat-card-h5" shadow="hover">
                 <div class="stat-icon-wrap-h5">
                   <el-icon class="stat-icon-sm"><Aim /></el-icon>
                 </div>
@@ -264,11 +191,11 @@
                   <div class="stat-value">{{ reportData.accuracyPercent }}%</div>
                   <div class="stat-label">正确率</div>
                 </div>
-              </template>
-            </el-skeleton>
-          </el-card>
-        </el-col>
-      </el-row>
+              </el-card>
+            </el-col>
+          </el-row>
+        </template>
+      </el-skeleton>
 
       <!-- Check-in Calendar H5 -->
       <el-card class="detail-card-h5" shadow="never">
@@ -306,23 +233,12 @@
             AI 学习建议
           </div>
         </template>
-        <el-skeleton :loading="loading" animated>
-          <template #template>
-            <div class="skeleton-list">
-              <el-skeleton-item variant="text" style="width: 90%; height: 18px; margin-bottom: var(--space-3);" />
-              <el-skeleton-item variant="text" style="width: 75%; height: 18px; margin-bottom: var(--space-3);" />
-              <el-skeleton-item variant="text" style="width: 80%; height: 18px;" />
-            </div>
-          </template>
-          <template #default>
-            <ul class="ai-suggestions">
-              <li v-for="(tip, idx) in aiSuggestions" :key="idx" class="ai-tip-item">
-                <el-icon class="tip-icon"><ArrowRight /></el-icon>
-                <span>{{ tip }}</span>
-              </li>
-            </ul>
-          </template>
-        </el-skeleton>
+        <ul class="ai-suggestions">
+          <li v-for="(tip, idx) in aiSuggestions" :key="idx" class="ai-tip-item">
+            <el-icon class="tip-icon"><ArrowRight /></el-icon>
+            <span>{{ tip }}</span>
+          </li>
+        </ul>
       </el-card>
     </template>
   </div>

@@ -9,7 +9,7 @@
 </template>
 
 <script setup>
-defineProps({ uploading: Boolean, handleUpload: { type: Function, required: true } })
+defineProps({ uploading: Boolean, handleUpload: { type: Function, required: true }, chapterId: { type: Number, default: null } })
 </script>
 
 <style scoped>

@@ -17,6 +17,8 @@ public class ExerciseCreateRequest {
     @NotBlank(message = "练习标题不能为空")
     private String title;
 
+    private String description;
+
     private Integer passScore;
 
     private Integer timeLimit;
@@ -31,6 +33,10 @@ public class ExerciseCreateRequest {
 
     private List<ExerciseQuestionItem> questions;
 
+    private Boolean isExam;
+
+    private Integer totalScore;
+
     public ExerciseCreateRequest() {}
 
     public Long getCourseId() { return courseId; }
@@ -41,6 +47,8 @@ public class ExerciseCreateRequest {
     public void setChapterIds(List<Long> chapterIds) { this.chapterIds = chapterIds; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public Integer getPassScore() { return passScore; }
     public void setPassScore(Integer passScore) { this.passScore = passScore; }
     public Integer getTimeLimit() { return timeLimit; }
@@ -55,6 +63,10 @@ public class ExerciseCreateRequest {
     public void setShuffleOptions(Boolean shuffleOptions) { this.shuffleOptions = shuffleOptions; }
     public List<ExerciseQuestionItem> getQuestions() { return questions; }
     public void setQuestions(List<ExerciseQuestionItem> questions) { this.questions = questions; }
+    public Boolean getIsExam() { return isExam; }
+    public void setIsExam(Boolean isExam) { this.isExam = isExam; }
+    public Integer getTotalScore() { return totalScore; }
+    public void setTotalScore(Integer totalScore) { this.totalScore = totalScore; }
 
     public static class ExerciseQuestionItem {
         private Long questionId;

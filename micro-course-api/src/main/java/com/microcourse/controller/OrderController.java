@@ -4,24 +4,29 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.dto.order.BatchOrderRequest;
 import com.microcourse.dto.order.OrderVO;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.OrderService;
 import com.microcourse.util.SecurityUtil;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -56,6 +61,31 @@ public class OrderController {
         return R.ok(orderService.createOrder(userId,
                 body == null ? null : body.get("courseId"),
                 bundleId));
+    }
+
+    /**
+     * J9-05: 批量下单 — 事务原子性创建多个订单并支付。
+     * 创建过程中任一失败则全部回滚；支付失败不阻断其他课程（订单保持 PENDING）。
+     */
+    @PostMapping("/batch")
+    @PreAuthorize("hasAnyRole('STUDENT')")
+    @AuditedLog("批量下单")
+    @Transactional(rollbackFor = Exception.class)
+    public R<List<OrderVO>> batchCreate(@Valid @RequestBody BatchOrderRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        List<OrderVO> orders = new ArrayList<>();
+        for (Long courseId : request.getCourseIds()) {
+            // 原子创建订单（创建失败触发整个事务回滚）
+            OrderVO order = orderService.createOrder(userId, courseId, null);
+            orders.add(order);
+            // 立即支付（支付失败不阻断其他课程，但记录日志）
+            try {
+                order = orderService.pay(order.getId(), request.getPaymentMethod());
+            } catch (Exception e) {
+                log.warn("[BatchOrder] 课程 {} 支付失败: {}", courseId, e.getMessage());
+            }
+        }
+        return R.ok(orders);
     }
 
     @GetMapping("/{id}")

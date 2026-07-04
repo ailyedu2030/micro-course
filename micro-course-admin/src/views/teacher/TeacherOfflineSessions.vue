@@ -3,8 +3,9 @@
     <div class="page-breadcrumb">
       <el-breadcrumb>
         <el-breadcrumb-item :to="{ path: '/teacher/dashboard' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item>线下课管理</el-breadcrumb-item>
-        <el-breadcrumb-item>{{ chapterTitle || '加载中...' }}</el-breadcrumb-item>
+      <el-breadcrumb-item v-if="courseTitle">{{ courseTitle }}</el-breadcrumb-item>
+      <el-breadcrumb-item>线下课管理</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ chapterTitle || '加载中...' }}</el-breadcrumb-item>
       </el-breadcrumb>
     </div>
 
@@ -145,13 +146,16 @@ import {
   updateAttendance
 } from '@/api/offline-session'
 import { getChapterById } from '@/api/chapter'
+import { getCourseById } from '@/api/course'
 
 const router = useRouter()
 const route = useRoute()
 const chapterId = computed(() => route.params.chapterId)
+const courseId = computed(() => route.params.courseId || null)
 
 const loading = ref(true)
 const chapterTitle = ref('')
+const courseTitle = ref('')
 const sessions = ref([])
 const attendanceMap = ref({})
 
@@ -174,7 +178,7 @@ const formRules = {
   sessionDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
   startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
   endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
-  location: [{ required: true, message: '请输入地点', trigger: 'blur' }]
+  location: [{ max: 200, message: '长度不超过200字符', trigger: 'blur' }]
 }
 
 const attendanceDialogVisible = ref(false)
@@ -227,6 +231,14 @@ async function fetchChapter() {
   } catch {
     chapterTitle.value = '线下课程'
   }
+}
+
+async function fetchCourse() {
+  if (!courseId.value) return
+  try {
+    const { data } = await getCourseById(courseId.value)
+    courseTitle.value = data?.title || ''
+  } catch { /* 课程标题仅供面包屑展示 */ }
 }
 
 async function fetchSessions() {
@@ -354,8 +366,7 @@ async function handleStatusChange(row, newStatus) {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchChapter(), fetchSessions()])
-  loading.value = false
+  await Promise.all([fetchChapter(), fetchCourse(), fetchSessions()])
 })
 </script>
 

@@ -21,6 +21,7 @@ import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseQueryService;
+import com.microcourse.util.CourseCacheConstants;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
@@ -38,13 +39,8 @@ public class CourseQueryServiceImpl implements CourseQueryService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CourseQueryServiceImpl.class);
 
-    // ★ Round 9-2 修复：课程详情缓存（5 分钟）
-    private static final String COURSE_CACHE_PREFIX = "mc:course:detail:";
-    private static final long COURSE_CACHE_TTL = 300;
-
-    // ★ Round 9-2 修复：课程统计缓存（1 小时）
-    private static final String COURSE_STATS_CACHE_PREFIX = "mc:course:stats:";
-    private static final long COURSE_STATS_CACHE_TTL = 3600;
+    // ★ Round 9-2 修复：课程详情缓存（5 分钟）—— 常量已迁移至 CourseCacheConstants
+    // ★ Round 9-2 修复：课程统计缓存（1 小时）—— 常量已迁移至 CourseCacheConstants
 
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
@@ -111,6 +107,18 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         if (query.getTeacherId() != null && !teacherScoped) {
             wrapper.eq(Course::getTeacherId, query.getTeacherId());
         }
+        // P2 修复: 按教师姓名搜索（join users 表）
+        if (query.getTeacherName() != null && !query.getTeacherName().isBlank()) {
+            LambdaQueryWrapper<User> teacherNameWrapper = new LambdaQueryWrapper<>();
+            teacherNameWrapper.select(User::getId).like(User::getRealName, query.getTeacherName());
+            List<Long> teacherIds = userRepository.selectList(teacherNameWrapper)
+                    .stream().map(User::getId).collect(Collectors.toList());
+            if (teacherIds.isEmpty()) {
+                wrapper.eq(Course::getId, -1L);
+            } else {
+                wrapper.in(Course::getTeacherId, teacherIds);
+            }
+        }
         if (query.getStatus() != null) {
             wrapper.eq(Course::getStatus, query.getStatus());
         } else if (!teacherScoped) {
@@ -172,7 +180,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
     @Override
     public CourseVO getById(Long id) {
         // ★ Round 9-2 修复：1) 查缓存（Redis 故障降级回 DB，硬约束 #2）
-        String cacheKey = COURSE_CACHE_PREFIX + id;
+        String cacheKey = CourseCacheConstants.COURSE_CACHE_PREFIX + id;
         try {
             Object cached = redisUtil.get(cacheKey);
             if (cached instanceof CourseVO) {
@@ -204,7 +212,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
 
         // 3) 写缓存（含章节的完整 VO；Redis 故障不影响主流程，硬约束 #2）
         try {
-            redisUtil.set(cacheKey, vo, COURSE_CACHE_TTL, TimeUnit.SECONDS);
+            redisUtil.set(cacheKey, vo, CourseCacheConstants.COURSE_CACHE_TTL, TimeUnit.SECONDS);
         } catch (Exception e) {
             LOG.warn("[Round9-2] 课程详情缓存写入失败, id={}", id, e);
         }

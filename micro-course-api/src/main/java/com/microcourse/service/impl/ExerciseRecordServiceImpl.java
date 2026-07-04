@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.dto.ExerciseRecordVO;
 import com.microcourse.dto.SubmitAnswerRequest;
@@ -155,6 +156,9 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         // 5. 计算总分，判断是否通过
         boolean passed = totalScore >= exercise.getPassScore();
 
+        // P0 修复: 检查是否有需要人工批改的主观题（SHORT_ANSWER/ESSAY）
+        boolean hasManualGrading = gradingResults.stream().anyMatch(r -> r.needsManualGrading);
+
         // 6. 计算 attemptNo:用 MAX(attempt_no) 在事务内获取当前最大值 +1,并捕获 DuplicateKeyException 兜底(CON-004 修复)
         int attemptNo;
         try {
@@ -191,6 +195,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         record.setPassed(passed);
         record.setDuration(request.getDuration());
         record.setAnswers(answersJson);
+        record.setNeedsManualGrading(hasManualGrading);
         record.setSubmittedAt(LocalDateTime.now());
         try {
             exerciseRecordRepository.insert(record);
@@ -289,6 +294,33 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                                             .setSql("last_wrong_at = NOW()"));
                         }
                     });
+        }
+
+        // P1-C: 答对归档逻辑 - 答对题目且已存在错题记录时,自动减少 wrong_count
+        Set<Long> correctQuestionIds = gradingResults.stream()
+                .filter(r -> Boolean.TRUE.equals(r.isCorrect) && r.questionId != null)
+                .map(r -> r.questionId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!correctQuestionIds.isEmpty()) {
+            LambdaQueryWrapper<WrongQuestion> correctWQ = new LambdaQueryWrapper<>();
+            correctWQ.eq(WrongQuestion::getUserId, request.getUserId())
+                     .in(WrongQuestion::getQuestionId, correctQuestionIds);
+            List<WrongQuestion> existingCorrectWQ = wrongQuestionRepository.selectList(correctWQ);
+
+            for (WrongQuestion wq : existingCorrectWQ) {
+                long newCount = Math.max(0, wq.getWrongCount() - 1);
+                if (newCount <= 0) {
+                    // 完全掌握了,直接删除错题记录
+                    wrongQuestionRepository.deleteById(wq.getId());
+                } else {
+                    // 还有错次,减 1
+                    wrongQuestionRepository.update(null,
+                            new LambdaUpdateWrapper<WrongQuestion>()
+                                    .eq(WrongQuestion::getId, wq.getId())
+                                    .set(WrongQuestion::getWrongCount, newCount)
+                                    .set(WrongQuestion::getLastWrongAt, LocalDateTime.now()));
+                }
+            }
         }
 
         // Phase B-2 (P0-7)：练习提交批改完成后，异步通知课程教师。
@@ -505,30 +537,38 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                .last("LIMIT 2000");
         List<ExerciseRecord> records = exerciseRecordRepository.selectList(wrapper);
 
-        // Group by date
+        // P0 修复: 基于逐题 isCorrect 统计正确率，而非基于整卷 passed
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        Map<LocalDate, List<ExerciseRecord>> byDate = new TreeMap<>();
+        Map<LocalDate, int[]> byDate = new TreeMap<>();  // [totalQ, correctQ]
         for (ExerciseRecord r : records) {
-            if (r.getSubmittedAt() != null) {
-                LocalDate date = r.getSubmittedAt().toLocalDate();
-                byDate.computeIfAbsent(date, k -> new ArrayList<>()).add(r);
+            if (r.getSubmittedAt() == null) continue;
+            LocalDate date = r.getSubmittedAt().toLocalDate();
+            int[] counter = byDate.computeIfAbsent(date, k -> new int[2]);
+            String answers = r.getAnswers();
+            if (answers != null && !answers.isBlank()) {
+                try {
+                    List<Map<String, Object>> items = objectMapper.readValue(answers, new TypeReference<List<Map<String, Object>>>() {});
+                    for (Map<String, Object> item : items) {
+                        counter[0]++;
+                        if (Boolean.TRUE.equals(item.get("isCorrect"))) {
+                            counter[1]++;
+                        }
+                    }
+                } catch (JsonProcessingException ignored) {
+                    // 损坏的 answers JSON，按单题 0/1 处理（即整卷算 0 题 0 对）
+                }
             }
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map.Entry<LocalDate, List<ExerciseRecord>> entry : byDate.entrySet()) {
+        for (Map.Entry<LocalDate, int[]> e : byDate.entrySet()) {
             Map<String, Object> dayData = new HashMap<>();
-            dayData.put("date", entry.getKey().format(formatter));
-
-            int totalCount = entry.getValue().size();
-            int correctCount = (int) entry.getValue().stream()
-                    .filter(r -> Boolean.TRUE.equals(r.getPassed()))
-                    .count();
-            double accuracy = totalCount == 0 ? 0.0 : (double) correctCount / totalCount;
-
-            dayData.put("totalCount", totalCount);
-            dayData.put("correctCount", correctCount);
-            dayData.put("accuracy", Math.round(accuracy * 10000.0) / 10000.0); // 保留4位小数
+            dayData.put("date", e.getKey().format(formatter));
+            int total = e.getValue()[0];
+            int correct = e.getValue()[1];
+            dayData.put("totalCount", total);
+            dayData.put("correctCount", correct);
+            dayData.put("accuracy", total == 0 ? 0.0 : Math.round((double) correct * 10000.0 / total) / 10000.0);
             result.add(dayData);
         }
         return result;

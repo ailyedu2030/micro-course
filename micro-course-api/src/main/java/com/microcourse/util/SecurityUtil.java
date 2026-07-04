@@ -106,4 +106,17 @@ public final class SecurityUtil {
     public static boolean isAdminOrAcademic() {
         return isAdmin() || hasRole("ACADEMIC");
     }
+
+    /**
+     * 获取当前用户 ID，异常时返回 null 而非抛异常
+     *
+     * @return 当前用户 ID 或 null
+     */
+    public static Long getCurrentUserIdOpt() {
+        try {
+            return getCurrentUserId();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

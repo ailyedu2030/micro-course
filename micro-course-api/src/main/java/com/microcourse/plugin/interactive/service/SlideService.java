@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface SlideService {
 
-    SlideUploadResponse upload(Long courseId, String originalFilename, byte[] fileBytes);
+    SlideUploadResponse upload(Long courseId, String originalFilename, byte[] fileBytes, Long chapterId);
 
     SlideVO getByCourseId(Long courseId);
 

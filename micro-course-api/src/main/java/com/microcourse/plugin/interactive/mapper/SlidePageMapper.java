@@ -16,13 +16,13 @@ public interface SlidePageMapper extends BaseMapper<SlidePage> {
      */
     @Insert({
         "<script>",
-        "INSERT INTO slide_pages (slide_id, course_id, page_number, image_url, thumbnail_url, ",
+        "INSERT INTO slide_pages (slide_id, course_id, page_number, file_uuid, image_url, thumbnail_url, ",
         "image_width, image_height, extracted_text, has_animation, has_embedded_media, ",
-        "narration_status, created_at, updated_at) VALUES ",
+        "chapter_id, narration_status, created_at, updated_at) VALUES ",
         "<foreach collection='list' item='p' separator=','>",
-        "(#{p.slideId}, #{p.courseId}, #{p.pageNumber}, #{p.imageUrl}, #{p.thumbnailUrl}, ",
+        "(#{p.slideId}, #{p.courseId}, #{p.pageNumber}, #{p.fileUuid}, #{p.imageUrl}, #{p.thumbnailUrl}, ",
         "#{p.imageWidth}, #{p.imageHeight}, #{p.extractedText}, #{p.hasAnimation}, #{p.hasEmbeddedMedia}, ",
-        "#{p.narrationStatus}, #{p.createdAt}, #{p.updatedAt})",
+        "#{p.chapterId}, #{p.narrationStatus}, #{p.createdAt}, #{p.updatedAt})",
         "</foreach>",
         "</script>"
     })

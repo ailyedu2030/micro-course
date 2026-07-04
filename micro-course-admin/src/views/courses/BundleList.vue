@@ -45,7 +45,7 @@
         <el-pagination
           v-model:current-page="page"
           :page-size="size"
-          :total="total"
+          :total="totalElements"
           layout="total, prev, pager, next"
           @current-change="fetchBundles"
         />
@@ -121,7 +121,7 @@ const userStore = useUserStore()
 const bundles = ref([])
 const page = ref(1)
 const size = ref(20)
-const total = ref(0)
+const totalElements = ref(0)
 
 const canManage = (row) => {
   // ADMIN 可管理所有，TEACHER 只可管理自己创建的
@@ -150,7 +150,7 @@ const fetchBundles = async () => {
   try {
     const { data } = await getBundles({ page: page.value - 1, size: size.value })
     bundles.value = data.items || []
-    total.value = data.totalElements || 0
+    totalElements.value = data.totalElements || 0
   } catch (e) { ElMessage.error(e?.response?.data?.message || '加载套件列表失败') }
   finally { loading.value = false }
 }

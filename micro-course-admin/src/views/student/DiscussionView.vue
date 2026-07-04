@@ -349,7 +349,8 @@ const handleSubmitPost = async () => {
     await createPost({
       title: postForm.value.title,
       content: postForm.value.content,
-      isAnonymous: postForm.value.isAnonymous
+      isAnonymous: postForm.value.isAnonymous,
+      chapterId: Number(chapterId.value) || null
     })
     ElMessage.success('发布成功')
     postDialogVisible.value = false
@@ -448,9 +449,11 @@ const handleDeletePost = async () => {
   }
 }
 
+let fetchTimer = null
 const handleSizeChange = () => {
   page.value = 1
-  fetchData()
+  clearTimeout(fetchTimer)
+  fetchTimer = setTimeout(fetchData, 200)
 }
 
 const handlePageChange = () => {

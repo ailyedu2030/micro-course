@@ -26,13 +26,15 @@
             <el-button type="success" @click="handleApprove">审核通过</el-button>
             <el-button type="danger" @click="handleReject">驳回</el-button>
           </template>
-          <template v-if="courseData.status === 2">
+          <template v-if="courseData.status === 2 && userRole === 'ADMIN'">
             <el-button type="primary" @click="handlePublish">发布</el-button>
           </template>
-          <template v-if="courseData.status === 4">
+          <template v-if="courseData.status === 4 && userRole === 'ADMIN'">
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
+          <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">管理课件</el-button>
           <el-button type="primary" plain @click="switchToEdit">编辑</el-button>
+          <el-button type="warning" plain @click="handleCopy" v-if="!isEditMode">复制</el-button>
           <el-button @click="handleBack">返回</el-button>
         </div>
       </div>
@@ -72,9 +74,9 @@
           <div class="info-item">
             <label>难度</label>
             <span>
-              <template v-if="courseData.difficulty === 1 || courseData.difficulty === 'BEGINNER'">初级</template>
-              <template v-else-if="courseData.difficulty === 2 || courseData.difficulty === 'INTERMEDIATE'">中级</template>
-              <template v-else-if="courseData.difficulty === 3 || courseData.difficulty === 'ADVANCED'">高级</template>
+              <template v-if="courseData.difficulty === 1">初级</template>
+              <template v-else-if="courseData.difficulty === 2">中级</template>
+              <template v-else-if="courseData.difficulty === 3">高级</template>
               <template v-else>-</template>
             </span>
           </div>
@@ -140,10 +142,33 @@
             <template #default="{ row }">{{ row.duration || '-' }}</template>
           </el-table-column>
           <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
-          <el-table-column label="操作" width="200" align="center" fixed="right">
+          <el-table-column label="内容管理" width="260" fixed="right">
+            <template #default="{ row }">
+              <template v-if="row.chapterType === 'VIDEO'">
+                <el-button link type="primary" @click.stop="gotoChapterContent(row.id, 'manage-videos')">
+                  📹 管理视频
+                </el-button>
+              </template>
+              <template v-else-if="row.chapterType === 'INTERACTIVE'">
+                <el-button link type="success" @click.stop="gotoChapterContent(row.id, 'manage-slides')">
+                  📊 管理课件
+                </el-button>
+              </template>
+              <template v-else-if="row.chapterType === 'OFFLINE'">
+                <el-button link type="info" @click.stop="gotoChapterContent(row.id, 'manage-offline')">
+                  📍 配置场次
+                </el-button>
+              </template>
+              <template v-else-if="row.chapterType === 'EXERCISE'">
+                <el-button link type="warning" @click.stop="gotoChapterContent(row.id, 'manage-exam')">
+                  📝 智能组卷
+                </el-button>
+              </template>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
-              <el-button type="success" link size="small" @click="handleManageChapterContent(row)">内容</el-button>
               <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">删除</el-button>
             </template>
           </el-table-column>
@@ -312,7 +337,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
 import { useUserStore } from '@/store/user'
-import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover } from '@/api/course'
+import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse, copyCourse } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 import { QuillEditor } from '@vueup/vue-quill'
@@ -398,6 +423,7 @@ const fetchCourse = async () => {
       formData.freeDeptIds = data.freeDeptIds || '[]'
       formData.discountScope = data.discountScope || 'none'
       formData.discountPercent = data.discountPercent ?? 0
+      formData.teacherId = data.teacherId || null
       if (data.coverUrl) coverPreviewUrl.value = data.coverUrl
     }
   } catch (e) { ElMessage.error(e?.response?.data?.message || '获取课程信息失败') }
@@ -421,6 +447,7 @@ const initSortable = () => {
 
 // ===== 页面操作 =====
 const handleBack = () => router.push('/courses')
+const goSlides = () => router.push(`/teacher/courses/${route.params.id}/slides/manage`)
 const switchToEdit = () => router.push(`/courses/${courseId.value}/edit`)
 const switchToView = () => router.push(`/courses/${courseId.value}`)
 
@@ -444,13 +471,25 @@ const handleReject = async () => {
 }
 const handlePublish = async () => {
   try { await ElMessageBox.confirm('确定发布？', '提示', { type: 'info' }) } catch { return }
-  try { await updateCourseStatus(courseId.value, 4); ElMessage.success('已发布'); fetchCourse() }
+  try { await publishCourse(courseId.value); ElMessage.success('已发布'); fetchCourse() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 const handleUnpublish = async () => {
   try { await ElMessageBox.confirm('确定下架？', '提示', { type: 'info' }) } catch { return }
-  try { await updateCourseStatus(courseId.value, 5); ElMessage.success('已下架'); fetchCourse() }
+  try { await unpublishCourse(courseId.value); ElMessage.success('已下架'); fetchCourse() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+}
+
+const handleCopy = async () => {
+  try { await ElMessageBox.confirm('复制课程后,视频需手动重新上传。是否继续?', '提示', { type: 'info' }) } catch { return }
+  try {
+    const res = await copyCourse(courseId.value)
+    ElMessage.success('已复制,视频需手动上传')
+    if (res.data?.videoCopied === false) {
+      ElMessageBox.alert('副本课程已创建,但视频内容未复制,请逐个章节手动上传', '提示')
+    }
+    router.push(`/courses/${res.data.id}`)
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '复制失败') }
 }
 
 // ===== 编辑提交 =====
@@ -483,7 +522,11 @@ const handleSubmit = async () => {
       description: formData.description,
       creditHours: formData.creditHours, semester: formData.semester || undefined,
       difficulty: formData.difficulty, courseType: formData.courseType,
-      price: formData.price, isFree: formData.isFree
+      price: formData.price, isFree: formData.isFree,
+      freeAccessScope: formData.freeAccessScope,
+      freeDeptIds: formData.freeDeptIds,
+      discountScope: formData.discountScope,
+      discountPercent: formData.discountPercent
     })
     if (coverFile.value) {
       try { await updateCourseCover(courseId.value, coverFile.value) }
@@ -508,17 +551,8 @@ const handleEditChapter = (row) => {
   chapterFormData.chapterType = row.chapterType || 'VIDEO'; chapterFormData.duration = row.duration ?? 0
   chapterDialogVisible.value = true
 }
-const handleManageChapterContent = (row) => {
-  const cid = courseId.value
-  if (row.chapterType === 'INTERACTIVE') {
-    router.push(`/teacher/courses/${cid}/slides/manage`)
-  } else if (row.chapterType === 'EXERCISE') {
-    router.push(`/courses/${cid}/exercises`)
-  } else if (row.chapterType === 'OFFLINE') {
-    router.push(`/teacher/chapters/${row.id}/offline-sessions`)
-  } else {
-    router.push(`/courses/${cid}/videos?chapterId=${row.id}`)
-  }
+const gotoChapterContent = (chapterId, type) => {
+  router.push(`/teacher/courses/${courseId.value}/chapters/${chapterId}/${type}`)
 }
 const handleDeleteChapter = async (row) => {
   try { await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' }) } catch { return }

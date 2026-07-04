@@ -196,7 +196,7 @@
                     class="fill-input"
                   />
                 </template>
-                <template v-else-if="currentQuestion.questionType === 'COMPREHENSIVE'">
+                <template v-else-if="currentQuestion.questionType === 'ESSAY'">
                   <el-input
                     v-model="answers[currentQuestion.id]"
                     type="textarea"
@@ -422,7 +422,7 @@
                   class="fill-input"
                 />
               </template>
-              <template v-else-if="currentQuestion.questionType === 'COMPREHENSIVE'">
+              <template v-else-if="currentQuestion.questionType === 'ESSAY'">
                 <el-input
                   v-model="answers[currentQuestion.id]"
                   type="textarea"
@@ -716,6 +716,18 @@ async function fetchExerciseList() {
   try {
     const { data } = await getExercises({ chapterId: chapterId.value })
     exerciseList.value = Array.isArray(data) ? data : (data?.items || [])
+
+    // P0-1: 如果路由 query 包含 examId，自动开始考试（从考试列表导航过来）
+    const autoExamId = route.query.examId
+    if (autoExamId) {
+      const autoExam = exerciseList.value.find(
+        ex => String(ex.id) === String(autoExamId) || String(ex.exerciseId) === String(autoExamId)
+      )
+      if (autoExam) {
+        // 延时确保组件渲染完成后自动开始
+        setTimeout(() => startExercise(autoExam), 300)
+      }
+    }
   } catch {
     ElMessage.error('获取练习列表失败')
   } finally {
@@ -1009,12 +1021,12 @@ function isMultipleCorrect(value, answer) {
 }
 
 function questionTypeLabel(type) {
-  const map = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', COMPREHENSIVE: '综合题' }
+  const map = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', ESSAY: '综合题' }
   return map[type] || type
 }
 
 function questionTypeTagType(type) {
-  const map = { SINGLE: 'primary', MULTIPLE: 'warning', JUDGE: 'info', FILL: 'success', COMPREHENSIVE: 'danger' }
+  const map = { SINGLE: 'primary', MULTIPLE: 'warning', JUDGE: 'info', FILL: 'success', ESSAY: 'danger' }
   return map[type] || 'info'
 }
 

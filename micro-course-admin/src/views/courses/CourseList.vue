@@ -105,7 +105,7 @@
           <template #default="{ row }">
             <el-tag v-if="row.status === 0" type="info" size="small">草稿</el-tag>
             <el-tag v-else-if="row.status === 1" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="row.status === 2" type="success" size="small">通过</el-tag>
+            <el-tag v-else-if="row.status === 2" type="success" size="small">已通过</el-tag>
             <el-tag v-else-if="row.status === 3" type="danger" size="small">驳回</el-tag>
             <el-tag v-else-if="row.status === 4" type="success" size="small">已发布</el-tag>
             <el-tag v-else-if="row.status === 5" type="warning" size="small">下架</el-tag>
@@ -115,12 +115,11 @@
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button v-if="row.courseType !== 'INTERACTIVE'" type="primary" link size="small" @click.stop="goWorkspace(row)">工作台</el-button>
             <el-button type="primary" link size="small" @click.stop="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.courseType === 'INTERACTIVE'" type="success" link size="small" @click.stop="goSlides(row)">课件</el-button>
             <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">审核通过</el-button>
             <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleReject(row)">驳回</el-button>
-            <el-button v-if="row.status === 2 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">发布</el-button>
+            <el-button v-if="row.status === 2 && userRole === 'ADMIN'" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">发布</el-button>
             <el-button v-if="row.status === 4 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="warning" link size="small" :loading="actingId === row.id" @click.stop="handleUnpublish(row)">下架</el-button>
             <el-button type="info" link size="small" @click.stop="handleView(row)">查看</el-button>
             <el-button type="primary" link size="small" @click.stop="handleCopy(row)">复制</el-button>
@@ -227,7 +226,7 @@
           <el-col :span="12">
             <el-form-item label="课程封面">
               <template v-if="!coverPreviewUrl">
-                <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png,image/gif,image/webp" :before-upload="handleBeforeCoverUpload" :on-change="handleCoverChange">
+                <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png" :before-upload="handleBeforeCoverUpload" :on-change="handleCoverChange">
                   <el-button size="small" type="primary"><el-icon><Plus /></el-icon>选择图片</el-button>
                 </el-upload>
                 <div class="form-tip">1200×628px，JPG/PNG/GIF/WebP，≤2MB</div>
@@ -259,7 +258,7 @@ import * as XLSX from 'xlsx'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useUserStore } from '@/store/user'
-import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover } from '@/api/course'
+import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover, publishCourse, unpublishCourse } from '@/api/course'
 import { getCategories } from '@/api/course-category'
 import { getUsers } from '@/api/user'
 
@@ -362,7 +361,8 @@ const fetchData = async () => {
     teacherId: userStore.role === 'TEACHER' ? userStore.userId : null
   }
   // P2-17: SWR 模式 — 如果有缓存数据立即显示（无 loading），后台刷新
-  const cacheKey = `courses:${JSON.stringify(params)}`
+  // P2-11: 缓存键加入角色前缀，避免不同角色混用缓存
+  const cacheKey = `courses:${userStore.role}:${JSON.stringify(params)}`
   const cached = swrCache.get(cacheKey)
   if (cached && Date.now() - cached.ts < 30000) {
     tableData.value = cached.data.items || []
@@ -529,7 +529,7 @@ const handleReject = async (row) => {
 const handlePublish = async (row) => {
   try { await ElMessageBox.confirm('确定发布该课程?', '提示', { type: 'warning' }) } catch { return }
   actingId.value = row.id
-  try { await updateCourseStatus(row.id, 4); ElMessage.success('发布成功'); fetchData() }
+  try { await publishCourse(row.id); ElMessage.success('发布成功'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '发布失败') }
   finally { actingId.value = null }
 }
@@ -537,7 +537,7 @@ const handlePublish = async (row) => {
 const handleUnpublish = async (row) => {
   try { await ElMessageBox.confirm('确定下架该课程?', '提示', { type: 'warning' }) } catch { return }
   actingId.value = row.id
-  try { await updateCourseStatus(row.id, 5); ElMessage.success('下架成功'); fetchData() }
+  try { await unpublishCourse(row.id); ElMessage.success('下架成功'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '下架失败') }
   finally { actingId.value = null }
 }
@@ -562,13 +562,33 @@ const handleCopy = async (row) => {
   } finally { actingId.value = null }
 }
 
-const handleExport = () => {
+const handleExport = async () => {
   if (tableData.value.length === 0) {
     ElMessage.warning('无可导出数据')
     return
   }
+  // P2: 导出数量限制，最多 5000 条
+  if (totalElements.value > 5000) {
+    try {
+      await ElMessageBox.confirm(`当前共 ${totalElements.value} 条数据，仅导出前 5000 条，继续？`, '提示', { type: 'warning' })
+    } catch { return }
+  }
   try {
-    const exportData = tableData.value.map((item, index) => ({
+    ElMessage.info('正在获取全部数据，请稍候…')
+    // P2-12: 导出全量筛选结果而非当前页，保持筛选条件不变，size 设为 5000(上限)
+    const exportParams = {
+      page: 0,
+      size: 5000,
+      keyword: searchForm.keyword || undefined,
+      categoryId: searchForm.categoryId || undefined,
+      teacherName: searchForm.teacherName || undefined,
+      status: searchForm.status !== '' ? searchForm.status : undefined,
+      courseType: searchForm.courseType !== '' ? searchForm.courseType : undefined,
+      teacherId: userStore.role === 'TEACHER' ? userStore.userId : null
+    }
+    const { data } = await getCourses(exportParams)
+    const allData = data.items || []
+    const exportData = allData.map((item, index) => ({
       '序号': index + 1,
       '标题': item.title || '',
       '类型': item.courseType === 'INTERACTIVE' ? '互动' : '视频',
@@ -595,10 +615,6 @@ function getStatusLabel(status) {
 const goSlides = (row) => {
   router.push(`/teacher/courses/${row.id}/slides/manage`)
 }
-const goWorkspace = (row) => {
-  router.push(`/teacher/courses/${row.id}/workspace`)
-}
-
 const handleSubmit = async () => {
   if (!formRef.value) return
   try {

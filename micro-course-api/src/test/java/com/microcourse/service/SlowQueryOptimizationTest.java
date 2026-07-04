@@ -199,7 +199,7 @@ class SlowQueryOptimizationTest extends BaseIntegrationTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         Mockito.clearInvocations(courseRepository);
-        PageResult<ExerciseVO> result = exerciseService.page(null, null, 0, 10);
+        PageResult<ExerciseVO> result = exerciseService.page(null, null, null, 0, 10);
 
         assertNotNull(result, "分页结果不应为 null");
         assertTrue(result.getTotalElements() >= 1, "教师应至少看到自己课程下的 1 个练习");

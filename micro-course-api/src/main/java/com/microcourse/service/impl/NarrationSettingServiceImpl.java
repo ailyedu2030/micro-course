@@ -6,12 +6,14 @@ import com.microcourse.dto.narration.NarrationSettingVO;
 import com.microcourse.entity.NarrationSetting;
 import com.microcourse.repository.NarrationSettingRepository;
 import com.microcourse.service.NarrationSettingService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 @Service
+@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 public class NarrationSettingServiceImpl implements NarrationSettingService {
 
     private final NarrationSettingRepository repository;

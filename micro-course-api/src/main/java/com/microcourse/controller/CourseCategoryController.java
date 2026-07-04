@@ -39,14 +39,14 @@ public class CourseCategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
     public R<CourseCategoryVO> create(@Valid @RequestBody CourseCategoryCreateRequest request) {
         CourseCategoryVO vo = courseCategoryService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
     public R<CourseCategoryVO> update(@PathVariable Long id,
                                      @Valid @RequestBody CourseCategoryUpdateRequest request) {
         CourseCategoryVO vo = courseCategoryService.update(id, request);
@@ -54,7 +54,7 @@ public class CourseCategoryController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
     public R<Void> delete(@PathVariable Long id) {
         courseCategoryService.delete(id);
         return R.ok();

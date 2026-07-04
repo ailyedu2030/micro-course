@@ -127,8 +127,8 @@ function getAttendanceStatus(session) {
 
   const diffDays = Math.floor((sDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
-  if (diffDays < -7) return 'OUTSIDE'
-  if (diffDays > 7) return 'OUTSIDE'
+  // 仅当天可签到；非当天显示为不可签到
+  if (diffDays !== 0) return 'OUTSIDE'
 
   return 'CAN_CHECKIN'
 }
