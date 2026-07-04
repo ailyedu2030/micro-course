@@ -10,7 +10,7 @@
 
     <section class="content-card">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="所属课程">
+        <el-form-item label="课程">
           <el-select v-model="searchForm.courseId" placeholder="全部课程" clearable class="filter-input-w200" @change="loadData">
             <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
@@ -32,7 +32,8 @@
 
     <section class="content-card">
       <div v-if="!loading && filteredSlides.length === 0" class="empty-tip">
-        <el-empty description="暂无互动课件。前往「我的课程」上传 PPT 即可在此管理。" />
+        <el-empty v-if="courses.length === 0" description="您还没有创建互动课程。前往「我的课程」→「新增课程」→课程类型选「互动课程」,上传 PPT 即可在此管理课件。" />
+        <el-empty v-else description="您的互动课程尚未上传 PPT 课件。打开任一课程,点击「课件」→「上传 PPT」即可在此管理。" />
       </div>
       <el-table v-else :data="filteredSlides" stripe v-loading="loading" @row-click="goEdit">
         <el-table-column prop="courseTitle" label="所属课程" min-width="180" show-overflow-tooltip />
