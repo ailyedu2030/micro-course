@@ -67,6 +67,7 @@
               <el-icon><Download /></el-icon>导出
             </el-button>
             <el-button type="primary" v-if="userRole !== 'ACADEMIC' && !route.query.courseType" @click="handleCreate">新增课程</el-button>
+            <el-button type="primary" v-if="route.query.courseType === 'OFFLINE'" @click="showOfflineDialog = true" :icon="Plus">新增安排</el-button>
             <el-button v-if="route.query.courseType" @click="router.push('/teacher/courses')">返回课程列表</el-button>
           </div>
         </div>
@@ -254,6 +255,47 @@
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 线下课新增安排弹窗 -->
+    <el-dialog v-model="showOfflineDialog" title="新增线下安排" width="500px" @close="resetOfflineForm">
+      <el-form ref="offlineFormRef" :model="offlineForm" :rules="offlineRules" label-width="100px">
+        <el-form-item label="课程">
+          <el-select v-model="offlineForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onOfflineCourseChange">
+            <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="章节" prop="chapterId">
+          <el-select v-model="offlineForm.chapterId" placeholder="选择章节" class="full-width" :disabled="!offlineForm.courseId">
+            <el-option v-for="ch in offlineChapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="日期" prop="sessionDate">
+          <el-date-picker v-model="offlineForm.sessionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" class="full-width" />
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="开始时间" prop="startTime">
+              <el-time-picker v-model="offlineForm.startTime" placeholder="开始" value-format="HH:mm:ss" class="full-width" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束时间" prop="endTime">
+              <el-time-picker v-model="offlineForm.endTime" placeholder="结束" value-format="HH:mm:ss" class="full-width" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="地点" prop="location">
+          <el-input v-model="offlineForm.location" placeholder="如：教学楼 A-101" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="offlineForm.teacherNotes" type="textarea" :rows="2" placeholder="选填" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showOfflineDialog = false">取消</el-button>
+        <el-button type="primary" :loading="offlineSubmitting" @click="submitOffline">创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -269,6 +311,8 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useUserStore } from '@/store/user'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover, publishCourse, unpublishCourse } from '@/api/course'
+import { getChapters } from '@/api/chapter'
+import { createOfflineSession } from '@/api/offline-session'
 import { getCategories } from '@/api/course-category'
 import { getUsers } from '@/api/user'
 
@@ -677,6 +721,62 @@ const handleSubmit = async () => {
 const handleDialogClose = () => {
   formRef.value?.resetFields()
   handleRemoveCover()
+}
+// 线下课新增安排
+const showOfflineDialog = ref(false)
+const offlineSubmitting = ref(false)
+const offlineFormRef = ref(null)
+const offlineChapterOptions = ref([])
+const courseOptions = ref([])  // 线下课课程选择器
+const offlineForm = reactive({
+  courseId: null, chapterId: null, sessionDate: '', startTime: '', endTime: '', location: '', teacherNotes: ''
+})
+const offlineRules = {
+  chapterId: [{ required: true, message: '请选择章节', trigger: 'change' }],
+  sessionDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
+  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
+  location: [{ required: true, message: '请输入地点', trigger: 'blur' }],
+}
+async function onOfflineCourseChange(courseId) {
+  offlineForm.chapterId = null
+  if (!courseId) { offlineChapterOptions.value = []; return }
+  try {
+    const { data } = await getChapters({ courseId, size: 100 })
+    offlineChapterOptions.value = (data?.items || []).filter(ch => ch.chapterType === 'OFFLINE')
+  } catch { offlineChapterOptions.value = [] }
+}
+function resetOfflineForm() {
+  offlineForm.courseId = null; offlineForm.chapterId = null; offlineForm.sessionDate = ''
+  offlineForm.startTime = ''; offlineForm.endTime = ''; offlineForm.location = ''; offlineForm.teacherNotes = ''
+  offlineChapterOptions.value = []
+  offlineFormRef.value?.resetFields()
+  // 加载课程列表
+  getCourses({ size: 200, courseType: 'OFFLINE' }).then(({ data }) => {
+    courseOptions.value = data?.items || []
+  }).catch(() => {})
+}
+async function submitOffline() {
+  if (!offlineFormRef.value) return
+  try { const v = await offlineFormRef.value.validate(); if (!v) return } catch { return }
+  if (!offlineForm.chapterId) { ElMessage.warning('请选择章节'); return }
+  offlineSubmitting.value = true
+  try {
+    await createOfflineSession(offlineForm.chapterId, {
+      sessionDate: offlineForm.sessionDate,
+      startTime: offlineForm.startTime,
+      endTime: offlineForm.endTime,
+      location: offlineForm.location,
+      teacherNotes: offlineForm.teacherNotes || undefined,
+      sortOrder: 1
+    })
+    ElMessage.success('线下安排已创建')
+    showOfflineDialog.value = false
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '创建失败')
+  } finally {
+    offlineSubmitting.value = false
+  }
 }
 
 onMounted(() => {
