@@ -97,6 +97,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
 
     private void checkPluginGrant(Long teacherId, String courseType) {
         if (courseType == null || "VIDEO".equals(courseType)) return;
+        // ADMIN 可创建任意课程类型，不受 plugin_grant 限制
+        if (SecurityUtil.isAdmin()) return;
         com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.PluginGrant> q =
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
         q.eq(com.microcourse.entity.PluginGrant::getPluginId, "interactive")
