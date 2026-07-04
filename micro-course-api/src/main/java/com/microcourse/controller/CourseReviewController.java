@@ -51,7 +51,7 @@ public class CourseReviewController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseReviewVO>> list(@PathVariable Long id,
                                               @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-                                              @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+                                              @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         return R.ok(courseReviewService.listByCourse(id, page, size));
     }
 

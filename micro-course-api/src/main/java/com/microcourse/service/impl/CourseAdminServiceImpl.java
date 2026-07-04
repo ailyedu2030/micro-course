@@ -14,7 +14,9 @@ import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
+import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.entity.CourseReviewLog;
 import com.microcourse.entity.Enrollment;
@@ -75,6 +77,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final ExerciseRepository exerciseRepository;
     private final NotificationService notificationService;
     private final CourseSlideMapper courseSlideMapper;
+    private final SlidePageMapper slidePageMapper;
 
     @Value("${upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -91,7 +94,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   LearningProgressRepository learningProgressRepository,
                                   ExerciseRepository exerciseRepository,
                                   NotificationService notificationService,
-                                  CourseSlideMapper courseSlideMapper) {
+                                  CourseSlideMapper courseSlideMapper,
+                                  SlidePageMapper slidePageMapper) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -105,6 +109,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.exerciseRepository = exerciseRepository;
         this.notificationService = notificationService;
         this.courseSlideMapper = courseSlideMapper;
+        this.slidePageMapper = slidePageMapper;
     }
 
     /* ================================================================
@@ -287,6 +292,12 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                         .eq(Exercise::getCourseId, id)
                         .set(Exercise::getDeletedAt, LocalDateTime.now()));
 
+        // P1-I: 课程删除级联 — 清理关联课件及其页面
+        courseSlideMapper.delete(new LambdaQueryWrapper<CourseSlide>()
+                .eq(CourseSlide::getCourseId, id));
+        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, id));
+
         LOG.info("课程已关闭（含级联清理）, id={}", id);
     }
 
@@ -356,6 +367,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public CourseVO updateCover(Long id, MultipartFile file) {
         Course course = getCourseOrThrow(id);
+        // P1-C: owner 校验 — 仅课程教师或 ADMIN 可修改封面
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
 
         String originalFilename = file.getOriginalFilename();
         FileUploadUtil.assertSafeFilename(originalFilename);

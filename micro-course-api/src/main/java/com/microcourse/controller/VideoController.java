@@ -88,7 +88,7 @@ public class VideoController {
     public R<PageResult<VideoVO>> page(
             @RequestParam(required = false) Long courseId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         if (courseId == null) {
             return R.ok(PageResult.of(List.of(), 0L, page, size));
         }

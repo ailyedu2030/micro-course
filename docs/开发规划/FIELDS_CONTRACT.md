@@ -12,9 +12,9 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 16 字段
 
-- 后端实体字段总数: 1853
+- 后端实体字段总数: 1854
 
-- 前端引用字段总数: 401
+- 前端引用字段总数: 409
 
 
 ## ⚠️ 前端孤儿字段
@@ -962,7 +962,7 @@
 
 | ExerciseRecord | 13 | 0 |
 
-| ExerciseRecordVO | 11 | 0 |
+| ExerciseRecordVO | 12 | 0 |
 
 | ExerciseUpdateRequest | 15 | 0 |
 

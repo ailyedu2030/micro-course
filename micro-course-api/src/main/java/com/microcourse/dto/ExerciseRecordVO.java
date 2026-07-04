@@ -14,6 +14,7 @@ public class ExerciseRecordVO {
     private Boolean passed;
     private Integer duration;
     private String answers;
+    private Boolean needsManualGrading;
     private LocalDateTime submittedAt;
 
     public ExerciseRecordVO() {}
@@ -38,6 +39,8 @@ public class ExerciseRecordVO {
     public void setDuration(Integer duration) { this.duration = duration; }
     public String getAnswers() { return answers; }
     public void setAnswers(String answers) { this.answers = answers; }
+    public Boolean getNeedsManualGrading() { return needsManualGrading; }
+    public void setNeedsManualGrading(Boolean needsManualGrading) { this.needsManualGrading = needsManualGrading; }
     public LocalDateTime getSubmittedAt() { return submittedAt; }
     public void setSubmittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; }
 }

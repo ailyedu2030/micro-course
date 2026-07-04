@@ -117,6 +117,7 @@ public enum ErrorCode {
 
     // P2-3: 补充常用业务错误码
     LESSON_NOT_FOUND(18001, "课时不存在", 404),
+    GRADE_NOT_FOUND(18002, "成绩记录不存在", 404),
     EXAM_NOT_FOUND(18004, "考试不存在", 404),
     PREREQUISITE_NOT_MET(18003, "前置章节未完成，请先完成前置章节的学习", 400),
     EXAM_ALREADY_SUBMITTED(18005, "已提交考试，不可重复提交", 400),

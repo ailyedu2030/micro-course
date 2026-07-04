@@ -134,7 +134,7 @@ public class GradeServiceImpl implements GradeService {
     public GradeVO getById(Long id) {
         Grade grade = gradeRepository.selectById(id);
         if (grade == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "成绩记录不存在");
+            throw new BusinessException(ErrorCode.GRADE_NOT_FOUND);
         }
         // SECURITY: 只有课程教师、学生本人或 ADMIN 可查看成绩
         if (grade.getCourseId() != null) {
@@ -206,7 +206,7 @@ public class GradeServiceImpl implements GradeService {
     public GradeVO update(Long id, GradeUpdateRequest request, Long teacherId) {
         Grade grade = gradeRepository.selectById(id);
         if (grade == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "成绩记录不存在");
+            throw new BusinessException(ErrorCode.GRADE_NOT_FOUND);
         }
 
         // Phase E: 捕获修改前的原成绩值用于审计
@@ -267,7 +267,7 @@ public class GradeServiceImpl implements GradeService {
     public void delete(Long id) {
         Grade grade = gradeRepository.selectById(id);
         if (grade == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "成绩记录不存在");
+            throw new BusinessException(ErrorCode.GRADE_NOT_FOUND);
         }
         // P0-8: 删除权限校验 — 只有课程教师或 ADMIN 可删除
         if (grade.getCourseId() != null) {

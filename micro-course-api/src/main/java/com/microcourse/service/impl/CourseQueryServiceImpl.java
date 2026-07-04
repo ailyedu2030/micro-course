@@ -217,6 +217,12 @@ public class CourseQueryServiceImpl implements CourseQueryService {
             LOG.warn("[Round9-2] 课程详情缓存写入失败, id={}", id, e);
         }
 
+        // TEACHER 隔离：教师只能查看自己的课程（P1-C）
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin() &&
+            !vo.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
         return vo;
     }
 

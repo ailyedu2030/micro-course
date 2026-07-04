@@ -60,7 +60,7 @@ public class EnrollmentController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<EnrollmentVO>> getEnrollments(
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) Integer size,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 100) Integer size,
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) String studentName,
             @RequestParam(required = false) String courseName,
@@ -90,7 +90,7 @@ public class EnrollmentController {
     public R<PageResult<EnrollmentVO>> getCourseEnrollments(
             @PathVariable Long courseId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 100) int size) {
         // SECURITY: TEACHER 必须为课程 owner
         if (SecurityUtil.hasRole("TEACHER")) {
             enrollmentService.assertCourseOwnership(courseId);

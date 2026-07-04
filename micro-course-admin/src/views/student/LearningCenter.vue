@@ -529,7 +529,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AccuracyTrendChart from '@/components/learning-center/AccuracyTrendChart.vue'
 import { ElMessage } from 'element-plus'
-import { Calendar, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine } from '@element-plus/icons-vue'
+import { Calendar, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine, Close } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getStudyDays, getTotalTime, getLearningProgress } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
@@ -552,7 +552,8 @@ const quickEntries = [
   { label: '课程广场', icon: Grid, path: '/student/courses', color: '#6366f1' },
   { label: '我的课程', icon: Reading, path: '/student/my-courses', color: '#10b981' },
   { label: '考试中心', icon: Document, path: '/student/exams', color: '#f59e0b' },
-  { label: '学习报告', icon: DataLine, path: '/student/report', color: '#ef4444' }
+  { label: '学习报告', icon: DataLine, path: '/student/report', color: '#ef4444' },
+  { label: '错题本', icon: Close, path: '/student/profile', color: '#8b5cf6' }
 ]
 
 function navigateTo(path) {

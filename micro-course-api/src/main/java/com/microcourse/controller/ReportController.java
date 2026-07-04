@@ -46,7 +46,7 @@ public class ReportController {
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<PageResult<ReviewReportVO>> adminPage(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size,
             @RequestParam(required = false) Integer status) {
         PageResult<ReviewReportVO> result = reportService.pageByAdmin(page, size, status);
         return R.ok(result);

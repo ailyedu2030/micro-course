@@ -42,7 +42,7 @@ public class GradeController {
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) Long studentId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         return R.ok(gradeService.page(courseId, studentId, page, size));
     }
 
@@ -51,7 +51,7 @@ public class GradeController {
     public R<PageResult<GradeVO>> getMyGrades(
             @RequestParam(required = false) Long courseId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         Long userId = getCurrentUserId();
         return R.ok(gradeService.pageByStudent(userId, null, courseId, page, size));
     }
@@ -102,7 +102,7 @@ public class GradeController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<PageResult<ExerciseRecordVO>> getPendingReview(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         return R.ok(gradeService.getPendingReview(page, size, getCurrentUserId()));
     }
 

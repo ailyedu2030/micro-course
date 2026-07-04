@@ -42,7 +42,7 @@ public class OfflineSessionController {
     public R<PageResult<OfflineSessionVO>> pageByChapter(
             @PathVariable Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         PageResult<OfflineSessionVO> result = offlineSessionService.pageByChapter(chapterId, page, size);
         return R.ok(result);
     }
@@ -80,7 +80,7 @@ public class OfflineSessionController {
     public R<PageResult<AttendanceRecordVO>> getAttendance(
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         PageResult<AttendanceRecordVO> result = offlineSessionService.getAttendance(id, page, size);
         return R.ok(result);
     }

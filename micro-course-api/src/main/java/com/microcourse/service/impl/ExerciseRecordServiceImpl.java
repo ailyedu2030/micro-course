@@ -380,9 +380,27 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                 isCorrect = userAnswer.trim().equals(correctAnswer.trim());
                 break;
             case "MULTIPLE":
-                // 多选题：解析JSON数组或逗号分隔，排序后对比
-                isCorrect = compareMultipleAnswers(userAnswer, correctAnswer);
-                break;
+                // P0: 改为部分得分制 — 选对比例×满分
+                {
+                    Set<String> corrects = new java.util.HashSet<>(java.util.Arrays.asList(
+                        correctAnswer != null ? correctAnswer.toUpperCase().split(",") : new String[0]));
+                    Set<String> userAnsSet = new java.util.HashSet<>(java.util.Arrays.asList(
+                        userAnswer != null ? userAnswer.toUpperCase().split(",") : new String[0]));
+                    if (corrects.equals(userAnsSet)) {
+                        result.isCorrect = true;
+                        result.score = fullScore;
+                    } else if (userAnsSet.isEmpty() || userAnsSet.size() > corrects.size() * 2) {
+                        result.score = 0;
+                        result.isCorrect = false;
+                    } else {
+                        long correctCount = userAnsSet.stream().filter(corrects::contains).count();
+                        long wrongCount = userAnsSet.stream().filter(a -> !corrects.contains(a)).count();
+                        double ratio = (double)(correctCount - wrongCount) / corrects.size();
+                        result.score = (int)Math.round(Math.max(0, ratio) * fullScore);
+                        result.isCorrect = false;
+                    }
+                    return result;
+                }
             case "JUDGE":
                 // 判断题：直接对比
                 isCorrect = userAnswer.trim().equals(correctAnswer.trim());
@@ -599,6 +617,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         vo.setPassed(record.getPassed());
         vo.setDuration(record.getDuration());
         vo.setAnswers(record.getAnswers());
+        vo.setNeedsManualGrading(record.getNeedsManualGrading());
         vo.setSubmittedAt(record.getSubmittedAt());
         return vo;
     }

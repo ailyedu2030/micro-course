@@ -547,6 +547,10 @@
           <div class="result-detail">
             答对 {{ correctCount }} / {{ totalQuestions }} 题
           </div>
+          <div v-if="submitResult.needsManualGrading" class="result-manual-hint">
+            <el-icon><WarningFilled /></el-icon>
+            <span>部分题目需教师批改，最终成绩可能变化</span>
+          </div>
         </div>
         <template #footer>
           <el-button @click="handleViewAnalysis">查看解析</el-button>
@@ -562,7 +566,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Close, Timer, Loading } from '@element-plus/icons-vue'
+import { Check, Close, Timer, Loading, WarningFilled } from '@element-plus/icons-vue'
 import { getExercises, getExerciseById, submitExerciseRecord } from '@/api/exercise'
 import { getQuestionById } from '@/api/question'
 import { getMyAttemptCount } from '@/api/exercise-record'
@@ -616,6 +620,11 @@ const currentQuestion = computed(() => {
 const timeLimit = computed(() => currentExercise.value?.timeLimit || 0)
 const maxAttempts = computed(() => currentExercise.value?.maxAttempts || 999)
 const attemptNo = ref(1)
+
+// P1-C: 超时倒计时警告标记
+let warned60 = false
+let warned30 = false
+let warned10 = false
 
 const canRetry = computed(() => attemptNo.value < maxAttempts.value)
 
@@ -804,12 +813,20 @@ const elapsedStartAt = ref(0)     // 已用计时器基准
 function startTimer() {
   clearTimer()
   timerStartAt.value = performance.now()
+  // P1-C: 每次启动计时器时重置倒计时警告标记
+  warned60 = false
+  warned30 = false
+  warned10 = false
   timerInterval = setInterval(() => {
     // 使用 performance.now() 计算实际经过秒数，避免 setInterval 漂移
     const elapsed = Math.floor((performance.now() - timerStartAt.value) / 1000)
     const totalSeconds = currentExercise.value?.timeLimit ? currentExercise.value.timeLimit * 60 : 0
     const remaining = Math.max(0, totalSeconds - elapsed)
     timeLeft.value = remaining
+    // P1-C: 超时倒计时警告
+    if (remaining <= 60 && remaining > 58 && !warned60) { warned60 = true; ElMessage.warning('还剩 60 秒') }
+    if (remaining <= 30 && remaining > 28 && !warned30) { warned30 = true; ElMessage.warning('还剩 30 秒') }
+    if (remaining <= 10 && remaining > 8 && !warned10) { warned10 = true; ElMessage.warning('还剩 10 秒') }
     if (remaining <= 0) {
       clearTimer()
       ElMessage.warning('时间到，自动提交！')
@@ -947,6 +964,9 @@ async function doSubmit() {
     })
     submitResult.value = data
     resultVisible.value = true
+    if (data.needsManualGrading) {
+      ElMessage.info('部分题目需教师批改，最终成绩可能变化')
+    }
   } catch {
     ElMessage.error('提交失败，请重试')
     submitted.value = false
@@ -1629,6 +1649,18 @@ function formatCorrectAnswer(q) {
 .result-detail {
   font-size: var(--text-sm, 14px);
   color: var(--el-text-color-secondary);
+}
+
+.result-manual-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs, 12px);
+  color: var(--el-color-warning);
+  background: var(--el-color-warning-light-9);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-2) var(--space-3);
+  width: 100%;
 }
 
 /* ===== 全局按钮指针 ===== */

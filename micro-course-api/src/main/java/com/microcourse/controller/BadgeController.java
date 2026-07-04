@@ -29,7 +29,7 @@ public class BadgeController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<BadgeDefinitionVO>> getDefinitions(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         return R.ok(badgeService.getDefinitionsPage(page, size));
     }
 
@@ -44,7 +44,7 @@ public class BadgeController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<AchievementVO>> getMyAchievements(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         Long userId = SecurityUtil.getCurrentUserId();
         return R.ok(badgeService.getMyAchievementsPage(userId, page, size));
     }
