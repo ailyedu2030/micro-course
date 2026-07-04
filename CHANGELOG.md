@@ -439,11 +439,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 项目根: /Users/jackie/微课平台
 - 发布报告: docs/v1.7.0-release-report.md
 - 运维手册: docs/runbook.md
-### 质量门禁 (v1.18.0)
-- ✅ precheck 15/16 PASS
-- ✅ mvn compile 0 ERROR
-- ✅ mvn test-compile 0 ERROR
-- ✅ P0/P1-C/P1-I/P2 全部清零
-- ✅ 55 文件变更，交叉验证通过
 
-- Git 历史: 571 commits
+---
+
+## [Unreleased]
+
+### Fixed (课程管理全模块 - P0~P3 全量清零)
+
+#### Phase A/B/C (commit 0ec9037)
+- **P0 课程发布越权** — `CourseAdminServiceImpl.updateStatus/submitForReview` 加 `isOwnerOrAdmin()` 校验 + CAS 模式乐观锁;前端 `CourseDetail.vue` 改用 `publishCourse()/unpublishCourse()`;publish/unpublish 按钮加 ADMIN 角色守卫;新增 active 选课学生通知
+- **P0 正确率趋势** — `ExerciseRecordServiceImpl.getAccuracyTrend()` 解析 `answers` JSON 逐题 `isCorrect` 统计,替换错误的整卷 `passed` 计算
+- **P0 错题本多章节覆盖** — `WrongQuestionServiceImpl` 改 `Map<Long, List<Long>>`,`findFirst()` 取首个章节
+- **P0 待批改 JSON LIKE 全表扫描** — Flyway `V138__add_needs_manual_grading_to_exercise_records.sql` 加列+部分索引;`ExerciseRecord` Entity 加 `needsManualGrading` 字段;提交时设为 true,批完设为 false;查询从 `.like("needsManualGrading":true)` 改为 `.eq(true)`
+- **P0 考试路由 404** — `Exams.vue` 跳 `StudentExerciseTake` (复用现有路由);`handleJoinExam` 加 `checkPrerequisiteChapters()` 前置章节完成校验;`ExerciseTake.vue` 加 `?examId` 自动开始考试;`ErrorCode` 加 `PREREQUISITE_NOT_MET(18003)`
+- **P1-C 互动课翻页排序** — Flyway `V139__add_file_uuid_to_slide_pages.sql`;`SlidePage` Entity 加 `fileUuid`;`SlideRenderService` 改 UUID 文件名 `{uuid}.png`/`{uuid}_thumbnail.png`;`getPageImage/Thumbnail` 优先读 UUID,fallback 到旧 `page_N`
+- **P1-C 缩略图网格** — `SlideThumbnailGrid.vue` 重写加载真实缩略图(`loadAuthResource` 签名 URL),6 并发批量 + 错误降级到页码占位 + hover scale(1.08)
+- **P1-C 课程下架学生通知** — `publish/unpublish` 查 `Enrollment` ACTIVE 表后 `notificationService.notifyAsync(...)`
+- **P1-C 课程删除级联** — `CourseAdminServiceImpl.delete()` 加 `chapter/video/learning_progress` 软删除;`CourseChapterServiceImpl.delete()` 已级联 `video/exercise/chapter_offline_session`
+- **P1-C 章节排序归属校验** — `CourseChapterServiceImpl.sort()` 用 `Set<Long>` 校验所有章节属于同一课程
+- **P1-C CourseReviewVO 加 status** — `convertToVO()` 映射 status;前端可区分审核状态
+- **P1-C 评价审核流程** — `CourseReviewServiceImpl.create()` 改 `status=0` 待审核,需 `approveReview/rejectReview`
+- **P1-C 智能组卷补题型** — `ExamList.vue` `typeConfigs` 加 `FILL/SHORT_ANSWER/ESSAY`,标注"需人工批改"
+- **P1-C 学习中心"开始学习"按钮** — `LearningCenter.vue` PC/H5 双端 `goCourse(id)` 方法导航
+- **P1-C 讨论区 chapterId** — `DiscussionView.vue:353` `createPost()` 传 `chapterId`
+- **P1-C BundleDetail 已购买** — 移除 disabled,加 `startLearning()` 跳套餐内第一门课
+- **P1-C 学习中心 currentChapter** — 调 `getLearningProgress` 取真实章节,API 失败 console.warn 降级
+
+#### Phase D (commit af59d1b)
+- **错题自动归档** — `ExerciseRecordServiceImpl` 答对题目后 `wrong_count - 1`,归零删错题记录
+- **addQuestions 默认 score/sortOrder** — 加 score=10 默认,sortOrder 自动递增;加跨课程校验;加去重防护
+- **缓存常量抽 `CourseCacheConstants`** — 消除 `CourseServiceImpl/CourseQueryServiceImpl/CoursePricingServiceImpl` 3 处重复常量定义
+- **Exercise.description 字段补齐** — Flyway `V140` migration 加列;Entity + 3 个 DTO + Service 全部映射
+- **杂项前端清理**:Exams.vue 字段映射修正(examTime→startTime,duration→timeLimit);VideoPlayer 进度上报失败单次 toast (sessionStorage flag);CourseDetail 难度枚举死代码清理;CourseList 导出 10000→5000 + 确认弹窗;CourseList "通过"→"已通过";CartDrawer 价格 `Number().toFixed(2)`;WeeklyReport 骨架屏 4→1 合并;TeacherOfflineSessions location 必填移除;DiscussionView size-change 200ms 防抖
+- **ScoreHistory @Deprecated 移除 → 完整审计实现** — Phase E 完成
+
+#### Phase E/F/G (commit 12e5337)
+- **ScoreHistory 完整审计追踪** — `ScoreHistoryServiceImpl.recordChange()`;GradeServiceImpl 4 个 CUD 方法 (create/update/teacherGrade/manualGrade) 记录变更;审计失败降级为 warn 不抛
+- **PluginRegistry.hasGrant()** — `plugin/interactive/SpringContextHolder` 静态 Bean 获取工具;`hasGrant(userId, pluginType, action)` 查 plugin_grants,VIDEO 内置免审 + ADMIN 全通
+- **CourseCategoryController 加 ACADEMIC 角色** — 3 处 `@PreAuthorize` 改 `hasAnyRole('ADMIN','ACADEMIC')`,教务处可管理分类
+- **ChapterVO.videoCount getById() 填充** — `CourseChapterServiceImpl.getById()` 加 `videoRepository.selectCount` 单章节计数
+- **ChapterVO learningObjectives 映射** — `convertToVO()` 补充字段
+- **VideoServiceImpl.updateStatus() CAS** — `LambdaUpdateWrapper.eq(currentStatus)` + `setSql("version+1")`,失败抛 `CONCURRENT_MODIFICATION`
+- **章节删除级联 LearningProgress/CourseNote** — 之前只级联 video/exercise,现在补齐
+- **课程删除级联 LearningProgress** — 防止学生看到错的章节对不上的进度
+- **WrongQuestionVO 删冗余 content** — 保留 questionContent 作为唯一字段
+- **前端清理**:FILL 题型补全 + 移除假分值列;MyReviews skeleton 嵌套修复;ExerciseQuickPanel 文案"X 道练习题"→"X 个练习";CourseList 移除 ACADEMIC 假发布权限;ChapterList @change 占位;Checkout 删 fake setTimeout loading;LearningCenter 错误日志不再静默
+
+#### Phase H (commit 7353e35)
+- **`InteractivePlugin.isEnabled()` 配置化** — 加 `@Component` + `@Value("${plugin.interactive.enabled:true}")`,默认 true 保持兼容
+- **`CourseSlide.lessonId` 字段加 `@TableField(exist=false)`** — 注释说明"保留字段,数据库暂无对应列",防止严格映射触发 Unknown column
+- **NarrationSetting 受插件开关控制** — `NarrationSettingController/Service` 加 `@ConditionalOnProperty(value="plugin.interactive.enabled", matchIfMissing=true)`,与插件架构对齐
+- **签到窗口配置化** — `@Value("${course.offline.checkin-before-minutes:15}")` 替换硬编码常量 `CHECKIN_WINDOW_BEFORE_MINUTES=15`,运维可通过 `application.yml` 调整
+- **前端课程复制功能** — `CourseDetail.vue` 加"复制"按钮 + `handleCopy()`,首次 ElMessageBox 确认视频不会复制,后端返回 `videoCopied=false` 时 ElMessageBox.alert 详细提示,跳新课程详情
+
+### 质量门禁 (本次发布)
+
+- ✅ precheck 21/21 PASS
+- ✅ mvn compile 0 ERROR
+- ✅ npm run build 成功
+- ✅ P0/P1-C/P1-I/P2 全部清零
+- ✅ 76 文件变更,4 commit 链 (0ec9037, af59d1b, 12e5337, 7353e35)
+- ✅ 5 个 P0 + 24 个 P1-C + 18 个 P1-I + 12 个 P2 全部修复
+- ✅ 3 个 Flyway migration: V138/V139/V140
+
+### 安全基线
+
+- ✅ 课程发布双层 owner 校验(前端按钮 + 后端接口)
+- ✅ PluginGrant 授权校验单点入口(plugin 包外创建互动课走 PluginRegistry.hasGrant)
+- ✅ VIDEO_SIGN_SECRET 生产环境强制(本地开发兜底密钥已不与 JWT 共享)
+- ✅ JWT 黑名单 Redis 化 (RedisUtil + JwtAuthenticationFilter)
+- ✅ HikariCP 连接池监控 (pool-name + Micrometer)
+- ✅ RateLimitInterceptor (FileAccessRateLimit) 防止资源盗链
+- ✅ XSS Sanitizer 用于用户输入字段(course 评论、驳回理由等)
+- ✅ Flyway out-of-order 启用,V138/V139/V140 可顺序应用
