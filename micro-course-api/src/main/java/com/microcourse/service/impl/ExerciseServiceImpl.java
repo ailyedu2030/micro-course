@@ -84,6 +84,7 @@ public class ExerciseServiceImpl implements ExerciseService {
         exercise.setCourseId(request.getCourseId());
         exercise.setChapterId(request.getChapterId());
         exercise.setTitle(request.getTitle());
+        exercise.setDescription(request.getDescription());
         exercise.setPassScore(request.getPassScore() != null ? request.getPassScore() : 60);
         exercise.setTimeLimit(request.getTimeLimit());
         exercise.setMaxAttempts(request.getMaxAttempts());
@@ -149,6 +150,9 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         if (request.getTitle() != null) {
             exercise.setTitle(request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            exercise.setDescription(request.getDescription());
         }
         if (request.getPassScore() != null) {
             exercise.setPassScore(request.getPassScore());
@@ -349,6 +353,7 @@ public class ExerciseServiceImpl implements ExerciseService {
         vo.setChapterId(exercise.getChapterId());
         vo.setCourseId(exercise.getCourseId());
         vo.setTitle(exercise.getTitle());
+        vo.setDescription(exercise.getDescription());
         vo.setPassScore(exercise.getPassScore());
         vo.setTimeLimit(exercise.getTimeLimit());
         vo.setMaxAttempts(exercise.getMaxAttempts());
@@ -577,10 +582,40 @@ public class ExerciseServiceImpl implements ExerciseService {
             throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
         }
         assertCourseOwner(exercise.getCourseId());
+        if (questionIds == null || questionIds.isEmpty()) return;
+
+        // P2 修复:校验题目属于同一课程,防止跨课程混题
+        List<Question> questions = questionRepository.selectBatchIds(questionIds);
+        if (questions.isEmpty()) return;
+        for (Question q : questions) {
+            if (q.getCourseId() != null && exercise.getCourseId() != null
+                    && !q.getCourseId().equals(exercise.getCourseId())) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "题目《" + q.getContent().substring(0, Math.min(20, q.getContent().length()))
+                    + "》不属于该课程,无法加入");
+            }
+        }
+
+        // 计算起始 sortOrder
+        LambdaQueryWrapper<ExerciseQuestion> maxWrapper = new LambdaQueryWrapper<>();
+        maxWrapper.eq(ExerciseQuestion::getExerciseId, exerciseId)
+                  .orderByDesc(ExerciseQuestion::getSortOrder)
+                  .last("LIMIT 1");
+        ExerciseQuestion lastEq = exerciseQuestionRepository.selectOne(maxWrapper);
+        int startOrder = (lastEq != null && lastEq.getSortOrder() != null) ? lastEq.getSortOrder() : 0;
+
         for (Long qid : questionIds) {
+            // 防止重复添加
+            LambdaQueryWrapper<ExerciseQuestion> existWrapper = new LambdaQueryWrapper<>();
+            existWrapper.eq(ExerciseQuestion::getExerciseId, exerciseId)
+                        .eq(ExerciseQuestion::getQuestionId, qid);
+            if (exerciseQuestionRepository.selectCount(existWrapper) > 0) continue;
+
             ExerciseQuestion eq = new ExerciseQuestion();
             eq.setExerciseId(exerciseId);
             eq.setQuestionId(qid);
+            eq.setScore(10);  // P1-C: 默认 10 分
+            eq.setSortOrder(++startOrder);  // 递增排序
             exerciseQuestionRepository.insert(eq);
         }
     }

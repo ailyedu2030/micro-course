@@ -296,6 +296,33 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                     });
         }
 
+        // P1-C: 答对归档逻辑 - 答对题目且已存在错题记录时,自动减少 wrong_count
+        Set<Long> correctQuestionIds = gradingResults.stream()
+                .filter(r -> Boolean.TRUE.equals(r.isCorrect) && r.questionId != null)
+                .map(r -> r.questionId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!correctQuestionIds.isEmpty()) {
+            LambdaQueryWrapper<WrongQuestion> correctWQ = new LambdaQueryWrapper<>();
+            correctWQ.eq(WrongQuestion::getUserId, request.getUserId())
+                     .in(WrongQuestion::getQuestionId, correctQuestionIds);
+            List<WrongQuestion> existingCorrectWQ = wrongQuestionRepository.selectList(correctWQ);
+
+            for (WrongQuestion wq : existingCorrectWQ) {
+                long newCount = Math.max(0, wq.getWrongCount() - 1);
+                if (newCount <= 0) {
+                    // 完全掌握了,直接删除错题记录
+                    wrongQuestionRepository.deleteById(wq.getId());
+                } else {
+                    // 还有错次,减 1
+                    wrongQuestionRepository.update(null,
+                            new LambdaUpdateWrapper<WrongQuestion>()
+                                    .eq(WrongQuestion::getId, wq.getId())
+                                    .set(WrongQuestion::getWrongCount, newCount)
+                                    .set(WrongQuestion::getLastWrongAt, LocalDateTime.now()));
+                }
+            }
+        }
+
         // Phase B-2 (P0-7)：练习提交批改完成后，异步通知课程教师。
         // Exercise 无 teacherId 字段，经 courseId → course → teacherId 解析；@Async 不阻塞答题主流程。
         Course notifyCourse = exercise.getCourseId() != null

@@ -23,7 +23,7 @@
           <div class="item-teacher">{{ item.teacherName || '未知教师' }}</div>
         </div>
         <div class="item-price">
-          <span v-if="!item.isFree" class="price">¥{{ item.price }}</span>
+          <span v-if="!item.isFree" class="price">¥{{ Number(item.price || 0).toFixed(2) }}</span>
           <span v-else class="free">免费</span>
         </div>
         <el-button text type="danger" size="small" @click="store.removeItem(item.courseId)" aria-label="从购物车移除">
@@ -36,7 +36,7 @@
       <div v-if="store.hasItems" class="drawer-footer">
         <div class="footer-total">
           <span class="total-label">合计</span>
-          <span class="total-price">¥{{ store.totalPrice }}</span>
+          <span class="total-price">¥{{ Number(store.totalPrice || 0).toFixed(2) }}</span>
         </div>
         <el-button type="primary" size="large" class="checkout-btn" @click="goCheckout" :disabled="!store.hasItems" aria-label="去结算">
           去结算

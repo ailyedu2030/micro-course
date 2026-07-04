@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 16 字段
 
-- 后端实体字段总数: 1807
+- 后端实体字段总数: 1811
 
 - 前端引用字段总数: 398
 
@@ -924,11 +924,11 @@
 
 | ExamGenerateRequest | 5 | 0 |
 
-| Exercise | 17 | 0 |
+| Exercise | 18 | 0 |
 
 | ExerciseChapter | 2 | 0 |
 
-| ExerciseCreateRequest | 16 | 0 |
+| ExerciseCreateRequest | 17 | 0 |
 
 | ExerciseQuestion | 5 | 0 |
 
@@ -936,9 +936,9 @@
 
 | ExerciseRecordVO | 11 | 0 |
 
-| ExerciseUpdateRequest | 14 | 0 |
+| ExerciseUpdateRequest | 15 | 0 |
 
-| ExerciseVO | 30 | 0 |
+| ExerciseVO | 31 | 0 |
 
 | Grade | 17 | 0 |
 

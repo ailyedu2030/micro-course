@@ -991,8 +991,12 @@ const reportProgress = async (force = false) => {
     })
     saveLocalPosition(current)
   } catch (e) {
-    console.warn('[VideoPlayer] reportProgress 上报进度失败', e)
-    ElMessage.warning('进度上报失败')
+    // 同一会话只弹一次 warning
+    if (!sessionStorage.getItem('progress_error_shown')) {
+      sessionStorage.setItem('progress_error_shown', '1')
+      ElMessage.warning('进度上报失败,请检查网络')
+    }
+    console.warn('[进度上报]', e)
   }
 }
 

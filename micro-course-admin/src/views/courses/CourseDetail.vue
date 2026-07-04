@@ -73,9 +73,9 @@
           <div class="info-item">
             <label>难度</label>
             <span>
-              <template v-if="courseData.difficulty === 1 || courseData.difficulty === 'BEGINNER'">初级</template>
-              <template v-else-if="courseData.difficulty === 2 || courseData.difficulty === 'INTERMEDIATE'">中级</template>
-              <template v-else-if="courseData.difficulty === 3 || courseData.difficulty === 'ADVANCED'">高级</template>
+              <template v-if="courseData.difficulty === 1">初级</template>
+              <template v-else-if="courseData.difficulty === 2">中级</template>
+              <template v-else-if="courseData.difficulty === 3">高级</template>
               <template v-else>-</template>
             </span>
           </div>

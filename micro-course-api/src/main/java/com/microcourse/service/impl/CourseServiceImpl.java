@@ -21,6 +21,7 @@ import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CoursePricingService;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
+import com.microcourse.util.CourseCacheConstants;
 import com.microcourse.util.RedisUtil;
 
 import org.slf4j.Logger;
@@ -37,12 +38,6 @@ import java.util.concurrent.TimeUnit;
 public class CourseServiceImpl implements CourseService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CourseServiceImpl.class);
-
-    private static final String COURSE_CACHE_PREFIX = "mc:course:detail:";
-    private static final long COURSE_CACHE_TTL = 300;
-
-    private static final String COURSE_STATS_CACHE_PREFIX = "mc:course:stats:";
-    private static final long COURSE_STATS_CACHE_TTL = 3600;
 
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
@@ -74,8 +69,8 @@ public class CourseServiceImpl implements CourseService {
     public void evictCourseCache(Long courseId) {
         if (courseId == null) return;
         try {
-            redisUtil.delete(COURSE_CACHE_PREFIX + courseId);
-            redisUtil.delete(COURSE_STATS_CACHE_PREFIX + courseId);
+            redisUtil.delete(CourseCacheConstants.COURSE_CACHE_PREFIX + courseId);
+            redisUtil.delete(CourseCacheConstants.COURSE_STATS_CACHE_PREFIX + courseId);
         } catch (Exception e) {
             LOG.warn("[Round9-2] 课程缓存清除失败, courseId={}", courseId, e);
         }
@@ -191,7 +186,7 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(readOnly = true)
     public CourseStatsVO computeStats(Long courseId) {
-        String cacheKey = COURSE_STATS_CACHE_PREFIX + courseId;
+        String cacheKey = CourseCacheConstants.COURSE_STATS_CACHE_PREFIX + courseId;
         try {
             Object cached = redisUtil.get(cacheKey);
             if (cached instanceof CourseStatsVO) {
@@ -228,7 +223,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setAvgScore(avg != null ? avg : 0.0);
 
         try {
-            redisUtil.set(cacheKey, vo, COURSE_STATS_CACHE_TTL, TimeUnit.SECONDS);
+            redisUtil.set(cacheKey, vo, CourseCacheConstants.COURSE_STATS_CACHE_TTL, TimeUnit.SECONDS);
         } catch (Exception e) {
             LOG.warn("[Round9-2] 课程统计缓存写入失败, courseId={}", courseId, e);
         }

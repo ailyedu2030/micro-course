@@ -449,9 +449,11 @@ const handleDeletePost = async () => {
   }
 }
 
+let fetchTimer = null
 const handleSizeChange = () => {
   page.value = 1
-  fetchData()
+  clearTimeout(fetchTimer)
+  fetchTimer = setTimeout(fetchData, 200)
 }
 
 const handlePageChange = () => {

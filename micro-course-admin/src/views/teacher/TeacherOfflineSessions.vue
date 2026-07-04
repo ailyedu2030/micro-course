@@ -174,7 +174,7 @@ const formRules = {
   sessionDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
   startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
   endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
-  location: [{ required: true, message: '请输入地点', trigger: 'blur' }]
+  location: [{ max: 200, message: '长度不超过200字符', trigger: 'blur' }]
 }
 
 const attendanceDialogVisible = ref(false)

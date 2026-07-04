@@ -282,8 +282,8 @@ const fetchExams = async () => {
       examId: exam.id,
       examTitle: exam.title,
       courseTitle: exam.courseTitle || '未知课程',
-      examTime: exam.examTime || exam.updatedAt || null,
-      duration: exam.duration || exam.timeLimit || null
+      examTime: exam.startTime || exam.createdAt || null,
+      duration: exam.timeLimit || null
     }))
 
     // 批量查询每场考试是否已作答（用于状态分类）

@@ -105,7 +105,7 @@
           <template #default="{ row }">
             <el-tag v-if="row.status === 0" type="info" size="small">草稿</el-tag>
             <el-tag v-else-if="row.status === 1" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="row.status === 2" type="success" size="small">通过</el-tag>
+            <el-tag v-else-if="row.status === 2" type="success" size="small">已通过</el-tag>
             <el-tag v-else-if="row.status === 3" type="danger" size="small">驳回</el-tag>
             <el-tag v-else-if="row.status === 4" type="success" size="small">已发布</el-tag>
             <el-tag v-else-if="row.status === 5" type="warning" size="small">下架</el-tag>
@@ -568,12 +568,18 @@ const handleExport = async () => {
     ElMessage.warning('无可导出数据')
     return
   }
+  // P2: 导出数量限制，最多 5000 条
+  if (totalElements.value > 5000) {
+    try {
+      await ElMessageBox.confirm(`当前共 ${totalElements.value} 条数据，仅导出前 5000 条，继续？`, '提示', { type: 'warning' })
+    } catch { return }
+  }
   try {
     ElMessage.info('正在获取全部数据，请稍候…')
-    // P2-12: 导出全量筛选结果而非当前页，保持筛选条件不变，size 设为全量
+    // P2-12: 导出全量筛选结果而非当前页，保持筛选条件不变，size 设为 5000(上限)
     const exportParams = {
       page: 0,
-      size: 10000,
+      size: 5000,
       keyword: searchForm.keyword || undefined,
       categoryId: searchForm.categoryId || undefined,
       // TODO: 后端尚未支持 teacherName 搜索参数
