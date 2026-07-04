@@ -161,9 +161,13 @@ request.interceptors.response.use(response => {
   }
 
   if (status === 404) {
-    ElMessage.warning('资源不存在或已被删除')
+    if (!config._suppressErrorToast) {
+      ElMessage.warning('资源不存在或已被删除')
+    }
   } else if (status === 403) {
-    ElMessage.error('无权访问该资源，请联系管理员获取权限')
+    if (!config._suppressErrorToast) {
+      ElMessage.error('无权访问该资源，请联系管理员获取权限')
+    }
   } else if (status >= 500) {
     ElMessage.error('服务器错误，请稍后重试')
   } else {

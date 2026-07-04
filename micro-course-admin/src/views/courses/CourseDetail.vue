@@ -32,6 +32,7 @@
           <template v-if="courseData.status === 4">
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
+          <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">管理课件</el-button>
           <el-button type="primary" plain @click="switchToEdit">编辑</el-button>
           <el-button @click="handleBack">返回</el-button>
         </div>
@@ -398,6 +399,7 @@ const fetchCourse = async () => {
       formData.freeDeptIds = data.freeDeptIds || '[]'
       formData.discountScope = data.discountScope || 'none'
       formData.discountPercent = data.discountPercent ?? 0
+      formData.teacherId = data.teacherId || null
       if (data.coverUrl) coverPreviewUrl.value = data.coverUrl
     }
   } catch (e) { ElMessage.error(e?.response?.data?.message || '获取课程信息失败') }
@@ -421,6 +423,7 @@ const initSortable = () => {
 
 // ===== 页面操作 =====
 const handleBack = () => router.push('/courses')
+const goSlides = () => router.push(`/teacher/courses/${route.params.id}/slides/manage`)
 const switchToEdit = () => router.push(`/courses/${courseId.value}/edit`)
 const switchToView = () => router.push(`/courses/${courseId.value}`)
 
@@ -483,7 +486,11 @@ const handleSubmit = async () => {
       description: formData.description,
       creditHours: formData.creditHours, semester: formData.semester || undefined,
       difficulty: formData.difficulty, courseType: formData.courseType,
-      price: formData.price, isFree: formData.isFree
+      price: formData.price, isFree: formData.isFree,
+      freeAccessScope: formData.freeAccessScope,
+      freeDeptIds: formData.freeDeptIds,
+      discountScope: formData.discountScope,
+      discountPercent: formData.discountPercent
     })
     if (coverFile.value) {
       try { await updateCourseCover(courseId.value, coverFile.value) }

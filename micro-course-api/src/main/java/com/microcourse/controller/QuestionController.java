@@ -34,13 +34,14 @@ public class QuestionController {
     @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<QuestionVO>> page(
             @RequestParam(required = false) Long courseId,
-            @RequestParam(required = false) @Pattern(regexp = "^(SINGLE|MULTIPLE|JUDGE|FILL|SHORT_ANSWER|ESSAY)?$", message = "题目类型无效") String questionType,
+            @RequestParam(required = false) @Pattern(regexp = "^(SINGLE|MULTIPLE|JUDGE|FILL|SHORT_ANSWER|ESSAY|SINGLE_CHOICE|MULTIPLE_CHOICE|TRUE_FALSE|FILL_BLANK|COMPREHENSIVE)?$", message = "题目类型无效") String questionType,
             @RequestParam(required = false) Integer difficulty,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
-        PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, keyword, categoryId, page, size);
+        PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, keyword, categoryId, chapterId, page, size);
         return R.ok(result);
     }
 

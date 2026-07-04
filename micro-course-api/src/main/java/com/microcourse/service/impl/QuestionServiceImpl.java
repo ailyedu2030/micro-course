@@ -205,7 +205,7 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
-    public PageResult<QuestionVO> page(Long courseId, String questionType, Integer difficulty, String keyword, Long categoryId, Integer page, Integer size) {
+    public PageResult<QuestionVO> page(Long courseId, String questionType, Integer difficulty, String keyword, Long categoryId, Long chapterId, Integer page, Integer size) {
         LambdaQueryWrapper<Question> wrapper = new LambdaQueryWrapper<>();
         if (courseId != null) {
             wrapper.eq(Question::getCourseId, courseId);
@@ -219,6 +219,19 @@ public class QuestionServiceImpl implements QuestionService {
         // keyword: 模糊搜索题目内容
         if (keyword != null && !keyword.trim().isEmpty()) {
             wrapper.like(Question::getContent, keyword.trim());
+        }
+        // chapterId: 通过 question_chapters 关联表筛选（参数化查询防 SQL 注入）
+        if (chapterId != null) {
+            // 复用已有的 chapterId 参数：先在 question_chapters 中查 question_id 集合，再 IN
+            List<Long> qIds = questionChapterRepository.selectList(
+                    new LambdaQueryWrapper<QuestionChapter>()
+                            .eq(QuestionChapter::getChapterId, chapterId)
+                            .select(QuestionChapter::getQuestionId)
+            ).stream().map(QuestionChapter::getQuestionId).collect(Collectors.toList());
+            if (qIds.isEmpty()) {
+                return PageResult.of(java.util.List.of(), 0, page, size);
+            }
+            wrapper.in(Question::getId, qIds);
         }
         // categoryId: 按课程分类筛选（通过 courses.category_id 间接筛选）
         if (categoryId != null) {
@@ -518,22 +531,6 @@ public class QuestionServiceImpl implements QuestionService {
 
     private QuestionVO convertToVO(Question question,
                                    Map<Long, List<Long>> questionChapterIdsMap,
-                                   Map<Long, CourseChapter> chapterMap) {
-        QuestionVO vo = toBaseVO(question, null, null);
-        // ... multi-chapter data from pre-loaded maps
-        List<Long> chapterIds = questionChapterIdsMap.getOrDefault(question.getId(), new ArrayList<>());
-        List<String> chapterTitles = new ArrayList<>();
-        for (Long cid : chapterIds) {
-            CourseChapter ch = chapterMap.get(cid);
-            if (ch != null) chapterTitles.add(ch.getTitle());
-        }
-        vo.setChapterIds(chapterIds);
-        vo.setChapterTitles(chapterTitles);
-        return vo;
-    }
-
-    private QuestionVO convertToVO(Question question,
-                                   Map<Long, List<Long>> questionChapterIdsMap,
                                    Map<Long, CourseChapter> chapterMap,
                                    Map<Long, Course> courseMap,
                                    Map<Long, User> userMap) {
@@ -555,7 +552,10 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     /**
-     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
+     * <p>通用模式：CourseChapterServiceImpl / VideoServiceImpl / OfflineSessionServiceImpl /
+     * LessonServiceImpl / ExerciseServiceImpl 中也包含语义相同的实现。
+     * 若需统一重构，可抽取到公共工具类。</p>
      *
      * @param courseId 课程 ID
      * @throws BusinessException NOT_FOUND 课程不存在，NO_PERMISSION 无权限

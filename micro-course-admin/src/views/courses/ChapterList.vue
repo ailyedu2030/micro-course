@@ -46,7 +46,7 @@
             <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
             <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="success" size="small">练习</el-tag>
             <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">互动课件</el-tag>
-            <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">🏫 线下课</el-tag>
+            <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">线下课</el-tag>
             <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
           </template>
         </el-table-column>

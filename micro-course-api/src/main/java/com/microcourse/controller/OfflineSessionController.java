@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+import org.hibernate.validator.constraints.Range;
+
 import java.util.List;
 
 @RestController
@@ -38,8 +41,8 @@ public class OfflineSessionController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','STUDENT')")
     public R<PageResult<OfflineSessionVO>> pageByChapter(
             @PathVariable Long chapterId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         PageResult<OfflineSessionVO> result = offlineSessionService.pageByChapter(chapterId, page, size);
         return R.ok(result);
     }
@@ -76,8 +79,8 @@ public class OfflineSessionController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<PageResult<AttendanceRecordVO>> getAttendance(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         PageResult<AttendanceRecordVO> result = offlineSessionService.getAttendance(id, page, size);
         return R.ok(result);
     }
@@ -91,6 +94,15 @@ public class OfflineSessionController {
             @Valid @RequestBody AttendanceUpdateRequest request) {
         Long operatorId = SecurityUtil.getCurrentUserId();
         offlineSessionService.updateAttendance(recordId, request.getStatus(), operatorId);
+        return R.ok();
+    }
+
+    @PostMapping("/offline-sessions/{id}/manual-checkin/{studentId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("教师手动签到")
+    public R<Void> manualCheckin(@PathVariable Long id, @PathVariable Long studentId) {
+        Long operatorId = SecurityUtil.getCurrentUserId();
+        offlineSessionService.manualCheckin(id, studentId, operatorId);
         return R.ok();
     }
 

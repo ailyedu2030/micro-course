@@ -1,13 +1,15 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.R;
+import com.microcourse.dto.lesson.LessonCreateRequest;
+import com.microcourse.dto.lesson.LessonUpdateRequest;
 import com.microcourse.dto.lesson.LessonVO;
 import com.microcourse.service.LessonService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/lessons")
@@ -21,21 +23,14 @@ public class LessonController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<LessonVO> create(@RequestBody Map<String, Object> body) {
-        Long chapterId = body.get("chapterId") instanceof Number ? ((Number) body.get("chapterId")).longValue() : null;
-        Long courseId = body.get("courseId") instanceof Number ? ((Number) body.get("courseId")).longValue() : null;
-        String title = (String) body.getOrDefault("title", "新课时");
-        String lessonType = (String) body.getOrDefault("lessonType", "VIDEO");
-        return R.ok(lessonService.create(chapterId, courseId, title, lessonType));
+    public R<LessonVO> create(@Valid @RequestBody LessonCreateRequest req) {
+        return R.ok(lessonService.create(req.getChapterId(), req.getCourseId(), req.getTitle(), req.getLessonType()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<LessonVO> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        String title = (String) body.get("title");
-        Integer duration = body.get("duration") instanceof Number ? ((Number) body.get("duration")).intValue() : null;
-        Boolean visible = body.get("visible") instanceof Boolean ? (Boolean) body.get("visible") : null;
-        return R.ok(lessonService.update(id, title, duration, visible));
+    public R<LessonVO> update(@PathVariable Long id, @Valid @RequestBody LessonUpdateRequest req) {
+        return R.ok(lessonService.update(id, req.getTitle(), req.getDuration(), req.getVisible()));
     }
 
     @DeleteMapping("/{id}")

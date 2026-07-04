@@ -12,6 +12,12 @@ public enum VideoStatus {
     COMPLETED(2, "已完成"),
     FAILED(3, "转码失败");
 
+    /**
+     * READY 是 COMPLETED 的别名，与状态机文档 {@code READY(2)} 对齐。
+     * 代码中原使用 COMPLETED，两者 code=2 等价，可互换使用。
+     */
+    public static final VideoStatus READY = COMPLETED;
+
     private final int code;
     private final String label;
 

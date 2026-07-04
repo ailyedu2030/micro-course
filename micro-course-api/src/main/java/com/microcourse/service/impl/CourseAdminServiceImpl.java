@@ -12,6 +12,8 @@ import com.microcourse.entity.User;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.entity.CourseSlide;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.entity.CourseReviewLog;
 import com.microcourse.entity.Enrollment;
@@ -62,6 +64,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final EnrollmentRepository enrollmentRepository;
     private final PluginGrantRepository pluginGrantRepository;
     private final NotificationService notificationService;
+    private final CourseSlideMapper courseSlideMapper;
 
     @Value("${upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -74,7 +77,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   CourseReviewLogRepository reviewLogRepository,
                                   EnrollmentRepository enrollmentRepository,
                                   PluginGrantRepository pluginGrantRepository,
-                                  NotificationService notificationService) {
+                                  NotificationService notificationService,
+                                  CourseSlideMapper courseSlideMapper) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -84,6 +88,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.enrollmentRepository = enrollmentRepository;
         this.pluginGrantRepository = pluginGrantRepository;
         this.notificationService = notificationService;
+        this.courseSlideMapper = courseSlideMapper;
     }
 
     /* ================================================================
@@ -209,7 +214,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         CourseStatus fromStatus = CourseStatus.fromCode(currentStatus);
 
         if (fromStatus == CourseStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "已归档课程不可操作");
+            throw new BusinessException(ErrorCode.COURSE_ARCHIVED);
         }
 
         // TEACHER 只能删除自己的课程
@@ -422,6 +427,16 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         Course course = getCourseOrThrow(id);
+        // P2-7: INTERACTIVE 课程发布前必须检查课件是否已就绪（status=2）
+        if ("INTERACTIVE".equals(course.getCourseType())) {
+            LambdaQueryWrapper<CourseSlide> slideQuery = new LambdaQueryWrapper<>();
+            slideQuery.eq(CourseSlide::getCourseId, id)
+                      .eq(CourseSlide::getStatus, 2);
+            long slideCount = courseSlideMapper.selectCount(slideQuery);
+            if (slideCount == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "互动课件尚未就绪，请先上传并等待课件渲染完成");
+            }
+        }
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)

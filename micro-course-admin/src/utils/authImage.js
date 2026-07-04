@@ -19,7 +19,8 @@ export async function loadAuthResource(url) {
     const res = await request({
       method: 'GET',
       url,
-      responseType: 'blob'
+      responseType: 'blob',
+      _suppressErrorToast: true
     })
     const blobUrl = URL.createObjectURL(res.data)
     urlCache.set(url, { blobUrl, time: Date.now() })

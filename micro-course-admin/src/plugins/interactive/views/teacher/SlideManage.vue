@@ -446,7 +446,7 @@ async function loadData() {
     if (s.data?.status === 2) {
       const p = await getSlidePages(courseId.value)
       pages.value = p.data || []
-      loadThumbnails()
+      await loadThumbnails()
     }
   } catch (e) {
     console.warn('[SlideManage] loadData failed', e?.message)
@@ -455,10 +455,16 @@ async function loadData() {
 
 async function loadThumbnails() {
   const cid = courseId.value
-  for (const page of pages.value) {
-    const blobUrl = await loadAuthResource(`/courses/${cid}/slides/pages/${page.pageNumber}/thumbnail`)
-    if (blobUrl) thumbUrls.value[page.pageNumber] = blobUrl
+  const CONCURRENCY = 6
+  const results = {}
+  for (let i = 0; i < pages.value.length; i += CONCURRENCY) {
+    const batch = pages.value.slice(i, i + CONCURRENCY)
+    const urls = await Promise.all(batch.map(p =>
+      loadAuthResource(`/courses/${cid}/slides/pages/${p.pageNumber}/thumbnail`)
+    ))
+    batch.forEach((p, j) => { if (urls[j]) results[p.pageNumber] = urls[j] })
   }
+  Object.assign(thumbUrls.value, results)
   await nextTick()
   initPageSort()
 }

@@ -99,9 +99,6 @@
         <el-form-item label="标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入练习标题" />
         </el-form-item>
-        <el-form-item label="时长(分钟)" prop="duration">
-          <el-input-number v-model="formData.duration" :min="0" class="full-width" />
-        </el-form-item>
 
         <!-- 题库统计 + 随机选题 -->
         <el-divider v-if="formData.courseId" />
@@ -168,9 +165,9 @@
           <el-form :inline="true" :model="questionSearchForm" @submit.prevent>
             <el-form-item label="题型">
               <el-select v-model="questionSearchForm.questionType" placeholder="请选择题型" clearable>
-                <el-option label="单选题" value="SINGLE_CHOICE" />
-                <el-option label="多选题" value="MULTIPLE_CHOICE" />
-                <el-option label="判断题" value="TRUE_FALSE" />
+                <el-option label="单选题" value="SINGLE" />
+                <el-option label="多选题" value="MULTIPLE" />
+                <el-option label="判断题" value="JUDGE" />
                 <el-option label="简答题" value="SHORT_ANSWER" />
               </el-select>
             </el-form-item>
@@ -206,17 +203,17 @@
           <el-table-column type="index" label="序号" width="60" align="center" />
           <el-table-column prop="questionType" label="题型" width="100" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.questionType === 'SINGLE_CHOICE'" type="primary" size="small">单选题</el-tag>
-              <el-tag v-else-if="row.questionType === 'MULTIPLE_CHOICE'" type="success" size="small">多选题</el-tag>
-              <el-tag v-else-if="row.questionType === 'TRUE_FALSE'" type="warning" size="small">判断题</el-tag>
+              <el-tag v-if="row.questionType === 'SINGLE'" type="primary" size="small">单选题</el-tag>
+              <el-tag v-else-if="row.questionType === 'MULTIPLE'" type="success" size="small">多选题</el-tag>
+              <el-tag v-else-if="row.questionType === 'JUDGE'" type="warning" size="small">判断题</el-tag>
               <el-tag v-else-if="row.questionType === 'SHORT_ANSWER'" type="info" size="small">简答题</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="difficulty" label="难度" width="80" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.difficulty === 'EASY'" type="success" size="small">简单</el-tag>
-              <el-tag v-else-if="row.difficulty === 'MEDIUM'" type="warning" size="small">中等</el-tag>
-              <el-tag v-else-if="row.difficulty === 'HARD'" type="danger" size="small">困难</el-tag>
+              <el-tag v-if="row.difficulty === 1" type="success" size="small">简单</el-tag>
+              <el-tag v-else-if="row.difficulty === 2" type="warning" size="small">中等</el-tag>
+              <el-tag v-else-if="row.difficulty === 3" type="danger" size="small">困难</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="content" label="题目内容" min-width="300" show-overflow-tooltip />
@@ -316,7 +313,15 @@ const formData = reactive({
 })
 
 // ===== 题库统计 & 随机选题 =====
-const TYPE_LABELS = { SINGLE_CHOICE: '单选题', MULTIPLE_CHOICE: '多选题', TRUE_FALSE: '判断题', FILL_BLANK: '填空题', SHORT_ANSWER: '简答题' }
+// P1-C-7: 难度字符串→整数转换
+const DIFFICULTY_MAP = { 'EASY': 1, 'MEDIUM': 2, 'HARD': 3 }
+function resolveDifficulty(val) {
+  if (!val) return undefined
+  const key = String(val).toUpperCase()
+  return DIFFICULTY_MAP[key] || undefined
+}
+
+const TYPE_LABELS = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', SHORT_ANSWER: '简答题' }
 const bankStats = ref([])
 const totalBankCount = ref(0)
 const totalPickCount = computed(() => bankStats.value.reduce((s, t) => s + (t.pickCount || 0), 0))
@@ -328,10 +333,11 @@ watch(() => formData.courseId, async (val) => {
   if (!val) { bankStats.value = []; totalBankCount.value = 0; return }
   try {
     const params = { courseId: val, size: 9999 }
-    if (pickDifficulty.value) params.difficulty = pickDifficulty.value
+    if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
     const { data } = await getQuestions(params)
     const items = data?.items || []
-    const filtered = pickDifficulty.value ? items.filter(q => q.difficulty === pickDifficulty.value) : items
+    const filterDiff = pickDifficulty.value ? resolveDifficulty(pickDifficulty.value) : undefined
+    const filtered = filterDiff != null ? items.filter(q => q.difficulty === filterDiff) : items
     totalBankCount.value = filtered.length
     const groups = {}
     for (const q of filtered) { const t = q.questionType || 'OTHER'; groups[t] = (groups[t] || 0) + 1 }
@@ -349,10 +355,11 @@ async function handleRandomPick() {
   for (const s of bankStats.value) { if (s.pickCount > 0) picks[s.type] = s.pickCount }
   try {
     const params = { courseId: formData.courseId, size: 9999 }
-    if (pickDifficulty.value) params.difficulty = pickDifficulty.value
+    if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
     const { data } = await getQuestions(params)
     let all = data?.items || []
-    if (pickDifficulty.value) all = all.filter(q => q.difficulty === pickDifficulty.value)
+    const rd = pickDifficulty.value ? resolveDifficulty(pickDifficulty.value) : undefined
+    if (rd != null) all = all.filter(q => q.difficulty === rd)
     const picked = []
     for (const [type, count] of Object.entries(picks)) {
       const pool = all.filter(q => (q.questionType || '') === type)
@@ -373,7 +380,8 @@ const formRules = {
 const fetchCourseOptions = async () => {
   try {
     const params = { page: 0, size: 1000 }
-    if (isTeacher.value) params.teacherId = userStore.userInfo?.id
+    // P2-15: 使用 userId getter 替代 userInfo?.id 以保持一致
+    if (isTeacher.value) params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
@@ -454,7 +462,6 @@ const handleCreate = () => {
   formData.courseId = searchForm.courseId
   formData.chapterIds = []
   formData.title = ''
-  formData.duration = 30
   formData.passScore = 60
   formData.description = ''
   formData.timeLimit = null
@@ -472,7 +479,6 @@ const handleEdit = (row) => {
   formData.courseId = row.courseId
   formData.chapterIds = row.chapterIds || []
   formData.title = row.title
-  formData.duration = row.duration || 30
   formData.passScore = row.passScore || 60
   formData.description = row.description || ''
   formData.timeLimit = row.timeLimit || null
@@ -573,7 +579,7 @@ const fetchQuestionData = async () => {
       size: questionSize.value,
       courseId: currentCourseId.value,
       questionType: questionSearchForm.questionType || undefined,
-      difficulty: questionSearchForm.difficulty || undefined,
+      difficulty: resolveDifficulty(questionSearchForm.difficulty),
       categoryId: questionSearchForm.categoryId || undefined
     }
     const { data } = await getQuestions(params)

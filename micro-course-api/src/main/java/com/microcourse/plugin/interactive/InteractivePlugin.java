@@ -20,7 +20,7 @@ public class InteractivePlugin implements CourseTypePlugin {
 
     @Override
     public String getTeacherPanelRoute(Long courseId) {
-        return "/teacher/courses/" + courseId + "/slides";
+        return "/teacher/courses/" + courseId + "/slides/manage";
     }
 
     @Override

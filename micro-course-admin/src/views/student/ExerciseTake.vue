@@ -196,7 +196,7 @@
                     class="fill-input"
                   />
                 </template>
-                <template v-else-if="currentQuestion.questionType === 'COMPREHENSIVE'">
+                <template v-else-if="currentQuestion.questionType === 'ESSAY'">
                   <el-input
                     v-model="answers[currentQuestion.id]"
                     type="textarea"
@@ -422,7 +422,7 @@
                   class="fill-input"
                 />
               </template>
-              <template v-else-if="currentQuestion.questionType === 'COMPREHENSIVE'">
+              <template v-else-if="currentQuestion.questionType === 'ESSAY'">
                 <el-input
                   v-model="answers[currentQuestion.id]"
                   type="textarea"
@@ -1009,12 +1009,12 @@ function isMultipleCorrect(value, answer) {
 }
 
 function questionTypeLabel(type) {
-  const map = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', COMPREHENSIVE: '综合题' }
+  const map = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', ESSAY: '综合题' }
   return map[type] || type
 }
 
 function questionTypeTagType(type) {
-  const map = { SINGLE: 'primary', MULTIPLE: 'warning', JUDGE: 'info', FILL: 'success', COMPREHENSIVE: 'danger' }
+  const map = { SINGLE: 'primary', MULTIPLE: 'warning', JUDGE: 'info', FILL: 'success', ESSAY: 'danger' }
   return map[type] || 'info'
 }
 

@@ -224,7 +224,8 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
     @Override
     @Transactional(readOnly = true)
     public List<TrendPointVO> getParticipationTrend(String semester) {
-        List<Map<String, Object>> rawList = courseRepository.selectParticipationTrend(semester);
+        List<Map<String, Object>> rawList = courseRepository.selectParticipationTrend(
+                semesterToStartDate(semester), semesterToEndDate(semester));
         List<TrendPointVO> result = new ArrayList<>();
 
         for (Map<String, Object> row : rawList) {
@@ -241,7 +242,8 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
     @Override
     @Transactional(readOnly = true)
     public List<TrendPointVO> getCompletionTrend(String semester) {
-        List<Map<String, Object>> rawList = courseRepository.selectCompletionTrend(semester);
+        List<Map<String, Object>> rawList = courseRepository.selectCompletionTrend(
+                semesterToStartDate(semester), semesterToEndDate(semester));
         List<TrendPointVO> result = new ArrayList<>();
 
         for (Map<String, Object> row : rawList) {
@@ -253,5 +255,34 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
         }
 
         return result;
+    }
+
+    /**
+     * 将学期编码转为起始日期字符串（参数化查询替代隐式类型转换）。
+     * 学期格式: "2025-1"（上半年）或 "2025-2"（下半年）。
+     * null 输入返回 null（不限定日期范围）。
+     */
+    private String semesterToStartDate(String semester) {
+        if (semester == null || !semester.contains("-")) return null;
+        String[] parts = semester.split("-");
+        if (parts.length != 2) return null;
+        String year = parts[0].trim();
+        if ("1".equals(parts[1].trim())) return year + "-01-01";
+        if ("2".equals(parts[1].trim())) return year + "-07-01";
+        return null;
+    }
+
+    /**
+     * 将学期编码转为结束日期字符串（配合 startDate 构成左闭右开区间）。
+     * 上半年结束于 07-01，下半年结束于次年 01-01。
+     */
+    private String semesterToEndDate(String semester) {
+        if (semester == null || !semester.contains("-")) return null;
+        String[] parts = semester.split("-");
+        if (parts.length != 2) return null;
+        String year = parts[0].trim();
+        if ("1".equals(parts[1].trim())) return year + "-07-01";
+        if ("2".equals(parts[1].trim())) return (Integer.parseInt(year) + 1) + "-01-01";
+        return null;
     }
 }

@@ -164,13 +164,16 @@ public interface CourseRepository extends BaseMapper<Course> {
             "FROM enrollments e " +
             "CROSS JOIN (SELECT COUNT(*) AS total_students FROM users WHERE role = 'STUDENT' AND deleted_at IS NULL) AS s " +
             "WHERE e.deleted_at IS NULL " +
-            "<if test='semester != null'>" +
-            "AND e.enrolled_at::text LIKE #{semester} || '%' " +
+            "<if test='startDate != null'>" +
+            "AND e.enrolled_at >= CAST(#{startDate} AS TIMESTAMP) " +
+            "</if>" +
+            "<if test='endDate != null'>" +
+            "AND e.enrolled_at < CAST(#{endDate} AS TIMESTAMP) " +
             "</if>" +
             "GROUP BY TO_CHAR(e.enrolled_at, 'YYYY-MM'), total_students " +
             "ORDER BY month ASC" +
             "</script>")
-    List<Map<String, Object>> selectParticipationTrend(@Param("semester") String semester);
+    List<Map<String, Object>> selectParticipationTrend(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     /**
      * 完成率趋势：按月统计已完成课程的比例
@@ -188,12 +191,15 @@ public interface CourseRepository extends BaseMapper<Course> {
             "    COUNT(CASE WHEN e.completed = true THEN 1 END) AS completed_count " +
             "  FROM enrollments e " +
             "  WHERE e.deleted_at IS NULL " +
-            "  <if test='semester != null'>" +
-            "  AND e.enrolled_at::text LIKE #{semester} || '%' " +
+            "  <if test='startDate != null'>" +
+            "  AND e.enrolled_at >= CAST(#{startDate} AS TIMESTAMP) " +
+            "  </if>" +
+            "  <if test='endDate != null'>" +
+            "  AND e.enrolled_at < CAST(#{endDate} AS TIMESTAMP) " +
             "  </if>" +
             "  GROUP BY TO_CHAR(e.enrolled_at, 'YYYY-MM')" +
             ") AS sub " +
             "ORDER BY month ASC" +
             "</script>")
-    List<Map<String, Object>> selectCompletionTrend(@Param("semester") String semester);
+    List<Map<String, Object>> selectCompletionTrend(@Param("startDate") String startDate, @Param("endDate") String endDate);
 }

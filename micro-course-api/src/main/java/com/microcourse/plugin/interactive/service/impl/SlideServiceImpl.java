@@ -27,6 +27,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import javax.imageio.ImageIO;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -107,6 +109,8 @@ public class SlideServiceImpl implements SlideService {
         existing.eq(CourseSlide::getCourseId, courseId);
         CourseSlide oldSlide = courseSlideMapper.selectOne(existing);
         if (oldSlide != null) {
+            // P2-6: 覆盖前备份旧版本至 backup/{timestamp}/
+            backupSlideFiles(courseId);
             cleanupSlideFiles(courseId);
             courseSlideMapper.deleteById(oldSlide.getId());
             LambdaQueryWrapper<SlidePage> oldPages = new LambdaQueryWrapper<>();
@@ -197,33 +201,85 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     public byte[] getPageImage(Long courseId, Integer pageNumber) {
-        SlidePageVO pageVO = getPage(courseId, pageNumber);
+        SlidePageVO pageVO;
         try {
-            Path imagePath = Paths.get(storagePath, String.valueOf(courseId),
-                    String.valueOf(pageVO.getSlideId()), "images",
-                    "page_" + pageNumber + ".png");
-            return Files.readAllBytes(imagePath);
-        } catch (NoSuchFileException e) {
-            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
-        } catch (IOException e) {
-            log.error("[Slide] 读取课件图片失败 courseId={} page={}", courseId, pageNumber, e);
-            throw new BusinessException(ErrorCode.PPT_PARSE_FAILED, "课件图片读取失败");
+            pageVO = getPage(courseId, pageNumber);
+        } catch (BusinessException e) {
+            log.warn("[Slide] 获取页面信息失败，返回占位图 courseId={} pageNumber={}", courseId, pageNumber);
+            return generateFallbackImage(pageImageWidth, "第" + pageNumber + "页");
         }
+        if (pageVO.getSlideId() == null) {
+            log.warn("[Slide] slideId 为空 courseId={} pageNumber={}", courseId, pageNumber);
+            return generateFallbackImage(pageImageWidth, "第" + pageNumber + "页");
+        }
+        Path imagePath = Paths.get(storagePath, String.valueOf(courseId),
+                String.valueOf(pageVO.getSlideId()), "images",
+                "page_" + pageNumber + ".png");
+        byte[] result = readImageOrFallback(imagePath, pageImageWidth, "第" + pageNumber + "页");
+        if (result.length == 0) {
+            result = generateFallbackImage(pageImageWidth, "第" + pageNumber + "页");
+        }
+        return result;
     }
 
     @Override
     public byte[] getPageThumbnail(Long courseId, Integer pageNumber) {
-        SlidePageVO pageVO = getPage(courseId, pageNumber);
+        SlidePageVO pageVO;
         try {
-            Path thumbPath = Paths.get(storagePath, String.valueOf(courseId),
-                    String.valueOf(pageVO.getSlideId()), "thumbnails",
-                    "page_" + pageNumber + ".png");
-            return Files.readAllBytes(thumbPath);
+            pageVO = getPage(courseId, pageNumber);
+        } catch (BusinessException e) {
+            log.warn("[Slide] 获取页面信息失败，返回占位图 courseId={} pageNumber={}", courseId, pageNumber);
+            return generateFallbackImage(thumbnailWidth, "第" + pageNumber + "页");
+        }
+        if (pageVO.getSlideId() == null) {
+            log.warn("[Slide] slideId 为空 courseId={} pageNumber={}", courseId, pageNumber);
+            return generateFallbackImage(thumbnailWidth, "第" + pageNumber + "页");
+        }
+        Path thumbPath = Paths.get(storagePath, String.valueOf(courseId),
+                String.valueOf(pageVO.getSlideId()), "thumbnails",
+                "page_" + pageNumber + ".png");
+        byte[] result = readImageOrFallback(thumbPath, thumbnailWidth, "第" + pageNumber + "页");
+        if (result.length == 0) {
+            result = generateFallbackImage(thumbnailWidth, "第" + pageNumber + "页");
+        }
+        return result;
+    }
+
+    private byte[] readImageOrFallback(Path path, int width, String text) {
+        try {
+            return Files.readAllBytes(path);
         } catch (NoSuchFileException e) {
-            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+            log.warn("[Slide] 课件图片/缩略图文件不存在 path={}", path);
+            return generateFallbackImage(width, text);
         } catch (IOException e) {
-            log.error("[Slide] 读取课件缩略图失败 courseId={} page={}", courseId, pageNumber, e);
-            throw new BusinessException(ErrorCode.PPT_PARSE_FAILED, "课件缩略图读取失败");
+            log.error("[Slide] 读取课件图片/缩略图失败 path={}", path, e);
+            return generateFallbackImage(width, text);
+        }
+    }
+
+    private byte[] generateFallbackImage(int width, String text) {
+        int height = (int) (width * 0.75);
+        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = img.createGraphics();
+        try {
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setColor(new Color(245, 245, 245));
+            g.fillRect(0, 0, width, height);
+            g.setColor(new Color(180, 180, 180));
+            g.setFont(new Font("SansSerif", Font.PLAIN, Math.min(width / 10, 18)));
+            FontMetrics fm = g.getFontMetrics();
+            int x = (width - fm.stringWidth(text)) / 2;
+            int y = (height - fm.getHeight()) / 2 + fm.getAscent();
+            g.drawString(text, x, y);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(img, "PNG", baos);
+            return baos.toByteArray();
+        } catch (IOException e) {
+            log.error("[Slide] 生成占位图片失败", e);
+            return new byte[0];
+        } finally {
+            g.dispose();
+            img.flush();
         }
     }
 
@@ -330,6 +386,13 @@ public class SlideServiceImpl implements SlideService {
         slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>()
                 .eq(SlidePage::getSlideId, slide.getId()));
         courseSlideMapper.deleteById(slide.getId());
+        // S-01: 事务提交后异步清理磁盘文件（original.pptx + images/ + thumbnails/）
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                cleanupSlideFiles(courseId);
+            }
+        });
     }
 
     @Override
@@ -354,6 +417,11 @@ public class SlideServiceImpl implements SlideService {
         verifyCourseOwner(courseId);
         // 安全更新：只允许修改 narrationScript 等安全字段
         if (body.containsKey("narrationScript") && body.get("narrationScript") instanceof String) {
+            // S-07: 当原状态为 AUDIO_READY（AI 已生成音频）且教师编辑讲述稿时，清除音频残留
+            if ("AUDIO_READY".equals(page.getNarrationStatus())) {
+                page.setNarrationAudioUrl(null);
+                page.setAudioDuration(null);
+            }
             page.setNarrationScript((String) body.get("narrationScript"));
             page.setNarrationStatus("TEACHER_EDITED");
         }
@@ -440,6 +508,38 @@ public class SlideServiceImpl implements SlideService {
             } catch (IOException e) {
                 log.warn("[SlideUpload] 清理旧课件文件失败 courseId={}", courseId, e);
             }
+        }
+    }
+
+    /**
+     * P2-6: 覆盖旧课件前简单备份旧版本至 backup/{timestamp}/。
+     * 只做文件级复制，不做复杂版本管理。
+     */
+    private void backupSlideFiles(Long courseId) {
+        Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
+        if (!Files.exists(courseDir)) return;
+        try {
+            String timestamp = LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            Path backupDir = courseDir.resolve("backup").resolve(timestamp);
+            Files.createDirectories(backupDir);
+            try (var stream = Files.walk(courseDir)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> !p.startsWith(courseDir.resolve("backup")))
+                        .forEach(p -> {
+                            try {
+                                Path relative = courseDir.relativize(p);
+                                Path target = backupDir.resolve(relative);
+                                Files.createDirectories(target.getParent());
+                                Files.copy(p, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                            } catch (IOException e) {
+                                log.warn("[SlideUpload] 备份文件失败: {}", p, e);
+                            }
+                        });
+            }
+            log.info("[SlideUpload] 旧课件已备份至 backup/{} courseId={}", timestamp, courseId);
+        } catch (IOException e) {
+            log.warn("[SlideUpload] 创建备份目录失败 courseId={}", courseId, e);
         }
     }
 }

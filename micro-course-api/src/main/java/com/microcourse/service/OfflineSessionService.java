@@ -29,4 +29,13 @@ public interface OfflineSessionService {
     List<AttendanceRecordVO> getMyAttendance(Long chapterId, Long userId);
 
     void updateAttendance(Long recordId, String status, Long operatorId);
+
+    /**
+     * O-03: 教师手动签到（代签），不走时间窗口校验。
+     *
+     * @param sessionId  线下活动ID
+     * @param studentId  学生用户ID
+     * @param operatorId 操作者ID（TEACHER/ADMIN）
+     */
+    void manualCheckin(Long sessionId, Long studentId, Long operatorId);
 }

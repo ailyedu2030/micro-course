@@ -34,9 +34,6 @@
             <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="时长(分钟)" prop="duration">
-          <el-input-number v-model="formData.duration" :min="0" class="full-width" />
-        </el-form-item>
         <el-form-item label="及格分数" prop="passScore">
           <el-input-number v-model="formData.passScore" :min="0" :max="100" class="full-width" />
         </el-form-item>
@@ -116,21 +113,21 @@
           第 {{ currentPreviewIndex + 1 }} / {{ exerciseQuestions.length }} 题
         </div>
         <div class="preview-question-type">
-          <el-tag v-if="currentPreviewQuestion.questionType === 'SINGLE_CHOICE'" type="primary" size="small">单选题</el-tag>
-          <el-tag v-else-if="currentPreviewQuestion.questionType === 'MULTIPLE_CHOICE'" type="success" size="small">多选题</el-tag>
-          <el-tag v-else-if="currentPreviewQuestion.questionType === 'TRUE_FALSE'" type="warning" size="small">判断题</el-tag>
+          <el-tag v-if="currentPreviewQuestion.questionType === 'SINGLE'" type="primary" size="small">单选题</el-tag>
+          <el-tag v-else-if="currentPreviewQuestion.questionType === 'MULTIPLE'" type="success" size="small">多选题</el-tag>
+          <el-tag v-else-if="currentPreviewQuestion.questionType === 'JUDGE'" type="warning" size="small">判断题</el-tag>
           <el-tag v-else type="info" size="small">简答题</el-tag>
           <span class="preview-difficulty">
-            <el-tag v-if="currentPreviewQuestion.difficulty === 'EASY'" type="success" size="small">简单</el-tag>
-            <el-tag v-else-if="currentPreviewQuestion.difficulty === 'MEDIUM'" type="warning" size="small">中等</el-tag>
-            <el-tag v-else-if="currentPreviewQuestion.difficulty === 'HARD'" type="danger" size="small">困难</el-tag>
+            <el-tag v-if="currentPreviewQuestion.difficulty === 1" type="success" size="small">简单</el-tag>
+            <el-tag v-else-if="currentPreviewQuestion.difficulty === 2" type="warning" size="small">中等</el-tag>
+            <el-tag v-else-if="currentPreviewQuestion.difficulty === 3" type="danger" size="small">困难</el-tag>
           </span>
           <span class="preview-score">分值：{{ currentPreviewQuestion.score }}</span>
         </div>
         <h3 class="preview-title">{{ currentPreviewQuestion.content }}</h3>
 
         <!-- 单选题 -->
-        <div v-if="currentPreviewQuestion.questionType === 'SINGLE_CHOICE'" class="preview-options">
+        <div v-if="currentPreviewQuestion.questionType === 'SINGLE'" class="preview-options">
           <div
             v-for="(opt, idx) in parsedOptions(currentPreviewQuestion.options)"
             :key="idx"
@@ -142,7 +139,7 @@
         </div>
 
         <!-- 多选题 -->
-        <div v-else-if="currentPreviewQuestion.questionType === 'MULTIPLE_CHOICE'" class="preview-options">
+        <div v-else-if="currentPreviewQuestion.questionType === 'MULTIPLE'" class="preview-options">
           <div
             v-for="(opt, idx) in parsedOptions(currentPreviewQuestion.options)"
             :key="idx"
@@ -154,7 +151,7 @@
         </div>
 
         <!-- 判断题 -->
-        <div v-else-if="currentPreviewQuestion.questionType === 'TRUE_FALSE'" class="preview-options">
+        <div v-else-if="currentPreviewQuestion.questionType === 'JUDGE'" class="preview-options">
           <div class="preview-option-item"><span class="option-label">A.</span><span class="option-text">正确</span></div>
           <div class="preview-option-item"><span class="option-label">B.</span><span class="option-text">错误</span></div>
         </div>
@@ -232,10 +229,15 @@ const currentPreviewIndex = ref(0)
 const currentPreviewQuestion = computed(() => exerciseQuestions.value[currentPreviewIndex.value] || null)
 
 // ===== 题库统计 & 随机选题 =====
-const TYPE_LABELS = {
-  SINGLE_CHOICE: '单选题', MULTIPLE_CHOICE: '多选题',
-  TRUE_FALSE: '判断题', FILL_BLANK: '填空题', SHORT_ANSWER: '简答题'
+// P1-C-7: 难度字符串→整数转换
+const DIFFICULTY_MAP = { 'EASY': 1, 'MEDIUM': 2, 'HARD': 3 }
+function resolveDifficulty(val) {
+  if (!val) return undefined
+  const key = String(val).toUpperCase()
+  return DIFFICULTY_MAP[key] || undefined
 }
+
+const TYPE_LABELS = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', SHORT_ANSWER: '简答题' }
 const bankStats = ref([])
 const totalBankCount = ref(0)
 const totalPickCount = computed(() => bankStats.value.reduce((s, t) => s + (t.pickCount || 0), 0))
@@ -247,10 +249,11 @@ async function refreshBankStats() {
   try {
     const params = { courseId: formData.courseId, size: 9999 }
     if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
-    if (pickDifficulty.value) params.difficulty = pickDifficulty.value
+    if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
     const { data } = await getQuestions(params)
     const items = data?.items || []
-    const filtered = pickDifficulty.value ? items.filter(q => q.difficulty === pickDifficulty.value) : items
+    const filterDiff = pickDifficulty.value ? resolveDifficulty(pickDifficulty.value) : undefined
+    const filtered = filterDiff != null ? items.filter(q => q.difficulty === filterDiff) : items
     totalBankCount.value = filtered.length
     const groups = {}
     for (const q of filtered) {
@@ -273,12 +276,13 @@ async function handleRandomPick() {
   try {
     const params = { courseId: formData.courseId, size: 9999 }
     if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
-    if (pickDifficulty.value) params.difficulty = pickDifficulty.value
+    if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
     const { data } = await getQuestions(params)
     let all = data?.items || []
     // 如果后端不支持按难度过滤，前端再过滤一次
     if (pickDifficulty.value && all.some(q => q.difficulty)) {
-      all = all.filter(q => q.difficulty === pickDifficulty.value)
+      const rd = resolveDifficulty(pickDifficulty.value)
+      all = all.filter(q => q.difficulty === rd)
     }
     const picked = []
     for (const [type, count] of Object.entries(picks)) {
@@ -304,10 +308,10 @@ const parsedOptions = (optionsStr) => {
 const displayAnswer = (question) => {
   if (!question?.answer) return '-'
   const ans = question.answer
-  if (question.questionType === 'TRUE_FALSE') {
+  if (question.questionType === 'JUDGE') {
     return ans === 'true' || ans === true ? '正确' : '错误'
   }
-  if (question.questionType === 'MULTIPLE_CHOICE' && question.options) {
+  if (question.questionType === 'MULTIPLE' && question.options) {
     const opts = parsedOptions(question.options)
     const labels = opts.map(o => o.label)
     return ans.split(',').map(a => {
@@ -363,15 +367,14 @@ const handleSubmit = async () => {
     if (!valid) return
     submitLoading.value = true
     try {
-      const exId = exerciseId.value
+      let exId = exerciseId.value
       if (isEdit.value) {
         await updateExercise(exId, formData)
         ElMessage.success('编辑成功')
       } else {
         const { data } = await createExercise(formData)
-        router.back()
+        exId = data.id || data
         ElMessage.success('创建成功')
-        return
       }
       // 自动保存已选的随机题目
       if (exerciseQuestions.value.length > 0) {
@@ -408,7 +411,6 @@ const fetchExercise = async () => {
       formData.title = data.title || ''
       formData.courseId = data.courseId
       formData.chapterIds = data.chapterIds || []
-      formData.duration = data.duration || 30
       formData.passScore = data.passScore || 60
       formData.description = data.description || ''
       formData.timeLimit = data.timeLimit || null

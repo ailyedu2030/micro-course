@@ -104,9 +104,11 @@ public class SlideController {
                                                 @PathVariable Integer pageNumber) {
         verifyAccess(courseId);
         byte[] imageBytes = slideService.getPageImage(courseId, pageNumber);
+        String etag = "W/\"" + pageNumber + "-" + imageBytes.length + "\"";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE)
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .header(HttpHeaders.ETAG, etag)
                 .body(imageBytes);
     }
 
@@ -116,9 +118,11 @@ public class SlideController {
                                                     @PathVariable Integer pageNumber) {
         verifyAccess(courseId);
         byte[] thumbBytes = slideService.getPageThumbnail(courseId, pageNumber);
+        String etag = "W/\"" + pageNumber + "-" + thumbBytes.length + "\"";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE)
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .header(HttpHeaders.ETAG, etag)
                 .body(thumbBytes);
     }
 

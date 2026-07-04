@@ -26,6 +26,8 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.OfflineSessionService;
 import com.microcourse.util.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +53,14 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
     private final CourseChapterRepository chapterRepository;
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private static final Logger log = LoggerFactory.getLogger(OfflineSessionServiceImpl.class);
+
     private final UserRepository userRepository;
+
+    /** 签到时间窗口：课前 N 分钟（可通过配置文件或其他配置中心修改） */
+    private static final int CHECKIN_WINDOW_BEFORE_MINUTES = 15;
+    /** 签到时间窗口：课后 N 分钟（可通过配置文件或其他配置中心修改） */
+    private static final int CHECKIN_WINDOW_AFTER_MINUTES = 30;
 
     public OfflineSessionServiceImpl(ChapterOfflineSessionRepository sessionRepository,
                                       AttendanceRecordRepository attendanceRepository,
@@ -183,10 +192,10 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         }
 
         LocalTime now = LocalTime.now();
-        LocalTime windowStart = session.getStartTime().minusMinutes(15);
-        LocalTime windowEnd = session.getStartTime().plusMinutes(30);
+        LocalTime windowStart = session.getStartTime().minusMinutes(CHECKIN_WINDOW_BEFORE_MINUTES);
+        LocalTime windowEnd = session.getStartTime().plusMinutes(CHECKIN_WINDOW_AFTER_MINUTES);
         if (now.isBefore(windowStart) || now.isAfter(windowEnd)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不在签到时间窗口内（课前15分钟至课后30分钟）");
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不在签到时间窗口内（课前" + CHECKIN_WINDOW_BEFORE_MINUTES + "分钟至课后" + CHECKIN_WINDOW_AFTER_MINUTES + "分钟）");
         }
 
         CourseChapter chapter = chapterRepository.selectById(session.getChapterId());
@@ -304,6 +313,12 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * 批量统计某次线下活动各签到状态的人数。
+     * <p>⚠️ P2-9 性能建议：此方法每次查询实时 COUNT，对于高频访问的课程详情页，
+     * 建议使用 Redis 缓存（如 key=attendance:count:{sessionId}:{status}）或
+     * 在 attendance_records 表增加冗余统计字段，避免每次页面查询都触发全表扫描。</p>
+     */
     private Map<Long, Map<String, Long>> batchCountAttendanceBySession(List<Long> sessionIds) {
         List<AttendanceRecord> records = attendanceRepository.selectList(
                 new LambdaQueryWrapper<AttendanceRecord>()
@@ -364,6 +379,55 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         return result;
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void manualCheckin(Long sessionId, Long studentId, Long operatorId) {
+        ChapterOfflineSession session = sessionRepository.selectById(sessionId);
+        if (session == null) {
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "线下活动不存在");
+        }
+
+        // 校验操作者是 TEACHER/ADMIN 且有课程权限
+        CourseChapter chapter = chapterRepository.selectById(session.getChapterId());
+        if (chapter == null) {
+            throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
+        }
+        assertCourseOwnerByCourseId(chapter.getCourseId());
+
+        // 校验学生已选课
+        long enrollmentCount = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getCourseId, chapter.getCourseId())
+                        .eq(Enrollment::getUserId, studentId)
+                        .in(Enrollment::getEnrollmentStatus,
+                                EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                                EnrollmentStatus.APPROVED.getValue(),
+                                EnrollmentStatus.COMPLETED.getValue()));
+        if (enrollmentCount == 0) {
+            throw new BusinessException(ErrorCode.NOT_ENROLLED, "该学生未选课，无法签到");
+        }
+
+        // 直接插入签到记录（status=PRESENT），不走时间窗口校验
+        AttendanceRecord record = new AttendanceRecord();
+        record.setSessionId(sessionId);
+        record.setUserId(studentId);
+        record.setStatus(AttendanceStatus.PRESENT.getValue());
+        record.setCheckinTime(LocalDateTime.now());
+        record.setUpdatedBy(operatorId);
+
+        try {
+            attendanceRepository.insert(record);
+        } catch (DataIntegrityViolationException e) {
+            // 幂等：已签到则忽略
+            log.info("[manualCheckin] 学生已签到，幂等处理 sessionId={} studentId={}", sessionId, studentId);
+        }
+    }
+
+    /**
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
+     * <p>通用模式：实现逻辑与 ExerciseServiceImpl / VideoServiceImpl / CourseChapterServiceImpl /
+     * LessonServiceImpl / QuestionServiceImpl 中的同名方法一致。若需统一重构，可抽取到公共工具类。</p>
+     */
     private void assertCourseOwnerByCourseId(Long courseId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) {

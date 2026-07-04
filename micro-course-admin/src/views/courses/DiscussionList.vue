@@ -144,6 +144,8 @@ const fetchData = async () => {
   loading.value = true
   error.value = false
   try {
+    // P1I-16: 搜索提交 status 为字符串（PENDING/PUBLISHED/REJECTED/DELETED），后端期望一致
+    // 后端返回中包含 status（字符串）和 statusStr（中文/展示用标签）两个字段
     const params = {
       page: page.value - 1,
       size: size.value,

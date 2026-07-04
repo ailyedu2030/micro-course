@@ -15,7 +15,7 @@ public interface ExerciseService {
 
     void delete(Long id);
 
-    PageResult<ExerciseVO> page(Long courseId, Long chapterId, Integer page, Integer size);
+    PageResult<ExerciseVO> page(Long courseId, Long chapterId, Boolean isExam, Integer page, Integer size);
 
     ExerciseVO getById(Long id);
 

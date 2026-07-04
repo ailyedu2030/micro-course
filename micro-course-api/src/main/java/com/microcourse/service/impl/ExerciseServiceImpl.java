@@ -90,6 +90,7 @@ public class ExerciseServiceImpl implements ExerciseService {
         exercise.setShowAnswerWhen(request.getShowAnswerWhen());
         exercise.setShuffleQuestions(request.getShuffleQuestions() != null ? request.getShuffleQuestions() : false);
         exercise.setShuffleOptions(request.getShuffleOptions() != null ? request.getShuffleOptions() : false);
+        exercise.setIsExam(request.getIsExam() != null ? request.getIsExam() : false);
         exercise.setVersion(1);
         exercise.setCreatedAt(LocalDateTime.now());
         exercise.setUpdatedAt(LocalDateTime.now());
@@ -236,13 +237,16 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     @Override
-    public PageResult<ExerciseVO> page(Long courseId, Long chapterId, Integer page, Integer size) {
+    public PageResult<ExerciseVO> page(Long courseId, Long chapterId, Boolean isExam, Integer page, Integer size) {
         LambdaQueryWrapper<Exercise> wrapper = new LambdaQueryWrapper<>();
         if (courseId != null) {
             wrapper.eq(Exercise::getCourseId, courseId);
         }
         if (chapterId != null) {
             wrapper.eq(Exercise::getChapterId, chapterId);
+        }
+        if (isExam != null) {
+            wrapper.eq(Exercise::getIsExam, isExam);
         }
         // SECURITY: TEACHER 只能看到自己授课课程的练习
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
@@ -300,13 +304,27 @@ public class ExerciseServiceImpl implements ExerciseService {
             }
         }
 
+        // P0-2: 批量加载题目内容（分页返回完整题目数据）
+        Set<Long> allQuestionIds = new HashSet<>();
+        for (List<ExerciseQuestion> eqs : questionsMap.values()) {
+            for (ExerciseQuestion eq : eqs) {
+                if (eq.getQuestionId() != null) allQuestionIds.add(eq.getQuestionId());
+            }
+        }
+        Map<Long, Question> questionContentMap = new HashMap<>();
+        if (!allQuestionIds.isEmpty()) {
+            questionRepository.selectBatchIds(allQuestionIds)
+                    .forEach(q -> questionContentMap.put(q.getId(), q));
+        }
+
         final Map<Long, Course> finalCourseMap = courseMap;
         final Map<Long, CourseChapter> finalChapterMap = chapterMap;
         final Map<Long, List<ExerciseQuestion>> finalQuestionsMap = questionsMap;
         final Map<Long, List<Long>> finalExerciseChapterIdsMap = exerciseChapterIdsMap;
+        final Map<Long, Question> finalQuestionContentMap = questionContentMap;
 
         IPage<ExerciseVO> voPage = exercisePage.convert(e ->
-                convertToVO(e, finalCourseMap, finalChapterMap, finalQuestionsMap, finalExerciseChapterIdsMap));
+                convertToVO(e, finalCourseMap, finalChapterMap, finalQuestionsMap, finalExerciseChapterIdsMap, finalQuestionContentMap));
         return PageResult.of(voPage);
     }
 
@@ -323,8 +341,10 @@ public class ExerciseServiceImpl implements ExerciseService {
         return convertToVO(exercise);
     }
 
-    private ExerciseVO convertToVO(Exercise exercise) {
-        ExerciseVO vo = new ExerciseVO();
+    /**
+     * P2-1 修复：抽取公共字段赋值方法，消除两个 convertToVO 重载中的代码重复。
+     */
+    private void setBasicFields(ExerciseVO vo, Exercise exercise) {
         vo.setId(exercise.getId());
         vo.setChapterId(exercise.getChapterId());
         vo.setCourseId(exercise.getCourseId());
@@ -341,6 +361,11 @@ public class ExerciseServiceImpl implements ExerciseService {
         vo.setVersion(exercise.getVersion());
         vo.setCreatedAt(exercise.getCreatedAt());
         vo.setUpdatedAt(exercise.getUpdatedAt());
+    }
+
+    private ExerciseVO convertToVO(Exercise exercise) {
+        ExerciseVO vo = new ExerciseVO();
+        setBasicFields(vo, exercise);
 
         if (exercise.getCourseId() != null) {
             Course course = courseRepository.selectById(exercise.getCourseId());
@@ -426,24 +451,10 @@ public class ExerciseServiceImpl implements ExerciseService {
     private ExerciseVO convertToVO(Exercise exercise, Map<Long, Course> courseMap,
                                      Map<Long, CourseChapter> chapterMap,
                                      Map<Long, List<ExerciseQuestion>> questionsMap,
-                                     Map<Long, List<Long>> exerciseChapterIdsMap) {
+                                     Map<Long, List<Long>> exerciseChapterIdsMap,
+                                     Map<Long, Question> questionContentMap) {
         ExerciseVO vo = new ExerciseVO();
-        vo.setId(exercise.getId());
-        vo.setChapterId(exercise.getChapterId());
-        vo.setCourseId(exercise.getCourseId());
-        vo.setTitle(exercise.getTitle());
-        vo.setPassScore(exercise.getPassScore());
-        vo.setTimeLimit(exercise.getTimeLimit());
-        vo.setMaxAttempts(exercise.getMaxAttempts());
-        vo.setShowAnswerWhen(exercise.getShowAnswerWhen());
-        vo.setShuffleQuestions(exercise.getShuffleQuestions());
-        vo.setShuffleOptions(exercise.getShuffleOptions());
-        vo.setIsExam(exercise.getIsExam());
-        vo.setTotalScore(exercise.getTotalScore());
-        vo.setQuestionCount(exercise.getQuestionCount());
-        vo.setVersion(exercise.getVersion());
-        vo.setCreatedAt(exercise.getCreatedAt());
-        vo.setUpdatedAt(exercise.getUpdatedAt());
+        setBasicFields(vo, exercise);
 
         if (exercise.getCourseId() != null) {
             Course course = courseMap.get(exercise.getCourseId());
@@ -481,6 +492,15 @@ public class ExerciseServiceImpl implements ExerciseService {
                     qvo.setQuestionId(eq.getQuestionId());
                     qvo.setScore(eq.getScore());
                     qvo.setSortOrder(eq.getSortOrder());
+                    // P0-2: 填充题目完整内容（分页场景）
+                    Question qt = questionContentMap != null ? questionContentMap.get(eq.getQuestionId()) : null;
+                    if (qt != null) {
+                        qvo.setQuestionType(qt.getQuestionType());
+                        qvo.setContent(qt.getContent());
+                        qvo.setOptions(qt.getOptions());
+                        qvo.setAnswer(qt.getAnswer());
+                        qvo.setExplanation(qt.getExplanation());
+                    }
                     return qvo;
                 })
                 .collect(Collectors.toList());
@@ -490,7 +510,10 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     /**
-     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
+     * <p>通用模式：CourseChapterServiceImpl / VideoServiceImpl / OfflineSessionServiceImpl /
+     * LessonServiceImpl / QuestionServiceImpl 中也包含语义相同的实现。
+     * 若需统一重构，可抽取到公共工具类。</p>
      *
      * @param courseId 课程 ID
      * @throws BusinessException NOT_FOUND 课程不存在，NO_PERMISSION 无权限

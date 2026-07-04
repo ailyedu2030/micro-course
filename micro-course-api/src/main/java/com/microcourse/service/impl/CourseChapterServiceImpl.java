@@ -8,10 +8,12 @@ import com.microcourse.dto.ChapterUpdateRequest;
 import com.microcourse.dto.ChapterVO;
 import com.microcourse.dto.ChapterSortRequest;
 import com.microcourse.dto.PageResult;
+import com.microcourse.entity.ChapterOfflineSession;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.ChapterOfflineSessionRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.ExerciseRepository;
@@ -35,15 +37,18 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private final CourseRepository courseRepository;
     private final VideoRepository videoRepository;
     private final ExerciseRepository exerciseRepository;
+    private final ChapterOfflineSessionRepository chapterOfflineSessionRepository;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
                                      CourseRepository courseRepository,
                                      VideoRepository videoRepository,
-                                     ExerciseRepository exerciseRepository) {
+                                     ExerciseRepository exerciseRepository,
+                                     ChapterOfflineSessionRepository chapterOfflineSessionRepository) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.videoRepository = videoRepository;
         this.exerciseRepository = exerciseRepository;
+        this.chapterOfflineSessionRepository = chapterOfflineSessionRepository;
     }
 
     @Override
@@ -162,11 +167,13 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         }
         // Owner check: only course teacher or ADMIN can delete chapter
         assertCourseOwnerByCourseId(chapter.getCourseId());
-        // MISC-NEW-4 修复:级联删除章节下的视频和练习,避免孤儿记录
+        // MISC-NEW-4 修复:级联删除章节下的视频/练习/线下活动,避免孤儿记录
         videoRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Video>()
                 .eq(com.microcourse.entity.Video::getChapterId, id));
         exerciseRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Exercise>()
                 .eq(com.microcourse.entity.Exercise::getChapterId, id));
+        chapterOfflineSessionRepository.delete(new LambdaQueryWrapper<ChapterOfflineSession>()
+                .eq(ChapterOfflineSession::getChapterId, id));
         chapterRepository.deleteById(id);
     }
 
@@ -223,7 +230,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     /**
-     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
+     * <p>通用模式：实现逻辑与 ExerciseServiceImpl / VideoServiceImpl / OfflineSessionServiceImpl /
+     * LessonServiceImpl / QuestionServiceImpl 中的同名方法一致。若需统一重构，可抽取到公共工具类。</p>
      *
      * @param courseId 课程 ID
      * @throws BusinessException NOT_FOUND 课程不存在，NO_PERMISSION 无权限
@@ -237,7 +246,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     /**
-     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN
+     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
+     * <p>通用模式：实现逻辑与 VideoServiceImpl.assertCourseOwner(Course) 一致。</p>
      *
      * @param course 课程实体（非 null）
      * @throws BusinessException NO_PERMISSION 无权限

@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -484,6 +483,11 @@ public class VideoServiceImpl implements VideoService {
         return vo;
     }
 
+    /**
+     * 校验当前用户是否为课程 owner 或 ADMIN。
+     * <p>通用模式：实现逻辑与 CourseChapterServiceImpl.assertCourseOwner(Course) 一致。
+     * 若需统一重构，可抽取到公共工具类。</p>
+     */
     private void assertCourseOwner(Course course) {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);

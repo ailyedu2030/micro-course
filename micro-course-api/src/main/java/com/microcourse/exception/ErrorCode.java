@@ -29,6 +29,7 @@ public enum ErrorCode {
     RATE_LIMITED(429, "请求过于频繁", 429),
     COURSE_NOT_FOUND(6001, "课程不存在", 404),
     COURSE_HAS_ENROLLMENTS(6002, "该课程下有学生选课，无法关闭", 400),
+    COURSE_ARCHIVED(6009, "已归档课程不可操作", 400),
     COURSE_CATEGORY_NOT_FOUND(6008, "课程分类不存在", 404),
     COURSE_TEACHER_NOT_FOUND(6003, "教师不存在", 404),
     COURSE_INVALID_STATUS(6004, "无效的课程状态", 400),

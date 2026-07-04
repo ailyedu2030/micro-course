@@ -20,9 +20,9 @@ const routes = [
   { path: '/users/create', name: 'UserCreate', component: () => import('../views/users/UserForm.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/users/:id/edit', name: 'UserEdit', component: () => import('../views/users/UserForm.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/courses', name: 'CourseList', component: () => import('../views/courses/CourseList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
-  { path: '/courses/create', name: 'CourseCreate', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true } },
-  { path: '/courses/:id', name: 'CourseView', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true } },
-  { path: '/courses/:id/edit', name: 'CourseEdit', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true } },
+  { path: '/courses/create', name: 'CourseCreate', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
+  { path: '/courses/:id', name: 'CourseView', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
+  { path: '/courses/:id/edit', name: 'CourseEdit', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/course-categories', name: 'CourseCategoryList', component: () => import('../views/courses/CourseCategoryList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/tags', name: 'TagList', component: () => import('../views/courses/TagList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/chapters', name: 'ChapterList', component: () => import('../views/courses/ChapterList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
@@ -33,7 +33,7 @@ const routes = [
   { path: '/questions', name: 'QuestionList', component: () => import('../views/courses/QuestionList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/exercises', name: 'ExerciseList', component: () => import('../views/courses/ExerciseList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/courses/:courseId/exercises', name: 'CourseExerciseList', component: () => import('../views/courses/ExerciseList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
-  { path: '/courses/:courseId/exercises/form', name: 'ExerciseForm', component: () => import('../views/courses/ExerciseForm.vue'), meta: { requiresAuth: true } },
+  { path: '/courses/:courseId/exercises/form', name: 'ExerciseForm', component: () => import('../views/courses/ExerciseForm.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/discussions', name: 'DiscussionList', component: () => import('../views/courses/DiscussionList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/reviews', name: 'ReviewManagement', component: () => import('../views/admin/ReviewsManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/discussions/:id', name: 'DiscussionDetail', component: () => import('../views/courses/DiscussionDetail.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
@@ -63,7 +63,7 @@ const routes = [
   // 教师端路由
   { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('../views/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/courses', name: 'TeacherCourseList', component: () => import('../views/courses/CourseList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
-  { path: '/teacher/courses/:id/workspace', name: 'TeacherWorkspace', component: () => import('../views/teacher/workspace/TeacherWorkspace.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
+  { path: '/teacher/courses/:id', name: 'TeacherCourseDetail', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['TEACHER'], title: '课程详情' } },
   { path: '/teacher/videos', name: 'TeacherVideoList', component: () => import('../views/courses/VideoList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/exercises', name: 'TeacherExerciseList', component: () => import('../views/courses/ExerciseList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/discussions', name: 'TeacherDiscussions', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
@@ -75,6 +75,7 @@ const routes = [
   // P0-1: SlidePlayer & SlideManage 路由（修复教师工作台点击 PPT 播放 404）
   { path: '/teacher/courses/:courseId/slides/manage', name: 'TeacherSlideManage', component: () => import('../plugins/interactive/views/teacher/SlideManage.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/slides', name: 'TeacherSlideOverview', component: () => import('../views/teacher/TeacherSlideOverview.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '互动课件管理' } },
+  { path: '/teacher/exams', name: 'TeacherExamList', component: () => import('../views/teacher/ExamList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '试卷管理' } },
   { path: '/teacher/chapters/:chapterId/offline-sessions', name: 'TeacherOfflineSessions', component: () => import('../views/teacher/TeacherOfflineSessions.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
 
   { path: '/student', redirect: '/student/courses' },

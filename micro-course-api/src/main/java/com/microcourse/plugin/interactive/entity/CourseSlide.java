@@ -12,6 +12,7 @@ public class CourseSlide {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long courseId;
+    /** 保留字段：未来用于按章节分配课件 */
     private Long lessonId;
     private String fileName;
     private String fileUrl;

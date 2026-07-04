@@ -6,15 +6,15 @@
     <div v-if="question" class="preview-question">
       <h3 class="question-title">{{ question.content }}</h3>
       <div class="question-meta">
-        <el-tag v-if="question.questionType === 'SINGLE_CHOICE'" type="primary" size="small">单选题</el-tag>
-        <el-tag v-else-if="question.questionType === 'MULTIPLE_CHOICE'" type="success" size="small">多选题</el-tag>
-        <el-tag v-else-if="question.questionType === 'TRUE_FALSE'" type="warning" size="small">判断题</el-tag>
+        <el-tag v-if="question.questionType === 'SINGLE'" type="primary" size="small">单选题</el-tag>
+        <el-tag v-else-if="question.questionType === 'MULTIPLE'" type="success" size="small">多选题</el-tag>
+        <el-tag v-else-if="question.questionType === 'JUDGE'" type="warning" size="small">判断题</el-tag>
         <el-tag v-else-if="question.questionType === 'SHORT_ANSWER'" type="info" size="small">简答题</el-tag>
         <span class="score-tag">分值：{{ question.score ?? '-' }}</span>
       </div>
 
       <!-- 单选题 -->
-      <div v-if="question.questionType === 'SINGLE_CHOICE'" class="options-area">
+      <div v-if="question.questionType === 'SINGLE'" class="options-area">
         <el-radio-group v-model="dummySingle">
           <el-radio
             v-for="(opt, idx) in parsedOptions"
@@ -28,7 +28,7 @@
       </div>
 
       <!-- 多选题 -->
-      <div v-else-if="question.questionType === 'MULTIPLE_CHOICE'" class="options-area">
+      <div v-else-if="question.questionType === 'MULTIPLE'" class="options-area">
         <el-checkbox-group v-model="dummyMultiple">
           <el-checkbox
             v-for="(opt, idx) in parsedOptions"
@@ -42,7 +42,7 @@
       </div>
 
       <!-- 判断题 -->
-      <div v-else-if="question.questionType === 'TRUE_FALSE'" class="options-area">
+      <div v-else-if="question.questionType === 'JUDGE'" class="options-area">
         <el-radio-group v-model="dummyJudge">
           <el-radio :value="true" class="option-item">正确</el-radio>
           <el-radio :value="false" class="option-item">错误</el-radio>
@@ -65,9 +65,9 @@
         <span class="answer-value">{{ displayAnswer }}</span>
       </div>
 
-      <div v-if="question.analysis" class="answer-analysis">
+      <div v-if="question.explanation" class="answer-analysis">
         <span class="answer-label">答案解析：</span>
-        <span class="answer-value">{{ question.analysis }}</span>
+        <span class="answer-value">{{ question.explanation }}</span>
       </div>
     </div>
     <template #footer>
@@ -114,10 +114,10 @@ const parsedOptions = computed(() => {
 const displayAnswer = computed(() => {
   if (!props.question?.answer) return '-'
   const ans = props.question.answer
-  if (props.question.questionType === 'TRUE_FALSE') {
+  if (props.question.questionType === 'JUDGE') {
     return ans === 'true' || ans === true ? '正确' : '错误'
   }
-  if (props.question.questionType === 'MULTIPLE_CHOICE' && parsedOptions.value.length > 0) {
+  if (props.question.questionType === 'MULTIPLE' && parsedOptions.value.length > 0) {
     const labels = parsedOptions.value.map(o => o.label)
     return ans.split(',').map(a => labels.findIndex(l => l === a.trim()) + 1).filter(i => i > 0).map(i => String.fromCharCode(64 + i)).join(',')
   }

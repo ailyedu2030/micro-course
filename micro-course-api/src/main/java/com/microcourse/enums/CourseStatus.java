@@ -61,7 +61,7 @@ public enum CourseStatus {
         }
         switch (this) {
             case DRAFT:
-                return target == PENDING_REVIEW;
+                return target == PENDING_REVIEW || target == CLOSED;  // CLOSED: 删除操作
             case PENDING_REVIEW:
                 return target == APPROVED || target == REJECTED || target == DRAFT;
             case APPROVED:
@@ -71,7 +71,7 @@ public enum CourseStatus {
             case CLOSED:
                 return target == PUBLISHED || target == ARCHIVED;
             case REJECTED:
-                return target == DRAFT || target == PENDING_REVIEW || target == ARCHIVED;
+                return target == DRAFT || target == PENDING_REVIEW || target == ARCHIVED || target == CLOSED;  // CLOSED: 删除操作
             case ARCHIVED:  // 终态
             default:
                 return false;
