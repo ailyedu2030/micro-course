@@ -300,7 +300,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUrlPagination } from '@/composables/useUrlPagination'
 import { swrCache } from '@/composables/useStaleWhileRevalidate'
@@ -728,6 +728,14 @@ const offlineSubmitting = ref(false)
 const offlineFormRef = ref(null)
 const offlineChapterOptions = ref([])
 const courseOptions = ref([])  // 线下课课程选择器
+watch(showOfflineDialog, async (v) => {
+  if (v) {
+    try {
+      const { data } = await getCourses({ size: 200, courseType: 'OFFLINE' })
+      courseOptions.value = data?.items || []
+    } catch { courseOptions.value = [] }
+  }
+})
 const offlineForm = reactive({
   courseId: null, chapterId: null, sessionDate: '', startTime: '', endTime: '', location: '', teacherNotes: ''
 })
@@ -751,10 +759,6 @@ function resetOfflineForm() {
   offlineForm.startTime = ''; offlineForm.endTime = ''; offlineForm.location = ''; offlineForm.teacherNotes = ''
   offlineChapterOptions.value = []
   offlineFormRef.value?.resetFields()
-  // 加载课程列表
-  getCourses({ size: 200, courseType: 'OFFLINE' }).then(({ data }) => {
-    courseOptions.value = data?.items || []
-  }).catch(() => {})
 }
 async function submitOffline() {
   if (!offlineFormRef.value) return
