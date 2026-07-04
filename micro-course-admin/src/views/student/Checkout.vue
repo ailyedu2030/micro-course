@@ -88,8 +88,7 @@ onMounted(() => {
     router.push('/student/courses')
     return
   }
-  // 短暂 loading 状态让用户感知到加载
-  setTimeout(() => { loading.value = false }, 200)
+  loading.value = false
 })
 
 async function handleSubmit() {

@@ -29,6 +29,7 @@ import com.microcourse.repository.UserRepository;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.service.GradeService;
 import com.microcourse.service.NotificationService;
+import com.microcourse.service.ScoreHistoryService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +55,7 @@ public class GradeServiceImpl implements GradeService {
     private final ExerciseRecordRepository exerciseRecordRepository;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final ScoreHistoryService scoreHistoryService;
 
     public GradeServiceImpl(
             GradeRepository gradeRepository,
@@ -63,7 +65,8 @@ public class GradeServiceImpl implements GradeService {
             EnrollmentRepository enrollmentRepository,
             ExerciseRecordRepository exerciseRecordRepository,
             NotificationService notificationService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ScoreHistoryService scoreHistoryService) {
         this.gradeRepository = gradeRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
@@ -72,6 +75,7 @@ public class GradeServiceImpl implements GradeService {
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.notificationService = notificationService;
         this.objectMapper = objectMapper;
+        this.scoreHistoryService = scoreHistoryService;
     }
 
     @Override
@@ -205,6 +209,9 @@ public class GradeServiceImpl implements GradeService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "成绩记录不存在");
         }
 
+        // Phase E: 捕获修改前的原成绩值用于审计
+        BigDecimal oldScore = grade.getScore();
+
         // EXAM-NEW-4 修复:教师越权校验 — 只有课程教师或 ADMIN 可修改成绩
         if (grade.getCourseId() != null) {
             Course course = courseRepository.selectById(grade.getCourseId());
@@ -238,6 +245,20 @@ public class GradeServiceImpl implements GradeService {
         grade.setUpdatedAt(LocalDateTime.now());
 
         gradeRepository.updateById(grade);
+
+        // Phase E: 成绩变更审计追踪
+        try {
+            Long enrollmentId = findEnrollmentId(grade.getCourseId(), grade.getUserId());
+            if (enrollmentId != null) {
+                scoreHistoryService.recordChange(enrollmentId, "score",
+                    oldScore != null ? oldScore.toString() : null,
+                    request.getScore() != null ? request.getScore().toString() : null,
+                    "UPDATE", "修改成绩", teacherId);
+            }
+        } catch (Exception e) {
+            log.warn("[Grade] 记录成绩审计失败, 不影响主流程", e);
+        }
+
         return convertToVO(grade);
     }
 
@@ -288,6 +309,9 @@ public class GradeServiceImpl implements GradeService {
 
         String safeComment = sanitizeComment(request.getComment());
 
+        // Phase E: 捕获修改前的原成绩值用于审计
+        String oldScoreStr = grade != null && grade.getScore() != null ? grade.getScore().toString() : null;
+
         if (grade != null) {
             // 更新已有记录
             grade.setScore(request.getScore());
@@ -329,6 +353,16 @@ public class GradeServiceImpl implements GradeService {
                     courseId);
         } catch (Exception e) {
             log.warn("[Grade] 通知学生成绩发布失败 userId={} courseId={}", studentId, courseId, e);
+        }
+
+        // Phase E: 成绩变更审计追踪
+        try {
+            scoreHistoryService.recordChange(request.getEnrollmentId(), "score",
+                oldScoreStr,
+                request.getScore().toString(),
+                "TEACHER_GRADE", "教师评分", teacherId);
+        } catch (Exception e) {
+            log.warn("[Grade] 记录成绩审计失败, 不影响主流程", e);
         }
 
         GradeVO vo = batchConvertToVO(Collections.singletonList(grade)).get(0);
@@ -465,6 +499,8 @@ public class GradeServiceImpl implements GradeService {
 
         // 同步更新 grades 表对应记录（优先按 attemptNo 精确匹配本次作答）
         Grade grade = findGradeForRecord(record, exercise.getCourseId());
+        // Phase E: 捕获修改前的原成绩值用于审计
+        String manualOldScore = grade != null && grade.getScore() != null ? grade.getScore().toString() : null;
         if (grade != null) {
             grade.setScore(BigDecimal.valueOf(total));
             grade.setTotalScore(record.getTotalScore() != null ? BigDecimal.valueOf(record.getTotalScore()) : null);
@@ -493,6 +529,19 @@ public class GradeServiceImpl implements GradeService {
             ng.setCreatedAt(LocalDateTime.now());
             ng.setUpdatedAt(LocalDateTime.now());
             gradeRepository.insert(ng);
+        }
+
+        // Phase E: 成绩变更审计追踪
+        try {
+            Long enrollmentId = findEnrollmentId(exercise.getCourseId(), record.getUserId());
+            if (enrollmentId != null) {
+                scoreHistoryService.recordChange(enrollmentId, "score",
+                    manualOldScore,
+                    String.valueOf(total),
+                    "MANUAL_GRADE", "手动批改", teacherId);
+            }
+        } catch (Exception e) {
+            log.warn("[Grade] 记录成绩审计失败, 不影响主流程", e);
         }
 
         // R8 P0-5: 批改后通知学生
@@ -674,6 +723,26 @@ public class GradeServiceImpl implements GradeService {
     private GradeVO convertToVO(Grade grade) {
         List<GradeVO> vos = batchConvertToVO(Collections.singletonList(grade));
         return vos.isEmpty() ? new GradeVO() : vos.get(0);
+    }
+
+    /**
+     * Phase E: 根据 courseId + userId 查询选课记录 ID
+     */
+    private Long findEnrollmentId(Long courseId, Long userId) {
+        if (courseId == null || userId == null) return null;
+        try {
+            LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Enrollment::getCourseId, courseId)
+                   .eq(Enrollment::getUserId, userId)
+                   .isNull(Enrollment::getDeletedAt)
+                   .orderByDesc(Enrollment::getEnrolledAt)
+                   .last("LIMIT 1");
+            Enrollment enrollment = enrollmentRepository.selectOne(wrapper);
+            return enrollment != null ? enrollment.getId() : null;
+        } catch (Exception e) {
+            log.warn("[Grade] 查找 enrollmentId 失败 courseId={} userId={}", courseId, userId, e);
+            return null;
+        }
     }
 
     /**

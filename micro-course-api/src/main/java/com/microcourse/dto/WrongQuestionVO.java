@@ -14,7 +14,6 @@ public class WrongQuestionVO {
     private String courseTitle;       // P0-3: 课程标题
     private String chapterTitle;      // P0-3: 章节标题
     private String correctAnswer;     // P0-3: 正确答案
-    private String content;           // P0-3: 题目内容（冗余 questionContent，兼容前端）
     private Integer watchPosition;    // P0-3: 视频观看位置
     private Integer wrongCount;
     private LocalDateTime lastWrongAt;
@@ -42,8 +41,6 @@ public class WrongQuestionVO {
     public void setChapterTitle(String chapterTitle) { this.chapterTitle = chapterTitle; }
     public String getCorrectAnswer() { return correctAnswer; }
     public void setCorrectAnswer(String correctAnswer) { this.correctAnswer = correctAnswer; }
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
     public Integer getWatchPosition() { return watchPosition; }
     public void setWatchPosition(Integer watchPosition) { this.watchPosition = watchPosition; }
     public Integer getWrongCount() { return wrongCount; }

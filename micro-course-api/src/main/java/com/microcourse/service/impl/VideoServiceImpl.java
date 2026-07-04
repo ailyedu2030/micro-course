@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.VideoCreateRequest;
@@ -302,15 +303,24 @@ public class VideoServiceImpl implements VideoService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long videoId, int status) {
-        Video video = videoRepository.selectById(videoId);
-        if (video == null) {
+        LambdaQueryWrapper<Video> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Video::getId, videoId);
+        Video v = videoRepository.selectOne(wrapper);
+        if (v == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
-        video.setStatus(status);
-        video.setUpdatedAt(LocalDateTime.now());
-        videoRepository.updateById(video);
-    }
 
+        int affected = videoRepository.update(null,
+            new LambdaUpdateWrapper<Video>()
+                .eq(Video::getId, videoId)
+                .eq(Video::getStatus, v.getStatus())
+                .set(Video::getStatus, status)
+                .set(Video::getUpdatedAt, LocalDateTime.now())
+                .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION, "视频状态已被修改，请刷新");
+        }
+    }
     /**
      * P0-3 修复：封面 URL 改为可访问的 API 路径
      * P1-8 修复：封面文件魔数校验

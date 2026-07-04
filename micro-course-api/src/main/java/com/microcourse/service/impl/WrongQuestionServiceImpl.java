@@ -139,7 +139,6 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
         if (question != null) {
             vo.setQuestionType(question.getQuestionType());
             vo.setQuestionContent(question.getContent());
-            vo.setContent(question.getContent());       // P0-3: content 冗余字段
             vo.setCorrectAnswer(question.getAnswer());  // P0-3: 正确答案
         }
 

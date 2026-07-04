@@ -801,8 +801,8 @@ async function getRecent(sharedEnrollments) {
         if (lastEntry?.chapterId) {
           currentChapter = Number(lastEntry.chapterId)
         }
-      } catch {
-        // 静默失败，保留默认 currentChapter = 1
+      } catch (e) {
+        console.warn('[LearningCenter] 获取学习进度失败', e)
       }
       recentCourse.value = {
         title: inProgress.courseTitle || inProgress.title || '课程',

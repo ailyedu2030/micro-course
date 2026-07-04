@@ -45,6 +45,7 @@
               <el-option label="判断题" value="JUDGE" />
               <el-option label="简答题" value="SHORT_ANSWER" />
               <el-option label="综合题" value="ESSAY" />
+              <el-option label="填空题" value="FILL" />
             </el-select>
           </el-form-item>
           <el-form-item label="难度">
@@ -104,6 +105,7 @@
             <el-tag v-else-if="row.questionType === 'JUDGE'" type="warning" size="small">判断题</el-tag>
             <el-tag v-else-if="row.questionType === 'SHORT_ANSWER'" type="info" size="small">简答题</el-tag>
             <el-tag v-else-if="row.questionType === 'ESSAY'" type="danger" size="small">综合题</el-tag>
+            <el-tag v-else-if="row.questionType === 'FILL'" type="info" size="small">填空题</el-tag>
             <el-tag v-else type="info" size="small">{{ row.questionType || '-' }}</el-tag>
           </template>
         </el-table-column>
@@ -126,11 +128,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="content" label="题目内容" min-width="250" show-overflow-tooltip />
-        <el-table-column prop="score" label="分值" width="80" align="center">
-          <template #default="{ row }">
-            {{ row.score ?? '-' }}
-          </template>
-        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="info" link size="small" @click="handlePreview(row)">预览</el-button>
@@ -169,6 +166,7 @@
             <el-option label="判断题" value="JUDGE" />
             <el-option label="简答题" value="SHORT_ANSWER" />
             <el-option label="综合题" value="ESSAY" />
+            <el-option label="填空题" value="FILL" />
           </el-select>
         </el-form-item>
         <el-form-item label="关联章节">
@@ -443,7 +441,8 @@ function getQuestionTypeLabel(type) {
     'MULTIPLE': '多选题',
     'JUDGE': '判断题',
     'SHORT_ANSWER': '简答题',
-    'ESSAY': '综合题'
+    'ESSAY': '综合题',
+    'FILL': '填空题'
   }
   return map[type] || type || ''
 }

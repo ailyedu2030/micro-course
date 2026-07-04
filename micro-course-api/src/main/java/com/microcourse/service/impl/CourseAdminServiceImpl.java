@@ -21,6 +21,8 @@ import com.microcourse.entity.Enrollment;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.entity.LearningProgress;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.CourseReviewRepository;
@@ -67,6 +69,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final EnrollmentRepository enrollmentRepository;
     private final PluginGrantRepository pluginGrantRepository;
     private final VideoRepository videoRepository;
+    private final LearningProgressRepository learningProgressRepository;
     private final NotificationService notificationService;
     private final CourseSlideMapper courseSlideMapper;
 
@@ -82,6 +85,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   CourseReviewLogRepository reviewLogRepository,
                                   EnrollmentRepository enrollmentRepository,
                                   PluginGrantRepository pluginGrantRepository,
+                                  LearningProgressRepository learningProgressRepository,
                                   NotificationService notificationService,
                                   CourseSlideMapper courseSlideMapper) {
         this.courseRepository = courseRepository;
@@ -93,6 +97,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.enrollmentRepository = enrollmentRepository;
         this.pluginGrantRepository = pluginGrantRepository;
         this.videoRepository = videoRepository;
+        this.learningProgressRepository = learningProgressRepository;
         this.notificationService = notificationService;
         this.courseSlideMapper = courseSlideMapper;
     }
@@ -261,6 +266,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                 new LambdaUpdateWrapper<Video>()
                         .eq(Video::getCourseId, id)
                         .set(Video::getDeletedAt, LocalDateTime.now()));
+
+        // Phase F 修复:级联清理学习进度(防止孤儿数据导致学生看到对不上)
+        learningProgressRepository.delete(new LambdaQueryWrapper<LearningProgress>()
+                .eq(LearningProgress::getCourseId, id));
 
         LOG.info("课程已关闭（含级联清理）, id={}", id);
     }

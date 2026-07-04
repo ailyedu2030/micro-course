@@ -27,7 +27,7 @@
       <el-table v-if="!isMobile" v-loading="wrongLoading" :aria-busy="wrongLoading" :data="wrongQuestions" stripe border max-height="400" class="data-table wrong-questions-table" aria-label="错题列表">
         <el-table-column prop="questionContent" label="错题内容" min-width="200">
           <template #default="{ row }">
-            <span>{{ row.questionContent || row.content }}</span>
+            <span>{{ row.questionContent }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="courseTitle" label="所属课程" width="150" />

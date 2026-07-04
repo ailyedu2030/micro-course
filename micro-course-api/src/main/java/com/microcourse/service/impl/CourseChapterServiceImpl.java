@@ -17,6 +17,10 @@ import com.microcourse.repository.ChapterOfflineSessionRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.ExerciseRepository;
+import com.microcourse.entity.LearningProgress;
+import com.microcourse.entity.CourseNote;
+import com.microcourse.repository.CourseNoteRepository;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseChapterService;
 import com.microcourse.util.SecurityUtil;
@@ -39,17 +43,23 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private final VideoRepository videoRepository;
     private final ExerciseRepository exerciseRepository;
     private final ChapterOfflineSessionRepository chapterOfflineSessionRepository;
+    private final LearningProgressRepository learningProgressRepository;
+    private final CourseNoteRepository courseNoteRepository;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
                                      CourseRepository courseRepository,
                                      VideoRepository videoRepository,
                                      ExerciseRepository exerciseRepository,
-                                     ChapterOfflineSessionRepository chapterOfflineSessionRepository) {
+                                     ChapterOfflineSessionRepository chapterOfflineSessionRepository,
+                                     LearningProgressRepository learningProgressRepository,
+                                     CourseNoteRepository courseNoteRepository) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.videoRepository = videoRepository;
         this.exerciseRepository = exerciseRepository;
         this.chapterOfflineSessionRepository = chapterOfflineSessionRepository;
+        this.learningProgressRepository = learningProgressRepository;
+        this.courseNoteRepository = courseNoteRepository;
     }
 
     @Override
@@ -103,7 +113,12 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (chapter == null) {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
-        return convertToVO(chapter);
+        ChapterVO vo = convertToVO(chapter);
+        Long vc = videoRepository.selectCount(
+            new LambdaQueryWrapper<com.microcourse.entity.Video>()
+                .eq(com.microcourse.entity.Video::getChapterId, id));
+        vo.setVideoCount(vc == null ? 0 : vc.intValue());
+        return vo;
     }
 
     @Override
@@ -130,7 +145,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setUpdatedAt(LocalDateTime.now());
 
         chapterRepository.insert(chapter);
-        return convertToVO(chapter);
+        ChapterVO vo = convertToVO(chapter);
+        // 新建章节时 videoCount 默认为 0
+        return vo;
     }
 
     @Override
@@ -156,7 +173,12 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setUpdatedAt(LocalDateTime.now());
 
         chapterRepository.updateById(chapter);
-        return convertToVO(chapter);
+        ChapterVO vo = convertToVO(chapter);
+        Long vc = videoRepository.selectCount(
+            new LambdaQueryWrapper<com.microcourse.entity.Video>()
+                .eq(com.microcourse.entity.Video::getChapterId, id));
+        vo.setVideoCount(vc == null ? 0 : vc.intValue());
+        return vo;
     }
 
     @Override
@@ -175,6 +197,10 @@ public class CourseChapterServiceImpl implements CourseChapterService {
                 .eq(com.microcourse.entity.Exercise::getChapterId, id));
         chapterOfflineSessionRepository.delete(new LambdaQueryWrapper<ChapterOfflineSession>()
                 .eq(ChapterOfflineSession::getChapterId, id));
+        learningProgressRepository.delete(new LambdaQueryWrapper<LearningProgress>()
+                .eq(LearningProgress::getChapterId, id));
+        courseNoteRepository.delete(new LambdaQueryWrapper<CourseNote>()
+                .eq(CourseNote::getChapterId, id));
         chapterRepository.deleteById(id);
     }
 
@@ -225,6 +251,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         vo.setSortOrder(chapter.getSortOrder());
         vo.setChapterType(chapter.getChapterType());
         vo.setDuration(chapter.getDuration());
+        vo.setLearningObjectives(chapter.getLearningObjectives());
         vo.setCreatedAt(chapter.getCreatedAt());
         vo.setUpdatedAt(chapter.getUpdatedAt());
         vo.setVersion(chapter.getVersion());
