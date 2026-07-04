@@ -731,7 +731,8 @@ const courseOptions = ref([])  // 线下课课程选择器
 watch(showOfflineDialog, async (v) => {
   if (v) {
     try {
-      const { data } = await getCourses({ size: 200, courseType: 'OFFLINE' })
+      // 加载所有课程(不按courseType过滤,因为OFFLINE课程可能已下架,且VIDEO课程下也有OFFLINE章节)
+      const { data } = await getCourses({ size: 200 })
       courseOptions.value = data?.items || []
     } catch { courseOptions.value = [] }
   }
