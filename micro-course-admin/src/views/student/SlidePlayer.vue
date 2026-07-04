@@ -414,9 +414,8 @@ async function markSlideComplete() {
 
 // P0-2: 翻到最后一页时触发完成标记
 watch(current, (newVal) => {
-  if (pages.value.length > 0 && newVal >= pages.value.length - 1) {
-    markSlideComplete()
-  }
+  if (pages.value.length <= 1) return  // 单页不标记完成
+  if (newVal >= pages.value.length - 1) markSlideComplete()
 })
 
 onMounted(async () => {

@@ -83,7 +83,15 @@
               </p>
               <div class="exam-actions">
                 <el-button
-                  v-if="!exam._attempted"
+                  v-if="exam._expired"
+                  type="info"
+                  size="small"
+                  disabled
+                >
+                  已截止
+                </el-button>
+                <el-button
+                  v-else-if="!exam._attempted"
                   type="primary"
                   size="small"
                   @click="handleJoinExam(exam)"
@@ -182,7 +190,16 @@
             {{ formatTime(exam.examTime) }}
           </p>
           <el-button
-            v-if="!exam._attempted"
+            v-if="exam._expired"
+            type="info"
+            size="small"
+            class="h5-action-btn"
+            disabled
+          >
+            已截止
+          </el-button>
+          <el-button
+            v-else-if="!exam._attempted"
             type="primary"
             size="small"
             class="h5-action-btn"
@@ -294,7 +311,10 @@ const fetchExams = async () => {
     examList.value = rawList.map((exam, idx) => {
       const attemptRes = attemptResults[idx]
       const attempted = attemptRes.status === 'fulfilled' && attemptRes.value?.data?.attemptCount > 0
-      return { ...exam, _attempted: attempted, _expired: false }
+      const now = new Date()
+      const examEnd = exam.examTime ? new Date(new Date(exam.examTime).getTime() + (exam.timeLimit || 0) * 60000) : null
+      const expired = examEnd && examEnd < now
+      return { ...exam, _attempted: attempted, _expired: expired }
     })
   } catch {
     errorState.value = true

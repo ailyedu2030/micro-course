@@ -527,8 +527,7 @@
         width="440px"
         style="max-width: 500px;"
         :close-on-click-modal="false"
-        :show-close="false"
-       :close-on-press-escape="true"
+        :close-on-press-escape="true"
 >
         <div class="result-content">
           <div class="result-score" :class="resultPassed ? 'passed' : 'failed'">

@@ -796,7 +796,11 @@ const handleContinue = async (courseId) => {
   try {
     const res = await getCourseById(courseId)
     if (res.data?.courseType === 'INTERACTIVE') {
-      router.push(`/student/courses/${courseId}/slides/player`)
+      // 尝试从学习进度获取上次学习的章节
+      const progress = courseProgressMap.value[courseId]
+      const lastChapterId = progress?.lastChapterId || ''
+      const suffix = lastChapterId ? `?chapterId=${lastChapterId}` : ''
+      router.push(`/student/courses/${courseId}/slides/player${suffix}`)
       return
     }
   } catch { /* 查询失败则降级到 learning 页面 */ }

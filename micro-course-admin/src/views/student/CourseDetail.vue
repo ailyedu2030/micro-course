@@ -473,6 +473,7 @@ const handleEnroll = async () => {
 }
 
 function handleAddCart() {
+  if (!isLoggedIn.value) { goLogin(); return }
   const c = course.value
   if (!c) return
   // 使用 pricingInfo 中的实际价格
