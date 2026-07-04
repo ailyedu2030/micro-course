@@ -1,10 +1,16 @@
 <template>
   <div class="slide-manage fade-in">
+    <!-- Breadcrumb -->
+    <div class="breadcrumb-bar">
+      <el-breadcrumb separator="→">
+        <el-breadcrumb-item :to="{ path: userRole === 'TEACHER' ? '/teacher/courses' : '/courses' }">课程管理</el-breadcrumb-item>
+        <el-breadcrumb-item v-if="courseTitle" :to="{ path: `/courses/${courseId}` }">{{ courseTitle }}</el-breadcrumb-item>
+        <el-breadcrumb-item>幻灯片管理</el-breadcrumb-item>
+      </el-breadcrumb>
+    </div>
+
     <!-- Page Header -->
     <header class="manage-header">
-      <button class="back-btn" @click="$router.push('/teacher/courses/' + courseId)" aria-label="返回课程">
-        <el-icon :size="20"><ArrowLeft /></el-icon>
-      </button>
       <div class="header-info">
         <h1 class="page-title">幻灯片管理</h1>
         <div v-if="courseTitle || chapterTitle" class="context-tags">
@@ -16,28 +22,26 @@
           {{ statusTag.text }}
         </el-tag>
       </div>
-      <div class="header-actions" v-if="slide?.status === 2">
-        <el-button type="danger" plain @click="handleDeleteSlide" :icon="Delete">
-          删除课件
-        </el-button>
+      <div class="header-actions" v-if="slide?.status === 2 && !batchMode">
+        <el-button type="primary" plain @click="showPreview = true" :icon="View">预览</el-button>
         <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx" class="replace-upload">
-          <el-button :icon="UploadFilled">替换课件</el-button>
+          <el-button :icon="UploadFilled">替换</el-button>
         </el-upload>
-        <el-button @click="handleDownloadSlide" :icon="Download">
-          下载 PPT
-        </el-button>
-        <el-button :type="batchMode ? 'primary' : 'default'" @click="toggleBatchMode" :icon="batchMode ? 'CircleCheck' : 'Select'">
-          {{ batchMode ? '退出批量' : '批量操作' }}
-        </el-button>
-        <el-button :loading="aiGenerating" @click="handleGenerateAllAI" :icon="MagicStick">
-          批量 AI
-        </el-button>
-        <el-button type="success" :loading="ttsGenerating" @click="handleGenerateAllTTS" :icon="Headset">
-          批量 TTS
-        </el-button>
-        <el-button @click="showPreview = true" :icon="View">
-          预览
-        </el-button>
+        <el-dropdown trigger="click" class="header-dropdown">
+          <el-button :icon="MoreFilled">更多</el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="handleDownloadSlide" :icon="Download">下载 PPT</el-dropdown-item>
+              <el-dropdown-item @click="toggleBatchMode" :icon="Select">批量操作</el-dropdown-item>
+              <el-dropdown-item divided :icon="MagicStick" :disabled="aiGenerating" @click="handleGenerateAllAI">批量 AI 生成</el-dropdown-item>
+              <el-dropdown-item :icon="Headset" :disabled="ttsGenerating" @click="handleGenerateAllTTS">批量 TTS 配音</el-dropdown-item>
+              <el-dropdown-item divided :icon="Delete" @click="handleDeleteSlide" style="color:var(--el-color-danger)">删除课件</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+      <div class="header-actions" v-if="batchMode">
+        <el-button :type="batchMode ? 'primary' : 'default'" @click="toggleBatchMode">退出批量</el-button>
       </div>
       <div v-if="batchMode && selectedBatch.length > 0" class="batch-bar">
         <span class="batch-count">已选 {{ selectedBatch.length }} 页</span>
@@ -117,13 +121,14 @@ drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx" :disab
 
     <!-- Main Workspace -->
     <section v-else-if="slide.status === 2" class="workspace">
-      <div class="create-guide" style="position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:5;gap:4px;background:var(--el-bg-color-page);padding:6px 14px;border-radius:20px;box-shadow:var(--el-box-shadow-light);">
-        <div class="guide-step done" style="background:var(--el-color-success-light-9);color:var(--el-color-success);">
-          <span class="step-num" style="background:var(--el-color-success);">✓</span>
+      <!-- Progress Guide -->
+      <div class="workspace-guide">
+        <div class="guide-step done">
+          <span class="step-num">✓</span>
           <span class="step-text">已上传</span>
         </div>
-        <div class="guide-step done" style="background:var(--el-color-success-light-9);color:var(--el-color-success);">
-          <span class="step-num" style="background:var(--el-color-success);">✓</span>
+        <div class="guide-step done">
+          <span class="step-num">✓</span>
           <span class="step-text">已渲染</span>
         </div>
         <div class="guide-step" :class="progressStep === 3 ? 'active' : ''">
@@ -135,13 +140,13 @@ drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx" :disab
           <span class="step-text">音频</span>
         </div>
         <div class="guide-step" :class="progressStep === 5 ? 'active done' : ''">
-          <span class="step-num" v-if="progressStep === 5" style="background:var(--el-color-success);">✓</span>
-          <span class="step-num" v-else>5</span>
-          <span class="step-text">预览发布</span>
+          <span class="step-num">✓</span>
+          <span class="step-text">发布</span>
         </div>
       </div>
-      <!-- Thumbnail Grid -->
-      <div class="thumb-grid">
+      <div class="workspace-body">
+        <!-- Thumbnail Grid -->
+        <div class="thumb-grid">
         <div
 v-for="page in pages" :key="page.pageNumber"
           class="thumb-card" :class="{
@@ -227,9 +232,9 @@ v-if="selectedPage.narrationScript" size="small" type="success"
             </div>
           </div>
           <el-input
-v-model="editingScript" type="textarea" :rows="10"
+v-model="editingScript" type="textarea" :rows="4" :autosize="{ minRows: 4, maxRows: 16 }"
             placeholder="点击「AI 生成」自动生成讲述稿，或手动输入..."
-            @blur="handleSaveScript" resize="none"
+            @blur="handleSaveScript" resize="vertical"
 />
           <div v-if="audioInfo" class="audio-meta">
             <el-icon :size="14"><Headset /></el-icon>
@@ -241,6 +246,7 @@ v-model="editingScript" type="textarea" :rows="10"
       <aside v-else class="editor-panel editor-empty">
         <el-empty description="点击缩略图开始编辑" :image-size="80" />
       </aside>
+      </div><!-- end workspace-body -->
     </section>
 
     <!-- Preview Dialog -->
@@ -256,13 +262,16 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourseById } from '@/api/course'
 import { getChapterById } from '@/api/chapter'
-import { ArrowLeft, UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete, Download } from '@element-plus/icons-vue'
+import { useUserStore } from '@/store/user'
+import { UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete, Download, MoreFilled, Select } from '@element-plus/icons-vue'
 import { uploadSlide, getSlides, getSlidePages, getSlidePage, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio, deleteSlide, deleteSlidePage, reorderSlidePages, downloadOriginalSlide } from '@/plugins/interactive/api/slide'
 import SlidePreview from '@/plugins/interactive/components/SlidePreview.vue'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import Sortable from 'sortablejs'
 
 const route = useRoute()
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 const courseId = computed(() => route.params.courseId)
 const chapterId = computed(() => route.params.chapterId || null)
 const courseTitle = ref('')
@@ -609,20 +618,14 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 <style scoped>
 .slide-manage { min-height: 100dvh; background: var(--el-bg-color-page); padding-bottom: var(--space-12); }
 
+/* === BREADCRUMB === */
+.breadcrumb-bar { padding: 8px 24px 0; background: var(--el-bg-color); border-bottom: 1px solid var(--el-border-color-light); }
+
 /* === HEADER === */
 .manage-header {
-  display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-6);
-  background: var(--el-fill-color-blank); border-bottom: 1px solid var(--el-border-color-light);
-  position: sticky; top: 0; z-index: 50;
-  box-shadow: var(--el-box-shadow-light);
+  display: flex; align-items: center; gap: var(--space-4); padding: var(--space-2-5) var(--space-6);
+  background: var(--el-fill-color-blank);
 }
-.back-btn {
-  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--el-border-color); border-radius: var(--radius-md);
-  background: var(--el-fill-color-blank); cursor: pointer; color: var(--el-text-color-secondary);
-  transition: all var(--duration-fast) var(--ease-out); flex-shrink: 0;
-}
-.back-btn:hover { border-color: var(--el-color-primary); color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
 .header-info { flex: 1; display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 .page-title { font-size: var(--text-lg); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); margin: 0; }
 .page-subtitle { font-size: var(--text-xs); color: var(--el-text-color-placeholder); }
@@ -666,7 +669,14 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 .error-card { display: flex; align-items: center; justify-content: center; min-height: 400px; }
 
 /* === WORKSPACE === */
-.workspace { display: flex; gap: 0; padding: 0; height: calc(100dvh - 73px); }
+.workspace { display: flex; gap: 0; padding: 0; height: calc(100dvh - 73px); flex-direction: column; }
+.workspace-guide {
+  display: flex; justify-content: center; gap: 6px; padding: 8px;
+  background: var(--el-bg-color); border-bottom: 1px solid var(--el-border-color-light);
+  flex-shrink: 0; z-index: 5;
+}
+/* workspace body = thumbnails + editor side by side */
+.workspace-body { display: flex; flex: 1; overflow: hidden; }
 
 /* --- Thumbnails --- */
 .thumb-grid {
@@ -710,7 +720,7 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 
 /* --- Editor --- */
 .editor-panel {
-  width: 380px; background: var(--el-fill-color-blank); border-left: 1px solid var(--el-border-color-light);
+  width: 360px; min-width: 280px; background: var(--el-fill-color-blank); border-left: 1px solid var(--el-border-color-light);
   display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
 }
 .editor-empty { align-items: center; justify-content: center; }
@@ -751,8 +761,8 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 .audio-meta { display: flex; align-items: center; gap: var(--space-1); margin-top: var(--space-2); font-size: var(--text-xs); color: var(--el-color-success); }
 
 /* === RESPONSIVE === */
-@media (max-width: 1024px) {
-  .workspace { flex-direction: column; height: auto; }
+@media (max-width: 1280px) {
+  .workspace-body { flex-direction: column; }
   .editor-panel { width: 100%; max-height: 50vh; border-left: none; border-top: 1px solid var(--el-border-color-light); }
   .thumb-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2); padding: var(--space-3); }
 }
