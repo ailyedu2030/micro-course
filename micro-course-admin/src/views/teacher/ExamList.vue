@@ -7,6 +7,26 @@
       </div>
     </header>
 
+    <!-- 搜索筛选区 -->
+    <el-card class="search-card filter-card" shadow="never">
+      <el-form :inline="true" :model="searchForm" @submit.prevent>
+        <el-form-item label="所属课程">
+          <el-select v-model="searchForm.courseId" placeholder="选择课程" clearable class="filter-input-w200" @change="onSearchCourseChange" filterable>
+            <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="章节">
+          <el-select v-model="searchForm.chapterId" placeholder="选择章节" clearable class="filter-input-w200" :disabled="!searchForm.courseId">
+            <el-option v-for="ch in searchChapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
     <el-card class="table-card" shadow="never">
       <el-table :data="exams" stripe v-loading="loading">
         <template #empty><el-empty description="暂未创建试卷，点击「新增试卷」一键组卷" /></template>
@@ -94,6 +114,8 @@ const showCreate = ref(false)
 const generating = ref(false)
 const courseOptions = ref([])
 const chapterOptions = ref([])
+const searchChapterOptions = ref([])
+const searchForm = ref({ courseId: null, chapterId: null })
 const courseTitleMap = ref({})
 const createFormRef = ref(null)
 const page = ref(1)
@@ -157,9 +179,14 @@ async function loadExams() {
   loading.value = true
   try {
     const params = { page: page.value - 1, size: size.value, isExam: true }
-    // 按章节过滤 (P1-修复: manage-exam 路由应只显示本章试卷)
-    if (chapterIdFromRoute.value) {
+    // 搜索筛选条件优先于路由参数
+    if (searchForm.value.chapterId) {
+      params.chapterId = Number(searchForm.value.chapterId)
+    } else if (chapterIdFromRoute.value) {
       params.chapterId = Number(chapterIdFromRoute.value)
+    }
+    if (searchForm.value.courseId) {
+      params.courseId = Number(searchForm.value.courseId)
     }
     const { data } = await getExamList(params)
     exams.value = data?.items || []
@@ -188,6 +215,27 @@ async function onCourseChange(courseId) {
     const { data } = await getChapters({ courseId, size: 100 })
     chapterOptions.value = data?.items || []
   } catch { chapterOptions.value = [] }
+}
+
+async function onSearchCourseChange(courseId) {
+  searchForm.value.chapterId = null
+  if (!courseId) { searchChapterOptions.value = []; return }
+  try {
+    const { data } = await getChapters({ courseId, size: 100 })
+    searchChapterOptions.value = data?.items || []
+  } catch { searchChapterOptions.value = [] }
+}
+
+function handleSearch() {
+  page.value = 1
+  loadExams()
+}
+
+function handleReset() {
+  searchForm.value = { courseId: null, chapterId: null }
+  searchChapterOptions.value = []
+  page.value = 1
+  loadExams()
 }
 
 function resetCreateForm() {
@@ -290,6 +338,8 @@ onMounted(async () => {
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
 .page-header h1 { font-size: 22px; font-weight: 600; margin: 0; }
 .header-actions { display: flex; gap: 12px; }
+.filter-input-w200 { width: 200px; }
+.search-card { margin-bottom: 16px; padding: 16px 20px; }
 .table-card { background: var(--el-bg-color); border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
 .type-config-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 0 20px; }
 .type-label { width: 80px; font-size: 14px; color: var(--el-text-color-regular); }
