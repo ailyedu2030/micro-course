@@ -196,7 +196,8 @@ export function getRoleHomePage(role) {
   if (role === 'STUDENT') return '/student/courses'
   if (role === 'TEACHER') return '/teacher/dashboard'
   if (role === 'ACADEMIC') return '/academic/dashboard'
-  return '/admin/dashboard'
+  if (role === 'ADMIN') return '/admin/dashboard'
+  return '/login'
 }
 
 // P1-3: STAFF_ONLY_PATHS — 仅限管理/教学角色访问的路径前缀列表
@@ -273,6 +274,7 @@ router.beforeEach(async (to, from, next) => {
   // 若 API 调用失败（网络/服务异常），放行导航——后端 requireLeadOf() 提供最终防护
   if (to.meta.requiresLead) {
     if (userRole !== 'TEACHER') {
+      ElMessage.warning('该页面仅限微专业负责人（教师角色）访问')
       return next(getRoleHomePage(userRole))
     }
     const msId = to.params.id

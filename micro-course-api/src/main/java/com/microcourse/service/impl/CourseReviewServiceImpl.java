@@ -107,6 +107,10 @@ public class CourseReviewServiceImpl implements CourseReviewService {
                         progressOk = true;
                     }
                     // 无视频或视频进度不足时，检查练习通过或线下出勤
+                    // P1C-S06: 综合所有完成标记（包含非视频课程完成进度）
+                    if (!progressOk && Boolean.TRUE.equals(progress.getCompleted())) {
+                        progressOk = true;
+                    }
                     if (!progressOk && Boolean.TRUE.equals(progress.getExercisePassed())) {
                         progressOk = true;
                     }

@@ -16,6 +16,10 @@ public class OrderVO {
     private String paymentMethod;
     private LocalDateTime paidAt;
     private LocalDateTime createdAt;
+    /** P1-C-S05: 批量支付失败标记，true 表示支付失败但订单保留为 PENDING */
+    private boolean payFailed;
+    /** P1-C-S05: 支付失败时的错误消息 */
+    private String errorMsg;
 
     public OrderVO() {}
     public Long getId() { return id; }
@@ -42,6 +46,11 @@ public class OrderVO {
     public void setPaidAt(LocalDateTime paidAt) { this.paidAt = paidAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public boolean isPayFailed() { return payFailed; }
+    public void setPayFailed(boolean payFailed) { this.payFailed = payFailed; }
+    public String getErrorMsg() { return errorMsg; }
+    public void setErrorMsg(String errorMsg) { this.errorMsg = errorMsg; }
 
     public static String statusText(String status) {
         if (status == null) return "未知";

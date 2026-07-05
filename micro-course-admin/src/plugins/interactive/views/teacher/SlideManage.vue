@@ -310,6 +310,7 @@ const pages = ref([])
 const selectedPage = ref(null)
 const editingScript = ref('')
 const uploading = ref(false)
+const sorting = ref(false)
 const uploadProgress = ref(0)
 const aiLoading = ref(false)
 const aiGenerating = ref(false)
@@ -559,6 +560,7 @@ function initPageSort() {
   if (!el || sortableInstance) return
   sortableInstance = Sortable.create(el, {
     animation: 200,
+    onStart: () => { sorting.value = true },
     onEnd: async (evt) => {
       const items = Array.from(el.children).map((child, idx) => {
         const num = parseInt(child.getAttribute('data-page') || '0', 10)
@@ -567,7 +569,7 @@ function initPageSort() {
       // 旧顺序 -> 新顺序: 只更新被拖动的元素
       const oldNum = parseInt(evt.item.getAttribute('data-page') || '0', 10)
       const newPos = evt.newIndex + 1
-      if (oldNum === newPos) return
+      if (oldNum === newPos) { sorting.value = false; return }
       // 批量更新排序
       const order = items.map((pageNum, idx) => ({
         pageNumber: pageNum,
@@ -578,6 +580,8 @@ function initPageSort() {
         await loadData()
       } catch {
         ElMessage.error('排序保存失败')
+      } finally {
+        sorting.value = false
       }
     }
   })

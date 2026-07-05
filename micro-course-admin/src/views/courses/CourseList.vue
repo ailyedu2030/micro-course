@@ -16,7 +16,7 @@
     <el-card class="filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable @clear="handleSearch" class="filter-input-w160" />
+          <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable @clear="handleSearch" @keyup.enter="handleSearch" class="filter-input-w160" />
         </el-form-item>
         <el-form-item label="分类">
           <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="filter-input-w160">

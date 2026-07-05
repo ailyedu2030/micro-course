@@ -209,9 +209,29 @@ public class CourseAuditServiceImpl implements CourseAuditService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public BatchOperationResult batchApprove(List<Long> ids) {
+        return batchApprove(ids, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BatchOperationResult batchApprove(List<Long> ids, java.util.Map<Long, Long> idVersionMap) {
         BatchOperationResult result = new BatchOperationResult();
         for (Long id : ids) {
             try {
+                // P1C-S17: 如果前端传入了版本号，比对 DB 版本防止并发丢失更新
+                if (idVersionMap != null && idVersionMap.containsKey(id)) {
+                    Long expectedVersion = idVersionMap.get(id);
+                    Course course = courseRepository.selectById(id);
+                    if (course == null) {
+                        result.addFailure(id, "课程不存在");
+                        continue;
+                    }
+                    Integer currentVersionInt = course.getVersion() != null ? course.getVersion() : 0;
+                    if (currentVersionInt.longValue() != expectedVersion.longValue()) {
+                        result.addFailure(id, "课程已被其他操作修改，请刷新后重试");
+                        continue;
+                    }
+                }
                 approve(id);
                 result.addSuccess(id);
             } catch (Exception e) {

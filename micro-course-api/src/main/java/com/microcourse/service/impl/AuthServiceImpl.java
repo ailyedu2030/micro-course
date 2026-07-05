@@ -104,9 +104,9 @@ public class AuthServiceImpl implements AuthService {
 
         // Step 2: 密码复杂度已在 RegisterRequest @Pattern 校验，此处为双重保险
         String password = request.getPassword();
-        if (password == null || password.length() < 8
+        if (password == null || password.length() < 8 || password.length() > 32
                 || !java.util.regex.Pattern.compile("(?=.*[A-Za-z])(?=.*\\d)").matcher(password).find()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "密码需至少 8 位且包含字母和数字");
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "密码需 8-32 位且包含字母和数字");
         }
 
         // Step 3: 创建学生用户（status=1 ACTIVE，无需管理员审核）
@@ -656,9 +656,9 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "新密码不能与旧密码相同");
         }
         // 密码复杂度校验
-        if (!java.util.regex.Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")
+        if (!java.util.regex.Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,32}$")
                 .matcher(request.getNewPassword()).matches()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "密码需至少 8 位且包含字母和数字");
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "密码需 8-32 位且包含字母和数字");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.updateById(user);
@@ -742,6 +742,14 @@ public class AuthServiceImpl implements AuthService {
         }
         // P1 安全修复: 文件魔数校验（JPEG/PNG/WebP）
         queryService.validateImageMagic(file);
+
+        // 记录旧头像文件，用于上传成功后清理
+        String oldAvatarToDelete = null;
+        if (user.getAvatar() != null && user.getAvatar().startsWith("/api/files/avatars/")) {
+            oldAvatarToDelete = user.getAvatar().substring("/api/files/avatars/".length());
+        }
+        final String oldFileToClean = oldAvatarToDelete;
+
         try {
             String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
             java.io.File dir = new java.io.File(uploadDir);
@@ -761,6 +769,19 @@ public class AuthServiceImpl implements AuthService {
             String avatarUrl = "/api/files/avatars/" + filename;
             user.setAvatar(avatarUrl);
             userRepository.updateById(user);
+
+            // 清理旧头像文件（上传成功后删除旧文件，避免磁盘堆积）
+            if (oldFileToClean != null) {
+                try {
+                    java.io.File oldFile = new java.io.File(uploadDir + oldFileToClean);
+                    if (oldFile.exists()) {
+                        oldFile.delete();
+                    }
+                } catch (Exception e) {
+                    log.warn("[Auth] 清理旧头像文件失败 userId={}, oldFile={}", userId, oldFileToClean, e);
+                }
+            }
+
             return avatarUrl;
         } catch (BusinessException e) {
             throw e;

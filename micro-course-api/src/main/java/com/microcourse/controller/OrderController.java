@@ -76,7 +76,7 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
     public R<OrderVO> getOrder(@PathVariable Long id) {
         return R.ok(orderService.getOrder(id));
     }

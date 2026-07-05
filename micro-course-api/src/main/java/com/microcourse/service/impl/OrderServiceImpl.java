@@ -422,13 +422,14 @@ public class OrderServiceImpl implements OrderService {
             // 原子创建订单（创建失败触发整个事务回滚）
             OrderVO order = createOrder(userId, courseId, null);
             // 立即支付（支付失败不阻断其他课程，但记录日志）
-            // P1C 修复: 支付成功后返回 PAID VO, 失败时返回 PENDING VO
-            // 前端通过 status 字段区分: PAID=成功, PENDING=需重试
+            // P1C-S05: 支付失败时标记 payFailed=true + errorMsg，前端可根据 payFailed 判断而非仅靠 status
             try {
                 orders.add(pay(order.getId(), paymentMethod));
             } catch (Exception e) {
                 log.warn("[BatchOrder] 课程 {} 支付失败: {}, 订单仍为 PENDING 状态可重试",
                         courseId, e.getMessage());
+                order.setPayFailed(true);
+                order.setErrorMsg(e.getMessage() != null ? e.getMessage() : "支付失败");
                 orders.add(order);
             }
         }

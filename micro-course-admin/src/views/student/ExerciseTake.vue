@@ -865,6 +865,17 @@ function startTimer() {
     if (remaining <= 10 && remaining > 8 && !warned10) { warned10 = true; ElMessage.warning('还剩 10 秒') }
     if (remaining <= 0) {
       clearTimer()
+      // P1I-087: 超时提交前先序列化当前题目答案（确保 textarea 等 v-model 可能延迟刷新的场景不丢失)
+      const curQ = currentQuestion.value
+      if (curQ) {
+        if (curQ.questionType === 'MULTIPLE') {
+          // 多选题: 确保 multipleAnswers 已记录当前选中项
+          if (!multipleAnswers[curQ.id]) multipleAnswers[curQ.id] = []
+        } else if (answers[curQ.id] === undefined) {
+          // 单选题/判断题/填空题: 确保 answers 已有初始值
+          answers[curQ.id] = answers[curQ.id] || ''
+        }
+      }
       ElMessage.warning('时间到，自动提交！')
       doSubmit()
     }
