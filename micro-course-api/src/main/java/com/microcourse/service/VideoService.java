@@ -13,6 +13,7 @@ public interface VideoService {
 
     VideoVO getById(Long id);
 
+    @Deprecated
     Video findEntityById(Long id);
 
     VideoVO create(VideoCreateRequest request);
@@ -24,6 +25,35 @@ public interface VideoService {
     void delete(Long id);
 
     String uploadCover(Long videoId, MultipartFile file);
+
+    /**
+     * 上传视频文件：保存文件、计算MD5、去重秒传、创建Video实体、异步转码。
+     *
+     * @param file      上传的视频文件
+     * @param courseId  所属课程ID
+     * @param chapterId 所属章节ID（可选）
+     * @return 视频VO
+     */
+    VideoVO uploadVideo(MultipartFile file, Long courseId, Long chapterId);
+
+    /**
+     * 获取视频播放HLS URL：包含视频存在校验、选课校验（STUDENT）、签名校验。
+     *
+     * @param id   视频ID
+     * @param sign 播放签名
+     * @return HLS播放URL
+     * @throws BusinessException 校验不通过时抛出对应异常
+     */
+    String getHlsPlayUrl(Long id, String sign);
+
+    /**
+     * 获取视频所属课程 ID（同时验证视频存在性）。
+     *
+     * @param videoId 视频ID
+     * @return 课程ID
+     * @throws BusinessException VIDEO_NOT_FOUND 当视频不存在时
+     */
+    Long getCourseIdByVideoId(Long videoId);
 
     /**
      * 更新视频状态(0=UPLOADING,1=TRANSCODING,2=COMPLETED,3=FAILED)。
@@ -44,5 +74,6 @@ public interface VideoService {
     /**
      * P2: 按 MD5 查询是否已有重复视频（秒传）
      */
+    @Deprecated
     Video findByMd5(String md5);
 }

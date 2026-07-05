@@ -339,6 +339,7 @@ const checkMobile = () => {
 }
 
 onMounted(async () => {
+  document.title = '个人中心 - 微课平台'
   checkMobile()
   window.addEventListener('resize', checkMobile)
 

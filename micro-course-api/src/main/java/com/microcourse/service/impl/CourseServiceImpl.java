@@ -8,6 +8,7 @@ import com.microcourse.dto.CoursePricingRequest;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
+import com.microcourse.dto.PricingForAdopterVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
@@ -17,20 +18,27 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.enums.CourseStatus;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CoursePricingService;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
+import com.microcourse.service.EnrollmentService;
+import com.microcourse.service.NotificationService;
 import com.microcourse.util.CourseCacheConstants;
 import com.microcourse.util.RedisUtil;
+import com.microcourse.util.SecurityUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -46,6 +54,9 @@ public class CourseServiceImpl implements CourseService {
     private final CoursePricingService pricingService;
     private final CourseQueryService queryService;
     private final CourseAdminService adminService;
+    private final NotificationService notificationService;
+    @Lazy
+    private final EnrollmentService enrollmentService;
 
     public CourseServiceImpl(CourseRepository courseRepository,
                              UserRepository userRepository,
@@ -53,7 +64,9 @@ public class CourseServiceImpl implements CourseService {
                              RedisUtil redisUtil,
                              CoursePricingService pricingService,
                              CourseQueryService queryService,
-                             CourseAdminService adminService) {
+                             CourseAdminService adminService,
+                              NotificationService notificationService,
+                              @Lazy EnrollmentService enrollmentService) {
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -61,6 +74,8 @@ public class CourseServiceImpl implements CourseService {
         this.pricingService = pricingService;
         this.queryService = queryService;
         this.adminService = adminService;
+        this.notificationService = notificationService;
+        this.enrollmentService = enrollmentService;
     }
 
     /**
@@ -137,6 +152,10 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long id, Integer status) {
+        // TEACHER 不能通过此方法将课程转为 PUBLISHED，必须走正式 publish 流程（含课件检查/通知）
+        if (status == 4 && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         adminService.updateStatus(id, status);
         evictCourseCacheAfterCommit(id);
     }
@@ -169,6 +188,40 @@ public class CourseServiceImpl implements CourseService {
         evictCourseCacheAfterCommit(id);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unpublish(Long id) {
+        // 取课程信息（P1-C: 判空避免空指针）
+        CourseVO before = getById(id);
+        if (before == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // CLOSED 是合法状态转换（PUBLISHED → CLOSED）
+        adminService.updateStatus(id, CourseStatus.CLOSED.getCode());
+        evictCourseCacheAfterCommit(id);
+
+        // 异步通知在学学生（失败不影响主流程，只记录日志）
+        try {
+            List<Long> userIds = enrollmentService.findActiveUserIdsByCourseId(id);
+            if (userIds != null && !userIds.isEmpty()) {
+                String title = "课程下架通知";
+                String content = String.format("您正在学习的《%s》已下架,如有疑问请联系管理员。", before.getTitle());
+                for (Long userId : userIds) {
+                    try {
+                        notificationService.notifyAsync(userId,
+                                NotificationType.COURSE_UNPUBLISHED,
+                                title, content, id);
+                    } catch (Exception e) {
+                        LOG.warn("单条下架通知失败: userId={}, err={}", userId, e.getMessage());
+                    }
+                }
+                LOG.info("课程下架通知已派发 (异步): courseId={}, 收件人数={}", id, userIds.size());
+            }
+        } catch (Exception e) {
+            LOG.warn("课程下架通知失败: courseId={}, err={}", id, e.getMessage());
+        }
+    }
+
     /* ================================================================
      *  Query methods (remain local)
      * ================================================================ */
@@ -186,6 +239,11 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(readOnly = true)
     public CourseStatsVO computeStats(Long courseId) {
+        // TEACHER owner 校验（移自 Controller getCourseStats）
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            enrollmentService.assertCourseOwnership(courseId);
+        }
+
         String cacheKey = CourseCacheConstants.COURSE_STATS_CACHE_PREFIX + courseId;
         try {
             Object cached = redisUtil.get(cacheKey);
@@ -256,7 +314,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    public Map<String, Object> getPricingForAdopter(Long courseId) {
+    public PricingForAdopterVO getPricingForAdopter(Long courseId) {
         return pricingService.getPricingForAdopter(courseId);
     }
 

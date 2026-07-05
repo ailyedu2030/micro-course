@@ -5,7 +5,7 @@
 -->
 <template>
   <div class="approval-page">
-    <el-breadcrumb separator="/" class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item>课程管理</el-breadcrumb-item>
       <el-breadcrumb-item>课程审核</el-breadcrumb-item>
     </el-breadcrumb>
@@ -56,8 +56,8 @@
               <el-icon><Close /></el-icon>驳回
             </el-button>
             <!-- P0 修复：发布按钮仅 ADMIN 可见，后端 @PreAuthorize("hasRole('ADMIN')") 拒绝 ACADEMIC -->
-            <el-button v-if="row.status === 2 && userStore.role === 'ADMIN'" type="primary" link size="small" @click="handlePublish(row)">
-              发布
+            <el-button v-if="[2, 5].includes(row.status) && userStore.role === 'ADMIN'" type="primary" link size="small" @click="handlePublish(row)">
+              {{ row.status === 5 ? '重新上架' : '发布' }}
             </el-button>
           </template>
         </el-table-column>
@@ -81,7 +81,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourses, approveCourse, rejectCourse, publishCourse } from '@/api/course'
+import { getCourses, getPendingReviewCourses, approveCourse, rejectCourse, publishCourse } from '@/api/course'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -100,13 +100,25 @@ const statusMap = { pending: 1, approved: 2, rejected: 3 }
 async function fetchData() {
   loading.value = true
   try {
-    const params = {
-      page: page.value - 1,
-      size: size.value,
-      status: statusMap[activeTab.value],
-      keyword: searchForm.value.keyword || undefined,
+    let data
+    if (activeTab.value === 'pending') {
+      // 待审核: 使用专用端点（含管理员专属过滤逻辑）
+      const res = await getPendingReviewCourses({
+        page: page.value - 1,
+        size: size.value,
+        keyword: searchForm.value.keyword || undefined,
+      })
+      data = res.data
+    } else {
+      const params = {
+        page: page.value - 1,
+        size: size.value,
+        status: statusMap[activeTab.value],
+        keyword: searchForm.value.keyword || undefined,
+      }
+      const res = await getCourses(params)
+      data = res.data
     }
-    const { data } = await getCourses(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch (e) { ElMessage.error(e?.response?.data?.message || '加载失败') }
@@ -119,6 +131,8 @@ function handleReset() { searchForm.value.keyword = ''; page.value = 1; fetchDat
 function handleView(row) { router.push(`/courses/${row.id}`) }
 
 async function handleApprove(row) {
+  try { await ElMessageBox.confirm('确定通过该课程审核吗？', '提示', { type: 'info' }) }
+  catch { return }
   try { await approveCourse(row.id); ElMessage.success('已通过'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
@@ -138,6 +152,8 @@ async function handleReject(row) {
 }
 
 async function handlePublish(row) {
+  try { await ElMessageBox.confirm('确定发布该课程吗？发布后学生将可见。', '提示', { type: 'info' }) }
+  catch { return }
   try { await publishCourse(row.id); ElMessage.success('已发布'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }

@@ -27,8 +27,7 @@
               <el-button type="primary" size="small" @click="showAddDialog">添加课程</el-button>
             </div>
           </template>
-          <el-table :data="courses" stripe border>
-            <template #empty><el-empty description="暂未编排课程" /></template>
+          <el-table :data="courses" stripe border empty-text="暂无课程">
             <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
             <el-table-column prop="courseTitle" label="课程名称" min-width="200" show-overflow-tooltip />
             <el-table-column label="授课教师" width="140" show-overflow-tooltip>
@@ -84,7 +83,7 @@
       </el-form>
       <template #footer>
         <el-button @click="addVisible = false">取消</el-button>
-        <el-button type="primary" :loading="adding" @click="handleAdd">添加</el-button>
+        <el-button type="primary" :loading="adding" :disabled="adding" @click="handleAdd">添加</el-button>
       </template>
     </el-dialog>
 
@@ -103,7 +102,7 @@
       </el-form>
       <template #footer>
         <el-button @click="assignVisible = false">取消</el-button>
-        <el-button type="primary" :loading="assigning" @click="handleAssignTeacher">确认</el-button>
+        <el-button type="primary" :loading="assigning" :disabled="assigning" @click="handleAssignTeacher">确认</el-button>
       </template>
     </el-dialog>
 
@@ -128,7 +127,7 @@
       </el-form>
       <template #footer>
         <el-button @click="editVisible = false">取消</el-button>
-        <el-button type="primary" :loading="editing" @click="handleEditSave">保存</el-button>
+        <el-button type="primary" :loading="editing" :disabled="editing" @click="handleEditSave">保存</el-button>
       </template>
     </el-dialog>
   </div>

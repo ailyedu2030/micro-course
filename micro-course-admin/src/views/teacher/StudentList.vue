@@ -231,7 +231,7 @@
       </el-form>
       <template #footer>
         <el-button @click="messageVisible = false">取消</el-button>
-        <el-button type="primary" :loading="sendingMessage" @click="confirmSendMessage">发送</el-button>
+        <el-button type="primary" :loading="sendingMessage" :disabled="sendingMessage" @click="confirmSendMessage">发送</el-button>
       </template>
     </el-dialog>
   </div>

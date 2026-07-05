@@ -7,7 +7,7 @@
 <template>
   <div class="training-center">
     <!-- 面包屑导航 -->
-    <el-breadcrumb class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>培训中心</el-breadcrumb-item>
     </el-breadcrumb>
@@ -34,7 +34,7 @@
 
     <!-- 课程列表 -->
     <div v-else class="course-list">
-        <el-card v-for="enr in enrollments" :key="enr.courseId" class="course-card student-card-item" shadow="hover">
+        <el-card v-for="enr in enrollments" :key="enr.courseId" class="course-card student-card-item" shadow="hover" @click="goCourse(enr)" style="cursor:pointer">
         <div class="course-header">
           <h3>{{ enr.courseName }}</h3>
           <el-progress :percentage="Math.round(enr.progress || 0)" :stroke-width="8" class="student-progress" />
@@ -127,6 +127,10 @@ async function fetchData() {
   } finally {
     loading.value = false
   }
+}
+
+function goCourse(enr) {
+  router.push(`/student/courses/${enr.courseId}`)
 }
 
 function goExercise(chapterId) {

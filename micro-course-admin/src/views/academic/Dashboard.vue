@@ -185,7 +185,7 @@
               <div v-if="warningsError" class="table-error">
                 <span>加载失败</span>
               </div>
-              <el-table v-else :data="warnings" class="warning-table">
+              <el-table v-else :data="warnings" class="warning-table" empty-text="暂无数据">
                 <el-table-column prop="name" label="课程名称" min-width="160" show-overflow-tooltip />
                 <el-table-column prop="completionRate" label="完成率" width="100" align="center">
                   <template #default="{ row }">
@@ -216,7 +216,7 @@
               <div v-if="hotCourseError" class="table-error">
                 <span>加载失败</span>
               </div>
-              <el-table v-else :data="hotCourses" class="hot-table">
+              <el-table v-else :data="hotCourses" class="hot-table" empty-text="暂无数据">
                 <el-table-column type="index" label="排名" width="60" align="center" />
                 <el-table-column prop="name" label="课程名称" min-width="160" show-overflow-tooltip />
                 <el-table-column prop="enrollmentCount" label="选课人次" width="100" align="center" sortable />

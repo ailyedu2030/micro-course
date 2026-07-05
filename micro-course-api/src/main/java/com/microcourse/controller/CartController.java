@@ -1,15 +1,17 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.CartAddRequest;
+import com.microcourse.dto.CartUpdateRequest;
 import com.microcourse.dto.R;
 import com.microcourse.entity.CartItem;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.service.CartService;
 import com.microcourse.util.SecurityUtil;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * P2-16: 购物车服务端同步 Controller。
@@ -34,19 +36,16 @@ public class CartController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public R<CartItem> addItem(@RequestBody Map<String, Object> body) {
+    public R<CartItem> addItem(@Valid @RequestBody CartAddRequest request) {
         Long userId = SecurityUtil.getCurrentUserId();
-        Long courseId = ((Number) body.get("courseId")).longValue();
-        Integer quantity = body.get("quantity") == null ? 1 : ((Number) body.get("quantity")).intValue();
-        return R.ok(cartService.addItem(userId, courseId, quantity));
+        return R.ok(cartService.addItem(userId, request.getCourseId(), request.getQuantity()));
     }
 
     @PutMapping("/{itemId}")
     @PreAuthorize("isAuthenticated()")
-    public R<CartItem> updateQuantity(@PathVariable Long itemId, @RequestBody Map<String, Object> body) {
+    public R<CartItem> updateQuantity(@PathVariable Long itemId, @Valid @RequestBody CartUpdateRequest request) {
         Long userId = SecurityUtil.getCurrentUserId();
-        Integer quantity = ((Number) body.get("quantity")).intValue();
-        return R.ok(cartService.updateQuantity(userId, itemId, quantity));
+        return R.ok(cartService.updateQuantity(userId, itemId, request.getQuantity()));
     }
 
     @DeleteMapping("/{itemId}")

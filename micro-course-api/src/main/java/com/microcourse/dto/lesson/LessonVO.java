@@ -1,5 +1,6 @@
 package com.microcourse.dto.lesson;
 
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 public class LessonVO {
@@ -40,8 +41,11 @@ public class LessonVO {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public static class SortItem {
+        @NotNull
         private Long id;
+        @NotNull
         private Long chapterId;
+        @NotNull
         private Integer sortOrder;
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }

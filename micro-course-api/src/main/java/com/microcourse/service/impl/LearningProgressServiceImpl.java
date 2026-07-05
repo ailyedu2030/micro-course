@@ -19,6 +19,7 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.LearningProgressService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -374,6 +375,38 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         Map<String, Object> result = new HashMap<>();
         result.put("totalSeconds", totalSeconds);
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LearningProgressVO> getProgressWithGuard(Long currentUserId, Long targetUserId, Long courseId) {
+        // IDOR 防护：非本人且非 ADMIN 时，TEACHER 需校验课程归属，否则拒绝
+        if (!currentUserId.equals(targetUserId) && !SecurityUtil.isAdmin()) {
+            if (SecurityUtil.hasRole("TEACHER")) {
+                assertTeacherOwnsCourse(currentUserId, courseId);
+            } else {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
+        return getByUserAndCourse(targetUserId, courseId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getCourseCompletionWithGuard(Long currentUserId, Long userId, Long courseId) {
+        // IDOR 防护：非本人且非 ADMIN 时，TEACHER 需校验课程归属，否则拒绝
+        if (!currentUserId.equals(userId) && !SecurityUtil.isAdmin()) {
+            if (SecurityUtil.hasRole("TEACHER") && courseId != null) {
+                assertTeacherOwnsCourse(currentUserId, courseId);
+            } else {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
+        // 无 courseId 时返回所有课程完成度
+        if (courseId == null) {
+            return getAllCourseCompletions(userId);
+        }
+        return getCourseCompletion(userId, courseId);
     }
 
     @Override

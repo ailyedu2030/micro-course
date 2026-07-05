@@ -43,4 +43,19 @@ public interface ExerciseRecordService {
      * @return 已完成答题次数
      */
     int getAttemptCount(Long userId, Long exerciseId);
+
+    /**
+     * 获取练习结果（角色感知：STUDENT 仅返回本人记录，TEACHER/ADMIN 返回全部记录）
+     * @param exerciseId 练习ID
+     * @param currentUserId 当前用户ID
+     * @return 答题记录列表
+     */
+    List<ExerciseRecordVO> getResult(Long exerciseId, Long currentUserId);
+
+    /**
+     * 获取练习统计分析（提交次数/参与人数/通过率/平均分）
+     * @param exerciseId 练习ID
+     * @return 统计 Map
+     */
+    Map<String, Object> getAnalytics(Long exerciseId);
 }

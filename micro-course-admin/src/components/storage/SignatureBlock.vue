@@ -3,9 +3,9 @@
     <el-divider />
     <h4 class="block-title">{{ title }}</h4>
 
-    <el-form :model="localData" label-width="80px" size="small">
-      <el-form-item label="意见">
-        <el-input v-model="localData.opinionText" type="textarea" :rows="3" placeholder="请输入意见..." />
+    <el-form :model="localData" :rules="formRules" ref="formRef" label-width="80px" size="small">
+      <el-form-item label="意见" prop="opinionText">
+        <el-input v-model="localData.opinionText" type="textarea" :rows="3" placeholder="请输入意见..." maxlength="500" />
       </el-form-item>
 
       <el-form-item label="负责人签字">
@@ -31,6 +31,13 @@
 import { ref, watch } from 'vue'
 import SignatureUploader from './SignatureUploader.vue'
 import DatePickerYM from './DatePickerYM.vue'
+
+const formRef = ref(null)
+const formRules = {
+  opinionText: [
+    { max: 500, message: '意见内容超出长度限制', trigger: 'blur' }
+  ]
+}
 
 const props = defineProps({
   title: String,

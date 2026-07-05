@@ -16,13 +16,14 @@
     <el-row :gutter="20">
       <!-- 左侧：意见输入 -->
       <el-col :span="14">
-        <el-form label-width="0" size="small">
-          <el-form-item label="">
+        <el-form :model="formModel" :rules="formRules" ref="formRef" label-width="0" size="small">
+          <el-form-item label="" prop="opinion">
             <el-input
               :model-value="opinion"
               type="textarea"
               :rows="4"
               placeholder="请输入意见..."
+              maxlength="500"
               :readonly="readonly"
               @input="handleOpinionInput"
             />
@@ -67,7 +68,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import SignatureUploader from './SignatureUploader.vue'
 import DatePickerYear from './DatePickerYear.vue'
 
@@ -92,6 +93,14 @@ const emit = defineEmits([
   'update:signDate',
   'remove'
 ])
+
+const formRef = ref(null)
+const formModel = computed(() => ({ opinion: props.opinion }))
+const formRules = {
+  opinion: [
+    { max: 500, message: '意见内容超出长度限制', trigger: 'blur' }
+  ]
+}
 
 const signDateNumber = computed(() => {
   if (!props.signDate) return null

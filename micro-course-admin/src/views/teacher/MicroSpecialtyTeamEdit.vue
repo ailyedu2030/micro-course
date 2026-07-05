@@ -21,8 +21,7 @@
               <el-button size="small" type="danger" @click="expelMode = !expelMode">{{ expelMode ? '完成' : '批量操作' }}</el-button>
             </div>
           </template>
-          <el-table :data="teachers" stripe border>
-            <template #empty><el-empty description="暂未邀请教师" /></template>
+          <el-table :data="teachers" stripe border empty-text="暂无教师">
             <el-table-column prop="teacherName" label="姓名" width="120" />
             <el-table-column label="角色" width="120">
               <template #default="{ row }"><el-tag size="small">{{ roleMap[row.role] || row.role || '教师' }}</el-tag></template>
@@ -97,7 +96,7 @@
 
           <div class="invite-bar" v-if="selectedCandidates.length > 0">
             <span>已选 <strong>{{ selectedCandidates.length }}</strong> 位教师</span>
-            <el-button type="primary" :loading="inviting" @click="handleBatchInvite">批量邀请</el-button>
+            <el-button type="primary" :loading="inviting" :disabled="inviting" @click="handleBatchInvite">批量邀请</el-button>
           </div>
         </el-card>
       </template>

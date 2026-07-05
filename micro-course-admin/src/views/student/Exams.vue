@@ -66,6 +66,8 @@
             :key="exam.examId"
             class="exam-card student-card-item"
             shadow="hover"
+            @click="handleExamClick(exam)"
+            style="cursor:pointer"
           >
             <div class="exam-info">
               <h3 class="exam-title">{{ exam.examTitle || exam.title }}</h3>
@@ -83,7 +85,15 @@
               </p>
               <div class="exam-actions">
                 <el-button
-                  v-if="!exam._attempted"
+                  v-if="exam._expired"
+                  type="info"
+                  size="small"
+                  disabled
+                >
+                  已截止
+                </el-button>
+                <el-button
+                  v-else-if="!exam._attempted"
                   type="primary"
                   size="small"
                   @click="handleJoinExam(exam)"
@@ -122,7 +132,7 @@
     <div v-else class="h5-layout">
       <!-- 面包屑导航 -->
       <div class="h5-breadcrumb-wrap">
-        <el-breadcrumb>
+        <el-breadcrumb separator="→">
           <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
           <el-breadcrumb-item>考试中心</el-breadcrumb-item>
         </el-breadcrumb>
@@ -182,7 +192,16 @@
             {{ formatTime(exam.examTime) }}
           </p>
           <el-button
-            v-if="!exam._attempted"
+            v-if="exam._expired"
+            type="info"
+            size="small"
+            class="h5-action-btn"
+            disabled
+          >
+            已截止
+          </el-button>
+          <el-button
+            v-else-if="!exam._attempted"
             type="primary"
             size="small"
             class="h5-action-btn"
@@ -294,7 +313,10 @@ const fetchExams = async () => {
     examList.value = rawList.map((exam, idx) => {
       const attemptRes = attemptResults[idx]
       const attempted = attemptRes.status === 'fulfilled' && attemptRes.value?.data?.attemptCount > 0
-      return { ...exam, _attempted: attempted, _expired: false }
+      const now = new Date()
+      const examEnd = exam.examTime ? new Date(new Date(exam.examTime).getTime() + (exam.timeLimit || 0) * 60000) : null
+      const expired = examEnd && examEnd < now
+      return { ...exam, _attempted: attempted, _expired: expired }
     })
   } catch {
     errorState.value = true
@@ -332,7 +354,7 @@ async function checkPrerequisiteChapters(exam) {
     // 3. 检查所有 sortOrder < currentSortOrder 的章节是否已完成
     const previousChapters = chapters.filter(c => (c.sortOrder || 0) < currentSortOrder)
     for (const prev of previousChapters) {
-      const progress = progressList.find(p => p.chapterId === prev.id)
+      const progress = progressList.find(p => Number(p.chapterId) === Number(prev.id))
       if (!progress || !progress.completed) {
         return false
       }
@@ -358,6 +380,10 @@ const handleJoinExam = async (exam) => {
   // 导航到考试/练习页面（传 examId 以便 ExerciseTake 自动开始考试）
   const chapterId = exam.chapterId || exam.id
   router.push({ name: 'StudentExerciseTake', params: { chapterId }, query: { examId: exam.examId } })
+}
+
+const handleExamClick = (exam) => {
+  router.push(`/student/exams/${exam.examId}`)
 }
 </script>
 

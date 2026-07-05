@@ -15,7 +15,6 @@ import java.time.LocalTime;
 public class ChapterOfflineSession {
 
     @TableId(type = IdType.AUTO)
-    @TableField("id")
     private Long id;
 
     @TableField("chapter_id")

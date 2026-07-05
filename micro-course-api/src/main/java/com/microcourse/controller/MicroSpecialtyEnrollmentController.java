@@ -2,15 +2,18 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import jakarta.validation.Valid;
+import com.microcourse.dto.microSpecialty.ClassImportRequest;
+import com.microcourse.dto.microSpecialty.DropRequest;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyApplyRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyRejectRequest;
 import com.microcourse.service.MicroSpecialtyEnrollmentService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 微专业修读 Controller。
@@ -30,11 +33,8 @@ public class MicroSpecialtyEnrollmentController {
     /** 学生自主报名 → PENDING */
     @PostMapping("/apply")
     @PreAuthorize("isAuthenticated()")
-    public R<MicroSpecialtyEnrollmentVO> apply(@RequestBody Map<String, Object> body) {
-        Long microSpecialtyId = body.get("microSpecialtyId") != null
-                ? ((Number) body.get("microSpecialtyId")).longValue()
-                : null;
-        MicroSpecialtyEnrollmentVO vo = enrollmentService.apply(microSpecialtyId);
+    public R<MicroSpecialtyEnrollmentVO> apply(@Valid @RequestBody MicroSpecialtyApplyRequest request) {
+        MicroSpecialtyEnrollmentVO vo = enrollmentService.apply(request.getMicroSpecialtyId());
         return R.ok(vo);
     }
 
@@ -49,8 +49,8 @@ public class MicroSpecialtyEnrollmentController {
     /** 驳回报名 → REJECTED */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
-    public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String reason = body.getOrDefault("reason", "");
+    public R<Void> reject(@PathVariable Long id, @RequestBody MicroSpecialtyRejectRequest request) {
+        String reason = request.getReason() != null ? request.getReason() : "";
         enrollmentService.reject(id, reason);
         return R.ok();
     }
@@ -58,44 +58,24 @@ public class MicroSpecialtyEnrollmentController {
     /** 班级批量导入 → APPROVED */
     @PostMapping("/class-import")
     @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
-    public R<Integer> classImport(@RequestBody Map<String, Object> body) {
-        Long microSpecialtyId = body.get("microSpecialtyId") != null
-                ? ((Number) body.get("microSpecialtyId")).longValue()
-                : null;
-        // Parse classIds from request body
-        Object classIdsObj = body.get("classIds");
-        List<Long> classIds = new ArrayList<>();
-        if (classIdsObj instanceof List) {
-            for (Object id : (List<?>) classIdsObj) {
-                classIds.add(Long.valueOf(id.toString()));
-            }
+    public R<Integer> classImport(@RequestBody ClassImportRequest request) {
+        List<Long> classIds = request.getClassIds();
+        if (classIds == null) {
+            classIds = new java.util.ArrayList<>();
         }
         // Support single classId as fallback
-        if (classIds.isEmpty() && body.containsKey("classId")) {
-            Object singleId = body.get("classId");
-            if (singleId instanceof Number) {
-                classIds.add(((Number) singleId).longValue());
-            } else if (singleId != null) {
-                classIds.add(Long.valueOf(singleId.toString()));
-            }
+        if (classIds.isEmpty() && request.getClassId() != null) {
+            classIds.add(request.getClassId());
         }
-        // Process each classId in a loop
-        int totalCount = 0;
-        for (Long classId : classIds) {
-            totalCount += enrollmentService.classImport(microSpecialtyId, classId);
-        }
+        int totalCount = enrollmentService.classImportBatch(request.getMicroSpecialtyId(), classIds);
         return R.ok(totalCount);
     }
 
     /** 退出修读 */
     @PostMapping("/{id}/drop")
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
-    public R<Void> drop(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        boolean cascade = body.get("cascade") instanceof Boolean
-                ? (Boolean) body.get("cascade") : false;
-        String reason = body.get("reason") instanceof String
-                ? (String) body.get("reason") : "";
-        enrollmentService.drop(id, cascade, reason);
+    public R<Void> drop(@PathVariable Long id, @RequestBody DropRequest request) {
+        enrollmentService.drop(id, request.isCascade(), request.getReason() != null ? request.getReason() : "");
         return R.ok();
     }
 

@@ -14,6 +14,7 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.TeachingClass;
 import com.microcourse.entity.TeachingClassStudent;
 import com.microcourse.entity.User;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.TeachingClassStatus;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
@@ -339,7 +340,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         record.setClassId(classId);
         record.setUserId(userId);
         record.setEnrolledAt(LocalDateTime.now());
-        record.setStatus("ENROLLED");
+        record.setStatus(EnrollmentStatus.APPROVED.getValue());
         try {
             teachingClassStudentRepository.insert(record);
         } catch (org.springframework.dao.DuplicateKeyException dupEx) {
@@ -394,7 +395,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     public void updateStudentStatus(Long classId, Long userId, String status) {
         // P1-1: 状态白名单校验
         if (status == null || !VALID_STUDENT_STATUSES.contains(status)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "学生状态值无效，应为 ENROLLED/DROPPED/COMPLETED");
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "学生状态值无效，应为 APPROVED/DROPPED/COMPLETED");
         }
 
         // P0-3: 越权校验

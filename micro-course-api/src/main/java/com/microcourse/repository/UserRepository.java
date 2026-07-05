@@ -33,6 +33,6 @@ public interface UserRepository extends BaseMapper<User> {
      *
      * @return 受影响行数（1 表示恢复成功）
      */
-    @Update("UPDATE users SET status = 0, deleted_at = NULL, version = version + 1, updated_at = now() WHERE id = #{id}")
-    int restoreToInactive(@Param("id") Long id);
+    @Update("UPDATE users SET status = 1, deleted_at = NULL, version = version + 1, updated_at = now() WHERE id = #{id}")
+    int restoreToActive(@Param("id") Long id);
 }

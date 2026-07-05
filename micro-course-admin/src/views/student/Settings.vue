@@ -9,7 +9,7 @@
     <!-- PC Layout -->
     <div v-if="!isMobile" class="settings-pc">
       <!-- 面包屑导航 -->
-      <el-breadcrumb class="page-breadcrumb">
+      <el-breadcrumb separator="→" class="page-breadcrumb">
         <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>个人设置</el-breadcrumb-item>
       </el-breadcrumb>
@@ -156,7 +156,7 @@
     <!-- H5 Layout -->
     <div v-else class="settings-h5">
       <!-- 面包屑导航 -->
-      <el-breadcrumb class="h5-breadcrumb">
+      <el-breadcrumb separator="→" class="h5-breadcrumb">
         <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>个人设置</el-breadcrumb-item>
       </el-breadcrumb>
@@ -366,8 +366,9 @@ const handleSave = async () => {
       allowSite: settings.value.notificationEnabled,
       allowEmail: settings.value.emailNotification
     })
+    ElMessage.success('偏好设置已保存')
   } catch {
-    // 后端保存失败时静默降级
+    ElMessage.warning('偏好设置保存失败，已使用本地缓存')
   }
   // 所有设置持久化到 localStorage 作为离线 fallback
   try {

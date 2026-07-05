@@ -155,6 +155,7 @@ const activeTab = ref('course')
 const course = ref({})
 const chapters = ref([])
 const progressMap = ref({}) // lessonId -> progress
+const progressRawList = ref([]) // 原始进度列表，用于 chapterId 维度查询（非 VIDEO 章节）
 const loading = ref(true)
 const drawerOpen = ref(false)
 const expandedChapters = ref([])
@@ -239,8 +240,15 @@ async function loadCourse(cid) {
 
     course.value = courseRes.data || {}
 
-    // ✅ 构建 progressMap（key=lessonId）
-    progressMap.value = buildProgressMap(progressRes.data || [])
+    // A11Y-023: 动态设置页面标题
+    if (course.value.title) {
+      document.title = course.value.title + ' - 微课平台'
+    }
+
+    // ✅ 构建 progressMap（key=lessonId）+ 保存原始列表供 chapterId 查询
+    const rawProgress = progressRes.data || []
+    progressMap.value = buildProgressMap(rawProgress)
+    progressRawList.value = rawProgress
 
     // 构建视频映射：chapterId → videos[]
     const videosList = videosRes.data?.items || []
@@ -257,42 +265,47 @@ async function loadCourse(cid) {
       let lessons = []
       if (ch.chapterType === 'VIDEO') {
         const videos = videosByChapter[ch.id] || []
-        lessons = videos.map(v => {
-          const prog = progressMap.value[v.id]
-          return {
-            id: v.id,
-            title: v.title,
-            duration: v.duration,
+        if (videos.length === 0) {
+          lessons = [{
+            id: `empty-${ch.id}`,
+            title: '本章节暂无视频',
             type: 'VIDEO',
-            video: { ...v, url: v.url, coverUrl: v.coverUrl, playUrl: v.url },
-            status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED',
-            chapterId: ch.id
-          }
-        })
-      } else if (ch.chapterType === 'INTERACTIVE') {
-        // 互动课件:生成一个可点击的"进入课件"条目
-        if (ch.slides?.length > 0 || ch.slideCount > 0) {
-          lessons = [{
-            id: `slide-${ch.id}`,
-            title: '互动课件',
-            type: 'INTERACTIVE',
-            chapterId: ch.id,
-            status: 'NOT_STARTED',
-            duration: ch.duration || 0
-          }]
-        }
-      } else if (ch.chapterType === 'OFFLINE') {
-        // 线下课:生成一个可点击的"线下课签到"条目
-        if (ch.offlineSessions?.length > 0 || ch.hasOfflineSessions) {
-          lessons = [{
-            id: `offline-${ch.id}`,
-            title: '线下课签到',
-            type: 'OFFLINE',
             chapterId: ch.id,
             status: 'NOT_STARTED',
             duration: 0
           }]
+        } else {
+          lessons = videos.map(v => {
+            const prog = progressMap.value[v.id]
+            return {
+              id: v.id,
+              title: v.title,
+              duration: v.duration,
+              type: 'VIDEO',
+              video: { ...v, url: v.url, coverUrl: v.coverUrl, playUrl: v.url },
+              status: prog?.completed ? 'COMPLETED' : 'NOT_STARTED',
+              chapterId: ch.id
+            }
+          })
         }
+      } else if (ch.chapterType === 'INTERACTIVE') {
+        lessons = [{
+          id: `slide-${ch.id}`,
+          title: '互动课件',
+          type: 'INTERACTIVE',
+          chapterId: ch.id,
+          status: 'NOT_STARTED',
+          duration: ch.duration || 0
+        }]
+      } else if (ch.chapterType === 'OFFLINE') {
+        lessons = [{
+          id: `offline-${ch.id}`,
+          title: '线下课签到',
+          type: 'OFFLINE',
+          chapterId: ch.id,
+          status: 'NOT_STARTED',
+          duration: 0
+        }]
       } else if (ch.chapterType === 'EXERCISE') {
         // 练习:生成一个可点击的"开始练习"条目
         lessons = [{
@@ -339,8 +352,15 @@ async function loadProgress() {
       chapters.value.forEach(ch => {
         if (ch.lessons) {
           ch.lessons.forEach(l => {
-            const prog = progressMap.value[l.id]
-            l.status = prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
+            if (ch.chapterType === 'VIDEO') {
+              // VIDEO 章节: 按 lessonId 查找进度
+              const prog = progressMap.value[l.id]
+              l.status = prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
+            } else {
+              // 非 VIDEO 章节: 按 chapterId 查找进度（子页面通过 chapterId 创建进度记录）
+              const chapterProgress = progressRawList.value.find(p => p.chapterId === ch.id)
+              l.status = chapterProgress?.completed ? 'COMPLETED' : 'NOT_STARTED'
+            }
           })
         }
       })
@@ -365,7 +385,7 @@ async function checkFavorite() {
   try {
     const res = await getMyFavorites()
     const favorites = res.data || []
-    isFavorited.value = favorites.some(f => f.courseId === courseId.value)
+    isFavorited.value = favorites.some(f => String(f.courseId) === String(courseId.value))
   } catch (e) {
     console.warn('[LearningView] checkFavorite 查询收藏状态失败', e)
   }
@@ -418,6 +438,8 @@ async function saveVideoProgress(force = false) {
   // P1-10: 只在播放中保存进度（force=true 时跳过此检查，用于卸载前最终上报）
   if (!force && !isPlaying.value) return
   if (!currentLessonId.value) return
+  // 跳过非数字lessonId(如offline-76,slide-42等合成ID,由子页面自行管理进度)
+  if (!/^\d+$/.test(String(currentLessonId.value))) return
   try {
     const lessonId = currentLessonId.value
     // P0-3: 计算 watchDelta（距上次保存的秒数）

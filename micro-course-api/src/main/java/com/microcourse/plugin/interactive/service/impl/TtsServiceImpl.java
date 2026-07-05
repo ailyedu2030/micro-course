@@ -2,6 +2,8 @@ package com.microcourse.plugin.interactive.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.Enrollment;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
@@ -9,6 +11,7 @@ import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.TtsService;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.util.SecurityUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -38,15 +41,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
+@Transactional(rollbackFor = Exception.class)
 public class TtsServiceImpl implements TtsService {
 
     private static final Logger log = LoggerFactory.getLogger(TtsServiceImpl.class);
 
     private final SlidePageMapper slidePageMapper;
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final TransactionTemplate transactionTemplate;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -83,9 +89,11 @@ public class TtsServiceImpl implements TtsService {
 
     public TtsServiceImpl(SlidePageMapper slidePageMapper,
                           CourseRepository courseRepository,
+                          EnrollmentRepository enrollmentRepository,
                           TransactionTemplate transactionTemplate) {
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -120,14 +128,24 @@ public class TtsServiceImpl implements TtsService {
         try {
             ProcessBuilder pb = new ProcessBuilder(MMX_CMD, "--version");
             Process process = pb.start();
-            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
-            if (finished && process.exitValue() == 0) {
-                mmxAvailable = true;
-                mmxCheckMessage = "可用";
-                log.info("[TTS] mmx CLI 检测通过（降级模式）");
-            } else {
-                mmxCheckMessage = "mmx CLI 执行失败或超时";
-                log.warn("[TTS] mmx CLI 不可用，TTS 将降级为纯文本模式");
+            try (var stdout = process.getInputStream();
+                 var stderr = process.getErrorStream()) {
+                // 消费输出流，防止缓冲区满导致进程挂起
+                byte[] buffer = new byte[4096];
+                while (stdout.read(buffer) != -1) { /* discard */ }
+                while (stderr.read(buffer) != -1) { /* discard */ }
+
+                boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+                if (finished && process.exitValue() == 0) {
+                    mmxAvailable = true;
+                    mmxCheckMessage = "可用";
+                    log.info("[TTS] mmx CLI 检测通过（降级模式）");
+                } else {
+                    mmxCheckMessage = "mmx CLI 执行失败或超时";
+                    log.warn("[TTS] mmx CLI 不可用，TTS 将降级为纯文本模式");
+                }
+            } finally {
+                process.destroy();
             }
         } catch (IOException e) {
             mmxCheckMessage = "mmx CLI 未安装或不在 PATH 中: " + e.getMessage();
@@ -310,23 +328,28 @@ public class TtsServiceImpl implements TtsService {
             );
 
             Process process = pb.start();
-            boolean finished = process.waitFor(120, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                throw new IOException("mmx TTS 超时");
-            }
+            try (var stdout = process.getInputStream();
+                 var stderr = process.getErrorStream()) {
+                // 消费 stdout（即使不关心输出），防止缓冲区满导致进程挂起
+                byte[] buffer = new byte[4096];
+                while (stdout.read(buffer) != -1) { /* discard */ }
 
-            int exitCode = process.exitValue();
-            if (exitCode != 0) {
-                StringBuilder errMsg = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getErrorStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) { errMsg.append(line); }
+                boolean finished = process.waitFor(120, TimeUnit.SECONDS);
+                if (!finished) {
+                    process.destroyForcibly();
+                    throw new IOException("mmx TTS 超时");
                 }
-                throw new IOException("mmx TTS 失败 exit=" + exitCode + ": " + errMsg);
+
+                // 进程已结束，读取 stderr 获取错误信息
+                String errorOutput = new String(stderr.readAllBytes());
+                int exitCode = process.exitValue();
+                if (exitCode != 0) {
+                    throw new IOException("mmx TTS 失败 exit=" + exitCode + ": " + errorOutput);
+                }
+                return 0;
+            } finally {
+                process.destroy();
             }
-            return 0;
         } finally {
             try { Files.deleteIfExists(tempTextFile); } catch (IOException ignored) { }
         }
@@ -385,6 +408,29 @@ public class TtsServiceImpl implements TtsService {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         }
         return page;
+    }
+
+    @Override
+    public void verifyAccess(Long courseId) {
+        if (SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC")) return;
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+
+        boolean allowed = false;
+        if (SecurityUtil.hasRole("TEACHER")
+                && course.getTeacherId() != null
+                && course.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
+            allowed = true;
+        }
+        if (!allowed && SecurityUtil.hasRole("STUDENT")) {
+            long count = enrollmentRepository.selectCount(
+                    new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
+                            .eq(Enrollment::getCourseId, courseId)
+                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
+            if (count > 0) allowed = true;
+        }
+        if (!allowed) throw new BusinessException(ErrorCode.NO_PERMISSION);
     }
 
     private void checkOwner(Long courseId) {

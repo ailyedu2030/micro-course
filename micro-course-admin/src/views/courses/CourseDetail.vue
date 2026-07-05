@@ -6,9 +6,9 @@
   <div class="course-detail-page" v-loading="loading" element-loading-text="加载课程信息...">
     <!-- 面包屑 -->
     <div class="page-breadcrumb">
-      <el-breadcrumb>
+      <el-breadcrumb separator="→">
         <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item :to="{ path: '/courses' }">课程管理</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: userRole === 'TEACHER' ? '/teacher/courses' : '/courses' }">课程管理</el-breadcrumb-item>
         <el-breadcrumb-item>{{ isEditMode ? '编辑课程' : (courseData.title || '课程详情') }}</el-breadcrumb-item>
       </el-breadcrumb>
     </div>
@@ -20,21 +20,24 @@
         <h1 class="course-title">{{ courseData.title || '未命名课程' }}</h1>
         <div class="action-buttons">
           <template v-if="courseData.status === 0">
-            <el-button type="primary" @click="handleSubmitForReview">提交审核</el-button>
+            <el-button type="primary" @click="handleSubmitForReview" :loading="submitLoading" :disabled="submitLoading">提交审核</el-button>
           </template>
           <template v-if="courseData.status === 1">
             <el-button type="success" @click="handleApprove">审核通过</el-button>
             <el-button type="danger" @click="handleReject">驳回</el-button>
           </template>
-          <template v-if="courseData.status === 2 && userRole === 'ADMIN'">
-            <el-button type="primary" @click="handlePublish">发布</el-button>
+          <template v-if="[2, 5].includes(courseData.status) && userRole === 'ADMIN'">
+            <el-button type="primary" @click="handlePublish">{{ courseData.status === 5 ? '重新上架' : '发布' }}</el-button>
           </template>
-          <template v-if="courseData.status === 4 && userRole === 'ADMIN'">
+          <template v-if="courseData.status === 4 && isOwner">
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
-          <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">管理课件</el-button>
-          <el-button type="primary" plain @click="switchToEdit">编辑</el-button>
+          <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">课件总览</el-button>
+          <el-button type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">编辑</el-button>
           <el-button type="warning" plain @click="handleCopy" v-if="!isEditMode">复制</el-button>
+          <el-button type="info" plain @click="previewAsStudent">
+            <el-icon><View /></el-icon> 學生預覽
+          </el-button>
           <el-button @click="handleBack">返回</el-button>
         </div>
       </div>
@@ -108,7 +111,7 @@
       <!-- 课程描述 -->
       <el-card shadow="never" class="info-card" v-if="courseData.description">
         <template #header><span class="card-title">课程描述</span></template>
-        <div class="description-html" v-html="courseData.description"></div>
+        <div class="description-html" v-html="sanitizeHtml(courseData.description)"></div>
       </el-card>
 
       <!-- 章节管理 -->
@@ -120,7 +123,7 @@
           </div>
         </template>
         <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe row-key="id">
-          <template #empty><el-empty description="暂无章节" /></template>
+          <template #empty><el-empty description="暂无章节，点击上方「新增章节」添加内容" /></template>
           <el-table-column type="index" label="#" width="60" align="center" />
           <el-table-column prop="title" label="章节标题" min-width="180" show-overflow-tooltip />
           <el-table-column label="内容形式" width="120" align="center">
@@ -128,14 +131,28 @@
               <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">📹 视频课</el-tag>
               <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">🎯 互动课</el-tag>
               <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="warning" size="small">📝 练习</el-tag>
-              <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">🏫 线下课</el-tag>
+              <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">🏫 线下课 (需线下授课)</el-tag>
               <el-tag v-else type="info" size="small">—</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="内容状态" width="120" align="center">
             <template #default="{ row }">
-              <el-tag v-if="(row.videoCount || 0) > 0" type="success" size="small">● {{ row.videoCount }} 个视频</el-tag>
-              <el-tag v-else type="info" size="small">○ 待添加</el-tag>
+              <template v-if="row.chapterType === 'VIDEO'">
+                <el-tag v-if="(row.videoCount || 0) > 0" type="success" size="small">● {{ row.videoCount }} 个视频</el-tag>
+                <el-tag v-else type="info" size="small">○ 待添加</el-tag>
+              </template>
+              <template v-else-if="row.chapterType === 'INTERACTIVE'">
+                <el-tag v-if="(row.slideCount || 0) > 0" type="success" size="small">● {{ row.slideCount }} 页课件</el-tag>
+                <el-tag v-else type="info" size="small">○ 待上传</el-tag>
+              </template>
+              <template v-else-if="row.chapterType === 'OFFLINE'">
+                <el-tag v-if="(row.sessionCount || 0) > 0" type="success" size="small">● {{ row.sessionCount }} 场次</el-tag>
+                <el-tag v-else type="info" size="small">○ 待配置</el-tag>
+              </template>
+              <template v-else-if="row.chapterType === 'EXERCISE'">
+                <el-tag v-if="(row.exerciseCount || 0) > 0" type="success" size="small">● {{ row.exerciseCount }} 题</el-tag>
+                <el-tag v-else type="info" size="small">○ 待组卷</el-tag>
+              </template>
             </template>
           </el-table-column>
           <el-table-column prop="duration" label="时长" width="80" align="center">
@@ -174,7 +191,7 @@
           </el-table-column>
         </el-table>
         <div v-if="chapters.length > 0" class="sort-bar">
-          <el-button type="warning" size="small" :loading="saveSortLoading" @click="handleSaveSort">保存排序</el-button>
+          <el-button type="warning" size="small" :loading="saveSortLoading" :disabled="saveSortLoading" @click="handleSaveSort">保存排序</el-button>
         </div>
       </el-card>
     </template>
@@ -286,7 +303,7 @@
 
       <!-- 操作按钮 -->
       <div class="submit-bar">
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">保存</el-button>
         <el-button @click="switchToView">取消</el-button>
       </div>
     </template>
@@ -298,7 +315,7 @@
           <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 环境搭建" />
         </el-form-item>
         <el-form-item label="内容形式" prop="chapterType">
-          <el-select v-model="chapterFormData.chapterType" placeholder="选择本章节的内容形式" class="full-width">
+          <el-select v-model="chapterFormData.chapterType" :disabled="isChapterEdit" placeholder="选择本章节的内容形式" class="full-width">
             <el-option label="📹 视频讲解" value="VIDEO" />
             <el-option label="🎯 互动课件" value="INTERACTIVE" />
             <el-option label="📝 随堂练习" value="EXERCISE" />
@@ -325,7 +342,7 @@
       </el-form>
       <template #footer>
         <el-button @click="handleChapterCancel">取消</el-button>
-        <el-button type="primary" :loading="chapterSubmitLoading" @click="handleChapterSubmit">确定</el-button>
+        <el-button type="primary" :loading="chapterSubmitLoading" :disabled="chapterSubmitLoading" @click="handleChapterSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -340,15 +357,23 @@ import { useUserStore } from '@/store/user'
 import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse, copyCourse } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
+import { View } from '@element-plus/icons-vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { sanitizeHtml } from '@/utils/xss'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 
+const userId = computed(() => userStore.userId)
+
 const courseId = computed(() => route.params.id)
+const isOwner = computed(() => {
+  return userStore.role === 'ADMIN' ||
+    (userStore.role === 'TEACHER' && courseData.value?.teacherId === userStore.userId)
+})
 const isEditMode = computed(() => route.path.includes('/edit'))
 
 const loading = ref(true)
@@ -434,7 +459,10 @@ const fetchChapters = async () => {
   if (!courseId.value) return
   chapterLoading.value = true
   try { const { data } = await getChapters({ courseId: courseId.value, size: 999 }); chapters.value = data?.items || data || [] }
-  catch { chapters.value = [] }
+  catch {
+    chapters.value = []
+    ElMessage.warning('章节列表加载失败')
+  }
   finally { chapterLoading.value = false; await nextTick(); initSortable() }
 }
 
@@ -446,15 +474,34 @@ const initSortable = () => {
 }
 
 // ===== 页面操作 =====
-const handleBack = () => router.push('/courses')
+const handleBack = () => {
+  const role = userStore.role
+  if (role === 'TEACHER') {
+    router.push('/teacher/courses')
+  } else {
+    router.push('/courses')
+  }
+}
 const goSlides = () => router.push(`/teacher/courses/${route.params.id}/slides/manage`)
-const switchToEdit = () => router.push(`/courses/${courseId.value}/edit`)
+const previewAsStudent = () => {
+  window.open(`/student/courses/${courseId.value}`, '_blank')
+}
+const switchToEdit = () => {
+  if (courseData.value?.status === 4) {
+    ElMessage.warning('已发布课程不可编辑，请先下架')
+    return
+  }
+  router.push(`/courses/${courseId.value}/edit`)
+}
 const switchToView = () => router.push(`/courses/${courseId.value}`)
 
 const handleSubmitForReview = async () => {
+  if (submitLoading.value) return
   try { await ElMessageBox.confirm('确定提交审核？', '提示', { type: 'info' }) } catch { return }
+  submitLoading.value = true
   try { await submitCourseForReview(courseId.value); ElMessage.success('已提交审核'); fetchCourse() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  finally { submitLoading.value = false }
 }
 const handleApprove = async () => {
   try { await ElMessageBox.confirm('确定审核通过？', '提示', { type: 'info' }) } catch { return }
@@ -510,6 +557,7 @@ const handleRemoveCover = () => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   try {
     const valid = await formRef.value.validate()
@@ -568,6 +616,7 @@ const handleSaveSort = async () => {
   finally { saveSortLoading.value = false }
 }
 const handleChapterSubmit = async () => {
+  if (chapterSubmitLoading.value) return
   if (!chapterFormRef.value) return
   try { await chapterFormRef.value.validate() } catch { return }
   chapterSubmitLoading.value = true

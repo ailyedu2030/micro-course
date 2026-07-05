@@ -36,7 +36,7 @@
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无章节数据" />
+      <el-empty v-else-if="tableData.length === 0" :description="searchForm.courseId ? '暂无章节数据' : '请先选择课程'" />
       <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
@@ -44,7 +44,7 @@
         <el-table-column prop="chapterType" label="类型" width="120" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
-            <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="success" size="small">练习</el-tag>
+            <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="warning" size="small">📝 练习</el-tag>
             <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">互动课件</el-tag>
             <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">线下课</el-tag>
             <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
@@ -107,7 +107,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -154,7 +154,7 @@ const formRules = {
   courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
   title: [{ required: true, message: '请输入章节标题', trigger: 'blur' }],
   chapterType: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  sortOrder: [{ required: true, message: '请输入排序值', trigger: 'blur' }]
+  sortOrder: [{ required: true, message: '请输入排序号', trigger: 'blur' }, { type: 'number', min: 0, message: '最小为0', trigger: 'blur' }]
 }
 
 const fetchData = async () => {
@@ -252,6 +252,7 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   try {
     await formRef.value.validate()

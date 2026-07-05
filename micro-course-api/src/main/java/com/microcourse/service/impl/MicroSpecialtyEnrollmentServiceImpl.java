@@ -339,13 +339,24 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
                         .eq(MicroSpecialtyEnrollment::getStatus, "PENDING")
                         .set(MicroSpecialtyEnrollment::getStatus, "REJECTED")
-                        .set(MicroSpecialtyEnrollment::getDropReason, reason)
+                        .set(MicroSpecialtyEnrollment::getDropReason, com.microcourse.util.XssSanitizer.sanitizePlainText(reason))
                         .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
+        String safeReason = reason != null ? com.microcourse.util.XssSanitizer.sanitizePlainText(reason) : "未填写";
         notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_REJECTED,
-                "报名被驳回", "您的微专业报名被驳回，原因：" + (reason != null ? reason : "未填写"), en.getMicroSpecialtyId());
+                "报名被驳回", "您的微专业报名被驳回，原因：" + safeReason, en.getMicroSpecialtyId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class, timeout = 300)
+    public int classImportBatch(Long microSpecialtyId, java.util.List<Long> classIds) {
+        int totalCount = 0;
+        for (Long classId : classIds) {
+            totalCount += classImport(microSpecialtyId, classId);
+        }
+        return totalCount;
     }
 
     @Override

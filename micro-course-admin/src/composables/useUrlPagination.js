@@ -32,7 +32,7 @@ export function useUrlPagination() {
     })
 
     // 2. watch 变化时同步到 URL（replace 不留历史）
-    watch([pageRef, sizeRef, formRef], () => {
+    watch([pageRef, sizeRef, formRef].filter(Boolean), () => {
       const query = { ...route.query }
       query.page = String(pageRef.value)
       query.size = String(sizeRef.value)

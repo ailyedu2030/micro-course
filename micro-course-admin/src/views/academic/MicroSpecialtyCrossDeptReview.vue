@@ -94,7 +94,7 @@ const fetchData = async () => {
   loading.value = true
   error.value = false
   try {
-    const params = { page: page.value, size: size.value }
+    const params = { page: page.value - 1, size: size.value }
     if (activeTab.value === 'PENDING') params.inviteStatus = 'PENDING_ACADEMIC'
     const { data } = await getPendingCrossDeptInvites(params)
     items.value = data.items || data || []

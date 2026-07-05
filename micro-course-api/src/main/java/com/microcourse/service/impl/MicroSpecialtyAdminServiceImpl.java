@@ -190,14 +190,14 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                         .eq(MicroSpecialty::getVersion, oldVersion)
                         .eq(MicroSpecialty::getStatus, "PENDING_REVIEW")
                         .set(MicroSpecialty::getStatus, "REJECTED")
-                        .set(MicroSpecialty::getRejectReason, reason)
+                        .set(MicroSpecialty::getRejectReason, com.microcourse.util.XssSanitizer.sanitizePlainText(reason))
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
         if (ms.getLeadTeacherId() != null) {
             notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_REJECTED,
-                    "微专业审核被驳回", "微专业《" + ms.getTitle() + "》被驳回，原因：" + (reason != null ? reason : "未填写"), id);
+                    "微专业审核被驳回", "微专业《" + ms.getTitle() + "》被驳回，原因：" + (reason != null ? com.microcourse.util.XssSanitizer.sanitizePlainText(reason) : "未填写"), id);
         }
     }
 

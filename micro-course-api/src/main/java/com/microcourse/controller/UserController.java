@@ -13,10 +13,7 @@ import com.microcourse.dto.TeacherStatusRequest;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.UserService;
-import com.microcourse.util.SecurityUtil;
-import com.microcourse.repository.CourseRepository;
-import com.microcourse.repository.EnrollmentRepository;
-import com.microcourse.entity.Enrollment;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
@@ -41,19 +38,14 @@ import java.io.InputStream;
 public class UserController {
 
     private final UserService userService;
-    private final CourseRepository courseRepository;
-    private final EnrollmentRepository enrollmentRepository;
 
-    public UserController(UserService userService,
-                          CourseRepository courseRepository,
-                          EnrollmentRepository enrollmentRepository) {
+    public UserController(UserService userService) {
         this.userService = userService;
-        this.courseRepository = courseRepository;
-        this.enrollmentRepository = enrollmentRepository;
     }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC', 'TEACHER')")
+    // P2-权限对齐：TEACHER 权限受 Service 层数据范围限制（仅能查看自己课程的学生）
     public R<PageResult<UserVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
@@ -72,35 +64,12 @@ public class UserController {
         query.setDepartmentId(departmentId);
         query.setStatus(status);
         query.setTeacherStatus(teacherStatus);
-        // TEACHER 角色仅看自己的任课学生
-        Long teacherId = null;
-        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            teacherId = SecurityUtil.getCurrentUserId();
-            // 查该教师的所有课程ID → 对应的选课学生ID
-            java.util.List<Long> courseIds = courseRepository.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.Course>()
-                    .eq(com.microcourse.entity.Course::getTeacherId, teacherId)
-                    .isNull(com.microcourse.entity.Course::getDeletedAt)
-                    .select(com.microcourse.entity.Course::getId)
-            ).stream().map(com.microcourse.entity.Course::getId).collect(java.util.stream.Collectors.toList());
-            if (!courseIds.isEmpty()) {
-                java.util.List<Long> studentIds = enrollmentRepository.selectList(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Enrollment>()
-                        .in(Enrollment::getCourseId, courseIds)
-                        .isNull(Enrollment::getDeletedAt)
-                        .select(Enrollment::getUserId)
-                ).stream().map(Enrollment::getUserId).distinct().collect(java.util.stream.Collectors.toList());
-                query.setInUserIds(studentIds.isEmpty() ? java.util.Collections.singletonList(-1L) : studentIds);
-            } else {
-                query.setInUserIds(java.util.Collections.singletonList(-1L));
-            }
-        }
         PageResult<UserVO> result = userService.pageUsers(query);
         return R.ok(result);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated() and (#id == authentication.principal or hasAnyRole('ADMIN', 'ACADEMIC', 'TEACHER'))")
+    @PreAuthorize("isAuthenticated() and (#id == authentication.principal or hasRole('ADMIN') or hasRole('ACADEMIC'))")
     public R<UserVO> getById(@PathVariable Long id) {
         UserVO vo = userService.getUserById(id);
         return R.ok(vo);

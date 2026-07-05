@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.R;
+import com.microcourse.dto.FeaturedApplyRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyFeaturedApplyRequest;
 import com.microcourse.service.MicroSpecialtyFeaturedService;
 import jakarta.validation.Valid;
@@ -46,9 +47,8 @@ public class MicroSpecialtyFeaturedController {
     @PostMapping("/{id}/reject-featured")
     @PreAuthorize("hasRole('ACADEMIC')")
     public R<Void> rejectFeatured(@PathVariable Long id,
-                                   @RequestBody Map<String, String> body) {
-        String reason = body.getOrDefault("reason", "");
-        featuredService.rejectFeatured(id, reason);
+                                    @Valid @RequestBody FeaturedApplyRequest request) {
+        featuredService.rejectFeatured(id, request.getReason());
         return R.ok();
     }
 

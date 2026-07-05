@@ -239,6 +239,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Notebook } from '@element-plus/icons-vue'
+import { downloadCertificate } from '@/api/certificate'
 import {
   getMyEnrollments,
   dropEnrollment,
@@ -339,10 +340,20 @@ const handleReapply = async (item) => {
   }
 }
 
-const viewCertificate = (item) => {
+const viewCertificate = async (item) => {
   if (item.certificateId) {
-    // Open certificate download/view using certificate ID
-    window.open(`/api/certificates/${item.certificateId}/download`, '_blank')
+    try {
+      const res = await downloadCertificate(item.certificateId)
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `证书_${item.certificateId}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      ElMessage.error('下载证书失败')
+    }
   }
 }
 

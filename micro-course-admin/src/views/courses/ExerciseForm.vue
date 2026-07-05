@@ -102,7 +102,7 @@
 
       <div class="form-footer">
         <el-button @click="handleBack">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">保存</el-button>
       </div>
     </el-card>
 
@@ -362,6 +362,7 @@ const handleBack = () => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return

@@ -1,7 +1,7 @@
 <template>
   <div class="teacher-offline-page">
     <div class="page-breadcrumb">
-      <el-breadcrumb>
+      <el-breadcrumb separator="→">
         <el-breadcrumb-item :to="{ path: '/teacher/dashboard' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item v-if="courseTitle">{{ courseTitle }}</el-breadcrumb-item>
       <el-breadcrumb-item>线下课管理</el-breadcrumb-item>
@@ -17,9 +17,9 @@
     </div>
 
     <div v-loading="loading">
-      <el-empty v-if="!loading && sessions.length === 0" description="暂未安排线下课程" :image-size="120" />
+      <el-empty v-if="!loading && sessions.length === 0" description="暂未安排线下课程，点击「新增场次」添加" :image-size="120" />
 
-      <el-card v-for="session in sessions" :key="session.id" class="session-card" shadow="never">
+      <el-card v-for="session in sessions" :key="session.id" class="session-card" shadow="never" @click="handleSessionClick(session)" style="cursor:pointer">
         <div class="session-header">
           <div class="session-date-badge">
             <span class="badge-month">{{ formatMonth(session.sessionDate) }}</span>
@@ -66,8 +66,14 @@
     </div>
 
     <!-- 新增/编辑 弹窗 -->
-    <el-dialog v-model="formDialogVisible" :title="isEditing ? '编辑场次' : '新增场次'" width="520px">
+    <el-dialog v-model="formDialogVisible" :title="isEditing ? '编辑场次' : '新增场次'" width="520px" @close="handleDialogClose">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
+        <el-form-item label="所属课程" v-if="courseTitle">
+          <el-tag type="primary" effect="plain">{{ courseTitle }}</el-tag>
+        </el-form-item>
+        <el-form-item label="所属章节" v-if="chapterTitle">
+          <el-tag type="success" effect="plain">{{ chapterTitle }}</el-tag>
+        </el-form-item>
         <el-form-item label="日期" prop="sessionDate">
           <el-date-picker v-model="form.sessionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width:100%" />
         </el-form-item>
@@ -95,7 +101,7 @@
       </el-form>
       <template #footer>
         <el-button @click="formDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="formSubmitting" @click="handleFormSubmit">确定</el-button>
+        <el-button type="primary" :loading="formSubmitting" :disabled="formSubmitting" @click="handleFormSubmit">确定</el-button>
       </template>
     </el-dialog>
 
@@ -178,7 +184,7 @@ const formRules = {
   sessionDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
   startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
   endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
-  location: [{ max: 200, message: '长度不超过200字符', trigger: 'blur' }]
+  location: [{ required: true, message: '请输入地点', trigger: 'blur' }, { max: 200, message: '长度不超过200字符', trigger: 'blur' }]
 }
 
 const attendanceDialogVisible = ref(false)
@@ -256,6 +262,7 @@ async function fetchSessions() {
     await Promise.all(items.map(s => fetchAttendanceSummary(s.id)))
   } catch {
     sessions.value = []
+    ElMessage.warning('场次数据加载失败')
   }
 }
 
@@ -267,6 +274,10 @@ async function fetchAttendanceSummary(sessionId) {
   } catch {
     attendanceMap.value[sessionId] = []
   }
+}
+
+function handleDialogClose() {
+  formRef.value?.resetFields()
 }
 
 function openCreateDialog() {
@@ -363,6 +374,10 @@ async function handleStatusChange(row, newStatus) {
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '更新失败')
   }
+}
+
+function handleSessionClick(session) {
+  router.push(`/teacher/courses/${courseId.value}/chapters/${session.id}/manage-offline`)
 }
 
 onMounted(async () => {

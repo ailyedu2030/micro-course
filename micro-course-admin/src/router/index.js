@@ -12,7 +12,7 @@ const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/auth/Login.vue'), meta: { requiresAuth: false } },
   { path: '/', name: 'Home', redirect: '/admin/dashboard' },
   // P0-2: 从 userStore 读取角色（beforeEach 中已填充），避免与 sessionStorage 双源不一致
-  { path: '/profile', name: 'Profile', component: () => import('../views/student/Profile.vue'), meta: { requiresAuth: true } },
+  { path: '/profile', name: 'Profile', component: () => import('../views/student/Profile.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN', 'ACADEMIC'] } },
   { path: '/departments', name: 'DepartmentList', component: () => import('../views/departments/DepartmentList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/majors', name: 'MajorList', component: () => import('../views/majors/MajorList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/classes', name: 'ClassList', component: () => import('../views/classes/ClassList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
@@ -37,7 +37,7 @@ const routes = [
   { path: '/discussions', name: 'DiscussionList', component: () => import('../views/courses/DiscussionList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/reviews', name: 'ReviewManagement', component: () => import('../views/admin/ReviewsManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/discussions/:id', name: 'DiscussionDetail', component: () => import('../views/courses/DiscussionDetail.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
-  { path: '/notifications', name: 'NotificationList', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true } },
+  { path: '/notifications', name: 'NotificationList', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'] } },
   { path: '/courses/review', name: 'CourseApproval', component: () => import('../views/courses/CourseApproval.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/bundles', name: 'BundleList', component: () => import('../views/courses/BundleList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN', 'ACADEMIC'] } },
 
@@ -99,16 +99,16 @@ const routes = [
   { path: '/student', redirect: '/student/courses' },
   // 学生端路由
   { path: '/student/courses', name: 'StudentCourseSquare', component: () => import('../views/student/CourseSquare.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '广场', menuIcon: 'Grid', menuOrder: 1 } },
-  { path: '/student/courses/:id', name: 'StudentCourseDetail', component: () => import('../views/student/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/courses/:id', name: 'StudentCourseDetail', component: () => import('../views/student/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
   // P0 闭环修复 Round 4: 学生端课程套件路由(原 BundleSquare/BundleDetail.vue 存在但无路由,学生点击 → 404)
   { path: '/student/bundles', name: 'StudentBundleSquare', component: () => import('../views/student/BundleSquare.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/bundles/:id', name: 'StudentBundleDetail', component: () => import('../views/student/BundleDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
-  { path: '/student/courses/:id/play/:videoId?', name: 'StudentVideoPlay', component: () => import('../views/student/VideoPlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], layout: 'video' } },
+  { path: '/student/courses/:id/play/:videoId?', name: 'StudentVideoPlay', component: () => import('../views/student/VideoPlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'], layout: 'video' } },
   { path: '/student/my-courses', name: 'StudentMyCourses', component: () => import('../views/student/MyCourses.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '我的课程', menuIcon: 'Reading', menuOrder: 2 } },
   // /student/training 保留为隐藏路由（训练中心），不显示在导航标签页
   { path: '/student/training', name: 'StudentTraining', component: () => import('../views/student/TrainingCenter.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Fix P1: /student/learning 路由 - 无 courseId 时显示学习中心，使用查询参数 ?courseId= 传递
-  { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningView.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '学习', menuIcon: 'DataLine', menuOrder: 3 } },
+  { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningView.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'], menuTab: true, menuLabel: '学习', menuIcon: 'DataLine', menuOrder: 3 } },
   { path: '/student/learning-stats', name: 'StudentLearningStats', component: () => import('../views/student/LearningCenter.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/notifications', name: 'StudentNotifications', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '消息', menuIcon: 'Bell', menuOrder: 4 } },
   { path: '/student/announcements', redirect: '/student/notifications' },
@@ -135,7 +135,7 @@ const routes = [
   { path: '/academic/micro-specialties/class-import', name: 'AcademicMicroSpecialtyClassImport', component: () => import('../views/academic/MicroSpecialtyClassImport.vue'), meta: { title: '班级导入', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/academic/micro-specialties/gold', name: 'AcademicMicroSpecialtyGoldManage', component: () => import('../views/academic/MicroSpecialtyGoldManage.vue'), meta: { title: '金标管理', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/student/redirect', redirect: '/student/courses', meta: { requiresAuth: false } },
-  { path: '/student/chapters/:chapterId/exercises', name: 'StudentExerciseTake', component: () => import('../views/student/ExerciseTake.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/chapters/:chapterId/exercises', name: 'StudentExerciseTake', component: () => import('../views/student/ExerciseTake.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
   { path: '/student/discussions', name: 'StudentDiscussion', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Fix P3: /student/discussion/:chapterId -> /student/discussions?chapterId=:chapterId
   { path: '/student/discussion/:chapterId', redirect: (to) => `/student/discussions?chapterId=${to.params.chapterId}` },
@@ -143,8 +143,8 @@ const routes = [
   { path: '/student/settings', name: 'StudentSettings', component: () => import('../views/student/Settings.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/achievements', name: 'StudentAchievements', component: () => import('../views/student/AchievementWall.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'ADMIN'] } },
   // P0-1: SlidePlayer 学生端 PPT 播放路由
-  { path: '/student/courses/:courseId/slides/player', name: 'StudentSlidePlayer', component: () => import('../views/student/SlidePlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
-  { path: '/student/chapters/:chapterId/offline', name: 'StudentOfflineSession', component: () => import('../views/student/StudentOfflineSession.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/courses/:courseId/slides/player', name: 'StudentSlidePlayer', component: () => import('../views/student/SlidePlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
+  { path: '/student/chapters/:chapterId/offline', name: 'StudentOfflineSession', component: () => import('../views/student/StudentOfflineSession.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
   // P1-4: 404 通配路由 — 根据角色重定向到对应首页
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue'), beforeEnter: (to, from, next) => {
     // 客户体验修复 v1.7.0: 未知路径不再静默重定向,先弹 toast 提示再重定向

@@ -9,6 +9,7 @@ import com.microcourse.dto.GradeUpdateRequest;
 import com.microcourse.dto.GradeVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.dto.ManualGradeRequest;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.GradeService;
@@ -42,7 +43,7 @@ public class GradeController {
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) Long studentId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         return R.ok(gradeService.page(courseId, studentId, page, size));
     }
 
@@ -51,7 +52,7 @@ public class GradeController {
     public R<PageResult<GradeVO>> getMyGrades(
             @RequestParam(required = false) Long courseId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         Long userId = getCurrentUserId();
         return R.ok(gradeService.pageByStudent(userId, null, courseId, page, size));
     }
@@ -102,7 +103,7 @@ public class GradeController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<PageResult<ExerciseRecordVO>> getPendingReview(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         return R.ok(gradeService.getPendingReview(page, size, getCurrentUserId()));
     }
 
@@ -114,8 +115,8 @@ public class GradeController {
     @PostMapping("/{recordId}/manual-grade")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("手动评阅")
-    public R<Void> manualGrade(@PathVariable Long recordId, @RequestBody Map<String, Object> body) {
-        gradeService.manualGrade(recordId, body, getCurrentUserId());
+    public R<Void> manualGrade(@PathVariable Long recordId, @Valid @RequestBody ManualGradeRequest request) {
+        gradeService.manualGrade(recordId, request.getQuestionId(), request.getScore(), request.getComment(), getCurrentUserId());
         return R.ok();
     }
 

@@ -22,6 +22,12 @@ public class CourseSlide {
     @TableField("course_id")
     private Long courseId;
 
+    @TableField(exist = false)
+    private Long lessonId;
+
+    @TableField("chapter_id")
+    private Long chapterId;
+
     @TableField("file_name")
     private String fileName;
 
@@ -52,6 +58,10 @@ public class CourseSlide {
     public void setId(Long id) { this.id = id; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
+    public Long getLessonId() { return lessonId; }
+    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
+    public Long getChapterId() { return chapterId; }
+    public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
     public String getFileUrl() { return fileUrl; }

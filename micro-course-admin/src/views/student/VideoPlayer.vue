@@ -902,7 +902,7 @@ const loadChapters = async () => {
     chapters.value = list.map((c, i) => ({
       ...c,
       isCompleted: false
-    }))
+    })).filter(ch => ch.chapterType === 'VIDEO')
     // Mark current chapter
     const idx = chapters.value.findIndex(c => Number(c.id) === Number(chapterId.value))
     if (idx >= 0) currentChapterIndex.value = idx
@@ -992,8 +992,8 @@ const reportProgress = async (force = false) => {
     saveLocalPosition(current)
   } catch (e) {
     // 同一会话只弹一次 warning
-    if (!sessionStorage.getItem('progress_error_shown')) {
-      sessionStorage.setItem('progress_error_shown', '1')
+    if (!sessionStorage.getItem(`progress_error_${videoId.value}`)) {
+      sessionStorage.setItem(`progress_error_${videoId.value}`, '1')
       ElMessage.warning('进度上报失败,请检查网络')
     }
     console.warn('[进度上报]', e)
@@ -1094,9 +1094,17 @@ const addNote = () => {
   ElMessage.success('笔记已添加')
 }
 
-const deleteNote = (id) => {
-  notes.value = notes.value.filter(n => n.id !== id)
-  saveNotesToStorage()
+const deleteNote = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定删除此笔记?', '确认删除', {
+      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
+    })
+    notes.value = notes.value.filter(n => n.id !== id)
+    saveNotesToStorage()
+    ElMessage.success('笔记已删除')
+  } catch {
+    // 已取消,不做操作
+  }
 }
 
 // P1-3: Insert timestamp prefix at current time

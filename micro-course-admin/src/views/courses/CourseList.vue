@@ -7,7 +7,7 @@
 <template>
   <div class="course-list-page">
     <!-- 面包屑导航 -->
-    <el-breadcrumb separator="/" class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item>课程管理</el-breadcrumb-item>
       <el-breadcrumb-item>课程列表</el-breadcrumb-item>
     </el-breadcrumb>
@@ -45,7 +45,7 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
@@ -66,7 +66,9 @@
             >
               <el-icon><Download /></el-icon>导出
             </el-button>
-            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增课程</el-button>
+            <el-button type="primary" v-if="userRole !== 'ACADEMIC' && !route.query.courseType" @click="handleCreate">新增课程</el-button>
+            <el-button type="primary" v-if="route.query.courseType === 'OFFLINE'" @click="showOfflineDialog = true" :icon="Plus">新增安排</el-button>
+            <el-button v-if="route.query.courseType" @click="router.push('/teacher/courses')">返回课程列表</el-button>
           </div>
         </div>
       </template>
@@ -95,6 +97,7 @@
         <el-table-column label="类型" width="90" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.courseType === 'INTERACTIVE'" type="success" size="small" effect="plain">互动</el-tag>
+            <el-tag v-else-if="row.courseType === 'OFFLINE'" type="info" size="small" effect="plain">线下</el-tag>
             <el-tag v-else type="primary" size="small" effect="plain">视频</el-tag>
           </template>
         </el-table-column>
@@ -117,9 +120,10 @@
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click.stop="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.courseType === 'INTERACTIVE'" type="success" link size="small" @click.stop="goSlides(row)">课件</el-button>
+            <el-button v-if="row.courseType === 'OFFLINE'" type="info" link size="small" @click.stop="handleView(row)">安排</el-button>
             <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">审核通过</el-button>
             <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleReject(row)">驳回</el-button>
-            <el-button v-if="row.status === 2 && userRole === 'ADMIN'" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">发布</el-button>
+            <el-button v-if="[2, 5].includes(row.status) && userRole === 'ADMIN'" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">{{ row.status === 5 ? '重新上架' : '发布' }}</el-button>
             <el-button v-if="row.status === 4 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="warning" link size="small" :loading="actingId === row.id" @click.stop="handleUnpublish(row)">下架</el-button>
             <el-button type="info" link size="small" @click.stop="handleView(row)">查看</el-button>
             <el-button type="primary" link size="small" @click.stop="handleCopy(row)">复制</el-button>
@@ -145,6 +149,13 @@
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
         <el-form-item label="课程标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入课程标题" />
+        </el-form-item>
+        <el-form-item label="课程类型" prop="courseType">
+          <el-select v-model="formData.courseType" class="full-width">
+            <el-option label="视频课程" value="VIDEO" />
+            <el-option label="互动课程" value="INTERACTIVE" />
+            <el-option label="线下课程" value="OFFLINE" />
+          </el-select>
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
@@ -241,15 +252,56 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 线下课新增安排弹窗 -->
+    <el-dialog v-model="showOfflineDialog" title="新增线下安排" width="500px" @close="resetOfflineForm">
+      <el-form ref="offlineFormRef" :model="offlineForm" :rules="offlineRules" label-width="100px">
+        <el-form-item label="课程">
+          <el-select v-model="offlineForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onOfflineCourseChange">
+            <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="章节" prop="chapterId">
+          <el-select v-model="offlineForm.chapterId" placeholder="选择章节" class="full-width" :disabled="!offlineForm.courseId">
+            <el-option v-for="ch in offlineChapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="日期" prop="sessionDate">
+          <el-date-picker v-model="offlineForm.sessionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" class="full-width" />
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="开始时间" prop="startTime">
+              <el-time-picker v-model="offlineForm.startTime" placeholder="开始" value-format="HH:mm:ss" class="full-width" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束时间" prop="endTime">
+              <el-time-picker v-model="offlineForm.endTime" placeholder="结束" value-format="HH:mm:ss" class="full-width" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="地点" prop="location">
+          <el-input v-model="offlineForm.location" placeholder="如：教学楼 A-101" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="offlineForm.teacherNotes" type="textarea" :rows="2" placeholder="选填" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showOfflineDialog = false">取消</el-button>
+        <el-button type="primary" :loading="offlineSubmitting" :disabled="offlineSubmitting" @click="submitOffline">新增</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUrlPagination } from '@/composables/useUrlPagination'
 import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -259,10 +311,13 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useUserStore } from '@/store/user'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover, publishCourse, unpublishCourse } from '@/api/course'
+import { getChapters } from '@/api/chapter'
+import { createOfflineSession } from '@/api/offline-session'
 import { getCategories } from '@/api/course-category'
 import { getUsers } from '@/api/user'
 
 const router = useRouter()
+const route = useRoute()
 const { bindToQuery } = useUrlPagination()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
@@ -328,7 +383,10 @@ const coverFile = ref(null)
 const formRules = {
   title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }]
+  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }],
+  courseType: [{ required: true, message: '请选择课程类型', trigger: 'change' }],
+  price: [{ type: 'number', min: 0, message: '价格不能为负数', trigger: 'blur' }],
+  creditHours: [{ type: 'number', min: 0, max: 20, message: '学分范围为 0-20', trigger: 'blur' }]
 }
 
 const fetchCategories = async () => {
@@ -591,7 +649,7 @@ const handleExport = async () => {
     const exportData = allData.map((item, index) => ({
       '序号': index + 1,
       '标题': item.title || '',
-      '类型': item.courseType === 'INTERACTIVE' ? '互动' : '视频',
+      '类型': item.courseType === 'VIDEO' ? '视频' : item.courseType === 'INTERACTIVE' ? '互动' : '线下',
       '分类': item.categoryName || '',
       '教师': item.teacherName || '',
       '学员数': item.studentCount || 0,
@@ -616,6 +674,7 @@ const goSlides = (row) => {
   router.push(`/teacher/courses/${row.id}/slides/manage`)
 }
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   try {
     const valid = await formRef.value.validate()
@@ -667,10 +726,75 @@ const handleDialogClose = () => {
   formRef.value?.resetFields()
   handleRemoveCover()
 }
+// 线下课新增安排
+const showOfflineDialog = ref(false)
+const offlineSubmitting = ref(false)
+const offlineFormRef = ref(null)
+const offlineChapterOptions = ref([])
+const courseOptions = ref([])  // 线下课课程选择器
+watch(showOfflineDialog, async (v) => {
+  if (v) {
+    try {
+      // 加载所有课程(不按courseType过滤,因为OFFLINE课程可能已下架,且VIDEO课程下也有OFFLINE章节)
+      const { data } = await getCourses({ size: 200 })
+      courseOptions.value = data?.items || []
+    } catch { courseOptions.value = [] }
+  }
+})
+const offlineForm = reactive({
+  courseId: null, chapterId: null, sessionDate: '', startTime: '', endTime: '', location: '', teacherNotes: ''
+})
+const offlineRules = {
+  chapterId: [{ required: true, message: '请选择章节', trigger: 'change' }],
+  sessionDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
+  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
+  location: [{ required: true, message: '请输入地点', trigger: 'blur' }],
+}
+async function onOfflineCourseChange(courseId) {
+  offlineForm.chapterId = null
+  if (!courseId) { offlineChapterOptions.value = []; return }
+  try {
+    const { data } = await getChapters({ courseId, size: 100 })
+    offlineChapterOptions.value = (data?.items || []).filter(ch => ch.chapterType === 'OFFLINE')
+  } catch { offlineChapterOptions.value = [] }
+}
+function resetOfflineForm() {
+  offlineForm.courseId = null; offlineForm.chapterId = null; offlineForm.sessionDate = ''
+  offlineForm.startTime = ''; offlineForm.endTime = ''; offlineForm.location = ''; offlineForm.teacherNotes = ''
+  offlineChapterOptions.value = []
+  offlineFormRef.value?.resetFields()
+}
+async function submitOffline() {
+  if (!offlineFormRef.value) return
+  try { const v = await offlineFormRef.value.validate(); if (!v) return } catch { return }
+  if (!offlineForm.chapterId) { ElMessage.warning('请选择章节'); return }
+  offlineSubmitting.value = true
+  try {
+    await createOfflineSession(offlineForm.chapterId, {
+      sessionDate: offlineForm.sessionDate,
+      startTime: offlineForm.startTime,
+      endTime: offlineForm.endTime,
+      location: offlineForm.location,
+      teacherNotes: offlineForm.teacherNotes || undefined,
+      sortOrder: 1
+    })
+    ElMessage.success('线下安排已创建')
+    showOfflineDialog.value = false
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '创建失败')
+  } finally {
+    offlineSubmitting.value = false
+  }
+}
 
 onMounted(() => {
   fetchCategories()
   fetchData()
+  // courseType=OFFLINE 時直接打開新增安排 dialog，減少點擊
+  if (route.query.courseType === 'OFFLINE') {
+    showOfflineDialog.value = true
+  }
 })
 </script>
 

@@ -35,6 +35,9 @@ import com.microcourse.repository.TeacherRatingRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.TeacherService;
+import com.microcourse.util.SecurityUtil;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -96,6 +99,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public TeacherStatsVO getStats(Long teacherId) {
+        assertTeacherOwnership(teacherId, SecurityUtil.getCurrentUserId());
         TeacherStatsVO stats = new TeacherStatsVO();
 
         // 课程数
@@ -213,6 +217,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public TeacherRevenueVO getRevenue(Long teacherId) {
+        assertTeacherOwnership(teacherId, SecurityUtil.getCurrentUserId());
         // 1) 获取教师所有课程
         List<Course> courses = courseRepository.selectList(
                 new LambdaQueryWrapper<Course>()
@@ -325,6 +330,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public List<StudentActivityVO> getStudentActivity(Long teacherId, int days) {
+        assertTeacherOwnership(teacherId, SecurityUtil.getCurrentUserId());
         LocalDate today = LocalDate.now();
         LocalDateTime rangeStart = today.minusDays(days - 1).atStartOfDay();
         LocalDateTime rangeEnd = today.plusDays(1).atStartOfDay();
@@ -388,6 +394,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public List<PendingTaskVO> getPendingTasks(Long teacherId, int size) {
+        assertTeacherOwnership(teacherId, SecurityUtil.getCurrentUserId());
         // ★ Round 11-2 性能核验：本方法已为批量预加载实现（无逐门课程 N+1）——
         // 1 次取教师课程 ID 集合 → 1 次 IN(courseIds) 批量取练习 ID → 1 次分页取待批改记录
         // → 1 次分页取讨论帖；查询次数恒定，不随课程数增长，无需引入 per-course 循环查询。
@@ -459,6 +466,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public List<TeacherNotificationVO> getNotifications(Long teacherId, int size) {
+        assertTeacherOwnership(teacherId, SecurityUtil.getCurrentUserId());
         User user = userRepository.selectById(teacherId);
         Long userId = user != null ? user.getId() : teacherId;
 
@@ -482,6 +490,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<TeacherCourseVO> getMyCourses(Long teacherId, int page, int size) {
+        assertTeacherOwnership(teacherId, SecurityUtil.getCurrentUserId());
         IPage<Course> coursePage = courseRepository.selectPage(
             new Page<>(page, size),
             new LambdaQueryWrapper<Course>()
@@ -505,4 +514,13 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     // getPlatformShareRate 已被 PlatformShareRateResolver 取代 (修复 P0-1)
+
+    /**
+     * 校验教师归属：仅 ADMIN 或本人可访问（S-01 IDOR 防护）
+     */
+    private void assertTeacherOwnership(Long teacherId, Long currentUserId) {
+        if (!SecurityUtil.isAdmin() && !teacherId.equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权访问此教师的数据");
+        }
+    }
 }

@@ -76,8 +76,8 @@
         <div class="detail-item"><label>建议学期</label><span>{{ detailRow.semester || '-' }}</span></div>
         <div class="detail-item"><label>招生上限</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
         <div class="detail-item"><label>状态</label><span><el-tag :type="statusType(detailRow.status)" size="small">{{ statusLabel(detailRow.status) }}</el-tag></span></div>
-        <div class="detail-item full-width"><label>说明</label><span v-html="detailRow.description || '-'" class="detail-html"></span></div>
-        <div class="detail-item full-width"><label>培养目标</label><span v-html="detailRow.trainingObjective || '-'" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>说明</label><span v-html="sanitizeHtml(detailRow.description || '-')" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>培养目标</label><span v-html="sanitizeHtml(detailRow.trainingObjective || '-')" class="detail-html"></span></div>
         <div class="detail-item full-width"><label>准入门槛</label><span>{{ detailRow.prerequisites || '-' }}</span></div>
       </div>
       <template #footer>
@@ -94,6 +94,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAllProposals, approveProposal, rejectProposal } from '@/api/microSpecialty'
 import { useUserStore } from '@/store/user'
+import { sanitizeHtml } from '@/utils/xss'
 
 const activeTab = ref('PENDING')
 const loading = ref(false)
@@ -103,7 +104,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const hasAccess = ['ACADEMIC', 'ADMIN'].includes(userStore.role)
 const items = ref([])
-const page = ref(0)
+const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 
@@ -126,7 +127,7 @@ const fetchData = async () => {
   loading.value = true
   error.value = false
   try {
-    const params = { page: page.value, size: size.value }
+    const params = { page: page.value - 1, size: size.value }
     if (activeTab.value === 'PENDING') params.status = 'PENDING_REVIEW'
     const { data } = await getAllProposals(params)
     items.value = data.items || data || []
@@ -171,6 +172,7 @@ const goPreview = (row) => {
 }
 
 onMounted(fetchData)
+
 </script>
 
 <style scoped>

@@ -79,7 +79,7 @@
             class="rec-card" role="button" tabindex="0"
             :aria-label="`推荐课程 ${course.title}`"
             :style="{ '--rec-index': rIndex }"
-            @click="handleCourseClick(course.id)" @keydown.enter="handleCourseClick(course.id)"
+            @click="handleCourseClick(course)" @keydown.enter="handleCourseClick(course)"
           >
             <div class="rec-cover">
               <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="rec-cover-img" @error="handleImgError" />
@@ -162,7 +162,7 @@ v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
               class="search-recommend-item"
               role="button"
               tabindex="0"
-              @click="handleCourseClick(course.id)"
+              @click="handleCourseClick(course)"
             >
               <div class="sr-cover">
                 <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="sr-cover-img" />
@@ -184,7 +184,7 @@ v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
             <article
 class="course-card" :style="{ '--card-index': cIndex }" role="button" tabindex="0"
               :aria-label="`课程 ${course.title}，教师 ${course.teacherName || '未知'}，${course.studentCount || 0} 人学习`"
-              @click="handleCourseClick(course.id)" @keydown.enter="handleCourseClick(course.id)" @keydown.space.prevent="handleCourseClick(course.id)"
+              @click="handleCourseClick(course)" @keydown.enter="handleCourseClick(course)" @keydown.space.prevent="handleCourseClick(course)"
 >
               <div class="course-cover">
                 <div class="cover-placeholder" aria-hidden="true"><el-icon :size="48"><VideoPlay /></el-icon></div>
@@ -522,7 +522,7 @@ const fetchCourses = async () => {
     const params = {
       page: page.value - 1,
       size: size.value,
-      status: 2
+        status: undefined
     }
     if (searchForm.keyword) params.keyword = searchForm.keyword
     if (selectedCategoryId.value) params.categoryId = selectedCategoryId.value
@@ -550,8 +550,8 @@ const fetchCourses = async () => {
 const fetchSideCourses = async () => {
   try {
     const [hotRes, newestRes] = await Promise.all([
-      getCourses({ page: 0, size: 5, sortBy: 'studentCount', sortOrder: 'desc', status: 2 }),
-      getCourses({ page: 0, size: 5, sortBy: 'createdAt', sortOrder: 'desc', status: 2 })
+      getCourses({ page: 0, size: 5, sortBy: 'studentCount', sortOrder: 'desc', status: undefined }),
+      getCourses({ page: 0, size: 5, sortBy: 'createdAt', sortOrder: 'desc', status: undefined })
     ])
     hotCourses.value = (hotRes.data?.items || []).slice(0, 5)
     newestCourses.value = (newestRes.data?.items || []).slice(0, 5)
@@ -564,7 +564,7 @@ const fetchSideCourses = async () => {
 // 拉精选推荐
 const loadRecommended = async () => {
   try {
-    const { data } = await getCourses({ recommended: true, size: 8, status: 2 })
+    const { data } = await getCourses({ recommended: true, size: 8, status: undefined })
     recommendedCourses.value = (data?.items || []).map(c => ({
       ...c,
       coverUrl: c.coverUrl || getDefaultCover(c)
@@ -614,10 +614,18 @@ const handlePageChange = (newPage) => {
   fetchCourses()
 }
 
-// 跳详情
-const handleCourseClick = (id) => {
-  if (!id) return
-  router.push(`/student/courses/${id}`)
+// 跳详情/学习
+const handleCourseClick = (course) => {
+  if (!course?.id) return
+  // 如果有 enrolled 标记，直接跳转到学习页面
+  if (course.enrolled) {
+    const path = course.courseType === 'INTERACTIVE'
+      ? `/student/courses/${course.id}/slides/player`
+      : `/student/learning?courseId=${course.id}`
+    router.push(path)
+  } else {
+    router.push(`/student/courses/${course.id}`)
+  }
 }
 
 const goBundle = (id) => router.push(`/student/bundles/${id}`)
@@ -684,7 +692,7 @@ watch(() => searchForm.keyword, (newVal, oldVal) => {
       page.value = 1
       fetchCourses()
     }, 100)
-  } else if (newVal.length >= 1) {
+  } else if (newVal.length >= 2) {
     debounceTimer = setTimeout(() => {
       page.value = 1
       fetchCourses()

@@ -33,7 +33,7 @@ public class CourseBundleController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<BundleVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         return R.ok(bundleService.page(page, size));
     }
 
@@ -99,7 +99,7 @@ public class CourseBundleController {
 
     @GetMapping("/{id}/my-enrollment")
     @PreAuthorize("isAuthenticated()")
-    public R<Map<String, Object>> getMyEnrollmentStatus(@PathVariable Long id) {
+    public R<Map<String, Boolean>> getMyEnrollmentStatus(@PathVariable Long id) {
         boolean enrolled = bundleService.isUserEnrolledInBundle(SecurityUtil.getCurrentUserId(), id);
         return R.ok(Map.of("enrolled", enrolled));
     }

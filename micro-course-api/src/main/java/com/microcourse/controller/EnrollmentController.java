@@ -23,8 +23,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.io.IOException;
 import jakarta.servlet.http.HttpServletResponse;
-import cn.hutool.poi.excel.ExcelUtil;
-import cn.hutool.poi.excel.ExcelWriter;
 
 @RestController
 @RequestMapping("/api/enrollments")
@@ -41,6 +39,10 @@ public class EnrollmentController {
     @PreAuthorize("hasRole('STUDENT')")
     @AuditedLog("创建选课")
     public R<EnrollmentVO> enroll(@Valid @RequestBody EnrollmentCreateRequest request) {
+        // P0-06 修复：禁止客户端直接传入 PAYMENT sourceChannel
+        if ("PAYMENT".equals(request.getSourceChannel())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法请求来源");
+        }
         Long userId = SecurityUtil.getCurrentUserId();
         request.setUserId(userId);
         EnrollmentVO vo = enrollmentService.enroll(request);
@@ -60,17 +62,13 @@ public class EnrollmentController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<EnrollmentVO>> getEnrollments(
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) Integer size,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 100) Integer size,
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) String studentName,
             @RequestParam(required = false) String courseName,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String className,
             @RequestParam(required = false) String majorName) {
-        // SECURITY: TEACHER 只能查自己课程的学员，强制覆写 teacherId
-        if (SecurityUtil.hasRole("TEACHER")) {
-            teacherId = SecurityUtil.getCurrentUserId();
-        }
         EnrollmentQueryRequest query = new EnrollmentQueryRequest();
         query.setPage(page);
         query.setSize(size);
@@ -90,11 +88,7 @@ public class EnrollmentController {
     public R<PageResult<EnrollmentVO>> getCourseEnrollments(
             @PathVariable Long courseId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) int size) {
-        // SECURITY: TEACHER 必须为课程 owner
-        if (SecurityUtil.hasRole("TEACHER")) {
-            enrollmentService.assertCourseOwnership(courseId);
-        }
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 100) int size) {
         PageResult<EnrollmentVO> result = enrollmentService.getCourseEnrollmentPage(courseId, page, size);
         return R.ok(result);
     }
@@ -124,29 +118,15 @@ public class EnrollmentController {
     /**
      * GET /api/enrollments/{id}
      * 获取选课详情（Phase A-4 P0-5 新增）
-     * 权限：STUDENT(本人) / TEACHER(课程创建者) / ADMIN / ACADEMIC ——
-     *      依据 权限矩阵 v2.0 §2.8 READ_ENROLLMENT_DETAIL。
+     * 权限校验（角色级）已下沉至 Service 层：
      * - ADMIN / ACADEMIC：无限制
-     * - TEACHER：必须为该选课所属课程的 owner（assertCourseOwnership，非 owner → 403）
-     * - STUDENT：仅本人选课（IDOR 校验，非本人 → 403）
+     * - TEACHER：必须为该选课所属课程的 owner
+     * - STUDENT：仅本人选课
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN','ACADEMIC')")
     public R<EnrollmentVO> getEnrollmentDetail(@PathVariable Long id) {
         EnrollmentVO vo = enrollmentService.getEnrollmentDetail(id);
-        if (SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC")) {
-            return R.ok(vo);
-        }
-        if (SecurityUtil.hasRole("TEACHER")) {
-            // TEACHER 必须为课程 owner，否则抛 NO_PERMISSION(403)
-            enrollmentService.assertCourseOwnership(vo.getCourseId());
-            return R.ok(vo);
-        }
-        // STUDENT：仅本人
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        if (vo.getUserId() == null || !vo.getUserId().equals(currentUserId)) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
         return R.ok(vo);
     }
 
@@ -170,7 +150,7 @@ public class EnrollmentController {
 
     /**
      * GET /api/enrollments/export
-     * 导出课程学员数据为 Excel
+     * 导出课程学员数据为 Excel（权限校验与导出逻辑已下沉至 Service 层）
      * @param courseId 课程ID
      */
     @GetMapping("/export")
@@ -178,38 +158,7 @@ public class EnrollmentController {
     public void exportEnrollments(
             @RequestParam Long courseId,
             HttpServletResponse response) throws IOException {
-        // P0-SEC-FIX: TEACHER 角色添加课程所有权校验，防止 IDOR 导出任意课程数据
-        if (SecurityUtil.hasRole("TEACHER")) {
-            enrollmentService.assertCourseOwnership(courseId);
-        }
-        List<EnrollmentVO> enrollments = enrollmentService.getCourseEnrollments(courseId);
-
-        // 设置响应头
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=enrollments_" + courseId + ".xlsx");
-
-        // 使用 Hutool ExcelWriter 导出（try-finally 确保资源释放）
-        ExcelWriter writer = ExcelUtil.getWriter(true);
-        try {
-            writer.addHeaderAlias("id", "选课ID");
-            writer.addHeaderAlias("courseId", "课程ID");
-            writer.addHeaderAlias("courseName", "课程名称");
-            writer.addHeaderAlias("userId", "用户ID");
-            writer.addHeaderAlias("userName", "学生姓名");
-            writer.addHeaderAlias("progress", "学习进度(%)");
-            writer.addHeaderAlias("completed", "是否完成");
-            writer.addHeaderAlias("finalScore", "总评成绩");
-            writer.addHeaderAlias("finalGrade", "成绩等级");
-            writer.addHeaderAlias("enrollmentStatus", "选课状态");
-            writer.addHeaderAlias("sourceChannel", "选课来源");
-            writer.addHeaderAlias("enrolledAt", "选课时间");
-            writer.addHeaderAlias("completedAt", "完成时间");
-
-            writer.write(enrollments, true);
-            writer.flush(response.getOutputStream());
-        } finally {
-            writer.close();
-        }
+        enrollmentService.exportEnrollments(courseId, response);
     }
 
 }

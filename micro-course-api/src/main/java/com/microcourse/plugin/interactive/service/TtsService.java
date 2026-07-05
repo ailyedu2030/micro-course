@@ -9,4 +9,7 @@ public interface TtsService {
     void generateAll(Long courseId);
 
     byte[] getAudio(Long courseId, Integer pageNumber);
+
+    /** 校验当前用户是否有权访问课程的音频（ADMIN/ACADEMIC/TEACHER owner/已选课学生） */
+    void verifyAccess(Long courseId);
 }

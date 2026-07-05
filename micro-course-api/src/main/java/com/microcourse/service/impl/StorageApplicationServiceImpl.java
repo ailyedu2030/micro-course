@@ -527,6 +527,27 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     }
 
     // ================================================================
+    // 12. resolveSchoolName
+    // ================================================================
+    @Override
+    public String resolveSchoolName(Long proposalId) {
+        try {
+            MicroSpecialtyProposal p = proposalRepository.selectById(proposalId);
+            String name = p != null && p.getTitle() != null ? p.getTitle() : "申报高校";
+            // Sanitize: remove characters unsafe for filenames across OS
+            String sanitized = name.replaceAll("[/\\\\:*?\"<>|]", "").trim();
+            // S-010: length limit and character whitelist
+            sanitized = sanitized.replaceAll("[^\\u4e00-\\u9fa5\\w\\-（）()]", "").trim();
+            if (sanitized.length() > 50) {
+                sanitized = sanitized.substring(0, 50);
+            }
+            return sanitized.isEmpty() ? "申报高校" : sanitized;
+        } catch (Exception e) {
+            return "申报高校";
+        }
+    }
+
+    // ================================================================
     // 内部辅助方法
     // ================================================================
 

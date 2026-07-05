@@ -5,6 +5,7 @@ import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
 import com.microcourse.dto.CoursePricingInfoVO;
 import com.microcourse.dto.CoursePricingRequest;
+import com.microcourse.dto.PricingForAdopterVO;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
@@ -18,7 +19,6 @@ import com.microcourse.security.RequireRole;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
-import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -30,7 +30,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/courses")
@@ -40,16 +39,13 @@ public class CourseController {
     private final CourseService courseService;
     private final CourseQueryService courseQueryService;
     private final EnrollmentService enrollmentService;
-    private final NotificationService notificationService;
 
     public CourseController(CourseService courseService,
                             CourseQueryService courseQueryService,
-                            EnrollmentService enrollmentService,
-                            NotificationService notificationService) {
+                            EnrollmentService enrollmentService) {
         this.courseService = courseService;
         this.courseQueryService = courseQueryService;
         this.enrollmentService = enrollmentService;
-        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -89,24 +85,7 @@ public class CourseController {
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public R<CourseVO> getById(@PathVariable Long id) {
-        CourseVO vo = courseService.getById(id);
-        // Round 11-1 数据隔离：下架(CLOSED)/归档(ARCHIVED)课程对学生等非授权角色不可见。
-        //   - ADMIN / ACADEMIC：运营与教务全程可见；
-        //   - TEACHER：仅本人课程可见（继续管理已下架课程）；
-        //   - 其余（STUDENT 等）：返回 404 模拟"不存在"，避免泄露下架课程的存在与元数据。
-        Integer status = vo.getStatus();
-        if (status != null
-                && (status.intValue() == CourseStatus.CLOSED.getCode()
-                    || status.intValue() == CourseStatus.ARCHIVED.getCode())) {
-            boolean privileged = SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC");
-            boolean ownerTeacher = SecurityUtil.hasRole("TEACHER")
-                    && vo.getTeacherId() != null
-                    && vo.getTeacherId().equals(SecurityUtil.getCurrentUserId());
-            if (!privileged && !ownerTeacher) {
-                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-            }
-        }
-        return R.ok(vo);
+        return R.ok(courseService.getById(id));
     }
 
     @PostMapping
@@ -141,7 +120,7 @@ public class CourseController {
     /** Phase 4: 查询课程对某教师的费用 */
     @GetMapping("/{id}/pricing-for-adopter")
     @PreAuthorize("hasRole('TEACHER')")
-    public R<Map<String, Object>> getPricingForAdopter(@PathVariable Long id) {
+    public R<PricingForAdopterVO> getPricingForAdopter(@PathVariable Long id) {
         return R.ok(courseService.getPricingForAdopter(id));
     }
 
@@ -224,21 +203,12 @@ public class CourseController {
      * POST /api/courses/{id}/reject
      * 审核拒绝（待审核 → 已驳回）
      * 权限：ADMIN, ACADEMIC
-     * @param body {"reason": "拒绝原因"}
      */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     @AuditedLog("课程审核驳回")
-    public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String reason = body.getOrDefault("reason", "");
-        // P0#3 修复:驳回原因不能为空或过短
-        if (reason == null || reason.isBlank()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因不能为空");
-        }
-        if (reason.trim().length() < 10) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因过短，至少需要10个字符");
-        }
-        courseService.reject(id, reason);
+    public R<Void> reject(@PathVariable Long id, @Valid @RequestBody com.microcourse.dto.RejectRequest request) {
+        courseService.reject(id, request.getReason());
         return R.ok();
     }
 
@@ -277,7 +247,7 @@ public class CourseController {
     @PreAuthorize("hasRole('ADMIN')")
     public R<PageResult<CourseVO>> pendingReview(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         CoursePageQuery query = new CoursePageQuery();
         query.setPage(page);
         query.setSize(size);
@@ -315,18 +285,7 @@ public class CourseController {
     @PreAuthorize("hasRole('ADMIN')")
     @AuditedLog("课程下架")
     public R<Void> unpublish(@PathVariable Long id) {
-        // 客户体验修复 v1.7.0: 下架前先取课程信息,下架后通知所有在学学生 (U20)
-        CourseVO before = courseService.getById(id);
-        courseService.updateStatus(id, CourseStatus.CLOSED.getCode());
-        if (before != null) {
-            try {
-                notifyCourseUnpublished(id, before.getTitle());
-            } catch (Exception e) {
-                // 通知失败不影响主流程,只记录日志
-                org.slf4j.LoggerFactory.getLogger(CourseController.class)
-                    .warn("课程下架通知失败: courseId={}, err={}", id, e.getMessage());
-            }
-        }
+        courseService.unpublish(id);
         return R.ok();
     }
 
@@ -362,9 +321,6 @@ public class CourseController {
     @GetMapping("/{id}/stats")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<CourseStatsVO> getCourseStats(@PathVariable Long id) {
-        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            enrollmentService.assertCourseOwnership(id);
-        }
         return R.ok(courseService.computeStats(id));
     }
 
@@ -389,36 +345,10 @@ public class CourseController {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面必须为 JPEG 或 PNG 格式（魔数校验失败）");
             }
         } catch (java.io.IOException e) {
+            org.slf4j.LoggerFactory.getLogger(CourseController.class)
+                .warn("封面文件读取失败: {}", e.getMessage());
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取封面文件");
         }
     }
 
-    /**
-     * 客户体验修复 v1.7.0: 课程下架后通知所有在学学生 (U20)
-     * v1.7.0 性能优化 (P1 perf): 改用异步批量,避免串行循环阻塞 HTTP 响应
-     * - 之前: 200 学生 = 620ms 同步阻塞
-     * - 现在: HTTP 立即返回, 后台异步发送
-     * 失败不影响主流程,只记日志
-     */
-    private void notifyCourseUnpublished(Long courseId, String courseTitle) {
-        List<Long> userIds = enrollmentService.findActiveUserIdsByCourseId(courseId);
-        if (userIds == null || userIds.isEmpty()) {
-            return;
-        }
-        String title = "课程下架通知";
-        String content = String.format("您正在学习的《%s》已下架,如有疑问请联系管理员。", courseTitle);
-        // 异步批量发送 (notifyAsync 内部 REQUIRES_NEW + 失败重试,主线程不阻塞)
-        for (Long userId : userIds) {
-            try {
-                notificationService.notifyAsync(userId,
-                    com.microcourse.enums.NotificationType.COURSE_UNPUBLISHED,
-                    title, content, courseId);
-            } catch (Exception e) {
-                org.slf4j.LoggerFactory.getLogger(CourseController.class)
-                    .debug("单条下架通知失败: userId={}, err={}", userId, e.getMessage());
-            }
-        }
-        org.slf4j.LoggerFactory.getLogger(CourseController.class)
-            .info("课程下架通知已派发 (异步): courseId={}, 收件人数={}", courseId, userIds.size());
-    }
 }

@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.imageio.ImageIO;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional(rollbackFor = Exception.class)
 public class SlideRenderService {
 
     private static final Logger log = LoggerFactory.getLogger(SlideRenderService.class);
@@ -58,7 +60,7 @@ public class SlideRenderService {
     }
 
     @Async("slideRenderExecutor")
-    public void renderAsync(Long slideId, byte[] pptxBytes) {
+    public void renderAsync(Long slideId, Long chapterId, byte[] pptxBytes) {
         CourseSlide slide = courseSlideMapper.selectById(slideId);
         if (slide == null) return;
 
@@ -124,7 +126,7 @@ public class SlideRenderService {
                     SlidePage sp = new SlidePage();
                     sp.setSlideId(slideId);
                     sp.setCourseId(slide.getCourseId());
-                    sp.setChapterId(slide.getChapterId());
+                    sp.setChapterId(chapterId);
                     sp.setPageNumber(pageNumber);
                     sp.setFileUuid(fileUuid);
                     sp.setImageUrl("/api/courses/" + slide.getCourseId() + "/slides/pages/" + pageNumber + "/image");

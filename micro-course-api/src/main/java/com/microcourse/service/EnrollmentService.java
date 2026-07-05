@@ -9,7 +9,9 @@ import com.microcourse.dto.StudentDetailVO;
 
 import com.microcourse.dto.EnrollmentRankingVO;
 
+import java.io.IOException;
 import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
 
 public interface EnrollmentService {
 
@@ -67,4 +69,12 @@ public interface EnrollmentService {
      * @throws BusinessException 若该学生不在教师授课课程中
      */
     void assertStudentInTeachersCourses(Long teacherId, Long studentId);
+
+    /**
+     * 导出课程学员数据为 Excel（包含 TEACHER 角色课程所有权校验）
+     * @param courseId 课程ID
+     * @param response HTTP 响应
+     * @throws IOException 写入异常
+     */
+    void exportEnrollments(Long courseId, HttpServletResponse response) throws IOException;
 }

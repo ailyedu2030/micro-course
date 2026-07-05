@@ -1,6 +1,6 @@
 <!--
   学习中心
-  路由路径: /student/learning
+  路由路径: /student/learning-stats
   Phase 5
   Author: jackie
 -->
@@ -139,7 +139,7 @@
       </div>
 
       <!-- 继续学习 -->
-      <div v-if="recentCourse.title" class="continue-learning">
+      <div v-if="recentCourse.title" class="continue-learning" @click="navigateToLearning(recentCourse)" style="cursor:pointer">
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner">
             <div class="continue-info">
@@ -171,7 +171,7 @@
             v-for="record in recentRecords"
             :key="record.courseId"
             class="recent-learning-item"
-            @click="navigateTo('/student/learning?courseId=' + record.courseId)"
+            @click="navigateToLearning(record)"
           >
             <div class="recent-cover-wrap">
               <img :src="record.cover" :alt="record.title" class="recent-cover-img" />
@@ -182,7 +182,7 @@
                 size="small"
                 effect="dark"
               >
-已完成
+ 已完成
 </el-tag>
             </div>
             <div class="recent-info">
@@ -410,7 +410,7 @@
       </div>
 
       <!-- 继续学习 -->
-      <div v-if="recentCourse.title" class="continue-learning h5-continue">
+      <div v-if="recentCourse.title" class="continue-learning h5-continue" @click="navigateToLearning(recentCourse)" style="cursor:pointer">
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner h5-continue-inner">
             <div class="continue-info">
@@ -435,7 +435,7 @@
             v-for="record in recentRecords"
             :key="record.courseId"
             class="recent-learning-item"
-            @click="navigateTo('/student/learning?courseId=' + record.courseId)"
+            @click="navigateToLearning(record)"
           >
             <div class="recent-cover-wrap">
               <img :src="record.cover" :alt="record.title" class="recent-cover-img" />
@@ -529,11 +529,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AccuracyTrendChart from '@/components/learning-center/AccuracyTrendChart.vue'
 import { ElMessage } from 'element-plus'
-import { Calendar, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine } from '@element-plus/icons-vue'
+import { Calendar, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine, Close } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getStudyDays, getTotalTime, getLearningProgress } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
+import { getCourses } from '@/api/course'
 import { getMyCertificates } from '@/api/certificate'
 import { getMyCheckIns, createCheckIn, getCheckInStreak } from '@/api/checkin'
 import { getAccuracyTrend } from '@/api/exercise-record'
@@ -551,10 +552,19 @@ const quickEntries = [
   { label: '课程广场', icon: Grid, path: '/student/courses', color: '#6366f1' },
   { label: '我的课程', icon: Reading, path: '/student/my-courses', color: '#10b981' },
   { label: '考试中心', icon: Document, path: '/student/exams', color: '#f59e0b' },
-  { label: '学习报告', icon: DataLine, path: '/student/report', color: '#ef4444' }
+  { label: '学习报告', icon: DataLine, path: '/student/report', color: '#ef4444' },
+  { label: '错题本', icon: Close, path: '/student/profile', color: '#8b5cf6' }
 ]
 
 function navigateTo(path) {
+  router.push(path)
+}
+
+function navigateToLearning(course) {
+  const isInteractive = course.courseType === 'INTERACTIVE'
+  const path = isInteractive
+    ? `/student/courses/${course.courseId}/slides/player`
+    : `/student/learning?courseId=${course.courseId}`
   router.push(path)
 }
 
@@ -570,7 +580,14 @@ function onResize() {
 }
 
 onMounted(() => window.addEventListener('resize', onResize))
-onUnmounted(() => window.removeEventListener('resize', onResize))
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  // P1-I: 清理 RAF 动画
+  if (rafId) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+})
 
 // ---------------------------------------------------------------------------
 // 用户信息
@@ -586,6 +603,8 @@ const currentDate = computed(() => {
 // ---------------------------------------------------------------------------
 const loading = ref(true)
 const chartLoading = ref(true)
+/** P1-I: RAF ID，用于组件卸载时清理动画 */
+let rafId = null
 const checkInLoading = ref(false)
 const checkedInToday = ref(false)
 const statsError = ref(false)
@@ -616,9 +635,11 @@ function animateNumber(target, setter, duration = 1200) {
     // easeOutCubic
     const eased = 1 - Math.pow(1 - progress, 3)
     setter(Math.round(from + (target - from) * eased))
-    if (progress < 1) requestAnimationFrame(step)
+    if (progress < 1) {
+      rafId = requestAnimationFrame(step)
+    }
   }
-  requestAnimationFrame(step)
+  rafId = requestAnimationFrame(step)
 }
 
 // ---------------------------------------------------------------------------
@@ -729,7 +750,7 @@ async function getStats(sharedEnrollments) {
     const userId = userStore.userInfo?.id
     const [totalTimeData, enrollmentData, studyDaysData, certData] = await Promise.all([
       getTotalTime().catch(() => ({ data: { totalSeconds: 0 } })),
-      sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments(userId),
+      sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments(),
       getStudyDays().catch(() => ({ data: { totalDays: 0 } })),
       getMyCertificates().catch(() => ({ data: [] }))
     ])
@@ -785,7 +806,7 @@ async function getRecent(sharedEnrollments) {
       enrollments = sharedEnrollments
     } else {
       const userId = userStore.userInfo?.id
-      const { data } = await getMyEnrollments(userId)
+      const { data } = await getMyEnrollments()
       enrollments = Array.isArray(data) ? data : []
     }
 
@@ -799,12 +820,14 @@ async function getRecent(sharedEnrollments) {
         // 取最后一个已完成的章节，或第一个进度条目
         const lastEntry = [...progressList].reverse().find(p => p.completed) || progressList[0]
         if (lastEntry?.chapterId) {
-          currentChapter = Number(lastEntry.chapterId)
+          currentChapter = 1  // P1-I: 暂不显示 DB ID,待后端返回 sortOrder
         }
       } catch (e) {
         console.warn('[LearningCenter] 获取学习进度失败', e)
       }
       recentCourse.value = {
+        courseId: inProgress.courseId,
+        courseType: inProgress.courseType || '',
         title: inProgress.courseTitle || inProgress.title || '课程',
         currentChapter,
         progress: inProgress.progress || 0,
@@ -884,7 +907,7 @@ async function getRecommendations(sharedEnrollments) {
       enrollments = sharedEnrollments
     } else {
       const userId = userStore.userInfo?.id
-      const { data } = await getMyEnrollments(userId)
+      const { data } = await getMyEnrollments()
       enrollments = Array.isArray(data) ? data : []
     }
 
@@ -936,7 +959,7 @@ async function getRecentRecords(sharedEnrollments) {
       enrollments = sharedEnrollments
     } else {
       const userId = userStore.userInfo?.id
-      const { data } = await getMyEnrollments(userId)
+      const { data } = await getMyEnrollments()
       enrollments = Array.isArray(data) ? data : []
     }
 
@@ -955,7 +978,8 @@ async function getRecentRecords(sharedEnrollments) {
       title: e.courseTitle || e.title || '课程',
       cover: e.courseCover || e.coverUrl || (import.meta.env.BASE_URL + 'placeholder.svg'),
       progress: e.progress || 0,
-      completed: !!e.completed
+      completed: !!e.completed,
+      courseType: e.courseType || ''
     }))
   } catch (e) {
       console.warn("[LearningCenter]", e)
@@ -976,7 +1000,7 @@ async function loadData() {
     const userId = userStore.userInfo?.id
     let sharedEnrollments = []
     try {
-      const { data: enrollmentData } = await getMyEnrollments(userId)
+      const { data: enrollmentData } = await getMyEnrollments()
       sharedEnrollments = Array.isArray(enrollmentData) ? enrollmentData : []
     } catch (e) {
       sharedEnrollments = []
@@ -993,6 +1017,25 @@ async function loadData() {
     ])
     // 检查今日是否已打卡
     await checkTodayStatus()
+
+    // P2: 推荐课程为空时（新用户无选课），从课程广场拉取热门课程兜底
+    if (!recommendations.value.length) {
+      try {
+        const { data } = await getCourses({ page: 0, size: 3, sortBy: 'studentCount', sortOrder: 'desc' })
+        const items = data?.items || data || []
+        if (Array.isArray(items) && items.length > 0) {
+          recommendations.value = items.slice(0, 3).map(c => ({
+            id: c.id,
+            title: c.title || c.courseTitle,
+            cover: c.coverUrl || c.cover,
+            tag: '热门推荐',
+            author: c.teacherName || c.teacher || '',
+            students: c.studentCount || 0,
+            rating: c.avgRating || 0
+          }))
+        }
+      } catch { /* 兜底失败不阻塞页面 */ }
+    }
   } catch (e) {
     console.warn("[LearningCenter] loadData 加载失败", e)
     statsError.value = true

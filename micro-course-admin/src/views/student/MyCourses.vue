@@ -55,7 +55,7 @@
         <!-- Loading 状态 -->
         <div v-if="loading" class="course-grid">
           <el-row :gutter="24">
-            <el-col v-for="n in 8" :key="n" :xs="24" :sm="12" :md="8" :lg="6">
+            <el-col v-for="n in size" :key="n" :xs="24" :sm="12" :md="8" :lg="6">
               <el-card class="course-card skeleton-card" shadow="never">
                 <el-skeleton animated>
                   <template #template>
@@ -298,7 +298,7 @@
 
       <!-- Loading 状态 -->
       <div v-if="loading" class="h5-course-list">
-        <el-card v-for="n in 3" :key="n" class="h5-course-card" shadow="never">
+          <el-card v-for="n in size" :key="n" class="h5-course-card" shadow="never">
           <el-skeleton animated>
             <template #template>
               <div class="skeleton-cover h5-skeleton-cover" />
@@ -648,7 +648,7 @@ const fetchEnrollments = async () => {
     const list = res.data || []
 
     // P1-5: 使用 Promise.allSettled 替代 Promise.all，防止单个失败导致全部中断
-    const completionData = await getCompletion({ userId }).catch(() => ({}))
+    const completionData = await getCompletion().catch(() => ({}))
     const completionMap = completionData?.data || {}
 
     // R8 P0-3: 批量获取学习进度（替代 per-course N+1）
@@ -664,6 +664,8 @@ const fetchEnrollments = async () => {
             newProgressMap[pdata.courseId] = {
               completedExercises: pdata.completedExercises ?? pdata.completed ?? 0,
               totalExercises: pdata.totalExercises ?? pdata.total ?? 0,
+              completedVideos: pdata.completedVideos ?? 0,
+              totalVideos: pdata.totalVideos ?? 0,
               progress: completionMap[pdata.courseId]?.progress ?? inProgress.find(e => e.courseId === pdata.courseId)?.progress ?? 0
             }
           }
@@ -687,9 +689,6 @@ const fetchEnrollments = async () => {
         let completedVideos = 0
         const progressPercent = completionMap[courseId]?.progress ?? inProgress[idx].progress ?? 0
         if (progressEntry && totalChapters > 0) {
-          // P1-修复: 优先使用 getLearningProgress 返回的实际完成数（如果后端提供）
-          // 如果后端未提供精确视频完成计数，使用 Math.round(章节总数 × 进度百分比 / 100) 作为近似值
-          // TODO: 待后端 getLearningProgress 接口返回 completedVideos 字段后替换此近似计算
           completedVideos = progressEntry.completedVideos
             ?? Math.min(Math.round(totalChapters * progressPercent / 100), totalChapters)
         }
@@ -794,7 +793,27 @@ const handlePageChange = () => {
   // displayCourses computed 会自动响应 page 变化
 }
 
-const handleContinue = (courseId) => {
+const handleContinue = async (courseId) => {
+  // P1-C: 根据课程 type 决定跳转（互动课件 → SlidePlayer，其他 → LearningView）
+  try {
+    const res = await getCourseById(courseId)
+    if (res.data?.courseType === 'INTERACTIVE') {
+      // 直接从后端获取学习进度，取最后学习的章节
+      try {
+        const progressRes = await getLearningProgress({ courseId })
+        const records = progressRes.data || []
+        // 取最后一个有进度的章节（lastWatchAt最新的）
+        const sorted = records.filter(r => r.chapterId).sort((a, b) =>
+          new Date(b.lastWatchAt || 0) - new Date(a.lastWatchAt || 0))
+        const lastChapterId = sorted[0]?.chapterId || ''
+        const suffix = lastChapterId ? `?chapterId=${lastChapterId}` : ''
+        router.push(`/student/courses/${courseId}/slides/player${suffix}`)
+      } catch {
+        router.push(`/student/courses/${courseId}/slides/player`)
+      }
+      return
+    }
+  } catch { /* 查询失败则降级到 learning 页面 */ }
   router.push(`/student/learning?courseId=${courseId}`)
 }
 

@@ -53,7 +53,7 @@
           <el-icon v-else class="header-collapse-btn" @click="toggleCollapse" :aria-label="collapsed ? '展开侧边栏' : '收起侧边栏'">
             <Fold v-if="!collapsed" /><Expand v-else />
           </el-icon>
-          <el-breadcrumb separator="/">
+          <el-breadcrumb separator="→">
             <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
             <el-breadcrumb-item v-if="route.meta.title">{{ route.meta.title }}</el-breadcrumb-item>
           </el-breadcrumb>
@@ -134,7 +134,7 @@ import {
   School, User, Notebook, VideoCamera, Film, FolderOpened, List, VideoPlay,
   Tickets, Document, Edit, UserFilled, DataAnalysis, Finished, ChatLineSquare,
   Star, Setting, Odometer, Clock, Tools, SwitchButton, Sunny, Moon,
-  TrendCharts, PictureFilled, Menu, Medal
+  TrendCharts, PictureFilled, Menu, Medal, Present, Calendar
 } from '@element-plus/icons-vue'
 import { menuConfig } from '@/config/menuConfig'
 import { ElMessageBox } from 'element-plus'
@@ -149,7 +149,8 @@ const iconMap = {
   Grid, OfficeBuilding, Reading, School, User, Notebook, VideoCamera, Film,
   FolderOpened, List, VideoPlay, Tickets, Document, Edit, UserFilled,
   DataAnalysis, Finished, ChatLineSquare, Star, Setting, Odometer, Clock,
-  Tools, Bell,   TrendCharts, PictureFilled, Microphone, Menu, Medal
+  Tools, Bell,   TrendCharts, PictureFilled, Microphone, Menu, Medal,
+  Present, Calendar
 }
 
 // 当前角色菜单（从配置中读取）
@@ -224,22 +225,34 @@ function handleWindowResize() {
 // 优先级: fullPath (path+query) > 去除 query 后的 path
 const activeMenu = computed(() => {
   if (!route.path) return ''
-  const matched = currentMenu.value
-    .flatMap(g => g.children || [])
-    .find(c => {
-      const a = c.path
-      if (a === route.path) return true
-      // 处理 ?courseType= 之类 query: 仅当 path 部分相等且 key 集合一致
-      const aPath = a.split('?')[0]
-      if (aPath !== route.path) return false
-      const aQs = new URLSearchParams(a.split('?')[1] || '')
-      const rQs = route.query
-      for (const k of aQs.keys()) {
-        if (rQs[k] !== aQs.get(k)) return false
-      }
-      return true
-    })
-  return matched ? matched.path : route.path
+  const items = currentMenu.value.flatMap(g => g.children || [])
+
+  // Step 1: 精确匹配 (path + query string)
+  let match = items.find(c => c.path === route.path)
+  if (match) return match.path
+
+  // Step 2: 路径匹配 + 检查 query params (如 ?courseType=)
+  match = items.find(c => {
+    const aPath = c.path.split('?')[0]
+    if (aPath !== route.path) return false
+    const aQs = new URLSearchParams(c.path.split('?')[1] || '')
+    const rQs = route.query
+    for (const k of aQs.keys()) {
+      if (rQs[k] !== aQs.get(k)) return false
+    }
+    return true
+  })
+  if (match) return match.path
+
+  // Step 3: 深度嵌套路由前缀匹配
+  // 如 /teacher/courses/1/chapters/73/manage-videos → 高亮「我的课程」(/teacher/courses)
+  match = items.find(c => {
+    const aPath = c.path.split('?')[0]
+    return route.path.startsWith(aPath + '/')
+  })
+  if (match) return match.path
+
+  return route.path
 })
 
 // 角色标签文本
@@ -270,6 +283,7 @@ async function handleCommand(cmd) {
       await ElMessageBox.confirm('确定退出登录?', '提示', { type: 'warning' })
     } catch { return }
     try {
+      notificationStore.stopPolling()  // 先停轮询再清token
       await userStore.logout()
       router.push('/login')
     } catch (e) { ElMessage.error(e?.response?.data?.message || '退出失败') }

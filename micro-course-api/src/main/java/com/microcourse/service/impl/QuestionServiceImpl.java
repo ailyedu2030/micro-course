@@ -376,6 +376,7 @@ public class QuestionServiceImpl implements QuestionService {
                 try {
                     difficulty = row.size() > 6 && row.get(6) != null ? Integer.parseInt(row.get(6).toString()) : 1;
                 } catch (NumberFormatException e) {
+                    log.warn("解析难度值失败: {}", e.getMessage());
                     errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, "", "难度值不是有效数字"));
                     continue;
                 }

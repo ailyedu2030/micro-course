@@ -1,4 +1,5 @@
 package com.microcourse.service;
+import com.microcourse.dto.PricingForAdopterVO;
 
 import com.microcourse.dto.CoursePricingInfoVO;
 import com.microcourse.dto.CoursePricingRequest;
@@ -13,7 +14,7 @@ public interface CoursePricingService {
 
     void reviewPricing(Long courseId, boolean approved, String reason);
 
-    Map<String, Object> getPricingForAdopter(Long courseId);
+    PricingForAdopterVO getPricingForAdopter(Long courseId);
 
     CoursePricingInfoVO getMyPricing(Long courseId);
 }

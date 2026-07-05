@@ -14,8 +14,7 @@ public class CourseCreateRequest {
     @NotNull(message = "分类ID不能为空")
     private Long categoryId;
 
-    @NotNull(message = "教师ID不能为空")
-    private Long teacherId;
+    private Long teacherId;  // 非空由Service层根据当前用户填充,Controller层@Valid不校验
 
     private String subtitle;
 

@@ -5,16 +5,18 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.CommentCreateRequest;
 import com.microcourse.dto.DiscussionCommentVO;
 import com.microcourse.entity.DiscussionComment;
+import com.microcourse.entity.DiscussionCommentLike;
 import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.DiscussionCommentLikeRepository;
 import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.DiscussionCommentService;
 import com.microcourse.util.SecurityUtil;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -31,16 +33,20 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     private final DiscussionCommentRepository commentRepository;
     private final DiscussionPostRepository postRepository;
     private final UserRepository userRepository;
-    private final JdbcTemplate jdbcTemplate;
+    private final DiscussionCommentLikeRepository commentLikeRepository;
+    /** P1-17: 评论频率限制 */
+    private final StringRedisTemplate stringRedisTemplate;
 
     public DiscussionCommentServiceImpl(DiscussionCommentRepository commentRepository,
                                         DiscussionPostRepository postRepository,
                                         UserRepository userRepository,
-                                        JdbcTemplate jdbcTemplate) {
+                                        DiscussionCommentLikeRepository commentLikeRepository,
+                                        StringRedisTemplate stringRedisTemplate) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
-        this.jdbcTemplate = jdbcTemplate;
+        this.commentLikeRepository = commentLikeRepository;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     @Override
@@ -79,6 +85,16 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DiscussionCommentVO create(CommentCreateRequest req, Long userId) {
+        // P1-17: 基于 Redis 的评论频率限制（每小时最多 20 条）
+        String rateKey = "discussion:rate:" + userId;
+        Long count = stringRedisTemplate.opsForValue().increment(rateKey);
+        if (count == 1) {
+            stringRedisTemplate.expire(rateKey, 1, java.util.concurrent.TimeUnit.HOURS);
+        }
+        if (count > 20) {
+            throw new BusinessException(ErrorCode.RATE_LIMITED, "发帖太频繁，请稍后再试");
+        }
+
         // P1: 评论防刷—30 秒内只能评论一次
         DiscussionComment lastComment = commentRepository.selectOne(
                 new LambdaQueryWrapper<DiscussionComment>()
@@ -143,8 +159,12 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         if (!comment.getUserId().equals(userId) && !isAdminOrTeacher) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        comment.setStatus(3); // 3 = DELETED，区别于 PENDING(0)
-        commentRepository.updateById(comment);
+        // P1-I: 使用 LambdaUpdateWrapper 统一软删除，与项目 @TableLogic 模式保持一致
+        commentRepository.update(null,
+                new LambdaUpdateWrapper<DiscussionComment>()
+                        .eq(DiscussionComment::getId, id)
+                        .set(DiscussionComment::getDeletedAt, LocalDateTime.now())
+                        .set(DiscussionComment::getUpdatedAt, LocalDateTime.now()));
         // 原子递减帖子评论数
         if (comment.getPostId() != null) {
             postRepository.update(null,
@@ -161,13 +181,17 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         if (comment == null || comment.getStatus() == 0) {
             throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
         }
-        // P1: 点赞去重—toggle 逻辑
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM discussion_comment_likes WHERE user_id = ? AND comment_id = ?",
-                Integer.class, userId, id);
-        if (count != null && count > 0) {
+        // P1-I: 使用 MyBatis-Plus LambdaQueryWrapper 替代 JdbcTemplate 硬编码 SQL
+        long likeCount = commentLikeRepository.selectCount(
+                new LambdaQueryWrapper<DiscussionCommentLike>()
+                        .eq(DiscussionCommentLike::getUserId, userId)
+                        .eq(DiscussionCommentLike::getCommentId, id));
+        if (likeCount > 0) {
             // 已点赞 → 取消
-            jdbcTemplate.update("DELETE FROM discussion_comment_likes WHERE user_id = ? AND comment_id = ?", userId, id);
+            commentLikeRepository.delete(
+                    new LambdaUpdateWrapper<DiscussionCommentLike>()
+                            .eq(DiscussionCommentLike::getUserId, userId)
+                            .eq(DiscussionCommentLike::getCommentId, id));
             commentRepository.update(null,
                     new LambdaUpdateWrapper<DiscussionComment>()
                             .eq(DiscussionComment::getId, id)
@@ -175,8 +199,11 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
                             .set(DiscussionComment::getUpdatedAt, LocalDateTime.now()));
         } else {
             // 未点赞 → 点赞
-            jdbcTemplate.update("INSERT INTO discussion_comment_likes (user_id, comment_id, created_at) VALUES (?, ?, ?)",
-                    userId, id, java.sql.Timestamp.valueOf(LocalDateTime.now()));
+            DiscussionCommentLike like = new DiscussionCommentLike();
+            like.setUserId(userId);
+            like.setCommentId(id);
+            like.setCreatedAt(LocalDateTime.now());
+            commentLikeRepository.insert(like);
             commentRepository.update(null,
                     new LambdaUpdateWrapper<DiscussionComment>()
                             .eq(DiscussionComment::getId, id)
@@ -219,6 +246,10 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         return children;
     }
 
+    /**
+     * @deprecated 单参数版本仅供单条创建返回使用;批量查询请用3参数重载(带userMap)
+     */
+    @Deprecated
     private DiscussionCommentVO convertToVO(DiscussionComment comment) {
         DiscussionCommentVO vo = new DiscussionCommentVO();
         vo.setId(comment.getId());

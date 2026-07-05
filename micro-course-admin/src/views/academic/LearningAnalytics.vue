@@ -5,7 +5,7 @@
 -->
 <template>
   <div class="analytics-page">
-    <el-breadcrumb separator="/" class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item>运营监控</el-breadcrumb-item>
       <el-breadcrumb-item>学习数据分析</el-breadcrumb-item>
     </el-breadcrumb>

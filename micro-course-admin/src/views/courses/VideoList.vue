@@ -14,7 +14,7 @@
         <el-breadcrumb-item v-if="isContextualMode">{{ chapterTitle || '章节视频' }}</el-breadcrumb-item>
         <el-breadcrumb-item v-else>视频管理</el-breadcrumb-item>
         <el-breadcrumb-item v-if="isContextualMode">
-          <el-link type="primary" :underline="'never'" :to="{ path: `/courses/${courseIdFromRoute}` }">
+          <el-link type="primary" :underline="'never'" :to="{ path: isTeacherRole ? `/teacher/courses/${courseIdFromRoute}` : `/courses/${courseIdFromRoute}` }">
             ← 返回课程
           </el-link>
         </el-breadcrumb-item>
@@ -57,7 +57,7 @@
 
       <el-table v-loading="loading" :aria-busy="loading" :data="tableData" stripe border class="data-table">
         <template #empty>
-          <el-empty description="暂无视频数据" />
+          <el-empty description="暂无视频数据，选择课程和章节后点击「添加视频」上传" />
         </template>
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
@@ -142,12 +142,12 @@
           <el-input v-model="formData.title" placeholder="选完文件后自动填充，或手动输入" />
         </el-form-item>
         <el-form-item label="所属课程" prop="courseId" v-if="!isContextualMode || isEdit">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="isContextualMode || isEdit">
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="isContextualMode || isEdit" @change="handleDialogCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="所属章节" prop="chapterId">
-          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width">
+          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width" :disabled="isContextualMode">
             <el-option v-for="item in chapterOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -166,7 +166,7 @@
           />
           <div class="footer-buttons">
             <el-button @click="dialogVisible = false" :disabled="submitLoading">取消</el-button>
-            <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+            <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
           </div>
         </div>
       </template>
@@ -189,7 +189,7 @@
       </el-upload>
       <template #footer>
         <el-button @click="coverDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="coverSubmitLoading" @click="handleSubmitCover">确定</el-button>
+        <el-button type="primary" :loading="coverSubmitLoading" :disabled="coverSubmitLoading" @click="handleSubmitCover">确定</el-button>
       </template>
     </el-dialog>
 
@@ -224,6 +224,7 @@ const lockedChapterId = computed(() => {
 })
 const isContextualMode = computed(() => lockedChapterId.value !== null)
 const userRole = computed(() => userStore.role)
+const isTeacherRole = computed(() => userStore.role === 'TEACHER')
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -256,12 +257,12 @@ const formData = reactive({
   file: null
 })
 
-const formRules = {
+const formRules = computed(() => ({
   title: courseIdFromRoute.value ? [] : [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
   courseId: courseIdFromRoute.value ? [] : [{ required: true, message: '请选择所属课程', trigger: 'change' }],
   chapterId: [{ required: true, message: '请选择所属章节', trigger: 'change' }],
-  file: [{ required: true, message: '请选择视频文件', trigger: 'change' }]
-}
+  file: isEdit.value ? [] : [{ required: true, message: '请选择视频文件', trigger: 'change' }]
+}))
 
 const dialogUploadRef = ref(null)
 
@@ -366,7 +367,18 @@ const handleCreate = () => {
   formData.chapterId = lockedChapterId.value || (searchForm.chapterId ? Number(searchForm.chapterId) : null)
   formData.sortOrder = 0
   submitProgress.value = 0
+  if (formData.courseId) handleDialogCourseChange(formData.courseId)
   dialogVisible.value = true
+}
+
+const handleDialogCourseChange = async (courseId) => {
+  formData.chapterId = null
+  if (!courseId) { chapterOptions.value = []; return }
+  try {
+    const { data } = await getChapters({ courseId, size: 1000 })
+    // 只显示VIDEO类型的章节(INTERACTIVE/EXERCISE/OFFLINE不可添加视频)
+    chapterOptions.value = (data.items || []).filter(ch => ch.chapterType === 'VIDEO')
+  } catch { chapterOptions.value = [] }
 }
 
 const handleEdit = async (row) => {
@@ -377,7 +389,7 @@ const handleEdit = async (row) => {
   formData.courseId = row.courseId
   formData.chapterId = row.chapterId
   formData.sortOrder = row.sortOrder || 0
-  await handleCourseChange(row.courseId)
+  await handleDialogCourseChange(row.courseId)
   if (row.chapterId && !chapterOptions.value.find(c => c.id === row.chapterId)) {
     formData.chapterId = null
   }
@@ -398,6 +410,7 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return

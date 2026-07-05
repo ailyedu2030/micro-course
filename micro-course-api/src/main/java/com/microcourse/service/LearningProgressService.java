@@ -50,4 +50,22 @@ public interface LearningProgressService {
      * @throws BusinessException 非本人课程时抛 NO_PERMISSION
      */
     void assertTeacherOwnsCourse(Long teacherId, Long courseId);
+
+    /**
+     * 获取学习进度（含 IDOR 防护：ADMIN 无限制，TEACHER 需校验课程归属，STUDENT 仅本人）
+     * @param currentUserId 当前登录用户ID
+     * @param targetUserId 目标用户ID
+     * @param courseId 课程ID
+     * @return 学习进度列表
+     */
+    List<LearningProgressVO> getProgressWithGuard(Long currentUserId, Long targetUserId, Long courseId);
+
+    /**
+     * 获取课程完成度（含 IDOR 防护：ADMIN 无限制，TEACHER 需校验课程归属，STUDENT 仅本人）
+     * @param currentUserId 当前登录用户ID
+     * @param userId 目标用户ID
+     * @param courseId 课程ID（可选，为 null 时返回所有课程完成度）
+     * @return 完成度 Map
+     */
+    Map<String, Object> getCourseCompletionWithGuard(Long currentUserId, Long userId, Long courseId);
 }

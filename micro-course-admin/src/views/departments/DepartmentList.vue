@@ -7,7 +7,7 @@
 <template>
   <div class="department-list">
     <!-- 面包屑导航 -->
-    <el-breadcrumb separator="/" class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item>组织管理</el-breadcrumb-item>
       <el-breadcrumb-item>院系列表</el-breadcrumb-item>
     </el-breadcrumb>

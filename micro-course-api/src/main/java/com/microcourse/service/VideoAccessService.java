@@ -20,6 +20,16 @@ public interface VideoAccessService {
     AccessResult checkVideoAccess(Long userId, Long courseId);
 
     /**
+     * 检查学生是否有权限访问指定视频。
+     * 仅 STUDENT 角色需要检查（查询视频存在性 + 选课校验）；
+     * ADMIN / ACADEMIC / TEACHER 直接放行。
+     *
+     * @param videoId 视频 ID
+     * @throws BusinessException VIDEO_NOT_FOUND（视频不存在）/ NOT_ENROLLED（学生未选课）
+     */
+    void checkStudentAccess(Long videoId);
+
+    /**
      * 判定用户对课程是否持有有效选课记录。
      *
      * <p>有效状态：ENROLLED / APPROVED / COMPLETED。</p>

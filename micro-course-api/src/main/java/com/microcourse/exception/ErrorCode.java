@@ -113,10 +113,11 @@ public enum ErrorCode {
     MS_MAX_STUDENTS_REACHED(17018, "微专业报名人数已达上限", 400),
     MS_TERMINAL_STATUS(17019, "微专业已处于终态，无法操作", 400),
     MS_ENROLLMENT_STATUS_INVALID(17020, "修读记录状态不允许此操作", 400),
-    MICRO_SPECIALTY_CODE_EXISTS(17021, "微专业代码已存在", 400),
+    MICRO_SPECIALTY_CODE_EXISTS(17024, "微专业代码已存在", 400),
 
     // P2-3: 补充常用业务错误码
     LESSON_NOT_FOUND(18001, "课时不存在", 404),
+    GRADE_NOT_FOUND(18002, "成绩记录不存在", 404),
     EXAM_NOT_FOUND(18004, "考试不存在", 404),
     PREREQUISITE_NOT_MET(18003, "前置章节未完成，请先完成前置章节的学习", 400),
     EXAM_ALREADY_SUBMITTED(18005, "已提交考试，不可重复提交", 400),

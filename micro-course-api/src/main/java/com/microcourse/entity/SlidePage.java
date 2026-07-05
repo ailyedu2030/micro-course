@@ -25,6 +25,9 @@ public class SlidePage {
     @TableField("course_id")
     private Long courseId;
 
+    @TableField("chapter_id")
+    private Long chapterId;
+
     @TableField("page_number")
     private Integer pageNumber;
 
@@ -61,6 +64,9 @@ public class SlidePage {
     @TableField("narration_status")
     private String narrationStatus;
 
+    @TableField("file_uuid")
+    private String fileUuid;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -75,6 +81,8 @@ public class SlidePage {
     public void setSlideId(Long slideId) { this.slideId = slideId; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
+    public Long getChapterId() { return chapterId; }
+    public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public Integer getPageNumber() { return pageNumber; }
     public void setPageNumber(Integer pageNumber) { this.pageNumber = pageNumber; }
     public String getImageUrl() { return imageUrl; }
@@ -99,6 +107,8 @@ public class SlidePage {
     public void setAudioDuration(Integer audioDuration) { this.audioDuration = audioDuration; }
     public String getNarrationStatus() { return narrationStatus; }
     public void setNarrationStatus(String narrationStatus) { this.narrationStatus = narrationStatus; }
+    public String getFileUuid() { return fileUuid; }
+    public void setFileUuid(String fileUuid) { this.fileUuid = fileUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

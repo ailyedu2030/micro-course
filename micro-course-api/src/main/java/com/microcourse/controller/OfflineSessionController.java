@@ -28,7 +28,7 @@ import org.hibernate.validator.constraints.Range;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/offline-sessions")
 public class OfflineSessionController {
 
     private final OfflineSessionService offlineSessionService;
@@ -37,17 +37,17 @@ public class OfflineSessionController {
         this.offlineSessionService = offlineSessionService;
     }
 
-    @GetMapping("/chapters/{chapterId}/offline-sessions")
+    @GetMapping("/{chapterId}/chapters")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','STUDENT')")
     public R<PageResult<OfflineSessionVO>> pageByChapter(
             @PathVariable Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         PageResult<OfflineSessionVO> result = offlineSessionService.pageByChapter(chapterId, page, size);
         return R.ok(result);
     }
 
-    @PostMapping("/chapters/{chapterId}/offline-sessions")
+    @PostMapping("/{chapterId}/chapters")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("创建线下活动")
     public R<OfflineSessionVO> create(
@@ -57,7 +57,7 @@ public class OfflineSessionController {
         return R.ok(vo);
     }
 
-    @PutMapping("/offline-sessions/{id}")
+    @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("更新线下活动")
     public R<OfflineSessionVO> update(
@@ -67,7 +67,7 @@ public class OfflineSessionController {
         return R.ok(vo);
     }
 
-    @DeleteMapping("/offline-sessions/{id}")
+    @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("删除线下活动")
     public R<Void> delete(@PathVariable Long id) {
@@ -75,7 +75,7 @@ public class OfflineSessionController {
         return R.ok();
     }
 
-    @GetMapping("/offline-sessions/{id}/attendance")
+    @GetMapping("/{id}/attendance")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<PageResult<AttendanceRecordVO>> getAttendance(
             @PathVariable Long id,
@@ -85,7 +85,7 @@ public class OfflineSessionController {
         return R.ok(result);
     }
 
-    @PutMapping("/offline-sessions/{id}/attendance/{recordId}")
+    @PutMapping("/{id}/attendance/{recordId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("更新签到状态")
     public R<Void> updateAttendance(
@@ -97,7 +97,7 @@ public class OfflineSessionController {
         return R.ok();
     }
 
-    @PostMapping("/offline-sessions/{id}/manual-checkin/{studentId}")
+    @PostMapping("/{id}/manual-checkin/{studentId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("教师手动签到")
     public R<Void> manualCheckin(@PathVariable Long id, @PathVariable Long studentId) {
@@ -106,7 +106,7 @@ public class OfflineSessionController {
         return R.ok();
     }
 
-    @PostMapping("/offline-sessions/{id}/checkin")
+    @PostMapping("/{id}/checkin")
     @PreAuthorize("hasRole('STUDENT')")
     @AuditedLog("学生签到")
     public R<Void> checkin(@PathVariable Long id) {
@@ -115,7 +115,7 @@ public class OfflineSessionController {
         return R.ok();
     }
 
-    @GetMapping("/chapters/{chapterId}/my-attendance")
+    @GetMapping("/{chapterId}/my-attendance")
     @PreAuthorize("hasRole('STUDENT')")
     public R<List<AttendanceRecordVO>> getMyAttendance(@PathVariable Long chapterId) {
         Long userId = SecurityUtil.getCurrentUserId();

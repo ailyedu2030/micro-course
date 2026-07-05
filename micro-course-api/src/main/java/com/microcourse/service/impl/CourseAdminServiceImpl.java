@@ -7,6 +7,7 @@ import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
+import com.microcourse.entity.CourseNote;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.User;
 import com.microcourse.entity.Video;
@@ -14,7 +15,9 @@ import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
+import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.entity.CourseReviewLog;
 import com.microcourse.entity.Enrollment;
@@ -27,8 +30,17 @@ import com.microcourse.repository.VideoRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.DiscussionPostRepository;
+import com.microcourse.entity.DiscussionComment;
+import com.microcourse.entity.DiscussionPost;
+import com.microcourse.entity.VideoBookmark;
+import com.microcourse.repository.CourseNoteRepository;
+import com.microcourse.repository.DiscussionCommentRepository;
+import com.microcourse.repository.ExerciseRepository;
+import com.microcourse.entity.Exercise;
 import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.enums.NotificationType;
@@ -49,6 +61,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 课程管理（CUD + 状态机）实现。
@@ -70,8 +83,14 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final PluginGrantRepository pluginGrantRepository;
     private final VideoRepository videoRepository;
     private final LearningProgressRepository learningProgressRepository;
+    private final DiscussionPostRepository discussionPostRepository;
+    private final DiscussionCommentRepository discussionCommentRepository;
+    private final CourseNoteRepository courseNoteRepository;
+    private final VideoBookmarkRepository videoBookmarkRepository;
+    private final ExerciseRepository exerciseRepository;
     private final NotificationService notificationService;
     private final CourseSlideMapper courseSlideMapper;
+    private final SlidePageMapper slidePageMapper;
 
     @Value("${upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -86,8 +105,14 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   EnrollmentRepository enrollmentRepository,
                                   PluginGrantRepository pluginGrantRepository,
                                   LearningProgressRepository learningProgressRepository,
-                                  NotificationService notificationService,
-                                  CourseSlideMapper courseSlideMapper) {
+                                   DiscussionCommentRepository discussionCommentRepository,
+                                   CourseNoteRepository courseNoteRepository,
+                                   VideoBookmarkRepository videoBookmarkRepository,
+                                   ExerciseRepository exerciseRepository,
+                                   NotificationService notificationService,
+                                   DiscussionPostRepository discussionPostRepository,
+                                   CourseSlideMapper courseSlideMapper,
+                                   SlidePageMapper slidePageMapper) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -98,8 +123,14 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.pluginGrantRepository = pluginGrantRepository;
         this.videoRepository = videoRepository;
         this.learningProgressRepository = learningProgressRepository;
+        this.discussionCommentRepository = discussionCommentRepository;
+        this.courseNoteRepository = courseNoteRepository;
+        this.videoBookmarkRepository = videoBookmarkRepository;
+        this.exerciseRepository = exerciseRepository;
         this.notificationService = notificationService;
+        this.discussionPostRepository = discussionPostRepository;
         this.courseSlideMapper = courseSlideMapper;
+        this.slidePageMapper = slidePageMapper;
     }
 
     /* ================================================================
@@ -132,6 +163,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         }
         checkPluginGrant(request.getTeacherId(), request.getCourseType());
 
+        // TEACHER 角色强制覆盖 teacherId 为当前用户
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            request.setTeacherId(SecurityUtil.getCurrentUserId());
+        }
+
         Course course = new Course();
         course.setTitle(request.getTitle());
         course.setSubtitle(request.getSubtitle());
@@ -145,7 +181,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         course.setCourseNature(request.getCourseNature());
         course.setMaxStudents(request.getMaxStudents());
         course.setDifficulty(request.getDifficulty());
-        course.setDescription(request.getDescription());
+        course.setDescription(com.microcourse.util.XssSanitizer.sanitize(request.getDescription()));
         course.setTags(request.getTags());
         course.setCourseType(request.getCourseType());
         course.setPrice(request.getPrice());
@@ -198,7 +234,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (request.getCourseNature() != null) course.setCourseNature(request.getCourseNature());
         if (request.getMaxStudents() != null) course.setMaxStudents(request.getMaxStudents());
         if (request.getDifficulty() != null) course.setDifficulty(request.getDifficulty());
-        if (request.getDescription() != null) course.setDescription(request.getDescription());
+        if (request.getDescription() != null) course.setDescription(com.microcourse.util.XssSanitizer.sanitize(request.getDescription()));
         if (request.getTags() != null) course.setTags(request.getTags());
         if (request.getCourseType() != null) {
             checkPluginGrant(course.getTeacherId(), request.getCourseType());
@@ -271,6 +307,52 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         learningProgressRepository.delete(new LambdaQueryWrapper<LearningProgress>()
                 .eq(LearningProgress::getCourseId, id));
 
+        // P1-C: 补全课程删除级联 — 软删除关联练习
+        exerciseRepository.update(null,
+                new LambdaUpdateWrapper<Exercise>()
+                        .eq(Exercise::getCourseId, id)
+                        .set(Exercise::getDeletedAt, LocalDateTime.now()));
+
+        // P1-I: 课程删除级联 — 清理关联课件及其页面
+        courseSlideMapper.delete(new LambdaQueryWrapper<CourseSlide>()
+                .eq(CourseSlide::getCourseId, id));
+        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, id));
+
+        // P1-C: 课程删除级联 — 软删除关联讨论帖
+        discussionPostRepository.update(null,
+                new LambdaUpdateWrapper<DiscussionPost>()
+                        .eq(DiscussionPost::getCourseId, id)
+                        .set(DiscussionPost::getDeletedAt, LocalDateTime.now()));
+
+        // 补全级联: 讨论回复（S-06: 参数化子查询防 SQL 注入）
+        List<Long> postIds = discussionPostRepository.selectList(
+                new LambdaQueryWrapper<DiscussionPost>()
+                        .eq(DiscussionPost::getCourseId, id)
+                        .select(DiscussionPost::getId))
+                .stream().map(DiscussionPost::getId).collect(Collectors.toList());
+        if (!postIds.isEmpty()) {
+            discussionCommentRepository.update(null,
+                    new LambdaUpdateWrapper<DiscussionComment>()
+                            .in(DiscussionComment::getPostId, postIds)
+                            .set(DiscussionComment::getDeletedAt, LocalDateTime.now()));
+        }
+
+        // 补全级联: 课程笔记
+        courseNoteRepository.delete(new LambdaQueryWrapper<CourseNote>()
+                .eq(CourseNote::getCourseId, id));
+
+        // 补全级联: 视频书签（S-06: 参数化子查询防 SQL 注入）
+        List<Long> videoIds = videoRepository.selectList(
+                new LambdaQueryWrapper<Video>()
+                        .eq(Video::getCourseId, id)
+                        .select(Video::getId))
+                .stream().map(Video::getId).collect(Collectors.toList());
+        if (!videoIds.isEmpty()) {
+            videoBookmarkRepository.delete(new LambdaQueryWrapper<VideoBookmark>()
+                    .in(VideoBookmark::getVideoId, videoIds));
+        }
+
         LOG.info("课程已关闭（含级联清理）, id={}", id);
     }
 
@@ -282,6 +364,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public CourseVO copy(Long id) {
         Course original = getCourseOrThrow(id);
+        if (!SecurityUtil.isOwnerOrAdmin(original.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
 
         Course course = new Course();
         course.setTitle(original.getTitle() + " - 副本");
@@ -337,6 +422,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public CourseVO updateCover(Long id, MultipartFile file) {
         Course course = getCourseOrThrow(id);
+        // P1-C: owner 校验 — 仅课程教师或 ADMIN 可修改封面
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
 
         String originalFilename = file.getOriginalFilename();
         FileUploadUtil.assertSafeFilename(originalFilename);
@@ -377,10 +466,12 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (current == null || target == null || !current.canTransitionTo(target)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, current.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, target.getCode())
                         .set(Course::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
@@ -412,10 +503,12 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (chapterCount == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请至少添加一个章节再提交审核");
         }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, current.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
                         .set(Course::getRejectReason, (String) null)
                         .set(Course::getUpdatedAt, LocalDateTime.now())
@@ -430,10 +523,16 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void approve(Long id) {
         Course course = getCourseOrThrow(id);
+        // P1-I: approve 增加角色校验
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, CourseStatus.APPROVED.getCode())
                         .set(Course::getRejectReason, (String) null)
                         .set(Course::getUpdatedAt, LocalDateTime.now())
@@ -454,11 +553,17 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void reject(Long id, String reason) {
         Course course = getCourseOrThrow(id);
+        // P1-I: reject 增加角色校验
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         String safeReason = com.microcourse.util.XssSanitizer.sanitizePlainText(reason);
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, CourseStatus.REJECTED.getCode())
                         .set(Course::getRejectReason, safeReason)
                         .set(Course::getUpdatedAt, LocalDateTime.now())
@@ -479,6 +584,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         Course course = getCourseOrThrow(id);
+        // S-02: 发布权限校验 — 仅有课程教师或 ADMIN 可发布
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
         // P2-7: INTERACTIVE 课程发布前必须检查课件是否已就绪（status=2）
         if ("INTERACTIVE".equals(course.getCourseType())) {
             LambdaQueryWrapper<CourseSlide> slideQuery = new LambdaQueryWrapper<>();
@@ -489,9 +599,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "互动课件尚未就绪，请先上传并等待课件渲染完成");
             }
         }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
+                        .eq(Course::getVersion, currentVersion)
                         .in(Course::getStatus, CourseStatus.APPROVED.getCode(), CourseStatus.CLOSED.getCode())
                         .set(Course::getStatus, CourseStatus.PUBLISHED.getCode())
                         .set(Course::getPublishedAt, LocalDateTime.now())
@@ -529,10 +641,12 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (current == null || !current.canTransitionTo(CourseStatus.CLOSED)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "当前状态不允许下架");
         }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, current.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, CourseStatus.CLOSED.getCode())
                         .set(Course::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));

@@ -224,6 +224,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         try {
             attendanceRepository.insert(record);
         } catch (DataIntegrityViolationException e) {
+            log.warn("重复签到(幂等处理): sessionId={}, userId={}", sessionId, userId);
             // Idempotent: unique constraint (session_id, user_id) prevents duplicate check-in
         }
     }

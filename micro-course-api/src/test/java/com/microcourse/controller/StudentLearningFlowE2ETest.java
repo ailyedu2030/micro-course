@@ -256,7 +256,7 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
         // page() 对 status 入参执行 wrapper.eq(status, ?)；筛 PUBLISHED(4) 时 DRAFT(0) 必被排除（确定性断言）。
         // 注：DRAFT 的「不可学习」权威防线是「不可选课」(用例 5)，此处验证列表浏览侧不暴露草稿。
         long draftId = insertDraftCourse();
-        mockMvc.perform(get("/api/courses?status=4&page=0&size=200").header("Authorization", studentBearer()))
+        mockMvc.perform(get("/api/courses?status=4&page=0&size=100").header("Authorization", studentBearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.items[?(@.id == " + draftId + ")]").isEmpty());

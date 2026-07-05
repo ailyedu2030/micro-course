@@ -85,7 +85,9 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             try {
                 proposal.setApplyDate(parseDate(request.getApplyDate()));
             } catch (Exception e) {
-                log.warn("applyDate parse failed: {}", request.getApplyDate(), e);
+                String redactedDate = request.getApplyDate().length() > 20
+                        ? request.getApplyDate().substring(0, 10) + "..." : request.getApplyDate();
+                log.warn("applyDate parse failed: (redacted)", e);
             }
         }
         if (request.getType() != null) {
@@ -120,7 +122,9 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             try {
                 proposal.setStartDate(parseDate(request.getStartDate()));
             } catch (Exception e) {
-                log.warn("startDate parse failed: {}", request.getStartDate(), e);
+                String redactedDate = request.getStartDate().length() > 20
+                        ? request.getStartDate().substring(0, 10) + "..." : request.getStartDate();
+                log.warn("startDate parse failed: (redacted)", e);
             }
         }
         if (request.getDuration() != null) {

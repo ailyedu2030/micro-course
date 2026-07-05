@@ -3,6 +3,7 @@ package com.microcourse.service;
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
 import com.microcourse.dto.CoursePricingRequest;
+import com.microcourse.dto.PricingForAdopterVO;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
@@ -75,11 +76,17 @@ public interface CourseService {
      */
     CourseStatsVO computeStats(Long courseId);
 
+    /**
+     * 下架课程（已发布 → CLOSED），并通知在学学生。
+     * 权限：ADMIN（含 @PreAuthorize 在 Controller 层）
+     */
+    void unpublish(Long id);
+
     /** Phase 4: 更新课程定价 */
     void updatePricing(Long courseId, CoursePricingRequest request);
 
     /** Phase 4: 查询课程对某教师的费用 */
-    Map<String, Object> getPricingForAdopter(Long courseId);
+    PricingForAdopterVO getPricingForAdopter(Long courseId);
 
     /** Round 1: 查询课程对当前登录用户的价格（学生端可见） */
     com.microcourse.dto.CoursePricingInfoVO getMyPricing(Long courseId);

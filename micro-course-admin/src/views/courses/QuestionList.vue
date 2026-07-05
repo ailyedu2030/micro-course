@@ -228,7 +228,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
 
@@ -514,7 +514,7 @@ const handleCreate = () => {
   currentId.value = null
   formData.questionType = ''
   formData.difficulty = 1
-  formData.categoryId = ''
+  formData.categoryId = selectedCourse.value.categoryId || null
   formData.content = ''
   formData.score = 10
   formData.explanation = ''
@@ -559,8 +559,14 @@ function addOption() {
   optionList.value.push({ label: '', correct: false })
 }
 
-function removeOption(idx) {
-  optionList.value.splice(idx, 1)
+async function removeOption(idx) {
+  try {
+    await ElMessageBox.confirm('确定删除此选项?', '确认删除', {
+      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
+    })
+    optionList.value.splice(idx, 1)
+    ElMessage.success('选项已删除')
+  } catch {}
 }
 
 function setSingleCorrect(idx) {
@@ -583,6 +589,7 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value || !selectedCourse.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return

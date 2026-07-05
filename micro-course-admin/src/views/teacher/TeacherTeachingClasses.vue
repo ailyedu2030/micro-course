@@ -66,6 +66,7 @@
                   :key="cls.id"
                   class="class-item"
                   :class="{ 'is-expanded': expandedClassId === cls.id }"
+                  style="cursor:pointer"
                 >
                   <div class="class-summary" role="button" tabindex="0" :aria-label="`展开班级详情 ${cls.name}`" :aria-expanded="expandedClassId === cls.id" @click="handleExpandClass(cls)" @keydown.enter="handleExpandClass(cls)" @keydown.space.prevent="handleExpandClass(cls)">
                     <div class="class-info">
@@ -183,7 +184,7 @@
       </el-form>
       <template #footer>
         <el-button @click="changeStatusVisible = false">取消</el-button>
-        <el-button type="primary" :loading="changingStatus" @click="confirmChangeStatus">确定</el-button>
+        <el-button type="primary" :loading="changingStatus" :disabled="changingStatus" @click="confirmChangeStatus">确定</el-button>
       </template>
     </el-dialog>
   </div>

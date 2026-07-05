@@ -33,6 +33,7 @@ import com.microcourse.repository.WrongQuestionRepository;
 import com.microcourse.service.ExerciseRecordService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.enums.NotificationType;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ExerciseRecordServiceImpl implements ExerciseRecordService {
@@ -57,17 +59,20 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
+    /** P0-05: 答题 attemptNo 分布式锁 */
+    private final StringRedisTemplate stringRedisTemplate;
 
     public ExerciseRecordServiceImpl(ExerciseRecordRepository exerciseRecordRepository,
-                                       ExerciseRepository exerciseRepository,
-                                       ExerciseQuestionRepository exerciseQuestionRepository,
-                                       QuestionRepository questionRepository,
-                                       WrongQuestionRepository wrongQuestionRepository,
-                                       GradeRepository gradeRepository,
-                                       ObjectMapper objectMapper,
-                                       CourseRepository courseRepository,
-                                       EnrollmentRepository enrollmentRepository,
-                                       NotificationService notificationService) {
+                                        ExerciseRepository exerciseRepository,
+                                        ExerciseQuestionRepository exerciseQuestionRepository,
+                                        QuestionRepository questionRepository,
+                                        WrongQuestionRepository wrongQuestionRepository,
+                                        GradeRepository gradeRepository,
+                                        ObjectMapper objectMapper,
+                                        CourseRepository courseRepository,
+                                        EnrollmentRepository enrollmentRepository,
+                                        NotificationService notificationService,
+                                        StringRedisTemplate stringRedisTemplate) {
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.exerciseRepository = exerciseRepository;
         this.exerciseQuestionRepository = exerciseQuestionRepository;
@@ -78,6 +83,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.notificationService = notificationService;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     @Override
@@ -159,18 +165,30 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         // P0 修复: 检查是否有需要人工批改的主观题（SHORT_ANSWER/ESSAY）
         boolean hasManualGrading = gradingResults.stream().anyMatch(r -> r.needsManualGrading);
 
-        // 6. 计算 attemptNo:用 MAX(attempt_no) 在事务内获取当前最大值 +1,并捕获 DuplicateKeyException 兜底(CON-004 修复)
+        // 6. P0-05: 使用 Redis 分布式锁确保 attemptNo 原子递增，防止并发竞态
+        String lockKey = "attempt:lock:" + request.getUserId() + ":" + request.getExerciseId();
         int attemptNo;
         try {
-            QueryWrapper<ExerciseRecord> maxWrapper = new QueryWrapper<>();
-            maxWrapper.eq("user_id", request.getUserId())
-                    .eq("exercise_id", request.getExerciseId())
-                    .select("COALESCE(MAX(attempt_no), 0) AS max_no");
-            Map<String, Object> maxRow = exerciseRecordRepository.selectMaps(maxWrapper).stream()
-                    .findFirst().orElse(java.util.Collections.singletonMap("max_no", 0));
-            Object maxVal = maxRow.get("max_no");
-            long currentMax = (maxVal instanceof Number n) ? n.longValue() : 0L;
-            attemptNo = (int) currentMax + 1;
+            Boolean locked = stringRedisTemplate.opsForValue().setIfAbsent(lockKey, "1",
+                    java.time.Duration.ofSeconds(5));
+            if (!Boolean.TRUE.equals(locked)) {
+                throw new BusinessException(ErrorCode.RATE_LIMITED, "操作太频繁，请稍后重试");
+            }
+            try {
+                QueryWrapper<ExerciseRecord> maxWrapper = new QueryWrapper<>();
+                maxWrapper.eq("user_id", request.getUserId())
+                        .eq("exercise_id", request.getExerciseId())
+                        .select("COALESCE(MAX(attempt_no), 0) AS max_no");
+                Map<String, Object> maxRow = exerciseRecordRepository.selectMaps(maxWrapper).stream()
+                        .findFirst().orElse(java.util.Collections.singletonMap("max_no", 0));
+                Object maxVal = maxRow.get("max_no");
+                long currentMax = (maxVal instanceof Number n) ? n.longValue() : 0L;
+                attemptNo = (int) currentMax + 1;
+            } finally {
+                stringRedisTemplate.delete(lockKey);
+            }
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("[ExerciseRecord] attemptNo 计算失败,使用默认值 1", e);
             attemptNo = 1;
@@ -380,17 +398,60 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                 isCorrect = userAnswer.trim().equals(correctAnswer.trim());
                 break;
             case "MULTIPLE":
-                // 多选题：解析JSON数组或逗号分隔，排序后对比
-                isCorrect = compareMultipleAnswers(userAnswer, correctAnswer);
-                break;
+                // P0: 改为部分得分制 — 选对比例×满分
+                {
+                    Set<String> corrects = new java.util.HashSet<>(java.util.Arrays.asList(
+                        correctAnswer != null ? correctAnswer.toUpperCase().split(",") : new String[0]));
+                    Set<String> userAnsSet = new java.util.HashSet<>(java.util.Arrays.asList(
+                        userAnswer != null ? userAnswer.toUpperCase().split(",") : new String[0]));
+                    if (corrects.equals(userAnsSet)) {
+                        result.isCorrect = true;
+                        result.score = fullScore;
+                    } else if (userAnsSet.isEmpty() || userAnsSet.size() > corrects.size() * 2) {
+                        result.score = 0;
+                        result.isCorrect = false;
+                    } else {
+                        long correctCount = userAnsSet.stream().filter(corrects::contains).count();
+                        long wrongCount = userAnsSet.stream().filter(a -> !corrects.contains(a)).count();
+                        double ratio = (double)(correctCount - wrongCount) / corrects.size();
+                        result.score = (int)Math.round(Math.max(0, ratio) * fullScore);
+                        result.isCorrect = false;
+                    }
+                    return result;
+                }
             case "JUDGE":
                 // 判断题：直接对比
                 isCorrect = userAnswer.trim().equals(correctAnswer.trim());
                 break;
             case "FILL":
-                // 填空题：trim后忽略大小写对比
-                isCorrect = userAnswer.trim().equalsIgnoreCase(correctAnswer.trim());
-                break;
+                if (correctAnswer == null || correctAnswer.trim().isEmpty()) {
+                    result.score = 0;
+                    result.isCorrect = false;
+                    result.needsManualGrading = true;
+                    return result;
+                } else {
+                    String ua = userAnswer.trim().replaceAll("[\\s,，;；。、]+", " ").trim();
+                    String ca = correctAnswer.trim().replaceAll("[\\s,，;；。、]+", " ").trim();
+                    // 嘗試數值比較(容差5%)
+                    try {
+                        double numUser = Double.parseDouble(ua);
+                        double numCorrect = Double.parseDouble(ca);
+                        if (Math.abs(numUser - numCorrect) / Math.max(1.0, Math.abs(numCorrect)) <= 0.05) {
+                            result.isCorrect = true;
+                            result.score = fullScore;
+                        } else {
+                            result.score = 0;
+                            result.isCorrect = false;
+                        }
+                    } catch (NumberFormatException e) {
+                        // 文本比較:忽略大小寫+無視連續空格+忽略標點
+                        String uaNorm = ua.replaceAll("[^\\p{L}\\p{N}]+", "").toLowerCase();
+                        String caNorm = ca.replaceAll("[^\\p{L}\\p{N}]+", "").toLowerCase();
+                        result.isCorrect = uaNorm.equals(caNorm);
+                        result.score = result.isCorrect ? fullScore : 0;
+                    }
+                    return result;
+                }
             case "SHORT_ANSWER":
             case "ESSAY":
                 // 简答/论述：标记为待人工批改
@@ -554,7 +615,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                             counter[1]++;
                         }
                     }
-                } catch (JsonProcessingException ignored) {
+                } catch (JsonProcessingException e) {
+                    log.warn("JSON解析失败: {}", e.getMessage());
                     // 损坏的 answers JSON，按单题 0/1 处理（即整卷算 0 题 0 对）
                 }
             }
@@ -587,6 +649,46 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         return (maxVal instanceof Number n) ? n.intValue() : 0;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExerciseRecordVO> getResult(Long exerciseId, Long currentUserId) {
+        // STUDENT（非 ADMIN）：仅返回本人答题记录
+        if (SecurityUtil.hasRole("STUDENT") && !SecurityUtil.isAdmin()) {
+            return getMyRecords(currentUserId, exerciseId);
+        }
+        // TEACHER / ADMIN：返回该练习全部答题记录
+        return getRecordsByExercise(exerciseId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAnalytics(Long exerciseId) {
+        List<ExerciseRecordVO> records = getRecordsByExercise(exerciseId);
+        int totalAttempts = records.size();
+        long passedCount = records.stream()
+                .filter(r -> Boolean.TRUE.equals(r.getPassed()))
+                .count();
+        long participantCount = records.stream()
+                .map(ExerciseRecordVO::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+        double avgScore = records.stream()
+                .filter(r -> r.getScore() != null)
+                .mapToInt(ExerciseRecordVO::getScore)
+                .average()
+                .orElse(0.0);
+
+        Map<String, Object> analytics = new HashMap<>();
+        analytics.put("exerciseId", exerciseId);
+        analytics.put("totalAttempts", totalAttempts);
+        analytics.put("participantCount", participantCount);
+        analytics.put("passedCount", passedCount);
+        analytics.put("passRate", totalAttempts > 0 ? (double) passedCount / totalAttempts : 0.0);
+        analytics.put("avgScore", avgScore);
+        return analytics;
+    }
+
     private ExerciseRecordVO convertToVO(ExerciseRecord record, Exercise exercise) {
         ExerciseRecordVO vo = new ExerciseRecordVO();
         vo.setId(record.getId());
@@ -599,6 +701,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         vo.setPassed(record.getPassed());
         vo.setDuration(record.getDuration());
         vo.setAnswers(record.getAnswers());
+        vo.setNeedsManualGrading(record.getNeedsManualGrading());
         vo.setSubmittedAt(record.getSubmittedAt());
         return vo;
     }

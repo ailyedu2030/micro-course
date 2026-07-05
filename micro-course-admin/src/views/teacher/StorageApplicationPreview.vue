@@ -303,23 +303,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { DocumentCopy, Loading, CircleCheck, CircleClose, Refresh } from '@element-plus/icons-vue'
 import { getStoragePreview, exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 
-// RT-2 fix: Enhanced HTML sanitizer with case-insensitive patterns and wider vector coverage
-function sanitizeHtml(html) {
-  if (!html) return ''
-  let sanitized = html
-  // Strip <script> tags (case-insensitive)
-  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-  // Strip ALL on* event handlers — unquoted, double-quoted, and single-quoted (case-insensitive)
-  sanitized = sanitized.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, ' ')
-  // Strip dangerous protocols in href/src/action/formaction (case-insensitive)
-  sanitized = sanitized.replace(/(href|src|action|formaction)\s*=\s*"(?:javascript|vbscript|data|file):[^"]*"/gi, '$1="#"')
-  sanitized = sanitized.replace(/(href|src|action|formaction)\s*=\s*'(?:javascript|vbscript|data|file):[^']*'/gi, "$1='#'")
-  // Strip <iframe> <embed> <object> <frame> <frameset> <ilayer> tags (case-insensitive)
-  sanitized = sanitized.replace(/<\/?(?:iframe|embed|object|frame|frameset|ilayer)[^>]*>/gi, '')
-  // Strip <meta> tags — potential redirect vectors (case-insensitive)
-  sanitized = sanitized.replace(/<meta[^>]*>/gi, '')
-  return sanitized
-}
+import { sanitizeHtml, escapeHtml } from '@/utils/xss'
 
 const route = useRoute()
 const loading = ref(true)

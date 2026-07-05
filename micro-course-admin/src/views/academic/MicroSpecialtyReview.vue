@@ -69,8 +69,8 @@
         <div class="detail-item"><label>学期</label><span>{{ detailRow.semester || '-' }}</span></div>
         <div class="detail-item"><label>招生上限</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
         <div class="detail-item"><label>状态</label><span><el-tag :type="statusType(detailRow.status)" size="small">{{ statusLabel(detailRow.status) }}</el-tag></span></div>
-        <div class="detail-item full-width"><label>说明</label><span v-html="detailRow.description || '-'" class="detail-html"></span></div>
-        <div class="detail-item full-width"><label>培养目标</label><span v-html="detailRow.trainingObjective || '-'" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>说明</label><span v-html="sanitizeHtml(detailRow.description || '-')" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>培养目标</label><span v-html="sanitizeHtml(detailRow.trainingObjective || '-')" class="detail-html"></span></div>
       </div>
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
@@ -84,6 +84,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, approveMicroSpecialty, rejectMicroSpecialty, cancelMicroSpecialty, archiveMicroSpecialty } from '@/api/microSpecialty'
 import { useUserStore } from '@/store/user'
+import { sanitizeHtml } from '@/utils/xss'
 
 const userStore = useUserStore()
 // 路由守卫竞态: 组件异步 load 在 store.getInfo() 前完成 → 错误 fetch → 403
@@ -114,7 +115,7 @@ const fetchData = async () => {
   loading.value = true
   error.value = false
   try {
-    const params = { page: page.value, size: size.value }
+    const params = { page: page.value - 1, size: size.value }
     if (activeTab.value === 'PENDING') params.status = 'PENDING_REVIEW'
     const { data } = await getMicroSpecialtyList(params)
     items.value = data.items || data || []
@@ -164,6 +165,7 @@ const handleArchive = async (row) => {
 }
 
 onMounted(fetchData)
+
 </script>
 
 <style scoped>

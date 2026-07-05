@@ -179,9 +179,9 @@ class EnrollmentStatusMachineTest extends BaseIntegrationTest {
         EnrollmentVO vo = enrollmentService.enroll(req);
         assertNotNull(vo.getId());
 
-        // 对外字符串值保持 "ENROLLED"（前端无感）
-        assertEquals(EnrollmentStatus.LEGACY_ENROLLED_VALUE, vo.getEnrollmentStatus(),
-                "enroll() 对外状态值必须保持 ENROLLED 以兼容前端");
+        // 服务层已改为写入 APPROVED.getValue()（与 EnrollmentStatus 契约对齐）
+        assertEquals(EnrollmentStatus.APPROVED.getValue(), vo.getEnrollmentStatus(),
+                "enroll() 对外状态值应为 APPROVED");
 
         List<EnrollmentHistory> histories = enrollmentHistoryRepository.selectList(
                 new LambdaQueryWrapper<EnrollmentHistory>()

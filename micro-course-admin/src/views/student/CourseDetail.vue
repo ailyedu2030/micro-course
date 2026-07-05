@@ -173,7 +173,7 @@
                       <el-tag v-if="ch.chapterType === 'VIDEO'" size="small" type="primary" effect="plain">📹 视频课</el-tag>
                       <el-tag v-else-if="ch.chapterType === 'INTERACTIVE'" size="small" type="success" effect="plain">🎯 互动课</el-tag>
                       <el-tag v-else-if="ch.chapterType === 'EXERCISE'" size="small" type="warning" effect="plain">📝 练习</el-tag>
-                      <el-tag v-else-if="ch.chapterType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课</el-tag>
+                      <el-tag v-else-if="ch.chapterType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课 (需线下授课)</el-tag>
                       <el-tag v-else size="small" type="info" effect="plain">—</el-tag>
                       <span class="outline-duration">{{ formatDuration(ch.duration) }}</span>
                     </template>
@@ -324,7 +324,7 @@ const activeChapters = ref([])
 const activeTab = ref('detail')
 
 const reviewForm = ref({ rating: 5, content: '' })
-const reviewRules = { rating: [{ required: true, message: '请选择评分', trigger: 'change' }], content: [{ max: 500, message: '评价内容不超过500字', trigger: 'blur' }] }
+const reviewRules = { rating: [{ required: true, message: '请选择评分', trigger: 'change' }], content: [{ required: true, message: '请输入评价内容', trigger: 'blur' }, { max: 500, message: '评价内容不超过500字', trigger: 'blur' }] }
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
 const difficultyText = computed(() => {
@@ -439,7 +439,7 @@ const fetchTeacher = async () => {
 const checkEnrollment = async () => {
   if (!isLoggedIn.value || !courseId.value) return
   const uid = userStore.userInfo?.id; if (!uid) return
-  try { const { data } = await getMyEnrollments(uid); const list = Array.isArray(data) ? data : (data?.items || []); isEnrolled.value = list.some(e => String(e.courseId) === String(courseId.value) && ['ENROLLED','APPROVED','COMPLETED'].includes(e.enrollmentStatus)) }
+  try { const { data } = await getMyEnrollments(); const list = Array.isArray(data) ? data : (data?.items || []); isEnrolled.value = list.some(e => String(e.courseId) === String(courseId.value) && ['ENROLLED','APPROVED','COMPLETED'].includes(e.enrollmentStatus)) }
   catch (e) { console.warn('[CourseDetail] checkEnrollment 获取选课状态失败', e); isEnrolled.value = false }
 }
 
@@ -452,36 +452,46 @@ const handleEnroll = async () => {
     const isFreeForMe = pricingInfo.value?.free || !course.value.price || course.value.isFree
     const finalPrice = pricingInfo.value?.finalPrice ?? course.value.price ?? 0
 
+    const enrollTarget = () => {
+      const isInteractive = course.value?.courseType === 'INTERACTIVE'
+      return isInteractive
+        ? `/student/courses/${courseId.value}/slides/player`
+        : `/student/learning?courseId=${courseId.value}`
+    }
+
     if (!isFreeForMe && finalPrice > 0) {
       const { data: order } = await createOrder({ courseId: courseId.value })
-      if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); router.push('/student/my-courses'); return }
+      if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); router.push(enrollTarget()); return }
       await ElMessageBox.confirm(
         `确认支付 ¥${Number(finalPrice).toFixed(2)}？${pricingInfo.value?.feeNote ? '\n' + pricingInfo.value.feeNote : ''}`,
         '确认支付',
         { confirmButtonText: '支付', cancelButtonText: '取消', type: 'info' }
       )
-      await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功'); router.push('/student/my-courses')
+      await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功'); router.push(enrollTarget())
       return
     }
     // 免费课程：增加确认环节
     const freeNote = pricingInfo.value?.feeNote ? `（${pricingInfo.value.feeNote}）` : ''
     await ElMessageBox.confirm(`确认加入学习？${freeNote}`, '加入课程', { confirmButtonText: '确认加入', cancelButtonText: '取消', type: 'info' })
-    await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push('/student/my-courses')
+    await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push(enrollTarget())
   } catch (e) {
+    if (e?.toString().includes('cancel')) {
+      ElMessage.info('已取消支付')
+      return
+    }
     if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
   } finally { enrollLoading.value = false }
 }
 
-function handleAddCart() {
+async function handleAddCart() {
+  if (!isLoggedIn.value) { goLogin(); return }
   const c = course.value
   if (!c) return
-  // 使用 pricingInfo 中的实际价格
-  const displayPrice = pricingInfo.value?.finalPrice ?? c.price
-  const added = cartStore.addItem({
+  const added = await cartStore.addItem({
     id: Number(courseId.value),
     title: c.title,
     coverUrl: c.coverUrl,
-    price: displayPrice,
+    price: pricingInfo.value?.finalPrice ?? c.price,
     isFree: pricingInfo.value?.free ?? c.isFree,
     teacherName: c.teacherName,
   })
@@ -492,8 +502,8 @@ function handleAddCart() {
 const handleChapterClick = (row) => {
   if (row.chapterType === 'EXERCISE') {
     router.push(`/student/chapters/${row.id}/exercises`)
-  } else if (row.chapterType === 'INTERACTIVE' || course.value.courseType === 'INTERACTIVE') {
-    router.push(`/student/courses/${courseId.value}/slides/player`)
+  } else if (row.chapterType === 'INTERACTIVE') {
+    router.push(`/student/courses/${courseId.value}/slides/player?chapterId=${row.id}`)
   } else if (row.chapterType === 'OFFLINE') {
     router.push(`/student/chapters/${row.id}/offline`)
   } else {
@@ -525,7 +535,7 @@ const handleSubmitReview = async () => {
   finally { reviewSubmitting.value = false }
 }
 
-const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchSlides 获取课件失败', e); ElMessage.warning('课件加载失败'); slides.value = [] } finally { slidesLoading.value = false } }
+const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchSlides 获取课件失败', e); slides.value = [] } finally { slidesLoading.value = false } }
 
 onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; if (isInteractive.value) fetchSlides(); await Promise.all([fetchTeacher(), checkEnrollment(), fetchReviews(), fetchRanking(), fetchPricingInfo()]) })
 </script>

@@ -290,7 +290,7 @@ const weekDays = computed(() => {
     const d = new Date(startDate)
     d.setDate(startDate.getDate() + i)
     const dateStr = `${d.getMonth() + 1}/${d.getDate()}`
-    const dateISO = d.toISOString().split('T')[0]
+    const dateISO = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     days.push({
       date: dateISO,
       label: dayLabels[d.getDay()],

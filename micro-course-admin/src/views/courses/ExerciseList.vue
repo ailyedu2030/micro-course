@@ -41,7 +41,7 @@
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无练习数据" />
+      <el-empty v-else-if="tableData.length === 0" description="暂无练习数据，请先选择课程和章节后点击「新增练习」" />
       <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
@@ -153,7 +153,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
 
@@ -235,7 +235,7 @@
       </div>
       <template #footer>
         <el-button @click="questionPickerVisible = false">取消</el-button>
-        <el-button type="primary" :loading="questionSubmitLoading" @click="handleAddQuestions">添加到练习</el-button>
+        <el-button type="primary" :loading="questionSubmitLoading" :disabled="questionSubmitLoading" @click="handleAddQuestions">添加到练习</el-button>
       </template>
     </el-dialog>
   </div>
@@ -468,11 +468,11 @@ const handleCreate = () => {
   formData.maxAttempts = null
   formData.shuffleQuestions = false
   formData.shuffleOptions = false
-  formChapterOptions.value = searchForm.chapterId ? chapterOptions.value : []
+  if (formData.courseId) handleFormCourseChange(formData.courseId)
   dialogVisible.value = true
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑练习'
   isEdit.value = true
   currentId.value = row.id
@@ -485,7 +485,11 @@ const handleEdit = (row) => {
   formData.maxAttempts = row.maxAttempts || null
   formData.shuffleQuestions = row.shuffleQuestions || false
   formData.shuffleOptions = row.shuffleOptions || false
-  formChapterOptions.value = chapterOptions.value
+  // P1-C: 始终按练习所属课程加载章节(不依赖搜索区缓存,避免课程错配)
+  try {
+    const { data } = await getChapters({ courseId: row.courseId, size: 1000 })
+    formChapterOptions.value = data?.items || []
+  } catch { formChapterOptions.value = [] }
   dialogVisible.value = true
 }
 
@@ -513,6 +517,7 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return

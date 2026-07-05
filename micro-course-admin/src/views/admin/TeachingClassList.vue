@@ -6,7 +6,7 @@
 <template>
   <div class="teaching-class-list">
     <!-- 面包屑导航 -->
-    <el-breadcrumb separator="/" class="breadcrumb-nav">
+    <el-breadcrumb separator="→" class="breadcrumb-nav">
       <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>教学班管理</el-breadcrumb-item>
     </el-breadcrumb>
@@ -145,7 +145,7 @@
               </el-button>
             </div>
             <el-button type="primary" link @click="addSchedule" aria-label="提交">
-<el-icon><Plus /></el-icon>添加时间段
+<el-icon><Plus /></el-icon>新增时间段
             </el-button>
           </div>
         </el-form-item>
@@ -254,7 +254,7 @@ function handleCourseChange(courseId) {
   }
 }
 
-// 添加时间段
+// 新增时间段
 function addSchedule() {
   formData.classSchedules.push({
     dayOfWeek: null,
@@ -267,8 +267,14 @@ function addSchedule() {
 }
 
 // 移除时间段
-function removeSchedule(index) {
-  formData.classSchedules.splice(index, 1)
+async function removeSchedule(index) {
+  try {
+    await ElMessageBox.confirm('确定移除此时间段?', '确认移除', {
+      type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消'
+    })
+    formData.classSchedules.splice(index, 1)
+    ElMessage.success('时间段已移除')
+  } catch {}
 }
 
 // 获取数据
@@ -358,6 +364,13 @@ async function handleDelete(row) {
 
 async function handleSubmit() {
   if (!formRef.value) return
+  // 排课必填字段校验：至少一条完整的时间段记录
+  const hasValidSchedule = formData.classSchedules.length > 0 &&
+    formData.classSchedules.every(s => s.dayOfWeek && s.startPeriod && s.endPeriod)
+  if (!hasValidSchedule) {
+    ElMessage.warning('请至少添加一条完整的排课时间段（星期、节次）')
+    return
+  }
   await formRef.value.validate(async (valid) => {
     if (!valid) return
     submitLoading.value = true

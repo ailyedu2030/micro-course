@@ -511,7 +511,19 @@ const formData = reactive({
 const formRules = {
   username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  role: [{ required: true, message: '请选择角色', trigger: 'change' }]
+  role: [{ required: true, message: '请选择角色', trigger: 'change' }],
+  email: [
+    { pattern: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  phone: [
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: 'blur' }
+  ],
+  studentNo: [
+    { pattern: /^\w{4,20}$/, message: '学号格式不正确（4-20位字母/数字）', trigger: 'blur' }
+  ],
+  enrollmentYear: [
+    { pattern: /^\d{4}$/, message: '请输入4位年份', trigger: 'blur' }
+  ]
 }
 
 // ============== 年级联动逻辑 ==============
@@ -887,11 +899,16 @@ const handleDialogSave = async () => {
 const handleToggleStatus = async (row, newStatus) => {
   const actionText = newStatus === 1 ? '启用' : '禁用'
   try {
+    await ElMessageBox.confirm(
+      `确定${actionText}该用户吗？`,
+      '提示',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
     await updateUserStatus(row.id, { status: newStatus })
     ElMessage.success(`${actionText}成功`)
     fetchData()
-  } catch {
-    ElMessage.error(`${actionText}失败`)
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error(`${actionText}失败`)
   }
 }
 

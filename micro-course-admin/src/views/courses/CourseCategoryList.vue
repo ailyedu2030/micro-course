@@ -42,7 +42,7 @@
         <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="success" link size="small" @click="handleAddChild(row)" v-if="userRole !== 'ACADEMIC' && row.parentId === null">添加子分类</el-button>
+            <el-button type="success" link size="small" @click="handleAddChild(row)" v-if="userRole !== 'ACADEMIC' && row.parentId === null">新增子分类</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -81,7 +81,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -123,7 +123,8 @@ const formData = reactive({
 
 // P2-18: 表单中不存在 level 字段（formData.level 虽定义但无对应表单控件），移除无效校验规则
 const formRules = {
-  name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
+  code: [{ required: true, message: '请输入分类编码', trigger: 'blur' }]
 }
 
 const fetchData = async () => {
@@ -181,7 +182,7 @@ const handleEdit = (row) => {
 }
 
 const handleAddChild = (row) => {
-  dialogTitle.value = '添加子分类'
+  dialogTitle.value = '新增子分类'
   isEdit.value = false
   currentId.value = null
   formData.parentId = row.id
@@ -207,6 +208,7 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return

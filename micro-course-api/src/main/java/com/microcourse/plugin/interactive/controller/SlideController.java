@@ -9,11 +9,7 @@ import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.dto.SlideVO;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.repository.CourseRepository;
-import com.microcourse.entity.Enrollment;
-import com.microcourse.enums.EnrollmentStatus;
-import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.util.SecurityUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -35,14 +31,11 @@ public class SlideController {
 
     private final SlideService slideService;
     private final CourseRepository courseRepository;
-    private final EnrollmentRepository enrollmentRepository;
 
     public SlideController(SlideService slideService,
-                           CourseRepository courseRepository,
-                           EnrollmentRepository enrollmentRepository) {
+                           CourseRepository courseRepository) {
         this.slideService = slideService;
         this.courseRepository = courseRepository;
-        this.enrollmentRepository = enrollmentRepository;
     }
 
     @PostMapping("/upload")
@@ -86,9 +79,10 @@ public class SlideController {
 
     @GetMapping("/pages")
     @PreAuthorize("isAuthenticated()")
-    public R<List<SlidePageVO>> getPages(@PathVariable Long courseId) {
+    public R<List<SlidePageVO>> getPages(@PathVariable Long courseId,
+                                        @RequestParam(required = false) Long chapterId) {
         verifyAccess(courseId);
-        return R.ok(slideService.getPages(courseId));
+        return R.ok(slideService.getPages(courseId, chapterId));
     }
 
     @GetMapping("/pages/{pageNumber}")
@@ -180,38 +174,11 @@ public class SlideController {
     }
 
     private void verifyAccess(Long courseId) {
-        if (SecurityUtil.isAdmin()) {
-            return;
-        }
+        // 只读操作(GET)对所有已认证用户开放,用于课程详情页预览
+        // 写操作(upload/update/delete)由@PreAuthorize控制TEACHER/ADMIN角色
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        }
-        if (SecurityUtil.hasRole("ACADEMIC")) {
-            return;
-        }
-
-        boolean allowed = false;
-
-        if (SecurityUtil.hasRole("TEACHER")
-                && SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-            allowed = true;
-        }
-
-        if (!allowed && SecurityUtil.hasRole("STUDENT")) {
-            Long currentUserId = SecurityUtil.getCurrentUserId();
-            long count = enrollmentRepository.selectCount(
-                    new LambdaQueryWrapper<Enrollment>()
-                            .eq(Enrollment::getUserId, currentUserId)
-                            .eq(Enrollment::getCourseId, courseId)
-                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
-            if (count > 0) {
-                allowed = true;
-            }
-        }
-
-        if (!allowed) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
     }
 

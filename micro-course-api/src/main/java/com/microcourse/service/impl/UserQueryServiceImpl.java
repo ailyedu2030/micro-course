@@ -188,7 +188,7 @@ public class UserQueryServiceImpl implements UserQueryService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         UserVO vo = convertToVO(user);
-        // R12 P0-2: TEACHER 仅能查看自己课程中的学生
+        // P1-C: TEACHER 仅能查看自己课程中的学生，否则抛 NO_PERMISSION
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()
                 && !SecurityUtil.isOwnerOrAdmin(id)) {
             User targetUser = user;
@@ -199,12 +199,10 @@ public class UserQueryServiceImpl implements UserQueryService {
                         EnrollmentStatus.APPROVED.getValue(),
                         EnrollmentStatus.COMPLETED.getValue());
                 if (count == 0) {
-                    vo.setRealName(maskRealName(vo.getRealName()));
-                    vo.setEmail(maskEmail(vo.getEmail()));
-                    vo.setPhone(maskPhone(vo.getPhone()));
-                    vo.setStudentNo(null);
-                    vo.setTeacherNo(null);
+                    throw new BusinessException(ErrorCode.NO_PERMISSION, "您只能查看自己课程中的学生");
                 }
+            } else {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
             }
         }
         // R12 数据隔离分级：

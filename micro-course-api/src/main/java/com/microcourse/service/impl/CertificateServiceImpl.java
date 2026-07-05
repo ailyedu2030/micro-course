@@ -18,6 +18,7 @@ import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CertificateService;
 import com.microcourse.service.NotificationService;
+import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.lowagie.text.Document;
@@ -258,6 +259,24 @@ public class CertificateServiceImpl implements CertificateService {
                 .eq(Certificate::getCourseId, courseId)
                 .eq(Certificate::getCertType, "COURSE");
         return certificateRepository.selectCount(wrapper) > 0;
+    }
+
+    @Override
+    public com.microcourse.dto.CertificateVO getByIdWithOwnerCheck(Long id, Long currentUserId) {
+        com.microcourse.dto.CertificateVO cert = getById(id);
+        if (!Objects.equals(cert.getUserId(), currentUserId) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        return cert;
+    }
+
+    @Override
+    public byte[] downloadCertificateWithOwnerCheck(Long id, Long currentUserId) {
+        com.microcourse.dto.CertificateVO cert = getById(id);
+        if (!Objects.equals(cert.getUserId(), currentUserId) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        return generateCertificatePdf(id);
     }
 
     /**

@@ -6,7 +6,7 @@
       <template #header>
         <div class="card-header">
           <span>套件列表</span>
-          <el-button type="primary" size="small" @click="showCreateDialog">创建套件</el-button>
+          <el-button type="primary" size="small" @click="showCreateDialog">新增套件</el-button>
         </div>
       </template>
 
@@ -44,16 +44,18 @@
       <div class="pagination mg-top-12">
         <el-pagination
           v-model:current-page="page"
-          :page-size="size"
+          v-model:page-size="size"
           :total="totalElements"
-          layout="total, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="fetchBundles"
           @current-change="fetchBundles"
         />
       </div>
     </el-card>
 
     <!-- 创建/编辑套件 -->
-    <el-dialog v-model="dialogVisible" :title="editingBundle ? '编辑套件' : '创建套件'" width="500px" @closed="resetForm">
+    <el-dialog v-model="dialogVisible" :title="editingBundle ? '编辑套件' : '新增套件'" width="500px" @closed="resetForm">
       <el-form ref="bundleFormRef" :model="formData" :rules="bundleRules" label-width="80px">
         <el-form-item label="名称" prop="title">
           <el-input v-model="formData.title" placeholder="如：英语四级通关" />
@@ -67,7 +69,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button type="primary" :loading="saving" :disabled="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
 
@@ -102,7 +104,7 @@
         </el-select>
         <el-input-number v-model="newSortOrder" :min="0" placeholder="顺序" class="sort-input" />
         <el-checkbox v-model="newIsRequired" class="req-check">必修</el-checkbox>
-        <el-button type="primary" size="small" :disabled="!selectedCourseId" @click="handleAddItem">添加</el-button>
+        <el-button type="primary" size="small" :disabled="!selectedCourseId" @click="handleAddItem">新增</el-button>
       </div>
     </el-dialog>
   </div>
@@ -261,11 +263,11 @@ const handleAddItem = async () => {
   if (!currentBundle.value || !selectedCourseId.value) return
   try {
     await addBundleCourse(currentBundle.value.id, { courseId: selectedCourseId.value, sortOrder: newSortOrder.value, isRequired: newIsRequired.value })
-    ElMessage.success('添加成功')
+    ElMessage.success('新增成功')
     await loadDetailData(currentBundle.value.id)
     selectedCourseId.value = null
     newSortOrder.value = (bundleItems.value.length || 0) + 1
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '添加失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '新增失败') }
 }
 
 const handleRemoveItem = async (row) => {

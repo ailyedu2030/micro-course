@@ -12,8 +12,8 @@
           <span class="card-title">轮播图管理</span>
         </div>
         <div class="toolbar-right">
-          <el-button type="primary" @click="handleAdd" aria-label="添加轮播图">
-<el-icon><Plus /></el-icon>添加轮播图
+          <el-button type="primary" @click="handleAdd" aria-label="新增轮播图">
+<el-icon><Plus /></el-icon>新增轮播图
           </el-button>
         </div>
       </div>
@@ -64,7 +64,7 @@
         </el-table-column>
         <el-table-column prop="linkUrl" label="跳转链接" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
-            <a v-if="row.linkUrl" :href="row.linkUrl" target="_blank" class="banner-link">
+            <a v-if="row.linkUrl" :href="row.linkUrl" target="_blank" rel="noopener noreferrer" class="banner-link">
               {{ row.linkUrl }}
             </a>
             <span v-else class="text-secondary">-</span>
@@ -106,7 +106,7 @@
     <!-- 添加/编辑弹窗 -->
     <el-dialog
       v-model="formVisible"
-      :title="isEdit ? '编辑轮播图' : '添加轮播图'"
+      :title="isEdit ? '编辑轮播图' : '新增轮播图'"
       width="600px"
       destroy-on-close
      :close-on-press-escape="true"
@@ -177,7 +177,7 @@
       <template #footer>
         <el-button @click="handleFormCancel">取消</el-button>
         <el-button type="primary" :loading="saving" @click="handleConfirmSave">
-          {{ isEdit ? '保存修改' : '确认添加' }}
+          {{ isEdit ? '保存修改' : '确认新增' }}
         </el-button>
       </template>
     </el-dialog>
@@ -225,7 +225,12 @@ const form = reactive({
 
 // 表单验证
 const formRules = {
-  imageUrl: [{ required: true, message: '请上传轮播图图片', trigger: ['blur', 'change'] }]
+  imageUrl: [{ required: true, message: '请上传轮播图图片', trigger: ['blur', 'change'] }],
+  linkUrl: [{
+    pattern: /^$|^https?:\/\/.+/i,
+    message: '请输入正确的 URL 格式（以 http:// 或 https:// 开头）',
+    trigger: 'blur'
+  }]
 }
 
 // 获取数据
@@ -243,7 +248,7 @@ async function fetchData() {
   }
 }
 
-// 添加
+// 新增
 function handleAdd() {
   isEdit.value = false
   currentBannerId.value = null
@@ -328,7 +333,7 @@ async function handleConfirmSave() {
     formVisible.value = false
     fetchData()
   } catch (err) {
-    ElMessage.error(err.message || (isEdit.value ? '修改失败，请稍后重试' : '添加失败，请稍后重试'))
+    ElMessage.error(err.message || (isEdit.value ? '修改失败，请稍后重试' : '新增失败，请稍后重试'))
   } finally {
     saving.value = false
   }

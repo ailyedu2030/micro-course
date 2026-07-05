@@ -18,7 +18,7 @@ export function useSlideManager(courseId, chapterId) {
       const s = await getSlides(courseId.value)
       slide.value = s.data
       if (s.data?.status === 2) {
-        const p = await getSlidePages(courseId.value)
+        const p = await getSlidePages(courseId.value, chapterId?.value)
         pages.value = p.data || []
       }
     } catch (e) {

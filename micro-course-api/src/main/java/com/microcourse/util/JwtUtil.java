@@ -8,6 +8,8 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -23,6 +25,8 @@ import java.util.UUID;
  */
 @Component
 public class JwtUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
 
     @Value("${jwt.secret:}")
     private String secret;
@@ -53,7 +57,7 @@ public class JwtUtil {
                         "[SECURITY] jwt.secret 未配置！生产环境必须设置 JWT_SECRET 环境变量，禁止使用兜底密钥");
             }
             secret = "dev-only-jwt-secret-key-min-32-bytes-please-change-in-prod";
-            System.err.println("[WARN] jwt.secret 未配置，使用本地开发兜底密钥（仅限开发环境）");
+            log.warn("jwt.secret 未配置，使用本地开发兜底密钥（仅限开发环境）");
         }
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
@@ -120,6 +124,7 @@ public class JwtUtil {
                 | IllegalArgumentException e) {
             return false;
         } catch (Exception e) {
+            log.warn("JWT验证失败: {}", e.getMessage());
             return false;
         }
     }
@@ -143,6 +148,7 @@ public class JwtUtil {
                 | IllegalArgumentException e) {
             return false;
         } catch (Exception e) {
+            log.warn("refreshToken验证失败: {}", e.getMessage());
             return false;
         }
     }

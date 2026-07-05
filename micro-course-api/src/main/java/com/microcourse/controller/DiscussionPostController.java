@@ -30,7 +30,7 @@ public class DiscussionPostController {
     public R<PageResult<DiscussionPostVO>> page(
             @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         PageResult<DiscussionPostVO> result = postService.page(chapterId, page, size);
         return R.ok(result);
     }

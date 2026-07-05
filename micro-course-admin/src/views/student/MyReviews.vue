@@ -9,7 +9,7 @@
     <!-- PC Layout -->
     <template v-if="!isMobile">
       <!-- 面包屑导航 -->
-      <el-breadcrumb class="page-breadcrumb">
+      <el-breadcrumb separator="→" class="page-breadcrumb">
         <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>我的评价</el-breadcrumb-item>
       </el-breadcrumb>
@@ -59,7 +59,7 @@
             <el-table-column label="类型" width="70" align="center">
               <template #default="{ row }">
                 <el-tag v-if="row.parentId" type="info" size="small">回复</el-tag>
-                <el-tag v-else type="" size="small">评价</el-tag>
+                <el-tag v-else type="info" size="small">评价</el-tag>
               </template>
             </el-table-column>
             <el-table-column label="评价内容" min-width="200" show-overflow-tooltip>
@@ -111,7 +111,7 @@
     <!-- H5 Layout -->
     <template v-else>
       <!-- 面包屑导航 -->
-      <el-breadcrumb class="h5-breadcrumb">
+      <el-breadcrumb separator="→" class="h5-breadcrumb">
         <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>我的评价</el-breadcrumb-item>
       </el-breadcrumb>

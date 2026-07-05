@@ -71,7 +71,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
         // ★ Round 8-4 修复(P0)：TEACHER 课程列表隔离 —— 教师只能看到自己创建的课程，
         // 不可越权浏览全平台课程；ADMIN / ACADEMIC 不受限（看到全部）。
-        // STUDENT 走 getPublishedCourses()，此处不额外限制；合法用户体验零退化。
+        // STUDENT 默认只返回 APPROVED(2) + PUBLISHED(4)，见下方 status 过滤逻辑。
         boolean teacherScoped = SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin();
         if (teacherScoped) {
             wrapper.eq(Course::getTeacherId, SecurityUtil.getCurrentUserId());
@@ -122,9 +122,15 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         if (query.getStatus() != null) {
             wrapper.eq(Course::getStatus, query.getStatus());
         } else if (!teacherScoped) {
-            // 默认排除已删除（CLOSED）和已归档（ARCHIVED）的课程
-            // 仅对非教师角色生效；教师管理自己课程时需要看到所有状态
-            wrapper.notIn(Course::getStatus, List.of(CourseStatus.CLOSED.getCode(), CourseStatus.ARCHIVED.getCode()));
+            if (SecurityUtil.hasRole("STUDENT")) {
+                // STUDENT只能看到APPROVED(2)和PUBLISHED(4)的课程
+                wrapper.in(Course::getStatus, List.of(
+                    CourseStatus.APPROVED.getCode(), CourseStatus.PUBLISHED.getCode()));
+            } else {
+                // 非STUDENT角色默认排除已删除（CLOSED）和已归档（ARCHIVED）
+                wrapper.notIn(Course::getStatus, List.of(
+                    CourseStatus.CLOSED.getCode(), CourseStatus.ARCHIVED.getCode()));
+            }
         }
         if (query.getRecommended() != null) {
             wrapper.eq(Course::getIsRecommended, query.getRecommended());
@@ -215,6 +221,34 @@ public class CourseQueryServiceImpl implements CourseQueryService {
             redisUtil.set(cacheKey, vo, CourseCacheConstants.COURSE_CACHE_TTL, TimeUnit.SECONDS);
         } catch (Exception e) {
             LOG.warn("[Round9-2] 课程详情缓存写入失败, id={}", id, e);
+        }
+
+        // TEACHER 隔离：教师只能查看自己的课程（P1-C）
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin() &&
+            !vo.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        // 数据隔离：CLOSED/ARCHIVED 课程对学生等非授权角色不可见（移自 Controller getById）
+        Integer statusVal = vo.getStatus();
+        if (statusVal == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程状态不能为空");
+        }
+        int st = statusVal.intValue();
+        if (st == CourseStatus.CLOSED.getCode() || st == CourseStatus.ARCHIVED.getCode()) {
+            boolean privileged = SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC");
+            boolean ownerTeacher = SecurityUtil.hasRole("TEACHER")
+                    && vo.getTeacherId() != null
+                    && vo.getTeacherId().equals(SecurityUtil.getCurrentUserId());
+            if (!privileged && !ownerTeacher) {
+                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+            }
+        }
+        // REJECTED/DRAFT 课程对 STUDENT 角色也不可见
+        if (SecurityUtil.hasRole("STUDENT")) {
+            if (st == CourseStatus.REJECTED.getCode() || st == CourseStatus.DRAFT.getCode()) {
+                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+            }
         }
 
         return vo;

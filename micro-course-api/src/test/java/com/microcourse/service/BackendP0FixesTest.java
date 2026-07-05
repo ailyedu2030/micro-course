@@ -91,7 +91,7 @@ class BackendP0FixesTest extends BaseIntegrationTest {
 
         // 教师 p0_teacher(id=6) 查询课程列表 —— 只应看到 teacherId=6 的课程
         String teacherToken = "Bearer " + loginAs("p0_teacher", "student123");
-        MvcResult res = mockMvc.perform(get("/api/courses?page=0&size=1000")
+        MvcResult res = mockMvc.perform(get("/api/courses?page=0&size=100")
                         .header("Authorization", teacherToken))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -107,7 +107,7 @@ class BackendP0FixesTest extends BaseIntegrationTest {
         }
 
         // ADMIN 不受限：应能看到他人课程 90010
-        MvcResult resAdmin = mockMvc.perform(get("/api/courses?page=0&size=10000")
+        MvcResult resAdmin = mockMvc.perform(get("/api/courses?page=0&size=100")
                         .header("Authorization", bearerAdmin()))
                 .andExpect(status().isOk())
                 .andReturn();

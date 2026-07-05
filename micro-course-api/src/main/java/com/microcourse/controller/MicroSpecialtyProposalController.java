@@ -2,6 +2,7 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.dto.RejectProposalRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyProposalRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
 import com.microcourse.service.MicroSpecialtyProposalService;
@@ -77,9 +78,8 @@ public class MicroSpecialtyProposalController {
      */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
-    public R<Void> rejectProposal(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String reason = body.getOrDefault("reason", "");
-        proposalService.rejectProposal(id, reason);
+    public R<Void> rejectProposal(@PathVariable Long id, @RequestBody RejectProposalRequest request) {
+        proposalService.rejectProposal(id, request.getReason());
         return R.ok();
     }
 

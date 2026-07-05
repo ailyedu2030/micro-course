@@ -309,6 +309,7 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         try {
             return ms.getApprovedAt().plusDays(protectionDays).isAfter(LocalDateTime.now());
         } catch (Exception e) {
+            log.warn("判断新微专业保护期失败: {}", e.getMessage());
             return false;
         }
     }

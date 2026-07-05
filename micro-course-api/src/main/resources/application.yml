@@ -69,9 +69,11 @@ spring:
       max-request-size: 500MB
 
   # 静态资源映射 - 头像文件 + 封面文件访问
+  # P0-09 修复：移除 file:./uploads/ 避免未授权文件访问
+  # 上传文件的访问统一通过 WebMvcConfig 的 /api/files/** 受控映射
   web:
     resources:
-      static-locations: classpath:/static/,file:./uploads/
+      static-locations: classpath:/static/
       add-mappings: true
 
   mvc:
@@ -91,13 +93,13 @@ jwt:
   # R8 修复 P0-1: 本地开发允许无 JWT_SECRET（JwtUtil.init 兜底），生产必须显式设置
   secret: ${JWT_SECRET:}
   # 生产建议: JWT_EXPIRATION=1800000(30分), refresh=604800000(7天)
-  expiration: ${JWT_EXPIRATION:7200000}
+  expiration: ${JWT_EXPIRATION:1800000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 # P1-1/P1-5: 视频存储与转码配置（从硬编码抽取）
 video:
   storage-base-dir: ${VIDEO_STORAGE_BASE_DIR:uploads/videos}
-  upload-dir: ${VIDEO_UPLOAD_DIR:uploads/videos}
+  # 统一使用 storage-base-dir，删除 upload-dir（已在 VideoController 中全部迁移到 storage-base-dir）
   cover-dir: ${VIDEO_COVER_DIR:uploads/covers}
   # P1-7: 视频签名独立密钥（不与 JWT 共用）
   # P1 安全：禁止 fallback 到 JWT_SECRET —— 未配置 VIDEO_SIGN_SECRET 时直接启动失败，避免静默复用 JWT 密钥

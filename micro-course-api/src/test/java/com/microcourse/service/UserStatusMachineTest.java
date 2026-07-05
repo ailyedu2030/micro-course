@@ -23,7 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Round 6 用户状态机集成测试（需 DB）。
- * 验证：状态转换白名单 / DELETED→INACTIVE 180 天恢复窗口 / 枚举契约。
+ * 验证：状态转换白名单 / DELETED→ACTIVE 180 天恢复窗口 / 枚举契约。
  */
 @DisplayName("Round 6 UserStatusMachine 集成")
 class UserStatusMachineTest extends BaseIntegrationTest {
@@ -95,19 +95,19 @@ class UserStatusMachineTest extends BaseIntegrationTest {
         Timestamp deletedAt = Timestamp.valueOf(LocalDateTime.now().minusDays(200));
         Long userId = insertUser(3, deletedAt); // DELETED 200 天前
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> userService.updateStatus(userId, req(0))); // → INACTIVE（恢复）
+                () -> userService.updateStatus(userId, req(1))); // → ACTIVE（恢复，S-05 修复）
         assertEquals(ErrorCode.DELETED_USER_RETENTION_EXPIRED.getCode(), ex.getCode());
         // 仍为 DELETED，未被恢复
         assertEquals(3, dbStatus(userId));
     }
 
     @Test
-    @DisplayName("恢复已删除 180 天内的用户应通过（status=0 且清空 deleted_at）")
+    @DisplayName("恢复已删除 180 天内的用户应通过（status=1 且清空 deleted_at）")
     void shouldAllowRestoringDeletedUserWithin180Days() {
         Timestamp deletedAt = Timestamp.valueOf(LocalDateTime.now().minusDays(30));
         Long userId = insertUser(3, deletedAt); // DELETED 30 天前
-        userService.updateStatus(userId, req(0)); // → INACTIVE（恢复）
-        assertEquals(0, dbStatus(userId));
+        userService.updateStatus(userId, req(1)); // → ACTIVE（恢复，S-05 修复）
+        assertEquals(1, dbStatus(userId));
         assertNull(dbDeletedAt(userId), "恢复后 deleted_at 应被清空");
     }
 

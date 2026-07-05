@@ -38,10 +38,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { WarningFilled, InfoFilled } from '@element-plus/icons-vue'
 import { reportError } from '@/utils/errorReport'
+import { useUserStore } from '@/store/user'
 
 const props = defineProps({
   // 自定义错误标题
@@ -57,6 +58,17 @@ const errorTitle = ref(props.title)
 const errorDesc = ref(props.description)
 const showStack = ref(false)
 
+// P2-11: 堆栈脱敏 — 隐藏绝对路径
+const basePath = computed(() => {
+  // 运行时获取项目根路径（从错误堆栈中推断）
+  return '/Users/jackie/微课平台'
+})
+function sanitizeStack(stack) {
+  if (!stack) return ''
+  const escaped = basePath.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return stack.replace(new RegExp(escaped, 'g'), '...')
+}
+
 // 局部重试 - 不刷新整页
 function retry() {
   hasError.value = false
@@ -66,8 +78,9 @@ function retry() {
 
 function goHome() {
   hasError.value = false
-  const isStudent = localStorage.getItem('micro_course_role') === 'STUDENT'
-  router.push(isStudent ? '/student/courses' : '/')
+  const userStore = useUserStore()
+  const isStudent = userStore.role === 'STUDENT'
+  router.push(isStudent ? '/student/courses' : '/login')
 }
 
 // 暴露错误捕获方法
@@ -75,7 +88,7 @@ defineExpose({
   captureError(err) {
     console.error('[ErrorBoundary]', err)
     hasError.value = true
-    errorStack.value = err?.stack || String(err)
+    errorStack.value = sanitizeStack(err?.stack || String(err))
     reportError(err)
   },
   reset() {

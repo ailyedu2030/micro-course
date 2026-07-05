@@ -42,7 +42,7 @@ public class LessonController {
 
     @PutMapping("/sort")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<Void> sort(@RequestBody List<LessonVO.SortItem> items) {
+    public R<Void> sort(@RequestBody @Valid List<LessonVO.SortItem> items) {
         lessonService.sort(items);
         return R.ok();
     }

@@ -127,7 +127,7 @@
             <el-card v-if="questionsLoading" class="question-card" shadow="never">
               <el-skeleton :rows="8" animated />
             </el-card>
-            <el-card v-else class="question-card" shadow="never">
+            <el-card v-else class="question-card" shadow="never" :data-question-index="currentIndex">
               <div class="question-type-bar">
                 <el-tag size="small" effect="plain" :type="questionTypeTagType(currentQuestion.questionType)">
                   {{ questionTypeLabel(currentQuestion.questionType) }}
@@ -354,7 +354,7 @@
           <el-card v-if="questionsLoading" class="question-card" shadow="never">
             <el-skeleton :rows="8" animated />
           </el-card>
-          <el-card v-else class="question-card" shadow="never">
+          <el-card v-else class="question-card" shadow="never" :data-question-index="currentIndex">
             <div class="question-type-bar">
               <el-tag size="small" effect="plain" :type="questionTypeTagType(currentQuestion.questionType)">
                 {{ questionTypeLabel(currentQuestion.questionType) }}
@@ -518,6 +518,34 @@
             </template>
           </template>
         </div>
+
+        <!-- 浮动答题卡（移动端） -->
+        <teleport to="body">
+          <div class="answer-sheet-fab" @click="sheetVisible = !sheetVisible">
+            <el-icon><Grid /></el-icon>
+            <span>答题卡</span>
+          </div>
+          <transition name="fade">
+            <div v-if="sheetVisible" class="answer-sheet-overlay" @click="sheetVisible = false"></div>
+          </transition>
+          <transition name="slide-up">
+            <div v-if="sheetVisible" class="answer-sheet-panel">
+              <div class="answer-sheet-header">
+                <span>答题卡</span>
+                <span class="sheet-progress">{{ answeredCount }}/{{ totalQuestions }}</span>
+                <el-button text @click="sheetVisible = false">✕</el-button>
+              </div>
+              <div class="answer-sheet-grid">
+                <div v-for="(q, idx) in questions" :key="q.id"
+                  class="answer-sheet-item"
+                  :class="{ answered: answers[q.id], current: currentIndex === idx }"
+                  @click="jumpToQuestion(idx); sheetVisible = false">
+                  {{ idx + 1 }}
+                </div>
+              </div>
+            </div>
+          </transition>
+        </teleport>
       </template>
 
       <!-- ===== 结果展示 ===== -->
@@ -527,12 +555,11 @@
         width="440px"
         style="max-width: 500px;"
         :close-on-click-modal="false"
-        :show-close="false"
-       :close-on-press-escape="true"
+        :close-on-press-escape="true"
 >
         <div class="result-content">
           <div class="result-score" :class="resultPassed ? 'passed' : 'failed'">
-            <div class="score-number">{{ submitResult.score }}</div>
+            <div class="score-number">{{ submitResult.needsManualGrading && submitResult.score === 0 ? '待批改' : submitResult.score }}</div>
             <div class="score-label">得分</div>
             <div class="score-total">满分 {{ submitResult.totalScore }}</div>
           </div>
@@ -547,6 +574,10 @@
           </div>
           <div class="result-detail">
             答对 {{ correctCount }} / {{ totalQuestions }} 题
+          </div>
+          <div v-if="submitResult.needsManualGrading" class="result-manual-hint">
+            <el-icon><WarningFilled /></el-icon>
+            <span>部分题目需教师批改，最终成绩可能变化</span>
           </div>
         </div>
         <template #footer>
@@ -563,7 +594,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Close, Timer, Loading } from '@element-plus/icons-vue'
+import { Check, Close, Grid, Timer, Loading, WarningFilled } from '@element-plus/icons-vue'
 import { getExercises, getExerciseById, submitExerciseRecord } from '@/api/exercise'
 import { getQuestionById } from '@/api/question'
 import { getMyAttemptCount } from '@/api/exercise-record'
@@ -588,6 +619,7 @@ const exerciseList = ref([])
 const exerciseStarted = ref(false)
 const submitting = ref(false)
 const submitted = ref(false)
+const sheetVisible = ref(false)
 
 const chapterId = computed(() => route.params.chapterId)
 
@@ -606,7 +638,7 @@ let elapsedTimerInterval = null
 const totalQuestions = computed(() => questionIds.value.length)
 const progressPercent = computed(() => {
   if (totalQuestions.value === 0) return 0
-  return Math.round(((currentIndex.value + 1) / totalQuestions.value) * 100)
+  return Math.round((answeredCount.value / totalQuestions.value) * 100)
 })
 
 const currentQuestion = computed(() => {
@@ -617,6 +649,11 @@ const currentQuestion = computed(() => {
 const timeLimit = computed(() => currentExercise.value?.timeLimit || 0)
 const maxAttempts = computed(() => currentExercise.value?.maxAttempts || 999)
 const attemptNo = ref(1)
+
+// P1-C: 超时倒计时警告标记
+let warned60 = false
+let warned30 = false
+let warned10 = false
 
 const canRetry = computed(() => attemptNo.value < maxAttempts.value)
 
@@ -660,6 +697,10 @@ function isQuestionWrong(qId) {
 
 function jumpToQuestion(idx) {
   currentIndex.value = idx
+  nextTick(() => {
+    const el = document.querySelector('.question-card')
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
 }
 
 // ===== 结果 =====
@@ -739,6 +780,8 @@ async function startExercise(exercise) {
   try {
     const { data } = await getExerciseById(exercise.id)
     currentExercise.value = data
+    // A11Y-030: 设置页面标题
+    document.title = (data.title || '随堂练习') + ' - 微课平台'
 
     // 加载每个题目的完整内容
     const ids = (data.questions || []).map(q => q.questionId)
@@ -805,12 +848,20 @@ const elapsedStartAt = ref(0)     // 已用计时器基准
 function startTimer() {
   clearTimer()
   timerStartAt.value = performance.now()
+  // P1-C: 每次启动计时器时重置倒计时警告标记
+  warned60 = false
+  warned30 = false
+  warned10 = false
   timerInterval = setInterval(() => {
     // 使用 performance.now() 计算实际经过秒数，避免 setInterval 漂移
     const elapsed = Math.floor((performance.now() - timerStartAt.value) / 1000)
     const totalSeconds = currentExercise.value?.timeLimit ? currentExercise.value.timeLimit * 60 : 0
     const remaining = Math.max(0, totalSeconds - elapsed)
     timeLeft.value = remaining
+    // P1-C: 超时倒计时警告
+    if (remaining <= 60 && remaining > 58 && !warned60) { warned60 = true; ElMessage.warning('还剩 60 秒') }
+    if (remaining <= 30 && remaining > 28 && !warned30) { warned30 = true; ElMessage.warning('还剩 30 秒') }
+    if (remaining <= 10 && remaining > 8 && !warned10) { warned10 = true; ElMessage.warning('还剩 10 秒') }
     if (remaining <= 0) {
       clearTimer()
       ElMessage.warning('时间到，自动提交！')
@@ -827,8 +878,10 @@ function clearTimer() {
 }
 
 function formatTimeLeft(seconds) {
-  const m = Math.floor(seconds / 60)
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
   const s = seconds % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
@@ -868,63 +921,67 @@ function nextQuestion() {
 
 // ===== 提交 =====
 async function handleSubmit() {
-  // 检查是否所有题都答了（包括多选题）
-  const unanswered = questionIds.value.filter(id => !isQuestionAnswered(id))
-  if (unanswered.length > 0) {
-    try {
-      await ElMessageBox.confirm(
-        `还有 ${unanswered.length} 题未作答，确定要提交吗？`,
-        '未完成提示',
-        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
-      )
-    } catch {
-      // 用户选择继续答题 → 跳转到第一个未答题目
-      const firstUnansweredIdx = questionIds.value.findIndex(id => !isQuestionAnswered(id))
-      if (firstUnansweredIdx >= 0) currentIndex.value = firstUnansweredIdx
-      return
+  if (submitting.value) return // 防重复提交（在 confirm 前即锁定）
+  submitting.value = true
+  try {
+    // 检查是否所有题都答了（包括多选题）
+    const unanswered = questionIds.value.filter(id => !isQuestionAnswered(id))
+    if (unanswered.length > 0) {
+      try {
+        await ElMessageBox.confirm(
+          `还有 ${unanswered.length} 题未作答，确定要提交吗？`,
+          '未完成提示',
+          { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+        )
+      } catch {
+        // 用户选择继续答题 → 跳转到第一个未答题目
+        const firstUnansweredIdx = questionIds.value.findIndex(id => !isQuestionAnswered(id))
+        if (firstUnansweredIdx >= 0) currentIndex.value = firstUnansweredIdx
+        submitting.value = false
+        return
+      }
     }
-  }
-  // 检查多选题是否完整作答（仅选1项可能不完整）
-  const partialMultiples = questionIds.value.filter(id => {
-    const q = questions.value.find(q => q.id === id)
-    if (!q || q.questionType !== 'MULTIPLE') return false
-    const arr = multipleAnswers[id]
-    return Array.isArray(arr) && arr.length === 1
-  })
-  if (partialMultiples.length > 0) {
-    try {
-      await ElMessageBox.confirm(
-        `有 ${partialMultiples.length} 道多选题仅选了 1 个选项，可能未完整作答，确定提交吗？`,
-        '多选题提示',
-        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
-      )
-    } catch {
-      const firstPartialIdx = questionIds.value.findIndex(id => partialMultiples.includes(id))
-      if (firstPartialIdx >= 0) currentIndex.value = firstPartialIdx
-      return
+    // 检查多选题是否完整作答（仅选1项可能不完整）
+    const partialMultiples = questionIds.value.filter(id => {
+      const q = questions.value.find(q => q.id === id)
+      if (!q || q.questionType !== 'MULTIPLE') return false
+      const arr = multipleAnswers[id]
+      return Array.isArray(arr) && arr.length === 1
+    })
+    if (partialMultiples.length > 0) {
+      try {
+        await ElMessageBox.confirm(
+          `有 ${partialMultiples.length} 道多选题仅选了 1 个选项，可能未完整作答，确定提交吗？`,
+          '多选题提示',
+          { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+        )
+      } catch {
+        const firstPartialIdx = questionIds.value.findIndex(id => partialMultiples.includes(id))
+        if (firstPartialIdx >= 0) currentIndex.value = firstPartialIdx
+        submitting.value = false
+        return
+      }
     }
+    await doSubmit()
+  } catch (e) {
+    submitting.value = false
+    throw e
   }
-  await doSubmit()
 }
 
 async function doSubmit() {
-  if (submitting.value) return // 防重复提交
-  clearTimer()
-  clearElapsedTimer()
+  // submitting 已由 handleSubmit 在 confirm 前设置为 true，此处确保状态
   submitting.value = true
-  submitted.value = true
 
   if (!currentExercise.value?.id) {
     ElMessage.error('练习信息缺失，请刷新重试')
     submitting.value = false
-    submitted.value = false
     return
   }
   const userId = userStore.userInfo?.id
   if (!userId) {
     ElMessage.error('用户未登录，请重新登录')
     submitting.value = false
-    submitted.value = false
     return
   }
 
@@ -944,11 +1001,18 @@ async function doSubmit() {
       duration,
       attemptNo: attemptNo.value
     })
+    // API 成功后才停止计时器、标记已提交
+    clearTimer()
+    clearElapsedTimer()
+    submitted.value = true
     submitResult.value = data
     resultVisible.value = true
+    if (data.needsManualGrading) {
+      ElMessage.info('部分题目需教师批改，最终成绩可能变化')
+    }
   } catch {
     ElMessage.error('提交失败，请重试')
-    submitted.value = false
+    // submitted 保持 false，计时器继续运行，用户可重试
   } finally {
     submitting.value = false
   }
@@ -1630,6 +1694,18 @@ function formatCorrectAnswer(q) {
   color: var(--el-text-color-secondary);
 }
 
+.result-manual-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs, 12px);
+  color: var(--el-color-warning);
+  background: var(--el-color-warning-light-9);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-2) var(--space-3);
+  width: 100%;
+}
+
 /* ===== 全局按钮指针 ===== */
 .exercise-take-page :deep(.el-button) {
   cursor: pointer;
@@ -1657,5 +1733,134 @@ function formatCorrectAnswer(q) {
   .card-actions .el-button {
     width: 100%;
   }
+}
+
+/* ===== 浮动答题卡（移动端）===== */
+.answer-sheet-fab {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: var(--role-primary, #409eff);
+  color: #fff;
+  font-size: 10px;
+  gap: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.answer-sheet-fab:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.answer-sheet-fab .el-icon {
+  font-size: 20px;
+}
+
+.answer-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+}
+
+.answer-sheet-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 50vh;
+  background: #fff;
+  border-radius: 12px 12px 0 0;
+  z-index: 10001;
+  overflow-y: auto;
+  padding: 16px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.answer-sheet-panel .answer-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.sheet-progress {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  font-weight: normal;
+}
+
+.answer-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.answer-sheet-item {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #f0f0f0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-text-color-secondary);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.answer-sheet-item:active {
+  transform: scale(0.9);
+}
+
+.answer-sheet-item.answered {
+  background: #67c23a;
+  color: #fff;
+}
+
+.answer-sheet-item.current {
+  border: 2px solid #409eff;
+  background: #ecf5ff;
+  color: #409eff;
+}
+
+/* 过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
 }
 </style>

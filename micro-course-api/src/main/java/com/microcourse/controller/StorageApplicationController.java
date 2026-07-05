@@ -5,8 +5,6 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.storage.*;
-import com.microcourse.entity.MicroSpecialtyProposal;
-import com.microcourse.repository.MicroSpecialtyProposalRepository;
 import com.microcourse.service.StorageApplicationService;
 import com.microcourse.service.StorageApplicationExportService;
 import com.microcourse.util.SecurityUtil;
@@ -35,15 +33,12 @@ public class StorageApplicationController {
 
     private final StorageApplicationService storageApplicationService;
     private final StorageApplicationExportService exportService;
-    private final MicroSpecialtyProposalRepository proposalRepository;
 
     public StorageApplicationController(
             StorageApplicationService storageApplicationService,
-            StorageApplicationExportService exportService,
-            MicroSpecialtyProposalRepository proposalRepository) {
+            StorageApplicationExportService exportService) {
         this.storageApplicationService = storageApplicationService;
         this.exportService = exportService;
-        this.proposalRepository = proposalRepository;
     }
 
     /**
@@ -78,6 +73,8 @@ public class StorageApplicationController {
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
     public R<StorageApplicationVO> getDetail(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
+        // P0-03 修复：添加 owner 校验，与 exportWord()/exportPdf() 方法一致，防止 IDOR
+        storageApplicationService.validateOwner(id, userId);
         return R.ok(storageApplicationService.getDetail(id, userId));
     }
 
@@ -147,7 +144,7 @@ public class StorageApplicationController {
         // 校验 owner 权限，防止 IDOR（P0 安全修复）
         storageApplicationService.validateOwner(id, userId);
         byte[] bytes = exportService.exportWord(id);
-        String schoolName = resolveSchoolName(id);
+        String schoolName = storageApplicationService.resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".docx";
 
@@ -173,7 +170,7 @@ public class StorageApplicationController {
         // 校验 owner 权限，防止 IDOR（P0 安全修复）
         storageApplicationService.validateOwner(id, userId);
         byte[] bytes = exportService.exportPdf(id);
-        String schoolName = resolveSchoolName(id);
+        String schoolName = storageApplicationService.resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf";
 
@@ -223,20 +220,4 @@ public class StorageApplicationController {
         return R.ok();
     }
 
-    /**
-     * P2-3 fix (R-008): 使用轻量级查询替代 getDetail() 以避免导出时重复查询。
-     * getDetail() 会联查所有子表 + 用户名/院系名，而导出文件名仅需 title 字段。
-     *
-     * <p>R-003 fix: 对用户可控的标题进行文件名校验，移除路径遍历和特殊字符。</p>
-     */
-    private String resolveSchoolName(Long proposalId) {
-        try {
-            MicroSpecialtyProposal p = proposalRepository.selectById(proposalId);
-            String name = p != null && p.getTitle() != null ? p.getTitle() : "申报高校";
-            // Sanitize: remove characters unsafe for filenames across OS
-            return name.replaceAll("[/\\\\:*?\"<>|]", "").trim();
-        } catch (Exception e) {
-            return "申报高校";
-        }
-    }
 }

@@ -7,7 +7,7 @@
 <template>
   <div class="achievement-wall">
     <!-- 面包屑导航 -->
-    <el-breadcrumb class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item>成就墙</el-breadcrumb-item>
     </el-breadcrumb>

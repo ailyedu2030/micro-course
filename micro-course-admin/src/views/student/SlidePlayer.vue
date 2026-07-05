@@ -166,15 +166,17 @@ v-for="s in speeds" :key="s"
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
+import { getLearningProgress, createLearningProgress, updateLearningProgress } from '@/api/learning-progress'
 import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loading, RefreshRight, PictureFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const courseId = computed(() => route.params.courseId)
+const chapterId = computed(() => route.query.chapterId)
 
 const pages = ref([])
 const current = ref(0)
@@ -208,7 +210,7 @@ async function loadPages() {
   pageLoading.value = true
   pageError.value = false
   try {
-    const res = await getSlidePages(courseId.value)
+    const res = await getSlidePages(courseId.value, chapterId.value)
     pages.value = res.data || []
     for (const page of pages.value) {
       const idx = page.pageNumber - 1
@@ -372,7 +374,49 @@ function formatTime(s) {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 }
 
+// P0-2: 创建/获取进度记录
+async function ensureProgress() {
+  if (!courseId.value) return
+  try {
+    const existing = await getLearningProgress({ courseId: courseId.value })
+    const records = existing.data || []
+    const slideRecord = records.find(r => r.chapterId === Number(chapterId.value))
+    if (!slideRecord) {
+      await createLearningProgress({
+        courseId: courseId.value,
+        chapterId: chapterId.value ? Number(chapterId.value) : undefined,
+      })
+    }
+  } catch (e) { if (courseId.value) console.warn('[SlidePlayer] ensureProgress failed', e.message) }
+}
+
+// P0-2: 翻到最后一页时标记完成
+async function markSlideComplete() {
+  if (!courseId.value) return
+  try {
+    const existing = await getLearningProgress({ courseId: courseId.value })
+    const records = existing.data || []
+    const slideRecord = records.find(r => r.chapterId === Number(chapterId.value))
+    if (slideRecord?.id) {
+      await updateLearningProgress(slideRecord.id, { completed: true })
+    } else {
+      await createLearningProgress({
+        courseId: courseId.value,
+        chapterId: chapterId.value ? Number(chapterId.value) : undefined,
+        completed: true,
+      })
+    }
+  } catch { /* 静默 */ }
+}
+
+// P0-2: 翻到最后一页时触发完成标记
+watch(current, (newVal) => {
+  if (pages.value.length <= 1) return  // 单页不标记完成
+  if (newVal >= pages.value.length - 1) markSlideComplete()
+})
+
 onMounted(async () => {
+  await ensureProgress()
   await loadPages()
   if (pages.value.length > 0) loadAudio(0)
   playerRef.value?.focus()

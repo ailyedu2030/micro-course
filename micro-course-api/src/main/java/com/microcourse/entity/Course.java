@@ -74,6 +74,7 @@ public class Course {
     @TableField("pricing_reviewed_by")
     private Long pricingReviewedBy;
 
+    @TableField("is_free")
     private Boolean isFree;
 
     @TableLogic(value = "NULL", delval = "now()")

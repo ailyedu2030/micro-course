@@ -190,12 +190,11 @@ const rules = {
   ]
 }
 
-const isDev = import.meta.env.DEV
-const quickAccounts = isDev ? [
-  { label: '管理员', type: 'danger', username: 'admin', password: 'admin123' },
-  { label: '教务处', type: 'warning', username: 'academic', password: 'password123' },
-  { label: '教师', type: 'success', username: 'teacher', password: 'password123' },
-  { label: '学生', type: 'primary', username: 'student', password: 'password123' }
+const quickAccounts = import.meta.env.DEV ? [
+  { label: '管理员', type: 'danger', username: import.meta.env.VITE_DEMO_ADMIN_USER || 'admin', password: import.meta.env.VITE_DEMO_ADMIN_PASS || 'admin123' },
+  { label: '教务处', type: 'warning', username: import.meta.env.VITE_DEMO_ACADEMIC_USER || 'academic', password: import.meta.env.VITE_DEMO_ACADEMIC_PASS || 'password123' },
+  { label: '教师', type: 'success', username: import.meta.env.VITE_DEMO_TEACHER_USER || 'p0_teacher', password: import.meta.env.VITE_DEMO_TEACHER_PASS || 'teacher123' },
+  { label: '学生', type: 'primary', username: import.meta.env.VITE_DEMO_STUDENT_USER || 'student', password: import.meta.env.VITE_DEMO_STUDENT_PASS || 'student123' }
 ] : []
 
 const fillAccount = (acc) => {

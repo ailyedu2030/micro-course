@@ -31,8 +31,8 @@
             </ol>
             <el-button type="primary" class="mg-top-12" @click="$router.push('/teacher/micro-specialties/proposals')">立即申报微专业</el-button>
           </el-empty>
-          <div v-for="item in list" :key="item.id" class="ms-card">
-            <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
+            <div v-for="item in list" :key="item.id" class="ms-card" @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')" style="cursor:pointer">
+              <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
             <div class="card-body">
               <div class="card-header-row">
                 <span class="card-title">{{ item.title }}</span>
@@ -59,7 +59,7 @@
        <el-tab-pane label="我参与的" name="participating">
          <div v-loading="loading" class="card-grid">
            <el-empty v-if="!loading && list.length === 0" description="暂无参与的微专业" />
-           <div v-for="item in list" :key="item.id" class="ms-card">
+           <div v-for="item in list" :key="item.id" class="ms-card" @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')" style="cursor:pointer">
              <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
              <div class="card-body">
                <div class="card-header-row">
@@ -115,11 +115,11 @@
 
     <div class="action-bar mg-top-16">
       <el-button type="primary" @click="$router.push('/teacher/micro-specialties/proposals')">提交申报</el-button>
-      <el-button v-if="userStore.role === 'ACADEMIC'" @click="showCreateDialog">创建微专业</el-button>
+      <el-button v-if="userStore.role === 'ACADEMIC'" @click="showCreateDialog">新增微专业</el-button>
     </div>
 
     <!-- 创建微专业 Dialog -->
-    <el-dialog v-model="createVisible" title="创建微专业" width="560px" @closed="resetCreateForm">
+    <el-dialog v-model="createVisible" title="新增微专业" width="560px" @closed="resetCreateForm">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="createForm.title" placeholder="微专业名称" />
@@ -141,7 +141,7 @@
       </el-form>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
+        <el-button type="primary" :loading="creating" :disabled="creating" @click="handleCreate">新增</el-button>
       </template>
     </el-dialog>
   </div>

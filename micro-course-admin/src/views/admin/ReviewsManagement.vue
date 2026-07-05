@@ -5,7 +5,7 @@
 -->
 <template>
   <div class="reviews-page">
-    <el-breadcrumb separator="/" class="page-breadcrumb">
+    <el-breadcrumb separator="→" class="page-breadcrumb">
       <el-breadcrumb-item>课程管理</el-breadcrumb-item>
       <el-breadcrumb-item>评价管理</el-breadcrumb-item>
     </el-breadcrumb>
@@ -60,7 +60,7 @@
           :total="totalElements"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
-          @size-change="fetchData"
+          @size-change="handleSizeChange"
           @current-change="fetchData"
 />
       </div>
@@ -87,7 +87,8 @@ async function fetchData() {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch (err) {
-    ElMessage.error('加载评价列表失败')
+    tableData.value = []
+    ElMessage.error('获取数据失败')
   } finally {
     loading.value = false
   }
@@ -95,10 +96,13 @@ async function fetchData() {
 
 async function handleApprove(row) {
   try {
+    await ElMessageBox.confirm('确认通过该评价？', '操作确认', { confirmButtonText: '通过', cancelButtonText: '取消', type: 'warning' })
     await approveReview(row.id)
     ElMessage.success('已通过')
     fetchData()
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  }
 }
 
 async function handleReject(row) {
@@ -121,6 +125,11 @@ async function handleDelete(row) {
     ElMessage.success('已删除')
     fetchData()
   } catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
+}
+
+function handleSizeChange() {
+  page.value = 1
+  fetchData()
 }
 
 function formatDate(iso) {
