@@ -110,7 +110,8 @@ public class AuthServiceImpl implements AuthService {
 
         // Step 3: 创建学生用户（status=1 ACTIVE，无需管理员审核）
         User user = new User();
-        user.setUsername(request.getUsername());
+        // P1-I-06: XSS 清洗用户名字段
+        user.setUsername(XssSanitizer.sanitizePlainText(request.getUsername()));
         user.setPassword(passwordEncoder.encode(password));
         user.setRealName(request.getUsername()); // 默认使用用户名作为姓名
         user.setRole(UserRole.STUDENT);
@@ -121,10 +122,10 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("[Register] 学生自助注册成功 username={} userId={}", LogSanitizer.sanitizeForLog(request.getUsername()), user.getId());
 
-        // Step 4: 自动登录 - 生成 JWT
+        // Step 4: 自动登录 - 生成 JWT(首次注册无旧 token,tokenGen=0)
         String accessToken = jwtUtil.generateToken(
                 user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), 0L);
 
         // Step 5: 记录操作日志
         OperationLog logEntry = new OperationLog();
@@ -196,10 +197,12 @@ public class AuthServiceImpl implements AuthService {
                 queryService.clearLoginFailureQuietly("ip:" + clientIp);
             }
 
-            // Step 6: 生成 JWT
+            // Step 6: 递增 token 代数(旧 refreshToken 失效) + 生成 JWT
+            long newTokenGen = redisUtil.incrementTokenGeneration(user.getId());
+            if (newTokenGen == 0) newTokenGen = 1; // 兜底:确保从 1 开始
             String accessToken = jwtUtil.generateToken(
                     user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
-            String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+            String refreshToken = jwtUtil.generateRefreshToken(user.getId(), newTokenGen);
 
             // Step 7: 更新 lastLoginAt
             user.setLastLoginAt(LocalDateTime.now());
@@ -237,44 +240,57 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse refresh(String refreshToken) {
-        // Step 0: IP 级别防刷新 — 同一 IP 每小时最多刷新 20 次
+        // ===== P0-S04 修复:先检查黑名单(不验证 JWT 签名),再验证签名 =====
+        // Step -1: 提取 jti 不验证签名 — 若已黑名单则立即拒绝,避免在作废 token 上浪费签名验证
+        String preJti = jwtUtil.getJtiUnverified(refreshToken);
+        if (preJti != null && redisUtil.isTokenBlacklisted(preJti)) {
+            log.warn("[Auth] 黑名单中的 refreshToken 被使用 jti={}", preJti);
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+
+        // Step 0: IP 级别防刷新 — 同一 IP 每小时最多刷新 20 次(P0-L02 修复:独立 key,不与登录失败计数共享)
         String clientIp = IpUtil.getClientIp();
         if (clientIp != null) {
-            int refreshCount = queryService.getLoginFailureCount("refresh:" + clientIp);
+            int refreshCount = queryService.getRefreshCount(clientIp);
             if (refreshCount >= 20) {
                 throw new BusinessException(ErrorCode.TOKEN_INVALID);
             }
         }
-        // Step 0.5: 记录 refresh 尝试
-        if (clientIp != null) queryService.incrLoginFailureQuietly("refresh:" + clientIp);
+        // Step 0.5: 记录 refresh 尝试(独立计数器)
+        if (clientIp != null) queryService.incrRefreshCountQuietly(clientIp);
 
-        // Step 1: 验证 refreshToken 有效性
+        // Step 1: 验证 refreshToken 签名 + 过期
         if (!jwtUtil.validateRefreshToken(refreshToken)) {
             throw new BusinessException(ErrorCode.TOKEN_INVALID);
         }
-        // Step 2: 从 refreshToken 提取 userId + jti
+        // Step 2: 从 refreshToken 提取 userId
         Long userId = jwtUtil.getUserIdFromToken(refreshToken);
-        // Step 2.5: 检查旧 refreshToken 是否已被轮换(防重放)
+
+        // Step 2.5: 校验 token 代数 — 若用户已重新登录(login 递增了代数),旧 refreshToken 失效
         try {
-            String jti = jwtUtil.getJtiFromToken(refreshToken);
-            if (jti != null && redisUtil.isTokenBlacklisted(jti)) {
-                log.warn("[Auth] 旧 refreshToken 被重复使用 userId={} jti={}, 疑似 token 被盗用", userId, jti);
+            long tokenGen = jwtUtil.getTokenGeneration(refreshToken);
+            long currentGen = redisUtil.getTokenGeneration(userId);
+            if (currentGen > 0 && tokenGen < currentGen) {
+                log.warn("[Auth] 旧代 refreshToken 被使用 userId={} tokenGen={} currentGen={}",
+                        userId, tokenGen, currentGen);
                 throw new BusinessException(ErrorCode.TOKEN_INVALID);
             }
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.warn("[Auth] refresh token 黑名单检查失败 userId={}", userId, e);
+            log.warn("[Auth] token generation 检查失败 userId={}", userId, e);
         }
+
         // Step 3: 查找用户
         User user = userRepository.selectById(userId);
         if (user == null || user.getStatus() != 1) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        // Step 4: 生成新的 accessToken + refreshToken
+        // Step 4: 生成新的 accessToken + refreshToken(携带当前 token 代数)
+        long currentTokenGen = Math.max(redisUtil.getTokenGeneration(userId), 0L);
         String newAccessToken = jwtUtil.generateToken(
                 user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
-        String newRefreshToken = jwtUtil.generateRefreshToken(user.getId());
+        String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), currentTokenGen);
         // Step 4.5: 作废旧 refreshToken(旋转机制,防重放攻击)
         try {
             String oldJti = jwtUtil.getJtiFromToken(refreshToken);
@@ -482,10 +498,12 @@ public class AuthServiceImpl implements AuthService {
             userRepository.updateById(user);
         }
 
-        // Step 5: 生成 JWT
+        // Step 5: 递增 token 代数(旧 refreshToken 失效) + 生成 JWT
+        long casTokenGen = redisUtil.incrementTokenGeneration(user.getId());
+        if (casTokenGen == 0) casTokenGen = 1; // 兜底:确保从 1 开始
         String accessToken = jwtUtil.generateToken(
                 user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), casTokenGen);
 
         // Step 6: 更新 lastLoginAt
         user.setLastLoginAt(LocalDateTime.now());

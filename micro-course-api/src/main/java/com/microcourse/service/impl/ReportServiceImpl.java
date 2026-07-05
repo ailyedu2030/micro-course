@@ -12,6 +12,7 @@ import com.microcourse.entity.DiscussionComment;
 import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.ReviewReport;
 import com.microcourse.entity.User;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseReviewRepository;
@@ -19,7 +20,10 @@ import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.ReviewReportRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.service.NotificationService;
 import com.microcourse.service.ReportService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +39,8 @@ import java.util.stream.Collectors;
 @Service
 public class ReportServiceImpl implements ReportService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReportServiceImpl.class);
+
     private final ReviewReportRepository reviewReportRepository;
     private final UserRepository userRepository;
     private final CourseReviewRepository courseReviewRepository;
@@ -42,19 +48,23 @@ public class ReportServiceImpl implements ReportService {
     private final DiscussionCommentRepository discussionCommentRepository;
     /** P1-24: 举报频率限制 */
     private final StringRedisTemplate stringRedisTemplate;
+    /** P1C: 通知服务 */
+    private final NotificationService notificationService;
 
     public ReportServiceImpl(ReviewReportRepository reviewReportRepository,
                              UserRepository userRepository,
                              CourseReviewRepository courseReviewRepository,
                              DiscussionPostRepository discussionPostRepository,
                              DiscussionCommentRepository discussionCommentRepository,
-                             StringRedisTemplate stringRedisTemplate) {
+                             StringRedisTemplate stringRedisTemplate,
+                             NotificationService notificationService) {
         this.reviewReportRepository = reviewReportRepository;
         this.userRepository = userRepository;
         this.courseReviewRepository = courseReviewRepository;
         this.discussionPostRepository = discussionPostRepository;
         this.discussionCommentRepository = discussionCommentRepository;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -156,12 +166,18 @@ public class ReportServiceImpl implements ReportService {
             // 驳回: 内容保留, 标记已驳回
             report.setStatus(1);
             reviewReportRepository.updateById(report);
+            // P1C: 通知被举报人——举报已驳回，内容保留
+            notifyReportedUser(report, "举报已驳回",
+                    "您被举报的内容经审核未发现违规，内容已保留");
 
         } else if ("REMOVE".equals(action)) {
             // 通过并删除: 标记已处理, 删除被举报内容
             report.setStatus(2);
             reviewReportRepository.updateById(report);
             deleteReportedContent(report.getReportedItemType(), report.getReportedItemId());
+            // P1C: 通知被举报人——内容因举报已被删除
+            notifyReportedUser(report, "内容已被删除",
+                    "您的内容因违反平台规则已被删除");
 
         } else {
             throw new BusinessException(ErrorCode.REPORT_INVALID_ACTION);
@@ -184,6 +200,48 @@ public class ReportServiceImpl implements ReportService {
                 break;
             default:
                 throw new BusinessException(ErrorCode.REPORT_INVALID_TYPE);
+        }
+    }
+
+    /**
+     * P1C: 通知被举报人——查询被举报内容的作者，发送异步通知
+     */
+    private void notifyReportedUser(ReviewReport report, String title, String content) {
+        try {
+            Long targetUserId = findReportedUserId(report.getReportedItemType(), report.getReportedItemId());
+            if (targetUserId != null) {
+                // status=1(已驳回)→REPORT_DISMISSED, status=2(已处理)→REPORT_RESOLVED
+                NotificationType type = report.getStatus() == 1
+                        ? NotificationType.REPORT_DISMISSED
+                        : NotificationType.REPORT_RESOLVED;
+                notificationService.notifyAsync(targetUserId, type, title, content, report.getReportedItemId());
+            }
+        } catch (Exception e) {
+            log.warn("[Report] 发送被举报人通知失败 reportId={} type={} itemId={}",
+                    report.getId(), report.getReportedItemType(), report.getReportedItemId(), e);
+        }
+    }
+
+    /**
+     * 根据被举报内容类型和 ID 查找内容作者
+     */
+    private Long findReportedUserId(String itemType, Long itemId) {
+        if (itemId == null) return null;
+        switch (itemType) {
+            case "REVIEW": {
+                CourseReview review = courseReviewRepository.selectById(itemId);
+                return review != null ? review.getUserId() : null;
+            }
+            case "DISCUSSION_POST": {
+                DiscussionPost post = discussionPostRepository.selectById(itemId);
+                return post != null ? post.getUserId() : null;
+            }
+            case "DISCUSSION_COMMENT": {
+                DiscussionComment comment = discussionCommentRepository.selectById(itemId);
+                return comment != null ? comment.getUserId() : null;
+            }
+            default:
+                return null;
         }
     }
 

@@ -112,6 +112,25 @@ public final class SecurityUtil {
     }
 
     /**
+     * 统一自审批阻断校验
+     * <p>当审核人(reviewerId)与资源所有者(ownerId)相同时抛出 {@link BusinessException}
+     * 使用 {@link ErrorCode#CANNOT_APPROVE_SELF}。
+     *
+     * @param reviewerId 审核人用户 ID（当前登录用户）
+     * @param ownerId    资源所有者用户 ID（申报人/课程教师/负责人）
+     * @param message    自定义错误消息
+     * @throws BusinessException 当 reviewerId 等于 ownerId 时
+     */
+    public static void assertNotSelf(Long reviewerId, Long ownerId, String message) {
+        if (reviewerId == null || ownerId == null) {
+            return; // 缺少比对信息时跳过（保持向后兼容）
+        }
+        if (reviewerId.equals(ownerId)) {
+            throw new BusinessException(ErrorCode.CANNOT_APPROVE_SELF, message);
+        }
+    }
+
+    /**
      * 获取当前用户 ID，异常时返回 null 而非抛异常
      *
      * @return 当前用户 ID 或 null

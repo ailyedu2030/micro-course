@@ -224,8 +224,8 @@ public class UserStatusServiceImpl implements UserStatusService {
                 log.info("[P0-009] 用户禁用从 WAITLIST 移除: userId={}, count={}", userId, removedWaitlist);
             }
         } catch (Exception e) {
-            log.error("[P0-009] 用户禁用级联 enrollment 失败 userId={}", userId, e);
-            // 不阻断主流程，但记录错误
+            log.error("[P0-009] 用户禁用级联 enrollment 失败 userId={}，触发事务回滚", userId, e);
+            throw new RuntimeException("级联禁用选课失败", e);
         }
     }
 

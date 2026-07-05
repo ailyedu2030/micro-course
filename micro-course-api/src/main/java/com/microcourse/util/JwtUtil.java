@@ -91,19 +91,30 @@ public class JwtUtil {
 
     /**
      * 生成 refreshToken
-     * claims: sub(userId), jti(UUID), iat, exp
+     * claims: sub(userId), jti(UUID), iat, exp, tokenGen
+     * @param userId 用户 ID
+     * @param tokenGeneration token 代数(每次登录递增,用于在 refresh 时校验旧 token 已被登录作废)
      */
-    public String generateRefreshToken(Long userId) {
+    public String generateRefreshToken(Long userId, Long tokenGeneration) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + refreshExpiration);
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("jti", UUID.randomUUID().toString())
+                .claim("tokenGen", tokenGeneration)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getKey())
                 .compact();
+    }
+
+    /**
+     * 生成 refreshToken(不携带 tokenGeneration,兼容旧调用方)
+     * 等价于 generateRefreshToken(userId, 0L)
+     */
+    public String generateRefreshToken(Long userId) {
+        return generateRefreshToken(userId, 0L);
     }
 
     /**
@@ -205,6 +216,27 @@ public class JwtUtil {
     }
 
     /**
+     * 提取 jti 而不验证 JWT 签名 — P0-S04 修复:在检查黑名单之前快速获取 jti，
+     * 避免在已作废的 token 上浪费 CPU 进行签名验证。
+     * 如果 token 无法解析(格式错误等),返回 null。
+     */
+    public String getJtiUnverified(String token) {
+        try {
+            Object body = Jwts.parser()
+                    .build()
+                    .parse(token)
+                    .getBody();
+            if (body instanceof io.jsonwebtoken.Claims claims) {
+                return claims.get("jti", String.class);
+            }
+            return null;
+        } catch (Exception e) {
+            log.warn("Failed to parse JWT for jti (unverified): {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * 从 token 提取 jti
      */
     public String getJtiFromToken(String token) {
@@ -221,6 +253,24 @@ public class JwtUtil {
         if (exp == null) return 0;
         long remaining = (exp.getTime() - System.currentTimeMillis()) / 1000;
         return Math.max(0, remaining);
+    }
+
+    /**
+     * 从 token 提取 tokenGeneration(P0-S04 修复:登录后旧 refreshToken 失效校验)
+     * 若 token 中无此 claim 或解析失败,返回 0(兼容旧 token)
+     */
+    public long getTokenGeneration(String token) {
+        try {
+            Claims claims = getClaims(token);
+            Object gen = claims.get("tokenGen");
+            if (gen == null) return 0L;
+            if (gen instanceof Number) return ((Number) gen).longValue();
+            if (gen instanceof String) return Long.parseLong((String) gen);
+            return 0L;
+        } catch (Exception e) {
+            log.warn("Failed to get tokenGeneration: {}", e.getMessage());
+            return 0L;
+        }
     }
 
     private SecretKey getKey() {

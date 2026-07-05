@@ -743,6 +743,17 @@ const handlePageChange = () => {
 }
 
 const handleCreate = () => {
+  // OP-0272: 保存当前分页上下文到 sessionStorage，返回后恢复
+  sessionStorage.setItem('user_list_page', JSON.stringify({
+    page: page.value,
+    size: size.value,
+    keyword: searchForm.keyword,
+    role: searchForm.role,
+    departmentId: searchForm.departmentId,
+    majorId: searchForm.majorId,
+    classId: searchForm.classId,
+    status: searchForm.status
+  }))
   router.push('/users/create')
 }
 
@@ -1043,6 +1054,22 @@ async function handleAvatarUpload(file, row) {
 
 onMounted(() => {
   fetchDepartments()
+  // OP-0272: 从 sessionStorage 恢复分页上下文（从 UserForm 返回时）
+  const saved = sessionStorage.getItem('user_list_page')
+  if (saved) {
+    try {
+      const state = JSON.parse(saved)
+      page.value = state.page || page.value
+      size.value = state.size || size.value
+      searchForm.keyword = state.keyword || ''
+      searchForm.role = state.role || ''
+      searchForm.departmentId = state.departmentId || ''
+      searchForm.majorId = state.majorId || ''
+      searchForm.classId = state.classId || ''
+      searchForm.status = state.status !== undefined ? state.status : ''
+      sessionStorage.removeItem('user_list_page')
+    } catch (e) { /* ignore parse error */ }
+  }
   fetchData()
 })
 </script>

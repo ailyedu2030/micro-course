@@ -611,7 +611,13 @@ const checkProgress = async () => {
   if (!isLoggedIn.value || !courseId.value) return
   try {
     const { data } = await getLearningProgress({ courseId: courseId.value })
-    hasProgress.value = !!(data && (data.completed || (data.videoProgress != null && data.videoProgress >= 80)))
+    // OP-0042: 检查任意进度记录 — 兼容无视频章节（练习完成/线下签到）
+    hasProgress.value = !!(data && Array.isArray(data) && data.some(item =>
+      item.completed ||
+      (item.videoProgress != null && item.videoProgress >= 80) ||
+      item.exerciseCompleted ||
+      item.offlineAttended
+    ))
   } catch (e) {
     hasProgress.value = false
   }

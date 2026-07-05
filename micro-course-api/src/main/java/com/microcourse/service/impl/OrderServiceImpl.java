@@ -421,18 +421,20 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public List<OrderVO> batchCreate(Long userId, List<Long> courseIds, String paymentMethod) {
         List<OrderVO> orders = new ArrayList<>();
         for (Long courseId : courseIds) {
             // 原子创建订单（创建失败触发整个事务回滚）
             OrderVO order = createOrder(userId, courseId, null);
-            orders.add(order);
             // 立即支付（支付失败不阻断其他课程，但记录日志）
+            // P1C 修复: 支付成功后返回 PAID VO, 失败时返回 PENDING VO
+            // 前端通过 status 字段区分: PAID=成功, PENDING=需重试
             try {
-                order = pay(order.getId(), paymentMethod);
+                orders.add(pay(order.getId(), paymentMethod));
             } catch (Exception e) {
-                log.warn("[BatchOrder] 课程 {} 支付失败: {}", courseId, e.getMessage());
+                log.warn("[BatchOrder] 课程 {} 支付失败: {}, 订单仍为 PENDING 状态可重试",
+                        courseId, e.getMessage());
+                orders.add(order);
             }
         }
         return orders;

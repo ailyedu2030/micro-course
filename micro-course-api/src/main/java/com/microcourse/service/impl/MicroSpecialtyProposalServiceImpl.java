@@ -164,6 +164,10 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
 
+        // P0-S05: 阻断自审批 — 审批人不能是申报人
+        Long reviewerId = SecurityUtil.getCurrentUserId();
+        SecurityUtil.assertNotSelf(reviewerId, proposal.getProposerId(), "不能审批自己的申报");
+
         if (!MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可批准");
         }
@@ -253,6 +257,10 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
 
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
+
+        // P0-S05: 阻断自审批 — 不能驳回自己的申报
+        Long reviewerId = SecurityUtil.getCurrentUserId();
+        SecurityUtil.assertNotSelf(reviewerId, proposal.getProposerId(), "不能驳回自己的申报");
 
         if (!MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可驳回");
@@ -406,21 +414,29 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
 
-        // ★ 横向扫描 P1-I-5 风格：阻断自审批
-        if (proposal.getProposerId().equals(reviewerId)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不可审批自己的申报");
-        }
+        // P0-S05: 阻断自审批 — 使用统一错误码
+        SecurityUtil.assertNotSelf(reviewerId, proposal.getProposerId(), "不能审批自己的申报");
 
         if (!MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可批准");
         }
 
-        // 更新 proposal 为 APPROVED
-        proposal.setStatus(MicroSpecialtyProposalStatus.APPROVED.getValue());
-        proposal.setReviewedBy(reviewerId);
-        proposal.setReviewedAt(LocalDateTime.now());
-        proposal.setUpdatedAt(LocalDateTime.now());
-        proposalRepository.updateById(proposal);
+        // OP-0309: 乐观锁 — 按版本号条件更新，防止并发覆盖
+        Integer currentVersion = proposal.getVersion();
+        int affected = proposalRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MicroSpecialtyProposal>()
+                        .eq(MicroSpecialtyProposal::getId, proposalId)
+                        .eq(MicroSpecialtyProposal::getStatus, MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue())
+                        .eq(MicroSpecialtyProposal::getVersion, currentVersion)
+                        .set(MicroSpecialtyProposal::getStatus, MicroSpecialtyProposalStatus.APPROVED.getValue())
+                        .set(MicroSpecialtyProposal::getReviewedBy, reviewerId)
+                        .set(MicroSpecialtyProposal::getReviewedAt, LocalDateTime.now())
+                        .set(MicroSpecialtyProposal::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION,
+                    "审批状态已被其他操作修改，请刷新后重试");
+        }
 
         // 创建微专业 DRAFT
         MicroSpecialty ms = new MicroSpecialty();

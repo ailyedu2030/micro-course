@@ -110,6 +110,35 @@ public class AuthQueryServiceImpl implements AuthQueryService {
     }
 
     @Override
+    public int getRefreshCount(String clientIp) {
+        try {
+            return redisUtil.getRefreshCount(clientIp);
+        } catch (Exception e) {
+            log.warn("[Auth] Redis 不可用,回退本地限流缓存 key=refresh:{}", clientIp);
+            LocalLoginFailureEntry entry = localLoginFailCache.get("refresh:" + clientIp);
+            if (entry == null || entry.isExpired()) return 0;
+            return entry.count;
+        }
+    }
+
+    @Override
+    public void incrRefreshCountQuietly(String clientIp) {
+        try {
+            redisUtil.incrRefreshCount(clientIp);
+        } catch (Exception e) {
+            log.warn("[Auth] Redis incrRefreshCount 失败 key={}", clientIp);
+            String cacheKey = "refresh:" + clientIp;
+            LocalLoginFailureEntry entry = localLoginFailCache.computeIfAbsent(cacheKey,
+                    k -> new LocalLoginFailureEntry());
+            if (entry.isExpired()) {
+                localLoginFailCache.put(cacheKey, new LocalLoginFailureEntry());
+                entry = localLoginFailCache.get(cacheKey);
+            }
+            if (entry != null) entry.count++;
+        }
+    }
+
+    @Override
     public void resetLoginLockout() {
         localLoginFailCache.clear();
     }

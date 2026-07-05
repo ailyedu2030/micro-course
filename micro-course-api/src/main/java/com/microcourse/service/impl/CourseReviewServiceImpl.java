@@ -93,13 +93,27 @@ public class CourseReviewServiceImpl implements CourseReviewService {
             }
 
             // J10-01: 校验用户已完课才能评价（completed=true 或 progress >= 80%）
+            // P1C 修复: 无视频章节课程(仅PPT+练习)无法达到 videoProgress>=80 → 综合判断
             if (!Boolean.TRUE.equals(enrollment.getCompleted())) {
-                // 检查学习进度是否 ≥ 80%
                 LambdaQueryWrapper<LearningProgress> progressWrapper = new LambdaQueryWrapper<>();
                 progressWrapper.eq(LearningProgress::getUserId, userId)
                         .eq(LearningProgress::getCourseId, courseId);
                 LearningProgress progress = learningProgressRepository.selectOne(progressWrapper);
-                if (progress == null || progress.getVideoProgress() == null || progress.getVideoProgress() < 80) {
+                boolean progressOk = false;
+                if (progress != null) {
+                    // 有视频进度且 ≥ 80%（含视频章节的课程）
+                    if (progress.getVideoProgress() != null && progress.getVideoProgress() >= 80) {
+                        progressOk = true;
+                    }
+                    // 无视频或视频进度不足时，检查练习通过或线下出勤
+                    if (!progressOk && Boolean.TRUE.equals(progress.getExercisePassed())) {
+                        progressOk = true;
+                    }
+                    if (!progressOk && Boolean.TRUE.equals(progress.getOfflineAttended())) {
+                        progressOk = true;
+                    }
+                }
+                if (!progressOk) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请完成课程学习后再评价（学习进度 ≥ 80%）");
                 }
             }

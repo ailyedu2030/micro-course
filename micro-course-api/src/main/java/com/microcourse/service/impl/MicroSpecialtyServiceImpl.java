@@ -17,6 +17,7 @@ import com.microcourse.dto.microSpecialty.MicroSpecialtyUpdateRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.entity.User;
 import com.microcourse.entity.MicroSpecialtyCourse;
 import com.microcourse.entity.MicroSpecialtyEnrollment;
 import com.microcourse.entity.MicroSpecialtyTeacher;
@@ -32,6 +33,7 @@ import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
 import com.microcourse.repository.MicroSpecialtyTeacherRepository;
 import com.microcourse.repository.ProposalChapterRepository;
+import com.microcourse.repository.UserRepository;
 import com.microcourse.service.MicroSpecialtyAdminService;
 import com.microcourse.service.MicroSpecialtyQueryService;
 import com.microcourse.service.MicroSpecialtyService;
@@ -70,6 +72,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     private static final String INVITE_STATUS_ACTIVE = "ACTIVE";
     private static final String INVITE_STATUS_DECLINED = "DECLINED";
     private static final String INVITE_STATUS_REMOVED = "REMOVED";
+    /** OP-0171: 跨院邀请需教务处审批 */
+    private static final String INVITE_STATUS_PENDING_ACADEMIC = "PENDING_ACADEMIC";
 
     private final CourseRepository courseRepository;
     private final MicroSpecialtyRepository msRepository;
@@ -81,6 +85,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     private final ChapterTeacherAssignmentRepository chapterAssignRepo;
     private final MicroSpecialtyQueryService queryService;
     private final MicroSpecialtyAdminService adminService;
+    private final UserRepository userRepository;
 
     public MicroSpecialtyServiceImpl(CourseRepository courseRepository,
                                      MicroSpecialtyRepository msRepository,
@@ -91,7 +96,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                                      ProposalChapterRepository proposalChapterRepository,
                                      ChapterTeacherAssignmentRepository chapterAssignRepo,
                                      MicroSpecialtyQueryService queryService,
-                                     MicroSpecialtyAdminService adminService) {
+                                     MicroSpecialtyAdminService adminService,
+                                     UserRepository userRepository) {
         this.courseRepository = courseRepository;
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
@@ -102,6 +108,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         this.chapterAssignRepo = chapterAssignRepo;
         this.queryService = queryService;
         this.adminService = adminService;
+        this.userRepository = userRepository;
     }
 
     // ====== 查询（委托 MicroSpecialtyQueryService） ======
@@ -490,13 +497,20 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                         .notIn(MicroSpecialtyTeacher::getInviteStatus, INVITE_STATUS_DECLINED, INVITE_STATUS_REMOVED));
         if (existCount > 0) throw new BusinessException(ErrorCode.MS_DUPLICATE_TEACHER);
 
+        // OP-0171: 跨院检测 — 被邀请教师所属院系与微专业开设院系不同时，直接进入教务处审批流程
+        User invitedTeacher = userRepository.selectById(request.getTeacherId());
+        boolean isCrossDept = false;
+        if (invitedTeacher != null && ms.getOfferDepartmentId() != null && invitedTeacher.getDepartmentId() != null) {
+            isCrossDept = !ms.getOfferDepartmentId().equals(invitedTeacher.getDepartmentId());
+        }
+
         MicroSpecialtyTeacher record = new MicroSpecialtyTeacher();
         record.setMicroSpecialtyId(msId);
         record.setTeacherId(request.getTeacherId());
         record.setRole(request.getRole());
         record.setCourseId(request.getCourseId());
         record.setResponsibility(request.getResponsibility());
-        record.setInviteStatus(INVITE_STATUS_INVITED);
+        record.setInviteStatus(isCrossDept ? INVITE_STATUS_PENDING_ACADEMIC : INVITE_STATUS_INVITED);
         record.setInvitedBy(SecurityUtil.getCurrentUserId());
         record.setInvitedAt(LocalDateTime.now());
         record.setInviteExpiresAt(LocalDateTime.now().plusDays(7));

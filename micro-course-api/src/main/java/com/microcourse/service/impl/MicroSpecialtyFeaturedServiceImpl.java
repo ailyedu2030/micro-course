@@ -45,6 +45,11 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
             throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可执行此操作");
         }
 
+        // OP-0164: 置顶申请理由不能为空
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "置顶申请理由不能为空");
+        }
+
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
@@ -208,7 +213,9 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void setGoldFeatured(Long msId) {
-        MicroSpecialty ms = msRepository.selectById(msId);
+        // P0-S02: 获取排他锁，保证"全校 ≤ 2"约束的原子性
+        msRepository.acquireGoldFeaturedLock();
+        MicroSpecialty ms = msRepository.selectForUpdate(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         // 终态检查

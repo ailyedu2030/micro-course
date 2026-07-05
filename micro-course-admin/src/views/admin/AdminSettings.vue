@@ -72,7 +72,7 @@
             </el-form-item>
             <el-form-item label="文件上传大小限制">
               <el-input-number
-                v-model="systemForm.maxUploadSize"
+                v-model="systemForm.max_video_size_mb"
                 :min="1"
                 :max="500"
                 controls-position="right"
@@ -344,7 +344,7 @@ const systemForm = reactive({
   platformName: '微课管理平台',
   logoUrl: '',
   version: APP_VERSION,
-  maxUploadSize: 100,
+  max_video_size_mb: 100,
   sessionTimeout: 120,
   allowRegistration: true,
   maintenanceMode: false
@@ -435,7 +435,12 @@ async function fetchSettings() {
     // 填充到各表单（根据后端 valueType 做类型转换）
     items.forEach(item => {
       const val = castValue(item)
-      if (item.settingKey in systemForm) systemForm[item.settingKey] = val
+      // P1C: 兼容旧 key maxUploadSize → 映射到 max_video_size_mb
+      if (item.settingKey === 'maxUploadSize') {
+        systemForm.max_video_size_mb = val
+      } else if (item.settingKey in systemForm) {
+        systemForm[item.settingKey] = val
+      }
       if (item.settingKey in mailForm) {
         // P2-024: 敏感字段如 smtpPassword 不回显实际值，只显示占位符
         if (item.settingKey === 'smtpPassword') {

@@ -35,6 +35,16 @@ public interface AuthQueryService {
     void clearLoginFailureQuietly(String key);
 
     /**
+     * 获取 refresh 限流次数(P0-L02 修复:独立 key,与登录失败计数隔离)
+     */
+    int getRefreshCount(String clientIp);
+
+    /**
+     * 递增 refresh 限流次数(静默失败，不抛异常)
+     */
+    void incrRefreshCountQuietly(String clientIp);
+
+    /**
      * 重置登录锁（测试支持）
      */
     void resetLoginLockout();

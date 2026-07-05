@@ -58,7 +58,11 @@ public enum NotificationType {
     MS_TEAM_LEFT("MS_TEAM_LEFT", "团队成员已退出"),
     MS_CANCELLED("MS_CANCELLED", "微专业已取消"),
     MS_LEAD_TRANSFERRED("MS_LEAD_TRANSFERRED", "负责人已变更"),
-    MS_ARCHIVED("MS_ARCHIVED", "微专业已归档");
+    MS_ARCHIVED("MS_ARCHIVED", "微专业已归档"),
+
+    // P1C: 举报处理通知
+    REPORT_DISMISSED("REPORT_DISMISSED", "举报已驳回"),
+    REPORT_RESOLVED("REPORT_RESOLVED", "举报已处理");
 
     private final String code;
     private final String label;

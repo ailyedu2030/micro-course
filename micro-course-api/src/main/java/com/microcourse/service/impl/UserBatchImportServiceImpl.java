@@ -82,9 +82,9 @@ public class UserBatchImportServiceImpl implements UserBatchImportService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件中无有效数据行");
         }
 
-        if (rows.size() > 10000) {
+        if (rows.size() > 500) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                    "批量导入最多支持 10000 条数据，当前文件含 " + rows.size() + " 行");
+                    "批量导入最多支持 500 条数据，当前文件含 " + rows.size() + " 行");
         }
 
         Map<String, Long> deptNameMap = buildDepartmentNameMap();

@@ -78,8 +78,10 @@ public enum ErrorCode {
     TAG_IN_USE(14002, "标签已被课程使用，无法删除", 400),
     BANNER_NOT_FOUND(15001, "Banner 不存在", 404),
 
-    CAS_NOT_CONFIGURED(1008, "CAS服务未配置", 500),
-    CAS_VALIDATION_FAILED(1009, "CAS票据验证失败", 401),
+    USER_NOT_ACTIVE(1009, "用户状态异常", 403),
+
+    CAS_NOT_CONFIGURED(1010, "CAS服务未配置", 500),
+    CAS_VALIDATION_FAILED(1011, "CAS票据验证失败", 401),
 
     PLUGIN_NOT_ENABLED(16001, "该课程类型对应的插件未启用", 400),
     PLUGIN_NO_GRANT(16002, "您没有该课程类型的创建权限", 403),
@@ -145,6 +147,9 @@ public enum ErrorCode {
     REPORT_ALREADY_REVIEWED(20002, "该举报已被处理,不可重复操作", 400),
     REPORT_INVALID_ACTION(20003, "无效的审核操作", 400),
     REPORT_INVALID_TYPE(20004, "无效的举报类型", 400),
+
+    // P0-S05: 自审批阻断
+    CANNOT_APPROVE_SELF(9010, "不能审批自己的申报", 403),
 
     // P1I-052: 补充常用系统级错误码
     CONCURRENT_MODIFICATION(409, "数据已被其他操作修改，请刷新重试", 409),

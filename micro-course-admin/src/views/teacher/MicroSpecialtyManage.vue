@@ -22,6 +22,7 @@
           <el-button v-if="showOpen" type="warning" :loading="actioning" :disabled="actioning" @click="handleOpen">开课</el-button>
           <el-button v-if="showClose" type="danger" :loading="actioning" :disabled="actioning" @click="handleClose">结业</el-button>
           <el-button v-if="detail.status === 'APPROVED' || detail.status === 'RECRUITING'" @click="showFeaturedDialog">申请置顶</el-button>
+          <el-button v-if="detail.featuredStatus === 'APPROVED'" type="warning" :loading="unfeaturing" :disabled="unfeaturing" @click="handleUnsetFeatured">取消置顶</el-button>
         </div>
       </div>
 
@@ -120,7 +121,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
-import { getMicroSpecialtyDetail, updateMicroSpecialty, submitMicroSpecialty, openMicroSpecialty, closeMicroSpecialty, cancelMicroSpecialty, applyFeatured, getStats, getEnrollmentList } from '@/api/microSpecialty'
+import { getMicroSpecialtyDetail, updateMicroSpecialty, submitMicroSpecialty, openMicroSpecialty, closeMicroSpecialty, cancelMicroSpecialty, applyFeatured, unsetFeatured, getStats, getEnrollmentList } from '@/api/microSpecialty'
 import { getEnrollments } from '@/api/enrollment'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
@@ -144,15 +145,16 @@ const progressData = ref(null)
 const progressLoading = ref(false)
 const featuredVisible = ref(false)
 const featuring = ref(false)
+const unfeaturing = ref(false)
 const featuredForm = ref({ reason: '' })
 
 const enrollTagType = (s) => ({ PENDING: 'warning', APPROVED: '', IN_PROGRESS: 'primary', COMPLETED: 'success', CERTIFIED: 'success', FAILED: 'danger', DROPPED: 'info' })[s] || 'info'
 
 const status = computed(() => detail.value?.status)
 const showSubmit = computed(() => ['DRAFT', 'REJECTED'].includes(status.value))
-const showOpen = computed(() => status.value === 'APPROVED')
+const showOpen = computed(() => status.value === 'APPROVED' && (detail.value?.courses?.length || 0) >= 1 && (detail.value?.teachers?.length || 0) >= 2)
 const showClose = computed(() => status.value === 'RECRUITING')
-const canEdit = computed(() => !['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(status.value))
+const canEdit = computed(() => !['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(status.value) && !route.query._readonly)
 
 const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', REJECTED: '已驳回', RECRUITING: '招生中', COMPLETED: '已结业', CANCELLED: '已取消', ARCHIVED: '已归档' }
 const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger', RECRUITING: '', COMPLETED: 'info', CANCELLED: 'danger', ARCHIVED: 'info' }
@@ -235,6 +237,13 @@ const handleFeatured = async () => {
   try { await applyFeatured(msId.value, { reason: featuredForm.value.reason }); ElMessage.success('置顶申请已提交'); featuredVisible.value = false }
   catch (e) { ElMessage.error(e?.response?.data?.message || '申请失败') }
   finally { featuring.value = false }
+}
+const handleUnsetFeatured = async () => {
+  try { await ElMessageBox.confirm('确定取消该微专业的置顶状态？', '确认', { type: 'warning' }) } catch { return }
+  unfeaturing.value = true
+  try { await unsetFeatured(msId.value); ElMessage.success('已取消置顶'); fetchDetail() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  finally { unfeaturing.value = false }
 }
 
 onMounted(fetchDetail)

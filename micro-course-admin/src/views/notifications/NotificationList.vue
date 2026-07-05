@@ -242,10 +242,14 @@ const fetchData = async () => {
 // P2: 统一使用 Store action 标记已读
 // ---------------------------------------------------------------------------
 const handleMarkRead = async (row) => {
-  await notificationStore.markRead(row.id)
-  // store.markRead 已更新 list 里的 isRead 和 unreadCount
-  const item = tableData.value.find(n => n.id === row.id)
-  if (item) item.isRead = true
+  try {
+    await notificationStore.markRead(row.id)
+    // store.markRead 已更新 list 里的 isRead 和 unreadCount
+    const item = tableData.value.find(n => n.id === row.id)
+    if (item) item.isRead = true
+  } catch {
+    console.warn('[Notification] markRead 失败', row.id)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -327,8 +331,12 @@ const ROUTE_MAP = {
 async function handleRowClick(row) {
   // 自动标记已读
   if (!row.isRead) {
-    await notificationStore.markRead(row.id)
-    row.isRead = true
+    try {
+      await notificationStore.markRead(row.id)
+      row.isRead = true
+    } catch {
+      console.warn('[Notification] 点击标记已读失败', row.id)
+    }
   }
   // 有关联资源则跳转
   if (row.relatedId && ROUTE_MAP[row.type]) {

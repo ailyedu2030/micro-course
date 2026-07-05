@@ -466,11 +466,17 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         }
         String targetStatus = isCrossDept ? "PENDING_ACADEMIC" : "ACTIVE";
 
-        // 4. 更新 MicroSpecialtyTeacher 的微专业状态
-        record.setInviteStatus(targetStatus);
-        record.setRespondedAt(LocalDateTime.now());
-        record.setVersion(record.getVersion() != null ? record.getVersion() : 0);
-        int updatedRows = teacherRepository.updateById(record);
+        // 4. 更新 MicroSpecialtyTeacher 的微专业状态 — CAS 乐观锁（与 acceptInvite 一致）
+        // P1C 修复: 使用 update(null, wrapper) + version + inviteStatus 条件代替 updateById
+        int oldVersion = record.getVersion() != null ? record.getVersion() : 0;
+        int updatedRows = teacherRepository.update(null,
+                new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
+                        .eq(MicroSpecialtyTeacher::getId, inviteId)
+                        .eq(MicroSpecialtyTeacher::getVersion, oldVersion)
+                        .eq(MicroSpecialtyTeacher::getInviteStatus, "INVITED")
+                        .set(MicroSpecialtyTeacher::getInviteStatus, targetStatus)
+                        .set(MicroSpecialtyTeacher::getRespondedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
         if (updatedRows == 0) {
             throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION, "邀请已被其他操作修改，请刷新后重试");
         }

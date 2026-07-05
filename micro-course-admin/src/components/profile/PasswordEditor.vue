@@ -46,6 +46,7 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { changePassword } from '@/api/auth'
+import { PASSWORD_VALIDATORS } from '@/utils/constants'
 import { removeToken, removeRefreshToken } from '@/utils/auth'
 
 defineProps({
@@ -75,11 +76,7 @@ const validateConfirmPassword = (rule, value, callback) => {
 
 const passwordRules = {
   oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
-  newPassword: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 8, message: '密码长度不能少于8位', trigger: 'blur' },
-    { pattern: /^(?=.*[A-Za-z])(?=.*\d)/, message: '密码需包含字母和数字', trigger: 'blur' }
-  ],
+  newPassword: PASSWORD_VALIDATORS,
   confirmPassword: [
     { required: true, message: '请再次输入新密码', trigger: 'blur' },
     { validator: validateConfirmPassword, trigger: 'blur' }

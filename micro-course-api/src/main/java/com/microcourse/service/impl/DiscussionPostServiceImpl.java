@@ -315,7 +315,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             if (chapter != null) resolvedCourseId = chapter.getCourseId();
         }
 
-        // 2. 选课检查：STUDENT 只能发己选课程的讨论
+        // 2. 选课检查：STUDENT 只能发己选课程的讨论（OP-0105 修复：仅 APPROVED/COMPLETED 状态有效）
         if (SecurityUtil.hasRole("STUDENT")) {
             if (resolvedCourseId == null) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法确定课程，请指定课程或章节");
@@ -323,7 +323,8 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             long enrolledCount = enrollmentRepository.selectCount(
                     new LambdaQueryWrapper<com.microcourse.entity.Enrollment>()
                             .eq(com.microcourse.entity.Enrollment::getUserId, userId)
-                            .eq(com.microcourse.entity.Enrollment::getCourseId, resolvedCourseId));
+                            .eq(com.microcourse.entity.Enrollment::getCourseId, resolvedCourseId)
+                            .in(com.microcourse.entity.Enrollment::getEnrollmentStatus, "APPROVED", "COMPLETED"));
             if (enrolledCount == 0) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再参与讨论");
             }

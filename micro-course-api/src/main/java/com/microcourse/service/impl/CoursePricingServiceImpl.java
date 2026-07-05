@@ -115,6 +115,10 @@ public class CoursePricingServiceImpl implements CoursePricingService {
     public void reviewPricing(Long courseId, boolean approved, String reason) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+
+        // P0-L03: 阻断自审批 — 课程教师不能自行审核自己的课程定价
+        SecurityUtil.assertNotSelf(SecurityUtil.getCurrentUserId(), course.getTeacherId(), "不能审核自己的课程定价");
+
         if (!SecurityUtil.isAdminOrAcademic())
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         if (!PRICING_STATUS_PENDING.equals(course.getPricingStatus())) {

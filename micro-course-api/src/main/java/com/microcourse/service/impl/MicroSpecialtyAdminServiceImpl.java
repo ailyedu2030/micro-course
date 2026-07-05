@@ -154,6 +154,12 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        // P0-S05: 阻断自审批 — 微专业负责人不能审批自己的微专业
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (ms.getLeadTeacherId() != null) {
+            SecurityUtil.assertNotSelf(currentUserId, ms.getLeadTeacherId(), "不能审批自己的微专业");
+        }
+
         MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.APPROVED)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可审批通过");
@@ -182,6 +188,12 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
     public void reject(Long id, String reason) {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+
+        // P0-L03: 阻断自审批 — 微专业负责人不能驳回自己的微专业
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (ms.getLeadTeacherId() != null) {
+            SecurityUtil.assertNotSelf(currentUserId, ms.getLeadTeacherId(), "不能驳回自己的微专业");
+        }
 
         MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.REJECTED)) {

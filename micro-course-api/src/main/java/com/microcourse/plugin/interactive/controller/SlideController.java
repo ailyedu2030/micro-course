@@ -1,7 +1,9 @@
 package com.microcourse.plugin.interactive.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.R;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
@@ -9,6 +11,7 @@ import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.dto.SlideVO;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,11 +34,14 @@ public class SlideController {
 
     private final SlideService slideService;
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     public SlideController(SlideService slideService,
-                           CourseRepository courseRepository) {
+                           CourseRepository courseRepository,
+                           EnrollmentRepository enrollmentRepository) {
         this.slideService = slideService;
         this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @PostMapping("/upload")
@@ -121,15 +127,6 @@ public class SlideController {
                 .body(thumbBytes);
     }
 
-    /**
-     * IDOR 防护：验证当前用户有权限访问此课程的课件。
-     * 身份叠加原则（权限矩阵 §4.1）：同时具备多个角色的用户，权限集合取并集。
-     * - ADMIN: 全部通行
-     * - ACADEMIC: 全部通行
-     * - TEACHER: 必须是课程的所有者
-     * - STUDENT: 必须已选此课（有非 CANCELLED 的 enrollment 记录）
-     */
-
     @DeleteMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> deleteSlide(@PathVariable Long courseId) {
@@ -173,12 +170,29 @@ public class SlideController {
                 .body(fileBytes);
     }
 
+    /**
+     * IDOR 防护：验证当前用户有权限访问此课程的课件。
+     * 身份叠加原则（权限矩阵 §4.1）：同时具备多个角色的用户，权限集合取并集。
+     * - ADMIN: 全部通行
+     * - ACADEMIC: 全部通行
+     * - TEACHER: 必须是课程的所有者
+     * - STUDENT: 必须已选此课（有 APPROVED/COMPLETED 的 enrollment 记录）
+     */
     private void verifyAccess(Long courseId) {
-        // 只读操作(GET)对所有已认证用户开放,用于课程详情页预览
-        // 写操作(upload/update/delete)由@PreAuthorize控制TEACHER/ADMIN角色
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // P1-I-07: 学生必须已选课才能查看课件内容
+        if (SecurityUtil.hasRole("STUDENT") && !SecurityUtil.isAdmin()) {
+            LambdaQueryWrapper<Enrollment> check = new LambdaQueryWrapper<>();
+            check.eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
+                 .eq(Enrollment::getCourseId, courseId)
+                 .in(Enrollment::getEnrollmentStatus, "APPROVED", "COMPLETED")
+                 .isNull(Enrollment::getDeletedAt);
+            if (enrollmentRepository.selectCount(check) == 0) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "请先选课再查看课件");
+            }
         }
     }
 

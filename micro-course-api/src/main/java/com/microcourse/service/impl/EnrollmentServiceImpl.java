@@ -198,14 +198,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程为付费课程，请先购买");
             }
         }
-        // Check user exists and is active
+        // P0-L04: 用户状态校验 — 仅 ACTIVE(1) 允许选课
         User user = userRepository.selectById(request.getUserId());
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        // P0-009: 用户被禁用后阻止新选课
-        if (user.getStatus() != null && user.getStatus() == 2) {
-            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "您的账号已被禁用，无法选课");
+        com.microcourse.enums.UserStatus userSt = com.microcourse.enums.UserStatus.fromCode(user.getStatus());
+        if (userSt != com.microcourse.enums.UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.USER_NOT_ACTIVE, "用户状态异常（" + (userSt != null ? userSt.getLabel() : "未知") + "），无法选课");
         }
         // P1C-007: 先修课程检查 — 检查 course_prerequisites 表
         checkPrerequisites(request.getUserId(), request.getCourseId());

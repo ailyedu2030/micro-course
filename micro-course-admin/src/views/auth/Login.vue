@@ -27,7 +27,7 @@
 
         <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="handleLogin">
           <el-form-item prop="username" label="用户名">
-            <el-input id="username" v-model="form.username" placeholder="用户名" :prefix-icon="User" clearable aria-label="用户名" />
+            <el-input id="username" v-model="form.username" placeholder="用户名" :prefix-icon="User" clearable maxlength="50" aria-label="用户名" />
           </el-form-item>
           <el-form-item prop="password" label="密码">
             <el-input
@@ -38,6 +38,7 @@
               :prefix-icon="Lock"
               show-password
               clearable
+              maxlength="32"
               aria-label="密码"
             />
           </el-form-item>
@@ -90,6 +91,7 @@
               placeholder="请输入用户名（2-50个字符）"
               :prefix-icon="User"
               clearable
+              maxlength="50"
             />
           </el-form-item>
           <el-form-item prop="password" label="密码">
@@ -100,6 +102,7 @@
               :prefix-icon="Lock"
               show-password
               clearable
+              maxlength="32"
             />
           </el-form-item>
           <el-form-item prop="confirmPassword" label="确认密码">
@@ -135,6 +138,7 @@ import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Reading } from '@element-plus/icons-vue'
 import { register as registerApi, getRegistrationStatus } from '@/api/auth'
+import { PASSWORD_VALIDATORS, USERNAME_VALIDATORS } from '@/utils/constants'
 import { setToken, setRefreshToken } from '@/utils/auth'
 import { getRoleHomePage } from '@/router'
 
@@ -164,16 +168,8 @@ const checkRegistrationStatus = async () => {
 }
 
 const registerRules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 2, max: 50, message: '用户名长度为 2-50 个字符', trigger: 'blur' },
-    { pattern: /^\S+$/, message: '用户名不能包含空格', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 8, max: 32, message: '密码长度为 8-32 个字符', trigger: 'blur' },
-    { pattern: /^(?=.*[A-Za-z])(?=.*\d)/, message: '密码需包含字母和数字', trigger: 'blur' }
-  ],
+  username: USERNAME_VALIDATORS,
+  password: PASSWORD_VALIDATORS,
   confirmPassword: [
     { required: true, message: '请再次输入密码', trigger: 'blur' },
     {
@@ -191,15 +187,8 @@ const registerRules = {
 
 const form = reactive({ username: '', password: '' })
 const rules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 2, max: 50, message: '用户名长度为 2-50 个字符', trigger: 'blur' },
-    { pattern: /^\S+$/, message: '用户名不能包含空格', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 32, message: '密码长度为 6-32 个字符', trigger: 'blur' }
-  ]
+  username: USERNAME_VALIDATORS,
+  password: PASSWORD_VALIDATORS
 }
 
 const quickAccounts = import.meta.env.DEV ? [

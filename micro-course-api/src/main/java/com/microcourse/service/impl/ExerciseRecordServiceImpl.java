@@ -110,6 +110,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             LambdaQueryWrapper<Enrollment> enrollCheck = new LambdaQueryWrapper<>();
             enrollCheck.eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
                        .eq(Enrollment::getCourseId, exercise.getCourseId())
+                       .in(Enrollment::getEnrollmentStatus, "APPROVED", "COMPLETED")
                        .isNull(Enrollment::getDeletedAt);
             if (enrollmentRepository.selectCount(enrollCheck) == 0) {
                 throw new BusinessException(ErrorCode.NO_PERMISSION, "未选课不能作答");

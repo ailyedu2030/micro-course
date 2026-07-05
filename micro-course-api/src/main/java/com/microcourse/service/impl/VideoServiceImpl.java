@@ -23,6 +23,7 @@ import com.microcourse.service.AdminSettingService;
 import com.microcourse.service.VideoAccessService;
 import com.microcourse.service.VideoService;
 import com.microcourse.service.VideoTranscodeService;
+import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.VideoSignUtil;
 import org.slf4j.Logger;
@@ -66,6 +67,7 @@ public class VideoServiceImpl implements VideoService {
     private final VideoAccessService videoAccessService;
     private final VideoSignUtil videoSignUtil;
     private final AdminSettingService adminSettingService;
+    private final RedisUtil redisUtil;
 
     /** P1-1: 从配置读取存储目录 */
     @Value("${video.storage-base-dir:/data/videos}")
@@ -78,14 +80,15 @@ public class VideoServiceImpl implements VideoService {
     private String uploadDir;
 
     public VideoServiceImpl(VideoRepository videoRepository,
-                           CourseChapterRepository chapterRepository,
-                           CourseRepository courseRepository,
-                           VideoBookmarkRepository videoBookmarkRepository,
-                           VideoTranscodeService videoTranscodeService,
-                           @Qualifier("videoUploadExecutor") Executor videoUploadExecutor,
-                           VideoAccessService videoAccessService,
-                           VideoSignUtil videoSignUtil,
-                           AdminSettingService adminSettingService) {
+                            CourseChapterRepository chapterRepository,
+                            CourseRepository courseRepository,
+                            VideoBookmarkRepository videoBookmarkRepository,
+                            VideoTranscodeService videoTranscodeService,
+                            @Qualifier("videoUploadExecutor") Executor videoUploadExecutor,
+                            VideoAccessService videoAccessService,
+                            VideoSignUtil videoSignUtil,
+                            AdminSettingService adminSettingService,
+                            RedisUtil redisUtil) {
         this.videoRepository = videoRepository;
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
@@ -95,6 +98,7 @@ public class VideoServiceImpl implements VideoService {
         this.videoAccessService = videoAccessService;
         this.videoSignUtil = videoSignUtil;
         this.adminSettingService = adminSettingService;
+        this.redisUtil = redisUtil;
     }
 
     private long getMaxFileSize() {
@@ -495,16 +499,29 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件保存失败: " + e.getMessage());
         }
 
-        // P2: 计算 MD5 并检查重复
+        // OP-0290: 计算 MD5 并检查重复（Redis 分布式锁防止并发秒传竞争）
         String md5 = computeFileMd5(targetPath);
-        Video duplicate = findByMd5(md5);
-        if (duplicate != null) {
-            log.info("[VideoUpload] 检测到 MD5 重复 md5={} existingVideoId={}", md5, duplicate.getId());
-            // 秒传：删除刚保存的文件，返回已有视频
-            try { Files.deleteIfExists(targetPath); } catch (IOException e) {
-                log.warn("[VideoUpload] 临时文件删除失败 path={}", targetPath, e);
+        if (md5 == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件校验失败");
+        }
+        String lockKey = "lock:video:md5:" + md5;
+        String lockValue = UUID.randomUUID().toString();
+        boolean locked = redisUtil.tryLock(lockKey, lockValue, 30);
+        try {
+            // 锁内二次检查：防止两个并发线程先后通过第一次检查
+            Video duplicate = findByMd5(md5);
+            if (duplicate != null) {
+                log.info("[VideoUpload] 检测到 MD5 重复 md5={} existingVideoId={}", md5, duplicate.getId());
+                // 秒传：删除刚保存的文件，返回已有视频
+                try { Files.deleteIfExists(targetPath); } catch (IOException e) {
+                    log.warn("[VideoUpload] 临时文件删除失败 path={}", targetPath, e);
+                }
+                return getById(duplicate.getId());
             }
-            return getById(duplicate.getId());
+        } finally {
+            if (locked) {
+                redisUtil.releaseLock(lockKey, lockValue);
+            }
         }
 
         // 创建 Video 记录

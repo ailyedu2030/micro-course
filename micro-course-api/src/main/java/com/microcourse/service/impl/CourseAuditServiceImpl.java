@@ -108,9 +108,7 @@ public class CourseAuditServiceImpl implements CourseAuditService {
     public void approve(Long id) {
         Course course = getCourseOrThrow(id);
         Long currentUserId = SecurityUtil.getCurrentUserId();
-        if (course.getTeacherId().equals(currentUserId)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不可审批自己的课程");
-        }
+        SecurityUtil.assertNotSelf(currentUserId, course.getTeacherId(), "不能审批自己的课程");
         Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
@@ -138,9 +136,7 @@ public class CourseAuditServiceImpl implements CourseAuditService {
     public void reject(Long id, String reason) {
         Course course = getCourseOrThrow(id);
         Long currentUserId = SecurityUtil.getCurrentUserId();
-        if (course.getTeacherId().equals(currentUserId)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不可驳回自己的课程");
-        }
+        SecurityUtil.assertNotSelf(currentUserId, course.getTeacherId(), "不能驳回自己的课程");
         String safeReason = com.microcourse.util.XssSanitizer.sanitizePlainText(reason);
         Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,

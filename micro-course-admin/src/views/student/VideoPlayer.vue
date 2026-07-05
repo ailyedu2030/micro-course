@@ -707,6 +707,7 @@ const scrollToActiveChapter = () => {
 // Progress reporting
 const progressId = ref(null)
 let lastReportedProgress = 0
+let lastFailedProgress = null // P0-L01: track failed progress for retry
 let progressReportTimer = null
 let hideControlsTimer = null
 const controlsVisible = ref(true)
@@ -986,8 +987,8 @@ const reportProgress = async (force = false) => {
   const current = video.currentTime
   const total = video.duration
   const progressPercentVal = (current / total) * 100
-  if (Math.abs(progressPercentVal - lastReportedProgress) < 1) return
-  lastReportedProgress = progressPercentVal
+  // P0-L01: 差异不足 1% 且无待重试的失败记录 → 跳过；失败重试不受此限
+  if (Math.abs(progressPercentVal - lastReportedProgress) < 1 && lastFailedProgress === null) return
 
   // P2-003: sessionStorage dedup — 5 秒内同 videoId 不上报，防双倍请求
   const dedupKey = `progress_dedup_video_${videoId.value}`
@@ -1001,8 +1002,13 @@ const reportProgress = async (force = false) => {
       videoPosition: Math.floor(current),
       videoProgress: Math.round(progressPercentVal)
     })
+    // P0-L01: API 成功后再更新 lastReportedProgress，失败后下一轮定时器自动重试
+    lastReportedProgress = progressPercentVal
+    lastFailedProgress = null
     saveLocalPosition(current)
   } catch (e) {
+    // P0-L01: 记录失败值，确保下次定时器（差异不足 1% 时）仍能重试
+    lastFailedProgress = progressPercentVal
     // 同一会话只弹一次 warning
     if (!sessionStorage.getItem(`progress_error_${videoId.value}`)) {
       sessionStorage.setItem(`progress_error_${videoId.value}`, '1')

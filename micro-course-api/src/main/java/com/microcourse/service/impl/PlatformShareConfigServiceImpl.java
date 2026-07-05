@@ -2,18 +2,21 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.PlatformShareConfigDTO;
+import com.microcourse.entity.OperationLog;
 import com.microcourse.entity.PlatformShareConfig;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.PlatformShareConfigRepository;
+import com.microcourse.service.OperationLogService;
 import com.microcourse.service.PlatformShareConfigService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -25,10 +28,15 @@ import java.util.stream.Collectors;
 @Service
 public class PlatformShareConfigServiceImpl implements PlatformShareConfigService {
 
-    private final PlatformShareConfigRepository repository;
+    private static final Logger log = LoggerFactory.getLogger(PlatformShareConfigServiceImpl.class);
 
-    public PlatformShareConfigServiceImpl(PlatformShareConfigRepository repository) {
+    private final PlatformShareConfigRepository repository;
+    private final OperationLogService operationLogService;
+
+    public PlatformShareConfigServiceImpl(PlatformShareConfigRepository repository,
+                                          OperationLogService operationLogService) {
         this.repository = repository;
+        this.operationLogService = operationLogService;
     }
 
     @Override
@@ -95,7 +103,10 @@ public class PlatformShareConfigServiceImpl implements PlatformShareConfigServic
         wrapper.eq(PlatformShareConfig::getConfigKey, dto.getConfigKey());
         PlatformShareConfig existing = repository.selectOne(wrapper);
 
-        if (existing != null) {
+        boolean isUpdate = existing != null;
+        String oldValue = isUpdate ? existing.getConfigValue() : null;
+
+        if (isUpdate) {
             dto.setId(existing.getId());
             // P1C-061: 设置乐观锁版本号，防止并发编辑覆盖
             dto.setVersion(existing.getVersion());
@@ -105,6 +116,23 @@ public class PlatformShareConfigServiceImpl implements PlatformShareConfigServic
             PlatformShareConfig entity = convertToEntity(dto);
             repository.insert(entity);
             dto.setId(entity.getId());
+        }
+
+        // P1-I-05: 记录分账配置变更日志
+        try {
+            OperationLog logEntry = new OperationLog();
+            logEntry.setUserId(dto.getUpdatedBy());
+            logEntry.setAction("UPDATE_SHARE_CONFIG");
+            logEntry.setTargetType("PLATFORM_SHARE_CONFIG");
+            logEntry.setTargetId(dto.getId());
+            logEntry.setDetail("配置Key=" + dto.getConfigKey()
+                    + (isUpdate ? ", 旧值=" + oldValue : ", 新建")
+                    + ", 新值=" + dto.getConfigValue());
+            logEntry.setSuccess(true);
+            logEntry.setCreatedAt(LocalDateTime.now());
+            operationLogService.log(logEntry);
+        } catch (Exception e) {
+            log.warn("[PlatformShareConfig] 记录变更日志失败 configKey={}", dto.getConfigKey(), e);
         }
 
         return dto;

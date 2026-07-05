@@ -24,6 +24,9 @@ public class RedisUtil {
     /** Default TTL for keys without explicit expiration: 1 hour */
     private static final long DEFAULT_TTL_SECONDS = 3600L;
 
+    /** Refresh token 限流 TTL: 1 小时 (P0-L02 修复,与登录失败计数器隔离) */
+    private static final long REFRESH_LIMIT_TTL_SECONDS = 3600L;
+
     /**
      * 设置 Key-Value，使用默认 1 小时 TTL (3600s) 防止无界 key 增长。
      * 建议优先使用 {@link #set(String, Object, long, TimeUnit)} 明确指定过期时间。
@@ -99,6 +102,64 @@ public class RedisUtil {
         }
     }
 
+    // ==================== P0-L02: Refresh 限流(独立 key 前缀,与登录失败隔离) ====================
+
+    /**
+     * 递增 refresh 限流计数 — 同一 IP 每小时最多刷新 20 次
+     * 使用独立 key 前缀 mc:refresh:limit: 与登录失败计数 mc:login:lock: 隔离(P0-L02 修复)
+     */
+    public Long incrRefreshCount(String clientIp) {
+        try {
+            return incrementWithExpire("mc:refresh:limit:" + clientIp, REFRESH_LIMIT_TTL_SECONDS);
+        } catch (Exception e) {
+            redisMetrics.recordLoginFailureError();
+            log.warn("[Redis] incrRefreshCount 失败,降级处理: {}", e.getMessage());
+            return 1L;
+        }
+    }
+
+    /**
+     * 获取 refresh 限流次数
+     */
+    public Integer getRefreshCount(String clientIp) {
+        try {
+            Object val = get("mc:refresh:limit:" + clientIp);
+            return val == null ? 0 : Integer.parseInt(val.toString());
+        } catch (Exception e) {
+            redisMetrics.recordLoginCheckError();
+            log.warn("[Redis] getRefreshCount 失败,降级为 0: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    // ==================== P0-S04: Token Generation(登录后旧 refreshToken 失效) ====================
+
+    /**
+     * 递增用户 token 代数 — 每次登录 +1,旧 refreshToken 的 tokenGen < currentGen 即失效
+     */
+    public long incrementTokenGeneration(Long userId) {
+        try {
+            Long val = redisTemplate.opsForValue().increment("mc:user:token-gen:" + userId);
+            return val != null ? val : 0L;
+        } catch (Exception e) {
+            log.warn("[Redis] incrementTokenGeneration 失败 userId={},降级为 0: {}", userId, e.getMessage());
+            return 0L;
+        }
+    }
+
+    /**
+     * 获取当前用户 token 代数
+     */
+    public Long getTokenGeneration(Long userId) {
+        try {
+            Object val = get("mc:user:token-gen:" + userId);
+            return val == null ? 0L : ((Number) val).longValue();
+        } catch (Exception e) {
+            log.warn("[Redis] getTokenGeneration 失败 userId={},降级为 0: {}", userId, e.getMessage());
+            return 0L;
+        }
+    }
+
     /**
      * Token 黑名单（Redis 故障时静默降级，不阻止请求）
      */
@@ -148,6 +209,39 @@ public class RedisUtil {
             redisMetrics.recordTokenCheckError();
             log.warn("[Redis] isTokenBlacklisted 失败 jti={}，降级为未黑名单: {}", jti, e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * 分布式锁 — 原子 SETNX + EXPIRE（非阻塞）
+     * @param key       锁 key
+     * @param value     锁值（如线程标识，用于释放时校验）
+     * @param ttlSeconds 自动过期秒数
+     * @return true 表示获取成功，false 表示已被其他线程持有
+     */
+    public boolean tryLock(String key, String value, long ttlSeconds) {
+        try {
+            Boolean result = redisTemplate.opsForValue().setIfAbsent(key, value, ttlSeconds, TimeUnit.SECONDS);
+            return Boolean.TRUE.equals(result);
+        } catch (Exception e) {
+            log.warn("[RedisUtil] tryLock 失败 key={}: {}", key, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 释放分布式锁（仅当 value 匹配时释放，防止误删其他线程的锁）
+     * @param key   锁 key
+     * @param value 锁值（应与 tryLock 时一致）
+     */
+    public void releaseLock(String key, String value) {
+        try {
+            String script = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
+            org.springframework.data.redis.core.script.DefaultRedisScript<Long> delScript =
+                    new org.springframework.data.redis.core.script.DefaultRedisScript<>(script, Long.class);
+            redisTemplate.execute(delScript, java.util.Collections.singletonList(key), value);
+        } catch (Exception e) {
+            log.warn("[RedisUtil] releaseLock 失败 key={}: {}", key, e.getMessage());
         }
     }
 

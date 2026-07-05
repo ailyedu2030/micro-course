@@ -33,6 +33,7 @@
               <template #default="{ row }">
                 <el-tag v-if="row.inviteStatus === 'INVITED'" type="warning" size="small">待响应</el-tag>
                 <el-tag v-else-if="row.inviteStatus === 'ACTIVE'" type="success" size="small">已接受</el-tag>
+                <el-tag v-else-if="row.inviteStatus === 'PENDING_ACADEMIC'" type="warning" size="small">等待教务处审核</el-tag>
                 <el-tag v-else-if="row.inviteStatus === 'DECLINED'" type="danger" size="small">已拒绝</el-tag>
                 <el-tag v-else-if="row.inviteStatus === 'REMOVED'" type="info" size="small">已移除</el-tag>
                 <el-tag v-else size="small">{{ row.inviteStatus || '-' }}</el-tag>

@@ -496,8 +496,13 @@ const handleEdit = async (row) => {
 const handleFormCourseChange = async (val) => {
   formData.chapterIds = []
   if (val) {
-    const { data } = await getChapters({ courseId: val })
-    formChapterOptions.value = data.items || []
+    try {
+      const { data } = await getChapters({ courseId: val })
+      formChapterOptions.value = data.items || []
+    } catch {
+      formChapterOptions.value = []
+      console.warn('[ExerciseList] 获取章节列表失败', val)
+    }
   } else {
     formChapterOptions.value = []
   }

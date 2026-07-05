@@ -195,7 +195,10 @@ const router = createRouter({ history: createWebHistory(), routes })
 
 router.beforeEach(async (to, from, next) => {
   NProgress.start()
-  if (to.meta.requiresAuth !== false && !isAuthenticated()) return next({ path: '/login', query: { redirect: to.fullPath } })
+  if (to.meta.requiresAuth !== false && !isAuthenticated()) {
+    ElMessage.warning('请先登录')
+    return next({ path: '/login', query: { redirect: to.fullPath } })
+  }
 
   // 优先从 store 获取角色，store 为空则调用 /api/auth/me
   const userStore = useUserStore()
@@ -233,10 +236,12 @@ router.beforeEach(async (to, from, next) => {
     return next(getRoleHomePage(userRole))
   }
   if (userRole === 'STUDENT' && isStaffOnlyPath(to.path)) {
+    ElMessage.warning('无权访问该页面')
     return next('/student/courses')
   }
   if (to.meta.roles && to.meta.roles.length > 0) {
     if (!to.meta.roles.includes(userRole)) {
+      ElMessage.warning('无权访问该页面')
       return next(getRoleHomePage(userRole))
     }
   }
