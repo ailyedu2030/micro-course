@@ -337,6 +337,8 @@ function handleUserCommand(command) {
 async function handleLogout() {
   try {
     await ElMessageBox.confirm('确定退出登录?', '提示', { type: 'warning' })
+    // 先停轮询再清token,避免退出后触发401
+    notificationStore.stopPolling()
     await userStore.logout()
     router.push('/login')
   } catch { /* user cancel */ }

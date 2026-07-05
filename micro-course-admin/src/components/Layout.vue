@@ -283,6 +283,7 @@ async function handleCommand(cmd) {
       await ElMessageBox.confirm('确定退出登录?', '提示', { type: 'warning' })
     } catch { return }
     try {
+      notificationStore.stopPolling()  // 先停轮询再清token
       await userStore.logout()
       router.push('/login')
     } catch (e) { ElMessage.error(e?.response?.data?.message || '退出失败') }
