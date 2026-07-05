@@ -12,6 +12,7 @@ import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
 import com.microcourse.enums.EnrollmentStatus;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseRepository;
@@ -20,6 +21,9 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseReviewService;
+import com.microcourse.service.NotificationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,22 +40,28 @@ import java.util.stream.Collectors;
 @Service
 public class CourseReviewServiceImpl implements CourseReviewService {
 
+    private static final Logger log = LoggerFactory.getLogger(CourseReviewServiceImpl.class);
+
     private final CourseReviewRepository courseReviewRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final LearningProgressRepository learningProgressRepository;
+    /** P1C-032: 通知服务 */
+    private final NotificationService notificationService;
 
     public CourseReviewServiceImpl(CourseReviewRepository courseReviewRepository,
                                    EnrollmentRepository enrollmentRepository,
                                    UserRepository userRepository,
                                    CourseRepository courseRepository,
-                                   LearningProgressRepository learningProgressRepository) {
+                                   LearningProgressRepository learningProgressRepository,
+                                   NotificationService notificationService) {
         this.courseReviewRepository = courseReviewRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
         this.learningProgressRepository = learningProgressRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -258,6 +268,20 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         review.setUpdatedAt(LocalDateTime.now());
         courseReviewRepository.updateById(review);
         updateCourseAvgRating(review.getCourseId());
+
+        // P1C-032: 审核通过 → 通知课程教师
+        try {
+            Course course = courseRepository.selectById(review.getCourseId());
+            if (course != null && course.getTeacherId() != null) {
+                String courseTitle = course.getTitle() != null ? course.getTitle() : "课程";
+                notificationService.notifyAsync(course.getTeacherId(), NotificationType.COURSE_APPROVED,
+                        "课程评价已通过审核",
+                        "您的课程《" + courseTitle + "》有新的评价已通过审核",
+                        review.getCourseId());
+            }
+        } catch (Exception e) {
+            log.warn("[CourseReview] 发送审核通过通知失败 reviewId={}", id, e);
+        }
     }
 
     @Override
@@ -271,6 +295,20 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         review.setUpdatedAt(LocalDateTime.now());
         courseReviewRepository.updateById(review);
         updateCourseAvgRating(review.getCourseId());
+
+        // P1C-032: 审核驳回 → 通知课程教师
+        try {
+            Course course = courseRepository.selectById(review.getCourseId());
+            if (course != null && course.getTeacherId() != null) {
+                String courseTitle = course.getTitle() != null ? course.getTitle() : "课程";
+                notificationService.notifyAsync(course.getTeacherId(), NotificationType.COURSE_REJECTED,
+                        "课程评价未通过审核",
+                        "您的课程《" + courseTitle + "》有一条评价未通过审核",
+                        review.getCourseId());
+            }
+        } catch (Exception e) {
+            log.warn("[CourseReview] 发送审核驳回通知失败 reviewId={}", id, e);
+        }
     }
 
     private void updateCourseAvgRating(Long courseId) {

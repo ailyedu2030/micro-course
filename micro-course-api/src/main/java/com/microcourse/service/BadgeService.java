@@ -40,4 +40,24 @@ public interface BadgeService {
     default void checkAndAwardDiscussionCount(Long userId, long discussionCount) {
         // TODO: 实现「讨论达人」徽章 logic
     }
+
+    // P1I-028: 新增 3 种徽章的颁发逻辑（对应 DB 中 6 种 badge_definitions 的剩余 3 种）
+
+    /**
+     * 检查并颁发「坚持不懈」徽章（THIRTY_DAY_STREAK）— 连续学习打卡 30 天。
+     * 由学习打卡定时任务或打卡回调触发。
+     */
+    void checkAndAwardThirtyDayStreak(Long userId, int consecutiveDays);
+
+    /**
+     * 检查并颁发「满分达人」徽章（PERFECT_SCORE）— 单次练习获得满分。
+     * 由练习提交回调触发。
+     */
+    void checkAndAwardPerfectScore(Long userId, Long exerciseId);
+
+    /**
+     * 检查并颁发「学习先锋」徽章（QUICK_LEARNER）— 累计学习达到 50 小时。
+     * 由学习时长上报回调触发。
+     */
+    void checkAndAwardQuickLearner(Long userId, long totalHours);
 }

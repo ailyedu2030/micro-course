@@ -550,14 +550,25 @@ function startPolling() {
     await loadData()
     if (slide.value?.status !== 0 && slide.value?.status !== 1) { stopPolling(); stopProgressSim() }
   }, 3000)
-  startProgressSim()
+  startProgressTracking()
 }
 function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null } }
-function startProgressSim() {
-  stopProgressSim(); renderProgress.value = 0
-  progressSim = setInterval(() => { renderProgress.value = Math.min(renderProgress.value + 5, 95) }, 1000)
+function startProgressTracking() {
+  stopProgressTracking()
+  // 将模拟进度条换为基于实际状态轮询的真实进度指示
+  // PPT 渲染/转码是异步操作，服务端不返回百分比，而是多阶段状态
+  // 这里显示"处理中…"等待实际状态更新
+  renderProgress.value = 0
+  renderProgressLabel.value = '正在处理…'
 }
-function stopProgressSim() { if (progressSim) { clearInterval(progressSim); progressSim = null; renderProgress.value = 100 } }
+function stopProgressTracking() {
+  stopProgressSim()
+  renderProgress.value = 100
+  renderProgressLabel.value = ''
+}
+// 保留旧函数兼容调用，但不再产生虚假百分比
+function startProgressSim() { renderProgress.value = 0 }
+function stopProgressSim() { renderProgress.value = 100; renderProgressLabel.value = '' }
 
 async function handleGenerateAllAI() {
   aiGenerating.value = true

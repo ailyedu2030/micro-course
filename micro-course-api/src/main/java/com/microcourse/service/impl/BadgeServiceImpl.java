@@ -165,6 +165,30 @@ public class BadgeServiceImpl implements BadgeService {
         }
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void checkAndAwardThirtyDayStreak(Long userId, int consecutiveDays) {
+        if (consecutiveDays >= 30 && !self.hasBadge(userId, "THIRTY_DAY_STREAK")) {
+            self.awardBadge(userId, "THIRTY_DAY_STREAK");
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void checkAndAwardPerfectScore(Long userId, Long exerciseId) {
+        if (!self.hasBadge(userId, "PERFECT_SCORE")) {
+            self.awardBadge(userId, "PERFECT_SCORE");
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void checkAndAwardQuickLearner(Long userId, long totalHours) {
+        if (totalHours >= 50 && !self.hasBadge(userId, "QUICK_LEARNER")) {
+            self.awardBadge(userId, "QUICK_LEARNER");
+        }
+    }
+
     private BadgeDefinitionVO convertDefinitionToVO(BadgeDefinition def) {
         BadgeDefinitionVO vo = new BadgeDefinitionVO();
         vo.setId(def.getId());

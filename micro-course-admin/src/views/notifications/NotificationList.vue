@@ -268,28 +268,60 @@ const handleMarkAllRead = async () => {
 
 // ---------------------------------------------------------------------------
 // P1 + P1C-033: 通知行点击跳转（根据 type + relatedId，含精确路径参数）
+// 覆盖全部 NotificationType 枚举值：选课/成绩/讨论/审核/系统/微专业
 // ---------------------------------------------------------------------------
 const ROUTE_MAP = {
+  // === 选课通知 → 课程详情 ===
   ENROLLMENT_SUCCESS:    (id) => `/student/courses/${id}`,
   ENROLLMENT_WAITLIST:   (id) => `/student/courses/${id}`,
   ENROLLMENT:            (id) => `/student/courses/${id}`,
+  // === 成绩通知 → 成绩页 ===
   GRADE_ISSUED:          (id) => `/student/courses/${id}/grades`,
   GRADE:                 (id) => `/student/courses/${id}/grades`,
+  // === 讨论通知 → 讨论详情 ===
   DISCUSSION_REPLY:      (id) => `/student/courses/${id}/discussion`,
   DISCUSSION:            (id) => `/student/courses/${id}/discussion`,
+  DISCUSSION_POST_APPROVED: (id) => `/student/courses/${id}/discussion`,
+  // === 审核通知 → 课程编辑 ===
   COURSE_APPROVED:       (id) => `/teacher/courses/${id}`,
   COURSE_REJECTED:       (id) => `/teacher/courses/${id}?tab=review`,
   COURSE_PUBLISHED:      (id) => `/student/courses/${id}`,
   COURSE_UNPUBLISHED:    (id) => `/teacher/courses/${id}`,
+  COURSE_REVIEW_REMINDER: (id) => `/teacher/courses/${id}`,
+  COURSE_COMPLETION_WARNING: (id) => `/teacher/courses/${id}/grades`,
+  // === 练习/作业 ===
   EXERCISE_GRADED:       (id) => `/student/courses/${id}/exercises`,
+  // === 视频 ===
   VIDEO_TRANSCODED:      (id) => `/teacher/courses/${id}/videos`,
-  MS_CERTIFICATE_ISSUED: (id) => `/student/certificates`,
-  MS_APPROVED:           (id) => `/teacher/micro-specialties/${id}`,
-  MS_REJECTED:           (id) => `/teacher/micro-specialties/${id}`,
+  // === 微专业 — 教师侧 ===
+  MS_INVITE_LEAD:        (id) => `/teacher/micro-specialties/invitations`,
+  MS_INVITE_TEAM:        (id) => `/teacher/micro-specialties/invitations`,
+  MS_INVITE_ACCEPTED:    (id) => `/teacher/micro-specialties/${id}`,
+  MS_INVITE_EXPIRED:     (id) => `/teacher/micro-specialties/invitations`,
+  MS_INVITE_CROSS_DEPT:  (id) => `/teacher/micro-specialties/invitations`,
   MS_PROPOSAL_APPROVED:  (id) => `/teacher/micro-specialties/${id}`,
   MS_PROPOSAL_REJECTED:  (id) => `/teacher/micro-specialties/${id}`,
+  MS_SUBMITTED:          (id) => `/teacher/micro-specialties/${id}`,
+  MS_APPROVED:           (id) => `/teacher/micro-specialties/${id}`,
+  MS_REJECTED:           (id) => `/teacher/micro-specialties/${id}`,
+  MS_FEATURED_APPROVED:  (id) => `/teacher/micro-specialties/${id}`,
+  MS_FEATURED_REJECTED:  (id) => `/teacher/micro-specialties/${id}`,
+  MS_OPENED:             (id) => `/teacher/micro-specialties/${id}`,
+  MS_TEAM_REMOVED:       (id) => `/teacher/micro-specialties/${id}`,
+  MS_TEAM_LEFT:          (id) => `/teacher/micro-specialties/${id}`,
+  MS_CANCELLED:          (id) => `/teacher/micro-specialties/${id}`,
+  MS_LEAD_TRANSFERRED:   (id) => `/teacher/micro-specialties/${id}`,
+  MS_ARCHIVED:           (id) => `/teacher/micro-specialties/${id}`,
+  MS_COMPLETED:          (id) => `/teacher/micro-specialties/${id}`,
+  // === 微专业 — 学生侧 ===
+  MS_CERTIFICATE_ISSUED: (id) => `/student/certificates`,
   MS_ENROLLMENT_APPROVED:(id) => `/student/micro-specialties/${id}`,
   MS_ENROLLMENT_REJECTED:(id) => `/student/micro-specialties/${id}`,
+  MS_ENROLLMENT_AUTO_ENROLL: (id) => `/student/micro-specialties`,
+  MS_ENROLLMENT_PENDING: (id) => `/student/micro-specialties`,
+  MS_ENROLLMENT_DROPPED: (id) => `/student/micro-specialties`,
+  MS_ENROLLMENT_REAPPLIED:(id) => `/student/micro-specialties`,
+  MS_ENROLLMENT_FAILED:  (id) => `/student/micro-specialties`,
 }
 
 async function handleRowClick(row) {

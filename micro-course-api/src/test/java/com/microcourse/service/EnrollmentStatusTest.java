@@ -69,8 +69,13 @@ class EnrollmentStatusTest {
                 EnrollmentStatus.REJECTED, EnrollmentStatus.CANCELLED,
                 EnrollmentStatus.COMPLETED, EnrollmentStatus.DROPPED
         };
+        // P1C-008 例外: CANCELLED → REENROLLING 合法（退课后再选课标记旧记录）
         for (EnrollmentStatus terminal : terminals) {
             for (EnrollmentStatus target : EnrollmentStatus.values()) {
+                // 跳过 P1C-008 允许的合法转换
+                if (terminal == EnrollmentStatus.CANCELLED && target == EnrollmentStatus.REENROLLING) {
+                    continue;
+                }
                 assertFalse(terminal.canTransitionTo(target),
                         terminal.getValue() + " -> " + target.getValue() + " 应为非法转换");
             }
