@@ -116,7 +116,7 @@ public class GradeController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("手动评阅")
     public R<Void> manualGrade(@PathVariable Long recordId, @Valid @RequestBody ManualGradeRequest request) {
-        gradeService.manualGrade(recordId, request.getScore(), request.getComment(), getCurrentUserId());
+        gradeService.manualGrade(recordId, request.getQuestionId(), request.getScore(), request.getComment(), getCurrentUserId());
         return R.ok();
     }
 

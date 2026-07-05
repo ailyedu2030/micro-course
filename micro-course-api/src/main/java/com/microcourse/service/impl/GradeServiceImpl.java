@@ -404,7 +404,7 @@ public class GradeServiceImpl implements GradeService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void manualGrade(Long recordId, Double score, String comment, Long teacherId) {
+    public void manualGrade(Long recordId, Long questionId, Double score, String comment, Long teacherId) {
         ExerciseRecord record = exerciseRecordRepository.selectById(recordId);
         if (record == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题记录不存在");
@@ -423,15 +423,13 @@ public class GradeServiceImpl implements GradeService {
             }
         }
 
-        Long questionId = toLong(body.get("questionId"));
-        Integer newScore = toInteger(body.get("score"));
-        String comment = sanitizeComment(toStringVal(body.get("comment")));
         if (questionId == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "questionId 不能为空");
         }
-        if (newScore == null || newScore < 0) {
+        if (score == null || score < 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "score 非法");
         }
+        String safeComment = sanitizeComment(comment);
 
         // 解析 answers JSON
         List<Map<String, Object>> items;
@@ -461,14 +459,14 @@ public class GradeServiceImpl implements GradeService {
 
         // 校验不超过该题满分
         Integer fullScore = toInteger(target.get("fullScore"));
-        if (fullScore != null && newScore > fullScore) {
+        if (fullScore != null && score > fullScore) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "得分不能超过该题满分");
         }
 
         // 写回单题 score / comment / 标记已批改
-        target.put("score", newScore);
-        target.put("comment", comment);
-        target.put("isCorrect", newScore > 0);
+        target.put("score", score);
+        target.put("comment", safeComment);
+        target.put("isCorrect", score > 0);
         target.put("needsManualGrading", false);
 
         // 重算记录总得分

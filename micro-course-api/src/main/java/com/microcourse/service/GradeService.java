@@ -39,7 +39,7 @@ public interface GradeService {
      * 教师手动批改主观题：将单题 score/comment 写回 answers JSON，并同步更新记录与 grades 表
      * body: { "questionId": Long, "score": Integer, "comment": String }
      */
-    void manualGrade(Long recordId, Double score, String comment, Long teacherId);
+    void manualGrade(Long recordId, Long questionId, Double score, String comment, Long teacherId);
 
     /**
      * 获取成绩列表（用于导出 Excel），按课程过滤
