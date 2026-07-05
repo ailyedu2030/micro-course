@@ -380,13 +380,11 @@ async function ensureProgress() {
   try {
     const existing = await getLearningProgress({ courseId: courseId.value })
     const records = existing.data || []
-    const lessonId = `slide-${chapterId.value || courseId.value}`
-    const slideRecord = records.find(r => r.chapterId === Number(chapterId.value) || r.lessonId === lessonId)
+    const slideRecord = records.find(r => r.chapterId === Number(chapterId.value))
     if (!slideRecord) {
       await createLearningProgress({
         courseId: courseId.value,
         chapterId: chapterId.value ? Number(chapterId.value) : undefined,
-        lessonId,
       })
     }
   } catch { /* 静默失败,不影响主功能 */ }
@@ -398,14 +396,13 @@ async function markSlideComplete() {
   try {
     const existing = await getLearningProgress({ courseId: courseId.value })
     const records = existing.data || []
-    const lessonId = `slide-${chapterId.value || courseId.value}`
-    const slideRecord = records.find(r => r.lessonId === lessonId)
+    const slideRecord = records.find(r => r.chapterId === Number(chapterId.value))
     if (slideRecord?.id) {
       await updateLearningProgress(slideRecord.id, { completed: true })
     } else {
       await createLearningProgress({
         courseId: courseId.value,
-        lessonId,
+        chapterId: chapterId.value ? Number(chapterId.value) : undefined,
         completed: true,
       })
     }
