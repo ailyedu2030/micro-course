@@ -29,9 +29,14 @@ export const useUserStore = defineStore('user', {
       return res
     },
     async getInfo() {
-      const res = await getCurrentUser()
-      this.userInfo = res.data
-      return res.data
+      if (!this.token) return null  // 无token时不发起请求,避免401
+      try {
+        const res = await getCurrentUser()
+        this.userInfo = res.data
+        return res.data
+      } catch {
+        return null  // 静默处理(401等,由调用方自行处理)
+      }
     },
     async refreshAccessToken() {
       try {
