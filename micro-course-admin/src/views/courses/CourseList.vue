@@ -123,7 +123,7 @@
             <el-button v-if="row.courseType === 'OFFLINE'" type="info" link size="small" @click.stop="handleView(row)">安排</el-button>
             <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">审核通过</el-button>
             <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleReject(row)">驳回</el-button>
-            <el-button v-if="row.status === 2 && userRole === 'ADMIN'" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">发布</el-button>
+            <el-button v-if="[2, 5].includes(row.status) && userRole === 'ADMIN'" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">{{ row.status === 5 ? '重新上架' : '发布' }}</el-button>
             <el-button v-if="row.status === 4 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="warning" link size="small" :loading="actingId === row.id" @click.stop="handleUnpublish(row)">下架</el-button>
             <el-button type="info" link size="small" @click.stop="handleView(row)">查看</el-button>
             <el-button type="primary" link size="small" @click.stop="handleCopy(row)">复制</el-button>

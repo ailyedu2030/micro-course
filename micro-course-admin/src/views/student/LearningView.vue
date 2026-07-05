@@ -344,8 +344,15 @@ async function loadProgress() {
       chapters.value.forEach(ch => {
         if (ch.lessons) {
           ch.lessons.forEach(l => {
-            const prog = progressMap.value[l.id]
-            l.status = prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
+            if (ch.chapterType === 'VIDEO') {
+              // VIDEO 章节: 按 lessonId 查找进度
+              const prog = progressMap.value[l.id]
+              l.status = prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
+            } else {
+              // 非 VIDEO 章节: 按 chapterId 查找进度（子页面通过 chapterId 创建进度记录）
+              const chapterProgress = (progressRes.data || []).find(p => p.chapterId === ch.id)
+              l.status = chapterProgress?.completed ? 'COMPLETED' : 'NOT_STARTED'
+            }
           })
         }
       })

@@ -26,8 +26,8 @@
             <el-button type="success" @click="handleApprove">审核通过</el-button>
             <el-button type="danger" @click="handleReject">驳回</el-button>
           </template>
-          <template v-if="courseData.status === 2 && userRole === 'ADMIN'">
-            <el-button type="primary" @click="handlePublish">发布</el-button>
+          <template v-if="[2, 5].includes(courseData.status) && userRole === 'ADMIN'">
+            <el-button type="primary" @click="handlePublish">{{ courseData.status === 5 ? '重新上架' : '发布' }}</el-button>
           </template>
           <template v-if="courseData.status === 4 && isOwner">
             <el-button type="warning" @click="handleUnpublish">下架</el-button>

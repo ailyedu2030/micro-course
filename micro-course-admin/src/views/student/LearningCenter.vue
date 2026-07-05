@@ -171,7 +171,7 @@
             v-for="record in recentRecords"
             :key="record.courseId"
             class="recent-learning-item"
-            @click="navigateTo('/student/learning?courseId=' + record.courseId)"
+            @click="navigateToLearning(record)"
           >
             <div class="recent-cover-wrap">
               <img :src="record.cover" :alt="record.title" class="recent-cover-img" />
@@ -182,7 +182,7 @@
                 size="small"
                 effect="dark"
               >
-已完成
+ 已完成
 </el-tag>
             </div>
             <div class="recent-info">
@@ -435,7 +435,7 @@
             v-for="record in recentRecords"
             :key="record.courseId"
             class="recent-learning-item"
-            @click="navigateTo('/student/learning?courseId=' + record.courseId)"
+            @click="navigateToLearning(record)"
           >
             <div class="recent-cover-wrap">
               <img :src="record.cover" :alt="record.title" class="recent-cover-img" />
@@ -557,6 +557,14 @@ const quickEntries = [
 ]
 
 function navigateTo(path) {
+  router.push(path)
+}
+
+function navigateToLearning(course) {
+  const isInteractive = course.courseType === 'INTERACTIVE'
+  const path = isInteractive
+    ? `/student/courses/${course.courseId}/slides/player`
+    : `/student/learning?courseId=${course.courseId}`
   router.push(path)
 }
 
@@ -968,7 +976,8 @@ async function getRecentRecords(sharedEnrollments) {
       title: e.courseTitle || e.title || '课程',
       cover: e.courseCover || e.coverUrl || (import.meta.env.BASE_URL + 'placeholder.svg'),
       progress: e.progress || 0,
-      completed: !!e.completed
+      completed: !!e.completed,
+      courseType: e.courseType || ''
     }))
   } catch (e) {
       console.warn("[LearningCenter]", e)

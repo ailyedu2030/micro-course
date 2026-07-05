@@ -452,21 +452,28 @@ const handleEnroll = async () => {
     const isFreeForMe = pricingInfo.value?.free || !course.value.price || course.value.isFree
     const finalPrice = pricingInfo.value?.finalPrice ?? course.value.price ?? 0
 
+    const enrollTarget = () => {
+      const isInteractive = course.value?.courseType === 'INTERACTIVE'
+      return isInteractive
+        ? `/student/courses/${courseId.value}/slides/player`
+        : `/student/learning?courseId=${courseId.value}`
+    }
+
     if (!isFreeForMe && finalPrice > 0) {
       const { data: order } = await createOrder({ courseId: courseId.value })
-      if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); router.push('/student/my-courses'); return }
+      if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); router.push(enrollTarget()); return }
       await ElMessageBox.confirm(
         `确认支付 ¥${Number(finalPrice).toFixed(2)}？${pricingInfo.value?.feeNote ? '\n' + pricingInfo.value.feeNote : ''}`,
         '确认支付',
         { confirmButtonText: '支付', cancelButtonText: '取消', type: 'info' }
       )
-      await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功'); router.push('/student/my-courses')
+      await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功'); router.push(enrollTarget())
       return
     }
     // 免费课程：增加确认环节
     const freeNote = pricingInfo.value?.feeNote ? `（${pricingInfo.value.feeNote}）` : ''
     await ElMessageBox.confirm(`确认加入学习？${freeNote}`, '加入课程', { confirmButtonText: '确认加入', cancelButtonText: '取消', type: 'info' })
-    await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push('/student/my-courses')
+    await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push(enrollTarget())
   } catch (e) {
     if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
   } finally { enrollLoading.value = false }

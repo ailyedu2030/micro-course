@@ -106,6 +106,13 @@ public class CourseController {
                 throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
             }
         }
+        // P1-C 修复: REJECTED/DRAFT 课程对 STUDENT 角色也不可见
+        if (SecurityUtil.hasRole("STUDENT") && status != null) {
+            if (status.intValue() == CourseStatus.REJECTED.getCode()
+                    || status.intValue() == CourseStatus.DRAFT.getCode()) {
+                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+            }
+        }
         return R.ok(vo);
     }
 

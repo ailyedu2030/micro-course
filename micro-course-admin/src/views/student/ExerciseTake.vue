@@ -960,22 +960,17 @@ async function handleSubmit() {
 
 async function doSubmit() {
   if (submitting.value) return // 防重复提交
-  clearTimer()
-  clearElapsedTimer()
   submitting.value = true
-  submitted.value = true
 
   if (!currentExercise.value?.id) {
     ElMessage.error('练习信息缺失，请刷新重试')
     submitting.value = false
-    submitted.value = false
     return
   }
   const userId = userStore.userInfo?.id
   if (!userId) {
     ElMessage.error('用户未登录，请重新登录')
     submitting.value = false
-    submitted.value = false
     return
   }
 
@@ -995,6 +990,10 @@ async function doSubmit() {
       duration,
       attemptNo: attemptNo.value
     })
+    // API 成功后才停止计时器、标记已提交
+    clearTimer()
+    clearElapsedTimer()
+    submitted.value = true
     submitResult.value = data
     resultVisible.value = true
     if (data.needsManualGrading) {
@@ -1002,7 +1001,7 @@ async function doSubmit() {
     }
   } catch {
     ElMessage.error('提交失败，请重试')
-    submitted.value = false
+    // submitted 保持 false，计时器继续运行，用户可重试
   } finally {
     submitting.value = false
   }
