@@ -147,11 +147,14 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         // 未指定(0/null)时自动追加到末尾
         int sortOrder = request.getSortOrder() != null ? request.getSortOrder() : 0;
         if (sortOrder <= 0) {
-            CourseChapter max = chapterRepository.selectOne(
+            List<CourseChapter> maxList = chapterRepository.selectList(
                 new LambdaQueryWrapper<CourseChapter>()
                     .eq(CourseChapter::getCourseId, request.getCourseId())
-                    .orderByDesc(CourseChapter::getSortOrder));
-            sortOrder = (max != null && max.getSortOrder() != null ? max.getSortOrder() : 0) + 1;
+                    .orderByDesc(CourseChapter::getSortOrder)
+                    .orderByDesc(CourseChapter::getId)
+                    .last("LIMIT 1"));
+            int maxSort = maxList.isEmpty() || maxList.get(0).getSortOrder() == null ? 0 : maxList.get(0).getSortOrder();
+            sortOrder = maxSort + 1;
         }
         chapter.setSortOrder(sortOrder);
         String chapterType = request.getChapterType() != null ? request.getChapterType() : "VIDEO";
