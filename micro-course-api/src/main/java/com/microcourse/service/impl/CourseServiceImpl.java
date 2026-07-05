@@ -8,6 +8,7 @@ import com.microcourse.dto.CoursePricingRequest;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
+import com.microcourse.dto.PricingForAdopterVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;

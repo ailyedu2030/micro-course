@@ -3,6 +3,7 @@ package com.microcourse.service;
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
 import com.microcourse.dto.CoursePricingRequest;
+import com.microcourse.dto.PricingForAdopterVO;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
