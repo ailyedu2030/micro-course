@@ -144,7 +144,11 @@ public enum ErrorCode {
     REPORT_NOT_FOUND(20001, "举报记录不存在", 404),
     REPORT_ALREADY_REVIEWED(20002, "该举报已被处理,不可重复操作", 400),
     REPORT_INVALID_ACTION(20003, "无效的审核操作", 400),
-    REPORT_INVALID_TYPE(20004, "无效的举报类型", 400);
+    REPORT_INVALID_TYPE(20004, "无效的举报类型", 400),
+
+    // P1I-052: 补充常用系统级错误码
+    CONCURRENT_MODIFICATION(409, "数据已被其他操作修改，请刷新重试", 409),
+    INTERNAL_SERVER_ERROR(500, "服务器内部错误", 500);
 
     private final int code;
     private final String message;

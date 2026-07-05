@@ -78,6 +78,9 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         }
     }
 
+    /** P1I-066: 置顶微专业全局上限 */
+    private static final long MAX_FEATURED_COUNT = 5;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void approveFeatured(Long msId) {
@@ -97,6 +100,15 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         MicroSpecialtyFeaturedStatus currentFeatured = MicroSpecialtyFeaturedStatus.fromString(ms.getFeaturedStatus());
         if (currentFeatured == null || !currentFeatured.canTransitionTo(MicroSpecialtyFeaturedStatus.APPROVED)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可审批置顶");
+        }
+
+        // P1I-066: 检查当前置顶数量是否已达上限
+        long currentFeaturedCount = msRepository.selectCount(
+                new LambdaQueryWrapper<MicroSpecialty>()
+                        .eq(MicroSpecialty::getIsFeatured, true));
+        if (currentFeaturedCount >= MAX_FEATURED_COUNT) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID,
+                    "置顶微专业已达上限(" + MAX_FEATURED_COUNT + "个)，无法继续审批");
         }
 
         int oldVersion = ms.getVersion();

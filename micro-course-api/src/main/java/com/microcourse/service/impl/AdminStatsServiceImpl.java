@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -386,6 +387,19 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         } catch (Exception e) {
             log.warn("JVM 内存检查失败: {}", e.getMessage());
             health.put("memory", "UNKNOWN");
+        }
+
+        // P1I-056: JVM uptime — 从 RuntimeMXBean 获取运行时长
+        try {
+            RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+            long uptimeMs = runtimeMXBean.getUptime();
+            long uptimeDays = uptimeMs / 86400000;
+            long uptimeHours = (uptimeMs % 86400000) / 3600000;
+            long uptimeMinutes = (uptimeMs % 3600000) / 60000;
+            health.put("uptime", String.format("%d天%d小时%d分钟", uptimeDays, uptimeHours, uptimeMinutes));
+        } catch (Exception e) {
+            log.warn("JVM uptime 获取失败: {}", e.getMessage());
+            health.put("uptime", "unknown");
         }
 
         // P2-025: 系统级物理内存检查

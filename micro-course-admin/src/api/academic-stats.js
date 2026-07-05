@@ -43,7 +43,7 @@ export function getCompletionWarnings() {
 /**
  * 获取参与率趋势
  * GET /academic/stats/participation-trend?days=30
- * 响应: [{ date, participationRate }]
+ * 响应: [{ month: "2025-03", value: 45.5 }] (TrendPointVO: month/value)
  */
 export function getParticipationTrend(params) {
   return request({ method: 'GET', url: '/academic/stats/participation-trend', params })
@@ -52,7 +52,7 @@ export function getParticipationTrend(params) {
 /**
  * 获取完成率趋势
  * GET /academic/stats/completion-trend?days=30
- * 响应: [{ date, completionRate }]
+ * 响应: [{ month: "2025-03", value: 45.5 }] (TrendPointVO: month/value)
  */
 export function getCompletionTrend(params) {
   return request({ method: 'GET', url: '/academic/stats/completion-trend', params })

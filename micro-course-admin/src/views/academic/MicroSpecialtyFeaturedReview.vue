@@ -21,21 +21,22 @@
             <el-button type="primary" @click="$router.push('/academic/micro-specialties/proposals')">查看申报列表</el-button>
           </el-empty>
         </template>
-        <el-table-column prop="microSpecialtyTitle" label="微专业" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="collegeName" label="学院" width="120" />
-        <el-table-column prop="applicantName" label="申请人" width="100" />
-        <el-table-column prop="reason" label="申请理由" min-width="200" show-overflow-tooltip />
+        <!-- P1I-067: 字段对齐 — MicroSpecialtyVO 实际字段: title/departmentName/leadTeacherName/featuredApplyReason/featuredApplyAt/featuredStatus -->
+        <el-table-column prop="title" label="微专业" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="departmentName" label="学院" width="120" />
+        <el-table-column prop="leadTeacherName" label="申请人" width="100" />
+        <el-table-column prop="featuredApplyReason" label="申请理由" min-width="200" show-overflow-tooltip />
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+            <el-tag :type="statusType(row.featuredStatus)" size="small">{{ statusLabel(row.featuredStatus) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="申请时间" width="130" align="center">
-          <template #default="{ row }">{{ row.createdAt?.slice(0, 10) || '-' }}</template>
+        <el-table-column prop="featuredApplyAt" label="申请时间" width="130" align="center">
+          <template #default="{ row }">{{ row.featuredApplyAt?.slice(0, 10) || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">
-            <template v-if="row.status === 'PENDING'">
+            <template v-if="row.featuredStatus === 'PENDING'">
               <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">批准</el-button>
               <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
             </template>
@@ -107,7 +108,7 @@ const fetchData = async () => {
 }
 
 const handleApprove = async (row) => {
-  try { await ElMessageBox.confirm(`确定批准「${row.microSpecialtyTitle}」的置顶申请？`, '确认批准', { type: 'info', confirmButtonText: '批准', cancelButtonText: '取消' }) }
+  try { await ElMessageBox.confirm(`确定批准「${row.title}」的置顶申请？`, '确认批准', { type: 'info', confirmButtonText: '批准', cancelButtonText: '取消' }) }
   catch { return }
   actingId.value = row.id
   try { await approveFeatured(row.id); ElMessage.success('已批准'); fetchData() }
@@ -116,7 +117,7 @@ const handleApprove = async (row) => {
 }
 
 const handleReject = async (row) => {
-  try { await ElMessageBox.confirm(`确定驳回「${row.microSpecialtyTitle}」的置顶申请？`, '确认驳回', { type: 'warning', confirmButtonText: '驳回', cancelButtonText: '取消' }) }
+  try { await ElMessageBox.confirm(`确定驳回「${row.title}」的置顶申请？`, '确认驳回', { type: 'warning', confirmButtonText: '驳回', cancelButtonText: '取消' }) }
   catch { return }
   rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true
 }

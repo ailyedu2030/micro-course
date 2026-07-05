@@ -112,6 +112,7 @@ public class CourseController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("更新课程信息")
     public R<CourseVO> update(@PathVariable Long id,
                               @Valid @RequestBody CourseUpdateRequest request) {
         CourseVO vo = courseService.update(id, request);
@@ -121,6 +122,7 @@ public class CourseController {
     /** Phase 4: 更新课程定价 */
     @PutMapping("/{id}/pricing")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
+    @AuditedLog("更新课程定价")
     public R<Void> updatePricing(@PathVariable Long id, @Valid @RequestBody CoursePricingRequest request) {
         courseService.updatePricing(id, request);
         return R.ok();
@@ -143,6 +145,7 @@ public class CourseController {
     /** P0 修复: 提交定价审核 (DRAFT → PENDING) */
     @PostMapping("/{id}/pricing/submit-review")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
+    @AuditedLog("提交定价审核")
     public R<Void> submitPricingForReview(@PathVariable Long id) {
         courseService.submitPricingForReview(id);
         return R.ok();
@@ -151,6 +154,7 @@ public class CourseController {
     /** P0 修复: 审核定价 (PENDING → APPROVED / REJECTED) */
     @PostMapping("/{id}/pricing/review")
     @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
+    @AuditedLog("审核课程定价")
     public R<Void> reviewPricing(@PathVariable Long id,
                                   @RequestParam boolean approved,
                                   @RequestParam(required = false) String reason) {
@@ -169,6 +173,7 @@ public class CourseController {
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     @RequireRole({"TEACHER", "ADMIN", "ACADEMIC"})
+    @AuditedLog("变更课程状态")
     public R<Void> updateStatus(@PathVariable Long id,
                                 @RequestParam Integer status) {
         courseService.updateStatus(id, status);
@@ -177,6 +182,7 @@ public class CourseController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("删除课程")
     public R<Void> delete(@PathVariable Long id) {
         courseService.delete(id);
         return R.ok();
@@ -242,6 +248,7 @@ public class CourseController {
      */
     @PostMapping("/{id}/copy")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("复制课程")
     public R<CourseVO> copy(@PathVariable Long id) {
         CourseVO vo = courseService.copy(id);
         return R.ok(vo);

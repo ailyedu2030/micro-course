@@ -10,10 +10,13 @@ spring:
     driver-class-name: org.postgresql.Driver
     hikari:
       # P1-CI: 限制测试环境连接池大小,避免 250 上限耗尽 PG max_connections=100
-      maximum-pool-size: 10
+      # P1-I-6 修复（CI 卡死根因）: 提升到 20 避免 @Sql 直接 JDBC 借连接未归还导致池满
+      maximum-pool-size: 20
       minimum-idle: 2
       pool-name: micro-course-test-pool
       auto-commit: true
+      # 60s 泄漏超时（避免 housekeeper 误报为死锁）
+      leak-detection-threshold: 60000
   flyway:
     enabled: true
     baseline-on-migrate: true

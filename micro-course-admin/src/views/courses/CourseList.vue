@@ -124,6 +124,7 @@
             <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">审核通过</el-button>
             <el-button v-if="row.status === 1 && userRole === 'ADMIN'" type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleReject(row)">驳回</el-button>
             <el-button v-if="[2, 5].includes(row.status) && userRole === 'ADMIN'" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">{{ row.status === 5 ? '重新上架' : '发布' }}</el-button>
+            <el-button v-if="row.status === 5 && userRole === 'ADMIN'" type="info" link size="small" :loading="actingId === row.id" @click.stop="handleArchive(row)">归档</el-button>
             <el-button v-if="row.status === 4 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="warning" link size="small" :loading="actingId === row.id" @click.stop="handleUnpublish(row)">下架</el-button>
             <el-button type="info" link size="small" @click.stop="handleView(row)">查看</el-button>
             <el-button type="primary" link size="small" @click.stop="handleCopy(row)">复制</el-button>
@@ -582,6 +583,14 @@ const handleReject = async (row) => {
   actingId.value = row.id
   try { await rejectCourse(row.id, value || ''); ElMessage.success('驳回成功'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '驳回失败') }
+  finally { actingId.value = null }
+}
+
+const handleArchive = async (row) => {
+  try { await ElMessageBox.confirm('确定归档该课程? 归档后课程不可再操作', '归档确认', { type: 'warning' }) } catch { return }
+  actingId.value = row.id
+  try { await updateCourseStatus(row.id, 6); ElMessage.success('归档成功'); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '归档失败') }
   finally { actingId.value = null }
 }
 

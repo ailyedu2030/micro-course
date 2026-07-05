@@ -8,6 +8,24 @@
     <!-- 搜索筛选区 -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
+        <!-- P1I-071: 按院系筛选（ADMIN/ACADEMIC 可见） -->
+        <el-form-item v-if="['ADMIN', 'ACADEMIC'].includes(userStore.role)" label="选择院系">
+          <el-select
+            v-model="searchForm.departmentId"
+            placeholder="请选择院系"
+            clearable
+            :loading="deptLoading"
+            class="course-select"
+            @change="handleDeptChange"
+          >
+            <el-option
+              v-for="item in deptOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="选择课程">
           <el-select
             v-model="searchForm.courseId"
@@ -231,6 +249,7 @@ import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { getCourses } from '@/api/course'
+import { getDepartments } from '@/api/department'
 import { getGrades, submitGrade } from '@/api/grade'
 import { useUserStore } from '@/store/user'
 
@@ -243,6 +262,7 @@ const isTeacher = computed(() => userStore.role === 'TEACHER')
 // 加载状态
 const loading = ref(false)
 const courseLoading = ref(false)
+const deptLoading = ref(false)
 
 // 表格数据
 const tableData = ref([])
@@ -250,9 +270,11 @@ const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
 const courseOptions = ref([])
+const deptOptions = ref([])
 
 // 搜索表单
 const searchForm = reactive({
+  departmentId: '',
   courseId: ''
 })
 
@@ -286,6 +308,8 @@ async function fetchCourses() {
   try {
     const params = { size: 20 }
     if (isTeacher.value) params.teacherId = userStore.userInfo?.id
+    // P1I-071: 按院系筛选课程
+    if (searchForm.departmentId) params.offerDepartmentId = searchForm.departmentId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
     if (route.query.courseId) {
@@ -316,6 +340,8 @@ async function searchCourses(keyword) {
   try {
     const params = { size: 20, keyword }
     if (isTeacher.value) params.teacherId = userStore.userInfo?.id
+    // P1I-071: 按院系筛选课程
+    if (searchForm.departmentId) params.offerDepartmentId = searchForm.departmentId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch (e) { ElMessage.error(e?.response?.data?.message || '搜索课程失败') }
@@ -449,6 +475,32 @@ function renderChart(items) {
 }
 
 // 课程变化
+// P1I-071: 获取院系列表（ADMIN/ACADEMIC）
+async function fetchDepartments() {
+  if (!['ADMIN', 'ACADEMIC'].includes(userStore.role)) return
+  deptLoading.value = true
+  try {
+    const { data } = await getDepartments({ page: 0, size: 200 })
+    deptOptions.value = data?.items || []
+  } catch {
+    ElMessage.error('获取院系列表失败')
+  } finally {
+    deptLoading.value = false
+  }
+}
+
+function handleDeptChange() {
+  // 切换院系后重置课程选择并重新搜索课程
+  searchForm.courseId = ''
+  courseOptions.value = []
+  // 重新加载该院系下的课程
+  if (searchForm.departmentId) {
+    searchCourses('')
+  }
+  page.value = 1
+  fetchData()
+}
+
 function handleCourseChange() {
   page.value = 1
   fetchData()
@@ -517,6 +569,8 @@ function handleResize() {
 }
 
 onMounted(() => {
+  // P1I-071: ADMIN/ACADEMIC 角色加载院系列表
+  fetchDepartments()
   fetchCourses()
   // 默认加载该教师所有课程的学生成绩
   fetchData()

@@ -260,6 +260,7 @@ router.beforeEach(async (to, from, next) => {
       } catch (e) {
         // my-role API 失败，降级为只读模式
         console.warn('[router] my-role API 失败，降级为只读模式:', e)
+        ElMessage.warning('无法验证权限，仅可查看，部分操作不可用')
         return next({ path: to.path, query: { ...to.query, _readonly: '1' } })
       }
     }

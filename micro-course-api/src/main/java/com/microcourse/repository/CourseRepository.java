@@ -102,10 +102,11 @@ public interface CourseRepository extends BaseMapper<Course> {
             "  SELECT c.id AS course_id, " +
             "    CASE WHEN COUNT(e2.id) = 0 THEN 0 " +
             "         ELSE COUNT(CASE WHEN e2.completed = true THEN 1 END) * 100.0 / COUNT(e2.id) END AS completion_rate, " +
-            "    COALESCE(AVG(er.score * 100.0 / NULLIF(er.total_score, 0)), 0) AS accuracy_rate " +
+            "    COALESCE(AVG(CASE WHEN ex.id IS NOT NULL THEN er.score * 100.0 / NULLIF(er.total_score, 0) END), 0) AS accuracy_rate " +
             "  FROM courses c " +
             "  LEFT JOIN enrollments e2 ON e2.course_id = c.id AND e2.deleted_at IS NULL " +
             "  LEFT JOIN exercise_records er ON er.user_id = e2.user_id " +
+            "  LEFT JOIN exercises ex ON ex.id = er.exercise_id AND ex.course_id = c.id " +
             "  WHERE c.status = 2 AND c.deleted_at IS NULL " +
             "  GROUP BY c.id" +
             ") AS course_stats ON course_stats.course_id = c.id " +

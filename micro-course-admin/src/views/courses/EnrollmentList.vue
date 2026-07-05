@@ -45,6 +45,9 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">选课列表</span>
+          <el-button type="success" size="small" :loading="exporting" @click="handleExport">
+            <el-icon><Download /></el-icon>导出
+          </el-button>
         </div>
       </template>
       <el-result v-if="error" icon="error" title="加载失败" sub-title="网络异常，请稍后重试">
@@ -120,8 +123,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Close, Top } from '@element-plus/icons-vue'
-import { getEnrollments, updateEnrollment } from '@/api/enrollment'
+import { Check, Close, Top, Download } from '@element-plus/icons-vue'
+import { getEnrollments, updateEnrollment, exportEnrollments } from '@/api/enrollment'
 
 const loading = ref(false)
 const error = ref(false)
@@ -129,6 +132,7 @@ const tableData = ref([])
 const totalElements = ref(0)
 const page = ref(1)
 const size = ref(10)
+const exporting = ref(false)
 
 const searchForm = reactive({
   studentName: '',
@@ -178,6 +182,51 @@ const handleSizeChange = () => {
 
 const handlePageChange = () => {
   fetchData()
+}
+
+// P1I-058: 导出选课数据
+const handleExport = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    ElMessage.info('正在导出选课数据，请稍候…')
+    // 获取全量数据（最多 5000 条）用于客户端导出
+    const exportParams = {
+      page: 0,
+      size: 5000,
+      studentName: searchForm.studentName || undefined,
+      courseName: searchForm.courseName || undefined,
+      status: searchForm.status || undefined
+    }
+    const { data } = await getEnrollments(exportParams)
+    const items = data?.items || []
+
+    if (items.length === 0) {
+      ElMessage.warning('无可导出的选课数据')
+      return
+    }
+
+    // 客户端 XLSX 导出
+    const XLSX = await import('xlsx')
+    const exportRows = items.map((item, index) => ({
+      '序号': index + 1,
+      '学员': item.userName || '',
+      '课程': item.courseName || '',
+      '学习进度': (item.progress || 0) + '%',
+      '报名时间': item.enrolledAt || '',
+      '状态': item.enrollmentStatus || ''
+    }))
+    const ws = XLSX.utils.json_to_sheet(exportRows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '选课数据')
+    const date = new Date().toISOString().split('T')[0]
+    XLSX.writeFile(wb, `enrollments-${date}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (e) {
+    ElMessage.error('导出失败: ' + (e.message || '未知错误'))
+  } finally {
+    exporting.value = false
+  }
 }
 
 // P1C-056: 审核操作 - 通过选课

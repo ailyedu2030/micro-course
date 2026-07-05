@@ -28,6 +28,9 @@ public class WrongQuestion {
     @TableField("last_wrong_at")
     private LocalDateTime lastWrongAt;
 
+    @TableField("watch_position")
+    private Integer watchPosition;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -43,6 +46,8 @@ public class WrongQuestion {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Integer getWrongCount() { return wrongCount; }
     public void setWrongCount(Integer wrongCount) { this.wrongCount = wrongCount; }
+    public Integer getWatchPosition() { return watchPosition; }
+    public void setWatchPosition(Integer watchPosition) { this.watchPosition = watchPosition; }
     public LocalDateTime getLastWrongAt() { return lastWrongAt; }
     public void setLastWrongAt(LocalDateTime lastWrongAt) { this.lastWrongAt = lastWrongAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }

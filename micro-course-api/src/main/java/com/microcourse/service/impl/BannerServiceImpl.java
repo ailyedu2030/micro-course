@@ -107,6 +107,23 @@ public class BannerServiceImpl implements BannerService {
         if (banner == null) {
             throw new BusinessException(ErrorCode.BANNER_NOT_FOUND);
         }
+
+        // P1I-054: 删除物理图片文件后再删除 DB 记录
+        if (banner.getImageUrl() != null && !banner.getImageUrl().isBlank()) {
+            try {
+                // 从 imageUrl 提取文件名，构造完整路径
+                String filename = banner.getImageUrl().substring(banner.getImageUrl().lastIndexOf('/') + 1);
+                String uploadDir = System.getProperty("user.dir") + "/uploads/banners/";
+                java.io.File file = new java.io.File(uploadDir + filename);
+                if (file.exists()) {
+                    file.delete();
+                    log.info("[Banner] 物理图片文件已清理 path={}", file.getAbsolutePath());
+                }
+            } catch (Exception e) {
+                log.warn("[Banner] 物理图片文件清理失败 url={}", banner.getImageUrl(), e);
+            }
+        }
+
         bannerRepository.deleteById(id);
     }
 

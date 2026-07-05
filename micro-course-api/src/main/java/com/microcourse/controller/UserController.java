@@ -95,6 +95,7 @@ public class UserController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
+    @AuditedLog("创建用户")
     public R<UserVO> create(@Valid @RequestBody UserCreateRequest request) {
         UserVO vo = userService.createUser(request);
         return R.ok(vo);
@@ -102,6 +103,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal")
+    @AuditedLog("更新用户信息")
     public R<UserVO> update(@PathVariable Long id,
                              @Valid @RequestBody UserUpdateRequest request) {
         UserVO vo = userService.updateUser(id, request);
@@ -124,6 +126,7 @@ public class UserController {
      */
     @PutMapping("/{id}/teacher-status")
     @PreAuthorize("hasRole('ADMIN')")
+    @AuditedLog("审核教师入驻状态")
     public R<Void> updateTeacherStatus(@PathVariable Long id,
                                         @Valid @RequestBody TeacherStatusRequest request) {
         userService.updateTeacherStatus(id, request);

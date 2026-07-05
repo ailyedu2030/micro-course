@@ -156,10 +156,9 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
         vo.setQuestionId(wrongQuestion.getQuestionId());
         vo.setCourseId(wrongQuestion.getCourseId());
         vo.setWrongCount(wrongQuestion.getWrongCount());
+        vo.setWatchPosition(wrongQuestion.getWatchPosition());
         vo.setLastWrongAt(wrongQuestion.getLastWrongAt());
         vo.setCreatedAt(wrongQuestion.getCreatedAt());
-        // P1I-025: watchPosition 在 VO 中已定义，但 wrong_questions 表暂无对应列，
-        // entity 中无此字段，暂不赋值。待后续 DB migration 补充后在此处添加映射。
 
         // 使用预加载的题目 Map
         Question question = questionMap.get(wrongQuestion.getQuestionId());
