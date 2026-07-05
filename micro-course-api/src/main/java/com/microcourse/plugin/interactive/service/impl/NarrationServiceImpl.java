@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Transactional(rollbackFor = Exception.class)
 public class NarrationServiceImpl implements NarrationService {
 
     private static final Logger log = LoggerFactory.getLogger(NarrationServiceImpl.class);
@@ -296,6 +298,7 @@ public class NarrationServiceImpl implements NarrationService {
                 if (attempt < maxRetries) {
                     try { Thread.sleep(1000L * attempt); } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
+                        log.warn("线程中断: {}", ie.getMessage());
                         break;
                     }
                 }
@@ -305,6 +308,7 @@ public class NarrationServiceImpl implements NarrationService {
                     log.warn("[DeepSeek] 第 {}/{} 次调用限流(429)，准备重试", attempt, maxRetries);
                     try { Thread.sleep(2000L * attempt); } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
+                        log.warn("线程中断: {}", ie.getMessage());
                         break;
                     }
                 } else {
@@ -320,6 +324,7 @@ public class NarrationServiceImpl implements NarrationService {
                 if (attempt < maxRetries) {
                     try { Thread.sleep(1000L * attempt); } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
+                        log.warn("线程中断: {}", ie.getMessage());
                         break;
                     }
                 }

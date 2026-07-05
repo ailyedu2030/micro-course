@@ -369,6 +369,7 @@ public class UserServiceImpl implements UserService {
             detailMap.put("reason", request.getReason());
             logEntry.setDetail(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(detailMap));
         } catch (Exception e) {
+            log.warn("序列化教师状态变更详情失败: {}", e.getMessage());
             logEntry.setDetail("{\"field\":\"teacherStatus\",\"old\":" + oldStatus + ",\"new\":" + newStatus + "}");
         }
         logEntry.setIp(IpUtil.getClientIp());

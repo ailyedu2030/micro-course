@@ -67,6 +67,8 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         try {
             currentUserId = com.microcourse.util.SecurityUtil.getCurrentUserId();
         } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(DiscussionPostServiceImpl.class)
+                .warn("获取当前用户ID失败(匿名访问): {}", e.getMessage());
             currentUserId = null;
         }
         final Long uid = currentUserId;
@@ -272,6 +274,8 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             Long currentUserId = com.microcourse.util.SecurityUtil.getCurrentUserId();
             vo.setIsOwner(post.getUserId() != null && post.getUserId().equals(currentUserId));
         } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(DiscussionPostServiceImpl.class)
+                .warn("设置isOwner失败(未登录): {}", e.getMessage());
             vo.setIsOwner(false);
         }
 

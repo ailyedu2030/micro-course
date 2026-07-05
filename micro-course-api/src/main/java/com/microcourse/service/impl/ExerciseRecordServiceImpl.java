@@ -597,7 +597,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                             counter[1]++;
                         }
                     }
-                } catch (JsonProcessingException ignored) {
+                } catch (JsonProcessingException e) {
+                    log.warn("JSON解析失败: {}", e.getMessage());
                     // 损坏的 answers JSON，按单题 0/1 处理（即整卷算 0 题 0 对）
                 }
             }

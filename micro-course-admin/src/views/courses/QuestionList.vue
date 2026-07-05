@@ -559,8 +559,14 @@ function addOption() {
   optionList.value.push({ label: '', correct: false })
 }
 
-function removeOption(idx) {
-  optionList.value.splice(idx, 1)
+async function removeOption(idx) {
+  try {
+    await ElMessageBox.confirm('确定删除此选项?', '确认删除', {
+      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
+    })
+    optionList.value.splice(idx, 1)
+    ElMessage.success('选项已删除')
+  } catch {}
 }
 
 function setSingleCorrect(idx) {

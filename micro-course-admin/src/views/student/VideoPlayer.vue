@@ -1094,9 +1094,17 @@ const addNote = () => {
   ElMessage.success('笔记已添加')
 }
 
-const deleteNote = (id) => {
-  notes.value = notes.value.filter(n => n.id !== id)
-  saveNotesToStorage()
+const deleteNote = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定删除此笔记?', '确认删除', {
+      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
+    })
+    notes.value = notes.value.filter(n => n.id !== id)
+    saveNotesToStorage()
+    ElMessage.success('笔记已删除')
+  } catch {
+    // 已取消,不做操作
+  }
 }
 
 // P1-3: Insert timestamp prefix at current time

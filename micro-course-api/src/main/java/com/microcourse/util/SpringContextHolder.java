@@ -1,5 +1,7 @@
 package com.microcourse.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
@@ -9,6 +11,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class SpringContextHolder implements ApplicationContextAware {
+
+    private static final Logger log = LoggerFactory.getLogger(SpringContextHolder.class);
 
     private static ApplicationContext applicationContext;
 
@@ -27,6 +31,7 @@ public class SpringContextHolder implements ApplicationContextAware {
         try {
             return applicationContext.getBean(clazz);
         } catch (Exception e) {
+            log.warn("获取Bean失败: {}", e.getMessage());
             return null;
         }
     }

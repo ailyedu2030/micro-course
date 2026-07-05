@@ -297,10 +297,13 @@ public class CoursePricingServiceImpl implements CoursePricingService {
                         .replace("\"", "").split(",");
                 java.util.List<Long> ids = new java.util.ArrayList<>();
                 for (String p : parts) {
-                    try { ids.add(Long.parseLong(p.trim())); } catch (NumberFormatException ignored) {}
+                    try { ids.add(Long.parseLong(p.trim())); } catch (NumberFormatException ex) {
+                        LOG.warn("价格转换失败: {}", ex.getMessage());
+                    }
                 }
                 return ids;
-            } catch (Exception ignored) {
+            } catch (Exception ex2) {
+                LOG.warn("手动解析deptIds失败: {}", ex2.getMessage());
                 return Collections.emptyList();
             }
         }

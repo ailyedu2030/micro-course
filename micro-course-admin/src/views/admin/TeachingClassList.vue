@@ -267,8 +267,14 @@ function addSchedule() {
 }
 
 // 移除时间段
-function removeSchedule(index) {
-  formData.classSchedules.splice(index, 1)
+async function removeSchedule(index) {
+  try {
+    await ElMessageBox.confirm('确定移除此时间段?', '确认移除', {
+      type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消'
+    })
+    formData.classSchedules.splice(index, 1)
+    ElMessage.success('时间段已移除')
+  } catch {}
 }
 
 // 获取数据

@@ -279,6 +279,7 @@ public class VideoController {
                         "文件魔数校验失败，不是有效的 MP4/MOV/MKV 视频");
             }
         } catch (IOException e) {
+            log.warn("视频文件读取失败: {}", e.getMessage());
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
         }
     }
@@ -488,6 +489,7 @@ public class VideoController {
         try {
             return Integer.parseInt(o.toString().trim());
         } catch (NumberFormatException e) {
+            log.warn("数字解析失败: {}", e.getMessage());
             return null;
         }
     }

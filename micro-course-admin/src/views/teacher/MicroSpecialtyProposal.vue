@@ -587,9 +587,15 @@ function getChapterLabel(chapterId) {
   }
   return '(未知章节)'
 }
-function removeChapterAssign(assign, memberIndex) {
-  chapterAssignments.value = chapterAssignments.value.filter(a =>
-    !(a.chapterId === assign.chapterId && a.teamMemberIndex === memberIndex))
+async function removeChapterAssign(assign, memberIndex) {
+  try {
+    await ElMessageBox.confirm('确定移除此章节分配?', '确认移除', {
+      type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消'
+    })
+    chapterAssignments.value = chapterAssignments.value.filter(a =>
+      !(a.chapterId === assign.chapterId && a.teamMemberIndex === memberIndex))
+    ElMessage.success('章节分配已移除')
+  } catch {}
 }
 
 // ==================== 下拉选项 ====================
@@ -745,8 +751,14 @@ function addSharedUnit() {
   })
 }
 
-function removeSharedUnit(index) {
-  sharedUnits.value.splice(index, 1)
+async function removeSharedUnit(index) {
+  try {
+    await ElMessageBox.confirm('确定移除此共享单位?', '确认移除', {
+      type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消'
+    })
+    sharedUnits.value.splice(index, 1)
+    ElMessage.success('共享单位已移除')
+  } catch {}
 }
 
 // ==================== 上传工厂 ====================

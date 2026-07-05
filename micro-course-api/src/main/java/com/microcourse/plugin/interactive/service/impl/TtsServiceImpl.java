@@ -38,9 +38,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
+@Transactional(rollbackFor = Exception.class)
 public class TtsServiceImpl implements TtsService {
 
     private static final Logger log = LoggerFactory.getLogger(TtsServiceImpl.class);

@@ -368,6 +368,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             double usedPercent = (used * 100.0) / total;
             health.put("disk", usedPercent > 90 ? "WARN" : "OK");
         } catch (Exception e) {
+            log.warn("磁盘检查失败: {}", e.getMessage());
             health.put("disk", "UNKNOWN");
         }
 
@@ -380,6 +381,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             double usedPercent = (usedMem * 100.0) / totalMem;
             health.put("memory", usedPercent > 90 ? "WARN" : "OK");
         } catch (Exception e) {
+            log.warn("内存检查失败: {}", e.getMessage());
             health.put("memory", "UNKNOWN");
         }
 

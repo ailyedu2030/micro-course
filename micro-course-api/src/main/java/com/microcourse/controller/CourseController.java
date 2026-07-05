@@ -389,6 +389,8 @@ public class CourseController {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面必须为 JPEG 或 PNG 格式（魔数校验失败）");
             }
         } catch (java.io.IOException e) {
+            org.slf4j.LoggerFactory.getLogger(CourseController.class)
+                .warn("封面文件读取失败: {}", e.getMessage());
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取封面文件");
         }
     }
@@ -415,7 +417,7 @@ public class CourseController {
                     title, content, courseId);
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(CourseController.class)
-                    .debug("单条下架通知失败: userId={}, err={}", userId, e.getMessage());
+                    .warn("单条下架通知失败: userId={}, err={}", userId, e.getMessage());
             }
         }
         org.slf4j.LoggerFactory.getLogger(CourseController.class)

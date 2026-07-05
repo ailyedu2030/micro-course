@@ -27,8 +27,7 @@
               <el-button type="primary" size="small" @click="showAddDialog">添加课程</el-button>
             </div>
           </template>
-          <el-table :data="courses" stripe border>
-            <template #empty><el-empty description="暂未编排课程" /></template>
+          <el-table :data="courses" stripe border empty-text="暂无课程">
             <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
             <el-table-column prop="courseTitle" label="课程名称" min-width="200" show-overflow-tooltip />
             <el-table-column label="授课教师" width="140" show-overflow-tooltip>

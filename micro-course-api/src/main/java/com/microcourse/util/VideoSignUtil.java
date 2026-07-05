@@ -4,6 +4,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +22,8 @@ import java.util.Date;
  */
 @Component
 public class VideoSignUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(VideoSignUtil.class);
 
     @Value("${video.sign.secret:}")
     private String secret;
@@ -39,7 +43,7 @@ public class VideoSignUtil {
             }
             // 仅本地开发环境兜底密钥(单元测试 / mvn spring-boot:run)
             secret = "dev-only-video-sign-secret-key-min-32-bytes-please-change";
-            System.err.println("[WARN] video.sign.secret 未配置,使用本地开发兜底密钥(仅限开发环境)");
+            log.warn("video.sign.secret 未配置,使用本地开发兜底密钥(仅限开发环境)");
         }
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
@@ -99,8 +103,10 @@ public class VideoSignUtil {
 
             return videoIdMatch;
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            log.warn("视频签名已过期: {}", e.getMessage());
             return false;
         } catch (Exception e) {
+            log.warn("视频签名验证失败: {}", e.getMessage());
             return false;
         }
     }

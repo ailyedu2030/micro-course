@@ -2,6 +2,8 @@ package com.microcourse.util;
 
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,6 +16,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
  * - JWT token 在 JwtAuthenticationFilter 中已写入 SecurityContext
  */
 public final class SecurityUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityUtil.class);
 
     private SecurityUtil() {
     }
@@ -116,6 +120,7 @@ public final class SecurityUtil {
         try {
             return getCurrentUserId();
         } catch (Exception e) {
+            log.warn("获取用户ID失败: {}", e.getMessage());
             return null;
         }
     }

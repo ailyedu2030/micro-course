@@ -21,8 +21,7 @@
               <el-button size="small" type="danger" @click="expelMode = !expelMode">{{ expelMode ? '完成' : '批量操作' }}</el-button>
             </div>
           </template>
-          <el-table :data="teachers" stripe border>
-            <template #empty><el-empty description="暂未邀请教师" /></template>
+          <el-table :data="teachers" stripe border empty-text="暂无教师">
             <el-table-column prop="teacherName" label="姓名" width="120" />
             <el-table-column label="角色" width="120">
               <template #default="{ row }"><el-tag size="small">{{ roleMap[row.role] || row.role || '教师' }}</el-tag></template>

@@ -18,7 +18,7 @@
 
     <!-- 表格 -->
     <el-card class="table-card" shadow="never" v-loading="loading" element-loading-text="加载中...">
-      <el-table :data="configList" stripe style="width: 100%" @row-click="handleRowClick">
+      <el-table :data="configList" stripe style="width: 100%" @row-click="handleRowClick" empty-text="暂无配置">
         <el-table-column prop="configKey" label="配置标识" width="140">
           <template #default="{ row }">
             <el-tag :type="getKeyTagType(row.configKey)" size="small" effect="dark">

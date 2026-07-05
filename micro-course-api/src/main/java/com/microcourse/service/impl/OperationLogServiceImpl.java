@@ -116,6 +116,7 @@ public class OperationLogServiceImpl implements OperationLogService {
             List<User> users = userRepository.selectBatchIds(userIds);
             return users.stream().collect(Collectors.toMap(User::getId, User::getUsername, (a, b) -> a));
         } catch (Exception e) {
+            log.warn("批量查询用户名失败: {}", e.getMessage());
             return Collections.emptyMap();
         }
     }
