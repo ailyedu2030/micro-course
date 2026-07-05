@@ -147,20 +147,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setTitle(request.getTitle());
         chapter.setDescription(request.getDescription());
         // 自动分配不重复的sortOrder,避免 UNIQUE(course_id,sort_order) 冲突
-        Integer sortOrder = request.getSortOrder();
-        // 自动分配不重复的sortOrder,避免 UNIQUE(course_id,sort_order) 冲突
-        Long conflictCount = (sortOrder != null && sortOrder > 0) ? chapterRepository.selectCount(
-            new LambdaQueryWrapper<CourseChapter>()
-                .eq(CourseChapter::getCourseId, request.getCourseId())
-                .eq(CourseChapter::getSortOrder, sortOrder)) : 1L;
-        if (sortOrder == null || sortOrder <= 0 || conflictCount > 0) {
-            // 查询该课程的最大sortOrder
-            CourseChapter maxChapter = chapterRepository.selectOne(
-                new LambdaQueryWrapper<CourseChapter>()
-                    .eq(CourseChapter::getCourseId, request.getCourseId())
-                    .orderByDesc(CourseChapter::getSortOrder)
-                    .last("LIMIT 1"));
-            sortOrder = (maxChapter != null ? maxChapter.getSortOrder() : 0) + 1;
+        int sortOrder = request.getSortOrder() != null ? request.getSortOrder() : 0;
+        if (sortOrder <= 0 || hasConflictSortOrder(request.getCourseId(), sortOrder)) {
+            sortOrder = nextSortOrder(request.getCourseId());
         }
         chapter.setSortOrder(sortOrder);
         String chapterType = request.getChapterType() != null ? request.getChapterType() : "VIDEO";
@@ -326,5 +315,17 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (chapterType != null && !VALID_CHAPTER_TYPES.contains(chapterType)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无效的章节类型: " + chapterType);
         }
+    }
+
+    private boolean hasConflictSortOrder(Long courseId, int sortOrder) {
+        return chapterRepository.selectCount(
+            new LambdaQueryWrapper<CourseChapter>()
+                .eq(CourseChapter::getCourseId, courseId)
+                .eq(CourseChapter::getSortOrder, sortOrder)) > 0;
+    }
+
+    private int nextSortOrder(Long courseId) {
+        // 使用自定义SQL(忽略@TableLogic软删除,避免已删除的章节占用sort_order)
+        return chapterRepository.selectMaxSortOrderByCourseId(courseId) + 1;
     }
 }
