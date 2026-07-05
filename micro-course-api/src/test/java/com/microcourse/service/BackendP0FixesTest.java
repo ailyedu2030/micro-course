@@ -131,6 +131,11 @@ class BackendP0FixesTest extends BaseIntegrationTest {
     @Test
     @DisplayName("[P0-2] 并发 create 同一 user/course/chapter 进度，DB 最终只有 1 条记录")
     void concurrentProgressCreateShouldNotDuplicate() throws Exception {
+        // P0-1 业务逻辑审计修复：ensureEnrollment() — 测试前先建好选课记录
+        // （生产中 LearningProgressServiceImpl.create 会校验 enrollment）
+        exec("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) "
+                + "VALUES (7, 1, 'APPROVED', 'TEST', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) "
+                + "ON CONFLICT (user_id, course_id) WHERE deleted_at IS NULL DO NOTHING");
         // 先提交并落库一条章节级进度（lesson_id 为 null —— DB 无唯一约束的并发重复高发场景）
         LearningProgressVO first = learningProgressService.create(buildProgress(7L, 1L, 1L));
         assertNotNull(first.getId(), "首次创建应返回有效进度 ID");
@@ -162,6 +167,10 @@ class BackendP0FixesTest extends BaseIntegrationTest {
     @Test
     @DisplayName("[P0-2] 顺序二次 create 同一进度返回同一记录（多设备幂等）")
     void sequentialProgressCreateIsIdempotent() {
+        // P0-1 业务逻辑审计修复：ensureEnrollment() — 测试前先建好选课记录
+        exec("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) "
+                + "VALUES (7, 2, 'APPROVED', 'TEST', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) "
+                + "ON CONFLICT (user_id, course_id) WHERE deleted_at IS NULL DO NOTHING");
         LearningProgressVO v1 = learningProgressService.create(buildProgress(7L, 2L, 5L));
         LearningProgressVO v2 = learningProgressService.create(buildProgress(7L, 2L, 5L));
         assertEquals(v1.getId(), v2.getId(), "多设备重复上报必须返回同一进度记录，不新建");

@@ -35,6 +35,7 @@ import com.microcourse.service.BadgeService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.OrderService;
+import com.microcourse.service.WaitlistPromotionService;
 import com.microcourse.enums.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +73,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final EnrollmentQueryService queryService;
     private final com.microcourse.metrics.EnrollmentMetrics metrics;
     private final org.springframework.transaction.support.TransactionTemplate txTemplate;
-    private final EnrollmentService self;
+    private final WaitlistPromotionService waitlistPromotionService;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
                                  EnrollmentHistoryRepository enrollmentHistoryRepository,
@@ -90,29 +91,24 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                   NotificationService notificationService,
                                   com.microcourse.metrics.EnrollmentMetrics metrics,
                                   org.springframework.transaction.PlatformTransactionManager txManager,
-                                  @Lazy EnrollmentService self) {
+                                  WaitlistPromotionService waitlistPromotionService) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentHistoryRepository = enrollmentHistoryRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
-        this.certificateService = certificateService;
-        this.badgeService = badgeService;
         this.classesRepository = classesRepository;
         this.majorRepository = majorRepository;
+        this.certificateService = certificateService;
+        this.badgeService = badgeService;
         this.orderRepository = orderRepository;
         this.orderService = orderService;
-        this.courseService = courseService;
-        this.notificationService = notificationService;
         this.statsService = statsService;
         this.queryService = queryService;
+        this.courseService = courseService;
+        this.notificationService = notificationService;
         this.metrics = metrics;
-        this.self = self;
         this.txTemplate = new org.springframework.transaction.support.TransactionTemplate(txManager);
-        // ★ 客户体验修复 v1.7.0: 软删旧 CANCELLED enrollment 必须走 REQUIRES_NEW,
-        // 否则默认 REQUIRED 会加入主 enroll() 事务, 主事务异常回滚时撤销删除
-        this.txTemplate.setPropagationBehavior(
-            org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        this.txTemplate.setName("reenroll-soft-delete-tx");
+        this.waitlistPromotionService = waitlistPromotionService;
     }
 
     @Override
@@ -466,14 +462,25 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         // ★ 业务逻辑审计 P0-1 新发现：自动晋升候补
         // spec §3.2: "WAITLIST → APPROVED: 有人退课 → 按候补顺序自动录取"
-        // 之前漏了！学生退课后,候补中的第一个学生没有自动 ENROLLED
-        // 现在：退课 → student_count-1 → 找 WAITLIST 最早一个 → 改 APPROVED
-        // P1-I-6: 通过 self 代理调用以触发 REQUIRES_NEW 独立事务
+        // P1-I-6 最终修复：在 cancel 事务**提交后**再调用 promote，
+        // 用 afterCommit 解决嵌套事务 + PG 行锁等待问题（CI 卡死 25+ 分钟根因）
         if (wasEnrolled && enrollment.getCourseId() != null) {
-            if (self != null) {
-                self.promoteFirstWaitlistToEnrolled(enrollment.getCourseId());
+            final Long courseId = enrollment.getCourseId();
+            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            try {
+                                waitlistPromotionService.promoteFirstWaitlistToEnrolled(courseId);
+                            } catch (Exception e) {
+                                LOG.warn("[EnrollmentService] 候补晋升 afterCommit 失败 courseId={}", courseId, e);
+                            }
+                        }
+                    });
             } else {
-                promoteFirstWaitlistToEnrolled(enrollment.getCourseId());
+                // 无活动事务（测试或独立调用场景），直接执行
+                waitlistPromotionService.promoteFirstWaitlistToEnrolled(courseId);
             }
         }
 
@@ -602,84 +609,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
      *   <li>通知: 给晋升学生发通知</li>
      * </ol>
      * <p>P1-I-6: 独立事务 REQUIRES_NEW, 晋升失败不影响原 cancel 事务回滚。</p>
-     */
+*/
+    // P1-I-6 重构：候补晋升已抽到独立 WaitlistPromotionService bean
+    // 这里保留方法签名只为兼容接口，但实际委托给独立 Service
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void promoteFirstWaitlistToEnrolled(Long courseId) {
-        // 1. 重新锁 course 行 (与 enroll() 一致的事务隔离保证)
-        java.util.Map<String, Object> locked = courseRepository.selectByIdForUpdate(courseId);
-        if (locked == null) return;
-        Integer maxStudents = (Integer) locked.get("max_students");
-        Integer studentCount = ((Number) locked.get("student_count")).intValue();
-        if (maxStudents == null || maxStudents == 0) return;  // 不限人数 → 不需要晋升
-        if (studentCount >= maxStudents) return;  // 还有人占着,先不晋升
-
-        // 2. 找候补队列最早一个 (按 enrolled_at ASC,先来先进)
-        Enrollment next = enrollmentRepository.selectOne(
-                new LambdaQueryWrapper<Enrollment>()
-                        .eq(Enrollment::getCourseId, courseId)
-                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())
-                        .orderByAsc(Enrollment::getEnrolledAt)
-                        .last("LIMIT 1"));
-        if (next == null) return;  // 候补空
-
-        // 3. 状态机校验 (防御深度): WAITLIST → APPROVED 是合法
-        EnrollmentStatus fromStatus = EnrollmentStatus.WAITLIST;
-        if (!fromStatus.canTransitionTo(EnrollmentStatus.APPROVED)) {
-            LOG.error("候补晋升状态机不通过: WAITLIST→APPROVED");
-            return;
-        }
-
-        // 4. CAS 更新: 状态变更 + 增计数
-        int updated = enrollmentRepository.update(null,
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Enrollment>()
-                        .eq(Enrollment::getId, next.getId())
-                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())
-                        .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.APPROVED.getValue())
-                        .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
-        if (updated == 0) {
-            LOG.warn("候补晋升 CAS 失败, id={} (并发取消冲突,下次重试)", next.getId());
-            return;
-        }
-
-        // 5. 增计数 (因晋升,student_count +1)
-        courseRepository.atomicIncrementIfNotFull(courseId);
-
-        // 6. 写历史
-        recordHistory(next.getId(), fromStatus, EnrollmentStatus.APPROVED, null, "WAITLIST_PROMOTE");
-
-        // 7. 通知晋升学生
-        // R8 P1-C-3: 查询课程标题（替代直接拼 hard-coded courseId）
-        String courseTitle = null;
-        try {
-            Course courseForNotify = courseRepository.selectById(courseId);
-            if (courseForNotify != null) courseTitle = courseForNotify.getTitle();
-        } catch (Exception e) {
-            LOG.warn("[notifyNextInQueue] 获取课程标题失败, courseId={}, error={}", courseId, e.getMessage());
-        }
-        String finalCourseTitle = courseTitle;
-        // P0: 仅在事务提交后发送通知，避免事务回滚导致虚假通知
-        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
-            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                new org.springframework.transaction.support.TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            notificationService.notifyAsync(
-                                    next.getUserId(),
-                                    NotificationType.ENROLLMENT_SUCCESS,
-                                    "候补录取通知",
-                                    "您已从候补队列中被录取《" + (finalCourseTitle != null ? finalCourseTitle : "课程 ID=" + courseId) + "》,可开始学习。",
-                                    courseId);
-                        } catch (Exception e) {
-                            LOG.warn("候补通知发送失败, id={}, userId={}", next.getId(), next.getUserId(), e);
-                        }
-                    }
-                });
-        }
-
-        LOG.info("候补晋升完成: courseId={}, userId={}, enrollmentId={}",
-                courseId, next.getUserId(), next.getId());
+        waitlistPromotionService.promoteFirstWaitlistToEnrolled(courseId);
     }
 
     private void recordHistory(Long enrollmentId, EnrollmentStatus fromStatus,
