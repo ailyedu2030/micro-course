@@ -40,7 +40,7 @@ public class QuestionController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100000) int size) {
         PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, keyword, categoryId, chapterId, page, size);
         return R.ok(result);
     }

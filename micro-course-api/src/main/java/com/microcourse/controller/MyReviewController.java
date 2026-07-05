@@ -36,7 +36,7 @@ public class MyReviewController {
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<PageResult<CourseReviewVO>> listAll(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
             @RequestParam(required = false) Long courseId) {
         PageResult<CourseReviewVO> result = courseReviewService.listAll(page, size, courseId);
         return R.ok(result);
@@ -50,7 +50,7 @@ public class MyReviewController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseReviewVO>> getMyReviews(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         Long userId = SecurityUtil.getCurrentUserId();
         PageResult<CourseReviewVO> result = courseReviewService.getMyReviews(userId, page, size);
         return R.ok(result);
