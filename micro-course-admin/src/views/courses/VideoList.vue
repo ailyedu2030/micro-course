@@ -142,7 +142,7 @@
           <el-input v-model="formData.title" placeholder="选完文件后自动填充，或手动输入" />
         </el-form-item>
         <el-form-item label="所属课程" prop="courseId" v-if="!isContextualMode || isEdit">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="isContextualMode || isEdit">
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="isContextualMode || isEdit" @change="handleDialogCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -367,7 +367,16 @@ const handleCreate = () => {
   formData.chapterId = lockedChapterId.value || (searchForm.chapterId ? Number(searchForm.chapterId) : null)
   formData.sortOrder = 0
   submitProgress.value = 0
+  if (formData.courseId) handleDialogCourseChange(formData.courseId)
   dialogVisible.value = true
+}
+
+const handleDialogCourseChange = async (courseId) => {
+  if (!courseId) { chapterOptions.value = []; return }
+  try {
+    const { data } = await getChapters({ courseId, size: 1000 })
+    chapterOptions.value = data.items || []
+  } catch { chapterOptions.value = [] }
 }
 
 const handleEdit = async (row) => {
