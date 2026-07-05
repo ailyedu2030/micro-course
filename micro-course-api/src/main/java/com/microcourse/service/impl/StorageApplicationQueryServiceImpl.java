@@ -116,6 +116,66 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
     }
 
     // ================================================================
+    // P1C-091: 获取待审批列表（ACADEMIC）
+    // ================================================================
+    @Override
+    public PageResult<StorageApplicationSummaryVO> getPendingList(int page, int size) {
+        IPage<MicroSpecialtyProposal> ipage = proposalRepository.selectPage(
+                new Page<>(page + 1, size),
+                new LambdaQueryWrapper<MicroSpecialtyProposal>()
+                        .eq(MicroSpecialtyProposal::getStatus, "PENDING_REVIEW")
+                        .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
+
+        List<MicroSpecialtyProposal> proposals = ipage.getRecords();
+
+        Set<Long> deptIds = proposals.stream()
+                .map(MicroSpecialtyProposal::getOfferDepartmentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> deptNameMap = new HashMap<>();
+        if (!deptIds.isEmpty()) {
+            List<Department> depts = departmentRepository.selectBatchIds(deptIds);
+            deptNameMap = depts.stream()
+                    .collect(Collectors.toMap(Department::getId, Department::getName));
+        }
+
+        Set<Long> proposerIds = proposals.stream()
+                .map(MicroSpecialtyProposal::getProposerId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> proposerNameMap = new HashMap<>();
+        if (!proposerIds.isEmpty()) {
+            List<User> users = userRepository.selectBatchIds(proposerIds);
+            proposerNameMap = users.stream()
+                    .collect(Collectors.toMap(User::getId, User::getRealName));
+        }
+
+        List<StorageApplicationSummaryVO> result = new ArrayList<>();
+        for (MicroSpecialtyProposal p : proposals) {
+            StorageApplicationSummaryVO vo = new StorageApplicationSummaryVO();
+            vo.setId(p.getId());
+            vo.setTitle(p.getTitle());
+            vo.setMicroSpecialtyName(p.getMicroSpecialtyName());
+            vo.setStatus(p.getStatus());
+            vo.setType(p.getType());
+            vo.setDepartmentName(deptNameMap.getOrDefault(p.getOfferDepartmentId(), ""));
+            vo.setCreatedAt(p.getCreatedAt());
+            vo.setUpdatedAt(p.getUpdatedAt());
+            // 添加申请人信息
+            vo.setProposerName(proposerNameMap.getOrDefault(p.getProposerId(), ""));
+            result.add(vo);
+        }
+
+        PageResult<StorageApplicationSummaryVO> pr = new PageResult<>();
+        pr.setItems(result);
+        pr.setPage(page);
+        pr.setSize(size);
+        pr.setTotalElements(ipage.getTotal());
+        pr.setTotalPages(ipage.getPages());
+        return pr;
+    }
+
+    // ================================================================
     // 3. getDetail
     // ================================================================
     @Override
@@ -125,8 +185,10 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
             throw new BusinessException(ErrorCode.SA_NOT_FOUND);
         }
 
-        // 权限校验：本人或 ADMIN
-        if (userId != null && !SecurityUtil.isOwnerOrAdmin(proposal.getProposerId())) {
+        // AC10: 权限校验 — 本人/ADMIN/ACADEMIC 均可查看
+        // ACADEMIC 作为审批人可查看所有申请详情；ADMIN 完全访问
+        if (userId != null && !SecurityUtil.isAdminOrAcademic()
+                && !proposal.getProposerId().equals(userId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
@@ -180,7 +242,8 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         if (proposal == null) {
             throw new BusinessException(ErrorCode.SA_NOT_FOUND);
         }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
+        // AC10: 允许 ACADEMIC 查看预览（审批人需要查看详情）
+        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdminOrAcademic()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 

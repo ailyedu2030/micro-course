@@ -15,9 +15,16 @@
             <template #empty><span class="no-data-hint">暂无可用微专业</span></template>
           </el-select>
         </el-form-item>
+        <!-- P1I-068 修复：添加院系列筛选项，避免班级列表全量加载 -->
+        <el-form-item label="院系列筛">
+          <el-select v-model="departmentFilter" filterable clearable placeholder="请选择院系（筛选）" class="full-width" @change="onDepartmentFilterChange">
+            <el-option v-for="d in departmentOptions" :key="d.id" :label="d.name" :value="d.id" />
+            <template #empty><span class="no-data-hint">暂无院系</span></template>
+          </el-select>
+        </el-form-item>
         <el-form-item label="班级" prop="classIds">
           <el-select v-model="form.classIds" multiple filterable :placeholder="form.microSpecialtyId ? '请选择班级（可多选）' : '请先选择微专业'" class="full-width" :loading="loadingClasses" :disabled="!form.microSpecialtyId">
-            <el-option v-for="c in classOptions" :key="c.id" :label="`${c.name} (${c.majorName || ''} ${c.studentCount || 0}人)`" :value="c.id" />
+            <el-option v-for="c in filteredClassOptions" :key="c.id" :label="`${c.name} (${c.departmentName || c.majorName || ''} ${c.studentCount || 0}人)`" :value="c.id" />
             <template #empty><span class="no-data-hint">暂无可用班级</span></template>
           </el-select>
         </el-form-item>
@@ -31,9 +38,9 @@
     <el-card v-if="result" shadow="never" class="mg-top-16 result-card">
       <template #header><span>导入结果</span></template>
       <el-row :gutter="16">
-        <el-col :span="8"><el-result icon="success" title="成功" :sub-title="`${result.successCount || 0} 人`" /></el-col>
-        <el-col :span="8"><el-result icon="info" title="跳过" :sub-title="`${result.skipCount || 0} 人`" /></el-col>
-        <el-col :span="8"><el-result icon="warning" title="待处理" :sub-title="`${result.pendingCount || 0} 人`" /></el-col>
+        <el-col :span="8"><el-result icon="success" title="成功导入" :sub-title="`${successStudentCount} 人`" /></el-col>
+        <el-col :span="8"><el-result icon="success" title="成功班级" :sub-title="`${result.successCount || 0} 个`" /></el-col>
+        <el-col :span="8"><el-result icon="danger" title="失败班级" :sub-title="`${result.failedCount || 0} 个`" /></el-col>
       </el-row>
       <el-button v-if="importResult.success.length || importResult.failed.length" type="primary" size="small" class="mg-top-12" @click="showImportResult">查看班级明细</el-button>
       <div v-if="result.errors && result.errors.length" class="error-list mg-top-12">
@@ -69,6 +76,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, classImport } from '@/api/microSpecialty'
 import { getClasses } from '@/api/class'
+import { getDepartments } from '@/api/department'
 
 const importing = ref(false)
 const loadingSpecialties = ref(false)
@@ -81,10 +89,23 @@ const rules = {
 }
 const specialtyOptions = ref([])
 const classOptions = ref([])
+
+// P1I-068: 院系列筛
+const departmentFilter = ref(null)
+const departmentOptions = ref([])
+const filteredClassOptions = computed(() => {
+  if (!departmentFilter.value) return classOptions.value
+  return classOptions.value.filter(c => c.departmentId === departmentFilter.value || c.departmentName === departmentOptions.value.find(d => d.id === departmentFilter.value)?.name)
+})
 const result = ref(null)
 const importResultDialogVisible = ref(false)
 const importResultTab = ref('success')
 const importResult = ref({ success: [], failed: [] })
+const successStudentCount = computed(() => {
+  if (!result.value) return 0
+  const list = result.value.successList || []
+  return list.reduce((sum, item) => sum + (item.studentCount || 0), 0)
+})
 
 const showImportResult = () => {
   importResultDialogVisible.value = true
@@ -117,6 +138,11 @@ const onSpecialtyChange = async (id) => {
   finally { loadingClasses.value = false }
 }
 
+// P1I-068: 院系筛选变更
+const onDepartmentFilterChange = () => {
+  form.value.classIds = []
+}
+
 const handleImport = async () => {
   if (!formRef.value) return
   try { await formRef.value.validate() } catch { return }
@@ -140,7 +166,18 @@ const handleImport = async () => {
   finally { importing.value = false }
 }
 
-onMounted(fetchSpecialties)
+// P1I-068: 加载院系列表
+const fetchDepartments = async () => {
+  try {
+    const { data } = await getDepartments()
+    departmentOptions.value = data?.items || data || []
+  } catch { /* 院系加载失败不影响主流程 */ }
+}
+
+onMounted(() => {
+  fetchSpecialties()
+  fetchDepartments()
+})
 </script>
 
 <style scoped>

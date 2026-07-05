@@ -28,3 +28,8 @@ export function getStudyDays() {
 export function getTotalTime() {
   return request({ method: 'GET', url: '/learning-progress/total-time' })
 }
+
+// P1C-031: 获取服务端时间，避免前后端"今天"定义不一致
+export function getServerTime() {
+  return request({ method: 'GET', url: '/server-time' })
+}

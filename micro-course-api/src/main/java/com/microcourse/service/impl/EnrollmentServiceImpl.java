@@ -10,6 +10,7 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.StudentDetailVO;
 import com.microcourse.entity.Classes;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.CoursePrerequisite;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.EnrollmentHistory;
 import com.microcourse.entity.Major;
@@ -57,6 +58,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     /** P0-04: 防止 OrderServiceImpl.refund() → cancelEnrollment → orderService.refund() 递归循环 */
     private static final ThreadLocal<Boolean> REFUND_REENTRANT = ThreadLocal.withInitial(() -> false);
 
+    private final com.microcourse.repository.CoursePrerequisiteRepository coursePrerequisiteRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentHistoryRepository enrollmentHistoryRepository;
     private final CourseRepository courseRepository;
@@ -75,10 +77,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final org.springframework.transaction.support.TransactionTemplate txTemplate;
     private final WaitlistPromotionService waitlistPromotionService;
 
-    public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
-                                 EnrollmentHistoryRepository enrollmentHistoryRepository,
-                                 CourseRepository courseRepository,
-                                 UserRepository userRepository,
+    public EnrollmentServiceImpl(com.microcourse.repository.CoursePrerequisiteRepository coursePrerequisiteRepository,
+                                  EnrollmentRepository enrollmentRepository,
+                                  EnrollmentHistoryRepository enrollmentHistoryRepository,
+                                  CourseRepository courseRepository,
+                                  UserRepository userRepository,
                                  ClassesRepository classesRepository,
                                  MajorRepository majorRepository,
                                  CertificateService certificateService,
@@ -92,6 +95,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                   com.microcourse.metrics.EnrollmentMetrics metrics,
                                   org.springframework.transaction.PlatformTransactionManager txManager,
                                   WaitlistPromotionService waitlistPromotionService) {
+        this.coursePrerequisiteRepository = coursePrerequisiteRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentHistoryRepository = enrollmentHistoryRepository;
         this.courseRepository = courseRepository;
@@ -136,57 +140,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (!com.microcourse.config.EnrollmentFeatureFlag.isDynamicallyEnabled()) {
             throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "选课服务暂时不可用，请稍后重试");
         }
-        // 幂等性优先检查：已选过则直接返回
-        LambdaQueryWrapper<Enrollment> existingWrapper = new LambdaQueryWrapper<>();
-        existingWrapper.eq(Enrollment::getUserId, request.getUserId())
-                .eq(Enrollment::getCourseId, request.getCourseId());
-        Enrollment existingEnrollment = enrollmentRepository.selectOne(existingWrapper);
-        if (existingEnrollment != null) {
-            // 客户体验修复 v1.7.0: 退课后重新选课
-            // 问题: UNIQUE(user_id, course_id) WHERE deleted_at IS NULL 约束 + 软删的 CANCELLED 记录阻挡新 ENROLLED
-            // 解决: 用 @TableLogic 软删除 (deleted_at = NOW()) 旧 CANCELLED 记录
-            //      partial unique index 释放后, 走正常 enroll 流程
-            // 状态机: CANCELLED 是终态, 不能状态转换, 所以不能 updateById. 改用 deleteById 触发 @TableLogic
-            if (EnrollmentStatus.CANCELLED.getValue().equals(existingEnrollment.getEnrollmentStatus())) {
-                LOG.info("退课后重新选课: userId={}, courseId={}, 软删旧 enrollmentId={}",
-                    request.getUserId(), request.getCourseId(), existingEnrollment.getId());
-                // 检查课程是否仍可选
-                java.util.Map<String, Object> lockedCourseCheck = courseRepository.selectByIdForUpdate(request.getCourseId());
-                if (lockedCourseCheck == null) {
-                    throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-                }
-                Integer checkStatus = (Integer) lockedCourseCheck.get("status");
-                Object checkDeletedAt = lockedCourseCheck.get("deleted_at");
-                if (checkDeletedAt != null) {
-                    throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
-                }
-                if (checkStatus == null || !CourseStatus.fromCode(checkStatus).isSelectable()) {
-                    throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
-                        "课程" + describeCourseStatus(checkStatus) + "，无法重新选课");
-                }
-                // P1-25: 退课物理删除改用软更新 — 复用旧记录，避免 REQUIRES_NEW 事务影响主事务
-                enrollmentRepository.update(null,
-                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Enrollment>()
-                        .eq(Enrollment::getId, existingEnrollment.getId())
-                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
-                        .set(Enrollment::getEnrollmentStatus, "REENROLLING")
-                        .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
-                LOG.info("退课后重新选课-软更新旧 enrollment 为 REENROLLING: enrollmentId={}", existingEnrollment.getId());
-                // 注意: cancelEnrollment 已 atomicDecrementStudentCount, 这里不要再 +1
-                // 走下面的正常 enroll 流程会自动 +1
-                // P1-25: 旧 CANCELLED enrollment 已软更新为 REENROLLING，不再物理删除
-                // 不 return, 继续走下面的正常 enroll 流程
-            } else {
-                // 其他状态 (APPROVED/ENROLLED/IN_PROGRESS/COMPLETED/WAITLIST) 幂等返回
-                return convertToVO(existingEnrollment);
-            }
-        }
 
         // ★ 业务逻辑审计 P0-1 压测发现追加：行级锁 (SELECT ... FOR UPDATE)
-        // 之前的实现虽然用了"原子 SQL"，但 INSERT...SELECT...WHERE c.student_count < c.max_students
-        // 仍然不原子——多个并发事务能看到相同的 student_count 旧值。
-        // 压测结果 (50 并发对 max=5): 修复前 11/15 超卖; 加行级锁后 5/15 满员。
-        // 必须在事务内锁课程行，后续所有 SQL 都基于锁后的一致快照。
+        // P1C-009: 幂等性检查移到行锁内。将"检查已有 enrollment + 处理 REENROLLING"移入锁区域，
+        // 避免并发时两个事务同时看到"无 enrollment"并都创建 WAITLIST。
+        // 之前的实现在行锁外做幂等性检查，导致并发场景下两个事务都通过检查，误入 WAITLIST 或 duplicate key。
         java.util.Map<String, Object> lockedCourse = courseRepository.selectByIdForUpdate(request.getCourseId());
         if (lockedCourse == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
@@ -194,8 +152,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         Integer lockedStatus = (Integer) lockedCourse.get("status");
         Integer maxStudents = (Integer) lockedCourse.get("max_students");
         Integer studentCount = ((Number) lockedCourse.get("student_count")).intValue();
-        // P0 修复 v1.7.0: deleted_at 是 timestamp 列,不能直接 cast String;判断 null 即可
-        // 软删除的课程在 SELECT 时已经被 deleted_at IS NULL 过滤掉,这里只是兜底二次校验
         Object deletedAtRaw = lockedCourse.get("deleted_at");
         boolean isDeleted = deletedAtRaw != null;
 
@@ -207,17 +163,37 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 "课程" + describeCourseStatus(lockedStatus) + "，无法选课");
         }
 
+        // P1C-009: 幂等性检查移到行锁内 — 行锁后的事务内一致性读
+        Enrollment existingEnrollment = enrollmentRepository.selectOne(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getUserId, request.getUserId())
+                        .eq(Enrollment::getCourseId, request.getCourseId()));
+        if (existingEnrollment != null) {
+            if (EnrollmentStatus.CANCELLED.getValue().equals(existingEnrollment.getEnrollmentStatus())) {
+                LOG.info("退课后重新选课: userId={}, courseId={}, 软更新旧 enrollmentId={}",
+                    request.getUserId(), request.getCourseId(), existingEnrollment.getId());
+                enrollmentRepository.update(null,
+                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Enrollment>()
+                        .eq(Enrollment::getId, existingEnrollment.getId())
+                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
+                        .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.REENROLLING.getValue())
+                        .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
+                LOG.info("退课后重新选课-软更新旧 enrollment 为 REENROLLING: enrollmentId={}", existingEnrollment.getId());
+                // 注意: cancelEnrollment 已 atomicDecrementStudentCount, 这里不要再 +1
+                // 走下面的正常 enroll 流程会自动 +1
+            } else {
+                // 其他状态 (APPROVED/COMPLETED/WAITLIST/SUSPENDED) 幂等返回
+                return convertToVO(existingEnrollment);
+            }
+        }
+
         // SECURITY: 付费课程必须通过订单支付,不能直接选课
-        // v1.7.0 P0 修复: sourceChannel='PAYMENT' 表示这是订单支付后的自动选课,跳过付费检查
-        // 旧逻辑会把"支付后自动选课"也卡住,造成订单支付 500 (死锁: pay→enroll→reject)
-        Course course = courseRepository.selectById(request.getCourseId());  // 拿到完整 entity
+        Course course = courseRepository.selectById(request.getCourseId());
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
         // P0-06 修复：若 sourceChannel 为 PAYMENT，验证用户有该课程的 PAID 订单
         if ("PAYMENT".equals(request.getSourceChannel())) {
-            // 【P1-05 修复】pay() 调用 autoEnroll() 时订单仍为 PENDING（先选课再标记支付），
-            // 因此同时检查 PENDING 和 PAID 订单，避免"非法支付来源"误拦截
             Long paidCount = orderRepository.selectCount(new LambdaQueryWrapper<Order>()
                     .eq(Order::getUserId, request.getUserId())
                     .eq(Order::getCourseId, request.getCourseId())
@@ -236,11 +212,18 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程为付费课程，请先购买");
             }
         }
-        // Check user exists
+        // Check user exists and is active
         User user = userRepository.selectById(request.getUserId());
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
+        // P0-009: 用户被禁用后阻止新选课
+        if (user.getStatus() != null && user.getStatus() == 2) {
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "您的账号已被禁用，无法选课");
+        }
+
+        // P1C-007: 先修课程检查 — 检查 course_prerequisites 表
+        checkPrerequisites(request.getUserId(), request.getCourseId());
 
         // ★ 业务逻辑审计 P0-1 修复：原子选课（行级锁 + 容量检查 + 插入 + 增计数）
         // 因为课程行已锁定，INSERT...SELECT 的 student_count < max_students 检查是准确的
@@ -396,6 +379,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 }
             }
         }
+        // T15: 成绩锁定 — COMPLETED 状态后禁止修改成绩
+        EnrollmentStatus currentEnrollStatus = EnrollmentStatus.fromString(enrollment.getEnrollmentStatus());
+        boolean isCompleted = currentEnrollStatus == EnrollmentStatus.COMPLETED;
+        if (isCompleted && (request.getFinalScore() != null || request.getFinalGrade() != null)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程已完成，成绩已锁定，无法修改");
+        }
         if (request.getFinalScore() != null) {
             enrollment.setFinalScore(request.getFinalScore());
         }
@@ -419,6 +408,23 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 enrollment.setEnrollmentStatus(targetStatus.getValue());
             }
             // currentStatus == targetStatus：同状态幂等，无变更、无审计
+
+            // P1I-028: enrollmentStatus 转换为 COMPLETED 时触发徽章检查
+            if (targetStatus == EnrollmentStatus.COMPLETED && enrollment.getUserId() != null) {
+                try {
+                    badgeService.checkAndAwardCourseCompletion(
+                            enrollment.getUserId(), enrollment.getCourseId(),
+                            enrollmentRepository.selectCount(
+                                    new LambdaQueryWrapper<Enrollment>()
+                                            .eq(Enrollment::getUserId, enrollment.getUserId())),
+                            enrollmentRepository.selectCount(
+                                    new LambdaQueryWrapper<Enrollment>()
+                                            .eq(Enrollment::getUserId, enrollment.getUserId())
+                                            .eq(Enrollment::getCompleted, true)));
+                } catch (Exception e) {
+                    LOG.error("[Enrollment] 徽章自动颁发失败 userId={} courseId={} (status transition)", enrollment.getUserId(), enrollment.getCourseId(), e);
+                }
+            }
         }
 
         enrollment.setUpdatedAt(LocalDateTime.now());
@@ -713,6 +719,56 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     public void exportEnrollments(Long courseId, HttpServletResponse response) throws IOException {
         queryService.exportEnrollments(courseId, response);
+    }
+
+    /**
+     * P1C-007: 先修课程检查 — 选课前检查 course_prerequisites 表
+     * 如果课程设定了先修课程，学生必须完成先修课程（成绩达标）才能选课。
+     */
+    private void checkPrerequisites(Long userId, Long courseId) {
+        List<CoursePrerequisite> prerequisites = coursePrerequisiteRepository.selectList(
+                new LambdaQueryWrapper<CoursePrerequisite>()
+                        .eq(CoursePrerequisite::getCourseId, courseId));
+        if (prerequisites == null || prerequisites.isEmpty()) {
+            return; // 无先修要求
+        }
+
+        List<String> unmetPrereqs = new java.util.ArrayList<>();
+        for (CoursePrerequisite prereq : prerequisites) {
+            // 查询该学生是否有先修课程的完成记录
+            Enrollment prereqEnrollment = enrollmentRepository.selectOne(
+                    new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, userId)
+                            .eq(Enrollment::getCourseId, prereq.getPrerequisiteCourseId())
+                            .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.COMPLETED.getValue()));
+
+            // 获取先修课程名称（用于错误提示）
+            Course prereqCourse = courseRepository.selectById(prereq.getPrerequisiteCourseId());
+            String prereqTitle = prereqCourse != null ? prereqCourse.getTitle() : ("课程#" + prereq.getPrerequisiteCourseId());
+
+            if (prereqEnrollment == null) {
+                // 未完成先修课程
+                if (Boolean.TRUE.equals(prereq.getIsRequired())) {
+                    unmetPrereqs.add("必须先完成《" + prereqTitle + "》");
+                }
+                // 非必修先修不阻塞，仅记录
+                continue;
+            }
+
+            // 检查最低分要求
+            if (prereq.getMinScore() != null && prereq.getMinScore() > 0) {
+                if (prereqEnrollment.getFinalScore() == null
+                        || prereqEnrollment.getFinalScore().compareTo(java.math.BigDecimal.valueOf(prereq.getMinScore())) < 0) {
+                    unmetPrereqs.add("《" + prereqTitle + "》成绩要求 ≥ " + prereq.getMinScore() + " 分（当前："
+                            + (prereqEnrollment.getFinalScore() != null ? prereqEnrollment.getFinalScore() : "未评分") + "）");
+                }
+            }
+        }
+
+        if (!unmetPrereqs.isEmpty()) {
+            throw new BusinessException(ErrorCode.PREREQUISITE_NOT_MET,
+                    "选课被阻止，以下先修条件未满足：\n" + String.join("\n", unmetPrereqs));
+        }
     }
 
     private static String describeCourseStatus(Integer status) {

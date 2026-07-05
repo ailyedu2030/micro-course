@@ -17,10 +17,10 @@ public interface LearningProgressRepository extends BaseMapper<LearningProgress>
      */
     @Insert("INSERT INTO learning_progress (user_id, course_id, chapter_id, lesson_id, video_progress, "
             + "video_position, exercise_completed, exercise_passed, total_watch_time, device_id, platform, "
-            + "playback_speed, confidence, completed, last_watch_at, created_at, updated_at, version) "
+            + "playback_speed, confidence, offline_attended, completed, last_watch_at, created_at, updated_at, version) "
             + "VALUES (#{userId}, #{courseId}, #{chapterId}, #{lessonId}, #{videoProgress}, #{videoPosition}, "
             + "#{exerciseCompleted}, #{exercisePassed}, #{totalWatchTime}, #{deviceId}, #{platform}, "
-            + "#{playbackSpeed}, #{confidence}, #{completed}, #{lastWatchAt}, #{createdAt}, #{updatedAt}, 0) "
+            + "#{playbackSpeed}, #{confidence}, #{offlineAttended}, #{completed}, #{lastWatchAt}, #{createdAt}, #{updatedAt}, 0) "
             + "ON CONFLICT DO NOTHING")
     int insertIfAbsent(LearningProgress progress);
 

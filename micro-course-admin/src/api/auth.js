@@ -12,3 +12,4 @@ export function uploadAvatar(file) {
   return request({ method: 'POST', url: '/auth/me/avatar', data: formData })
 }
 export function casLogin(ticket, state) { return request({ method: 'GET', url: `/auth/cas?ticket=${encodeURIComponent(ticket)}&state=${encodeURIComponent(state || '')}` }) }
+export function getRegistrationStatus() { return request({ method: 'GET', url: '/auth/registration-status' }) }

@@ -90,6 +90,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LoginResponse register(RegisterRequest request) {
+        // P1C-002: 校验注册开关 — 从 admin_settings 查询 registration_enabled
+        String regEnabled = adminSettingService.getByKey("registration_enabled");
+        if (regEnabled != null && !"true".equalsIgnoreCase(regEnabled)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "当前系统已关闭自助注册，请联系管理员");
+        }
+
         // Step 1: 校验用户名唯一性
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new BusinessException(ErrorCode.USERNAME_EXISTS);
@@ -611,6 +617,10 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new BusinessException(ErrorCode.OLD_PASSWORD_INCORRECT);
         }
+        // P1I-004: 新旧密码相同校验
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "新密码不能与旧密码相同");
+        }
         // 密码复杂度校验
         if (!java.util.regex.Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")
                 .matcher(request.getNewPassword()).matches()) {
@@ -622,6 +632,10 @@ public class AuthServiceImpl implements AuthService {
         // P0 安全修复 v1.7.0: 修改密码后立即失效当前 JWT,
         // 防止攻击者持有的旧 token 在 2h 过期窗口内继续使用 → 账号接管风险
         blacklistCurrentJwt();
+
+        // P1I-003: 修改密码后批量作废该用户所有活跃 Token（含 refreshToken），
+        // 确保其他设备上的旧 token 同时失效，强制全设备重新登录
+        blacklistAllUserTokens(userId);
     }
 
     /**
@@ -646,6 +660,21 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception ex) {
             // 黑名单失败不应阻塞密码修改结果,但需记录
             log.warn("[Auth] 修改密码后失效旧 token 失败: {}", ex.getMessage());
+        }
+    }
+
+    /**
+     * P1I-003: 批量作废该用户所有活跃 Token（用户级黑名单）。
+     * TTL = max(accessToken 有效期 7200s, refreshToken 有效期 604800s)，
+     * 确保 refreshToken 在有效期内也会被拒绝。
+     */
+    private void blacklistAllUserTokens(Long userId) {
+        try {
+            // 使用 refreshToken 的最大 TTL（7天），确保所有 token 在整个生命周期内不可用
+            redisUtil.blacklistUserTokens(userId, 604800L);
+            log.info("[Auth] 已批量作废用户 userId={} 的所有 Token", userId);
+        } catch (Exception ex) {
+            log.warn("[Auth] 批量作废用户 Token 失败 userId={}: {}", userId, ex.getMessage());
         }
     }
 

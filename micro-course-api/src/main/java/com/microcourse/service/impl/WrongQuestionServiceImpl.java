@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -62,6 +63,30 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
         LambdaQueryWrapper<WrongQuestion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WrongQuestion::getUserId, userId)
                 .eq(WrongQuestion::getCourseId, courseId)
+                .orderByDesc(WrongQuestion::getLastWrongAt);
+        List<WrongQuestion> wrongQuestions = wrongQuestionRepository.selectList(wrapper);
+
+        return convertBatchToVO(wrongQuestions);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WrongQuestionVO> getMyWrongQuestionsByChapter(Long userId, Long chapterId) {
+        // 先通过 question_chapters 关联表查询该章节下的所有题目 ID
+        List<QuestionChapter> qcs = questionChapterRepository.selectList(
+                new LambdaQueryWrapper<QuestionChapter>()
+                        .eq(QuestionChapter::getChapterId, chapterId));
+        if (qcs.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> chapterQuestionIds = qcs.stream()
+                .map(QuestionChapter::getQuestionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        LambdaQueryWrapper<WrongQuestion> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(WrongQuestion::getUserId, userId)
+                .in(WrongQuestion::getQuestionId, chapterQuestionIds)
                 .orderByDesc(WrongQuestion::getLastWrongAt);
         List<WrongQuestion> wrongQuestions = wrongQuestionRepository.selectList(wrapper);
 
@@ -133,6 +158,8 @@ public class WrongQuestionServiceImpl implements WrongQuestionService {
         vo.setWrongCount(wrongQuestion.getWrongCount());
         vo.setLastWrongAt(wrongQuestion.getLastWrongAt());
         vo.setCreatedAt(wrongQuestion.getCreatedAt());
+        // P1I-025: watchPosition 在 VO 中已定义，但 wrong_questions 表暂无对应列，
+        // entity 中无此字段，暂不赋值。待后续 DB migration 补充后在此处添加映射。
 
         // 使用预加载的题目 Map
         Question question = questionMap.get(wrongQuestion.getQuestionId());

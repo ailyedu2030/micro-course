@@ -69,7 +69,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated() and (#id == authentication.principal or hasRole('ADMIN') or hasRole('ACADEMIC'))")
+    @PreAuthorize("isAuthenticated() and (#id == authentication.principal or hasRole('ADMIN') or hasRole('ACADEMIC') or hasRole('TEACHER'))")
     public R<UserVO> getById(@PathVariable Long id) {
         UserVO vo = userService.getUserById(id);
         return R.ok(vo);

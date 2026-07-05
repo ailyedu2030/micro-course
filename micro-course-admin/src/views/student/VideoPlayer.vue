@@ -636,6 +636,8 @@ function onBufferingEnd() {
   isBuffering.value = false
   stopBufferingWatchdog()
 }
+// P1I-013: 第二个超时定时器（30s）句柄也需保留以便销毁时清理
+let bufferingLongTimer = null
 function startBufferingWatchdog() {
   stopBufferingWatchdog()
   bufferingToastShown = false
@@ -646,7 +648,7 @@ function startBufferingWatchdog() {
       bufferingToastShown = true
     }
   }, 15000)
-  setTimeout(() => {
+  bufferingLongTimer = setTimeout(() => {
     // 30s 仍在缓冲 - 提供重试入口
     if (isBuffering.value) {
       ElMessageBox.confirm('视频缓冲超过 30 秒,可能是网络问题。是否重试?', '缓冲超时', {
@@ -665,6 +667,10 @@ function stopBufferingWatchdog() {
   if (bufferingWatchdogTimer) {
     clearTimeout(bufferingWatchdogTimer)
     bufferingWatchdogTimer = null
+  }
+  if (bufferingLongTimer) {
+    clearTimeout(bufferingLongTimer)
+    bufferingLongTimer = null
   }
 }
 const isFullscreen = ref(false)
@@ -982,6 +988,12 @@ const reportProgress = async (force = false) => {
   const progressPercentVal = (current / total) * 100
   if (Math.abs(progressPercentVal - lastReportedProgress) < 1) return
   lastReportedProgress = progressPercentVal
+
+  // P2-003: sessionStorage dedup — 5 秒内同 videoId 不上报，防双倍请求
+  const dedupKey = `progress_dedup_video_${videoId.value}`
+  const lastReport = sessionStorage.getItem(dedupKey)
+  if (lastReport && (Date.now() - parseInt(lastReport, 10)) < 5000) return
+  sessionStorage.setItem(dedupKey, String(Date.now()))
   try {
     const hasRecord = await ensureProgressRecord()
     if (!hasRecord || (!force && isComponentUnmounted)) return
@@ -1021,9 +1033,11 @@ const saveLocalPosition = (time) => {
   localStorage.setItem(STORAGE_KEY.value, JSON.stringify({ time, updatedAt: Date.now() }))
 }
 
-// P0-1: loadLocalPosition - only load saved time, actual seek deferred to onCanPlay
+// P1I-012: 优先使用服务端进度，仅在无网络或服务端无进度时使用本地存储
 const loadLocalPosition = () => {
   try {
+    // 如果服务端已有有效进度，不再用本地存储覆盖
+    if (lastPosition.value > 0) return
     if (!STORAGE_KEY.value) return
     const saved = localStorage.getItem(STORAGE_KEY.value)
     if (saved) {

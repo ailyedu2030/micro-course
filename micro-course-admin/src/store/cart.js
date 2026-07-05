@@ -46,29 +46,44 @@ export const useCartStore = defineStore('cart', () => {
       }
       return false  // 已存在，不重复添加
     }
-    // 本地立即显示
-    items.value.push({
+    // 先同步到服务端获取 cartItem.id（P0-002: 保存服务端返回的 cartItem.id）
+    let cartItemId = null
+    let serverSuccess = false
+    if (synced.value) {
+      try {
+        const res = await addCartItem(course.id, 1)
+        cartItemId = res.data?.id
+        serverSuccess = true
+      } catch (e) {
+        logger.error('[cart] 服务端同步失败', e)
+        ElMessage.warning('购物车同步失败，请刷新页面')
+      }
+    }
+    // 本地显示
+    const newItem = {
+      id: cartItemId,  // P0-002: 保存 cartItem.id 供 removeItem 使用
       courseId: course.id,
       title: course.title,
       coverUrl: course.coverUrl,
       price: course.price || 0,
       isFree: course.isFree ?? (course.price == null || course.price === 0),
       teacherName: course.teacherName || '',
-    })
-    // 异步同步到服务端
-    if (synced.value) {
-      try { await addCartItem(course.id, 1) } catch (e) {
-        logger.error('[cart] 服务端同步失败', e)
-        ElMessage.warning('购物车同步失败，请刷新页面')
-      }
+    }
+    items.value.push(newItem)
+    // P2-002: 如果已同步但服务端添加失败，从本地列表中回滚移除
+    if (synced.value && !serverSuccess) {
+      items.value = items.value.filter(i => i.courseId !== course.id)
+      return false
     }
     return true
   }
 
   async function removeItem(courseId) {
+    // P0-002: 用 item.id（cartItem.id）而非 courseId 调用删除 API
+    const item = items.value.find(i => i.courseId === courseId)
     items.value = items.value.filter(i => i.courseId !== courseId)
-    if (synced.value) {
-      try { await apiRemove(courseId) } catch (e) {
+    if (synced.value && item?.id) {
+      try { await apiRemove(item.id) } catch (e) {
         logger.error('[cart] 服务端同步失败', e)
         ElMessage.warning('购物车同步失败，请刷新页面')
       }

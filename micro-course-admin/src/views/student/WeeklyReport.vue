@@ -342,7 +342,10 @@ const formatDate = (dateStr) => {
 const getWeekRange = () => {
   const today = new Date()
   const startOfWeek = new Date(today)
-  startOfWeek.setDate(today.getDate() - today.getDay())
+  // P1C-036: 改为周一为周初（教育行业习惯），JS getDay(): 0=周日,1=周一,...,6=周六
+  const dayOfWeek = today.getDay()
+  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  startOfWeek.setDate(today.getDate() + diff)
   const endOfWeek = new Date(startOfWeek)
   endOfWeek.setDate(startOfWeek.getDate() + 6)
   return {
@@ -355,7 +358,6 @@ const fetchEnrollments = async (userId) => {
   try {
     const res = await getMyEnrollments({ userId })
     enrollments.value = res.data || []
-    calculateReport()
   } catch {
     ElMessage.error('获取学习数据失败')
   }
@@ -369,8 +371,8 @@ const fetchWeekCheckins = async () => {
     const { start } = getWeekRange()
     const startDate = new Date(start)
     weekCheckins.value = records.filter(r => {
-      if (!r.checkInDate) return false
-      const d = new Date(r.checkInDate)
+      if (!r.checkinDate) return false
+      const d = new Date(r.checkinDate)
       return d >= startDate
     })
   } catch {
@@ -385,11 +387,23 @@ const calculateReport = () => {
   const startDate = new Date(start)
   const today = new Date()
 
+  // P0-004: 改为按周维度从打卡记录获取增量数据，不再使用 enrollment 级别累计值
   const learningDaysSet = new Set()
   let videoMinutes = 0
   let exerciseCount = 0
   let correctCount = 0
 
+  // 1. 学习天数 + 视频时长：从本周打卡记录中获取（已按周过滤）
+  for (const c of weekCheckins.value) {
+    if (c.checkInDate) {
+      learningDaysSet.add(new Date(c.checkInDate).toDateString())
+    }
+    // duration 以秒为单位，转为分钟
+    videoMinutes += Math.round((c.duration || 0) / 60)
+  }
+
+  // 2. 练习数据：从 enrollment 的 lastWatchTime 筛选本周记录（回退方案，粒度有限）
+  //    如后端提供按周统计 API 应优先使用
   for (const e of enrollments.value) {
     if (e.lastWatchTime) {
       const d = new Date(e.lastWatchTime)
@@ -397,7 +411,7 @@ const calculateReport = () => {
         learningDaysSet.add(d.toDateString())
       }
     }
-    videoMinutes += e.totalWatchTime || 0
+    // 仅在 enrollment 级别有精确周数据时累加
     exerciseCount += e.exerciseCount || 0
     correctCount += e.correctCount || 0
   }
@@ -427,6 +441,7 @@ onMounted(async () => {
         fetchEnrollments(userId),
         fetchWeekCheckins()
       ])
+      calculateReport()
     }
   } finally {
     loading.value = false

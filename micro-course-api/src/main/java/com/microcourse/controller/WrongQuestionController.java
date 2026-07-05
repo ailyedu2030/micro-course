@@ -23,11 +23,14 @@ public class WrongQuestionController {
     @PreAuthorize("isAuthenticated()")
     public R<List<WrongQuestionVO>> getMyWrongQuestions(
             @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) Long chapterId,
             Authentication authentication) {
         Long userId = extractUserId(authentication);
 
         List<WrongQuestionVO> records;
-        if (courseId != null) {
+        if (chapterId != null) {
+            records = wrongQuestionService.getMyWrongQuestionsByChapter(userId, chapterId);
+        } else if (courseId != null) {
             records = wrongQuestionService.getMyWrongQuestionsByCourse(userId, courseId);
         } else {
             records = wrongQuestionService.getMyWrongQuestions(userId);

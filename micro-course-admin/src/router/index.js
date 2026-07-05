@@ -60,6 +60,7 @@ const routes = [
   // 教务处路由
   { path: '/academic/dashboard', name: 'AcademicDashboard', component: () => import('../views/academic/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/academic/stats', name: 'AcademicStats', component: () => import('../views/academic/LearningAnalytics.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/enrollments', name: 'AcademicEnrollments', component: () => import('../views/academic/EnrollmentOverview.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'], title: '选课数据总览' } },
 
   // 教师端路由
   { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('../views/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
@@ -115,6 +116,7 @@ const routes = [
   { path: '/student/exams', name: 'StudentExams', component: () => import('../views/student/Exams.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/profile', name: 'StudentProfile', component: () => import('../views/student/Profile.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '我的', menuIcon: 'User', menuOrder: 5 } },
   { path: '/student/report', name: 'StudentWeeklyReport', component: () => import('../views/student/WeeklyReport.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/favorites', name: 'StudentFavorites', component: () => import('../views/student/StudentFavorites.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '收藏', menuIcon: 'Star', menuOrder: 6 } },
   { path: '/student/orders', name: 'StudentOrders', component: () => import('../views/student/MyOrders.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/checkout', name: 'StudentCheckout', component: () => import('../views/student/Checkout.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Phase 14: 微专业路由
@@ -134,6 +136,7 @@ const routes = [
   { path: '/academic/micro-specialties/cross-dept', name: 'AcademicMicroSpecialtyCrossDeptReview', component: () => import('../views/academic/MicroSpecialtyCrossDeptReview.vue'), meta: { title: '跨学院审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/academic/micro-specialties/class-import', name: 'AcademicMicroSpecialtyClassImport', component: () => import('../views/academic/MicroSpecialtyClassImport.vue'), meta: { title: '班级导入', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/academic/micro-specialties/gold', name: 'AcademicMicroSpecialtyGoldManage', component: () => import('../views/academic/MicroSpecialtyGoldManage.vue'), meta: { title: '金标管理', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/storage-review', name: 'AcademicStorageApplicationReview', component: () => import('../views/academic/StorageApplicationReview.vue'), meta: { title: '存储申请表审批', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/student/redirect', redirect: '/student/courses', meta: { requiresAuth: false } },
   { path: '/student/chapters/:chapterId/exercises', name: 'StudentExerciseTake', component: () => import('../views/student/ExerciseTake.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
   { path: '/student/discussions', name: 'StudentDiscussion', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },

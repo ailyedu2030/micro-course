@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -372,18 +373,30 @@ public class QuestionServiceImpl implements QuestionService {
                 String answer = row.size() > 3 && row.get(3) != null ? row.get(3).toString() : null;
                 String partialScore = row.size() > 4 && row.get(4) != null ? row.get(4).toString() : null;
                 String explanation = row.size() > 5 && row.get(5) != null ? row.get(5).toString() : null;
-                Integer difficulty;
-                try {
-                    difficulty = row.size() > 6 && row.get(6) != null ? Integer.parseInt(row.get(6).toString()) : 1;
-                } catch (NumberFormatException e) {
-                    log.warn("解析难度值失败: {}", e.getMessage());
-                    errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, "", "难度值不是有效数字"));
-                    continue;
+                // P2-012: 使用 NumberUtils.isParsable 预检查替代 try-catch
+                Integer difficulty = 1;
+                if (row.size() > 6 && row.get(6) != null) {
+                    String diffStr = row.get(6).toString().trim();
+                    if (NumberUtils.isParsable(diffStr)) {
+                        difficulty = Integer.parseInt(diffStr);
+                    } else {
+                        errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, "", "难度值不是有效数字"));
+                        continue;
+                    }
                 }
 
                 // 校验必填
                 if (questionType == null || questionType.trim().isEmpty()) {
                     errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, "", "题目类型不能为空"));
+                    continue;
+                }
+                // T09: Excel 批量导入校验题型枚举值
+                String normalizedType = questionType.trim().toUpperCase();
+                java.util.Set<String> VALID_TYPES = new java.util.HashSet<>(
+                        java.util.Arrays.asList("SINGLE", "MULTIPLE", "JUDGE", "FILL", "SHORT_ANSWER", "ESSAY"));
+                if (!VALID_TYPES.contains(normalizedType)) {
+                    errors.add(new BatchImportResultVO.ImportErrorItem(rowNum, normalizedType,
+                            "无效的题目类型: " + normalizedType + "，有效值: SINGLE/MULTIPLE/JUDGE/FILL/SHORT_ANSWER/ESSAY"));
                     continue;
                 }
                 if (content == null || content.trim().isEmpty()) {
@@ -398,7 +411,7 @@ public class QuestionServiceImpl implements QuestionService {
                 Question question = new Question();
                 question.setCourseId(courseId);
                 question.setTeacherId(teacherId);
-                question.setQuestionType(questionType.trim().toUpperCase());
+                question.setQuestionType(normalizedType);
                 question.setContent(XssSanitizer.sanitize(content.trim()));
                 question.setOptions(options != null ? XssSanitizer.sanitize(options.trim()) : null);
                 question.setAnswer(XssSanitizer.sanitize(answer.trim()));

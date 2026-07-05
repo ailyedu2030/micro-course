@@ -52,6 +52,14 @@
           <el-option label="中级" :value="2" />
           <el-option label="高级" :value="3" />
         </el-select>
+        <!-- P1C-004: 学院维度筛选 -->
+        <el-select
+          v-model="searchForm.offerDepartmentId" placeholder="全部学院" clearable
+          class="dept-select" aria-label="学院筛选" @change="handleSearch"
+        >
+          <el-option label="全部学院" value="" />
+          <el-option v-for="dept in departmentList" :key="dept.id" :label="dept.name" :value="dept.id" />
+        </el-select>
         <div class="category-scroll" v-loading="categoriesLoading">
           <el-radio-group
             v-model="selectedCategoryId" class="category-chip-group"
@@ -382,6 +390,7 @@ import { getSquareData, getMicroSpecialtyList } from '@/api/microSpecialty'
 import { usePluginStore } from '@/store/plugins'
 import { useUserStore } from '@/store/user'
 import { getDefaultCover } from '@/utils/coverHelper'
+import { getDepartments } from '@/api/department'
 
 const router = useRouter()
 const pluginStore = usePluginStore()
@@ -401,6 +410,7 @@ const error = ref(false)
 const categoriesLoading = ref(false)
 const courseList = ref([])
 const categoryList = ref([])
+const departmentList = ref([])
 const hotCourses = ref([])
 const newestCourses = ref([])
 const recommendedCourses = ref([])
@@ -421,10 +431,26 @@ const fetchBanners = async () => {
 
 const handleBannerClick = (banner) => {
   if (!banner.linkUrl) return
-  if (/^https?:\/\//.test(banner.linkUrl)) {
-    window.open(banner.linkUrl, '_blank', 'noopener,noreferrer')
+  // P1I-007: URL 安全校验 — 阻止危险协议和空链接
+  const url = banner.linkUrl.trim()
+  // 阻止 javascript: 协议（XSS 攻击向量）
+  if (/^javascript:/i.test(url)) {
+    console.warn('[CourseSquare] 阻止 javascript: 协议 URL:', url)
+    ElMessage.warning('不可用的跳转链接')
+    return
+  }
+  // 阻止非 HTTP(S) 协议（如 data:, file:, ftp: 等）
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/i.test(url) && !/^https?:\/\//i.test(url)) {
+    console.warn('[CourseSquare] 阻止非 HTTP 协议 URL:', url)
+    ElMessage.warning('不可用的跳转链接')
+    return
+  }
+  if (/^https?:\/\//i.test(url)) {
+    // 外部链接：新窗口打开 + noopener noreferrer
+    window.open(url, '_blank', 'noopener,noreferrer')
   } else {
-    router.push(banner.linkUrl)
+    // 内部路径：路由跳转
+    router.push(url)
   }
 }
 // 微专业专区
@@ -450,19 +476,20 @@ const selectedCategoryId = ref('')
 
 const searchForm = reactive({
   keyword: '',
-  difficulty: ''
+  difficulty: '',
+  offerDepartmentId: ''
 })
 
 // P2-14: URL 分页同步
 const { bindToQuery } = useUrlPagination()
-bindToQuery(page, size, searchForm, ['keyword', 'difficulty'])
+bindToQuery(page, size, searchForm, ['keyword', 'difficulty', 'offerDepartmentId'])
 
 // 课程排序
 const courseSort = ref('')
 
 // 是否有筛选条件（区分两种空状态）
 const isSearchActive = computed(
-  () => !!(searchForm.keyword || searchForm.difficulty || selectedCategoryId.value)
+  () => !!(searchForm.keyword || searchForm.difficulty || selectedCategoryId.value || searchForm.offerDepartmentId)
 )
 
 // 难度映射（1 初级 / 2 中级 / 3 高级）
@@ -500,6 +527,17 @@ const formatDate = (dateStr) => {
   return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
+// P1C-004: 拉取学院列表
+const fetchDepartments = async () => {
+  try {
+    const { data } = await getDepartments({ size: 100 })
+    departmentList.value = data?.items || data || []
+  } catch (e) {
+    console.warn('[CourseSquare] 学院列表加载失败:', e)
+    departmentList.value = []
+  }
+}
+
 // 拉分类
 const fetchCategories = async () => {
   categoriesLoading.value = true
@@ -527,6 +565,7 @@ const fetchCourses = async () => {
     if (searchForm.keyword) params.keyword = searchForm.keyword
     if (selectedCategoryId.value) params.categoryId = selectedCategoryId.value
     if (searchForm.difficulty) params.difficulty = searchForm.difficulty
+    if (searchForm.offerDepartmentId) params.offerDepartmentId = searchForm.offerDepartmentId
     if (courseSort.value === 'hot') { params.sortBy = 'studentCount'; params.sortOrder = 'desc' }
     if (courseSort.value === 'new') { params.sortBy = 'createdAt'; params.sortOrder = 'desc' }
 
@@ -591,6 +630,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.keyword = ''
   searchForm.difficulty = ''
+  searchForm.offerDepartmentId = ''
   selectedCategoryId.value = ''
   page.value = 1
   fetchCourses()
@@ -684,15 +724,15 @@ const handleImgError = (e) => {
 // 防抖搜索 (300ms)
 let debounceTimer = null
 
+// P1I-006: 单字符搜索不再阻塞 — 移除 length >= 2 的限制
 watch(() => searchForm.keyword, (newVal, oldVal) => {
   if (debounceTimer) clearTimeout(debounceTimer)
-  // 清空时立即搜索；输入中时至少 2 字符才触发防抖
   if (!newVal) {
     debounceTimer = setTimeout(() => {
       page.value = 1
       fetchCourses()
     }, 100)
-  } else if (newVal.length >= 2) {
+  } else {
     debounceTimer = setTimeout(() => {
       page.value = 1
       fetchCourses()
@@ -711,6 +751,7 @@ onMounted(async () => {
   // 容错策略: 单个 API 失败不影响其他,每个 fetch 内部 catch 已处理
   await Promise.all([
     fetchCategories(),
+    fetchDepartments(),  // P1C-004: 加载学院列表
     fetchCourses(),
     fetchSideCourses(),
     loadRecommended(),
@@ -797,6 +838,7 @@ onMounted(async () => {
 .filter-bar { margin-top: var(--space-4); }
 .filter-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 .difficulty-select { width: 130px; flex-shrink: 0; }
+.dept-select { width: 160px; flex-shrink: 0; }
 .category-scroll { flex: 1; min-width: 200px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .category-scroll::-webkit-scrollbar { height: 4px; }
 .category-chip-group { display: flex; gap: var(--space-1); white-space: nowrap; }

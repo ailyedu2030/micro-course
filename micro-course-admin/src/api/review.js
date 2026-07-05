@@ -18,9 +18,15 @@ export function getCourseReviews(courseId, params) { return request({ method:'GE
 // createReview, getMyReviews 由 course-review.js 统一管理，此处重新导出
 export { createReview, getMyReviews } from './course-review'
 
+// 管理后台：通过评价ID直接操作（MyReviewController 提供 /api/reviews/{id}/... 路径）
 export function approveReview(id) { return request({ method:'PUT', url:`/reviews/${id}/approve` }) }
 export function rejectReview(id) { return request({ method:'PUT', url:`/reviews/${id}/reject` }) }
 export function deleteReview(id) { return request({ method:'DELETE', url:`/reviews/${id}` }) }
+
+// 课程嵌套路径（CourseReviewController 提供 POST /api/courses/{courseId}/reviews/{id}/... 路径）
+export function approveCourseReview(courseId, id) { return request({ method:'POST', url:`/courses/${courseId}/reviews/${id}/approve` }) }
+export function rejectCourseReview(courseId, id) { return request({ method:'POST', url:`/courses/${courseId}/reviews/${id}/reject` }) }
+export function deleteCourseReview(courseId, id) { return request({ method:'DELETE', url:`/courses/${courseId}/reviews/${id}` }) }
 
 /**
  * 举报处理 API

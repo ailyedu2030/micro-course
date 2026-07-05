@@ -31,7 +31,11 @@ public enum EnrollmentStatus {
     /** 已完成（终态）。 */
     COMPLETED("COMPLETED"),
     /** 已退课（终态）。 */
-    DROPPED("DROPPED");
+    DROPPED("DROPPED"),
+    /** 已暂停（用户被禁用后级联暂停，非终态，管理员恢复用户后可恢复）。 */
+    SUSPENDED("SUSPENDED"),
+    /** 重新选课中（从 CANCELLED 恢复重新选课时的中间状态，标记旧记录）。 */
+    REENROLLING("REENROLLING");
 
     /**
      * 历史遗留值 —— 已废弃。
@@ -94,13 +98,18 @@ public enum EnrollmentStatus {
             case PENDING:
                 return target == APPROVED || target == REJECTED || target == WAITLIST || target == CANCELLED;
             case APPROVED:
-                return target == COMPLETED || target == CANCELLED || target == DROPPED;
+                return target == COMPLETED || target == CANCELLED || target == DROPPED || target == SUSPENDED;
             case WAITLIST:
+                return target == APPROVED || target == CANCELLED || target == SUSPENDED;
+            case SUSPENDED:
                 return target == APPROVED || target == CANCELLED;
+            case CANCELLED:
+                // P1C-008: 允许退课后再选课（标记旧记录为 REENROLLING）
+                return target == REENROLLING;
             case REJECTED:   // 终态
-            case CANCELLED:  // 终态
             case COMPLETED:  // 终态
             case DROPPED:    // 终态
+            case REENROLLING: // 终态（旧记录的标记状态）
             default:
                 return false;
         }

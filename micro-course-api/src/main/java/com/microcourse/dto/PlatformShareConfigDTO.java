@@ -12,6 +12,7 @@ public class PlatformShareConfigDTO {
     private Boolean active;
     private LocalDateTime updatedAt;
     private Long updatedBy;
+    private Integer version;
 
     public static PlatformShareConfigDTO fromEntity(PlatformShareConfig e) {
         PlatformShareConfigDTO d = new PlatformShareConfigDTO();
@@ -22,6 +23,7 @@ public class PlatformShareConfigDTO {
         d.active = e.getActive();
         d.updatedAt = e.getUpdatedAt();
         d.updatedBy = e.getUpdatedBy();
+        d.version = e.getVersion();
         return d;
     }
 
@@ -39,4 +41,6 @@ public class PlatformShareConfigDTO {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
 }

@@ -157,10 +157,14 @@ const startLearning = () => {
 const handleBuy = async () => {
   buyLoading.value = true
   try {
-    // 找第一个未选课的必修课
-    const firstRequired = items.value.find(i => i.isRequired && !enrolledCourseIds.value.has(i.courseId || i.id))
-    if (!firstRequired) { ElMessage.warning('套件无必修课'); return }
-    const { data: order } = await createOrder({ courseId: firstRequired.courseId, bundleId: bundleId.value })
+    // P1C-012: 检查所有课程（不仅是必修课），找到第一个未选课未购买的课程
+    const firstUnenrolled = items.value.find(i => !enrolledCourseIds.value.has(i.courseId || i.id))
+    if (!firstUnenrolled) {
+      ElMessage.success('已选修所有课程')
+      isEnrolled.value = true
+      return
+    }
+    const { data: order } = await createOrder({ courseId: firstUnenrolled.courseId, bundleId: bundleId.value })
     if (order.status === 'PAID') {
       isEnrolled.value = true
       ElMessage.success('加入成功')
@@ -179,6 +183,10 @@ const handleBuy = async () => {
       )
     } catch { buyLoading.value = false; return }
     await payOrder(order.id, 'BALANCE')
+    // P1C-012: 购买成功时重新拉取 enrollment 状态确认所有课程已注册
+    const { data: myEnrollments } = await getMyEnrollments({ page: 0, size: 999 })
+    const list = Array.isArray(myEnrollments) ? myEnrollments : (myEnrollments?.items || [])
+    enrolledCourseIds.value = new Set(list.map(e => e.courseId))
     // 重新拉取最新状态
     try {
       const { data: status } = await getBundleEnrollmentStatus(bundleId.value)
@@ -187,7 +195,7 @@ const handleBuy = async () => {
       bundle.value = bundleData
       items.value = bundleData.items || []
     } catch { /* 静默 */ }
-    ElMessage.success('购买成功，已选修所有必修课')
+    ElMessage.success('购买成功')
   } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { buyLoading.value = false }
 }

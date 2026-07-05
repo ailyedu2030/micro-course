@@ -47,8 +47,10 @@
             class="filter-select"
             @change="handleSearch"
           >
+            <el-option label="未激活" :value="0" />
             <el-option label="启用" :value="1" />
             <el-option label="禁用" :value="2" />
+            <el-option label="已删除" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -503,10 +505,13 @@ function handleDownloadTemplate() {
 function handleExport() {
   // P1-修复: 实现真正的导出功能——使用客户端 xlsx 库导出当前列表数据
   // 后端 GET /api/users/export 暂未实现，待后端提供后优先使用后端导出
+  // P1I-051 修复: 当前仅支持导出当前页，提示用户
   if (!tableData.value.length) {
     ElMessage.warning('暂无数据可导出')
     return
   }
+  // P1I-051: 提示用户当前仅导出本页数据
+  ElMessage.info(`即将导出当前页 ${tableData.value.length} 条数据，如需全部导出请联系管理员`)
   const exportData = tableData.value.map((item, index) => ({
     序号: index + 1,
     ID: item.id,

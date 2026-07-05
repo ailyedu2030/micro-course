@@ -39,6 +39,7 @@ public enum ErrorCode {
     CHAPTER_NOT_FOUND(7001, "章节不存在", 404),
     BUNDLE_NOT_FOUND(6501, "课程套餐不存在", 404),
     BUNDLE_ITEM_NOT_FOUND(6502, "套餐项不存在", 404),
+    BUNDLE_PRICE_INVALID(6503, "套餐价格不能高于所含课程单课价格之和", 400),
     CHAPTER_COURSE_NOT_FOUND(7002, "课程不存在", 404),
     ENROLLMENT_NOT_FOUND(8001, "选课记录不存在", 404),
     ENROLLMENT_ALREADY_EXISTS(8002, "已存在选课记录", 409),

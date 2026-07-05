@@ -114,10 +114,11 @@ const currentId = ref(null)
 const formRef = ref(null)
 const parentName = ref('')
 
+// @deprecated level 字段已无用，保留父级ID但不再设置 level
 const formData = reactive({
   parentId: null,
   name: '',
-  level: 1,
+  code: '',
   sortOrder: 0
 })
 

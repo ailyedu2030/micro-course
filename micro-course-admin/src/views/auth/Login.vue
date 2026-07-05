@@ -69,7 +69,7 @@
           </el-tag>
         </div>
 
-        <div class="register-link">
+        <div v-if="registrationEnabled" class="register-link">
           <span>还没有账号？</span>
           <el-button type="primary" link @click="showRegisterDialog = true">立即注册</el-button>
         </div>
@@ -134,7 +134,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Reading } from '@element-plus/icons-vue'
-import { register as registerApi } from '@/api/auth'
+import { register as registerApi, getRegistrationStatus } from '@/api/auth'
 import { setToken, setRefreshToken } from '@/utils/auth'
 import { getRoleHomePage } from '@/router'
 
@@ -150,6 +150,18 @@ const showRegisterDialog = ref(false)
 const registerFormRef = ref(null)
 const registerLoading = ref(false)
 const registerForm = reactive({ username: '', password: '', confirmPassword: '' })
+const registrationEnabled = ref(true)
+
+// P1C-002: 加载时查询注册开关
+const checkRegistrationStatus = async () => {
+  try {
+    const { data } = await getRegistrationStatus()
+    registrationEnabled.value = data?.enabled !== false
+  } catch {
+    // 接口不可用时默认允许注册
+    registrationEnabled.value = true
+  }
+}
 
 const registerRules = {
   username: [
@@ -246,7 +258,13 @@ const handleRegister = async () => {
         setRefreshToken(res.data.refreshToken || '')
         userStore.token = res.data.accessToken
         userStore.refreshToken = res.data.refreshToken || ''
-        await userStore.getInfo()
+        // P1I-002: getInfo 失败时降级处理 — 允许用户使用默认信息进入首页
+        try {
+          await userStore.getInfo()
+        } catch {
+          console.warn('[Login] 注册后 getInfo 失败，使用默认用户信息')
+          userStore.userInfo = { realName: registerForm.username, role: 'STUDENT' }
+        }
         ElMessage.success('注册成功！欢迎你，' + (userStore.realName || registerForm.username))
         showRegisterDialog.value = false
         router.push('/student/courses')
@@ -268,6 +286,7 @@ const checkMobile = () => {
 
 onMounted(() => {
   checkMobile()
+  checkRegistrationStatus()
   window.addEventListener('resize', checkMobile)
 })
 

@@ -50,6 +50,9 @@ public class LearningProgress {
     @TableField("playback_speed")
     private Double playbackSpeed;
 
+    @TableField("offline_attended")
+    private Boolean offlineAttended = false;
+
     private Integer confidence;
 
     private Boolean completed;
@@ -106,6 +109,8 @@ public class LearningProgress {
     public void setPlaybackSpeed(Double playbackSpeed) { this.playbackSpeed = playbackSpeed; }
     public Integer getConfidence() { return confidence; }
     public void setConfidence(Integer confidence) { this.confidence = confidence; }
+    public Boolean getOfflineAttended() { return offlineAttended; }
+    public void setOfflineAttended(Boolean offlineAttended) { this.offlineAttended = offlineAttended; }
     public Boolean getCompleted() { return completed; }
     public void setCompleted(Boolean completed) { this.completed = completed; }
     public LocalDateTime getLastWatchAt() { return lastWatchAt; }

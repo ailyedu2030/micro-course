@@ -270,17 +270,24 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             }
         }
 
-        // 持久化 pendingCourses（如有失败课程）
+        // P1C-079: 必修课自动选课异常 → 回滚整个审批事务,保证一致性
         if (!pendingList.isEmpty()) {
-            try {
-                String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(pendingList);
-                enrollmentRepository.update(null,
-                        new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
-                                .eq(MicroSpecialtyEnrollment::getId, id)
-                                .set(MicroSpecialtyEnrollment::getPendingCourses, json));
-            } catch (Exception e) {
-                log.warn("持久化 pendingCourses 失败: enrollmentId={}", id, e);
+            StringBuilder errMsg = new StringBuilder("必修课自动选课失败，审批已回滚。失败课程：");
+            for (int i = 0; i < pendingList.size(); i++) {
+                Map<String, Object> item = pendingList.get(i);
+                if (i > 0) errMsg.append("；");
+                errMsg.append(item.get("courseName")).append("(").append(item.get("reason")).append(")");
             }
+            log.error("[MS approve] 必修课自动选课失败, 回滚审批: enrollmentId={}, studentId={}, pending={}",
+                    id, en.getUserId(), pendingList);
+            // P1C-079: 通知学生异常情况
+            try {
+                notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_REJECTED,
+                        "审批未通过", "您的微专业报名审批失败：" + errMsg.toString(), en.getMicroSpecialtyId());
+            } catch (Exception e) {
+                log.warn("[MS approve] 通知审批失败异常学生失败: enrollmentId={}", id, e);
+            }
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, errMsg.toString());
         }
 
         // Fix 3: 持久化已认可学分统计到 DB（版本锁，防止并发覆盖）
@@ -704,6 +711,10 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
         if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+        }
+        // P1C-038: 校验微专业是否仍处于招生中
+        if (!"RECRUITING".equals(ms.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_ENROLLMENT_CLOSED, "微专业当前未在招生中，无法重新申请");
         }
 
         int oldVersion = en.getVersion();

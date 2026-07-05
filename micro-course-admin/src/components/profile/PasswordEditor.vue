@@ -44,7 +44,9 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { changePassword } from '@/api/auth'
+import { removeToken, removeRefreshToken } from '@/utils/auth'
 
 defineProps({
   isMobile: {
@@ -53,6 +55,7 @@ defineProps({
   }
 })
 
+const router = useRouter()
 const passwordFormRef = ref(null)
 const passwordLoading = ref(false)
 
@@ -92,13 +95,21 @@ const handleChangePassword = async () => {
     return
   }
   try {
-    await changePassword({
+    const res = await changePassword({
       oldPassword: passwordForm.value.oldPassword,
       newPassword: passwordForm.value.newPassword
     })
     ElMessage.success('密码修改成功')
     passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
     passwordFormRef.value?.resetFields()
+    // P1I-003: 密码修改后强制重新登录
+    if (res.data?.forceReLogin) {
+      removeToken()
+      removeRefreshToken()
+      ElMessage.info('密码已修改，请使用新密码重新登录')
+      router.push('/login')
+      return
+    }
   } catch {
     // 拦截器已展示后端具体错误（如"旧密码错误"），此处不重复提示
   } finally {

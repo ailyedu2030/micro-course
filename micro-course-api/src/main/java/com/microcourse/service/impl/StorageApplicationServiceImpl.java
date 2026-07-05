@@ -7,9 +7,11 @@ import com.microcourse.entity.Department;
 import com.microcourse.entity.MicroSpecialtyProposal;
 import com.microcourse.entity.User;
 import com.microcourse.entity.proposal.*;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
+import com.microcourse.service.NotificationService;
 import com.microcourse.service.StorageApplicationCudService;
 import com.microcourse.service.StorageApplicationQueryService;
 import com.microcourse.service.StorageApplicationService;
@@ -70,6 +72,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     private final DepartmentRepository departmentRepository;
     private final StorageApplicationQueryService queryService;
     private final StorageApplicationCudService cudService;
+    private final NotificationService notificationService;
+    private final com.microcourse.service.MicroSpecialtyProposalService msProposalService;
 
     public StorageApplicationServiceImpl(
             MicroSpecialtyProposalRepository proposalRepository,
@@ -83,7 +87,9 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             ChapterTeacherAssignmentRepository assignmentRepository,
             DepartmentRepository departmentRepository,
             StorageApplicationQueryService queryService,
-            StorageApplicationCudService cudService) {
+            StorageApplicationCudService cudService,
+            NotificationService notificationService,
+            com.microcourse.service.MicroSpecialtyProposalService msProposalService) {
         this.proposalRepository = proposalRepository;
         this.courseRepository = courseRepository;
         this.chapterRepository = chapterRepository;
@@ -96,6 +102,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         this.departmentRepository = departmentRepository;
         this.queryService = queryService;
         this.cudService = cudService;
+        this.notificationService = notificationService;
+        this.msProposalService = msProposalService;
     }
 
     // ================================================================
@@ -511,6 +519,59 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                 .eq(ProposalSharedUnit::getProposalId, proposalId));
 
         log.info("resetAll: proposalId={}", proposalId);
+    }
+
+    // ================================================================
+    // P1C-091: 审批流程（ACADEMIC）
+    // ================================================================
+
+    @Override
+    public PageResult<StorageApplicationSummaryVO> getPendingList(int page, int size) {
+        return queryService.getPendingList(page, size);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void approve(Long proposalId, Long reviewerId) {
+        // 委托 MicroSpecialtyProposalService 执行完整的审批+创建微专业流程
+        msProposalService.approveAndCreateSpecialty(proposalId, reviewerId);
+        log.info("storage application approved: proposalId={}, reviewerId={}", proposalId, reviewerId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void reject(Long proposalId, Long reviewerId, String reason) {
+        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+        if (proposal == null) {
+            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+        }
+        if (!"PENDING_REVIEW".equals(proposal.getStatus())) {
+            throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅待审核状态的申请表可驳回");
+        }
+        String safeReason = reason != null && !reason.isBlank() ? reason : "未填写驳回原因";
+        // 乐观锁更新
+        int affected = proposalRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MicroSpecialtyProposal>()
+                        .eq(MicroSpecialtyProposal::getId, proposalId)
+                        .eq(MicroSpecialtyProposal::getStatus, "PENDING_REVIEW")
+                        .eq(MicroSpecialtyProposal::getVersion, proposal.getVersion())
+                        .set(MicroSpecialtyProposal::getStatus, "REJECTED")
+                        .set(MicroSpecialtyProposal::getReviewedBy, reviewerId)
+                        .set(MicroSpecialtyProposal::getReviewedAt, LocalDateTime.now())
+                        .set(MicroSpecialtyProposal::getReviewComment, safeReason)
+                        .set(MicroSpecialtyProposal::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "该申请表已被其他操作修改，请刷新后重试");
+        }
+        // 通知申报人
+        try {
+            notificationService.notifyAsync(proposal.getProposerId(), NotificationType.MS_PROPOSAL_REJECTED,
+                    "申批被驳回", "您的微专业申请表被驳回，原因：" + safeReason, proposalId);
+        } catch (Exception e) {
+            log.warn("通知驳回失败: proposalId={}", proposalId, e);
+        }
+        log.info("storage application rejected: proposalId={}, reviewerId={}", proposalId, reviewerId);
     }
 
     @Override

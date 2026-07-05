@@ -28,6 +28,8 @@ import com.microcourse.repository.QuestionChapterRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseChapterService;
 import com.microcourse.util.SecurityUtil;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +52,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private final CourseNoteRepository courseNoteRepository;
     private final QuestionChapterRepository questionChapterRepository;
     private final ExerciseChapterRepository exerciseChapterRepository;
+    private final SqlSessionFactory sqlSessionFactory;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
                                      CourseRepository courseRepository,
@@ -59,7 +62,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
                                      LearningProgressRepository learningProgressRepository,
                                      CourseNoteRepository courseNoteRepository,
                                      QuestionChapterRepository questionChapterRepository,
-                                     ExerciseChapterRepository exerciseChapterRepository) {
+                                     ExerciseChapterRepository exerciseChapterRepository,
+                                     SqlSessionFactory sqlSessionFactory) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.videoRepository = videoRepository;
@@ -69,6 +73,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         this.courseNoteRepository = courseNoteRepository;
         this.questionChapterRepository = questionChapterRepository;
         this.exerciseChapterRepository = exerciseChapterRepository;
+        this.sqlSessionFactory = sqlSessionFactory;
     }
 
     @Override
@@ -184,9 +189,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         }
         if (request.getTitle() != null) chapter.setTitle(request.getTitle());
         if (request.getDescription() != null) chapter.setDescription(request.getDescription());
+        // P1C-042: 章节创建后禁止修改 chapterType（前端编辑时已禁用此字段）
         if (request.getChapterType() != null) {
-            validateChapterType(request.getChapterType());
-            chapter.setChapterType(request.getChapterType());
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "章节类型创建后不可修改");
         }
         if (request.getDuration() != null) chapter.setDuration(request.getDuration());
 
@@ -247,12 +252,27 @@ public class CourseChapterServiceImpl implements CourseChapterService {
 
         Map<Long, CourseChapter> chapterMap = chapters.stream()
                 .collect(Collectors.toMap(CourseChapter::getId, Function.identity()));
+        List<CourseChapter> toUpdate = new java.util.ArrayList<>();
         for (ChapterSortRequest r : requests) {
             CourseChapter chapter = chapterMap.get(r.getId());
             if (chapter != null) {
                 chapter.setSortOrder(r.getSortOrder());
                 chapter.setUpdatedAt(LocalDateTime.now());
-                chapterRepository.updateById(chapter);
+                toUpdate.add(chapter);
+            }
+        }
+        // P2-008: 批量更新替代逐条 updateById（使用 MyBatis SqlSession batch 模式）
+        if (!toUpdate.isEmpty()) {
+            SqlSession sqlSession = sqlSessionFactory.openSession(org.apache.ibatis.session.ExecutorType.BATCH);
+            try {
+                com.microcourse.repository.CourseChapterRepository batchMapper =
+                        sqlSession.getMapper(com.microcourse.repository.CourseChapterRepository.class);
+                for (CourseChapter ch : toUpdate) {
+                    batchMapper.updateById(ch);
+                }
+                sqlSession.flushStatements();
+            } finally {
+                sqlSession.close();
             }
         }
     }

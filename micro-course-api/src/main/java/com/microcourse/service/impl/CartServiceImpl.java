@@ -2,9 +2,12 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.CartItem;
+import com.microcourse.entity.Course;
+import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CartItemRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.CartService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,14 +19,30 @@ import java.util.List;
 public class CartServiceImpl implements CartService {
 
     private final CartItemRepository cartItemRepository;
+    private final CourseRepository courseRepository;
 
-    public CartServiceImpl(CartItemRepository cartItemRepository) {
+    public CartServiceImpl(CartItemRepository cartItemRepository, CourseRepository courseRepository) {
         this.cartItemRepository = cartItemRepository;
+        this.courseRepository = courseRepository;
     }
 
     @Override
     public List<CartItem> getCart(Long userId) {
-        return cartItemRepository.findActiveByUserId(userId);
+        List<CartItem> items = cartItemRepository.findActiveByUserId(userId);
+        // P1C-017: 联表检查课程状态，已下架/不可购买的商品标记 INACTIVE
+        for (CartItem item : items) {
+            if (item.getCourseId() != null) {
+                Course course = courseRepository.selectById(item.getCourseId());
+                if (course == null || course.getDeletedAt() != null
+                        || course.getStatus() == null
+                        || !CourseStatus.fromCode(course.getStatus()).isSelectable()) {
+                    item.setItemStatus("INACTIVE");
+                } else {
+                    item.setItemStatus("ACTIVE");
+                }
+            }
+        }
+        return items;
     }
 
     @Override

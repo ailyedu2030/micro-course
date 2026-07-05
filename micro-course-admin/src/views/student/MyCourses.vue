@@ -98,6 +98,9 @@
           <template #description>
             <p>{{ emptyDescription }}</p>
           </template>
+          <template #default>
+            <el-button type="primary" @click="$router.push('/student/courses')">去课程广场选课</el-button>
+          </template>
         </el-empty>
 
         <!-- 课程列表 -->
@@ -550,6 +553,8 @@ const loadErrorMessage = ref('加载课程失败')
 
 // P1-2: 封面图加载失败占位图
 const FALLBACK_COVER = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22320%22%20height%3D%22180%22%3E%3Crect%20fill%3D%22%23f0f0f0%22%20width%3D%22320%22%20height%3D%22180%22/%3E%3Ctext%20fill%3D%22%23bbb%22%20font-size%3D%2216%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3E%E6%9A%82%E6%97%A0%E5%B0%81%E9%9D%A2%3C/text%3E%3C/svg%3E'
+// P1I-020: completionMap 提升为模块级，供懒加载函数使用
+let completionMap = {}
 
 const progressColor = 'var(--role-primary)'
 
@@ -649,7 +654,7 @@ const fetchEnrollments = async () => {
 
     // P1-5: 使用 Promise.allSettled 替代 Promise.all，防止单个失败导致全部中断
     const completionData = await getCompletion().catch(() => ({}))
-    const completionMap = completionData?.data || {}
+    completionMap = completionData?.data || {}
 
     // R8 P0-3: 批量获取学习进度（替代 per-course N+1）
     const inProgress = list.filter(e => !e.completed)
@@ -674,34 +679,8 @@ const fetchEnrollments = async () => {
     }
     courseProgressMap.value = newProgressMap
 
-    // P1-6: 对每门进行中课程获取章节数据，用实际完成数统计视频进度
-    const chapterResults = await Promise.allSettled(
-      inProgress.map(e => getChapters({ courseId: e.courseId, size: 1000 }))
-    )
-    const newVideoProgressMap = {}
-    chapterResults.forEach((result, idx) => {
-      const courseId = inProgress[idx].courseId
-      if (result.status === 'fulfilled') {
-        const chapters = result.value?.data?.items || result.value?.data || []
-        const totalChapters = chapters.length || 0
-        // P1-6: 优先使用练习进度中的实际完成数，而非百分比反推
-        const progressEntry = newProgressMap[courseId]
-        let completedVideos = 0
-        const progressPercent = completionMap[courseId]?.progress ?? inProgress[idx].progress ?? 0
-        if (progressEntry && totalChapters > 0) {
-          completedVideos = progressEntry.completedVideos
-            ?? Math.min(Math.round(totalChapters * progressPercent / 100), totalChapters)
-        }
-        if (totalChapters > 0) {
-          newVideoProgressMap[courseId] = {
-            total: totalChapters,
-            completed: completedVideos,
-            percent: progressPercent
-          }
-        }
-      }
-    })
-    videoProgressMap.value = newVideoProgressMap
+    // P1I-020: 章节数据改为懒加载（仅在切换到"进行中"Tab 时触发），避免 N+1 请求阻塞初始渲染
+    // videoProgressMap 将在 handleTabChange 中按需填充
 
     // P0-2: 获取完整收藏列表，补充仅收藏未选课的课程
     let favoriteSet = new Set()
@@ -764,6 +743,10 @@ const fetchEnrollments = async () => {
     })
     totalElements.value = enrollments.value.length
     dataLoaded.value = true
+    // P1I-020: 初始 Tab 为"进行中"时，立即懒加载视频进度
+    if (activeTab.value === 'in-progress') {
+      loadVideoProgress()
+    }
   } catch (err) {
     // P2-2: 根据 HTTP 状态码显示不同的错误信息
     const message = getErrorMessage(err)
@@ -775,8 +758,47 @@ const fetchEnrollments = async () => {
   }
 }
 
+// P1I-020: 按需加载章节视频进度（避免 N+1 请求）
+let videoProgressLoaded = false
+async function loadVideoProgress() {
+  if (videoProgressLoaded) return
+  const inProgress = inProgressCourses.value
+  if (inProgress.length === 0) return
+  const chapterResults = await Promise.allSettled(
+    inProgress.map(e => getChapters({ courseId: e.courseId, size: 1000 }))
+  )
+  const newVideoProgressMap = {}
+  chapterResults.forEach((result, idx) => {
+    const courseId = inProgress[idx].courseId
+    if (result.status === 'fulfilled') {
+      const chapters = result.value?.data?.items || result.value?.data || []
+      const totalChapters = chapters.length || 0
+      const progressEntry = courseProgressMap.value[courseId]
+      let completedVideos = 0
+      const progressPercent = completionMap?.[courseId]?.progress ?? inProgress[idx].progress ?? 0
+      if (progressEntry && totalChapters > 0) {
+        completedVideos = progressEntry.completedVideos
+          ?? Math.min(Math.round(totalChapters * progressPercent / 100), totalChapters)
+      }
+      if (totalChapters > 0) {
+        newVideoProgressMap[courseId] = {
+          total: totalChapters,
+          completed: completedVideos,
+          percent: progressPercent
+        }
+      }
+    }
+  })
+  videoProgressMap.value = newVideoProgressMap
+  videoProgressLoaded = true
+}
+
 const handleTabChange = () => {
   page.value = 1
+  // P1I-020: 切换到"进行中"Tab 时懒加载视频进度
+  if (activeTab.value === 'in-progress') {
+    loadVideoProgress()
+  }
 }
 
 /** P0-4: H5 Tab 切换——重置页码 */
@@ -826,7 +848,7 @@ const handleDropOut = async (course) => {
   }
   try {
     await ElMessageBox.confirm(
-      `退课将自动触发退款（若有已支付订单），并暂停学习记录（数据保留 180 天），是否继续？`,
+      `确认退课？退课后课程将不再显示在您的课程列表中`,
       '退课确认',
       { confirmButtonText: '确认退课', cancelButtonText: '取消', type: 'warning' }
     )

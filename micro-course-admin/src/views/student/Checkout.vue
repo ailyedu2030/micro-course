@@ -80,7 +80,8 @@
       </ul>
       <template #footer>
         <el-button @click="showResultDialog = false" v-if="resultSummary.failed.length > 0">关闭</el-button>
-        <el-button type="primary" @click="router.push('/student/my-courses')" v-if="resultSummary.failed.length === 0">查看我的课程</el-button>
+        <el-button type="warning" @click="handleRetryFailed" v-if="resultSummary.failed.length > 0" :loading="retrying">重试失败项</el-button>
+        <el-button type="primary" @click="router.push('/student/my-courses')" v-if="resultSummary.success.length > 0">查看我的课程</el-button>
       </template>
     </el-dialog>
   </div>
@@ -104,6 +105,7 @@ const paid = ref(false)
 const paymentMethod = ref('BALANCE')
 const resultSummary = ref({ success: [], failed: [] })
 const showResultDialog = ref(false)
+const retrying = ref(false)
 
 onMounted(() => {
   if (!store.hasItems) {
@@ -164,7 +166,7 @@ async function handleSubmit() {
         store.removeItem(item.courseId)
       } catch (e) {
         const msg = e?.response?.data?.message || e?.response?.data?.code || e.message || '支付失败'
-        failedItems.push({ courseTitle: item.title, amount: item.price, errorMsg: msg, status: 'FAILED' })
+        failedItems.push({ courseId: item.courseId, courseTitle: item.title, amount: item.price, errorMsg: msg, status: 'FAILED' })
         ElMessage.error(`「${item.title}」${msg}`)
       }
     }
@@ -176,6 +178,42 @@ async function handleSubmit() {
   } finally {
     submitting.value = false
   }
+}
+
+// P1C-010: 重试失败项
+async function handleRetryFailed() {
+  if (retrying.value) return
+  retrying.value = true
+  const failed = [...resultSummary.value.failed]
+  const retriedSuccess = []
+  const retriedFailed = []
+  for (const item of failed) {
+    try {
+      const { data: order } = await createOrder({ courseId: item.courseId })
+      if (order.status !== 'PAID') {
+        await payOrder(order.id, paymentMethod.value)
+      }
+      retriedSuccess.push({ courseTitle: item.title, amount: item.amount, status: 'PAID' })
+      store.removeItem(item.courseId)
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.response?.data?.code || e.message || '支付失败'
+      retriedFailed.push({ courseTitle: item.title, amount: item.amount, errorMsg: msg, status: 'FAILED' })
+      ElMessage.error(`「${item.title}」${msg}`)
+    }
+  }
+  resultSummary.value = {
+    success: [...resultSummary.value.success, ...retriedSuccess],
+    failed: retriedFailed
+  }
+  if (retriedSuccess.length > 0 && retriedFailed.length === 0) {
+    paid.value = true
+  }
+  if (retriedFailed.length > 0) {
+    ElMessage.warning(`重试完成：${retriedSuccess.length} 成功，${retriedFailed.length} 失败`)
+  } else {
+    ElMessage.success('所有课程支付成功！')
+  }
+  retrying.value = false
 }
 </script>
 

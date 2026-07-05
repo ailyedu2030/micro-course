@@ -55,4 +55,43 @@ public class CourseReviewController {
         return R.ok(courseReviewService.listByCourse(id, page, size));
     }
 
+    /**
+     * 审核通过评价
+     * POST /api/courses/{courseId}/reviews/{reviewId}/approve
+     * 权限: ADMIN/ACADEMIC
+     */
+    @PostMapping("/{reviewId}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> approve(@PathVariable Long id,
+                           @PathVariable Long reviewId) {
+        courseReviewService.approveReview(reviewId);
+        return R.ok();
+    }
+
+    /**
+     * 审核驳回评价（逻辑驳回，不物理删除）
+     * POST /api/courses/{courseId}/reviews/{reviewId}/reject
+     * 权限: ADMIN/ACADEMIC
+     */
+    @PostMapping("/{reviewId}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> reject(@PathVariable Long id,
+                          @PathVariable Long reviewId) {
+        courseReviewService.rejectReview(reviewId);
+        return R.ok();
+    }
+
+    /**
+     * 删除评价
+     * DELETE /api/courses/{courseId}/reviews/{reviewId}
+     * 权限: ADMIN/ACADEMIC
+     */
+    @DeleteMapping("/{reviewId}")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> delete(@PathVariable Long id,
+                          @PathVariable Long reviewId) {
+        courseReviewService.deleteReview(reviewId);
+        return R.ok();
+    }
+
 }

@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
+import java.lang.management.ManagementFactory;
 import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -286,9 +287,11 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         result.add(videoWatch);
 
         // EXERCISE_SUBMIT - count where exercise_completed = true
+        // P1I-049 修复：添加默认 30 天时间范围限制，防止大数据量全表扫描
         Long exerciseSubmitCount = learningProgressRepository.selectCount(
                 new LambdaQueryWrapper<LearningProgress>()
                         .eq(LearningProgress::getExerciseCompleted, true)
+                        .ge(LearningProgress::getCreatedAt, java.time.LocalDateTime.now().minusDays(30))
         );
         Map<String, Object> exerciseSubmit = new LinkedHashMap<>();
         exerciseSubmit.put("type", "EXERCISE_SUBMIT");
@@ -372,7 +375,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             health.put("disk", "UNKNOWN");
         }
 
-        // Memory check
+        // Memory check - JVM heap
         try {
             Runtime rt = Runtime.getRuntime();
             long totalMem = rt.totalMemory();
@@ -381,8 +384,27 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             double usedPercent = (usedMem * 100.0) / totalMem;
             health.put("memory", usedPercent > 90 ? "WARN" : "OK");
         } catch (Exception e) {
-            log.warn("内存检查失败: {}", e.getMessage());
+            log.warn("JVM 内存检查失败: {}", e.getMessage());
             health.put("memory", "UNKNOWN");
+        }
+
+        // P2-025: 系统级物理内存检查
+        try {
+            com.sun.management.OperatingSystemMXBean osBean =
+                    (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+            long totalPhysical = osBean.getTotalPhysicalMemorySize();
+            long freePhysical = osBean.getFreePhysicalMemorySize();
+            long usedPhysical = totalPhysical - freePhysical;
+            double usedPercent = totalPhysical > 0 ? (usedPhysical * 100.0) / totalPhysical : 0;
+            health.put("systemMemory", usedPercent > 90 ? "WARN" : "OK");
+            health.put("systemMemoryDetail",
+                    String.format("已用 %.1f GB / 总计 %.1f GB (%.0f%%)",
+                            usedPhysical / (1024.0 * 1024.0 * 1024.0),
+                            totalPhysical / (1024.0 * 1024.0 * 1024.0),
+                            usedPercent));
+        } catch (Exception e) {
+            log.warn("系统物理内存检查失败: {}", e.getMessage());
+            health.put("systemMemory", "UNKNOWN");
         }
 
         return health;

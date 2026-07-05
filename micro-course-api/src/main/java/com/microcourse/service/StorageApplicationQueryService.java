@@ -14,6 +14,9 @@ public interface StorageApplicationQueryService {
     /** 获取我的申请列表（分页） */
     PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size);
 
+    /** P1C-091: 获取待审批列表（ACADEMIC） */
+    PageResult<StorageApplicationSummaryVO> getPendingList(int page, int size);
+
     /** 获取详情（含所有子表） */
     StorageApplicationVO getDetail(Long proposalId, Long userId);
 

@@ -10,6 +10,7 @@ import com.microcourse.dto.CourseVO;
 import com.microcourse.dto.PageResult;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 public interface CourseService {
@@ -96,4 +97,10 @@ public interface CourseService {
 
     /** P0 修复: 审核定价 (PENDING → APPROVED / REJECTED) */
     void reviewPricing(Long courseId, boolean approved, String reason);
+
+    /**
+     * P1I-040: 检查课程审核超时（超过 48 小时未处理的待审核课程）。
+     * 可由定时任务定期调用，通知教师提醒教务处处理。
+     */
+    void checkReviewTimeout();
 }

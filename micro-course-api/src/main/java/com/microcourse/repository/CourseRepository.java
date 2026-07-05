@@ -59,7 +59,7 @@ public interface CourseRepository extends BaseMapper<Course> {
      */
     @Update("UPDATE courses SET avg_rating = (" +
             "SELECT COALESCE(AVG(rating), 0) FROM course_reviews " +
-            "WHERE course_id = #{courseId} AND deleted_at IS NULL" +
+            "WHERE course_id = #{courseId} AND deleted_at IS NULL AND status = 1" +
             ") WHERE id = #{courseId} AND deleted_at IS NULL")
     int updateAvgRating(@Param("courseId") Long courseId);
 

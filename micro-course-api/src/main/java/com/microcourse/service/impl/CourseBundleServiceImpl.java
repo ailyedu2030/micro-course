@@ -1,5 +1,6 @@
 package com.microcourse.service.impl;
 
+import java.math.BigDecimal;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -74,6 +76,36 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         return vo;
     }
 
+    /**
+     * P1C-013: 校验套餐价格不应高于所含课程单课价格之和。
+     * 若套餐当前没有课程项则跳过校验（创建时无课程项）。
+     */
+    private void validateBundlePrice(Long bundleId, BigDecimal bundlePrice) {
+        if (bundlePrice == null || bundlePrice.compareTo(BigDecimal.ZERO) <= 0) {
+            return; // 免费或未定价套餐无需校验
+        }
+        LambdaQueryWrapper<CourseBundleItem> itemWrapper = new LambdaQueryWrapper<>();
+        itemWrapper.eq(CourseBundleItem::getBundleId, bundleId);
+        List<CourseBundleItem> items = itemRepository.selectList(itemWrapper);
+        if (items.isEmpty()) {
+            return; // 无课程项时跳过
+        }
+        Set<Long> courseIds = items.stream()
+                .map(CourseBundleItem::getCourseId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (courseIds.isEmpty()) {
+            return;
+        }
+        List<Course> courses = courseRepository.selectBatchIds(courseIds);
+        BigDecimal totalPrice = courses.stream()
+                .map(c -> c.getPrice() != null ? c.getPrice() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (bundlePrice.compareTo(totalPrice) > 0) {
+            throw new BusinessException(ErrorCode.BUNDLE_PRICE_INVALID,
+                    "套餐价格 ¥" + bundlePrice + " 不能高于所含课程单课价格之和 ¥" + totalPrice);
+        }
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public BundleVO update(Long id, BundleUpdateRequest request) {
@@ -82,6 +114,8 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         if (!SecurityUtil.isOwnerOrAdmin(bundle.getCreatorId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
+        // P1C-013: 校验套餐价格不应高于所含课程单课价格之和
+        validateBundlePrice(id, request.getPrice());
         bundle.setTitle(request.getTitle());
         bundle.setDescription(request.getDescription());
         bundle.setCoverUrl(request.getCoverUrl());
@@ -249,6 +283,11 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         if (!SecurityUtil.isOwnerOrAdmin(bundle.getCreatorId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
+        // P1C-057: 状态机校验 — 仅 DRAFT/UNPUBLISHED 可 PUBLISH
+        validateBundleStatusTransition(bundle.getStatus(), 1);
+        // P1C-013: 上架前校验套餐价格不应高于所含课程单课价格之和
+        validateBundlePrice(id, bundle.getPrice());
+
         // 上架前必须至少有 1 门课程
         LambdaQueryWrapper<CourseBundleItem> itemWrapper = new LambdaQueryWrapper<>();
         itemWrapper.eq(CourseBundleItem::getBundleId, id);
@@ -284,6 +323,8 @@ public class CourseBundleServiceImpl implements CourseBundleService {
         if (!SecurityUtil.isOwnerOrAdmin(bundle.getCreatorId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
+        // P1C-057: 状态机校验 — 仅 PUBLISHED 可 UNPUBLISH
+        validateBundleStatusTransition(bundle.getStatus(), 0);
         bundle.setStatus(0);
         bundle.setUpdatedAt(LocalDateTime.now());
         bundleRepository.updateById(bundle);
@@ -326,6 +367,36 @@ public class CourseBundleServiceImpl implements CourseBundleService {
                 .eq(Order::getStatus, "PAID");
         Long paidCount = orderRepository.selectCount(orderWrapper);
         return paidCount != null && paidCount > 0;
+    }
+
+    /**
+     * P1C-057: 套餐状态机转换校验。
+     * 合法转换规则：DRAFT(0)/UNPUBLISHED(0) → PUBLISHED(1)，PUBLISHED(1) → UNPUBLISHED(0)。
+     */
+    private void validateBundleStatusTransition(Integer currentStatus, Integer targetStatus) {
+        if (currentStatus == null) {
+            currentStatus = 0;
+        }
+        if (currentStatus.equals(targetStatus)) {
+            String desc = statusDescription(currentStatus);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "套餐已" + desc + "，无需操作");
+        }
+        if (currentStatus == 0 && targetStatus == 1) {
+            return;
+        }
+        if (currentStatus == 1 && targetStatus == 0) {
+            return;
+        }
+        throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                "不允许的状态转换：当前状态 " + statusDescription(currentStatus)
+                + " 不能转为 " + statusDescription(targetStatus));
+    }
+
+    private String statusDescription(Integer status) {
+        if (status == null || status == 0) return "未上架";
+        if (status == 1) return "已上架";
+        return "未知(" + status + ")";
     }
 
     private BundleVO toVO(CourseBundle bundle) {

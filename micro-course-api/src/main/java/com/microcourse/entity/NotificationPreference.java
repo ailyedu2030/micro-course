@@ -34,6 +34,9 @@ public class NotificationPreference {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
+    @TableField("extra_preferences")
+    private String extraPreferences;
+
     public NotificationPreference() {}
 
     public Long getId() { return id; }
@@ -52,4 +55,6 @@ public class NotificationPreference {
     public void setQuietHoursEnd(String quietHoursEnd) { this.quietHoursEnd = quietHoursEnd; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getExtraPreferences() { return extraPreferences; }
+    public void setExtraPreferences(String extraPreferences) { this.extraPreferences = extraPreferences; }
 }

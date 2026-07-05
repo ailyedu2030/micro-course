@@ -8,6 +8,7 @@ import com.microcourse.dto.R;
 import com.microcourse.service.DiscussionCommentService;
 import com.microcourse.service.DiscussionPostService;
 import com.microcourse.util.SecurityUtil;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -74,12 +75,13 @@ public class DiscussionAdminController {
 
     /**
      * PUT /api/discussions/{id}/reject
-     * 审核驳回
+     * 审核驳回（P1C-060: 必填驳回原因）
      */
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
-    public R<Void> reject(@PathVariable Long id) {
-        postService.updateStatus(id, "REJECTED");
+    public R<Void> reject(@PathVariable Long id,
+                          @RequestParam @NotBlank(message = "驳回原因不能为空") String reason) {
+        postService.rejectWithReason(id, reason);
         return R.ok();
     }
 

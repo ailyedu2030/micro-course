@@ -81,6 +81,25 @@
             <el-tag v-else type="info" size="small">{{ row.enrollmentStatus || '-' }}</el-tag>
           </template>
         </el-table-column>
+        <!-- P1C-056: 审核操作列 -->
+        <el-table-column label="操作" width="220" align="center" fixed="right">
+          <template #default="{ row }">
+            <template v-if="row.enrollmentStatus === 'PENDING'">
+              <el-button type="success" link size="small" @click="handleApprove(row)">
+                <el-icon><Check /></el-icon>通过
+              </el-button>
+              <el-button type="danger" link size="small" @click="handleReject(row)">
+                <el-icon><Close /></el-icon>拒绝
+              </el-button>
+            </template>
+            <template v-else-if="row.enrollmentStatus === 'WAITLIST'">
+              <el-button type="warning" link size="small" @click="handlePromote(row)">
+                <el-icon><Top /></el-icon>晋升候补
+              </el-button>
+            </template>
+            <span v-else class="text-secondary">-</span>
+          </template>
+        </el-table-column>
       </el-table>
       <div class="pagination-wrap" v-if="!loading && tableData.length > 0">
         <el-pagination
@@ -100,8 +119,9 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getEnrollments } from '@/api/enrollment'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Check, Close, Top } from '@element-plus/icons-vue'
+import { getEnrollments, updateEnrollment } from '@/api/enrollment'
 
 const loading = ref(false)
 const error = ref(false)
@@ -158,6 +178,54 @@ const handleSizeChange = () => {
 
 const handlePageChange = () => {
   fetchData()
+}
+
+// P1C-056: 审核操作 - 通过选课
+const handleApprove = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定通过「${row.userName}」的选课申请？`, '通过确认', {
+      type: 'success',
+      confirmButtonText: '确认通过',
+      cancelButtonText: '取消'
+    })
+    await updateEnrollment(row.id, { enrollmentStatus: 'APPROVED' })
+    ElMessage.success('已通过')
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+
+// P1C-056: 审核操作 - 拒绝选课
+const handleReject = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定拒绝「${row.userName}」的选课申请？`, '拒绝确认', {
+      type: 'warning',
+      confirmButtonText: '确认拒绝',
+      cancelButtonText: '取消'
+    })
+    await updateEnrollment(row.id, { enrollmentStatus: 'REJECTED' })
+    ElMessage.success('已拒绝')
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  }
+}
+
+// P1C-056: 审核操作 - 晋升候补为已通过
+const handlePromote = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定将「${row.userName}」从候补晋升为正式学员？`, '晋升确认', {
+      type: 'warning',
+      confirmButtonText: '确认晋升',
+      cancelButtonText: '取消'
+    })
+    await updateEnrollment(row.id, { enrollmentStatus: 'APPROVED' })
+    ElMessage.success('已晋升')
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  }
 }
 
 onMounted(() => {

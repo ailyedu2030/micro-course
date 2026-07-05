@@ -93,7 +93,7 @@
                   已截止
                 </el-button>
                 <el-button
-                  v-else-if="!exam._attempted"
+                  v-else-if="!exam._passed"
                   type="primary"
                   size="small"
                   @click="handleJoinExam(exam)"
@@ -201,7 +201,7 @@
             已截止
           </el-button>
           <el-button
-            v-else-if="!exam._attempted"
+            v-else-if="!exam._passed"
             type="primary"
             size="small"
             class="h5-action-btn"
@@ -272,8 +272,8 @@ const examList = ref([])
 const activeTab = ref('pending')
 
 // 按状态分类的考试列表
-const pendingExams = computed(() => examList.value.filter(e => !e._attempted && !e._expired))
-const completedExams = computed(() => examList.value.filter(e => e._attempted))
+const pendingExams = computed(() => examList.value.filter(e => !e._passed && !e._expired))
+const completedExams = computed(() => examList.value.filter(e => e._passed))
 const expiredExams = computed(() => examList.value.filter(e => e._expired))
 
 // 根据当前 tab 显示的列表
@@ -312,11 +312,14 @@ const fetchExams = async () => {
 
     examList.value = rawList.map((exam, idx) => {
       const attemptRes = attemptResults[idx]
-      const attempted = attemptRes.status === 'fulfilled' && attemptRes.value?.data?.attemptCount > 0
+      const attemptData = attemptRes.status === 'fulfilled' ? attemptRes.value?.data : null
+      // P1I-019: 区分"已作答"和"已通过"——"已完成"应基于通过状态而非 attemptCount
+      const attempted = attemptData && attemptData.attemptCount > 0
+      const passed = attemptData && (attemptData.passed || attemptData.isPassed === true)
       const now = new Date()
       const examEnd = exam.examTime ? new Date(new Date(exam.examTime).getTime() + (exam.timeLimit || 0) * 60000) : null
       const expired = examEnd && examEnd < now
-      return { ...exam, _attempted: attempted, _expired: expired }
+      return { ...exam, _attempted: attempted, _passed: passed, _expired: expired }
     })
   } catch {
     errorState.value = true
@@ -361,8 +364,8 @@ async function checkPrerequisiteChapters(exam) {
     }
     return true
   } catch (e) {
-    console.warn('[Exams] 前置章节检查失败，放行:', e)
-    return true // 检查失败时放行，避免阻塞
+    console.warn('[Exams] 前置章节检查失败，阻止进入考试:', e)
+    return false // P1I-018: 检查失败时阻止进入考试，避免未完成前置章节的考试被静默放行
   }
 }
 

@@ -82,6 +82,11 @@ public class AuditedLogInterceptor implements HandlerInterceptor {
                 return;
             }
 
+            // P2-022: 排除审计系统自身产生的日志（操作日志查询/导出），避免写放大
+            if (handlerMethod.getBeanType() == com.microcourse.controller.OperationLogController.class) {
+                return;
+            }
+
             boolean ok = (ex == null && response.getStatus() < 400);
 
             OperationLog entry = new OperationLog();

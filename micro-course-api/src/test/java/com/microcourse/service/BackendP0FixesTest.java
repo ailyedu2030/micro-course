@@ -356,6 +356,9 @@ class BackendP0FixesTest extends BaseIntegrationTest {
     }
 
     private void seedExercise() {
+        // P1-C 修复: 清理脏数据(上次测试遗留的 videos 会触发"先观看视频"前置校验)
+        exec("DELETE FROM learning_progress WHERE course_id = 1 AND user_id = 7");
+        exec("DELETE FROM videos WHERE course_id = 1");
         exec("INSERT INTO questions (id, course_id, teacher_id, question_type, content, answer, version, status, created_at, updated_at) "
                 + "VALUES (90020, 1, 6, 'SINGLE_CHOICE', 'P0测试题：选 A', 'A', 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) "
                 + "ON CONFLICT (id) DO NOTHING");

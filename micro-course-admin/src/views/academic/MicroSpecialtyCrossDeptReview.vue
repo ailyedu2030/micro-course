@@ -121,6 +121,10 @@ const handleReject = async (row) => {
   rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true
 }
 const confirmReject = async () => {
+  if (!rejectReason.value?.trim()) {
+    ElMessage.warning('请填写驳回原因')
+    return
+  }
   actingId.value = rejectTarget.value.id
   try { await reviewCrossDept(rejectTarget.value.id, { action: 'reject', reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }

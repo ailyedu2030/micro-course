@@ -141,6 +141,10 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         if (query.getCourseType() != null && !query.getCourseType().isEmpty()) {
             wrapper.eq(Course::getCourseType, query.getCourseType());
         }
+        // P1C-004: 按开课院系筛选（offer_department_id）
+        if (query.getOfferDepartmentId() != null) {
+            wrapper.eq(Course::getOfferDepartmentId, query.getOfferDepartmentId());
+        }
         // 排序
         String sortBy = query.getSortBy();
         String sortOrder = "asc".equalsIgnoreCase(query.getSortOrder()) ? "asc" : "desc";

@@ -230,8 +230,8 @@ const studentData = reactive({})
 
 // 状态映射
 const statusMap = {
-  0: { text: '待开课', type: 'info' },
-  1: { text: '进行中', type: 'success' },
+  0: { text: '已停开', type: 'info' },
+  1: { text: '开课中', type: 'success' },
   2: { text: '已结课', type: 'warning' }
 }
 

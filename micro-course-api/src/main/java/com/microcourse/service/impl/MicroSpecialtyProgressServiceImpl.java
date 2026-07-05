@@ -175,16 +175,20 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
         }
 
         // P0-11: 选修课处理
+        int electiveStartedCount = 0; // P2-007: 至少开始学习的选修课数
         for (MicroSpecialtyCourse mc : electiveCourses) {
             Enrollment courseEn = courseEnrollmentRepository.selectOne(
                     new LambdaQueryWrapper<Enrollment>()
                             .eq(Enrollment::getCourseId, mc.getCourseId())
                             .eq(Enrollment::getUserId, en.getUserId())
                             .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
-            if (courseEn != null && courseEn.getFinalScore() != null) {
-                totalElectiveScore += courseEn.getFinalScore().doubleValue();
-                electivePassedCount++;
-                creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
+            if (courseEn != null) {
+                electiveStartedCount++; // P2-007: 有选课记录即视为已开始学习
+                if (courseEn.getFinalScore() != null) {
+                    totalElectiveScore += courseEn.getFinalScore().doubleValue();
+                    electivePassedCount++;
+                    creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
+                }
             }
         }
 
@@ -204,7 +208,9 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
         } else if (COMPLETION_RULE_MIXED.equals(rule)) {
             boolean requiredOk = coursesCompleted >= (ms.getRequiredCourseCount() != null ? ms.getRequiredCourseCount() : requiredCourses.size());
             boolean creditsOk = ms.getMinCredits() != null && creditsEarned.compareTo(ms.getMinCredits()) >= 0;
-            isCompleted = requiredOk && creditsOk;
+            // P2-007: 有选修课时至少已开始学习一门选修课
+            boolean electiveStartedOk = electiveCourses.isEmpty() || electiveStartedCount > 0;
+            isCompleted = requiredOk && creditsOk && electiveStartedOk;
         }
 
         int oldVersion = en.getVersion();

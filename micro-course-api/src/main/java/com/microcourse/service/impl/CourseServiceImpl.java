@@ -19,7 +19,9 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.enums.CourseStatus;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
+import java.time.LocalDateTime;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CoursePricingService;
 import com.microcourse.service.CourseQueryService;
@@ -222,6 +224,36 @@ public class CourseServiceImpl implements CourseService {
         }
     }
 
+    /**
+     * P1I-040 修复：检查审核超时（超过 48 小时未处理的待审核课程）。
+     * 可通过定时任务（如 @Scheduled）定期调用。
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public void checkReviewTimeout() {
+        LOG.info("[P1I-040] 开始检查课程审核超时...");
+        List<Course> pendingCourses = courseRepository.selectList(
+                new LambdaQueryWrapper<Course>()
+                        .eq(Course::getStatus, 5) // PENDING_REVIEW
+                        .lt(Course::getUpdatedAt, LocalDateTime.now().minusHours(48)));
+        for (Course course : pendingCourses) {
+            try {
+                User teacher = userRepository.selectById(course.getTeacherId());
+                if (teacher != null) {
+                    String title = "课程审核超时提醒";
+                    String content = String.format("您的课程《%s》提交审核已超过 48 小时，请提醒教务处处理。", course.getTitle());
+                    notificationService.notifyAsync(teacher.getId(), NotificationType.COURSE_REVIEW_REMINDER,
+                            title, content, course.getId());
+                    LOG.warn("[P1I-040] 课程审核超时提醒: courseId={}, title={}",
+                            course.getId(), course.getTitle());
+                }
+            } catch (Exception e) {
+                LOG.error("[P1I-040] 审核超时提醒发送失败: courseId={}", course.getId(), e);
+            }
+        }
+        LOG.info("[P1I-040] 课程审核超时检查完成，共 {} 条超时记录", pendingCourses.size());
+    }
+
     /* ================================================================
      *  Query methods (remain local)
      * ================================================================ */
@@ -269,7 +301,9 @@ public class CourseServiceImpl implements CourseService {
         }
 
         long total = enrollmentRepository.selectCount(
-                new LambdaQueryWrapper<Enrollment>().eq(Enrollment::getCourseId, courseId));
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getCourseId, courseId)
+                        .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
         long completed = enrollmentRepository.selectCount(
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, courseId)

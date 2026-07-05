@@ -14,6 +14,7 @@ import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.DiscussionComment;
 import com.microcourse.entity.User;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -24,6 +25,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.service.DiscussionPostService;
+import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -45,8 +47,12 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DiscussionPostServiceImpl.class);
+
     /** P1-17: 发帖频率限制 */
     private final StringRedisTemplate stringRedisTemplate;
+    /** P1I-023: 通知服务 */
+    private final NotificationService notificationService;
 
     public DiscussionPostServiceImpl(DiscussionPostRepository postRepository,
                                       DiscussionCommentRepository commentRepository,
@@ -54,7 +60,8 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
                                       CourseRepository courseRepository,
                                       CourseChapterRepository courseChapterRepository,
                                       EnrollmentRepository enrollmentRepository,
-                                      StringRedisTemplate stringRedisTemplate) {
+                                      StringRedisTemplate stringRedisTemplate,
+                                      NotificationService notificationService) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
@@ -62,6 +69,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         this.courseChapterRepository = courseChapterRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.notificationService = notificationService;
     }
 
        @Override
@@ -465,6 +473,27 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void rejectWithReason(Long id, String reason) {
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因不能为空");
+        }
+        DiscussionPost post = postRepository.selectById(id);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        // P1C-060: 只能驳回待审核(PENDING=0)或已发布(PUBLISHED=1)的帖子
+        int current = post.getStatus() != null ? post.getStatus() : 0;
+        if (current != 0 && current != 1) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "当前状态的讨论无法驳回");
+        }
+        post.setStatus(2); // REJECTED
+        post.setRejectReason(reason.trim());
+        post.setUpdatedAt(LocalDateTime.now());
+        postRepository.updateById(post);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long id, String status) {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null) {
@@ -498,6 +527,28 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         post.setStatus(target);
         post.setUpdatedAt(LocalDateTime.now());
         postRepository.updateById(post);
+
+        // P1I-023: 审核通过时通知发帖人
+        if (target == 1 && post.getUserId() != null) {
+            try {
+                String courseTitle = "";
+                if (post.getCourseId() != null) {
+                    Course course = courseRepository.selectById(post.getCourseId());
+                    if (course != null) {
+                        courseTitle = "《" + course.getTitle() + "》";
+                    }
+                }
+                notificationService.notifyAsync(
+                        post.getUserId(),
+                        NotificationType.DISCUSSION_POST_APPROVED,
+                        "讨论帖已通过审核",
+                        "您在" + courseTitle + "的帖子「" + (post.getTitle() != null ? post.getTitle() : "") + "」已通过审核",
+                        post.getCourseId()
+                );
+            } catch (Exception e) {
+                log.warn("[DiscussionPost] 发送审核通过通知失败 postId={}", id, e);
+            }
+        }
     }
 
     @Override
@@ -532,7 +583,8 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         if (post.getUserId() != null) {
             User author = userRepository.selectById(post.getUserId());
             if (author != null) {
-                if (Boolean.TRUE.equals(post.getIsAnonymous())) {
+                // P1C-028: TEACHER/ADMIN 可见匿名帖子真实身份
+                if (Boolean.TRUE.equals(post.getIsAnonymous()) && !isTeacherOrAdminForCourse(post.getCourseId())) {
                     vo.setAuthorName("匿名用户");
                     vo.setUserId(null);
                 } else {
@@ -563,7 +615,8 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         if (post.getUserId() != null) {
             User author = userMap.get(post.getUserId());
             if (author != null) {
-                if (Boolean.TRUE.equals(post.getIsAnonymous())) {
+                // P1C-028: TEACHER/ADMIN 可见匿名帖子真实身份
+                if (Boolean.TRUE.equals(post.getIsAnonymous()) && !isTeacherOrAdminForCourse(post.getCourseId())) {
                     vo.setAuthorName("匿名用户");
                     vo.setUserId(null);
                 } else {
@@ -573,6 +626,22 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         }
 
         return vo;
+    }
+
+    /**
+     * P1C-028: 判断当前用户是否为课程的授课教师或 ADMIN
+     */
+    private boolean isTeacherOrAdminForCourse(Long courseId) {
+        if (SecurityUtil.isAdmin()) {
+            return true;
+        }
+        if (SecurityUtil.hasRole("TEACHER") && courseId != null) {
+            Course course = courseRepository.selectById(courseId);
+            if (course != null && SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> comments,
@@ -602,10 +671,21 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             vo.setCreatedAt(c.getCreatedAt());
             vo.setChildren(new ArrayList<>());
 
-            // P0-1: 匿名评论隐藏用户信息
+            // P0-1 + P1C-028: 匿名评论对教师/管理员可见真实身份
             if (Boolean.TRUE.equals(c.getIsAnonymous())) {
-                vo.setAuthorName("匿名用户");
-                vo.setUserId(null);
+                DiscussionPost post = postRepository.selectById(c.getPostId());
+                if (post != null && isTeacherOrAdminForCourse(post.getCourseId())) {
+                    if (c.getUserId() != null) {
+                        User author = userMap.get(c.getUserId());
+                        if (author != null) {
+                            vo.setAuthorName(author.getRealName() != null ? author.getRealName() : author.getUsername());
+                            vo.setRoleTag(author.getRole() != null ? author.getRole().name() : null);
+                        }
+                    }
+                } else {
+                    vo.setAuthorName("匿名用户");
+                    vo.setUserId(null);
+                }
             } else if (c.getUserId() != null) {
                 User author = userMap.get(c.getUserId());
                 if (author != null) {

@@ -73,11 +73,13 @@
             <el-tag v-else type="info" size="small">{{ row.statusStr || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right" align="center">
+        <el-table-column label="操作" width="280" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleView(row)">查看</el-button>
             <el-button v-if="(row.status === 'PENDING' || row.statusStr === 'PENDING')" type="success" link size="small" @click="handleApprove(row)">通过</el-button>
             <el-button v-if="(row.status === 'PENDING' || row.statusStr === 'PENDING')" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
+            <el-button v-if="row.status === 'PUBLISHED' || row.statusStr === 'PUBLISHED'" type="warning" link size="small" @click="handleTogglePin(row)">{{ row.isPinned ? '取消置顶' : '置顶' }}</el-button>
+            <el-button v-if="row.status === 'PUBLISHED' || row.statusStr === 'PUBLISHED'" type="success" link size="small" @click="handleToggleEssence(row)">{{ row.isEssence ? '取消精华' : '精华' }}</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -105,7 +107,7 @@ import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
-import { getDiscussions, approveDiscussion, rejectDiscussion, deleteDiscussion } from '@/api/discussion'
+import { getDiscussions, approveDiscussion, rejectDiscussion, deleteDiscussion, updatePostPin, updatePostEssence } from '@/api/discussion'
 import { getCourses } from '@/api/course'
 
 const router = useRouter()
@@ -204,10 +206,45 @@ const handleApprove = async (row) => {
 }
 
 const handleReject = async (row) => {
+  let reason = ''
   try {
-    await ElMessageBox.confirm('确定驳回该讨论?', '提示', { type: 'warning' })
-    await rejectDiscussion(row.id)
+    await ElMessageBox.prompt('确定驳回该讨论？请填写驳回原因：', '驳回确认', {
+      confirmButtonText: '确定驳回',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '请填写驳回原因（必填）',
+      inputValidator: (val) => !!val.trim() || '驳回原因不能为空'
+    }).then(({ value }) => { reason = value })
+    await rejectDiscussion(row.id, reason)
     ElMessage.success('驳回成功')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+const handleTogglePin = async (row) => {
+  const newPinned = !row.isPinned
+  try {
+    await ElMessageBox.confirm(newPinned ? '确定置顶该讨论？' : '确定取消置顶？', '提示', { type: 'warning' })
+    await updatePostPin(row.id, newPinned)
+    ElMessage.success(newPinned ? '置顶成功' : '已取消置顶')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+const handleToggleEssence = async (row) => {
+  const newEssence = !row.isEssence
+  try {
+    await ElMessageBox.confirm(newEssence ? '确定设为精华？' : '确定取消精华？', '提示', { type: 'warning' })
+    await updatePostEssence(row.id, newEssence)
+    ElMessage.success(newEssence ? '已设为精华' : '已取消精华')
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {

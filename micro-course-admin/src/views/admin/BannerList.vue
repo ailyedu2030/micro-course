@@ -71,7 +71,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" sortable />
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column prop="enabled" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.enabled"
@@ -361,9 +361,10 @@ async function handleDelete(row) {
 async function handleToggleStatus(row) {
   const newVal = row.enabled
   const action = newVal ? '上线' : '下线'
+  const bannerTitle = row.title || row.id || '未命名'
   try {
     await ElMessageBox.confirm(
-      `确认${action}轮播图「${row.title}」？`,
+      `确认${action}轮播图「${bannerTitle}」？`,
       `${action}确认`,
       { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
     )

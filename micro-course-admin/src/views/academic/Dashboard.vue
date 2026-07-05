@@ -27,6 +27,16 @@
       </div>
     </div>
 
+    <!-- P1C-063: 院系数据下钻提示条 -->
+    <el-card v-if="departmentId" shadow="never" class="drilldown-banner">
+      <div class="drilldown-inner">
+        <el-button text @click="handleBackToOverview">
+          <el-icon><ArrowLeft /></el-icon> 返回全校概览
+        </el-button>
+        <span class="drilldown-title">当前查看：<strong>{{ departmentName || '院系详情' }}</strong></span>
+      </div>
+    </el-card>
+
     <!-- 快捷入口 -->
     <el-row :gutter="16" class="quick-actions-row">
       <el-col v-for="action in quickActions" :key="action.label" :xs="12" :sm="6">
@@ -171,8 +181,9 @@
         <el-card class="table-card" shadow="never">
           <template #header>
             <div class="card-header">
-完成率预警
+ 完成率预警
               <el-tag size="small" type="danger" class="header-tag">completionRate &lt; 30%</el-tag>
+              <!-- P1I-061: 阈值 30% 与后端 COMPLETION_WARNING_THRESHOLD 保持一致，修改时需同步更新 -->
             </div>
           </template>
           <el-skeleton :loading="warningsLoading" animated :rows="3">
@@ -218,13 +229,10 @@
               </div>
               <el-table v-else :data="hotCourses" class="hot-table" empty-text="暂无数据">
                 <el-table-column type="index" label="排名" width="60" align="center" />
-                <el-table-column prop="name" label="课程名称" min-width="160" show-overflow-tooltip />
+                <el-table-column prop="title" label="课程名称" min-width="160" show-overflow-tooltip />
+                <el-table-column prop="categoryName" label="分类" width="100" align="center" />
+                <el-table-column prop="teacherName" label="教师" width="100" align="center" />
                 <el-table-column prop="enrollmentCount" label="选课人次" width="100" align="center" sortable />
-                <el-table-column prop="completionRate" label="完成率" width="100" align="center">
-                  <template #default="{ row }">
-                    {{ formatPercent(row.completionRate) }}
-                  </template>
-                </el-table-column>
               </el-table>
             </template>
           </el-skeleton>
@@ -236,18 +244,25 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw } from 'vue'
-import { useRouter } from 'vue-router'
-import { Reading, User, TrendCharts, Finished, Refresh, DataAnalysis, Collection, Setting } from '@element-plus/icons-vue'
+import { useRouter, useRoute } from 'vue-router'
+import { Reading, User, TrendCharts, Finished, Refresh, DataAnalysis, Collection, Setting, ArrowLeft } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import {
   getAcademicOverview,
   getDepartmentStats,
   getCompletionWarnings,
   getParticipationTrend,
-  getCompletionTrend
+  getCompletionTrend,
+  getDepartmentDetail
 } from '@/api/academic-stats'
+import { getCourses } from '@/api/course'
 
 const router = useRouter()
+const route = useRoute()
+
+// P1C-063: 数据下钻 — 从 query 参数获取 departmentId
+const departmentId = computed(() => route.query.departmentId ? Number(route.query.departmentId) : null)
+const departmentName = ref('')
 
 const now = ref(new Date())
 const welcomeDate = computed(() => {
@@ -414,13 +429,26 @@ async function refreshAll() {
 async function loadStats() {
   statsLoading.value = true
   try {
-    const res = await getAcademicOverview()
-    const d = res.data || {}
-    stats.value = {
-      totalCourses: d.totalCourses ?? 0,
-      totalEnrollments: d.totalEnrollments ?? 0,
-      avgCompletionRate: d.avgCompletionRate ?? 0,
-      avgAccuracyRate: d.avgAccuracyRate ?? 0
+    // P1C-063: 数据下钻 — 如果指定了 departmentId，加载院系详情
+    if (departmentId.value) {
+      const res = await getDepartmentDetail(departmentId.value)
+      const d = res.data || {}
+      departmentName.value = d.departmentName || ''
+      stats.value = {
+        totalCourses: d.totalCourses ?? 0,
+        totalEnrollments: d.totalEnrollments ?? 0,
+        avgCompletionRate: d.avgCompletionRate ?? 0,
+        avgAccuracyRate: d.avgAccuracyRate ?? 0
+      }
+    } else {
+      const res = await getAcademicOverview()
+      const d = res.data || {}
+      stats.value = {
+        totalCourses: d.totalCourses ?? 0,
+        totalEnrollments: d.totalEnrollments ?? 0,
+        avgCompletionRate: d.avgCompletionRate ?? 0,
+        avgAccuracyRate: d.avgAccuracyRate ?? 0
+      }
     }
     animateAllStats(stats.value)
   } catch {
@@ -435,8 +463,22 @@ async function loadDepartmentStats() {
   deptLoading.value = true
   deptError.value = false
   try {
-    const res = await getDepartmentStats()
-    const items = res.data || []
+    // P1C-063: 数据下钻 — 只显示选中院系
+    let items = []
+    if (departmentId.value) {
+      const res = await getDepartmentDetail(departmentId.value)
+      if (res.data) {
+        // 构造单条院系数据给图表
+        items = [{
+          id: res.data.departmentId,
+          name: res.data.departmentName,
+          avgCompletionRate: res.data.avgCompletionRate
+        }]
+      }
+    } else {
+      const res = await getDepartmentStats()
+      items = res.data || []
+    }
     renderDeptChart(items)
   } catch {
     deptError.value = true
@@ -603,22 +645,35 @@ async function loadWarnings() {
   }
 }
 
-// Load hot courses (mock: top 10 by enrollment from department stats)
+// Load hot courses (top 10 by enrollment count)
 async function loadHotCourses() {
   hotCourseLoading.value = true
   hotCourseError.value = false
   try {
-    const res = await getDepartmentStats()
-    const items = res.data || []
-    // 按 enrollmentCount 排序取 top 10
-    hotCourses.value = [...items]
-      .sort((a, b) => (b.enrollmentCount ?? 0) - (a.enrollmentCount ?? 0))
-      .slice(0, 10)
+    // AC01 修复: 使用课程 API 按 studentCount 降序排列，替代错误的院系统计
+    const res = await getCourses({
+      page: 0,
+      size: 10,
+      sort: 'studentCount,desc',
+      status: 4  // PUBLISHED
+    })
+    const items = res.data?.items || res.data || []
+    hotCourses.value = items.map(item => ({
+      title: item.title || '',
+      enrollmentCount: item.studentCount ?? 0,
+      categoryName: item.categoryName || '',
+      teacherName: item.teacherName || ''
+    }))
   } catch {
     hotCourseError.value = true
   } finally {
     hotCourseLoading.value = false
   }
+}
+
+// P1C-063: 返回全校概览
+function handleBackToOverview() {
+  router.push('/academic/dashboard')
 }
 
 function formatPercent(value) {
@@ -813,6 +868,31 @@ onBeforeUnmount(() => {
   color: var(--el-text-color-primary);
   font-weight: var(--weight-medium);
   white-space: nowrap;
+}
+
+/* =============================================
+   1.5 Drill-down Banner（P1C-063）
+   ============================================= */
+.drilldown-banner {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--role-primary-light-9) 0%, #fff 100%);
+  border-left: 4px solid var(--role-primary);
+}
+
+.drilldown-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.drilldown-title {
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+
+.drilldown-title strong {
+  color: var(--role-primary);
 }
 
 /* =============================================

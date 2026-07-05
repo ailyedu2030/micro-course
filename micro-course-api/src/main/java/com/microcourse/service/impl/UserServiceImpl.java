@@ -204,10 +204,10 @@ public class UserServiceImpl implements UserService {
         if (request.getPoliticalStatus() != null) {
             user.setPoliticalStatus(request.getPoliticalStatus());
         }
+        // P2-017: 合并状态变更与普通字段更新为单次 DB 写操作
         if (request.getStatus() != null) {
             if (!Objects.equals(user.getStatus(), request.getStatus())) {
-                statusService.updateStatus(id, request.getStatus());
-                user = userRepository.selectById(id);
+                user.setStatus(request.getStatus());
             }
         }
 
@@ -323,8 +323,9 @@ public class UserServiceImpl implements UserService {
         vo.setId(user.getId());
         vo.setUsername(user.getUsername());
         vo.setRealName(user.getRealName());
-        vo.setEmail(user.getEmail());
-        vo.setPhone(user.getPhone());
+        // P1I-005: List 端点脱敏 — API 契约约定 list 端点 email/phone 必须脱敏
+        vo.setEmail(maskEmail(user.getEmail()));
+        vo.setPhone(maskPhone(user.getPhone()));
         vo.setGender(user.getGender());
         vo.setAvatar(user.getAvatar());
         vo.setRole(user.getRole());
@@ -373,5 +374,32 @@ public class UserServiceImpl implements UserService {
         }
 
         return vo;
+    }
+
+    /**
+     * P1I-005: 邮箱脱敏 — 保留首字符和 @ 后域名，中间替换为 ***
+     * 例: a***@x.edu.cn
+     */
+    private String maskEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            return email;
+        }
+        int atIdx = email.indexOf('@');
+        if (atIdx <= 0) {
+            // 无 @ 或 @ 在首位，无法按邮箱规则脱敏，返回原值
+            return email;
+        }
+        return email.charAt(0) + "***" + email.substring(atIdx);
+    }
+
+    /**
+     * P1I-005: 手机号脱敏 — 保留前 3 后 4，中间 ****
+     * 例: 138****0001
+     */
+    private String maskPhone(String phone) {
+        if (phone == null || phone.length() < 7) {
+            return phone;
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }

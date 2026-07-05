@@ -4,10 +4,17 @@ import com.microcourse.dto.CourseFavoriteVO;
 import com.microcourse.dto.PageResult;
 
 import java.util.List;
+import java.util.Map;
 
 public interface CourseFavoriteService {
 
-    void favorite(Long userId, Long courseId);
+    /**
+     * 收藏课程。
+     * @param userId 用户 ID
+     * @param courseId 课程 ID
+     * @return Map 包含 alreadyFavorited 标记: true=已收藏过, false=新收藏
+     */
+    Map<String, Object> favorite(Long userId, Long courseId);
 
     void unfavorite(Long userId, Long courseId);
 

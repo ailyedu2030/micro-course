@@ -70,7 +70,8 @@ public class CourseController {
             @RequestParam(required = false) String courseType,
             @RequestParam(required = false) String teacherName,
             @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false, defaultValue = "desc") String sortOrder) {
+            @RequestParam(required = false, defaultValue = "desc") String sortOrder,
+            @RequestParam(required = false) Long offerDepartmentId) {
         CoursePageQuery query = new CoursePageQuery();
         query.setPage(page);
         query.setSize(size);
@@ -85,6 +86,7 @@ public class CourseController {
         query.setTeacherName(teacherName);
         query.setSortBy(sortBy);
         query.setSortOrder(sortOrder);
+        query.setOfferDepartmentId(offerDepartmentId);
         PageResult<CourseVO> result = courseService.page(query);
         return R.ok(result);
     }

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.LocalDateTime;
 
@@ -37,6 +38,14 @@ public class CartItem {
     @TableField("deleted_at")
     private LocalDateTime deletedAt;
 
+    /**
+     * P1C-017: 课程可用性状态（非 DB 字段，运行时计算）。
+     * "ACTIVE" = 课程可购买；"INACTIVE" = 课程已下架/不可购买。
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @TableField(exist = false)
+    private String itemStatus;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
@@ -51,4 +60,6 @@ public class CartItem {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public String getItemStatus() { return itemStatus; }
+    public void setItemStatus(String itemStatus) { this.itemStatus = itemStatus; }
 }

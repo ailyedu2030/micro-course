@@ -27,7 +27,7 @@ public interface CourseReviewRepository extends BaseMapper<CourseReview> {
      */
     @Select("<script>" +
             "SELECT course_id, COUNT(*) as cnt FROM course_reviews " +
-            "WHERE deleted_at IS NULL AND course_id IN " +
+            "WHERE deleted_at IS NULL AND status = 1 AND course_id IN " +
             "<foreach collection='courseIds' item='id' open='(' separator=',' close=')'>" +
             "#{id}" +
             "</foreach>" +
@@ -41,13 +41,14 @@ public interface CourseReviewRepository extends BaseMapper<CourseReview> {
     default long countByCourseId(Long courseId) {
         return selectCount(new LambdaQueryWrapper<CourseReview>()
                 .eq(CourseReview::getCourseId, courseId)
+                .eq(CourseReview::getStatus, 1)
                 .isNull(CourseReview::getDeletedAt));
     }
 
     /**
      * 计算课程的平均评分（仅限未删除评价）
      */
-    @Select("SELECT COALESCE(AVG(rating), 0) FROM course_reviews WHERE course_id = #{courseId} AND deleted_at IS NULL")
+    @Select("SELECT COALESCE(AVG(rating), 0) FROM course_reviews WHERE course_id = #{courseId} AND deleted_at IS NULL AND status = 1")
     BigDecimal selectAvgRatingByCourseId(Long courseId);
 
     /**
@@ -56,7 +57,7 @@ public interface CourseReviewRepository extends BaseMapper<CourseReview> {
      */
     @Select("<script>" +
             "SELECT course_id, COALESCE(AVG(rating), 0) AS avg_rating FROM course_reviews " +
-            "WHERE deleted_at IS NULL AND course_id IN " +
+            "WHERE deleted_at IS NULL AND status = 1 AND course_id IN " +
             "<foreach collection='courseIds' item='id' open='(' separator=',' close=')'>" +
             "#{id}" +
             "</foreach>" +

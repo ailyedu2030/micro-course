@@ -24,6 +24,7 @@ public class CoursePageQuery {
     private String sortOrder;
     private String courseType;
     private String teacherName;
+    private Long offerDepartmentId;
 
     public CoursePageQuery() {}
 
@@ -53,4 +54,6 @@ public class CoursePageQuery {
     public void setCourseType(String courseType) { this.courseType = courseType; }
     public String getTeacherName() { return teacherName; }
     public void setTeacherName(String teacherName) { this.teacherName = teacherName; }
+    public Long getOfferDepartmentId() { return offerDepartmentId; }
+    public void setOfferDepartmentId(Long offerDepartmentId) { this.offerDepartmentId = offerDepartmentId; }
 }

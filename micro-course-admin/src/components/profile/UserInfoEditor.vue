@@ -84,7 +84,7 @@ const profileRules = {
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],
   phone: [
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+    { pattern: /^\+?[1-9]\d{4,14}$/, message: '请输入正确的手机号（国际格式，5-15位数字）', trigger: 'blur' }
   ]
 }
 

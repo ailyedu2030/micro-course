@@ -65,6 +65,7 @@
         </el-form-item>
         <el-form-item label="价格(¥)">
           <el-input-number v-model="formData.price" :min="0" :precision="2" />
+          <span class="form-tip">建议参考课程原价之和定价</span>
         </el-form-item>
       </el-form>
       <template #footer>

@@ -341,7 +341,7 @@ CANCELLED
 
 ```
 路径A（教务处直立）:                 路径B（教师申报）:
-   DRAFT                              PROPOSAL_REVIEW
+    DRAFT                              PENDING_REVIEW
      ↓ submit                            ↓ approve  → 创建 DRAFT + LEAD INVITED
    PENDING_REVIEW                        ↓ reject   → REJECTED
      ↓ approve → APPROVED                ↓ withdraw → WITHDRAWN

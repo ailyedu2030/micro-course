@@ -15,7 +15,9 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.ExerciseQuestion;
 import com.microcourse.entity.ExerciseRecord;
 import com.microcourse.entity.Grade;
+import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.Question;
+import com.microcourse.entity.Video;
 import com.microcourse.entity.WrongQuestion;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -28,7 +30,9 @@ import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.GradeRepository;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.QuestionRepository;
+import com.microcourse.repository.VideoRepository;
 import com.microcourse.repository.WrongQuestionRepository;
 import com.microcourse.service.ExerciseRecordService;
 import com.microcourse.service.NotificationService;
@@ -59,6 +63,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
+    private final VideoRepository videoRepository;
+    private final LearningProgressRepository learningProgressRepository;
     /** P0-05: 答题 attemptNo 分布式锁 */
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -72,6 +78,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                                         CourseRepository courseRepository,
                                         EnrollmentRepository enrollmentRepository,
                                         NotificationService notificationService,
+                                        VideoRepository videoRepository,
+                                        LearningProgressRepository learningProgressRepository,
                                         StringRedisTemplate stringRedisTemplate) {
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.exerciseRepository = exerciseRepository;
@@ -83,6 +91,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.notificationService = notificationService;
+        this.videoRepository = videoRepository;
+        this.learningProgressRepository = learningProgressRepository;
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
@@ -106,14 +116,56 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             }
         }
 
-        // 2. 校验答题次数是否超限
-        if (request.getAttemptNo() != null && exercise.getMaxAttempts() != null) {
-            if (request.getAttemptNo() > exercise.getMaxAttempts()) {
+        // 2. 校验答题次数是否超限 — 后端独立查询，不依赖前端attemptNo
+        if (exercise.getMaxAttempts() != null && exercise.getMaxAttempts() > 0) {
+            LambdaQueryWrapper<ExerciseRecord> countWrapper = new LambdaQueryWrapper<>();
+            countWrapper.eq(ExerciseRecord::getUserId, request.getUserId())
+                       .eq(ExerciseRecord::getExerciseId, request.getExerciseId());
+            long attemptCount = exerciseRecordRepository.selectCount(countWrapper);
+            if (attemptCount >= exercise.getMaxAttempts()) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "已超过最大答题次数");
             }
         }
 
-        // 3. 查 exercise_questions 列表
+        // 3. 超时校验 — 后端独立检查，不依赖客户端计时
+        if (exercise.getTimeLimit() != null && exercise.getTimeLimit() > 0) {
+            int timeLimitSeconds = exercise.getTimeLimit() * 60;
+            if (request.getDuration() != null && request.getDuration() > timeLimitSeconds) {
+                throw new BusinessException(ErrorCode.EXAM_TIME_EXPIRED, "答题超时，已超过时间限制");
+            }
+        }
+
+        // 4. 视频进度阈值检查 — 开始答题前检查视频观看进度
+        if (exercise.getCourseId() != null) {
+            long totalVideosInCourse = videoRepository.selectCount(
+                new LambdaQueryWrapper<Video>()
+                    .eq(Video::getCourseId, exercise.getCourseId()));
+            if (totalVideosInCourse > 0) {
+                long completedVideos = learningProgressRepository.selectCount(
+                    new LambdaQueryWrapper<LearningProgress>()
+                        .eq(LearningProgress::getUserId, request.getUserId())
+                        .eq(LearningProgress::getCourseId, exercise.getCourseId())
+                        .eq(LearningProgress::getCompleted, true)
+                        .isNotNull(LearningProgress::getLessonId));
+                if (completedVideos < 1) {
+                    throw new BusinessException(ErrorCode.PREREQUISITE_NOT_MET,
+                        "请先观看课程视频后再开始答题");
+                }
+            }
+        }
+
+        // P1C-025: 考试单次提交检查 — 考试只能提交一次，不可重做
+        if (Boolean.TRUE.equals(exercise.getIsExam())) {
+            LambdaQueryWrapper<ExerciseRecord> examCheckWrapper = new LambdaQueryWrapper<>();
+            examCheckWrapper.eq(ExerciseRecord::getUserId, request.getUserId())
+                           .eq(ExerciseRecord::getExerciseId, request.getExerciseId());
+            long examSubmitCount = exerciseRecordRepository.selectCount(examCheckWrapper);
+            if (examSubmitCount > 0) {
+                throw new BusinessException(ErrorCode.EXAM_ALREADY_SUBMITTED, "考试已提交，不可重复作答");
+            }
+        }
+
+        // 6. 查 exercise_questions 列表
         LambdaQueryWrapper<ExerciseQuestion> eqWrapper = new LambdaQueryWrapper<>();
         eqWrapper.eq(ExerciseQuestion::getExerciseId, request.getExerciseId())
                 .orderByAsc(ExerciseQuestion::getSortOrder);
@@ -339,6 +391,16 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                                     .set(WrongQuestion::getLastWrongAt, LocalDateTime.now()));
                 }
             }
+        }
+
+        // P1C-023: 练习通过后同步 learning_progress.exercise_passed = true
+        if (passed && exercise.getCourseId() != null) {
+            LambdaUpdateWrapper<LearningProgress> lpWrapper = new LambdaUpdateWrapper<>();
+            lpWrapper.eq(LearningProgress::getUserId, request.getUserId())
+                    .eq(LearningProgress::getCourseId, exercise.getCourseId())
+                    .set(LearningProgress::getExercisePassed, true)
+                    .set(LearningProgress::getUpdatedAt, LocalDateTime.now());
+            learningProgressRepository.update(null, lpWrapper);
         }
 
         // Phase B-2 (P0-7)：练习提交批改完成后，异步通知课程教师。

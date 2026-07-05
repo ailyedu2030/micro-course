@@ -11,6 +11,7 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.Department;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.User;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DepartmentRepository;
@@ -19,6 +20,7 @@ import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.TeachingClassRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AcademicStatsService;
+import com.microcourse.service.NotificationService;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,19 +45,22 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
     private final DepartmentRepository departmentRepository;
     private final ExerciseRecordRepository exerciseRecordRepository;
     private final TeachingClassRepository teachingClassRepository;
+    private final NotificationService notificationService;
 
     public AcademicStatsServiceImpl(CourseRepository courseRepository,
                                     UserRepository userRepository,
                                     EnrollmentRepository enrollmentRepository,
                                     DepartmentRepository departmentRepository,
                                     ExerciseRecordRepository exerciseRecordRepository,
-                                    TeachingClassRepository teachingClassRepository) {
+                                    TeachingClassRepository teachingClassRepository,
+                                    NotificationService notificationService) {
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.departmentRepository = departmentRepository;
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.teachingClassRepository = teachingClassRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -195,10 +200,14 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
         return vo;
     }
 
+    /** P1I-061 修复：完成率预警阈值提取为可配置常量，与前端保持一致 */
+    private static final double COMPLETION_WARNING_THRESHOLD = 30.0;   // 完成率低于此值为 warning
+    private static final double COMPLETION_CRITICAL_THRESHOLD = 15.0;  // 完成率低于此值为 critical
+
     @Override
     @Transactional(readOnly = true)
     public List<CompletionWarningVO> getCompletionWarnings() {
-        // 找出完成率 < 30% 的课程
+        // 找出完成率 < 30% 的课程（阈值可配置）
         List<Map<String, Object>> rawList = courseRepository.selectCompletionWarnings();
         List<CompletionWarningVO> result = new ArrayList<>();
 
@@ -213,9 +222,37 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
             Object compRate = row.get("completion_rate");
             double rate = compRate != null ? ((Number) compRate).doubleValue() : 0.0;
             vo.setCompletionRate(rate);
-            // 完成率 < 15% 为 critical，其余为 warning
-            vo.setStatus(rate < 15.0 ? "critical" : "warning");
+            // 完成率 < COMPLETION_CRITICAL_THRESHOLD 为 critical，其余为 warning
+            vo.setStatus(rate < COMPLETION_CRITICAL_THRESHOLD ? "critical" : "warning");
             result.add(vo);
+        }
+
+        // P1C-064: 完成率预警主动推送 — 当存在预警课程时，通知所有 ACADEMIC 角色用户
+        if (!result.isEmpty()) {
+            List<User> academicUsers = userRepository.selectList(
+                    new LambdaQueryWrapper<User>().eq(User::getRole, UserRole.ACADEMIC));
+            List<CompletionWarningVO> criticalItems = result.stream()
+                    .filter(w -> "critical".equals(w.getStatus())).collect(Collectors.toList());
+            List<CompletionWarningVO> warningItems = result.stream()
+                    .filter(w -> "warning".equals(w.getStatus())).collect(Collectors.toList());
+            StringBuilder content = new StringBuilder();
+            if (!criticalItems.isEmpty()) {
+                content.append("【严重】").append(criticalItems.size()).append("门课程完成率低于15%：");
+                for (CompletionWarningVO w : criticalItems) {
+                    content.append("《").append(w.getCourseTitle()).append("》").append(String.format("%.1f%%", w.getCompletionRate())).append("；");
+                }
+            }
+            if (!warningItems.isEmpty()) {
+                if (content.length() > 0) content.append("\n");
+                content.append("【提醒】").append(warningItems.size()).append("门课程完成率低于30%：");
+                for (CompletionWarningVO w : warningItems) {
+                    content.append("《").append(w.getCourseTitle()).append("》").append(String.format("%.1f%%", w.getCompletionRate())).append("；");
+                }
+            }
+            for (User au : academicUsers) {
+                notificationService.notifyAsync(au.getId(), NotificationType.COURSE_COMPLETION_WARNING,
+                        "完成率预警", content.toString(), null);
+            }
         }
 
         return result;

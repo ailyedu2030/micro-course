@@ -445,6 +445,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
 
     /**
      * 停开（ACTIVE → CANCELLED）。停开原因必填；状态机白名单校验 + @Version 乐观锁更新。
+     * P1I-041 修复：停开时级联取消所有已选学生的 enrollment（设置为 CANCELLED）。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -465,7 +466,15 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         tc.setStatus(targetStatus.getCode());
         tc.setUpdatedAt(LocalDateTime.now());
         teachingClassRepository.updateById(tc);  // @Version 乐观锁 CAS
-        log.info("教学班停开: classId={}, name={}, operator={}, reason={}", classId, tc.getName(), operatorId, reason);
+
+        // P1I-041: 级联取消所有关联学生的 enrollment（将 APPROVED/DROPPED 状态改为 CANCELLED）
+        int cancelledCount = teachingClassStudentRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<TeachingClassStudent>()
+                        .eq(TeachingClassStudent::getClassId, classId)
+                        .in(TeachingClassStudent::getStatus, "APPROVED", "DROPPED")
+                        .set(TeachingClassStudent::getStatus, "CANCELLED"));
+        log.info("教学班停开: classId={}, name={}, operator={}, reason={}, 级联取消 enrollment={}",
+                classId, tc.getName(), operatorId, reason, cancelledCount);
     }
 
     private TeachingClassVO convertToVO(TeachingClass tc) {
@@ -513,8 +522,8 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     private String resolveStatusLabel(Integer status) {
         if (status == null) return "未知";
         return switch (status) {
-            case 0 -> "待开课";
-            case 1 -> "进行中";
+            case 0 -> "已停开";
+            case 1 -> "开课中";
             case 2 -> "已结课";
             default -> "未知";
         };

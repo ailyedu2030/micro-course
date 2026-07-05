@@ -88,6 +88,39 @@
                 class="settings-control"
               />
             </div>
+            <!-- P1I-030: 免打扰时段 -->
+            <div class="settings-item">
+              <span class="settings-label">免打扰时段</span>
+              <el-switch
+                v-model="settings.quietHoursEnabled"
+                @change="handleSave"
+                class="settings-control"
+              />
+            </div>
+            <div v-if="settings.quietHoursEnabled" class="settings-item">
+              <span class="settings-label">开始时间</span>
+              <el-time-picker
+                v-model="quietHoursStartDate"
+                :value="settings.quietHoursStart"
+                format="HH:mm"
+                value-format="HH:mm"
+                :clearable="false"
+                class="settings-control"
+                @change="onQuietHoursStartChange"
+              />
+            </div>
+            <div v-if="settings.quietHoursEnabled" class="settings-item">
+              <span class="settings-label">结束时间</span>
+              <el-time-picker
+                v-model="quietHoursEndDate"
+                :value="settings.quietHoursEnd"
+                format="HH:mm"
+                value-format="HH:mm"
+                :clearable="false"
+                class="settings-control"
+                @change="onQuietHoursEndChange"
+              />
+            </div>
           </div>
         </el-card>
 
@@ -219,6 +252,35 @@
               <span>邮件通知</span>
               <el-switch v-model="settings.emailNotification" @change="handleSave" />
             </div>
+            <!-- P1I-030: 免打扰时段 (H5) -->
+            <div class="settings-item-h5">
+              <span>免打扰时段</span>
+              <el-switch v-model="settings.quietHoursEnabled" @change="handleSave" />
+            </div>
+            <div v-if="settings.quietHoursEnabled" class="settings-item-h5">
+              <span>开始</span>
+              <el-time-picker
+                v-model="quietHoursStartDate"
+                :value="settings.quietHoursStart"
+                format="HH:mm"
+                value-format="HH:mm"
+                :clearable="false"
+                class="control-select-h5"
+                @change="onQuietHoursStartChange"
+              />
+            </div>
+            <div v-if="settings.quietHoursEnabled" class="settings-item-h5">
+              <span>结束</span>
+              <el-time-picker
+                v-model="quietHoursEndDate"
+                :value="settings.quietHoursEnd"
+                format="HH:mm"
+                value-format="HH:mm"
+                :clearable="false"
+                class="control-select-h5"
+                @change="onQuietHoursEndChange"
+              />
+            </div>
           </div>
         </div>
 
@@ -291,11 +353,32 @@ const settings = ref({
   profileVisibility: 'public',
   showProgress: true,
   reducedMotion: false,
-  highContrast: false
+  highContrast: false,
+  // P1I-030: 免打扰时段
+  quietHoursEnabled: false,
+  quietHoursStart: '22:00',
+  quietHoursEnd: '07:00'
 })
 
 const isMobile = ref(window.innerWidth <= 768)
 let resizeTimer = null
+
+// P1I-030: 免打扰时段绑定
+const quietHoursStartDate = ref(new Date())
+const quietHoursEndDate = ref(new Date())
+
+const onQuietHoursStartChange = (val) => {
+  if (val) {
+    settings.value.quietHoursStart = val
+    handleSave()
+  }
+}
+const onQuietHoursEndChange = (val) => {
+  if (val) {
+    settings.value.quietHoursEnd = val
+    handleSave()
+  }
+}
 const handleResize = () => {
   if (resizeTimer) clearTimeout(resizeTimer)
   resizeTimer = setTimeout(() => {
@@ -307,11 +390,27 @@ const loadSettings = async () => {
   loading.value = true
   error.value = false
   try {
-    // 优先从后端加载通知偏好设置
+    // 优先从后端加载通知偏好设置（含 P1C-037 扩展偏好）
     const { data } = await getMyPreferences()
     if (data) {
       settings.value.notificationEnabled = data.allowSite !== false
       settings.value.emailNotification = data.allowEmail === true
+      // 从后端加载扩展偏好设置（覆盖 localStorage 旧值）
+      if (data.extraPreferences) {
+        try {
+          const extra = JSON.parse(data.extraPreferences)
+          if (extra.playbackSpeed) settings.value.playbackSpeed = extra.playbackSpeed
+          if (extra.autoPlayNext !== undefined) settings.value.autoPlayNext = extra.autoPlayNext
+          if (extra.profileVisibility) settings.value.profileVisibility = extra.profileVisibility
+          if (extra.showProgress !== undefined) settings.value.showProgress = extra.showProgress
+          if (extra.reducedMotion !== undefined) settings.value.reducedMotion = extra.reducedMotion
+          if (extra.highContrast !== undefined) settings.value.highContrast = extra.highContrast
+          // P1I-030: 免打扰时段
+          if (extra.quietHoursEnabled !== undefined) settings.value.quietHoursEnabled = extra.quietHoursEnabled
+          if (extra.quietHoursStart) settings.value.quietHoursStart = extra.quietHoursStart
+          if (extra.quietHoursEnd) settings.value.quietHoursEnd = extra.quietHoursEnd
+        } catch { /* ignore JSON parse error */ }
+      }
     }
     // 播放/隐私/辅助功能从 localStorage 加载（或默认值）
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -356,26 +455,45 @@ const loadSettings = async () => {
   }
 }
 
-let saveTimer = null
-const handleSave = async () => {
-  if (saveTimer) return
-  saveTimer = setTimeout(() => { saveTimer = null }, 2000)
-  try {
-    // 保存通知偏好到后端
-    await updateMyPreferences({
-      allowSite: settings.value.notificationEnabled,
-      allowEmail: settings.value.emailNotification
-    })
-    ElMessage.success('偏好设置已保存')
-  } catch {
-    ElMessage.warning('偏好设置保存失败，已使用本地缓存')
-  }
-  // 所有设置持久化到 localStorage 作为离线 fallback
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
-  } catch {
-    ElMessage.error('保存失败')
-  }
+// P1I-031: 防抖 debounce，避免频繁触发保存请求
+let debounceTimer = null
+const debouncedSave = () => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(async () => {
+    debounceTimer = null
+    try {
+      // P1C-037: 已登录用户同步所有偏好设置到后端（含播放/隐私/辅助功能）
+      const extraPrefs = {
+        playbackSpeed: settings.value.playbackSpeed,
+        autoPlayNext: settings.value.autoPlayNext,
+        profileVisibility: settings.value.profileVisibility,
+        showProgress: settings.value.showProgress,
+        reducedMotion: settings.value.reducedMotion,
+        highContrast: settings.value.highContrast,
+        quietHoursEnabled: settings.value.quietHoursEnabled,
+        quietHoursStart: settings.value.quietHoursStart,
+        quietHoursEnd: settings.value.quietHoursEnd
+      }
+      await updateMyPreferences({
+        allowSite: settings.value.notificationEnabled,
+        allowEmail: settings.value.emailNotification,
+        extraPreferences: JSON.stringify(extraPrefs)
+      })
+      ElMessage.success('偏好设置已保存')
+    } catch {
+      ElMessage.warning('偏好设置保存失败，已使用本地缓存')
+    }
+    // 所有设置持久化到 localStorage 作为离线 fallback
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
+    } catch {
+      ElMessage.error('保存失败')
+    }
+  }, 300)
+}
+
+const handleSave = () => {
+  debouncedSave()
 }
 
 onMounted(() => {

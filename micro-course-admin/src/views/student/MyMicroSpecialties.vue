@@ -45,19 +45,25 @@
     <template v-else>
       <!-- Stats Cards -->
       <el-row :gutter="16" class="ms-stats-row">
-        <el-col :span="8">
+        <el-col :span="6">
           <div class="ms-stat-card">
             <span class="ms-stat-label">已报名</span>
             <span class="ms-stat-value">{{ stats.enrolled }}</span>
           </div>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
+          <div class="ms-stat-card ms-stat-card--warning">
+            <span class="ms-stat-label">待审核</span>
+            <span class="ms-stat-value">{{ stats.pending }}</span>
+          </div>
+        </el-col>
+        <el-col :span="6">
           <div class="ms-stat-card ms-stat-card--progress">
             <span class="ms-stat-label">进行中</span>
             <span class="ms-stat-value">{{ stats.inProgress }}</span>
           </div>
         </el-col>
-        <el-col :span="8">
+        <el-col :span="6">
           <div class="ms-stat-card ms-stat-card--completed">
             <span class="ms-stat-label">已结业</span>
             <span class="ms-stat-value">{{ stats.completed }}</span>
@@ -125,7 +131,7 @@
                   class="ms-progress-bar"
                 />
                 <span class="ms-progress-text">
-                  {{ item.completedCredits || 0 }} / {{ item.totalCredits || 0 }} 学分
+                  {{ item.creditsEarned || 0 }} / {{ item.totalCredits || 0 }} 学分
                 </span>
               </div>
 
@@ -254,9 +260,10 @@ const enrollments = ref([])
 const reapplying = ref(null) // enrollment ID being reapplied, for loading state
 
 const stats = computed(() => {
-  const result = { enrolled: 0, inProgress: 0, completed: 0 }
+  const result = { enrolled: 0, inProgress: 0, completed: 0, pending: 0 }
   for (const e of enrollments.value) {
-    if (['APPROVED', 'PENDING'].includes(e.status)) result.enrolled++
+    if (e.status === 'PENDING') result.pending++
+    if (e.status === 'APPROVED') result.enrolled++
     if (e.status === 'IN_PROGRESS') result.inProgress++
     if (e.status === 'COMPLETED' || e.status === 'CERTIFIED') result.completed++
   }
@@ -447,6 +454,9 @@ onMounted(() => fetchData())
 }
 .ms-stat-card--completed .ms-stat-value {
   color: var(--el-color-success);
+}
+.ms-stat-card--warning .ms-stat-value {
+  color: var(--el-color-warning);
 }
 /* List */
 .ms-list {

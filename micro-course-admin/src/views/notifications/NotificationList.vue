@@ -267,12 +267,29 @@ const handleMarkAllRead = async () => {
 }
 
 // ---------------------------------------------------------------------------
-// P1: 通知行点击跳转（根据 type + relatedId）
+// P1 + P1C-033: 通知行点击跳转（根据 type + relatedId，含精确路径参数）
 // ---------------------------------------------------------------------------
 const ROUTE_MAP = {
-  ENROLLMENT: (id) => `/student/courses/${id}`,
-  GRADE: (id) => `/student/courses/${id}`,
-  DISCUSSION: (id) => `/student/courses/${id}`,
+  ENROLLMENT_SUCCESS:    (id) => `/student/courses/${id}`,
+  ENROLLMENT_WAITLIST:   (id) => `/student/courses/${id}`,
+  ENROLLMENT:            (id) => `/student/courses/${id}`,
+  GRADE_ISSUED:          (id) => `/student/courses/${id}/grades`,
+  GRADE:                 (id) => `/student/courses/${id}/grades`,
+  DISCUSSION_REPLY:      (id) => `/student/courses/${id}/discussion`,
+  DISCUSSION:            (id) => `/student/courses/${id}/discussion`,
+  COURSE_APPROVED:       (id) => `/teacher/courses/${id}`,
+  COURSE_REJECTED:       (id) => `/teacher/courses/${id}?tab=review`,
+  COURSE_PUBLISHED:      (id) => `/student/courses/${id}`,
+  COURSE_UNPUBLISHED:    (id) => `/teacher/courses/${id}`,
+  EXERCISE_GRADED:       (id) => `/student/courses/${id}/exercises`,
+  VIDEO_TRANSCODED:      (id) => `/teacher/courses/${id}/videos`,
+  MS_CERTIFICATE_ISSUED: (id) => `/student/certificates`,
+  MS_APPROVED:           (id) => `/teacher/micro-specialties/${id}`,
+  MS_REJECTED:           (id) => `/teacher/micro-specialties/${id}`,
+  MS_PROPOSAL_APPROVED:  (id) => `/teacher/micro-specialties/${id}`,
+  MS_PROPOSAL_REJECTED:  (id) => `/teacher/micro-specialties/${id}`,
+  MS_ENROLLMENT_APPROVED:(id) => `/student/micro-specialties/${id}`,
+  MS_ENROLLMENT_REJECTED:(id) => `/student/micro-specialties/${id}`,
 }
 
 async function handleRowClick(row) {

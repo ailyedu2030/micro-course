@@ -7,10 +7,12 @@ import com.microcourse.dto.CourseCategoryCreateRequest;
 import com.microcourse.dto.CourseCategoryUpdateRequest;
 import com.microcourse.dto.CourseCategoryVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseCategoryRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.CourseCategoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,9 +28,12 @@ import java.util.stream.Collectors;
 public class CourseCategoryServiceImpl implements CourseCategoryService {
 
     private final CourseCategoryRepository courseCategoryRepository;
+    private final CourseRepository courseRepository;
 
-    public CourseCategoryServiceImpl(CourseCategoryRepository courseCategoryRepository) {
+    public CourseCategoryServiceImpl(CourseCategoryRepository courseCategoryRepository,
+                                     CourseRepository courseRepository) {
         this.courseCategoryRepository = courseCategoryRepository;
+        this.courseRepository = courseRepository;
     }
 
     @Override
@@ -119,6 +124,27 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
         CourseCategory category = courseCategoryRepository.selectById(id);
         if (category == null) {
             throw new BusinessException(ErrorCode.COURSE_CATEGORY_NOT_FOUND);
+        }
+        // P1C-087: 检查是否有课程引用该分类,防止孤儿引用
+        long courseCount = courseRepository.selectCount(
+                new LambdaQueryWrapper<Course>()
+                        .eq(Course::getCategoryId, id));
+        if (courseCount > 0) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID,
+                    "有 " + courseCount + " 门课程使用该分类，请先修改课程分类后再删除");
+        }
+        // 检查子分类下是否有课程引用
+        List<CourseCategory> children = courseCategoryRepository.selectList(
+                new LambdaQueryWrapper<CourseCategory>()
+                        .eq(CourseCategory::getParentId, id));
+        for (CourseCategory child : children) {
+            long childCourseCount = courseRepository.selectCount(
+                    new LambdaQueryWrapper<Course>()
+                            .eq(Course::getCategoryId, child.getId()));
+            if (childCourseCount > 0) {
+                throw new BusinessException(ErrorCode.MS_STATUS_INVALID,
+                        "子分类「" + child.getName() + "」下有 " + childCourseCount + " 门课程使用该分类，请先修改课程分类后再删除");
+            }
         }
         courseCategoryRepository.deleteById(id);
     }

@@ -55,7 +55,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
               <img
                 v-if="imageUrls[current] && !imageErrors[current]"
                 :src="imageUrls[current]" class="slide-image"
-                :alt="'第' + (current + 1) + '页'" loading="eager"
+                :alt="'第' + (current + 1) + '页'" loading="lazy"
                 @error="imageErrors[current] = true"
               />
               <!-- 图片加载失败：占位图 + 重试按钮 -->
@@ -212,26 +212,31 @@ async function loadPages() {
   try {
     const res = await getSlidePages(courseId.value, chapterId.value)
     pages.value = res.data || []
-    for (const page of pages.value) {
-      const idx = page.pageNumber - 1
-      const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`
-      try {
-        const blobUrl = await loadAuthResource(relUrl)
-        if (blobUrl) {
-          imageUrls.value[idx] = blobUrl
-          delete imageErrors[idx]
-        } else {
-          imageErrors[idx] = true
-        }
-      } catch {
-        imageErrors[idx] = true
-      }
-    }
+    // P1I-015: 仅预加载前 3 页和相邻页，其余按需触发（preloadAdjacentImages 懒加载）
+    const initialIndices = [0, 1, 2].filter(i => i < pages.value.length)
+    await Promise.allSettled(initialIndices.map(idx => loadPageImage(idx)))
   } catch {
     pageError.value = true
     ElMessage.error('加载幻灯片失败')
   } finally {
     pageLoading.value = false
+  }
+}
+
+async function loadPageImage(idx) {
+  const page = pages.value[idx]
+  if (!page || imageUrls.value[idx] || imageErrors[idx]) return
+  const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`
+  try {
+    const blobUrl = await loadAuthResource(relUrl)
+    if (blobUrl) {
+      imageUrls.value[idx] = blobUrl
+      delete imageErrors[idx]
+    } else {
+      imageErrors[idx] = true
+    }
+  } catch {
+    imageErrors[idx] = true
   }
 }
 
@@ -274,22 +279,7 @@ function goTo(index) {
 
 function preloadAdjacentImages(currentIdx) {
   const indices = [currentIdx + 1, currentIdx + 2].filter(i => i < pages.value.length)
-  indices.forEach(async idx => {
-    if (imageUrls.value[idx] || imageErrors[idx]) return
-    const page = pages.value[idx]
-    if (!page) return
-    const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`
-    try {
-      const blobUrl = await loadAuthResource(relUrl)
-      if (blobUrl) {
-        imageUrls.value[idx] = blobUrl
-      } else {
-        imageErrors[idx] = true
-      }
-    } catch {
-      imageErrors[idx] = true
-    }
-  })
+  Promise.allSettled(indices.map(idx => loadPageImage(idx)))
 }
 
 async function loadAudio(index) {
@@ -374,6 +364,9 @@ function formatTime(s) {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 }
 
+// P1I-016: 在进度上报时增加 lessonId 参数（从 route.query 获取）
+const lessonId = computed(() => route.query.lessonId)
+
 // P0-2: 创建/获取进度记录
 async function ensureProgress() {
   if (!courseId.value) return
@@ -385,6 +378,7 @@ async function ensureProgress() {
       await createLearningProgress({
         courseId: courseId.value,
         chapterId: chapterId.value ? Number(chapterId.value) : undefined,
+        lessonId: lessonId.value ? Number(lessonId.value) : undefined,
       })
     }
   } catch (e) { if (courseId.value) console.warn('[SlidePlayer] ensureProgress failed', e.message) }
@@ -403,6 +397,7 @@ async function markSlideComplete() {
       await createLearningProgress({
         courseId: courseId.value,
         chapterId: chapterId.value ? Number(chapterId.value) : undefined,
+        lessonId: lessonId.value ? Number(lessonId.value) : undefined,
         completed: true,
       })
     }
@@ -410,8 +405,8 @@ async function markSlideComplete() {
 }
 
 // P0-2: 翻到最后一页时触发完成标记
+// P1C-019: 单页课件浏览后也应标记完成 — 移除 pages.length <= 1 的提前返回
 watch(current, (newVal) => {
-  if (pages.value.length <= 1) return  // 单页不标记完成
   if (newVal >= pages.value.length - 1) markSlideComplete()
 })
 

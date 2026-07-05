@@ -34,6 +34,7 @@ public class MicroSpecialtyEnrollmentVO {
     private String dropReason;
     private String failReason;
     private String departmentName;
+    private BigDecimal totalCredits;        // P1C-039: 微专业总学分（来自 MicroSpecialty）
 
     public MicroSpecialtyEnrollmentVO() {}
 
@@ -114,6 +115,9 @@ public class MicroSpecialtyEnrollmentVO {
 
     public String getDepartmentName() { return departmentName; }
     public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+
+    public BigDecimal getTotalCredits() { return totalCredits; }
+    public void setTotalCredits(BigDecimal totalCredits) { this.totalCredits = totalCredits; }
 
     /** Transient: compute certificate download URL from certificateId. */
     public String getCertificateUrl() {

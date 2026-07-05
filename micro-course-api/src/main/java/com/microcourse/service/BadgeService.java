@@ -23,4 +23,21 @@ public interface BadgeService {
     void checkAndAwardCourseCompletion(Long userId, Long courseId, long totalEnrollments, long completedCount);
 
     void checkAndAwardStreak(Long userId, int consecutiveDays);
+
+    // P1I-027: 以下为待实现的徽章检查方法（占位，后续补充）
+    default void checkAndAwardVideoCount(Long userId, long totalVideos) {
+        // TODO: 实现「观影达人」徽章 logic
+    }
+
+    default void checkAndAwardExerciseCount(Long userId, long totalExercises) {
+        // TODO: 实现「刷题达人」徽章 logic
+    }
+
+    default void checkAndAwardReviewCount(Long userId, long reviewCount) {
+        // TODO: 实现「复习达人」徽章 logic
+    }
+
+    default void checkAndAwardDiscussionCount(Long userId, long discussionCount) {
+        // TODO: 实现「讨论达人」徽章 logic
+    }
 }

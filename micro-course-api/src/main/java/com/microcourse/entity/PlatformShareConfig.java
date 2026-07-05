@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -31,6 +32,14 @@ public class PlatformShareConfig {
     @TableField("updated_by")
     private Long updatedBy;
 
+    /**
+     * 乐观锁版本号（P1C-061：防止并发编辑覆盖）
+     * 配合 MyBatisPlusConfig 中已注册的 OptimisticLockerInnerInterceptor 生效
+     */
+    @Version
+    @TableField("version")
+    private Integer version;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getConfigKey() { return configKey; }
@@ -45,4 +54,6 @@ public class PlatformShareConfig {
     public void setUpdatedAt(LocalDateTime t) { this.updatedAt = t; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long u) { this.updatedBy = u; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer v) { this.version = v; }
 }

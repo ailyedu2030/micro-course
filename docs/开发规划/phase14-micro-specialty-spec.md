@@ -83,7 +83,7 @@
 
 ```
 路径A（教务处直立）:                 路径B（教师申报）:
-   DRAFT                              PROPOSAL_REVIEW
+    DRAFT                              PENDING_REVIEW
      ↓ submit                            ↓ approve  → 创建 DRAFT + LEAD INVITED
    PENDING_REVIEW                       ↓ reject   → REJECTED
      ↓ approve → APPROVED               ↓ withdraw → WITHDRAWN
@@ -105,10 +105,10 @@
 |---------|-----------|---------|---------|---------|
 | DRAFT | PENDING_REVIEW | submit | LEAD | ≥1 门课程编排、lead_teacher 已接受 |
 | **REJECTED** | **PENDING_REVIEW** | **submit** | **LEAD** | **修改后重新提交（同 submit API，接受 REJECTED 作为 from-state）** |
-| PROPOSAL_REVIEW | DRAFT | approve | ACADEMIC | 申报书通过→自动创建 DRAFT + LEAD INVITED |
-| PROPOSAL_REVIEW | REJECTED | reject | ACADEMIC | 填写驳回原因 |
-| PROPOSAL_REVIEW | WITHDRAWN | withdraw | 申报人 | 申报未处理前可撤回 |
-| PROPOSAL_REVIEW | PENDING_REVIEW | resubmit | 申报人 | 修改申报书后重提（REJECTED→PENDING_REVIEW） |
+| PENDING_REVIEW | DRAFT | approve | ACADEMIC | 申报书通过→自动创建 DRAFT + LEAD INVITED |
+| PENDING_REVIEW | REJECTED | reject | ACADEMIC | 填写驳回原因 |
+| PENDING_REVIEW | WITHDRAWN | withdraw | 申报人 | 申报未处理前可撤回 |
+| PENDING_REVIEW | PENDING_REVIEW | resubmit | 申报人 | 修改申报书后重提（REJECTED→PENDING_REVIEW） |
 | PENDING_REVIEW | APPROVED | approve | ACADEMIC | — |
 | PENDING_REVIEW | REJECTED | reject | ACADEMIC | 填写驳回原因 |
 | APPROVED | RECRUITING | open | LEAD | 课程编排完成、团队≥2（含LEAD）、LEAD已接受 |
@@ -1276,7 +1276,7 @@ Controller 层调用模式:
 | C2.1 | 教师申报后状态 PENDING_REVIEW | ✅ | §2.1 |
 | C2.2 | 教务处批准后自动创建 DRAFT + LEAD INVITED | ✅ | §2.1 |
 | C2.3 | **驳回后可重提**（REJECTED→PENDING_REVIEW, submit 接受双 from-state）| ✅ | §2.1 |
-| C2.4 | **申报驳回后可 resubmit**（PROPOSAL_REVIEW→PENDING_REVIEW） | ✅ | §2.1/§7.2 |
+| C2.4 | **申报驳回后可 resubmit**（REJECTED→PENDING_REVIEW） | ✅ | §2.1/§7.2 |
 | C2.5 | LEAD 接受后 ACTIVE，可编排课程 | ✅ | §2.3 |
 | C2.6 | 课程编排后 submit → PENDING_REVIEW（submit 含乐观锁） | ✅ | §2.1 |
 | C2.7 | ACADEMIC approve → APPROVED → open → RECRUITING | ✅ | §2.1 |

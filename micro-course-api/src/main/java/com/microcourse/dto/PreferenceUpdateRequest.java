@@ -7,6 +7,7 @@ public class PreferenceUpdateRequest {
     private Boolean allowWechat;
     private String quietHoursStart;
     private String quietHoursEnd;
+    private String extraPreferences;
 
     public PreferenceUpdateRequest() {}
 
@@ -20,4 +21,6 @@ public class PreferenceUpdateRequest {
     public void setQuietHoursStart(String quietHoursStart) { this.quietHoursStart = quietHoursStart; }
     public String getQuietHoursEnd() { return quietHoursEnd; }
     public void setQuietHoursEnd(String quietHoursEnd) { this.quietHoursEnd = quietHoursEnd; }
+    public String getExtraPreferences() { return extraPreferences; }
+    public void setExtraPreferences(String extraPreferences) { this.extraPreferences = extraPreferences; }
 }

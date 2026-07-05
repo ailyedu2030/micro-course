@@ -58,19 +58,18 @@ public class VideoStreamController {
             @PathVariable String filename,
             @RequestParam(value = "sign", required = false) String sign) {
 
-        // ★ Round 8-1 修复：HLS 流式端点选课校验（仅 STUDENT；先于一切文件处理，未选课直接 8005）
-        // P1-C 修复: 先选课校验 → 再签名校验, 与 VideoController.play() 对齐
+        // P1I-014: 为所有角色添加签名校验，防止非 STUDENT 角色绕过视频流防护
         if (SecurityUtil.hasRole("STUDENT")) {
-            // 先选课校验（未选课返回 8005 NOT_ENROLLED，而非 12003 VIDEO_SIGN_INVALID）
+            // STUDENT: 先选课校验（未选课返回 8005 NOT_ENROLLED，而非 12003 VIDEO_SIGN_INVALID）
             VideoAccessService.AccessResult access =
                     videoAccessService.checkVideoAccess(SecurityUtil.getCurrentUserId(), courseId);
             if (!access.allowed) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
             }
-            // 再验证视频签名
-            if (sign == null || !videoSignUtil.verifySign(videoId, sign)) {
-                throw new BusinessException(ErrorCode.VIDEO_SIGN_INVALID, "视频签名无效或已过期");
-            }
+        }
+        // 所有角色都需要验证视频签名，防止直接访问绕过
+        if (sign == null || !videoSignUtil.verifySign(videoId, sign)) {
+            throw new BusinessException(ErrorCode.VIDEO_SIGN_INVALID, "视频签名无效或已过期");
         }
 
         // 安全校验：文件名不能包含路径穿越字符

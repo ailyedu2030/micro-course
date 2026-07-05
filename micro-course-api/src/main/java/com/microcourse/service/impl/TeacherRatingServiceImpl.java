@@ -117,6 +117,15 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TeacherRatingVO recalculate(Long teacherId) {
+        // P0-008: 跳过手动调整的教师
+        TeacherRating existing = ratingRepository.selectOne(
+                new LambdaQueryWrapper<TeacherRating>()
+                        .eq(TeacherRating::getTeacherId, teacherId));
+        if (existing != null && Boolean.TRUE.equals(existing.getManualAdjustment())) {
+            log.info("[TeacherRating] 跳过手动调整的教师 teacherId={}", teacherId);
+            return toVO(existing);
+        }
+
         // P1-2 修复: 用单教师 SQL,替代 selectTeacherStats()+遍历过滤
         TeacherRatingRepository.TeacherRatingStatRow target = ratingRepository.selectTeacherStat(teacherId);
         if (target == null) {
@@ -135,7 +144,16 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
     public int recalculateAll() {
         List<TeacherRatingRepository.TeacherRatingStatRow> stats = ratingRepository.selectTeacherStats();
         int processed = 0;
+        int skipped = 0;
         for (TeacherRatingRepository.TeacherRatingStatRow row : stats) {
+            // P0-008: 跳过手动调整的教师
+            TeacherRating existing = ratingRepository.selectOne(
+                    new LambdaQueryWrapper<TeacherRating>()
+                            .eq(TeacherRating::getTeacherId, row.getTeacherId()));
+            if (existing != null && Boolean.TRUE.equals(existing.getManualAdjustment())) {
+                skipped++;
+                continue;
+            }
             try {
                 // P1-1 修复: 每个教师独立事务(upsertRating+insertTierLog 原子)
                 transactionTemplate.execute(new TransactionCallbackWithoutResult() {
@@ -149,7 +167,7 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
                 log.error("[TeacherRating] 评级计算失败 teacherId={}", row.getTeacherId(), e);
             }
         }
-        log.info("[TeacherRating] 全部教师评级完成: total={}", processed);
+        log.info("[TeacherRating] 全部教师评级完成: processed={}, skipped(manual)={}", processed, skipped);
         return processed;
     }
 
@@ -183,10 +201,12 @@ public class TeacherRatingServiceImpl implements TeacherRatingService {
         String oldTier = rating.getTier();
 
         // P2-1 修复: 加乐观锁(用 oldTier 作状态检测),防止两个管理员并发调整互相覆盖
+        // P0-008: 手动调整时设置 manual_adjustment = true，防止批量重算覆盖
         LambdaUpdateWrapper<TeacherRating> uw = new LambdaUpdateWrapper<TeacherRating>()
                 .eq(TeacherRating::getTeacherId, teacherId)
                 .eq(TeacherRating::getTier, oldTier)
                 .set(TeacherRating::getTier, newTier)
+                .set(TeacherRating::getManualAdjustment, true)
                 .set(TeacherRating::getUpdatedAt, LocalDateTime.now());
         int affected = ratingRepository.update(null, uw);
         if (affected == 0) {

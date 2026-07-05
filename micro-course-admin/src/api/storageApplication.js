@@ -6,7 +6,7 @@ export function initStorageDraft() {
 }
 
 // 2. 我的申请列表
-export function getMyStorageDrafts() {
+export function getMyStorageDrafts(params) {
   return request({ method: 'GET', url: '/storage-applications/my-drafts', params: { page: params?.page || 0, size: params?.size || 20 } })
 }
 
@@ -80,4 +80,19 @@ export function exportStoragePdf(id) {
     url: `/storage-applications/${id}/export-pdf`,
     responseType: 'blob'
   })
+}
+
+// P1C-091: 13. 获取待审批列表（ACADEMIC）
+export function getPendingStorageApplications(params) {
+  return request({ method: 'GET', url: '/storage-applications/pending', params })
+}
+
+// P1C-091: 14. 审批通过（ACADEMIC）
+export function approveStorageApplication(id) {
+  return request({ method: 'POST', url: `/storage-applications/${id}/approve` })
+}
+
+// P1C-091: 15. 审批驳回（ACADEMIC）
+export function rejectStorageApplication(id, reason) {
+  return request({ method: 'POST', url: `/storage-applications/${id}/reject`, params: { reason } })
 }

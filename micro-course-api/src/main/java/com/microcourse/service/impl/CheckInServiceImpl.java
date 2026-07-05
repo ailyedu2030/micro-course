@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,10 +31,12 @@ public class CheckInServiceImpl implements CheckInService {
         this.badgeService = badgeService;
     }
 
+    private static final ZoneId CN_ZONE = ZoneId.of("Asia/Shanghai");
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CheckInVO checkIn(Long userId) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(CN_ZONE);
 
         // 幂等性优先检查：今日已打卡则直接返回
         CheckIn existing = checkInRepository.selectOne(
@@ -81,7 +84,7 @@ public class CheckInServiceImpl implements CheckInService {
         checkIn.setCheckinDate(today);
         checkIn.setDuration(0);
         checkIn.setStreakDays(streak + 1);
-        checkIn.setCreatedAt(LocalDateTime.now());
+        checkIn.setCreatedAt(LocalDateTime.now(CN_ZONE));
         try {
             checkInRepository.insert(checkIn);
         } catch (DuplicateKeyException e) {
@@ -107,7 +110,7 @@ public class CheckInServiceImpl implements CheckInService {
     @Override
     @Transactional(readOnly = true)
     public List<CheckInVO> getMyCheckIns(Long userId, int days) {
-        LocalDate startDate = LocalDate.now().minusDays(days - 1);
+        LocalDate startDate = LocalDate.now(CN_ZONE).minusDays(days - 1);
 
         List<CheckIn> records = checkInRepository.selectList(
                 new LambdaQueryWrapper<CheckIn>()
@@ -124,7 +127,7 @@ public class CheckInServiceImpl implements CheckInService {
     @Override
     @Transactional(readOnly = true)
     public int getStreak(Long userId) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(CN_ZONE);
 
         // 先查今日是否有打卡
         CheckIn todayRecord = checkInRepository.selectOne(
@@ -146,7 +149,7 @@ public class CheckInServiceImpl implements CheckInService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateDuration(Long userId, int duration) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(CN_ZONE);
 
         // P1-I: 改为先查询再更新，避免 setSql 字符串拼接参数
         CheckIn checkIn = checkInRepository.selectOne(

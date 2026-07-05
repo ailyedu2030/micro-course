@@ -572,9 +572,10 @@ const handleApprove = async (row) => {
 const handleReject = async (row) => {
   let value
   try {
-    const res = await ElMessageBox.prompt('请输入驳回原因（选填）', '驳回课程', {
+    const res = await ElMessageBox.prompt('请输入驳回原因', '驳回课程', {
       confirmButtonText: '确定驳回', cancelButtonText: '取消',
-      inputType: 'textarea', inputPlaceholder: '请填写驳回原因，以便教师修改后重新提交'
+      inputType: 'textarea', inputPlaceholder: '请填写驳回原因（至少10个字符）',
+      inputValidator: v => v?.trim()?.length >= 10 || '驳回原因至少10个字符'
     })
     value = res.value
   } catch { return }

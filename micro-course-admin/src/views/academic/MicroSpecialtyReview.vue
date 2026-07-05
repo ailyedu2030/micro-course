@@ -152,9 +152,16 @@ const confirmReject = async () => {
 }
 
 const handleCancel = async (row) => {
-  try { await ElMessageBox.confirm('确定取消该微专业？', '确认', { type: 'warning' }) }
-  catch { return }
-  try { await cancelMicroSpecialty(row.id); ElMessage.success('已取消'); fetchData() }
+  let reason
+  try {
+    const res = await ElMessageBox.prompt('请填写取消原因', '取消微专业', {
+      confirmButtonText: '确定取消', cancelButtonText: '取消',
+      inputType: 'textarea', inputPlaceholder: '请填写取消原因',
+      inputValidator: v => v?.trim()?.length >= 1 || '取消原因不能为空'
+    })
+    reason = res.value
+  } catch { return }
+  try { await cancelMicroSpecialty(row.id, reason); ElMessage.success('已取消'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 

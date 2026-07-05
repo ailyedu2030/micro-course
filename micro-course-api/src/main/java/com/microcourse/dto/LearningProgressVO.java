@@ -25,6 +25,9 @@ public class LearningProgressVO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // P1C-021: 线下活动是否签到
+    private Boolean offlineAttended;
+
     // P0-4: 课程级练习完成统计（由 Service 层聚合填充）
     private Integer completedExercises;
     private Integer totalExercises;
@@ -55,6 +58,8 @@ public class LearningProgressVO {
     public Boolean getExerciseCompleted() { return exerciseCompleted; }
     public void setExerciseCompleted(Boolean exerciseCompleted) { this.exerciseCompleted = exerciseCompleted; }
     public Boolean getExercisePassed() { return exercisePassed; }
+    public Boolean getOfflineAttended() { return offlineAttended; }
+    public void setOfflineAttended(Boolean offlineAttended) { this.offlineAttended = offlineAttended; }
     public void setExercisePassed(Boolean exercisePassed) { this.exercisePassed = exercisePassed; }
     public Integer getTotalWatchTime() { return totalWatchTime; }
     public void setTotalWatchTime(Integer totalWatchTime) { this.totalWatchTime = totalWatchTime; }

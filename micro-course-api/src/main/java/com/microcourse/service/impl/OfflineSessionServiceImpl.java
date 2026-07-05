@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.AttendanceRecordVO;
@@ -15,6 +16,7 @@ import com.microcourse.entity.ChapterOfflineSession;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -23,8 +25,10 @@ import com.microcourse.repository.ChapterOfflineSessionRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.OfflineSessionService;
+import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,9 +58,14 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
     private final CourseChapterRepository chapterRepository;
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final LearningProgressRepository learningProgressRepository;
     private static final Logger log = LoggerFactory.getLogger(OfflineSessionServiceImpl.class);
 
     private final UserRepository userRepository;
+    private final RedisUtil redisUtil;
+
+    // P2-009: 考勤统计缓存 TTL（秒）
+    private static final long ATTENDANCE_CACHE_TTL = 30;
 
     /** 签到时间窗口：课前 N 分钟（可通过配置文件调整） */
     @Value("${course.offline.checkin-before-minutes:15}")
@@ -70,13 +79,17 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
                                       CourseChapterRepository chapterRepository,
                                       CourseRepository courseRepository,
                                       EnrollmentRepository enrollmentRepository,
-                                      UserRepository userRepository) {
+                                      LearningProgressRepository learningProgressRepository,
+                                      UserRepository userRepository,
+                                      RedisUtil redisUtil) {
         this.sessionRepository = sessionRepository;
         this.attendanceRepository = attendanceRepository;
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.learningProgressRepository = learningProgressRepository;
         this.userRepository = userRepository;
+        this.redisUtil = redisUtil;
     }
 
     @Override
@@ -227,6 +240,24 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
             log.warn("重复签到(幂等处理): sessionId={}, userId={}", sessionId, userId);
             // Idempotent: unique constraint (session_id, user_id) prevents duplicate check-in
         }
+
+        // P1C-021: 签到成功后更新 learning_progress.offline_attended = true
+        if (chapter.getCourseId() != null) {
+            LambdaUpdateWrapper<LearningProgress> lpWrapper = new LambdaUpdateWrapper<>();
+            lpWrapper.eq(LearningProgress::getUserId, userId)
+                    .eq(LearningProgress::getCourseId, chapter.getCourseId())
+                    .set(LearningProgress::getOfflineAttended, true)
+                    .set(LearningProgress::getUpdatedAt, LocalDateTime.now());
+            learningProgressRepository.update(null, lpWrapper);
+
+            // P2-009: 签到后清除考勤缓存
+            try {
+                redisUtil.delete("attendance:count:" + sessionId);
+                redisUtil.delete("attendance:total:" + chapter.getCourseId());
+            } catch (Exception e) {
+                log.warn("[Attendance] 清除缓存失败 sessionId={}", sessionId, e);
+            }
+        }
     }
 
     @Override
@@ -281,6 +312,12 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         record.setStatus(status);
         record.setUpdatedBy(operatorId);
         attendanceRepository.updateById(record);
+        // P2-009: 考勤状态变更后清除该场次的缓存
+        try {
+            redisUtil.delete("attendance:count:" + record.getSessionId());
+        } catch (Exception e) {
+            log.warn("[Attendance] 清除缓存失败 sessionId={}", record.getSessionId(), e);
+        }
     }
 
     private List<OfflineSessionVO> buildVOsWithAttendance(List<ChapterOfflineSession> sessions) {
@@ -298,10 +335,19 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         Integer totalCount = 0;
         CourseChapter chapter = chapterRepository.selectById(chapterId);
         if (chapter != null) {
-            totalCount = Math.toIntExact(enrollmentRepository.selectCount(
-                    new LambdaQueryWrapper<Enrollment>()
-                            .eq(Enrollment::getCourseId, chapter.getCourseId())
-                            .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue(), EnrollmentStatus.COMPLETED.getValue())));
+            Long courseId = chapter.getCourseId();
+            // P2-009: Redis 缓存考勤总人数，30 秒过期
+            String cacheKey = "attendance:total:" + courseId;
+            Object cached = redisUtil.get(cacheKey);
+            if (cached instanceof Number n) {
+                totalCount = n.intValue();
+            } else {
+                totalCount = Math.toIntExact(enrollmentRepository.selectCount(
+                        new LambdaQueryWrapper<Enrollment>()
+                                .eq(Enrollment::getCourseId, courseId)
+                                .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue(), EnrollmentStatus.COMPLETED.getValue())));
+                redisUtil.set(cacheKey, totalCount, ATTENDANCE_CACHE_TTL, java.util.concurrent.TimeUnit.SECONDS);
+            }
         }
         final Integer finalTotalCount = totalCount;
 
@@ -424,6 +470,15 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         } catch (DataIntegrityViolationException e) {
             // 幂等：已签到则忽略
             log.info("[manualCheckin] 学生已签到，幂等处理 sessionId={} studentId={}", sessionId, studentId);
+        }
+        // P2-009: 签到后清除考勤缓存
+        try {
+            redisUtil.delete("attendance:count:" + sessionId);
+            if (chapter.getCourseId() != null) {
+                redisUtil.delete("attendance:total:" + chapter.getCourseId());
+            }
+        } catch (Exception e) {
+            log.warn("[Attendance] 清除缓存失败 sessionId={}", sessionId, e);
         }
     }
 

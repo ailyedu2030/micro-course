@@ -436,7 +436,14 @@ async function fetchSettings() {
     items.forEach(item => {
       const val = castValue(item)
       if (item.settingKey in systemForm) systemForm[item.settingKey] = val
-      if (item.settingKey in mailForm) mailForm[item.settingKey] = val
+      if (item.settingKey in mailForm) {
+        // P2-024: 敏感字段如 smtpPassword 不回显实际值，只显示占位符
+        if (item.settingKey === 'smtpPassword') {
+          mailForm[item.settingKey] = val ? '******' : ''
+        } else {
+          mailForm[item.settingKey] = val
+        }
+      }
       if (item.settingKey in securityForm) securityForm[item.settingKey] = val
     })
     // CAS 设置从后端 API 加载
@@ -507,10 +514,12 @@ async function handleSave(menu) {
     let keys
     if (menu === 'system') {
       formData = systemForm
-      keys = Object.keys(systemForm)
+      // P2-023: 排除 version 字段，防止系统版本作为可写配置项被更新覆盖
+      keys = Object.keys(systemForm).filter(k => k !== 'version')
     } else if (menu === 'mail') {
       formData = mailForm
-      keys = Object.keys(mailForm)
+      // P2-024: 密码未修改时排除 smtpPassword，避免覆盖服务端实际值
+      keys = Object.keys(mailForm).filter(k => !(k === 'smtpPassword' && mailForm.smtpPassword === '******'))
     } else if (menu === 'security') {
       formData = securityForm
       keys = Object.keys(securityForm)
@@ -537,11 +546,18 @@ async function handleTestCas() {
     ElMessage.warning('请先填写 CAS 服务器 URL')
     return
   }
-  ElMessage.warning('CAS 连接测试需要后端支持，当前为演示模式')
-  // 模拟测试结果
+  // ⚠️ P1C-055: 当前为模拟测试，后端暂无实际测试端点，请手动验证
+  ElMessage.warning({
+    message: '当前为模拟测试，请手动访问 CAS 服务器验证配置是否可用',
+    duration: 5000
+  })
   setTimeout(() => {
-    ElMessage.success('模拟测试成功（实际需后端支持）')
-  }, 1500)
+    ElMessage({
+      type: 'warning',
+      message: '模拟测试结束（后端暂未实现实际测试端点，配置保存后请手动验证）',
+      duration: 6000
+    })
+  }, 1000)
 }
 
 // 测试邮件
@@ -550,11 +566,18 @@ async function handleTestMail() {
     ElMessage.warning('请先填写完整的邮件配置')
     return
   }
-  // P2: 测试邮件应调用独立端点，不污染 DB（当前后端暂无测试邮件端点，使用演示模式）
-  ElMessage.info('正在模拟发送测试邮件...')
+  // ⚠️ P1C-055: 当前为模拟测试，后端暂无实际测试端点，请手动验证
+  ElMessage.warning({
+    message: '当前为模拟测试，请手动发送邮件验证配置是否可用',
+    duration: 5000
+  })
   setTimeout(() => {
-    ElMessage.success('模拟发送成功（实际需后端测试邮件端点支持）')
-  }, 1500)
+    ElMessage({
+      type: 'warning',
+      message: '模拟测试结束（后端暂未实现实际测试端点，配置保存后请手动验证）',
+      duration: 6000
+    })
+  }, 1000)
 }
 
 onMounted(() => {

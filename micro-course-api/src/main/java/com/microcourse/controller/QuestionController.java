@@ -77,6 +77,7 @@ public class QuestionController {
     /**
      * POST /api/questions/batch/import
      * 批量导入题目（Excel）
+     * <p>P1I-038 修复：文件格式/大小/魔数校验统一由 Service 层处理，Controller 不再重复校验。</p>
      * @param file Excel 文件
      * @param courseId 课程ID（路径参数）
      */
@@ -85,48 +86,14 @@ public class QuestionController {
     public R<BatchImportResultVO> batchImport(
             @RequestParam("file") MultipartFile file,
             @RequestParam Long courseId) {
+        // P1I-038: 文件校验（为空、大小、文件名安全）统一由 Service 层处理
+        // Controller 仅做最基本的前置检查，防止无效请求进入 Service
         if (file.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
         }
-        if (file.getSize() > 10 * 1024 * 1024) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件大小不能超过 10MB");
-        }
         // SEC-009 修复: 文件名路径穿越校验
         com.microcourse.util.FileUploadUtil.assertSafeFilename(file.getOriginalFilename());
-        // P1 安全修复: 魔数校验（防御深度，防止 Content-Type 伪造）
-        verifyExcelMagic(file);
-        String contentType = file.getContentType();
-        if (contentType == null || (
-                !contentType.startsWith("application/vnd.ms-excel") &&
-                !contentType.startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 Excel 文件 (.xls/.xlsx)");
-        }
         BatchImportResultVO result = questionService.batchImport(file, courseId);
         return R.ok(result);
-    }
-
-    /**
-     * P1 安全修复: Excel 文件魔数校验（防御深度，防止 Content-Type 伪造）。
-     * XLS: D0 CF 11 E0（OLE2 复合文档）
-     * XLSX: PK\x03\x04（ZIP 压缩包）
-     * 使用独立 InputStream 读取，不消耗后续 service 层可用的流。
-     */
-    private void verifyExcelMagic(MultipartFile file) {
-        try (java.io.InputStream is = file.getInputStream()) {
-            byte[] magic = new byte[4];
-            int read = is.read(magic);
-            if (read < 4) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小，无法验证格式");
-            }
-            boolean isOle2 = (magic[0] & 0xFF) == 0xD0 && (magic[1] & 0xFF) == 0xCF
-                    && (magic[2] & 0xFF) == 0x11 && (magic[3] & 0xFF) == 0xE0;
-            boolean isZip = (magic[0] & 0xFF) == 0x50 && magic[1] == 0x4B
-                    && magic[2] == 0x03 && magic[3] == 0x04;
-            if (!isOle2 && !isZip) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请上传有效的 Excel 文件（魔数校验失败）");
-            }
-        } catch (java.io.IOException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
-        }
     }
 }

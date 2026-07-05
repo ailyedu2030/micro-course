@@ -20,8 +20,16 @@ public enum NotificationType {
     COURSE_UNPUBLISHED("COURSE_UNPUBLISHED", "课程已下架"),
     VIDEO_TRANSCODED("VIDEO_TRANSCODED", "视频转码完成"),
     DISCUSSION_REPLY("DISCUSSION_REPLY", "讨论区有新回复"),
+    // P1I-023: 新帖审核通过通知发帖人
+    DISCUSSION_POST_APPROVED("DISCUSSION_POST_APPROVED", "讨论帖已通过审核"),
     // R8 P0-5: 成绩发布通知
     GRADE_ISSUED("GRADE_ISSUED", "成绩已发布"),
+
+    // P1I-040: 课程审核超时提醒
+    COURSE_REVIEW_REMINDER("COURSE_REVIEW_REMINDER", "课程审核超时提醒"),
+
+    // P1C-064: 完成率预警通知
+    COURSE_COMPLETION_WARNING("COURSE_COMPLETION_WARNING", "完成率预警"),
 
     // Phase 14: 微专业通知（23 种）
     MS_INVITE_LEAD("MS_INVITE_LEAD", "微专业负责人邀请"),

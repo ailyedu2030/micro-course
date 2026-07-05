@@ -13,5 +13,5 @@ export function getDiscussions(params) { return request({ method:'GET', url:'/ad
 export function getDiscussionById(id) { return request({ method:'GET', url:`/admin/discussions/${id}` }) }
 export function getDiscussionReplies(postId) { return request({ method:'GET', url:'/discussions/comments', params:{postId} }) }
 export function approveDiscussion(id) { return request({ method:'PUT', url:`/admin/discussions/${id}/approve` }) }
-export function rejectDiscussion(id) { return request({ method:'PUT', url:`/admin/discussions/${id}/reject` }) }
+export function rejectDiscussion(id, reason) { return request({ method:'PUT', url:`/admin/discussions/${id}/reject?reason=${encodeURIComponent(reason)}` }) }
 export function deleteDiscussion(id) { return request({ method:'DELETE', url:`/admin/discussions/${id}` }) }

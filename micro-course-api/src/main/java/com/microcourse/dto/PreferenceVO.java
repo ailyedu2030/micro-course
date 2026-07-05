@@ -12,6 +12,7 @@ public class PreferenceVO {
     private String quietHoursStart;
     private String quietHoursEnd;
     private LocalDateTime updatedAt;
+    private String extraPreferences;
 
     public PreferenceVO() {}
 
@@ -31,4 +32,6 @@ public class PreferenceVO {
     public void setQuietHoursEnd(String quietHoursEnd) { this.quietHoursEnd = quietHoursEnd; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getExtraPreferences() { return extraPreferences; }
+    public void setExtraPreferences(String extraPreferences) { this.extraPreferences = extraPreferences; }
 }

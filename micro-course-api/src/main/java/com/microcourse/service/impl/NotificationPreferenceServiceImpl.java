@@ -73,6 +73,10 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
         if (request.getQuietHoursEnd() != null) {
             preference.setQuietHoursEnd(request.getQuietHoursEnd());
         }
+        // P1C-037: 接收扩展偏好设置（JSON 字符串）
+        if (request.getExtraPreferences() != null) {
+            preference.setExtraPreferences(request.getExtraPreferences());
+        }
         preference.setUpdatedAt(LocalDateTime.now());
 
         if (preference.getId() == null) {
@@ -93,6 +97,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
         vo.setAllowWechat(preference.getAllowWechat());
         vo.setQuietHoursStart(preference.getQuietHoursStart());
         vo.setQuietHoursEnd(preference.getQuietHoursEnd());
+        vo.setExtraPreferences(preference.getExtraPreferences());
         vo.setUpdatedAt(preference.getUpdatedAt());
         return vo;
     }

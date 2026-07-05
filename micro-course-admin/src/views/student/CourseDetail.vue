@@ -105,10 +105,13 @@
               <el-button v-else type="primary" size="large" @click="goLearn">继续学习</el-button>
             </template>
             <template v-else>
-              <el-button type="primary" size="large" :loading="enrollLoading" @click="handleEnroll">
+              <!-- P1C-005: 课程状态为 CLOSED(5)/ARCHIVED(6) 时禁用操作按钮 -->
+              <el-button v-if="course.status === 5" type="info" size="large" disabled>课程已下架</el-button>
+              <el-button v-else-if="course.status === 6" type="info" size="large" disabled>课程已结束</el-button>
+              <el-button v-else type="primary" size="large" :loading="enrollLoading" @click="handleEnroll">
                 {{ isPaidForMe ? '立即购买' : '立即参加' }}
               </el-button>
-              <el-button v-if="isPaidForMe" size="large" @click="handleAddCart">
+              <el-button v-if="isPaidForMe && course.status !== 5 && course.status !== 6" size="large" @click="handleAddCart">
                 <el-icon><ShoppingCart /></el-icon>加入购物车
               </el-button>
             </template>
@@ -255,6 +258,13 @@
                 </div>
               </div>
               <el-empty v-else description="暂无评价" :image-size="60" />
+              <!-- P2-001: 查看更多评价按钮 -->
+              <div v-if="reviews.length > 0 && reviews.length >= 5" class="review-more-wrap" style="text-align:center;margin-top:var(--space-4)">
+                <el-button text type="primary" @click="handleLoadMoreReviews">
+                  查看更多评价
+                  <el-icon><ArrowRight /></el-icon>
+                </el-button>
+              </div>
             </div>
           </div>
         </div>
@@ -288,6 +298,19 @@
           <el-button type="primary" :loading="reviewSubmitting" @click="handleSubmitReview">提交评价</el-button>
         </template>
       </el-dialog>
+
+    <!-- 回复评价弹窗 -->
+    <el-dialog v-model="replyDialogVisible" title="回复评价" width="480px">
+      <el-form :model="replyForm" :rules="replyRules">
+        <el-form-item label="回复" prop="content">
+          <el-input v-model="replyForm.content" type="textarea" :rows="4" maxlength="500" show-word-limit placeholder="请输入回复内容..." />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="replyDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="replySubmitting" @click="handleSubmitReply">提交回复</el-button>
+      </template>
+    </el-dialog>
     </template>
   </div>
 </template>
@@ -296,7 +319,7 @@
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading, ShoppingCart } from '@element-plus/icons-vue'
+import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading, ShoppingCart, ArrowRight } from '@element-plus/icons-vue'
 import { getCourseById, getMyCoursePrice } from '@/api/course'
 import { getPublicProfile } from '@/api/user'
 import { getVideos } from '@/api/video'
@@ -306,6 +329,7 @@ import { createOrder, payOrder } from '@/api/order'
 import { getDefaultCover } from '@/utils/coverHelper'
 import { createReview, getReviews } from '@/api/course-review'
 import { createReport } from '@/api/review'
+import { getLearningProgress } from '@/api/learning-progress'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { useUserStore } from '@/store/user'
 import { getToken } from '@/utils/auth'
@@ -346,8 +370,18 @@ const activeTab = ref('detail')
 const reviewForm = ref({ rating: 5, content: '' })
 const reviewRules = { rating: [{ required: true, message: '请选择评分', trigger: 'change' }], content: [{ required: true, message: '请输入评价内容', trigger: 'blur' }, { max: 500, message: '评价内容不超过500字', trigger: 'blur' }] }
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+const hasProgress = ref(false)
 
-const canReply = computed(() => course.value?.status !== 6)
+// P1I-008: canReply 应基于用户角色和选课状态，而非课程状态
+const canReply = computed(() => {
+  // 未登录不可回复
+  if (!isLoggedIn.value) return false
+  // 教师/管理员/教务处可以回复
+  const role = userStore.role
+  if (role === 'TEACHER' || role === 'ADMIN' || role === 'ACADEMIC') return true
+  // 学生需已选课才能回复
+  return isEnrolled.value
+})
 
 const difficultyText = computed(() => {
   const map = { EASY: '简单', MEDIUM: '中等', HARD: '困难', BEGINNER: '初级', INTERMEDIATE: '中级', ADVANCED: '高级' }
@@ -542,11 +576,30 @@ const goLearn = () => {
 }
 const goToSlidePlayer = () => router.push(`/student/courses/${courseId.value}/slides/player`)
 
-const fetchReviews = async () => {
+// P2-001: 分页加载评价
+const reviewPage = ref(0)
+const reviewTotalElements = ref(0)
+const REVIEW_PAGE_SIZE = 5
+
+const fetchReviews = async (append = false) => {
   if (!courseId.value) return; reviewLoading.value = true
-  try { const { data } = await getReviews(courseId.value, { page: 0, size: 5 }); reviews.value = data?.items || data || [] }
+  try {
+    const { data } = await getReviews(courseId.value, { page: reviewPage.value, size: REVIEW_PAGE_SIZE })
+    const items = data?.items || data || []
+    if (append) {
+      reviews.value = [...reviews.value, ...items]
+    } else {
+      reviews.value = items
+    }
+    reviewTotalElements.value = data?.totalElements || items.length
+  }
   catch (e) { console.warn('[CourseDetail] fetchReviews 获取评价失败', e); ElMessage.warning('评价数据加载失败'); reviews.value = [] }
   finally { reviewLoading.value = false }
+}
+
+const handleLoadMoreReviews = async () => {
+  reviewPage.value++
+  await fetchReviews(true)
 }
 
 const fetchRanking = async () => {
@@ -554,9 +607,20 @@ const fetchRanking = async () => {
   try { const { data } = await getCourseRanking(courseId.value, { limit: 10 }); rankingList.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchRanking 获取排行失败', e); ElMessage.warning('排行榜加载失败'); rankingList.value = [] }
 }
 
+const checkProgress = async () => {
+  if (!isLoggedIn.value || !courseId.value) return
+  try {
+    const { data } = await getLearningProgress({ courseId: courseId.value })
+    hasProgress.value = !!(data && (data.completed || (data.videoProgress != null && data.videoProgress >= 80)))
+  } catch (e) {
+    hasProgress.value = false
+  }
+}
+
 const openReviewDialog = () => {
   if (!isLoggedIn.value) { ElMessage.warning('请先登录'); return goLogin() }
   if (!isEnrolled.value) { ElMessage.warning('请先选修该课程'); return }
+  if (!hasProgress.value) { ElMessage.warning('请完成课程学习后再评价（学习进度 ≥ 80%）'); return }
   reviewForm.value = { rating: 5, content: '' }; reviewDialogVisible.value = true
 }
 const reportDialog = reactive({ visible: false, targetType: '', targetId: null, reason: '', submitting: false })
@@ -583,8 +647,39 @@ const submitReport = async () => {
   finally { reportDialog.submitting = false }
 }
 
+// P1C-006: 实现回复评价功能
+const replyDialogVisible = ref(false)
+const replyTarget = ref(null)
+const replyForm = ref({ content: '' })
+const replySubmitting = ref(false)
+const replyRules = { content: [{ required: true, message: '请输入回复内容', trigger: 'blur' }, { max: 500, message: '回复内容不超过500字', trigger: 'blur' }] }
+
 const handleReply = (review) => {
-  ElMessage.info('回复功能待开发（请联系管理员）')
+  replyTarget.value = review
+  replyForm.value = { content: '' }
+  replyDialogVisible.value = true
+}
+
+const handleSubmitReply = async () => {
+  if (!replyForm.value.content.trim()) {
+    ElMessage.warning('请输入回复内容')
+    return
+  }
+  if (!replyTarget.value?.id) return
+  replySubmitting.value = true
+  try {
+    await createReview(courseId.value, {
+      content: replyForm.value.content.trim(),
+      parentId: replyTarget.value.id
+    })
+    ElMessage.success('回复成功')
+    replyDialogVisible.value = false
+    fetchReviews()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '回复失败，请重试')
+  } finally {
+    replySubmitting.value = false
+  }
 }
 
 const handleSubmitReview = async () => {
@@ -597,7 +692,7 @@ const handleSubmitReview = async () => {
 
 const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchSlides 获取课件失败', e); slides.value = [] } finally { slidesLoading.value = false } }
 
-onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; if (isInteractive.value) fetchSlides(); await Promise.all([fetchTeacher(), checkEnrollment(), fetchReviews(), fetchRanking(), fetchPricingInfo()]) })
+onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; if (isInteractive.value) fetchSlides(); reviewPage.value = 0; await Promise.all([fetchTeacher(), checkEnrollment(), checkProgress(), fetchReviews(), fetchRanking(), fetchPricingInfo()]) })
 </script>
 
 <style scoped>

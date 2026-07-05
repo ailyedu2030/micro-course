@@ -15,11 +15,19 @@
 
     <!-- ========== 查看模式 ========== -->
     <template v-if="!isEditMode && !loading">
+      <!-- P1C-075: ACADEMIC 只读模式提示 -->
+      <el-alert v-if="userRole === 'ACADEMIC'"
+        title="您正在以教务处身份查看，当前为只读模式"
+        type="warning"
+        :closable="false"
+        show-icon
+        class="readonly-alert"
+      />
       <!-- 头部操作栏 -->
       <div class="action-bar">
         <h1 class="course-title">{{ courseData.title || '未命名课程' }}</h1>
         <div class="action-buttons">
-          <template v-if="courseData.status === 0">
+          <template v-if="courseData.status === 0 && userRole !== 'ACADEMIC'">
             <el-button type="primary" @click="handleSubmitForReview" :loading="submitLoading" :disabled="submitLoading">提交审核</el-button>
           </template>
           <template v-if="courseData.status === 1">
@@ -33,8 +41,8 @@
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
           <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">课件总览</el-button>
-          <el-button type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">编辑</el-button>
-          <el-button type="warning" plain @click="handleCopy" v-if="!isEditMode">复制</el-button>
+          <el-button v-if="userRole !== 'ACADEMIC'" type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">编辑</el-button>
+          <el-button v-if="userRole !== 'ACADEMIC'" type="warning" plain @click="handleCopy">复制</el-button>
           <el-button type="info" plain @click="previewAsStudent">
             <el-icon><View /></el-icon> 學生預覽
           </el-button>
@@ -118,7 +126,7 @@
       <el-card shadow="never" class="chapter-card">
         <template #header>
           <div class="card-header-row">
-            <span class="card-title">章节管理 <span class="hint">（可拖拽排序）</span></span>
+            <span class="card-title">章节管理 <span v-if="userRole !== 'ACADEMIC'" class="hint">（可拖拽排序）</span></span>
             <el-button v-if="userRole !== 'ACADEMIC'" type="primary" size="small" @click="handleCreateChapter">新增章节</el-button>
           </div>
         </template>
@@ -183,7 +191,7 @@
               </template>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120" align="center" fixed="right">
+          <el-table-column v-if="userRole !== 'ACADEMIC'" label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
               <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">删除</el-button>
@@ -196,6 +204,14 @@
       </el-card>
     </template>
 
+    <!-- P1C-075: ACADEMIC 编辑模式只读提示 -->
+    <el-alert v-if="isEditMode && userRole === 'ACADEMIC'"
+      title="您正在以教务处身份查看，当前为只读模式。如需编辑请联系管理员。"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="readonly-alert"
+    />
     <!-- ========== 编辑模式 ========== -->
     <template v-if="isEditMode && !loading">
       <!-- 基本信息 -->
@@ -291,7 +307,7 @@
             <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png,image/gif,image/webp" :on-change="handleCoverChange" drag>
               <el-icon class="el-icon--upload"><i class="el-icon-upload" /></el-icon>
               <div class="el-upload__text">拖拽或<em>点击上传</em></div>
-              <template #tip><div class="form-tip">建议 1200×628px，支持 JPG/PNG/GIF/WebP，最大 5MB</div></template>
+              <template #tip><div class="form-tip">建议 1200×628px，支持 JPG/PNG/GIF/WebP，最大 2MB</div></template>
             </el-upload>
           </template>
           <div v-else class="cover-preview-wrap">
@@ -542,7 +558,7 @@ const handleCopy = async () => {
 // ===== 编辑提交 =====
 const handleCoverChange = (file) => {
   if (file.raw && file.raw.size > 5 * 1024 * 1024) {
-    ElMessage.warning('封面图片不能超过 5MB')
+    ElMessage.warning('封面图片不能超过 2MB')
     coverUploadRef.value?.clearFiles()
     return
   }
@@ -603,7 +619,9 @@ const gotoChapterContent = (chapterId, type) => {
   router.push(`/teacher/courses/${courseId.value}/chapters/${chapterId}/${type}`)
 }
 const handleDeleteChapter = async (row) => {
-  try { await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' }) } catch { return }
+  const videoCount = row.videoCount ?? 0
+  const contentHint = videoCount > 0 ? `（含 ${videoCount} 个视频内容）` : ''
+  try { await ElMessageBox.confirm(`确定删除章节「${row.title || ''}」？${contentHint}删除后不可恢复。`, '提示', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' }) } catch { return }
   try { await deleteChapter(row.id); ElMessage.success('已删除'); fetchChapters() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
 }
@@ -637,6 +655,11 @@ const handleChapterCancel = () => { chapterDialogVisible.value = false }
 const handleChapterDialogClose = () => { chapterFormRef.value?.resetFields() }
 
 onMounted(() => {
+  // P1C-075: ACADEMIC 角色从编辑模式重定向到查看模式
+  if (userRole.value === 'ACADEMIC' && isEditMode.value) {
+    router.replace(`/courses/${courseId.value}`)
+    return
+  }
   fetchCategories()
   fetchCourse().then(() => { if (!isEditMode.value) fetchChapters() })
 })
@@ -699,6 +722,11 @@ onUnmounted(() => { if (sortableInstance) sortableInstance.destroy() })
 .quill-editor-wrapper { width: 100%; border-radius: 4px; }
 .quill-editor-wrapper :deep(.ql-toolbar) { border-radius: 4px 4px 0 0; background: #fafafa; }
 .quill-editor-wrapper :deep(.ql-container) { border-radius: 0 0 4px 4px; font-size: 14px; }
+
+/* P1C-075: 只读模式提示 */
+.readonly-alert {
+  margin-bottom: 16px;
+}
 
 /* 响应式 */
 @media (max-width: 768px) {

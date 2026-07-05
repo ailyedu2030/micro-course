@@ -46,8 +46,8 @@ export function closeMicroSpecialty(id) {
   return request({ method: 'POST', url: `/micro-specialties/${id}/close` })
 }
 
-export function cancelMicroSpecialty(id) {
-  return request({ method: 'POST', url: `/micro-specialties/${id}/cancel` })
+export function cancelMicroSpecialty(id, reason) {
+  return request({ method: 'POST', url: `/micro-specialties/${id}/cancel`, data: { reason } })
 }
 
 export function archiveMicroSpecialty(id) {

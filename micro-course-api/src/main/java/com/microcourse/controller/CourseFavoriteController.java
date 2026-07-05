@@ -13,6 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/favorites")
@@ -26,10 +27,10 @@ public class CourseFavoriteController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public R<Void> favorite(@Valid @RequestBody FavoriteCreateRequest request) {
+    public R<Map<String, Object>> favorite(@Valid @RequestBody FavoriteCreateRequest request) {
         Long userId = getCurrentUserId();
-        favoriteService.favorite(userId, request.getCourseId());
-        return R.ok();
+        Map<String, Object> result = favoriteService.favorite(userId, request.getCourseId());
+        return R.ok(result);
     }
 
     @DeleteMapping("/{id}")

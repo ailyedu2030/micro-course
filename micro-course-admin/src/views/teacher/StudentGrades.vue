@@ -123,7 +123,18 @@
           </el-table-column>
           <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
+              <!-- P1C-076: ACADEMIC 角色只读查看，不显示批改按钮 -->
               <el-button
+                v-if="userStore.role === 'ACADEMIC'"
+                type="info"
+                link
+                @click="handleGrade(row)"
+                aria-label="查看"
+              >
+                查看
+              </el-button>
+              <el-button
+                v-else
                 type="primary"
                 link
                 :disabled="!searchForm.courseId"
@@ -180,7 +191,7 @@
             :min="0"
             :max="100"
             :step="0.1"
-            :disabled="isGraded"
+            :disabled="isGraded || userStore.role === 'ACADEMIC'"
             controls-position="right"
             class="score-input"
           />
@@ -190,7 +201,7 @@
             v-model="gradeForm.comment"
             type="textarea"
             :rows="3"
-            :disabled="isGraded"
+            :disabled="isGraded || userStore.role === 'ACADEMIC'"
             placeholder="请输入评语（选填）"
             maxlength="200"
             show-word-limit
@@ -199,7 +210,7 @@
       </el-form>
       <template #footer>
         <el-button @click="gradeVisible = false">关闭</el-button>
-        <el-button v-if="!isGraded" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmGrade">
+        <el-button v-if="!isGraded && userStore.role !== 'ACADEMIC'" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmGrade">
           提交成绩
         </el-button>
       </template>

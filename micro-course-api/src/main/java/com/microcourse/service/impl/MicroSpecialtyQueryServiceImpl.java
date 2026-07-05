@@ -188,6 +188,7 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
                         .orderByAsc(MicroSpecialty::getFeaturedRank)
                         .orderByDesc(MicroSpecialty::getApprovedAt));
         // 普通招生中（排除已置顶的）— 修复 G1：按质量分降序排序（次按 approvedAt DESC）
+        // P1I-032: 增加 LIMIT 1000 防止全量加载 OOM，质量分排序在内存中完成
         List<MicroSpecialty> recruitingList = msRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getStatus, "RECRUITING")
@@ -196,7 +197,8 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
                                 .or().isNull(MicroSpecialty::getIsFeatured))
                         .and(w -> w.eq(MicroSpecialty::getIsGoldFeatured, false)
                                 .or().isNull(MicroSpecialty::getIsGoldFeatured))
-                        .orderByDesc(MicroSpecialty::getApprovedAt));
+                        .orderByDesc(MicroSpecialty::getApprovedAt)
+                        .last("LIMIT 1000"));
         // P1-C-3: 一次性批量加载所有关联数据，消除 N+1
         List<MicroSpecialty> allList = new ArrayList<>();
         allList.addAll(goldList);
@@ -376,7 +378,7 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
                 new LambdaQueryWrapper<MicroSpecialtyCourse>()
                         .eq(MicroSpecialtyCourse::getMicroSpecialtyId, id)
                         .orderByAsc(MicroSpecialtyCourse::getSortOrder));
-        detail.setCourses(courses.stream().map(this::toCourseVO).collect(Collectors.toList()));
+        detail.setCourses(toCourseVOBatch(courses));
         // 教师团队
         List<MicroSpecialtyTeacher> teachers = msTeacherRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
@@ -455,11 +457,11 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
                 && !isLeadOf(msId, userId)) {
             throw new BusinessException(ErrorCode.MS_NOT_FOUND);
         }
-        return msCourseRepository.selectList(
+        List<MicroSpecialtyCourse> courseItems = msCourseRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyCourse>()
                         .eq(MicroSpecialtyCourse::getMicroSpecialtyId, msId)
-                        .orderByAsc(MicroSpecialtyCourse::getSortOrder))
-                .stream().map(this::toCourseVO).collect(Collectors.toList());
+                        .orderByAsc(MicroSpecialtyCourse::getSortOrder));
+        return toCourseVOBatch(courseItems);
     }
     // ====== 教师团队 ======
     @Override
@@ -627,6 +629,66 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         }
         return vo;
     }
+
+    /**
+     * P1I-033: 批量转换 toCourseVO，使用 selectBatchIds 替代逐条 selectById 消除 N+1。
+     */
+    private List<MicroSpecialtyCourseVO> toCourseVOBatch(List<MicroSpecialtyCourse> items) {
+        if (items == null || items.isEmpty()) {
+            return Collections.emptyList();
+        }
+        // 批量预加载所有 course
+        java.util.Set<Long> courseIds = items.stream()
+                .map(MicroSpecialtyCourse::getCourseId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, Course> courseMap = new HashMap<>();
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds)
+                    .forEach(c -> courseMap.put(c.getId(), c));
+        }
+        // 批量预加载所有 teacher
+        java.util.Set<Long> teacherIds = courseMap.values().stream()
+                .map(Course::getTeacherId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, User> teacherMap = new HashMap<>();
+        if (!teacherIds.isEmpty()) {
+            userRepository.selectBatchIds(teacherIds)
+                    .forEach(u -> teacherMap.put(u.getId(), u));
+        }
+        // 转换为 VO
+        List<MicroSpecialtyCourseVO> result = new ArrayList<>(items.size());
+        for (MicroSpecialtyCourse item : items) {
+            MicroSpecialtyCourseVO vo = new MicroSpecialtyCourseVO();
+            vo.setId(item.getId());
+            vo.setMicroSpecialtyId(item.getMicroSpecialtyId());
+            vo.setCourseId(item.getCourseId());
+            vo.setSortOrder(item.getSortOrder());
+            vo.setIsRequired(item.getIsRequired());
+            vo.setCredits(item.getCredits());
+            vo.setHours(item.getHours());
+            vo.setMinScore(item.getMinScore());
+            vo.setRecommendedSemester(item.getRecommendedSemester());
+            // 使用预加载的 map 填充课程和教师信息
+            if (item.getCourseId() != null) {
+                Course course = courseMap.get(item.getCourseId());
+                if (course != null) {
+                    vo.setCourseTitle(course.getTitle());
+                    vo.setCourseType(course.getCourseType());
+                    if (course.getTeacherId() != null) {
+                        User teacher = teacherMap.get(course.getTeacherId());
+                        if (teacher != null) {
+                            vo.setTeacherName(teacher.getRealName());
+                        }
+                    }
+                }
+            }
+            result.add(vo);
+        }
+        return result;
+    }
+
     @Override
     public MicroSpecialtyTeacherVO toTeacherVO(MicroSpecialtyTeacher t) {
         MicroSpecialtyTeacherVO vo = new MicroSpecialtyTeacherVO();

@@ -9,6 +9,7 @@ import com.microcourse.dto.RefreshRequest;
 import com.microcourse.dto.RegisterRequest;
 import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserVO;
+import com.microcourse.service.AdminSettingService;
 import com.microcourse.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,9 +30,24 @@ import org.springframework.web.multipart.MultipartFile;
 public class AuthController {
 
     private final AuthService authService;
+    private final AdminSettingService adminSettingService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, AdminSettingService adminSettingService) {
         this.authService = authService;
+        this.adminSettingService = adminSettingService;
+    }
+
+    /**
+     * P1C-002: 查询注册开关状态
+     * GET /api/auth/registration-status
+     * 权限: 公开（登录页加载时使用）
+     */
+    @GetMapping("/registration-status")
+    @PreAuthorize("permitAll()")
+    public R<java.util.Map<String, Object>> registrationStatus() {
+        String enabled = adminSettingService.getByKey("registration_enabled");
+        boolean isEnabled = enabled == null || "true".equalsIgnoreCase(enabled);
+        return R.ok(java.util.Map.of("enabled", isEnabled));
     }
 
     @PostMapping("/login")
@@ -92,9 +108,12 @@ public class AuthController {
     @PutMapping("/me/password")
     @PreAuthorize("isAuthenticated()")
     @AuditedLog("修改密码")
-    public R<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+    public R<java.util.Map<String, Object>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(request);
-        return R.ok();
+        // P1I-003: 返回 forceReLogin 标记，通知前端需要重新登录
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("forceReLogin", true);
+        return R.ok(result);
     }
 
     @PostMapping("/me/avatar")

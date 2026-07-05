@@ -44,3 +44,13 @@ export function removeStudentFromClass(classId, userId) {
 export function updateStudentStatus(classId, userId, status) {
   return request({ method: 'PUT', url: `/teaching-classes/${classId}/students/${userId}`, data: { status } })
 }
+
+// 结课
+export function completeTeachingClass(id) {
+  return request({ method: 'POST', url: `/teaching-classes/${id}/complete` })
+}
+
+// 停开
+export function cancelTeachingClass(id, reason) {
+  return request({ method: 'POST', url: `/teaching-classes/${id}/cancel`, data: { reason } })
+}

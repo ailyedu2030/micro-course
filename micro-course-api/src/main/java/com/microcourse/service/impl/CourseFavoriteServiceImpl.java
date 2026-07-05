@@ -38,7 +38,7 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void favorite(Long userId, Long courseId) {
+    public Map<String, Object> favorite(Long userId, Long courseId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
@@ -49,7 +49,10 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
                .eq(CourseFavorite::getCourseId, courseId);
         long count = favoriteRepository.selectCount(wrapper);
         if (count > 0) {
-            return;
+            // P1I-010: 已收藏时返回标记，前端可据此展示"已收藏"而非"收藏成功"
+            Map<String, Object> result = new HashMap<>();
+            result.put("alreadyFavorited", true);
+            return result;
         }
 
         CourseFavorite favorite = new CourseFavorite();
@@ -57,6 +60,10 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
         favorite.setCourseId(courseId);
         favorite.setCreatedAt(LocalDateTime.now());
         favoriteRepository.insert(favorite);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("alreadyFavorited", false);
+        return result;
     }
 
     @Override

@@ -78,7 +78,17 @@ const size = ref(20)
 const total = ref(0)
 const error = ref(false)
 
-const goldCount = computed(() => items.value.filter(i => i.isGoldFeatured).length)
+const goldCount = ref(0)
+// AC09 修复: 从 totalGoldCount 字段获取全系统金标计数（非当前页）
+// Fallback 到客户端过滤（后端新字段就绪前兼容）
+const updateGoldCount = (data) => {
+  if (data && typeof data.totalGoldCount === 'number') {
+    goldCount.value = data.totalGoldCount
+  } else {
+    // 兼容旧后端：从当前页数据计算
+    goldCount.value = items.value.filter(i => i.isGoldFeatured).length
+  }
+}
 
 const fetchMicroSpecialties = async () => {
   loading.value = true
@@ -92,6 +102,7 @@ const fetchMicroSpecialties = async () => {
     // Server-side already filtered by RECRUITING status
     items.value = res.data?.items || res.data || []
     total.value = res.data?.totalElements || items.value.length
+    updateGoldCount(res.data)
   } catch (e) {
     error.value = true
     ElMessage.error('获取微专业列表失败')

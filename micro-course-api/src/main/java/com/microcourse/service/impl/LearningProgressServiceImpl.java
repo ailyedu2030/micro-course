@@ -134,13 +134,33 @@ public class LearningProgressServiceImpl implements LearningProgressService {
             }
         }
 
+        // P1C-027: 未创建 learning_progress 记录的课程也返回默认进度 0
         java.util.Map<Long, LearningProgressVO> byCourse = new java.util.HashMap<>();
         for (LearningProgressVO vo : vos) {
             byCourse.put(vo.getCourseId(), vo);
         }
         return courseIds.stream()
-                .map(cid -> byCourse.get(cid))
-                .filter(java.util.Objects::nonNull)
+                .map(cid -> {
+                    LearningProgressVO vo = byCourse.get(cid);
+                    if (vo == null) {
+                        // 返回默认进度对象（进度 0）
+                        LearningProgressVO defaultVo = new LearningProgressVO();
+                        defaultVo.setCourseId(cid);
+                        defaultVo.setUserId(userId);
+                        defaultVo.setVideoProgress(0);
+                        defaultVo.setVideoPosition(0);
+                        defaultVo.setExerciseCompleted(false);
+                        defaultVo.setExercisePassed(false);
+                        defaultVo.setOfflineAttended(false);
+                        defaultVo.setCompleted(false);
+                        defaultVo.setTotalWatchTime(0);
+                        defaultVo.setCompletedVideos(0);
+                        defaultVo.setCompletedExercises(0);
+                        defaultVo.setTotalExercises(0);
+                        return defaultVo;
+                    }
+                    return vo;
+                })
                 .collect(java.util.stream.Collectors.toList());
     }
 
@@ -521,6 +541,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         vo.setPlatform(progress.getPlatform());
         vo.setPlaybackSpeed(progress.getPlaybackSpeed());
         vo.setConfidence(progress.getConfidence());
+        vo.setOfflineAttended(progress.getOfflineAttended());
         vo.setCompleted(progress.getCompleted());
         vo.setLastWatchAt(progress.getLastWatchAt());
         vo.setCreatedAt(progress.getCreatedAt());
@@ -558,6 +579,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         vo.setPlatform(progress.getPlatform());
         vo.setPlaybackSpeed(progress.getPlaybackSpeed());
         vo.setConfidence(progress.getConfidence());
+        vo.setOfflineAttended(progress.getOfflineAttended());
         vo.setCompleted(progress.getCompleted());
         vo.setLastWatchAt(progress.getLastWatchAt());
         vo.setCreatedAt(progress.getCreatedAt());

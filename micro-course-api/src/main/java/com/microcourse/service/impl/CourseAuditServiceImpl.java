@@ -71,6 +71,16 @@ public class CourseAuditServiceImpl implements CourseAuditService {
         if (current == null || !current.canTransitionTo(CourseStatus.PENDING_REVIEW)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "当前状态不允许提交审核");
         }
+        // T11: 提交审核前置完整性校验 — 标题/分类/封面
+        if (course.getTitle() == null || course.getTitle().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先填写课程标题再提交审核");
+        }
+        if (course.getCategoryId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先选择课程分类再提交审核");
+        }
+        if (course.getCoverUrl() == null || course.getCoverUrl().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先上传课程封面再提交审核");
+        }
         long chapterCount = chapterRepository.selectCount(
                 new LambdaQueryWrapper<CourseChapter>()
                         .eq(CourseChapter::getCourseId, id));

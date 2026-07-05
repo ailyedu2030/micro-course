@@ -49,6 +49,9 @@ public class DiscussionPost {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
+    @TableField("reject_reason")
+    private String rejectReason;
+
     @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
@@ -84,4 +87,6 @@ public class DiscussionPost {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public String getRejectReason() { return rejectReason; }
+    public void setRejectReason(String rejectReason) { this.rejectReason = rejectReason; }
 }

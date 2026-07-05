@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -371,7 +372,32 @@ public class OrderServiceImpl implements OrderService {
             refundPayment.setCreatedAt(LocalDateTime.now());
             paymentRepository.insert(refundPayment);
 
-            // 取消订单关联课程的选课
+            // P1C-016: 退款前检查课程学习进度，进度 > 10% 不可退款
+            if (order.getCourseId() != null) {
+                LambdaQueryWrapper<Enrollment> progressWrapper = new LambdaQueryWrapper<>();
+                progressWrapper.eq(Enrollment::getUserId, order.getUserId())
+                        .eq(Enrollment::getCourseId, order.getCourseId())
+                        .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
+                Enrollment enrollment = enrollmentRepository.selectOne(progressWrapper);
+                if (enrollment != null && enrollment.getProgress() != null && enrollment.getProgress() > 10.0) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程学习进度已超过10%，无法退款");
+                }
+            }
+            if (order.getBundleId() != null) {
+                LambdaQueryWrapper<Enrollment> bundleProgressWrapper = new LambdaQueryWrapper<>();
+                bundleProgressWrapper.eq(Enrollment::getUserId, order.getUserId())
+                        .eq(Enrollment::getBundleId, order.getBundleId())
+                        .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
+                List<Enrollment> bundleEnrollments = enrollmentRepository.selectList(bundleProgressWrapper);
+                for (Enrollment be : bundleEnrollments) {
+                    if (be.getProgress() != null && be.getProgress() > 10.0) {
+                        throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "套餐内课程学习进度已超过10%，无法退款");
+                    }
+                }
+            }
+
+            // P1C-011: 统一使用 unenrollBundleCourses 退选（替代 inline 遍历 course_bundle_items）
+            // 单课程退选
             if (order.getUserId() != null && order.getCourseId() != null) {
                 LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
                 enrollWrapper.eq(Enrollment::getUserId, order.getUserId())
@@ -382,28 +408,9 @@ public class OrderServiceImpl implements OrderService {
                     enrollmentService.cancelEnrollment(enrollment.getId(), order.getUserId());
                 }
             }
-
-            // 套餐退款：遍历 course_bundle_items 取消所有必修课 enrollment
+            // 套餐退选 — 调用统一的 unenrollBundleCourses
             if (order.getBundleId() != null && order.getUserId() != null) {
-                LambdaQueryWrapper<CourseBundleItem> itemWrapper = new LambdaQueryWrapper<>();
-                itemWrapper.eq(CourseBundleItem::getBundleId, order.getBundleId())
-                        .eq(CourseBundleItem::getIsRequired, true);
-                List<CourseBundleItem> items = bundleItemRepository.selectList(itemWrapper);
-                int cancelledCount = 0;
-                for (CourseBundleItem item : items) {
-                    LambdaQueryWrapper<Enrollment> eWrapper = new LambdaQueryWrapper<>();
-                    eWrapper.eq(Enrollment::getUserId, order.getUserId())
-                            .eq(Enrollment::getCourseId, item.getCourseId())
-                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
-                    Enrollment enrollment = enrollmentRepository.selectOne(eWrapper);
-                    if (enrollment != null) {
-                        enrollmentService.cancelEnrollment(enrollment.getId(), order.getUserId());
-                        cancelledCount++;
-                    }
-                }
-                if (cancelledCount > 0) {
-                    bundleRepository.atomicDecrementStudentCount(order.getBundleId());
-                }
+                unenrollBundleCourses(order.getUserId(), order.getBundleId());
             }
 
             log.info("退款成功: orderId={}, refundTxnId={}, amount={}", orderId, refundTxnId, order.getAmount());
@@ -700,6 +707,43 @@ public class OrderServiceImpl implements OrderService {
             if (course != null) vo.setCourseTitle(course.getTitle());
         }
         return vo;
+    }
+
+    /**
+     * P1I-009: 订单超时取消定时任务 — 每 5 分钟执行一次。
+     * 自动取消创建超过 30 分钟且仍为 PENDING 状态的订单，释放库存和资源。
+     */
+    @Scheduled(fixedRate = 300000) // 5分钟
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelExpiredOrders() {
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(30);
+        try {
+            LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Order::getStatus, OrderStatus.PENDING.getValue())
+                   .lt(Order::getCreatedAt, threshold);
+            List<Order> expiredOrders = orderRepository.selectList(wrapper);
+
+            if (expiredOrders.isEmpty()) {
+                return;
+            }
+
+            int cancelledCount = 0;
+            for (Order order : expiredOrders) {
+                int affected = orderRepository.update(null,
+                        new LambdaUpdateWrapper<Order>()
+                                .eq(Order::getId, order.getId())
+                                .eq(Order::getStatus, OrderStatus.PENDING.getValue())
+                                .set(Order::getStatus, OrderStatus.CANCELLED.getValue())
+                                .set(Order::getUpdatedAt, LocalDateTime.now()));
+                if (affected > 0) {
+                    cancelledCount++;
+                }
+            }
+            log.info("[P1I-009] 订单超时取消: 扫描 {} 笔, 实际取消 {} 笔, 阈值={}",
+                    expiredOrders.size(), cancelledCount, threshold);
+        } catch (Exception e) {
+            log.error("[P1I-009] 订单超时取消定时任务异常", e);
+        }
     }
 
     private OrderVO toVO(Order order, Map<Long, String> courseTitleMap) {

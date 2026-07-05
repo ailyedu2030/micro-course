@@ -505,11 +505,12 @@ async function loadStats() {
     const newStats = {
       totalUsers: d.totalUsers ?? 0,
       totalCourses: d.totalCourses ?? 0,
+      // P1I-048: 字段名 totalStudents 但实际取自 totalEnrollments（选课数，非学生数）
       totalStudents: d.totalEnrollments ?? 0,
       activeUsers: d.activeUsers7d ?? 0,
       videoPlayCount,
       exerciseSubmitCount,
-      totalStudyMinutes: Math.round((d.totalWatchTimeMinutes || 0)),
+      totalStudyMinutes: (d.totalWatchTimeMinutes || 0),
       certificatesIssued: d.certificatesIssued ?? 0
     }
     stats.value = newStats
@@ -533,7 +534,7 @@ async function loadTrends() {
     const data = {
       users: userRes.data || [],
       courses: courseRes.data || [],
-      students: []
+      students: (courseRes.data || []).map(item => ({ date: item.date, count: item.enrollments ?? 0 }))
     }
     renderTrendsChart(data)
   } catch (e) {
@@ -569,7 +570,7 @@ function renderTrendsChart(data) {
         name: '用户',
         type: 'line',
         smooth: true,
-        data: (data.users || []).map(item => item.count ?? 0),
+        data: (data.users || []).map(item => item.newUsers ?? 0),
         itemStyle: { color: '#4F46E5' },
         lineStyle: { width: 3 },
         areaStyle: { opacity: 0.12 }
@@ -578,7 +579,7 @@ function renderTrendsChart(data) {
         name: '课程',
         type: 'line',
         smooth: true,
-        data: (data.courses || []).map(item => item.count ?? 0),
+        data: (data.courses || []).map(item => item.newCourses ?? 0),
         itemStyle: { color: '#10B981' },
         lineStyle: { width: 3 },
         areaStyle: { opacity: 0.12 }
@@ -702,9 +703,15 @@ async function loadLogs() {
 }
 
 function formatDuration(minutes) {
-  if (!minutes) return '0h'
+  if (!minutes && minutes !== 0) return '0h'
+  if (minutes < 60) {
+    // P2-016: 保留一位小数，避免整数除法截断（如 2.08 显示为 2.1m 而非 2m）
+    return Number(minutes).toFixed(1) + 'm'
+  }
   const h = Math.floor(minutes / 60)
-  return h > 0 ? `${h}h` : `${minutes}m`
+  const remainder = minutes % 60
+  if (remainder === 0) return `${h}h`
+  return `${h}h${Number(remainder).toFixed(1)}m`
 }
 
 function formatTime(ts) {

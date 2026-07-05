@@ -79,7 +79,8 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         proposal.setSemester(request.getSemester());
         proposal.setMaxStudents(request.getMaxStudents());
         if (request.getCredits() != null) proposal.setCredits(request.getCredits());
-        proposal.setStatus(MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue());
+        // P1I-043 修复：初始创建时应为 DRAFT（草稿），提交审核时才改为 PENDING_REVIEW
+        proposal.setStatus(MicroSpecialtyProposalStatus.DRAFT.getValue());
         proposal.setCreatedAt(LocalDateTime.now());
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.insert(proposal);
@@ -167,12 +168,26 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可批准");
         }
 
+        // AC04: 乐观锁 — 防止多人同时审批双成功
+        Integer currentVersion = proposal.getVersion();
         // 更新 proposal 为 APPROVED
-        proposal.setStatus(MicroSpecialtyProposalStatus.APPROVED.getValue());
-        proposal.setReviewedBy(SecurityUtil.getCurrentUserId());
-        proposal.setReviewedAt(LocalDateTime.now());
-        proposal.setUpdatedAt(LocalDateTime.now());
-        proposalRepository.updateById(proposal);
+        int affected = proposalRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MicroSpecialtyProposal>()
+                        .eq(MicroSpecialtyProposal::getId, proposalId)
+                        .eq(MicroSpecialtyProposal::getStatus, MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue())
+                        .eq(MicroSpecialtyProposal::getVersion, currentVersion)
+                        .set(MicroSpecialtyProposal::getStatus, MicroSpecialtyProposalStatus.APPROVED.getValue())
+                        .set(MicroSpecialtyProposal::getReviewedBy, SecurityUtil.getCurrentUserId())
+                        .set(MicroSpecialtyProposal::getReviewedAt, LocalDateTime.now())
+                        .set(MicroSpecialtyProposal::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION,
+                    "审批状态已被其他操作修改，请刷新后重试");
+        }
+
+        // 刷新 proposal 以获取最新数据
+        proposal = proposalRepository.selectById(proposalId);
 
         // 创建微专业 DRAFT（§2.1 路径B）
         MicroSpecialty ms = new MicroSpecialty();
@@ -184,7 +199,8 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         ms.setSemester(proposal.getSemester());
         ms.setMaxStudents(proposal.getMaxStudents());
         ms.setLeadTeacherId(proposal.getProposerId());
-        ms.setStatus("APPROVED");
+        // P1C-090: 审批通过后设为 DRAFT 状态，允许教师编辑内容（添加/移除课程、修改描述等）
+        ms.setStatus("DRAFT");
         ms.setCreatorId(SecurityUtil.getCurrentUserId());
         ms.setCreatedAt(LocalDateTime.now());
         ms.setUpdatedAt(LocalDateTime.now());
@@ -213,7 +229,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
 
         // 通知申报人
         notificationService.notifyAsync(proposal.getProposerId(), NotificationType.MS_PROPOSAL_APPROVED,
-                "申报已批准", "您的微专业申报《" + proposal.getTitle() + "》已获批准，请接受负责人邀请", ms.getId());
+                "申报已批准", "您的微专业申报《" + proposal.getTitle() + "》已获批准，请编辑完善后提交审核", ms.getId());
 
         // 通知 LEAD
         notificationService.notifyAsync(proposal.getProposerId(), NotificationType.MS_INVITE_LEAD,
@@ -230,6 +246,11 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void rejectProposal(Long proposalId, String reason) {
+        // P1C-066: 驳回原因后端强制必填
+        if (reason == null || reason.isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因不能为空");
+        }
+
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
 
@@ -237,15 +258,26 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可驳回");
         }
 
-        proposal.setStatus(MicroSpecialtyProposalStatus.REJECTED.getValue());
-        proposal.setReviewComment(reason);
-        proposal.setReviewedBy(SecurityUtil.getCurrentUserId());
-        proposal.setReviewedAt(LocalDateTime.now());
-        proposal.setUpdatedAt(LocalDateTime.now());
-        proposalRepository.updateById(proposal);
+        // AC04: 乐观锁 — 防止并发驳回覆盖
+        Integer currentVersion = proposal.getVersion();
+        int affected = proposalRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MicroSpecialtyProposal>()
+                        .eq(MicroSpecialtyProposal::getId, proposalId)
+                        .eq(MicroSpecialtyProposal::getStatus, MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue())
+                        .eq(MicroSpecialtyProposal::getVersion, currentVersion)
+                        .set(MicroSpecialtyProposal::getStatus, MicroSpecialtyProposalStatus.REJECTED.getValue())
+                .set(MicroSpecialtyProposal::getReviewComment, reason)
+                .set(MicroSpecialtyProposal::getReviewedBy, SecurityUtil.getCurrentUserId())
+                .set(MicroSpecialtyProposal::getReviewedAt, LocalDateTime.now())
+                .set(MicroSpecialtyProposal::getUpdatedAt, LocalDateTime.now())
+                .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION,
+                    "驳回状态已被其他操作修改，请刷新后重试");
+        }
 
         notificationService.notifyAsync(proposal.getProposerId(), NotificationType.MS_PROPOSAL_REJECTED,
-                "申报被驳回", "您的微专业申报《" + proposal.getTitle() + "》被驳回，原因：" + (reason != null ? reason : "未填写"), null);
+                "申报被驳回", "您的微专业申报《" + proposal.getTitle() + "》被驳回，原因：" + reason, null);
     }
 
     @Override
@@ -411,7 +443,8 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             (proposal.getEnrollmentQuota() != null ? proposal.getEnrollmentQuota() :
              proposal.getClassSize() != null ? proposal.getClassSize() : 0));
         ms.setLeadTeacherId(proposal.getProposerId());
-        ms.setStatus("APPROVED");
+        // P1C-090: 审批通过后设为 DRAFT 状态，允许教师编辑内容
+        ms.setStatus("DRAFT");
         ms.setCreatorId(reviewerId);
         ms.setCreatedAt(LocalDateTime.now());
         ms.setUpdatedAt(LocalDateTime.now());
@@ -440,7 +473,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
 
         // 通知申报人
         notificationService.notifyAsync(proposal.getProposerId(), NotificationType.MS_PROPOSAL_APPROVED,
-                "申报已批准", "您的微专业申报已获批准，请接受负责人邀请", ms.getId());
+                "申报已批准", "您的微专业申报已获批准，请编辑完善后提交审核", ms.getId());
 
         // 通知 LEAD
         notificationService.notifyAsync(proposal.getProposerId(), NotificationType.MS_INVITE_LEAD,

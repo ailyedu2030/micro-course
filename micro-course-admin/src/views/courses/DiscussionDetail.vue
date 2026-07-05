@@ -120,9 +120,16 @@ const handleApprove = async () => {
 }
 
 const handleReject = async () => {
+  let reason = ''
   try {
-    await ElMessageBox.confirm('确定驳回该讨论?', '提示', { type: 'warning' })
-    await rejectDiscussion(route.params.id)
+    await ElMessageBox.prompt('请填写驳回原因：', '驳回确认', {
+      confirmButtonText: '确定驳回',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '请填写驳回原因（必填）',
+      inputValidator: (val) => !!val.trim() || '驳回原因不能为空'
+    }).then(({ value }) => { reason = value })
+    await rejectDiscussion(route.params.id, reason)
     ElMessage.success('驳回成功')
     fetchPost()
   } catch (error) {

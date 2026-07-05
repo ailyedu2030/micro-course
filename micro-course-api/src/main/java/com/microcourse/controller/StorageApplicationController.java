@@ -95,7 +95,7 @@ public class StorageApplicationController {
      * 5. 自动保存
      * PATCH /api/storage-applications/{id}/auto-save
      *
-     * 注意：autoSave 不添加 @Valid 注解，因为自动保存是部分保存，
+     * 注意：autoSave 不使用 @Valid 注解，因为自动保存是部分保存，
      * 允许发送不完整的表单数据。完整校验在 submit() 时执行。
      */
     @PatchMapping("/{id}/auto-save")
@@ -217,6 +217,46 @@ public class StorageApplicationController {
     public R<Void> resetAll(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         storageApplicationService.resetAll(id, userId);
+        return R.ok();
+    }
+
+    // ================================================================
+    // P1C-091: 教务处审批端点
+    // ================================================================
+
+    /**
+     * 13. 获取待审批列表（ACADEMIC）
+     * GET /api/storage-applications/pending
+     */
+    @GetMapping("/pending")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    public R<PageResult<StorageApplicationSummaryVO>> getPendingList(
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
+        return R.ok(storageApplicationService.getPendingList(page, size));
+    }
+
+    /**
+     * 14. 审批通过（ACADEMIC）
+     * POST /api/storage-applications/{id}/approve
+     */
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    public R<Void> approve(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        storageApplicationService.approve(id, userId);
+        return R.ok();
+    }
+
+    /**
+     * 15. 审批驳回（ACADEMIC）
+     * POST /api/storage-applications/{id}/reject
+     */
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    public R<Void> reject(@PathVariable Long id, @RequestParam String reason) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        storageApplicationService.reject(id, userId, reason);
         return R.ok();
     }
 

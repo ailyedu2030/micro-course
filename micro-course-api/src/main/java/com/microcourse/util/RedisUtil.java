@@ -112,6 +112,33 @@ public class RedisUtil {
     }
 
     /**
+     * P1I-001: 用户级 Token 黑名单 — 批量作废某个用户的所有活跃 Token。
+     * 设置 mc:jwt:user-blacklist:<userId> 标记，JwtAuthenticationFilter 会
+     * 在每次请求时检查此标记并拒绝已失效的 Token。
+     */
+    public void blacklistUserTokens(Long userId, long ttlSeconds) {
+        try {
+            set("mc:jwt:user-blacklist:" + userId, "1", ttlSeconds, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            redisMetrics.recordTokenBlacklistError();
+            log.warn("[Redis] blacklistUserTokens 失败 userId={}: {}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * P1I-001: 检查用户级 Token 黑名单
+     */
+    public Boolean isUserTokenBlacklisted(Long userId) {
+        try {
+            return hasKey("mc:jwt:user-blacklist:" + userId);
+        } catch (Exception e) {
+            redisMetrics.recordTokenCheckError();
+            log.warn("[Redis] isUserTokenBlacklisted 失败 userId={}，降级为未黑名单: {}", userId, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Token 黑名单校验（Redis 故障时返回 false，不误杀合法请求）
      */
     public Boolean isTokenBlacklisted(String jti) {

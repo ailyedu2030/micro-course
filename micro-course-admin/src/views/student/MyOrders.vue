@@ -36,6 +36,7 @@
             <el-tag v-if="row.status === 'PAID'" type="success" size="small">已支付</el-tag>
             <el-tag v-else-if="row.status === 'PENDING'" type="warning" size="small">待支付</el-tag>
             <el-tag v-else-if="row.status === 'CANCELLED'" type="info" size="small">已取消</el-tag>
+            <el-tag v-else-if="row.status === 'REFUNDED'" type="danger" size="small">已退款</el-tag>
             <el-tag v-else size="small">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>

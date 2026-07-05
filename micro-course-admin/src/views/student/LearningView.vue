@@ -452,6 +452,13 @@ async function saveVideoProgress(force = false) {
   if (!currentLessonId.value) return
   // 跳过非数字lessonId(如offline-76,slide-42等合成ID,由子页面自行管理进度)
   if (!/^\d+$/.test(String(currentLessonId.value))) return
+
+  // P2-003: sessionStorage dedup — 5 秒内同 lessonId 不上报，防 LearningView+VideoPlayer 双倍请求
+  const dedupKey = `progress_dedup_lesson_${currentLessonId.value}`
+  const lastReport = sessionStorage.getItem(dedupKey)
+  if (lastReport && (Date.now() - parseInt(lastReport, 10)) < 5000) return
+  sessionStorage.setItem(dedupKey, String(Date.now()))
+
   try {
     const lessonId = currentLessonId.value
     // P0-3: 计算 watchDelta（距上次保存的秒数）

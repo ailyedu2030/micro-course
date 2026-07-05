@@ -134,7 +134,7 @@
               <div class="upload-hint">支持 MP4/MOV/MKV，最大 2GB。选完后标题自动填充。</div>
             </div>
             <template #tip>
-              <div class="el-upload__tip">大文件上传可能需要几分钟，请耐心等待。</div>
+              <div class="el-upload__tip">支持 MP4/MOV/MKV，最大 2GB。大文件建议使用浏览器支持的流式上传，上传过程可查看进度条。</div>
             </template>
           </el-upload>
         </el-form-item>

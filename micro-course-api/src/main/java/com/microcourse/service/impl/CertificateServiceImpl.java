@@ -3,7 +3,9 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.Certificate;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyEnrollment;
 import com.microcourse.entity.User;
@@ -11,8 +13,10 @@ import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CertificateRepository;
+import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
 import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.UserRepository;
@@ -48,7 +52,9 @@ public class CertificateServiceImpl implements CertificateService {
 
     private final CertificateRepository certificateRepository;
     private final CourseRepository courseRepository;
+    private final CourseChapterRepository courseChapterRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final LearningProgressRepository learningProgressRepository;
     private final UserRepository userRepository;
     private final MicroSpecialtyRepository microSpecialtyRepository;
     private final MicroSpecialtyEnrollmentRepository microSpecialtyEnrollmentRepository;
@@ -56,14 +62,18 @@ public class CertificateServiceImpl implements CertificateService {
 
     public CertificateServiceImpl(CertificateRepository certificateRepository,
                                   CourseRepository courseRepository,
+                                  CourseChapterRepository courseChapterRepository,
                                   EnrollmentRepository enrollmentRepository,
+                                  LearningProgressRepository learningProgressRepository,
                                   UserRepository userRepository,
                                   MicroSpecialtyRepository microSpecialtyRepository,
                                   MicroSpecialtyEnrollmentRepository microSpecialtyEnrollmentRepository,
                                   NotificationService notificationService) {
         this.certificateRepository = certificateRepository;
         this.courseRepository = courseRepository;
+        this.courseChapterRepository = courseChapterRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.learningProgressRepository = learningProgressRepository;
         this.userRepository = userRepository;
         this.microSpecialtyRepository = microSpecialtyRepository;
         this.microSpecialtyEnrollmentRepository = microSpecialtyEnrollmentRepository;
@@ -160,6 +170,12 @@ public class CertificateServiceImpl implements CertificateService {
             throw new BusinessException(ErrorCode.CERTIFICATE_NOT_ELIGIBLE);
         }
 
+        // P1C-034: 课程完成还需校验视频 100% 看完 + 练习通过
+        if (!validateCourseCompletion(userId, courseId)) {
+            throw new BusinessException(ErrorCode.CERTIFICATE_NOT_ELIGIBLE,
+                    "课程尚未完全完成：请确保所有视频已看完且练习已通过");
+        }
+
         Certificate cert = new Certificate();
         cert.setUserId(userId);
         cert.setCourseId(courseId);
@@ -179,7 +195,72 @@ public class CertificateServiceImpl implements CertificateService {
             throw e;
         }
 
+        // P1C-035: 证书自动颁发后通知学生
+        try {
+            String courseTitle = course != null ? course.getTitle() : "课程";
+            notificationService.notifyAsync(userId, NotificationType.GRADE_ISSUED,
+                    "课程证书已颁发",
+                    "恭喜您已完成《" + courseTitle + "》全部学习内容，证书已颁发！证书编号：" + cert.getCertCode(),
+                    courseId);
+        } catch (Exception e) {
+            log.error("[Certificate] 发送课程证书通知失败 userId={} courseId={}", userId, courseId, e);
+        }
+
         return convertToVO(cert);
+    }
+
+    /**
+     * P1C-034: 校验课程是否真正完成——视频 100%看完 + 练习通过。
+     * <p>检查所有课程章节的 LearningProgress 记录：
+     * <ol>
+     *   <li>所有章节均有进度记录（无遗漏）</li>
+     *   <li>每条记录 video_progress >= 100（视频看完）</li>
+     *   <li>如有练习则 exercise_passed = true（练习通过）</li>
+     * </ol></p>
+     */
+    private boolean validateCourseCompletion(Long userId, Long courseId) {
+        // 获取课程所有章节
+        List<CourseChapter> chapters = courseChapterRepository.selectList(
+                new LambdaQueryWrapper<CourseChapter>()
+                        .eq(CourseChapter::getCourseId, courseId)
+                        .orderByAsc(CourseChapter::getSortOrder));
+        if (chapters.isEmpty()) {
+            // 无章节的课程视作不允许颁发证书
+            return false;
+        }
+
+        // 获取用户在该课程下的所有学习进度
+        List<LearningProgress> progressList = learningProgressRepository.selectList(
+                new LambdaQueryWrapper<LearningProgress>()
+                        .eq(LearningProgress::getUserId, userId)
+                        .eq(LearningProgress::getCourseId, courseId));
+
+        // 按 chapterId 分组
+        java.util.Map<Long, List<LearningProgress>> byChapter = progressList.stream()
+                .collect(java.util.stream.Collectors.groupingBy(LearningProgress::getChapterId));
+
+        for (CourseChapter chapter : chapters) {
+            List<LearningProgress> chapterProgress = byChapter.get(chapter.getId());
+            if (chapterProgress == null || chapterProgress.isEmpty()) {
+                log.debug("[Certificate] 章节 {} 无学习进度记录，不满足颁发条件", chapter.getId());
+                return false;
+            }
+            // 检查该章节下所有进度：视频看完、练习通过
+            for (LearningProgress lp : chapterProgress) {
+                if (lp.getVideoProgress() == null || lp.getVideoProgress() < 100) {
+                    log.debug("[Certificate] userId={} courseId={} chapterId={} videoProgress={} 未达到100%",
+                            userId, courseId, chapter.getId(), lp.getVideoProgress());
+                    return false;
+                }
+                if (Boolean.TRUE.equals(lp.getExerciseCompleted()) && !Boolean.TRUE.equals(lp.getExercisePassed())) {
+                    log.debug("[Certificate] userId={} courseId={} chapterId={} 练习未通过",
+                            userId, courseId, chapter.getId());
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     @Override

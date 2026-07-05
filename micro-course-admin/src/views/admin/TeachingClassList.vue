@@ -19,8 +19,8 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="全部状态" clearable class="search-select">
-            <el-option label="待开课" :value="0" />
-            <el-option label="进行中" :value="1" />
+            <el-option label="已停开" :value="0" />
+            <el-option label="开课中" :value="1" />
             <el-option label="已结课" :value="2" />
           </el-select>
         </el-form-item>
@@ -75,9 +75,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="170" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status === 1" type="warning" link size="small" @click="handleComplete(row)">结课</el-button>
+            <el-button v-if="row.status === 1" type="danger" link size="small" @click="handleCancel(row)">停开</el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -168,7 +170,9 @@ import {
   getTeachingClassById,
   createTeachingClass,
   updateTeachingClass,
-  deleteTeachingClass
+  deleteTeachingClass,
+  completeTeachingClass,
+  cancelTeachingClass
 } from '@/api/teaching-class'
 import { getCourses } from '@/api/course'
 
@@ -216,8 +220,8 @@ const formRules = {
 }
 
 const statusMap = {
-  0: { text: '待开课', type: 'info' },
-  1: { text: '进行中', type: 'success' },
+  0: { text: '已停开', type: 'info' },
+  1: { text: '开课中', type: 'success' },
   2: { text: '已结课', type: 'warning' }
 }
 
@@ -349,6 +353,35 @@ async function handleEdit(row) {
     ElMessage.error('获取教学班详情失败')
   }
   dialogVisible.value = true
+}
+
+async function handleComplete(row) {
+  try {
+    await ElMessageBox.confirm(`确定将教学班「${row.name}」结课？`, '提示', { type: 'warning' })
+    await completeTeachingClass(row.id)
+    ElMessage.success('结课成功')
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('结课失败')
+  }
+}
+
+async function handleCancel(row) {
+  let reason = ''
+  try {
+    await ElMessageBox.prompt(`确定停开教学班「${row.name}」？请填写停开原因：`, '停开确认', {
+      confirmButtonText: '确定停开',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '请填写停开原因',
+      inputValidator: (val) => !!val.trim() || '停开原因不能为空'
+    }).then(({ value }) => { reason = value })
+    await cancelTeachingClass(row.id, reason)
+    ElMessage.success('停开成功')
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('停开失败')
+  }
 }
 
 async function handleDelete(row) {

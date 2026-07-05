@@ -22,6 +22,7 @@ public class DiscussionPostVO {
     private List<DiscussionCommentVO> children;
     private String courseName;
     private String status;
+    private String rejectReason;
 
     public DiscussionPostVO() {}
 
@@ -61,4 +62,6 @@ public class DiscussionPostVO {
     public void setCourseName(String courseName) { this.courseName = courseName; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getRejectReason() { return rejectReason; }
+    public void setRejectReason(String rejectReason) { this.rejectReason = rejectReason; }
 }

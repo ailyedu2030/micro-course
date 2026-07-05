@@ -531,7 +531,7 @@ import AccuracyTrendChart from '@/components/learning-center/AccuracyTrendChart.
 import { ElMessage } from 'element-plus'
 import { Calendar, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine, Close } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { getStudyDays, getTotalTime, getLearningProgress } from '@/api/learning-progress'
+import { getStudyDays, getTotalTime, getLearningProgress, getServerTime } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
 import { getCourses } from '@/api/course'
@@ -678,6 +678,7 @@ async function loadHeatmap() {
     checkIns.forEach(record => {
       // CheckInVO.checkinDate 是 LocalDate，序列化为 "YYYY-MM-DD" 字符串，
       // 直接用作 dateKey 可避免 new Date() 的 UTC 时区偏移问题
+      // P1I-024: duration 从后端 CheckInVO.duration 字段提取，若为 0 表示当天无观看时长
       if (record.checkinDate) {
         const dateKey = String(record.checkinDate).slice(0, 10)
         minutesMap[dateKey] = (minutesMap[dateKey] || 0) + (record.duration || record.minutes || 0)
@@ -770,7 +771,7 @@ async function getStats(sharedEnrollments) {
     try {
       const streakRes = await getCheckInStreak()
       streakDays = streakRes?.data?.streakDays ?? streakRes?.data?.streak ?? 0
-    } catch { /* 打卡 API 不可用时降级为总学习天数 */ streakDays = studyDays }
+    } catch { /* P1C-029: 连续天数为 0 就显示 0，不 fallback 到总学习天数 */ streakDays = 0 }
 
     // 证书数量
     const certificates = Array.isArray(certData?.data) ? certData.data.length : 0
@@ -1049,9 +1050,16 @@ async function checkTodayStatus() {
   try {
     const { data } = await getMyCheckIns({ days: 1 })
     const checkIns = Array.isArray(data) ? data : []
-    const today = new Date()
-    // 用本地日期而非 UTC，避免东八区跨日误判
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    // P1C-031: 使用服务端日期，避免前后端"今天"定义不一致
+    let todayStr
+    try {
+      const serverTimeRes = await getServerTime()
+      todayStr = serverTimeRes?.data?.date
+    } catch {
+      // 服务端时间接口不可用时降级为本地日期
+      const today = new Date()
+      todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    }
     checkedInToday.value = checkIns.some(c => {
       if (!c.checkinDate) return false
       return String(c.checkinDate).slice(0, 10) === todayStr

@@ -122,6 +122,8 @@ public class MicroSpecialtyEnrollmentQueryServiceImpl implements MicroSpecialtyE
         if (ms != null) {
             vo.setMicroSpecialtyTitle(ms.getTitle());
             vo.setCoverUrl(ms.getCoverUrl());
+            // P1C-039: 映射微专业总学分
+            vo.setTotalCredits(ms.getTotalCredits());
             // Look up department name for the offering department
             if (ms.getOfferDepartmentId() != null) {
                 Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());

@@ -32,6 +32,11 @@ public interface DiscussionPostService {
     void updateStatus(Long id, String status);
 
     /**
+     * P1C-060: 驳回讨论并填写驳回原因
+     */
+    void rejectWithReason(Long id, String reason);
+
+    /**
      * P1#12: 帖子点赞
      */
     void like(Long postId, Long userId);

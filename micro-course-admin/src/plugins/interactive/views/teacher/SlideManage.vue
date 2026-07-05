@@ -339,27 +339,45 @@ function toggleBatchSelect(page) {
 }
 
 async function handleBatchAI() {
+  const failedPages = []
+  let successCount = 0
   for (const page of selectedBatch.value) {
     if (page.narrationStatus !== 'AI_GENERATED' && page.narrationStatus !== 'AUDIO_READY') {
       try {
         await generateNarration(courseId.value, page.pageNumber)
         page.narrationStatus = 'AI_GENERATED'
-      } catch { /* skip failed pages */ }
+        successCount++
+      } catch (e) {
+        failedPages.push({ page: page.pageNumber, error: e?.response?.data?.message || e?.message || '未知错误' })
+      }
     }
   }
-  ElMessage.success(`批量 AI 生成完成，共处理 ${selectedBatch.value.length} 页`)
+  if (failedPages.length > 0) {
+    ElMessage.warning(`AI 生成完成：成功 ${successCount} 页，失败 ${failedPages.length} 页（${failedPages.map(p => `第${p.page}页: ${p.error}`).join('；')}）`)
+  } else {
+    ElMessage.success(`批量 AI 生成完成，成功处理 ${successCount} 页`)
+  }
 }
 
 async function handleBatchTTS() {
+  const failedPages = []
+  let successCount = 0
   for (const page of selectedBatch.value) {
     if (page.narrationScript && page.narrationStatus !== 'AUDIO_READY') {
       try {
         const res = await generateAudio(courseId.value, page.pageNumber)
         Object.assign(page, res.data)
-      } catch { /* skip failed pages */ }
+        successCount++
+      } catch (e) {
+        failedPages.push({ page: page.pageNumber, error: e?.response?.data?.message || e?.message || '未知错误' })
+      }
     }
   }
-  ElMessage.success(`批量 TTS 完成，共处理 ${selectedBatch.value.length} 页`)
+  if (failedPages.length > 0) {
+    ElMessage.warning(`TTS 生成完成：成功 ${successCount} 页，失败 ${failedPages.length} 页（${failedPages.map(p => `第${p.page}页: ${p.error}`).join('；')}）`)
+  } else {
+    ElMessage.success(`批量 TTS 生成完成，成功处理 ${successCount} 页`)
+  }
 }
 
 async function handleBatchDelete() {

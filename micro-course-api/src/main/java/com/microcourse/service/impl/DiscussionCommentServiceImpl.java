@@ -9,15 +9,19 @@ import com.microcourse.dto.DiscussionCommentVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.DiscussionComment;
 import com.microcourse.entity.DiscussionCommentLike;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.User;
+import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DiscussionCommentLikeRepository;
 import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.DiscussionCommentService;
+import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,17 +47,25 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     private final DiscussionCommentLikeRepository commentLikeRepository;
     /** P1-17: 评论频率限制 */
     private final StringRedisTemplate stringRedisTemplate;
+    /** P1C-032: 通知服务 */
+    private final NotificationService notificationService;
+    /** P1C-032: 课程仓库，用于查询课程标题 */
+    private final CourseRepository courseRepository;
 
     public DiscussionCommentServiceImpl(DiscussionCommentRepository commentRepository,
                                         DiscussionPostRepository postRepository,
                                         UserRepository userRepository,
                                         DiscussionCommentLikeRepository commentLikeRepository,
-                                        StringRedisTemplate stringRedisTemplate) {
+                                        StringRedisTemplate stringRedisTemplate,
+                                        NotificationService notificationService,
+                                        CourseRepository courseRepository) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.commentLikeRepository = commentLikeRepository;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.notificationService = notificationService;
+        this.courseRepository = courseRepository;
     }
 
     @Override
@@ -147,6 +159,21 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
                 .setSql("comment_count = COALESCE(comment_count, 0) + 1")
                 .set(DiscussionPost::getUpdatedAt, LocalDateTime.now());
         postRepository.update(null, postUpdateWrapper);
+
+        // P1C-032: 讨论区有新回复 → 通知帖子作者（自己回复自己不通知）
+        try {
+            DiscussionPost post = postRepository.selectById(req.getPostId());
+            if (post != null && post.getUserId() != null && !post.getUserId().equals(userId)) {
+                Course course = courseRepository.selectById(post.getCourseId());
+                String courseTitle = course != null ? course.getTitle() : "课程";
+                notificationService.notifyAsync(post.getUserId(), NotificationType.DISCUSSION_REPLY,
+                        "讨论区有新回复",
+                        "您在《" + courseTitle + "》的帖子「" + truncateTitle(post.getTitle()) + "」有新回复",
+                        post.getCourseId());
+            }
+        } catch (Exception e) {
+            LOG.warn("[DiscussionComment] 发送回复通知失败 postId={}", req.getPostId(), e);
+        }
 
         return convertToVO(comment);
     }
@@ -369,5 +396,13 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
             vo.setIsOp(false);
         }
         return vo;
+    }
+
+    /**
+     * P1C-032: 截断帖子标题用于通知消息（超过 30 字加省略号）
+     */
+    private static String truncateTitle(String title) {
+        if (title == null) return "";
+        return title.length() > 30 ? title.substring(0, 30) + "…" : title;
     }
 }

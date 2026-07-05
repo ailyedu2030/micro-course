@@ -10,6 +10,7 @@ public class StorageApplicationSummaryVO {
     private String type;
     private String status;
     private String departmentName;
+    private String proposerName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -27,6 +28,8 @@ public class StorageApplicationSummaryVO {
     public void setStatus(String status) { this.status = status; }
     public String getDepartmentName() { return departmentName; }
     public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+    public String getProposerName() { return proposerName; }
+    public void setProposerName(String proposerName) { this.proposerName = proposerName; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -18,6 +18,7 @@ import com.microcourse.entity.Exercise;
 import com.microcourse.entity.ExerciseRecord;
 import com.microcourse.entity.Grade;
 import com.microcourse.entity.User;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseRepository;
@@ -220,6 +221,17 @@ public class GradeServiceImpl implements GradeService {
             }
         }
 
+        // P1C-089: 成绩锁定 — COMPLETED 状态后禁止修改成绩
+        if (grade.getCourseId() != null && grade.getUserId() != null) {
+            Enrollment enrollment = enrollmentRepository.selectOne(
+                    new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getCourseId, grade.getCourseId())
+                            .eq(Enrollment::getUserId, grade.getUserId()));
+            if (enrollment != null && EnrollmentStatus.COMPLETED.getValue().equals(enrollment.getEnrollmentStatus())) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程已完成，成绩已锁定，无法修改");
+            }
+        }
+
         if (request.getScore() != null) {
             // MISC-NEW-3 修复:校验 score <= totalScore
             BigDecimal ts = request.getTotalScore() != null ? request.getTotalScore() : grade.getTotalScore();
@@ -289,6 +301,11 @@ public class GradeServiceImpl implements GradeService {
         }
         Long courseId = enrollment.getCourseId();
         Long studentId = enrollment.getUserId();
+
+        // P1C-089: 成绩锁定 — COMPLETED 状态后禁止修改成绩
+        if (EnrollmentStatus.COMPLETED.getValue().equals(enrollment.getEnrollmentStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程已完成，成绩已锁定，无法修改");
+        }
 
         // 2. 校验教师拥有该课程
         Course course = courseRepository.selectById(courseId);
@@ -750,10 +767,13 @@ public class GradeServiceImpl implements GradeService {
         return com.microcourse.util.XssSanitizer.sanitize(comment);
     }
 
+    // P2-014: 导出上限改为可配置常量，后续可迁移到 application.yml
+    private static final int EXPORT_MAX_SIZE = 10000;
+
     @Override
     public java.util.List<GradeVO> getGradesForExport(Long courseId, Long currentUserId) {
-        // 用 page 方法取最大 10000 条（覆盖实际场景）
-        PageResult<GradeVO> result = page(courseId, null, 0, 10000);
+        // 用 page 方法取最大 EXPORT_MAX_SIZE 条
+        PageResult<GradeVO> result = page(courseId, null, 0, EXPORT_MAX_SIZE);
         return result.getItems();
     }
 }

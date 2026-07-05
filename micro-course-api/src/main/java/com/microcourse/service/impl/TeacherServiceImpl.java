@@ -239,11 +239,13 @@ public class TeacherServiceImpl implements TeacherService {
             return vo;
         }
 
-        // 2) 查询所有 PAID 订单
+        // 2) 查询 PAID 订单（P1I-035 修复：限制最近 12 个月，防止全表扫描）
+        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusMonths(12);
         List<Order> paidOrders = orderRepository.selectList(
                 new LambdaQueryWrapper<Order>()
                         .in(Order::getCourseId, courseIds)
                         .eq(Order::getStatus, "PAID")
+                        .ge(Order::getPaidAt, since)
                         .orderByDesc(Order::getPaidAt));
 
         if (paidOrders.isEmpty()) {
@@ -395,9 +397,11 @@ public class TeacherServiceImpl implements TeacherService {
     @Transactional(readOnly = true)
     public List<PendingTaskVO> getPendingTasks(Long teacherId, int size) {
         assertTeacherOwnership(teacherId, SecurityUtil.getCurrentUserId());
-        // ★ Round 11-2 性能核验：本方法已为批量预加载实现（无逐门课程 N+1）——
-        // 1 次取教师课程 ID 集合 → 1 次 IN(courseIds) 批量取练习 ID → 1 次分页取待批改记录
-        // → 1 次分页取讨论帖；查询次数恒定，不随课程数增长，无需引入 per-course 循环查询。
+        // P1I-034 修复：两个来源各自 limit 后合并再 limit 会互相截断——各自的 limit(size 取小)
+        // 改为各自使用较大的内部容量（200），合并后再统一取 size 个。
+        // 1 次取教师课程 ID 集合 → 1 次 IN(courseIds) 批量取练习 ID → 1 次取待批改记录
+        // → 1 次取讨论帖；查询次数恒定，不随课程数增长，无需引入 per-course 循环查询。
+        int internalLimit = Math.max(size, 200);
         List<PendingTaskVO> tasks = new ArrayList<>();
 
         List<Long> courseIds = courseRepository.selectList(
@@ -421,7 +425,7 @@ public class TeacherServiceImpl implements TeacherService {
 
             List<ExerciseRecord> records = new ArrayList<>();
             if (!exerciseIds.isEmpty()) {
-                Page<ExerciseRecord> recordPage = new Page<>(1, Math.min(size, 100));
+                Page<ExerciseRecord> recordPage = new Page<>(1, internalLimit);
                 exerciseRecordRepository.selectPage(recordPage,
                     new LambdaQueryWrapper<ExerciseRecord>()
                         .in(ExerciseRecord::getExerciseId, exerciseIds)
@@ -442,7 +446,7 @@ public class TeacherServiceImpl implements TeacherService {
 
         // 未回复的讨论帖
         if (!courseIds.isEmpty()) {
-            Page<DiscussionPost> postPage = new Page<>(1, Math.min(size, 100));
+            Page<DiscussionPost> postPage = new Page<>(1, internalLimit);
             discussionPostRepository.selectPage(postPage,
                 new LambdaQueryWrapper<DiscussionPost>()
                     .in(DiscussionPost::getCourseId, courseIds)
@@ -460,6 +464,7 @@ public class TeacherServiceImpl implements TeacherService {
             }
         }
 
+        // 合并后统一 limit，避免各自 limit 互相截断
         return tasks.stream().limit(size).collect(Collectors.toList());
     }
 

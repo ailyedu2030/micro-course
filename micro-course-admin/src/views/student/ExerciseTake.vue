@@ -1047,7 +1047,10 @@ function handleBackToList() {
 // ===== 查看解析 =====
 function handleViewAnalysis() {
   resultVisible.value = false
-  currentIndex.value = 0
+  // P1I-017: 仅在当前不在第一题时才重置索引，避免无意义重渲染
+  if (currentIndex.value !== 0) {
+    currentIndex.value = 0
+  }
   nextTick(() => {
     const el = document.querySelector('.question-card')
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })

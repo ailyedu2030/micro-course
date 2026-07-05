@@ -48,6 +48,9 @@ public class TeacherRating {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
+    @TableField("manual_adjustment")
+    private Boolean manualAdjustment;
+
     public TeacherRating() {}
 
     public Long getId() { return id; }
@@ -82,4 +85,7 @@ public class TeacherRating {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Boolean getManualAdjustment() { return manualAdjustment; }
+    public void setManualAdjustment(Boolean manualAdjustment) { this.manualAdjustment = manualAdjustment; }
 }

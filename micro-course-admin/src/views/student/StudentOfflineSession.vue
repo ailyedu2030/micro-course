@@ -51,7 +51,10 @@
               >
                 签到
               </el-button>
-              <el-tag v-else type="info" effect="plain" size="large">不在签到时间</el-tag>
+              <div v-else class="session-checkin-info">
+                <el-tag type="info" effect="plain" size="large">不在签到时间</el-tag>
+                <span class="checkin-window-hint">签到窗口：课前15分钟 ~ 课后30分钟</span>
+              </div>
             </div>
           </div>
         </el-card>
@@ -129,6 +132,18 @@ function getAttendanceStatus(session) {
 
   // 仅当天可签到；非当天显示为不可签到
   if (diffDays !== 0) return 'OUTSIDE'
+
+  // P1C-020: 检查签到时间窗口（与后端一致：课前15分钟~课后30分钟，相对于 startTime）
+  if (!session.startTime) return 'OUTSIDE'
+  const CHECKIN_BEFORE = 15  // 课前分钟数
+  const CHECKIN_AFTER = 30   // 课后分钟数
+  const startParts = session.startTime.split(':').map(Number)
+  if (startParts.length < 2) return 'OUTSIDE'
+  const startMinutes = startParts[0] * 60 + startParts[1]
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const windowStart = startMinutes - CHECKIN_BEFORE
+  const windowEnd = startMinutes + CHECKIN_AFTER
+  if (nowMinutes < windowStart || nowMinutes > windowEnd) return 'OUTSIDE'
 
   return 'CAN_CHECKIN'
 }
@@ -292,6 +307,17 @@ onMounted(async () => {
 }
 .session-action-col .el-tag {
   font-size: var(--text-sm);
+  white-space: nowrap;
+}
+.session-checkin-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+.checkin-window-hint {
+  font-size: var(--text-xs);
+  color: var(--el-text-color-placeholder);
   white-space: nowrap;
 }
 

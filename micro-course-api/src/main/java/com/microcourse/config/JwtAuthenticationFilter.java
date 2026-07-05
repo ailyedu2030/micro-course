@@ -72,6 +72,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         Long userId = jwtUtil.getUserIdFromToken(token);
+
+        // P1I-001: 用户级 Token 黑名单校验（禁用用户后批量作废所有 Token）
+        if (redisUtil.isUserTokenBlacklisted(userId)) {
+            writeErrorResponse(response, 1004, "账号已被禁用，请重新登录");
+            return;
+        }
+
         String roleStr = jwtUtil.getRoleFromTokenAsString(token);
 
         List<SimpleGrantedAuthority> authorities;

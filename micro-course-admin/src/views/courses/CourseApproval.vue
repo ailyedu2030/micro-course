@@ -158,8 +158,8 @@ async function handleReject(row) {
   try {
     const res = await ElMessageBox.prompt('请输入驳回原因', '驳回课程', {
       confirmButtonText: '确定驳回', cancelButtonText: '取消',
-      inputValidator: v => v?.trim()?.length >= 5 || '驳回原因至少5个字符',
-      inputPlaceholder: '请输入驳回原因（至少5个字符）',
+      inputValidator: v => v?.trim()?.length >= 10 || '驳回原因至少10个字符',
+      inputPlaceholder: '请输入驳回原因（至少10个字符）',
     })
     reason = res.value
   } catch { return }
@@ -192,8 +192,8 @@ async function handleBatchReject() {
   try {
     const res = await ElMessageBox.prompt('请输入统一的驳回原因', '批量驳回', {
       confirmButtonText: '确定驳回', cancelButtonText: '取消',
-      inputValidator: v => v?.trim()?.length >= 5 || '驳回原因至少5个字符',
-      inputPlaceholder: '请输入驳回原因（至少5个字符）',
+      inputValidator: v => v?.trim()?.length >= 10 || '驳回原因至少10个字符',
+      inputPlaceholder: '请输入驳回原因（至少10个字符）',
     })
     reason = res.value
   } catch { return }

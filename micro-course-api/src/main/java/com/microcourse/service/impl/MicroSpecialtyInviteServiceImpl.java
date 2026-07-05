@@ -85,7 +85,7 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
         IPage<MicroSpecialtyTeacher> ipage = teacherRepository.selectPage(
                 new Page<>(page + 1, size),
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
-                        .eq(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC")
+                        .in(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC", "PENDING")
                         .orderByDesc(MicroSpecialtyTeacher::getInvitedAt));
         return PageResult.of(ipage);
     }

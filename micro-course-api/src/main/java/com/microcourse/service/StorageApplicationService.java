@@ -37,6 +37,15 @@ public interface StorageApplicationService {
     /** 8. 提交审核 */
     void submit(Long proposalId, Long userId);
 
+    /** P1C-091: 获取待审批列表（ACADEMIC） */
+    PageResult<StorageApplicationSummaryVO> getPendingList(int page, int size);
+
+    /** P1C-091: 审批通过（ACADEMIC） */
+    void approve(Long proposalId, Long reviewerId);
+
+    /** P1C-091: 审批驳回（ACADEMIC） */
+    void reject(Long proposalId, Long reviewerId, String reason);
+
     /** 9. 重置单个模块 */
     void resetModule(Long proposalId, Long userId, String module);
 

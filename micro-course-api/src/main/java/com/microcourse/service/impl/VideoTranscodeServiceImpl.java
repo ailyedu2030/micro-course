@@ -4,7 +4,9 @@ import com.microcourse.entity.Video;
 import com.microcourse.enums.VideoStatus;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.VideoTranscodeService;
+import com.microcourse.util.RedisUtil;
 import org.slf4j.Logger;
+import org.springframework.context.ApplicationContext;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
@@ -25,6 +27,7 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import java.util.concurrent.TimeUnit;
 
 /**
  * FFmpeg HLS 转码服务
@@ -60,10 +63,21 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
     @Value("${video.transcode.timeout-minutes:60}")
     private int transcodeTimeoutMinutes;
 
+    // P2-010: 转码最大重试次数
+    private static final int MAX_RETRY_COUNT = 3;
+    private static final String RETRY_KEY_PREFIX = "transcode:retry:";
+
+    private final RedisUtil redisUtil;
+    private final ApplicationContext applicationContext;
+
     public VideoTranscodeServiceImpl(VideoRepository videoRepository,
-                                     org.springframework.transaction.PlatformTransactionManager txManager) {
+                                     org.springframework.transaction.PlatformTransactionManager txManager,
+                                     RedisUtil redisUtil,
+                                     ApplicationContext applicationContext) {
         this.videoRepository = videoRepository;
         this.txTemplate = new org.springframework.transaction.support.TransactionTemplate(txManager);
+        this.redisUtil = redisUtil;
+        this.applicationContext = applicationContext;
     }
 
     @Override
@@ -247,9 +261,48 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
     /**
      * P2: failTranscode 复用已有 Video 对象，不再重复查询
+     * P2-010: 添加重试机制 — 最多重试 MAX_RETRY_COUNT 次
      */
-    /** P1-07: 转码失败状态变更走独立小事务 */
     private void failTranscode(Video video, String errorMessage) {
+        Long videoId = video.getId();
+        // P2-010: 检查重试次数
+        String retryKey = RETRY_KEY_PREFIX + videoId;
+        Integer retryCount = 0;
+        try {
+            Object cached = redisUtil.get(retryKey);
+            if (cached instanceof Number n) {
+                retryCount = n.intValue();
+            }
+        } catch (Exception e) {
+            log.warn("[VideoTranscode] 读取重试计数失败 videoId={}", videoId, e);
+        }
+
+        if (retryCount < MAX_RETRY_COUNT) {
+            int nextRetry = retryCount + 1;
+            try {
+                redisUtil.set(retryKey, nextRetry, 3600, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.warn("[VideoTranscode] 写入重试计数失败 videoId={}", videoId, e);
+            }
+            log.warn("[VideoTranscode] 转码失败 videoId={} 第{}次, 即将重试({}/{}) error={}",
+                    videoId, retryCount, nextRetry, MAX_RETRY_COUNT, errorMessage);
+            // 通过 ApplicationContext 获取代理 Bean 触发 @Async，异步执行重试
+            try {
+                applicationContext.getBean(VideoTranscodeService.class).transcode(videoId);
+            } catch (Exception e) {
+                log.error("[VideoTranscode] 提交重试失败 videoId={}", videoId, e);
+                doFinalFail(video, errorMessage);
+            }
+            return;
+        }
+
+        log.error("[VideoTranscode] 转码失败 videoId={} 已重试{}次,放弃 error={}",
+                videoId, MAX_RETRY_COUNT, errorMessage);
+        doFinalFail(video, errorMessage);
+    }
+
+    /** 最终失败：标记 FAILED 状态 */
+    private void doFinalFail(Video video, String errorMessage) {
         try {
             txTemplate.execute(txStatus -> {
                 video.setStatus(VideoStatus.FAILED.getCode());

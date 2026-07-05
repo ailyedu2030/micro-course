@@ -74,8 +74,8 @@ public interface TeacherRatingRepository extends BaseMapper<TeacherRating> {
      * 批量更新教师评级（INSERT ON CONFLICT）
      */
     @Insert("INSERT INTO teacher_ratings " +
-            "(teacher_id, rating_score, tier, avg_student_rating, completion_rate, total_students, total_courses, calculated_at, created_at, updated_at) " +
-            "VALUES (#{teacherId}, #{score}, #{tier}, #{avgRating}, #{completionRate}, #{totalStudents}, #{totalCourses}, NOW(), NOW(), NOW()) " +
+            "(teacher_id, rating_score, tier, avg_student_rating, completion_rate, total_students, total_courses, calculated_at, created_at, updated_at, manual_adjustment) " +
+            "VALUES (#{teacherId}, #{score}, #{tier}, #{avgRating}, #{completionRate}, #{totalStudents}, #{totalCourses}, NOW(), NOW(), NOW(), false) " +
             "ON CONFLICT (teacher_id) DO UPDATE SET " +
             "  rating_score = EXCLUDED.rating_score, " +
             "  tier = EXCLUDED.tier, " +

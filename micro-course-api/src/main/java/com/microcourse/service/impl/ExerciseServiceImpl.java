@@ -1,5 +1,4 @@
 package com.microcourse.service.impl;
-
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -13,17 +12,19 @@ import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Exercise;
 import com.microcourse.entity.ExerciseChapter;
+import com.microcourse.entity.ExerciseQuestion;
+import com.microcourse.entity.ExerciseRecord;
 import com.microcourse.entity.Question;
 import com.microcourse.entity.QuestionChapter;
-import com.microcourse.entity.ExerciseQuestion;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseChapterRepository;
 import com.microcourse.repository.ExerciseQuestionRepository;
-import com.microcourse.enums.EnrollmentStatus;
+import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.QuestionChapterRepository;
 import com.microcourse.repository.QuestionRepository;
@@ -32,7 +33,6 @@ import com.microcourse.service.ExerciseService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,24 +42,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 @Service
 public class ExerciseServiceImpl implements ExerciseService {
-
     private final ExerciseRepository exerciseRepository;
     private final QuestionRepository questionRepository;
     private final QuestionChapterRepository questionChapterRepository;
     private final ExerciseQuestionRepository exerciseQuestionRepository;
+    private final ExerciseRecordRepository exerciseRecordRepository;
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
     private final ExerciseChapterRepository exerciseChapterRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final ExerciseRecordService exerciseRecordService;
-
     public ExerciseServiceImpl(ExerciseRepository exerciseRepository,
                                 QuestionRepository questionRepository,
                                 QuestionChapterRepository questionChapterRepository,
                                 ExerciseQuestionRepository exerciseQuestionRepository,
+                                ExerciseRecordRepository exerciseRecordRepository,
                                 CourseRepository courseRepository,
                                 CourseChapterRepository courseChapterRepository,
                                 ExerciseChapterRepository exerciseChapterRepository,
@@ -69,13 +68,13 @@ public class ExerciseServiceImpl implements ExerciseService {
         this.questionRepository = questionRepository;
         this.questionChapterRepository = questionChapterRepository;
         this.exerciseQuestionRepository = exerciseQuestionRepository;
+        this.exerciseRecordRepository = exerciseRecordRepository;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
         this.exerciseChapterRepository = exerciseChapterRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.exerciseRecordService = exerciseRecordService;
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExerciseVO create(ExerciseCreateRequest request) {
@@ -90,7 +89,6 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-
         Exercise exercise = new Exercise();
         exercise.setCourseId(request.getCourseId());
         exercise.setChapterId(request.getChapterId());
@@ -106,15 +104,12 @@ public class ExerciseServiceImpl implements ExerciseService {
         exercise.setVersion(1);
         exercise.setCreatedAt(LocalDateTime.now());
         exercise.setUpdatedAt(LocalDateTime.now());
-
         int totalScore = request.getQuestions().stream()
                 .mapToInt(q -> q.getScore() != null ? q.getScore() : 0)
                 .sum();
         exercise.setTotalScore(totalScore);
         exercise.setQuestionCount(request.getQuestions().size());
-
         exerciseRepository.insert(exercise);
-
         // Handle chapter associations (multi-chapter support)
         List<Long> chapterIdsToInsert = resolveChapterIds(request.getChapterIds(), request.getChapterId());
         if (chapterIdsToInsert != null && !chapterIdsToInsert.isEmpty()) {
@@ -125,7 +120,6 @@ public class ExerciseServiceImpl implements ExerciseService {
                 exerciseChapterRepository.insert(ec);
             }
         }
-
         List<ExerciseQuestion> exerciseQuestions = new ArrayList<>();
         for (ExerciseCreateRequest.ExerciseQuestionItem item : request.getQuestions()) {
             ExerciseQuestion eq = new ExerciseQuestion();
@@ -135,14 +129,11 @@ public class ExerciseServiceImpl implements ExerciseService {
             eq.setSortOrder(item.getSortOrder() != null ? item.getSortOrder() : 0);
             exerciseQuestions.add(eq);
         }
-
         for (ExerciseQuestion eq : exerciseQuestions) {
             exerciseQuestionRepository.insert(eq);
         }
-
         return getById(exercise.getId());
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExerciseVO generateExam(ExamGenerateRequest req) {
@@ -152,22 +143,17 @@ public class ExerciseServiceImpl implements ExerciseService {
         Integer totalScore = req.getTotalScore();
         Integer timeLimit = req.getTimeLimit();
         List<Long> chapterIds = req.getChapterIds() != null ? req.getChapterIds() : new ArrayList<>();
-
         if (questionCounts == null || questionCounts.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请至少选择一种题型");
         }
-
         // 1. 按条件查询所有匹配题目
         LambdaQueryWrapper<Question> qWrapper = new LambdaQueryWrapper<Question>()
                 .eq(Question::getCourseId, courseId);
-
         Set<String> typeSet = questionCounts.keySet();
         if (!typeSet.isEmpty()) {
             qWrapper.in(Question::getQuestionType, typeSet);
         }
-
         List<Question> allQuestions = questionRepository.selectList(qWrapper);
-
         // 2. 如果指定了章节，过滤出关联这些章节的题目
         List<Question> pool;
         if (!chapterIds.isEmpty()) {
@@ -176,7 +162,6 @@ public class ExerciseServiceImpl implements ExerciseService {
                     new LambdaQueryWrapper<QuestionChapter>()
                             .in(QuestionChapter::getChapterId, chapterIds));
             qcs.forEach(qc -> questionIdsInChapters.add(qc.getQuestionId()));
-
             Set<Long> qidSet = questionIdsInChapters;
             pool = allQuestions.stream()
                     .filter(q -> qidSet.contains(q.getId()))
@@ -184,14 +169,11 @@ public class ExerciseServiceImpl implements ExerciseService {
         } else {
             pool = allQuestions;
         }
-
         // 3. 按题型分组，随机抽题
         Map<String, List<Question>> byType = pool.stream()
                 .collect(Collectors.groupingBy(Question::getQuestionType));
-
         List<Long> selectedIds = new ArrayList<>();
         int totalQuestions = 0;
-
         for (Map.Entry<String, Integer> entry : questionCounts.entrySet()) {
             String type = entry.getKey();
             int needed = entry.getValue();
@@ -206,7 +188,6 @@ public class ExerciseServiceImpl implements ExerciseService {
                 totalQuestions++;
             }
         }
-
         // 4. 构建题目列表（均分总分，最后一题兜底余数）
         int finalTotalScore = totalScore != null ? totalScore : totalQuestions;
         int baseScore = totalQuestions > 0 ? finalTotalScore / totalQuestions : 1;
@@ -219,7 +200,6 @@ public class ExerciseServiceImpl implements ExerciseService {
             item.setSortOrder(i + 1);
             items.add(item);
         }
-
         // 5. 创建考试（含题目，isExam=true）
         ExerciseCreateRequest createReq = new ExerciseCreateRequest();
         createReq.setCourseId(courseId);
@@ -232,10 +212,8 @@ public class ExerciseServiceImpl implements ExerciseService {
         createReq.setTotalScore(finalTotalScore);
         createReq.setTimeLimit(timeLimit);
         createReq.setPassScore((int) Math.ceil(finalTotalScore * 0.6));
-
         return create(createReq);
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExerciseVO update(Long id, ExerciseUpdateRequest request) {
@@ -245,7 +223,6 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         // Owner check: only course teacher or ADMIN can update exercise
         assertCourseOwner(exercise.getCourseId());
-
         if (request.getCourseId() != null) {
             exercise.setCourseId(request.getCourseId());
         }
@@ -276,18 +253,23 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (request.getShuffleOptions() != null) {
             exercise.setShuffleOptions(request.getShuffleOptions());
         }
-
+        // P1C-044: 已有学生提交记录时禁止修改题目内容（标题、说明等元数据仍可修改）
         if (request.getQuestions() != null && !request.getQuestions().isEmpty()) {
+            long recordCount = exerciseRecordRepository.selectCount(
+                new LambdaQueryWrapper<ExerciseRecord>()
+                    .eq(ExerciseRecord::getExerciseId, id));
+            if (recordCount > 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "已有学生提交记录，不允许修改题目内容");
+            }
             int totalScore = request.getQuestions().stream()
                     .mapToInt(q -> q.getScore() != null ? q.getScore() : 0)
                     .sum();
             exercise.setTotalScore(totalScore);
             exercise.setQuestionCount(request.getQuestions().size());
-
             LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(ExerciseQuestion::getExerciseId, id);
             exerciseQuestionRepository.delete(wrapper);
-
             List<ExerciseQuestion> exerciseQuestions = new ArrayList<>();
             for (ExerciseUpdateRequest.ExerciseQuestionItem item : request.getQuestions()) {
                 ExerciseQuestion eq = new ExerciseQuestion();
@@ -297,12 +279,10 @@ public class ExerciseServiceImpl implements ExerciseService {
                 eq.setSortOrder(item.getSortOrder() != null ? item.getSortOrder() : 0);
                 exerciseQuestions.add(eq);
             }
-
             for (ExerciseQuestion eq : exerciseQuestions) {
                 exerciseQuestionRepository.insert(eq);
             }
         }
-
         if (request.getChapterIds() != null || request.getChapterId() != null) {
             List<Long> chapterIdsToUpdate = resolveChapterIds(request.getChapterIds(), request.getChapterId());
             LambdaQueryWrapper<ExerciseChapter> chapterWrapper = new LambdaQueryWrapper<>();
@@ -317,12 +297,10 @@ public class ExerciseServiceImpl implements ExerciseService {
                 }
             }
         }
-
         exercise.setUpdatedAt(LocalDateTime.now());
         exerciseRepository.updateById(exercise);
         return getById(id);
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
@@ -332,18 +310,14 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         // Owner check: only course teacher or ADMIN can delete exercise
         assertCourseOwner(exercise.getCourseId());
-
         LambdaQueryWrapper<ExerciseChapter> chapterWrapper = new LambdaQueryWrapper<>();
         chapterWrapper.eq(ExerciseChapter::getExerciseId, id);
         exerciseChapterRepository.delete(chapterWrapper);
-
         LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ExerciseQuestion::getExerciseId, id);
         exerciseQuestionRepository.delete(wrapper);
-
         exerciseRepository.deleteById(id);
     }
-
     @Override
     public PageResult<ExerciseVO> page(Long courseId, Long chapterId, Boolean isExam, Integer page, Integer size) {
         LambdaQueryWrapper<Exercise> wrapper = new LambdaQueryWrapper<>();
@@ -351,7 +325,22 @@ public class ExerciseServiceImpl implements ExerciseService {
             wrapper.eq(Exercise::getCourseId, courseId);
         }
         if (chapterId != null) {
-            wrapper.eq(Exercise::getChapterId, chapterId);
+            // P1I-039 修复：练习可能关联多个章节（通过 exercise_chapters 表），
+            // 仅按 Exercise.chapterId（单值字段）过滤会遗漏多章节关联的记录。
+            // 改为：先查 exercise_chapters 找到关联目标章节的 exerciseId，再 IN 过滤；
+            // 同时保留单值字段过滤作为补充，确保两者中任意匹配即命中。
+            List<Long> multiChapterExerciseIds = exerciseChapterRepository.selectList(
+                    new LambdaQueryWrapper<ExerciseChapter>()
+                            .eq(ExerciseChapter::getChapterId, chapterId)
+                            .select(ExerciseChapter::getExerciseId)
+            ).stream().map(ExerciseChapter::getExerciseId).distinct().collect(Collectors.toList());
+            // 同时匹配单值字段 chapterId + 多章节关联，任一满足即可
+            if (!multiChapterExerciseIds.isEmpty()) {
+                wrapper.and(w -> w.eq(Exercise::getChapterId, chapterId)
+                        .or().in(Exercise::getId, multiChapterExerciseIds));
+            } else {
+                wrapper.eq(Exercise::getChapterId, chapterId);
+            }
         }
         if (isExam != null) {
             wrapper.eq(Exercise::getIsExam, isExam);
@@ -365,16 +354,13 @@ public class ExerciseServiceImpl implements ExerciseService {
             wrapper.apply("course_id IN (SELECT id FROM courses WHERE teacher_id = {0} AND deleted_at IS NULL)", currentUserId);
         }
         wrapper.orderByDesc(Exercise::getCreatedAt);
-
         IPage<Exercise> exercisePage = exerciseRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
-
         // N+1 修复：批量预加载 course、chapter、questions、multi-chapter
         Map<Long, Course> courseMap = new HashMap<>();
         Map<Long, CourseChapter> chapterMap = new HashMap<>();
         Map<Long, List<ExerciseQuestion>> questionsMap = new HashMap<>();
         Map<Long, List<Long>> exerciseChapterIdsMap = new HashMap<>();
-
         Set<Long> courseIds = exercisePage.getRecords().stream()
                 .map(Exercise::getCourseId).filter(java.util.Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -383,7 +369,6 @@ public class ExerciseServiceImpl implements ExerciseService {
                 .collect(Collectors.toSet());
         Set<Long> exerciseIds = exercisePage.getRecords().stream()
                 .map(Exercise::getId).collect(Collectors.toSet());
-
         if (!courseIds.isEmpty()) {
             courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
         }
@@ -396,7 +381,6 @@ public class ExerciseServiceImpl implements ExerciseService {
                     .orderByAsc(ExerciseQuestion::getSortOrder);
             exerciseQuestionRepository.selectList(qWrapper)
                     .forEach(q -> questionsMap.computeIfAbsent(q.getExerciseId(), k -> new ArrayList<>()).add(q));
-
             // Batch load multi-chapter associations
             LambdaQueryWrapper<ExerciseChapter> ecWrapper = new LambdaQueryWrapper<>();
             ecWrapper.in(ExerciseChapter::getExerciseId, exerciseIds);
@@ -411,7 +395,6 @@ public class ExerciseServiceImpl implements ExerciseService {
                 courseChapterRepository.selectBatchIds(multiChapterIds).forEach(ch -> chapterMap.put(ch.getId(), ch));
             }
         }
-
         // P0-2: 批量加载题目内容（分页返回完整题目数据）
         Set<Long> allQuestionIds = new HashSet<>();
         for (List<ExerciseQuestion> eqs : questionsMap.values()) {
@@ -424,18 +407,15 @@ public class ExerciseServiceImpl implements ExerciseService {
             questionRepository.selectBatchIds(allQuestionIds)
                     .forEach(q -> questionContentMap.put(q.getId(), q));
         }
-
         final Map<Long, Course> finalCourseMap = courseMap;
         final Map<Long, CourseChapter> finalChapterMap = chapterMap;
         final Map<Long, List<ExerciseQuestion>> finalQuestionsMap = questionsMap;
         final Map<Long, List<Long>> finalExerciseChapterIdsMap = exerciseChapterIdsMap;
         final Map<Long, Question> finalQuestionContentMap = questionContentMap;
-
         IPage<ExerciseVO> voPage = exercisePage.convert(e ->
                 convertToVO(e, finalCourseMap, finalChapterMap, finalQuestionsMap, finalExerciseChapterIdsMap, finalQuestionContentMap));
         return PageResult.of(voPage);
     }
-
     @Override
     public ExerciseVO getById(Long id) {
         Exercise exercise = exerciseRepository.selectById(id);
@@ -460,7 +440,6 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         return convertToVO(exercise);
     }
-
     /**
      * P2-1 修复：抽取公共字段赋值方法，消除两个 convertToVO 重载中的代码重复。
      */
@@ -483,25 +462,21 @@ public class ExerciseServiceImpl implements ExerciseService {
         vo.setCreatedAt(exercise.getCreatedAt());
         vo.setUpdatedAt(exercise.getUpdatedAt());
     }
-
     private ExerciseVO convertToVO(Exercise exercise) {
         ExerciseVO vo = new ExerciseVO();
         setBasicFields(vo, exercise);
-
         if (exercise.getCourseId() != null) {
             Course course = courseRepository.selectById(exercise.getCourseId());
             if (course != null) {
                 vo.setCourseTitle(course.getTitle());
             }
         }
-
         if (exercise.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(exercise.getChapterId());
             if (chapter != null) {
                 vo.setChapterTitle(chapter.getTitle());
             }
         }
-
         // Load multi-chapter associations
         // ★ Round 9-1 修复(N+1)：原实现对每个章节关联各执行一次 selectById（章节数 = N → N 次额外查询），
         // 改为先批量 selectBatchIds 预加载全部章节标题，再按原顺序装配。结果与原逻辑逐元素等价
@@ -532,12 +507,10 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         vo.setChapterIds(chapterIds);
         vo.setChapterTitles(chapterTitles);
-
         LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ExerciseQuestion::getExerciseId, exercise.getId())
                 .orderByAsc(ExerciseQuestion::getSortOrder);
         List<ExerciseQuestion> exerciseQuestions = exerciseQuestionRepository.selectList(wrapper);
-
         // R14 P0-2: 预加载所有题目实际内容（之前只返回关联字段，不返回题目文本）
         Map<Long, Question> questionMap = new HashMap<>();
         List<Long> qids = exerciseQuestions.stream().map(ExerciseQuestion::getQuestionId)
@@ -565,10 +538,8 @@ public class ExerciseServiceImpl implements ExerciseService {
                 })
                 .collect(Collectors.toList());
         vo.setQuestions(questionVOList);
-
         return vo;
     }
-
     private ExerciseVO convertToVO(Exercise exercise, Map<Long, Course> courseMap,
                                      Map<Long, CourseChapter> chapterMap,
                                      Map<Long, List<ExerciseQuestion>> questionsMap,
@@ -576,21 +547,18 @@ public class ExerciseServiceImpl implements ExerciseService {
                                      Map<Long, Question> questionContentMap) {
         ExerciseVO vo = new ExerciseVO();
         setBasicFields(vo, exercise);
-
         if (exercise.getCourseId() != null) {
             Course course = courseMap.get(exercise.getCourseId());
             if (course != null) {
                 vo.setCourseTitle(course.getTitle());
             }
         }
-
         if (exercise.getChapterId() != null) {
             CourseChapter chapter = chapterMap.get(exercise.getChapterId());
             if (chapter != null) {
                 vo.setChapterTitle(chapter.getTitle());
             }
         }
-
         // Populate multi-chapter data
         List<Long> chapterIds = exerciseChapterIdsMap.getOrDefault(exercise.getId(), new ArrayList<>());
         List<String> chapterTitles = new ArrayList<>();
@@ -602,9 +570,7 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         vo.setChapterIds(chapterIds);
         vo.setChapterTitles(chapterTitles);
-
         List<ExerciseQuestion> exerciseQuestions = questionsMap.getOrDefault(exercise.getId(), new ArrayList<>());
-
         List<ExerciseVO.ExerciseQuestionVO> questionVOList = exerciseQuestions.stream()
                 .map(eq -> {
                     ExerciseVO.ExerciseQuestionVO qvo = new ExerciseVO.ExerciseQuestionVO();
@@ -626,10 +592,8 @@ public class ExerciseServiceImpl implements ExerciseService {
                 })
                 .collect(Collectors.toList());
         vo.setQuestions(questionVOList);
-
         return vo;
     }
-
     /**
      * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
      * <p>通用模式：CourseChapterServiceImpl / VideoServiceImpl / OfflineSessionServiceImpl /
@@ -648,7 +612,6 @@ public class ExerciseServiceImpl implements ExerciseService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
     }
-
     /**
      * Resolve chapter IDs list from multi-chapter or single-chapter input.
      * If chapterIds is not empty, use it; otherwise fall back to chapterId.
@@ -664,7 +627,6 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         return new ArrayList<>();
     }
-
     @Override
     public List<ExerciseVO> getMyExams(Long userId) {
         // J3-01: 查询学生已选课程
@@ -675,21 +637,17 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (enrollments.isEmpty()) {
             return new ArrayList<>();
         }
-
         List<Long> courseIds = enrollments.stream()
                 .map(Enrollment::getCourseId)
                 .distinct()
                 .collect(Collectors.toList());
-
         // 查询这些课程中 is_exam=true 的练习
         LambdaQueryWrapper<Exercise> examWrapper = new LambdaQueryWrapper<>();
         examWrapper.in(Exercise::getCourseId, courseIds)
                 .eq(Exercise::getIsExam, true);
         List<Exercise> exams = exerciseRepository.selectList(examWrapper);
-
         return exams.stream().map(this::convertToVO).collect(Collectors.toList());
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void addQuestions(Long exerciseId, List<Long> questionIds) {
@@ -699,7 +657,6 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         assertCourseOwner(exercise.getCourseId());
         if (questionIds == null || questionIds.isEmpty()) return;
-
         // P2 修复:校验题目属于同一课程,防止跨课程混题
         List<Question> questions = questionRepository.selectBatchIds(questionIds);
         if (questions.isEmpty()) return;
@@ -711,7 +668,6 @@ public class ExerciseServiceImpl implements ExerciseService {
                     + "》不属于该课程,无法加入");
             }
         }
-
         // 计算起始 sortOrder
         LambdaQueryWrapper<ExerciseQuestion> maxWrapper = new LambdaQueryWrapper<>();
         maxWrapper.eq(ExerciseQuestion::getExerciseId, exerciseId)
@@ -719,14 +675,12 @@ public class ExerciseServiceImpl implements ExerciseService {
                   .last("LIMIT 1");
         ExerciseQuestion lastEq = exerciseQuestionRepository.selectOne(maxWrapper);
         int startOrder = (lastEq != null && lastEq.getSortOrder() != null) ? lastEq.getSortOrder() : 0;
-
         for (Long qid : questionIds) {
             // 防止重复添加
             LambdaQueryWrapper<ExerciseQuestion> existWrapper = new LambdaQueryWrapper<>();
             existWrapper.eq(ExerciseQuestion::getExerciseId, exerciseId)
                         .eq(ExerciseQuestion::getQuestionId, qid);
             if (exerciseQuestionRepository.selectCount(existWrapper) > 0) continue;
-
             ExerciseQuestion eq = new ExerciseQuestion();
             eq.setExerciseId(exerciseId);
             eq.setQuestionId(qid);
@@ -735,7 +689,6 @@ public class ExerciseServiceImpl implements ExerciseService {
             exerciseQuestionRepository.insert(eq);
         }
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void removeQuestion(Long exerciseId, Long questionId) {
@@ -749,27 +702,36 @@ public class ExerciseServiceImpl implements ExerciseService {
                .eq(ExerciseQuestion::getQuestionId, questionId);
         exerciseQuestionRepository.delete(wrapper);
     }
-
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> retryExercise(Long id, Long userId) {
-        ExerciseVO exercise = getById(id);
-        // getById 已校验 exercise 存在
+        ExerciseVO e = getById(id);
         int used = exerciseRecordService.getAttemptCount(userId, id);
-        Integer max = exercise.getMaxAttempts();
+        Integer max = e.getMaxAttempts();
         boolean unlimited = (max == null || max <= 0);
-        int remaining = unlimited ? -1 : Math.max(0, max - used);
-        if (!unlimited && remaining <= 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "已无剩余答题次数");
+        if (Boolean.TRUE.equals(e.getIsExam())) {
+            ExerciseRecord last = exerciseRecordRepository.selectOne(new LambdaQueryWrapper<ExerciseRecord>()
+                .eq(ExerciseRecord::getUserId, userId).eq(ExerciseRecord::getExerciseId, id)
+                .orderByDesc(ExerciseRecord::getSubmittedAt).last("LIMIT 1"));
+            if (last != null && Boolean.TRUE.equals(last.getPassed()))
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "考试已通过，无需重考");
+            int retakeUsed = Math.max(0, used - 1);
+            int remaining = unlimited ? -1 : Math.max(0, max - retakeUsed);
+            if (!unlimited && remaining <= 0)
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "已无补考机会");
+            Map<String, Object> r = new HashMap<>();
+            r.put("exerciseId", id); r.put("attemptsUsed", used); r.put("maxAttempts", max);
+            r.put("remainingAttempts", remaining); r.put("nextAttemptNo", used + 1);
+            r.put("canRetry", true); r.put("isExam", true); r.put("retakeCount", retakeUsed);
+            return r;
         }
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("exerciseId", id);
-        result.put("attemptsUsed", used);
-        result.put("maxAttempts", max);
-        result.put("remainingAttempts", remaining);
-        result.put("nextAttemptNo", used + 1);
-        result.put("canRetry", true);
-        return result;
+        int remaining = unlimited ? -1 : Math.max(0, max - used);
+        if (!unlimited && remaining <= 0)
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "已无剩余答题次数");
+        Map<String, Object> r = new HashMap<>();
+        r.put("exerciseId", id); r.put("attemptsUsed", used); r.put("maxAttempts", max);
+        r.put("remainingAttempts", remaining); r.put("nextAttemptNo", used + 1);
+        r.put("canRetry", true);
+        return r;
     }
 }

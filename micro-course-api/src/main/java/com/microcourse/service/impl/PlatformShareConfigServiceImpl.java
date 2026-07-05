@@ -60,6 +60,8 @@ public class PlatformShareConfigServiceImpl implements PlatformShareConfigServic
 
         if (existing != null) {
             dto.setId(existing.getId());
+            // P1C-061: 设置乐观锁版本号，防止并发编辑覆盖
+            dto.setVersion(existing.getVersion());
             PlatformShareConfig entity = convertToEntity(dto);
             repository.updateById(entity);
         } else {
@@ -80,6 +82,8 @@ public class PlatformShareConfigServiceImpl implements PlatformShareConfigServic
         entity.setActive(dto.getActive());
         entity.setUpdatedAt(dto.getUpdatedAt());
         entity.setUpdatedBy(dto.getUpdatedBy());
+        // P1C-061: 设置乐观锁版本号（insert 时 version 为 null 或 0 均可）
+        entity.setVersion(dto.getVersion());
         return entity;
     }
 }
