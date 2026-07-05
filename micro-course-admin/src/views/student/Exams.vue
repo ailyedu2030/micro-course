@@ -66,6 +66,8 @@
             :key="exam.examId"
             class="exam-card student-card-item"
             shadow="hover"
+            @click="handleExamClick(exam)"
+            style="cursor:pointer"
           >
             <div class="exam-info">
               <h3 class="exam-title">{{ exam.examTitle || exam.title }}</h3>
@@ -378,6 +380,10 @@ const handleJoinExam = async (exam) => {
   // 导航到考试/练习页面（传 examId 以便 ExerciseTake 自动开始考试）
   const chapterId = exam.chapterId || exam.id
   router.push({ name: 'StudentExerciseTake', params: { chapterId }, query: { examId: exam.examId } })
+}
+
+const handleExamClick = (exam) => {
+  router.push(`/student/exams/${exam.examId}`)
 }
 </script>
 

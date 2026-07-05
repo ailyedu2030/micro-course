@@ -34,7 +34,7 @@
 
     <!-- 课程列表 -->
     <div v-else class="course-list">
-        <el-card v-for="enr in enrollments" :key="enr.courseId" class="course-card student-card-item" shadow="hover">
+        <el-card v-for="enr in enrollments" :key="enr.courseId" class="course-card student-card-item" shadow="hover" @click="goCourse(enr)" style="cursor:pointer">
         <div class="course-header">
           <h3>{{ enr.courseName }}</h3>
           <el-progress :percentage="Math.round(enr.progress || 0)" :stroke-width="8" class="student-progress" />
@@ -127,6 +127,10 @@ async function fetchData() {
   } finally {
     loading.value = false
   }
+}
+
+function goCourse(enr) {
+  router.push(`/student/courses/${enr.courseId}`)
 }
 
 function goExercise(chapterId) {

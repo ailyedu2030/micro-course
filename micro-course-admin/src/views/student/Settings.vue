@@ -366,8 +366,9 @@ const handleSave = async () => {
       allowSite: settings.value.notificationEnabled,
       allowEmail: settings.value.emailNotification
     })
+    ElMessage.success('偏好设置已保存')
   } catch {
-    // 后端保存失败时静默降级
+    ElMessage.warning('偏好设置保存失败，已使用本地缓存')
   }
   // 所有设置持久化到 localStorage 作为离线 fallback
   try {

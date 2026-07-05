@@ -31,8 +31,8 @@
             </ol>
             <el-button type="primary" class="mg-top-12" @click="$router.push('/teacher/micro-specialties/proposals')">立即申报微专业</el-button>
           </el-empty>
-          <div v-for="item in list" :key="item.id" class="ms-card">
-            <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
+            <div v-for="item in list" :key="item.id" class="ms-card" @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')" style="cursor:pointer">
+              <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
             <div class="card-body">
               <div class="card-header-row">
                 <span class="card-title">{{ item.title }}</span>
@@ -59,7 +59,7 @@
        <el-tab-pane label="我参与的" name="participating">
          <div v-loading="loading" class="card-grid">
            <el-empty v-if="!loading && list.length === 0" description="暂无参与的微专业" />
-           <div v-for="item in list" :key="item.id" class="ms-card">
+           <div v-for="item in list" :key="item.id" class="ms-card" @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')" style="cursor:pointer">
              <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
              <div class="card-body">
                <div class="card-header-row">

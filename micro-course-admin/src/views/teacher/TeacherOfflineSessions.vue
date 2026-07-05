@@ -19,7 +19,7 @@
     <div v-loading="loading">
       <el-empty v-if="!loading && sessions.length === 0" description="暂未安排线下课程，点击「新增场次」添加" :image-size="120" />
 
-      <el-card v-for="session in sessions" :key="session.id" class="session-card" shadow="never">
+      <el-card v-for="session in sessions" :key="session.id" class="session-card" shadow="never" @click="handleSessionClick(session)" style="cursor:pointer">
         <div class="session-header">
           <div class="session-date-badge">
             <span class="badge-month">{{ formatMonth(session.sessionDate) }}</span>
@@ -374,6 +374,10 @@ async function handleStatusChange(row, newStatus) {
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '更新失败')
   }
+}
+
+function handleSessionClick(session) {
+  router.push(`/teacher/courses/${courseId.value}/chapters/${session.id}/manage-offline`)
 }
 
 onMounted(async () => {
