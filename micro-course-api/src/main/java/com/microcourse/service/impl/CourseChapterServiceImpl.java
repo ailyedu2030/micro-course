@@ -29,6 +29,7 @@ import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseChapterService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private final CourseNoteRepository courseNoteRepository;
     private final QuestionChapterRepository questionChapterRepository;
     private final ExerciseChapterRepository exerciseChapterRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
                                      CourseRepository courseRepository,
@@ -60,7 +62,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
                                      LearningProgressRepository learningProgressRepository,
                                      CourseNoteRepository courseNoteRepository,
                                      QuestionChapterRepository questionChapterRepository,
-                                     ExerciseChapterRepository exerciseChapterRepository) {
+                                     ExerciseChapterRepository exerciseChapterRepository,
+                                     JdbcTemplate jdbcTemplate) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.videoRepository = videoRepository;
@@ -70,6 +73,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         this.courseNoteRepository = courseNoteRepository;
         this.questionChapterRepository = questionChapterRepository;
         this.exerciseChapterRepository = exerciseChapterRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -318,14 +322,17 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     }
 
     private boolean hasConflictSortOrder(Long courseId, int sortOrder) {
-        return chapterRepository.selectCount(
-            new LambdaQueryWrapper<CourseChapter>()
-                .eq(CourseChapter::getCourseId, courseId)
-                .eq(CourseChapter::getSortOrder, sortOrder)) > 0;
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM course_chapters WHERE course_id = ? AND sort_order = ?",
+            Integer.class, courseId, sortOrder);
+        return count != null && count > 0;
     }
 
     private int nextSortOrder(Long courseId) {
-        // 使用自定义SQL(忽略@TableLogic软删除,避免已删除的章节占用sort_order)
-        return chapterRepository.selectMaxSortOrderByCourseId(courseId) + 1;
+        // 使用JdbcTemplate执行原生SQL,完全绕过MyBatis-Plus的@TableLogic过滤
+        Integer max = jdbcTemplate.queryForObject(
+            "SELECT COALESCE(MAX(sort_order), 0) FROM course_chapters WHERE course_id = ?",
+            Integer.class, courseId);
+        return (max != null ? max : 0) + 1;
     }
 }
