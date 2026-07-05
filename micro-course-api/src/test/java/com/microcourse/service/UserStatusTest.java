@@ -42,13 +42,13 @@ class UserStatusTest {
         assertTrue(UserStatus.ACTIVE.canTransitionTo(UserStatus.DELETED));
         assertTrue(UserStatus.DISABLED.canTransitionTo(UserStatus.ACTIVE));
         assertTrue(UserStatus.DISABLED.canTransitionTo(UserStatus.DELETED));
-        assertTrue(UserStatus.DELETED.canTransitionTo(UserStatus.INACTIVE));
+        assertTrue(UserStatus.DELETED.canTransitionTo(UserStatus.ACTIVE)); // S-05: DELETED→ACTIVE
 
         // 典型非法转换
         assertFalse(UserStatus.ACTIVE.canTransitionTo(UserStatus.INACTIVE));
         assertFalse(UserStatus.DISABLED.canTransitionTo(UserStatus.INACTIVE));
         assertFalse(UserStatus.INACTIVE.canTransitionTo(UserStatus.DISABLED));
-        assertFalse(UserStatus.DELETED.canTransitionTo(UserStatus.ACTIVE));
+        assertFalse(UserStatus.DELETED.canTransitionTo(UserStatus.INACTIVE)); // S-05: DELETED 不再允许→INACTIVE
         assertFalse(UserStatus.DELETED.canTransitionTo(UserStatus.DISABLED));
 
         // self / null 均拒绝
@@ -57,13 +57,13 @@ class UserStatusTest {
     }
 
     @Test
-    @DisplayName("DELETED 为准终态：唯一出口 INACTIVE（恢复），其余全拒绝")
+    @DisplayName("DELETED 为准终态：唯一出口 ACTIVE（恢复），其余全拒绝")
     void terminalStatesShouldHaveNoTransition() {
-        // UserStatus 无完全终态；DELETED 仅保留单一恢复出口 INACTIVE
+        // UserStatus 无完全终态；DELETED 仅保留单一恢复出口 ACTIVE（S-05 修复）
         for (UserStatus target : UserStatus.values()) {
-            if (target == UserStatus.INACTIVE) {
+            if (target == UserStatus.ACTIVE) {
                 assertTrue(UserStatus.DELETED.canTransitionTo(target),
-                        "DELETED -> INACTIVE（恢复）应为合法转换");
+                        "DELETED -> ACTIVE（恢复）应为合法转换");
             } else {
                 assertFalse(UserStatus.DELETED.canTransitionTo(target),
                         "DELETED -> " + target + " 应为非法转换");
