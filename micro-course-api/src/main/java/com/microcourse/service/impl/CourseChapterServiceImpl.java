@@ -150,7 +150,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setCourseId(request.getCourseId());
         chapter.setTitle(request.getTitle());
         chapter.setDescription(request.getDescription());
-        // 自动分配不重复的sortOrder,避免 UNIQUE(course_id,sort_order) 冲突
+        // sortOrder: 用户指定时检查冲突,冲突则追加到末尾
         int sortOrder = request.getSortOrder() != null ? request.getSortOrder() : 0;
         if (sortOrder <= 0 || hasConflictSortOrder(request.getCourseId(), sortOrder)) {
             sortOrder = nextSortOrder(request.getCourseId());
@@ -179,21 +179,36 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         // Owner check: only course teacher or ADMIN can update chapter
         assertCourseOwnerByCourseId(chapter.getCourseId());
 
-        // Partial update
-        if (request.getTitle() != null) chapter.setTitle(request.getTitle());
-        if (request.getDescription() != null) chapter.setDescription(request.getDescription());
+        // Partial update — sortOrder变更时处理冲突
         if (request.getSortOrder() != null && !request.getSortOrder().equals(chapter.getSortOrder())) {
             int newSort = request.getSortOrder();
-            // 检查sortOrder是否冲突(排除自身)
-            Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM course_chapters WHERE course_id = ? AND sort_order = ? AND id != ?",
+            int oldSort = chapter.getSortOrder();
+            // 检查目标sortOrder是否被其他活跃章节占用(交换策略)
+            Integer activeCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM course_chapters WHERE course_id = ? AND sort_order = ? AND id != ? AND deleted_at IS NULL",
                 Integer.class, chapter.getCourseId(), newSort, id);
-            if (count != null && count > 0) {
-                // 冲突时自动分配max+1
-                Integer max = jdbcTemplate.queryForObject(
-                    "SELECT COALESCE(MAX(sort_order), 0) FROM course_chapters WHERE course_id = ?",
-                    Integer.class, chapter.getCourseId());
-                newSort = (max != null ? max : 0) + 1;
+            if (activeCount != null && activeCount > 0 && newSort >= 1) {
+                // 活跃章节冲突: 把当前章节的旧sortOrder给冲突章节,实现交换
+                jdbcTemplate.update(
+                    "UPDATE course_chapters SET sort_order = ?, updated_at = NOW() " +
+                    "WHERE course_id = ? AND sort_order = ? AND id != ? AND deleted_at IS NULL",
+                    oldSort, chapter.getCourseId(), newSort, id);
+            } else {
+                // 检查是否被软删行占用(需腾位)
+                Integer deletedCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM course_chapters WHERE course_id = ? AND sort_order = ? AND id != ? AND deleted_at IS NOT NULL",
+                    Integer.class, chapter.getCourseId(), newSort, id);
+                if (deletedCount != null && deletedCount > 0) {
+                    // 软删行占用: 把软删行sort_order改到max+1,腾出位置
+                    Integer max = jdbcTemplate.queryForObject(
+                        "SELECT COALESCE(MAX(sort_order), 0) FROM course_chapters WHERE course_id = ?",
+                        Integer.class, chapter.getCourseId());
+                    int newDeletedSort = (max != null ? Math.max(max, newSort) : newSort) + 1;
+                    jdbcTemplate.update(
+                        "UPDATE course_chapters SET sort_order = ?, updated_at = NOW() " +
+                        "WHERE course_id = ? AND sort_order = ? AND id != ? AND deleted_at IS NOT NULL",
+                        newDeletedSort, chapter.getCourseId(), newSort, id);
+                }
             }
             chapter.setSortOrder(newSort);
         }
