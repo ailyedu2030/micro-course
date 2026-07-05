@@ -88,6 +88,15 @@
                 class="settings-control"
               />
             </div>
+            <!-- P1I-030: 微信通知开关 -->
+            <div class="settings-item">
+              <span class="settings-label">微信通知</span>
+              <el-switch
+                v-model="settings.wechatNotification"
+                @change="handleSave"
+                class="settings-control"
+              />
+            </div>
             <!-- P1I-030: 免打扰时段 -->
             <div class="settings-item">
               <span class="settings-label">免打扰时段</span>
@@ -252,6 +261,11 @@
               <span>邮件通知</span>
               <el-switch v-model="settings.emailNotification" @change="handleSave" />
             </div>
+            <!-- P1I-030: 微信通知开关 (H5) -->
+            <div class="settings-item-h5">
+              <span>微信通知</span>
+              <el-switch v-model="settings.wechatNotification" @change="handleSave" />
+            </div>
             <!-- P1I-030: 免打扰时段 (H5) -->
             <div class="settings-item-h5">
               <span>免打扰时段</span>
@@ -350,6 +364,8 @@ const settings = ref({
   autoPlayNext: true,
   notificationEnabled: true,
   emailNotification: false,
+  // P1I-030: 微信通知开关
+  wechatNotification: false,
   profileVisibility: 'public',
   showProgress: true,
   reducedMotion: false,
@@ -405,6 +421,8 @@ const loadSettings = async () => {
           if (extra.showProgress !== undefined) settings.value.showProgress = extra.showProgress
           if (extra.reducedMotion !== undefined) settings.value.reducedMotion = extra.reducedMotion
           if (extra.highContrast !== undefined) settings.value.highContrast = extra.highContrast
+          // P1I-030: 微信通知开关
+          if (extra.wechatNotification !== undefined) settings.value.wechatNotification = extra.wechatNotification
           // P1I-030: 免打扰时段
           if (extra.quietHoursEnabled !== undefined) settings.value.quietHoursEnabled = extra.quietHoursEnabled
           if (extra.quietHoursStart) settings.value.quietHoursStart = extra.quietHoursStart
@@ -470,6 +488,7 @@ const debouncedSave = () => {
         showProgress: settings.value.showProgress,
         reducedMotion: settings.value.reducedMotion,
         highContrast: settings.value.highContrast,
+        wechatNotification: settings.value.wechatNotification,
         quietHoursEnabled: settings.value.quietHoursEnabled,
         quietHoursStart: settings.value.quietHoursStart,
         quietHoursEnd: settings.value.quietHoursEnd

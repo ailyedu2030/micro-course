@@ -11,6 +11,7 @@ import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ChapterTeacherAssignmentRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyCourseRepository;
 import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
@@ -44,6 +45,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("MicroSpecialtyService — 微专业主表状态流转")
 class MicroSpecialtyServiceTest {
 
+    @Mock private CourseRepository courseRepository;
     @Mock private MicroSpecialtyRepository msRepository;
     @Mock private MicroSpecialtyCourseRepository msCourseRepository;
     @Mock private MicroSpecialtyTeacherRepository msTeacherRepository;
@@ -70,7 +72,7 @@ class MicroSpecialtyServiceTest {
     @BeforeEach
     void setUp() {
         service = new MicroSpecialtyServiceImpl(
-                msRepository, msCourseRepository, msTeacherRepository,
+                courseRepository, msRepository, msCourseRepository, msTeacherRepository,
                 msEnrollmentRepository, notificationService,
                 proposalChapterRepository, chapterAssignRepo,
                 queryService, adminService);

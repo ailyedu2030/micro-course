@@ -15,6 +15,7 @@ import com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyUpdateRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyCourse;
 import com.microcourse.entity.MicroSpecialtyEnrollment;
@@ -25,6 +26,7 @@ import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ChapterTeacherAssignmentRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.MicroSpecialtyCourseRepository;
 import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
@@ -69,6 +71,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     private static final String INVITE_STATUS_DECLINED = "DECLINED";
     private static final String INVITE_STATUS_REMOVED = "REMOVED";
 
+    private final CourseRepository courseRepository;
     private final MicroSpecialtyRepository msRepository;
     private final MicroSpecialtyCourseRepository msCourseRepository;
     private final MicroSpecialtyTeacherRepository msTeacherRepository;
@@ -79,7 +82,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     private final MicroSpecialtyQueryService queryService;
     private final MicroSpecialtyAdminService adminService;
 
-    public MicroSpecialtyServiceImpl(MicroSpecialtyRepository msRepository,
+    public MicroSpecialtyServiceImpl(CourseRepository courseRepository,
+                                     MicroSpecialtyRepository msRepository,
                                      MicroSpecialtyCourseRepository msCourseRepository,
                                      MicroSpecialtyTeacherRepository msTeacherRepository,
                                      MicroSpecialtyEnrollmentRepository msEnrollmentRepository,
@@ -88,6 +92,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                                      ChapterTeacherAssignmentRepository chapterAssignRepo,
                                      MicroSpecialtyQueryService queryService,
                                      MicroSpecialtyAdminService adminService) {
+        this.courseRepository = courseRepository;
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
         this.msTeacherRepository = msTeacherRepository;
@@ -337,6 +342,12 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         String s = ms.getStatus();
         if (MS_STATUS_RECRUITING.equals(s) || MS_STATUS_COMPLETED.equals(s) || MS_STATUS_CANCELLED.equals(s) || MS_STATUS_ARCHIVED.equals(s)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前微专业状态不允许添加课程");
+        }
+
+        // P1I-047: 校验课程存在且未软删除
+        Course course = courseRepository.selectById(request.getCourseId());
+        if (course == null || course.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程不存在或已删除");
         }
 
         MicroSpecialtyCourse item = new MicroSpecialtyCourse();

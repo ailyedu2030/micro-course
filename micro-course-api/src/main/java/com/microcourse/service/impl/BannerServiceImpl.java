@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -23,6 +24,13 @@ import java.util.stream.Collectors;
 public class BannerServiceImpl implements BannerService {
 
     private static final Logger log = LoggerFactory.getLogger(BannerServiceImpl.class);
+
+    // P1I-007: Banner 外部链接域名白名单（仅允许跳转到可信域名）
+    private static final List<String> ALLOWED_BANNER_DOMAINS = Arrays.asList(
+            "ailyedu.cn",
+            "www.ailyedu.cn",
+            "microcourse.ailyedu.cn"
+    );
 
     private final BannerRepository bannerRepository;
 
@@ -63,6 +71,9 @@ public class BannerServiceImpl implements BannerService {
     @CacheEvict(value = "banners", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public BannerVO create(String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled) {
+        // P1I-007: 外部链接域名白名单校验
+        validateLinkUrl(linkUrl);
+
         Banner banner = new Banner();
         banner.setImageUrl(imageUrl);
         banner.setLinkUrl(linkUrl);
@@ -86,6 +97,8 @@ public class BannerServiceImpl implements BannerService {
             banner.setImageUrl(imageUrl);
         }
         if (linkUrl != null) {
+            // P1I-007: 外部链接域名白名单校验
+            validateLinkUrl(linkUrl);
             banner.setLinkUrl(linkUrl);
         }
         if (sortOrder != null) {
@@ -187,6 +200,47 @@ public class BannerServiceImpl implements BannerService {
         } catch (Exception e) {
             log.error("[Banner] Banner图片上传失败", e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片上传失败");
+        }
+    }
+
+    /**
+     * P1I-007: 校验 Banner 外部链接域名是否在白名单内。
+     * 允许：null/空、相对路径（以 / 开头）、协议内链（//xxx.ailyedu.cn）、白名单域名。
+     */
+    private void validateLinkUrl(String linkUrl) {
+        if (linkUrl == null || linkUrl.isBlank()) {
+            return; // 空链接无需校验（纯图片 Banner）
+        }
+        // 相对路径（站内链接）直接放行
+        if (linkUrl.startsWith("/")) {
+            return;
+        }
+        // 协议相对路径（以 // 开头）
+        if (linkUrl.startsWith("//")) {
+            String host = linkUrl.substring(2).split("/")[0].toLowerCase();
+            if (ALLOWED_BANNER_DOMAINS.stream().noneMatch(d -> host.equals(d) || host.endsWith("." + d))) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                        "外部链接仅允许跳转到 *.ailyedu.cn 域名");
+            }
+            return;
+        }
+        // 完整 URL 校验
+        try {
+            java.net.URL url = new java.net.URL(linkUrl);
+            String protocol = url.getProtocol();
+            // 非 HTTP 协议拒绝（禁止 javascript: 等）
+            if (!"http".equals(protocol) && !"https".equals(protocol)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                        "外部链接仅支持 http/https 协议");
+            }
+            String host = url.getHost().toLowerCase();
+            // 校验域名是否在白名单内
+            if (ALLOWED_BANNER_DOMAINS.stream().noneMatch(d -> host.equals(d) || host.endsWith("." + d))) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                        "外部链接仅允许跳转到 *.ailyedu.cn 域名");
+            }
+        } catch (java.net.MalformedURLException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "外部链接格式不正确");
         }
     }
 

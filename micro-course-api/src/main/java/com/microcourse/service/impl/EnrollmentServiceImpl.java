@@ -1,5 +1,4 @@
 package com.microcourse.service.impl;
-
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.EnrollmentCreateRequest;
 import com.microcourse.dto.EnrollmentQueryRequest;
@@ -36,7 +35,7 @@ import com.microcourse.service.BadgeService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.OrderService;
-import com.microcourse.service.WaitlistPromotionService;
+// P1-I-6 回滚:候补晋升方法已合并回本类,删去对独立 WaitlistPromotionService 的依赖
 import com.microcourse.enums.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,20 +43,15 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
-
 @Service
 public class EnrollmentServiceImpl implements EnrollmentService {
-
     private static final Logger LOG = LoggerFactory.getLogger(EnrollmentServiceImpl.class);
-
     /** P0-04: 防止 OrderServiceImpl.refund() → cancelEnrollment → orderService.refund() 递归循环 */
     private static final ThreadLocal<Boolean> REFUND_REENTRANT = ThreadLocal.withInitial(() -> false);
-
     private final com.microcourse.repository.CoursePrerequisiteRepository coursePrerequisiteRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentHistoryRepository enrollmentHistoryRepository;
@@ -75,26 +69,24 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final EnrollmentQueryService queryService;
     private final com.microcourse.metrics.EnrollmentMetrics metrics;
     private final org.springframework.transaction.support.TransactionTemplate txTemplate;
-    private final WaitlistPromotionService waitlistPromotionService;
-
+    // P1-I-6 回滚:waitlistPromotionService 字段已删除
     public EnrollmentServiceImpl(com.microcourse.repository.CoursePrerequisiteRepository coursePrerequisiteRepository,
                                   EnrollmentRepository enrollmentRepository,
                                   EnrollmentHistoryRepository enrollmentHistoryRepository,
                                   CourseRepository courseRepository,
                                   UserRepository userRepository,
-                                 ClassesRepository classesRepository,
-                                 MajorRepository majorRepository,
-                                 CertificateService certificateService,
-                                 BadgeService badgeService,
-                                 OrderRepository orderRepository,
-                                 OrderService orderService,
-                                  EnrollmentStatsService statsService,
-                                  EnrollmentQueryService queryService,
-                                  CourseService courseService,
-                                  NotificationService notificationService,
-                                  com.microcourse.metrics.EnrollmentMetrics metrics,
-                                  org.springframework.transaction.PlatformTransactionManager txManager,
-                                  WaitlistPromotionService waitlistPromotionService) {
+                                  ClassesRepository classesRepository,
+                                  MajorRepository majorRepository,
+                                  CertificateService certificateService,
+                                  BadgeService badgeService,
+                                  OrderRepository orderRepository,
+                                  OrderService orderService,
+                                   EnrollmentStatsService statsService,
+                                   EnrollmentQueryService queryService,
+                                   CourseService courseService,
+                                    NotificationService notificationService,
+                                    com.microcourse.metrics.EnrollmentMetrics metrics,
+                                    org.springframework.transaction.PlatformTransactionManager txManager) {
         this.coursePrerequisiteRepository = coursePrerequisiteRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentHistoryRepository = enrollmentHistoryRepository;
@@ -112,9 +104,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         this.notificationService = notificationService;
         this.metrics = metrics;
         this.txTemplate = new org.springframework.transaction.support.TransactionTemplate(txManager);
-        this.waitlistPromotionService = waitlistPromotionService;
+        // P1-I-6 回滚:waitlistPromotionService 字段已删除
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public EnrollmentVO enroll(EnrollmentCreateRequest request) {
@@ -134,13 +125,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             }
         }
     }
-
     private EnrollmentVO doEnroll(EnrollmentCreateRequest request) {
         // ★ 业务逻辑审计 P0-3 增强：功能开关（紧急回滚）
         if (!com.microcourse.config.EnrollmentFeatureFlag.isDynamicallyEnabled()) {
             throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "选课服务暂时不可用，请稍后重试");
         }
-
         // ★ 业务逻辑审计 P0-1 压测发现追加：行级锁 (SELECT ... FOR UPDATE)
         // P1C-009: 幂等性检查移到行锁内。将"检查已有 enrollment + 处理 REENROLLING"移入锁区域，
         // 避免并发时两个事务同时看到"无 enrollment"并都创建 WAITLIST。
@@ -154,7 +143,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         Integer studentCount = ((Number) lockedCourse.get("student_count")).intValue();
         Object deletedAtRaw = lockedCourse.get("deleted_at");
         boolean isDeleted = deletedAtRaw != null;
-
         if (isDeleted) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程已删除");
         }
@@ -162,7 +150,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
                 "课程" + describeCourseStatus(lockedStatus) + "，无法选课");
         }
-
         // P1C-009: 幂等性检查移到行锁内 — 行锁后的事务内一致性读
         Enrollment existingEnrollment = enrollmentRepository.selectOne(
                 new LambdaQueryWrapper<Enrollment>()
@@ -186,7 +173,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 return convertToVO(existingEnrollment);
             }
         }
-
         // SECURITY: 付费课程必须通过订单支付,不能直接选课
         Course course = courseRepository.selectById(request.getCourseId());
         if (course == null) {
@@ -221,10 +207,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (user.getStatus() != null && user.getStatus() == 2) {
             throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "您的账号已被禁用，无法选课");
         }
-
         // P1C-007: 先修课程检查 — 检查 course_prerequisites 表
         checkPrerequisites(request.getUserId(), request.getCourseId());
-
         // ★ 业务逻辑审计 P0-1 修复：原子选课（行级锁 + 容量检查 + 插入 + 增计数）
         // 因为课程行已锁定，INSERT...SELECT 的 student_count < max_students 检查是准确的
         int inserted = enrollmentRepository.atomicInsertIfCapacity(
@@ -232,7 +216,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 request.getCourseId(),
                 EnrollmentStatus.APPROVED.getValue(),
                 request.getSourceChannel());
-
         if (inserted == 0) {
             // 区分"已选过"vs"课程满员"vs"课程不可选"
             Enrollment existing = enrollmentRepository.selectOne(new LambdaQueryWrapper<Enrollment>()
@@ -241,7 +224,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             if (existing != null) {
                 return convertToVO(existing);
             }
-
             // ★ 业务逻辑审计 P1 修复：课程满员 → 自动入候补队列
             // 使用行级锁后的 studentCount/maxStudents（不是 course.getXxx()，那个是锁前的）
             if (maxStudents != null && maxStudents > 0 && studentCount >= maxStudents) {
@@ -274,10 +256,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
                 "课程" + describeCourseStatus(lockedStatus) + "或已选过，无法选课");
         }
-
         // 双闸门：原子增计数也带容量检查（防御深度）
         courseRepository.atomicIncrementIfNotFull(request.getCourseId());
-
         // 查询刚插入的 enrollment
         Enrollment newEnrollment = enrollmentRepository.selectOne(new LambdaQueryWrapper<Enrollment>()
                 .eq(Enrollment::getUserId, request.getUserId())
@@ -286,10 +266,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             // 极端边缘情况：原子插入成功但 select 失败
             throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND, "选课记录异常，请联系管理员");
         }
-
         // P0-2 修复（审计空洞）：选课成功后写入 enrollment_histories 审计轨迹。
         recordHistory(newEnrollment.getId(), null, EnrollmentStatus.APPROVED, request.getUserId(), "ENROLL");
-
         // Phase B-2 (P0-7)：选课成功后异步通知学生
         notificationService.notifyAsync(
                 request.getUserId(),
@@ -299,12 +277,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 course.getId());
         return convertToVO(newEnrollment);
     }
-
     @Override
     public List<EnrollmentVO> getMyEnrollments(Long userId, Boolean completed) {
         return queryService.getMyEnrollments(userId, completed);
     }
-
     @Override
     @Transactional(readOnly = true)
     public PageResult<EnrollmentVO> getEnrollmentPage(EnrollmentQueryRequest query) {
@@ -314,12 +290,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
         return queryService.getEnrollmentPage(query);
     }
-
     @Override
     public List<EnrollmentVO> getCourseEnrollments(Long courseId) {
         return queryService.getCourseEnrollments(courseId);
     }
-
     @Override
     @Transactional(readOnly = true)
     public PageResult<EnrollmentVO> getCourseEnrollmentPage(Long courseId, int page, int size) {
@@ -329,13 +303,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
         return queryService.getCourseEnrollmentPage(courseId, page, size);
     }
-
     @Override
     @Transactional(readOnly = true)
     public List<EnrollmentRankingVO> getCourseRanking(Long courseId, int limit, Long currentUserId) {
         return queryService.getCourseRanking(courseId, limit, currentUserId);
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public EnrollmentVO updateEnrollment(Long id, EnrollmentUpdateRequest request) {
@@ -350,7 +322,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 throw new BusinessException(ErrorCode.NO_PERMISSION);
             }
         }
-
         if (request.getProgress() != null) {
             enrollment.setProgress(request.getProgress());
         }
@@ -408,7 +379,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 enrollment.setEnrollmentStatus(targetStatus.getValue());
             }
             // currentStatus == targetStatus：同状态幂等，无变更、无审计
-
             // P1I-028: enrollmentStatus 转换为 COMPLETED 时触发徽章检查
             if (targetStatus == EnrollmentStatus.COMPLETED && enrollment.getUserId() != null) {
                 try {
@@ -426,12 +396,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 }
             }
         }
-
         enrollment.setUpdatedAt(LocalDateTime.now());
         enrollmentRepository.updateById(enrollment);
         return convertToVO(enrollment);
     }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancelEnrollment(Long id, Long currentUserId) {
@@ -457,7 +425,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.setUpdatedAt(LocalDateTime.now());
         enrollmentRepository.updateById(enrollment);
         recordHistory(enrollment.getId(), fromStatus, EnrollmentStatus.CANCELLED, effectiveUserId, "CANCEL");
-
         // ★ Round 8-4 修复(P0)：原子同步 courses.student_count（仅状态从非取消→取消时 -1）。
         // 重复取消（fromStatus 已是 CANCELLED）幂等不重复扣减；GREATEST 兜底不会出现负数。
         boolean wasEnrolled = (fromStatus != EnrollmentStatus.CANCELLED
@@ -465,31 +432,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (wasEnrolled && enrollment.getCourseId() != null) {
             courseRepository.atomicDecrementStudentCount(enrollment.getCourseId());
         }
-
         // ★ 业务逻辑审计 P0-1 新发现：自动晋升候补
         // spec §3.2: "WAITLIST → APPROVED: 有人退课 → 按候补顺序自动录取"
-        // P1-I-6 最终修复：在 cancel 事务**提交后**再调用 promote，
-        // 用 afterCommit 解决嵌套事务 + PG 行锁等待问题（CI 卡死 25+ 分钟根因）
+        // P1-I-6 回滚：恢复与 cancel 共享事务（与 2459a39 一致）。
+        // 原因：测试 @Transactional 隔离下共享连接不锁；REQUIRES_NEW 反而导致
+        //   cancel 事务持 course 行锁 + 新事务等锁 → CI 卡死。
         if (wasEnrolled && enrollment.getCourseId() != null) {
-            final Long courseId = enrollment.getCourseId();
-            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
-                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                    new org.springframework.transaction.support.TransactionSynchronization() {
-                        @Override
-                        public void afterCommit() {
-                            try {
-                                waitlistPromotionService.promoteFirstWaitlistToEnrolled(courseId);
-                            } catch (Exception e) {
-                                LOG.warn("[EnrollmentService] 候补晋升 afterCommit 失败 courseId={}", courseId, e);
-                            }
-                        }
-                    });
-            } else {
-                // 无活动事务（测试或独立调用场景），直接执行
-                waitlistPromotionService.promoteFirstWaitlistToEnrolled(courseId);
-            }
+            promoteFirstWaitlistToEnrolled(enrollment.getCourseId());
         }
-
         // P0-2 修复: 退课时若存在 PAID 订单，自动触发退款
         // REFUND_REENTRANT 防止 refund() 内部调用的 cancelEnrollment() 触发递归循环
         if (wasEnrolled && enrollment.getCourseId() != null && !REFUND_REENTRANT.get()) {
@@ -511,33 +461,27 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             }
         }
     }
-
     // ---- 统计方法全部委托 EnrollmentStatsService ---- //
-
     @Override
     @Transactional(readOnly = true)
     public long countByTeacherId(Long teacherId) {
         return statsService.countByTeacherId(teacherId);
     }
-
     @Override
     @Transactional(readOnly = true)
     public long countCompletedByTeacherId(Long teacherId) {
         return statsService.countCompletedByTeacherId(teacherId);
     }
-
     @Override
     @Transactional(readOnly = true)
     public double getAvgScoreByTeacherId(Long teacherId) {
         return statsService.getAvgScoreByTeacherId(teacherId);
     }
-
     @Override
     @Transactional(readOnly = true)
     public StudentDetailVO getStudentDetail(Long userId) {
         return queryService.getStudentDetail(userId);
     }
-
     private EnrollmentVO convertToVO(Enrollment enrollment) {
         EnrollmentVO vo = new EnrollmentVO();
         vo.setId(enrollment.getId());
@@ -553,7 +497,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         vo.setEnrolledAt(enrollment.getEnrolledAt());
         vo.setCompletedAt(enrollment.getCompletedAt());
         vo.setUpdatedAt(enrollment.getUpdatedAt());
-
         // Load course info including teacher
         if (enrollment.getCourseId() != null) {
             Course course = courseRepository.selectById(enrollment.getCourseId());
@@ -569,7 +512,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 }
             }
         }
-
         // P0-3: 填充用户维度字段
         if (enrollment.getUserId() != null) {
             User user = userRepository.selectById(enrollment.getUserId());
@@ -591,10 +533,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 }
             }
         }
-
         return vo;
     }
-
     /**
      * P0-2：写入选课状态变更审计历史（enrollment_histories）。
      *
@@ -614,15 +554,76 @@ public class EnrollmentServiceImpl implements EnrollmentService {
      *   <li>只晋升一个学生 (不退课一人进课一人,而不是 N 个退课 N 个进)</li>
      *   <li>通知: 给晋升学生发通知</li>
      * </ol>
-     * <p>P1-I-6: 独立事务 REQUIRES_NEW, 晋升失败不影响原 cancel 事务回滚。</p>
-*/
-    // P1-I-6 重构：候补晋升已抽到独立 WaitlistPromotionService bean
-    // 这里保留方法签名只为兼容接口，但实际委托给独立 Service
+     * <p>P1-I-6 回滚：与 cancel 共享事务（与 2459a39 一致）。</p>
+     */
     @Override
     public void promoteFirstWaitlistToEnrolled(Long courseId) {
-        waitlistPromotionService.promoteFirstWaitlistToEnrolled(courseId);
+        // 1. 重新锁 course 行 (与 enroll() 一致的事务隔离保证)
+        java.util.Map<String, Object> locked = courseRepository.selectByIdForUpdate(courseId);
+        if (locked == null) return;
+        Integer maxStudents = (Integer) locked.get("max_students");
+        Integer studentCount = ((Number) locked.get("student_count")).intValue();
+        if (maxStudents == null || maxStudents == 0) return;  // 不限人数 → 不需要晋升
+        if (studentCount >= maxStudents) return;  // 还有人占着,先不晋升
+        // 2. 找候补队列最早一个 (按 enrolled_at ASC,先来先进)
+        Enrollment next = enrollmentRepository.selectOne(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getCourseId, courseId)
+                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())
+                        .orderByAsc(Enrollment::getEnrolledAt)
+                        .last("LIMIT 1"));
+        if (next == null) return;  // 候补空
+        // 3. 状态机校验 (防御深度): WAITLIST → APPROVED 是合法
+        EnrollmentStatus fromStatus = EnrollmentStatus.WAITLIST;
+        if (!fromStatus.canTransitionTo(EnrollmentStatus.APPROVED)) {
+            LOG.error("候补晋升状态机不通过: WAITLIST→APPROVED");
+            return;
+        }
+        // 4. CAS 更新: 状态变更 + 增计数
+        int updated = enrollmentRepository.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Enrollment>()
+                        .eq(Enrollment::getId, next.getId())
+                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())
+                        .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.APPROVED.getValue())
+                        .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
+        if (updated == 0) {
+            LOG.warn("候补晋升 CAS 失败, id={} (并发取消冲突,下次重试)", next.getId());
+            return;
+        }
+        // 5. 增计数 (因晋升,student_count +1)
+        courseRepository.atomicIncrementIfNotFull(courseId);
+        // 6. 写历史
+        recordHistory(next.getId(), fromStatus, EnrollmentStatus.APPROVED, null, "WAITLIST_PROMOTE");
+        // 7. 通知晋升学生
+        String courseTitle = null;
+        try {
+            Course courseForNotify = courseRepository.selectById(courseId);
+            if (courseForNotify != null) courseTitle = courseForNotify.getTitle();
+        } catch (Exception e) {
+            LOG.warn("[notifyNextInQueue] 获取课程标题失败, courseId={}, error={}", courseId, e.getMessage());
+        }
+        String finalCourseTitle = courseTitle;
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            notificationService.notifyAsync(
+                                    next.getUserId(),
+                                    NotificationType.ENROLLMENT_SUCCESS,
+                                    "候补录取通知",
+                                    "您已从候补队列中被录取《" + (finalCourseTitle != null ? finalCourseTitle : "课程 ID=" + courseId) + "》,可开始学习。",
+                                    courseId);
+                        } catch (Exception e) {
+                            LOG.warn("候补通知发送失败, id={}, userId={}", next.getId(), next.getUserId(), e);
+                        }
+                    }
+                });
+        }
+        LOG.info("候补晋升完成: courseId={}, userId={}, enrollmentId={}",
+                courseId, next.getUserId(), next.getId());
     }
-
     private void recordHistory(Long enrollmentId, EnrollmentStatus fromStatus,
                                EnrollmentStatus toStatus, Long operatorId, String reason) {
         EnrollmentHistory history = new EnrollmentHistory();
@@ -634,7 +635,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         history.setCreatedAt(LocalDateTime.now());
         enrollmentHistoryRepository.insert(history);
     }
-
     /** 解析目标状态字符串为契约枚举；非法值转为 400 业务异常而非 500。 */
     private EnrollmentStatus parseTargetStatus(String status) {
         try {
@@ -643,7 +643,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "未知的选课状态: " + status);
         }
     }
-
     /** 尽力获取当前用户 ID；无认证上下文（如系统调用/测试）时返回 null，供审计 operator 容错使用。 */
     private Long getCurrentUserIdOrNull() {
         try {
@@ -652,7 +651,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             return null;
         }
     }
-
     @Override
     public void assertCourseOwnership(Long courseId) {
         Course course = courseRepository.selectById(courseId);
@@ -666,7 +664,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
     }
-
     @Override
     public void assertStudentInTeachersCourses(Long teacherId, Long studentId) {
         long count = enrollmentRepository.countByTeacherAndStudent(teacherId, studentId,
@@ -677,7 +674,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "该学生不在您的授课课程中");
         }
     }
-
     /**
      * Phase A-4 (P0-5): 获取单条选课详情。
      * 仅装配数据；角色级权限校验（本人/课主/ADMIN/ACADEMIC）由 EnrollmentController 执行。
@@ -691,7 +687,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 EnrollmentStatus.APPROVED.getValue(),
                 EnrollmentStatus.COMPLETED.getValue());
     }
-
     @Override
     @Transactional(readOnly = true)
     public EnrollmentVO getEnrollmentDetail(Long id) {
@@ -715,12 +710,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
         return vo;
     }
-
     @Override
     public void exportEnrollments(Long courseId, HttpServletResponse response) throws IOException {
         queryService.exportEnrollments(courseId, response);
     }
-
     /**
      * P1C-007: 先修课程检查 — 选课前检查 course_prerequisites 表
      * 如果课程设定了先修课程，学生必须完成先修课程（成绩达标）才能选课。
@@ -732,7 +725,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (prerequisites == null || prerequisites.isEmpty()) {
             return; // 无先修要求
         }
-
         List<String> unmetPrereqs = new java.util.ArrayList<>();
         for (CoursePrerequisite prereq : prerequisites) {
             // 查询该学生是否有先修课程的完成记录
@@ -741,11 +733,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                             .eq(Enrollment::getUserId, userId)
                             .eq(Enrollment::getCourseId, prereq.getPrerequisiteCourseId())
                             .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.COMPLETED.getValue()));
-
             // 获取先修课程名称（用于错误提示）
             Course prereqCourse = courseRepository.selectById(prereq.getPrerequisiteCourseId());
             String prereqTitle = prereqCourse != null ? prereqCourse.getTitle() : ("课程#" + prereq.getPrerequisiteCourseId());
-
             if (prereqEnrollment == null) {
                 // 未完成先修课程
                 if (Boolean.TRUE.equals(prereq.getIsRequired())) {
@@ -754,7 +744,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 // 非必修先修不阻塞，仅记录
                 continue;
             }
-
             // 检查最低分要求
             if (prereq.getMinScore() != null && prereq.getMinScore() > 0) {
                 if (prereqEnrollment.getFinalScore() == null
@@ -764,13 +753,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 }
             }
         }
-
         if (!unmetPrereqs.isEmpty()) {
             throw new BusinessException(ErrorCode.PREREQUISITE_NOT_MET,
                     "选课被阻止，以下先修条件未满足：\n" + String.join("\n", unmetPrereqs));
         }
     }
-
     private static String describeCourseStatus(Integer status) {
         if (status == null) return "未知";
         CourseStatus cs = CourseStatus.fromCode(status);
@@ -786,5 +773,4 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             default: return "状态不可选";
         }
     }
-
 }

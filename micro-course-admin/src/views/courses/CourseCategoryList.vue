@@ -196,6 +196,11 @@ const handleAddChild = (row) => {
 }
 
 const handleDelete = async (row) => {
+  // P1I-053: 子分类预检 — 有子分类时阻止删除
+  if (row.children?.length > 0) {
+    ElMessage.warning('请先删除子分类')
+    return
+  }
   try {
     await ElMessageBox.confirm('确定删除该分类?', '提示', { type: 'warning' })
     await deleteCategory(row.id)

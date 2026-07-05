@@ -415,9 +415,13 @@ async function toggleFavorite() {
         ElMessage.success('已取消收藏')
       }
     } else {
-      await addFavorite({ courseId: courseId.value })
+      const res = await addFavorite({ courseId: courseId.value })
       isFavorited.value = true
-      ElMessage.success('已添加收藏')
+      if (res.data?.alreadyFavorited) {
+        ElMessage.warning('已在收藏列表')
+      } else {
+        ElMessage.success('已添加收藏')
+      }
     }
   } catch (err) {
     ElMessage.error('操作失败')

@@ -283,7 +283,7 @@ const weekRangeLabel = computed(() => {
 const weekDays = computed(() => {
   const { start } = getWeekRange()
   const startDate = new Date(start)
-  const checkedDates = new Set(weekCheckins.value.map(r => r.checkInDate))
+  const checkedDates = new Set(weekCheckins.value.map(r => r.checkinDate))
   const days = []
   const dayLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   for (let i = 0; i < 7; i++) {
@@ -395,8 +395,8 @@ const calculateReport = () => {
 
   // 1. 学习天数 + 视频时长：从本周打卡记录中获取（已按周过滤）
   for (const c of weekCheckins.value) {
-    if (c.checkInDate) {
-      learningDaysSet.add(new Date(c.checkInDate).toDateString())
+    if (c.checkinDate) {
+      learningDaysSet.add(new Date(c.checkinDate).toDateString())
     }
     // duration 以秒为单位，转为分钟
     videoMinutes += Math.round((c.duration || 0) / 60)
