@@ -39,6 +39,16 @@ jobs:
         with:
           java-version: 17
           distribution: temurin
+      - name: Wait for PostgreSQL & Redis
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5432 && echo "PG ready" && break
+            sleep 2
+          done
+          for i in $(seq 1 15); do
+            redis-cli -h localhost -p 6379 ping && echo "Redis ready" && break
+            sleep 2
+          done
       - name: Cache Maven
         uses: actions/cache@v4
         with:
@@ -47,6 +57,11 @@ jobs:
       - name: Backend Test
         run: mvn -B verify
         working-directory: ./micro-course-api
+        env:
+          TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course
+          TEST_DB_PASSWORD: postgres
+          TEST_REDIS_HOST: localhost
+          TEST_REDIS_PORT: 6379
 
   frontend:
     runs-on: ubuntu-latest
