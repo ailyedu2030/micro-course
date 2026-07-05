@@ -431,7 +431,7 @@
             <span>暂无课程</span>
           </div>
           <div v-else class="course-grid">
-            <div v-for="course in courses" :key="course.id" class="course-card-item">
+            <div v-for="course in courses" :key="course.id" class="course-card-item" @click="$router.push(`/teacher/courses/${course.id}`)" style="cursor:pointer">
               <div class="course-cover">
                 <img v-if="course.cover" :src="course.cover" :alt="course.title" class="course-cover-img" />
                 <div v-else class="course-cover-placeholder">
