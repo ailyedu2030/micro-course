@@ -423,6 +423,8 @@ async function saveVideoProgress(force = false) {
   // P1-10: 只在播放中保存进度（force=true 时跳过此检查，用于卸载前最终上报）
   if (!force && !isPlaying.value) return
   if (!currentLessonId.value) return
+  // 跳过非数字lessonId(如offline-76,slide-42等合成ID,由子页面自行管理进度)
+  if (!/^\d+$/.test(String(currentLessonId.value))) return
   try {
     const lessonId = currentLessonId.value
     // P0-3: 计算 watchDelta（距上次保存的秒数）
