@@ -96,9 +96,11 @@ public class LearningProgressController {
     @GetMapping("/progress/completion")
     @PreAuthorize("isAuthenticated()")
     public R<Map<String, Object>> getCourseCompletion(
-            @RequestParam Long userId,
+            @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Long courseId) {
         Long currentUserId = getCurrentUserId();
+        // 未传userId时从JWT获取(前端已改为不传,由后端自动识别)
+        if (userId == null) userId = currentUserId;
         // IDOR: 非本人且非 ADMIN 时，TEACHER 需校验课程归属，否则拒绝
         if (!currentUserId.equals(userId) && !SecurityUtil.isAdmin()) {
             if (hasRole("TEACHER") && courseId != null) {
