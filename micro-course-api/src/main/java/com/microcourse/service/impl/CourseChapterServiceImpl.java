@@ -150,10 +150,20 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setCourseId(request.getCourseId());
         chapter.setTitle(request.getTitle());
         chapter.setDescription(request.getDescription());
-        // sortOrder: 用户指定时检查冲突,冲突则追加到末尾
+        // sortOrder: 用户指定时腾位插入,未指定时追加到末尾
         int sortOrder = request.getSortOrder() != null ? request.getSortOrder() : 0;
-        if (sortOrder <= 0 || hasConflictSortOrder(request.getCourseId(), sortOrder)) {
+        if (sortOrder <= 0) {
             sortOrder = nextSortOrder(request.getCourseId());
+        } else if (sortOrder > 0) {
+            // 两阶段大偏移腾位: 所有行(含软删) +10000 → -9999 = net+1
+            jdbcTemplate.update(
+                "UPDATE course_chapters SET sort_order = sort_order + 10000, updated_at = NOW() " +
+                "WHERE course_id = ? AND sort_order >= ?",
+                request.getCourseId(), sortOrder);
+            jdbcTemplate.update(
+                "UPDATE course_chapters SET sort_order = sort_order - 9999, updated_at = NOW() " +
+                "WHERE course_id = ? AND sort_order >= 10000",
+                request.getCourseId());
         }
         chapter.setSortOrder(sortOrder);
         String chapterType = request.getChapterType() != null ? request.getChapterType() : "VIDEO";
@@ -179,37 +189,18 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         // Owner check: only course teacher or ADMIN can update chapter
         assertCourseOwnerByCourseId(chapter.getCourseId());
 
-        // Partial update — sortOrder变更时处理冲突
+        // Partial update — sortOrder变更时两阶段腾位(含软删)
         if (request.getSortOrder() != null && !request.getSortOrder().equals(chapter.getSortOrder())) {
             int newSort = request.getSortOrder();
-            int oldSort = chapter.getSortOrder();
-            // 检查目标sortOrder是否被其他活跃章节占用(交换策略)
-            Integer activeCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM course_chapters WHERE course_id = ? AND sort_order = ? AND id != ? AND deleted_at IS NULL",
-                Integer.class, chapter.getCourseId(), newSort, id);
-            if (activeCount != null && activeCount > 0 && newSort >= 1) {
-                // 活跃章节冲突: 把当前章节的旧sortOrder给冲突章节,实现交换
-                jdbcTemplate.update(
-                    "UPDATE course_chapters SET sort_order = ?, updated_at = NOW() " +
-                    "WHERE course_id = ? AND sort_order = ? AND id != ? AND deleted_at IS NULL",
-                    oldSort, chapter.getCourseId(), newSort, id);
-            } else {
-                // 检查是否被软删行占用(需腾位)
-                Integer deletedCount = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM course_chapters WHERE course_id = ? AND sort_order = ? AND id != ? AND deleted_at IS NOT NULL",
-                    Integer.class, chapter.getCourseId(), newSort, id);
-                if (deletedCount != null && deletedCount > 0) {
-                    // 软删行占用: 把软删行sort_order改到max+1,腾出位置
-                    Integer max = jdbcTemplate.queryForObject(
-                        "SELECT COALESCE(MAX(sort_order), 0) FROM course_chapters WHERE course_id = ?",
-                        Integer.class, chapter.getCourseId());
-                    int newDeletedSort = (max != null ? Math.max(max, newSort) : newSort) + 1;
-                    jdbcTemplate.update(
-                        "UPDATE course_chapters SET sort_order = ?, updated_at = NOW() " +
-                        "WHERE course_id = ? AND sort_order = ? AND id != ? AND deleted_at IS NOT NULL",
-                        newDeletedSort, chapter.getCourseId(), newSort, id);
-                }
-            }
+            // 两阶段: 所有行(含软删) +10000 → -9999 = net+1, 排除自身
+            jdbcTemplate.update(
+                "UPDATE course_chapters SET sort_order = sort_order + 10000, updated_at = NOW() " +
+                "WHERE course_id = ? AND sort_order >= ? AND id != ?",
+                chapter.getCourseId(), newSort, id);
+            jdbcTemplate.update(
+                "UPDATE course_chapters SET sort_order = sort_order - 9999, updated_at = NOW() " +
+                "WHERE course_id = ? AND sort_order >= 10000 AND id != ?",
+                chapter.getCourseId(), id);
             chapter.setSortOrder(newSort);
         }
         if (request.getChapterType() != null) {
