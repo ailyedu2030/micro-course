@@ -59,7 +59,7 @@
             <el-table-column label="类型" width="70" align="center">
               <template #default="{ row }">
                 <el-tag v-if="row.parentId" type="info" size="small">回复</el-tag>
-                <el-tag v-else type="" size="small">评价</el-tag>
+                <el-tag v-else type="info" size="small">评价</el-tag>
               </template>
             </el-table-column>
             <el-table-column label="评价内容" min-width="200" show-overflow-tooltip>
