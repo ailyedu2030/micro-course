@@ -526,7 +526,7 @@ const handleSubmitReview = async () => {
   finally { reviewSubmitting.value = false }
 }
 
-const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchSlides 获取课件失败', e); ElMessage.warning('课件加载失败'); slides.value = [] } finally { slidesLoading.value = false } }
+const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchSlides 获取课件失败', e); slides.value = [] } finally { slidesLoading.value = false } }
 
 onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; if (isInteractive.value) fetchSlides(); await Promise.all([fetchTeacher(), checkEnrollment(), fetchReviews(), fetchRanking(), fetchPricingInfo()]) })
 </script>
