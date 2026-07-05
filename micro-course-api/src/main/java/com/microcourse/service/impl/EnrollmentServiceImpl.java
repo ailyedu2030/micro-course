@@ -38,16 +38,15 @@ import com.microcourse.service.OrderService;
 import com.microcourse.enums.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
-import cn.hutool.poi.excel.ExcelUtil;
-import cn.hutool.poi.excel.ExcelWriter;
 
 @Service
 public class EnrollmentServiceImpl implements EnrollmentService {
@@ -73,6 +72,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final EnrollmentQueryService queryService;
     private final com.microcourse.metrics.EnrollmentMetrics metrics;
     private final org.springframework.transaction.support.TransactionTemplate txTemplate;
+    private final EnrollmentService self;
 
     public EnrollmentServiceImpl(EnrollmentRepository enrollmentRepository,
                                  EnrollmentHistoryRepository enrollmentHistoryRepository,
@@ -89,7 +89,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                   CourseService courseService,
                                   NotificationService notificationService,
                                   com.microcourse.metrics.EnrollmentMetrics metrics,
-                                  org.springframework.transaction.PlatformTransactionManager txManager) {
+                                  org.springframework.transaction.PlatformTransactionManager txManager,
+                                  @Lazy EnrollmentService self) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentHistoryRepository = enrollmentHistoryRepository;
         this.courseRepository = courseRepository;
@@ -105,6 +106,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         this.statsService = statsService;
         this.queryService = queryService;
         this.metrics = metrics;
+        this.self = self;
         this.txTemplate = new org.springframework.transaction.support.TransactionTemplate(txManager);
         // ★ 客户体验修复 v1.7.0: 软删旧 CANCELLED enrollment 必须走 REQUIRES_NEW,
         // 否则默认 REQUIRED 会加入主 enroll() 事务, 主事务异常回滚时撤销删除
@@ -466,22 +468,30 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         // spec §3.2: "WAITLIST → APPROVED: 有人退课 → 按候补顺序自动录取"
         // 之前漏了！学生退课后,候补中的第一个学生没有自动 ENROLLED
         // 现在：退课 → student_count-1 → 找 WAITLIST 最早一个 → 改 APPROVED
+        // P1-I-6: 通过 self 代理调用以触发 REQUIRES_NEW 独立事务
         if (wasEnrolled && enrollment.getCourseId() != null) {
-            promoteFirstWaitlistToEnrolled(enrollment.getCourseId());
+            if (self != null) {
+                self.promoteFirstWaitlistToEnrolled(enrollment.getCourseId());
+            } else {
+                promoteFirstWaitlistToEnrolled(enrollment.getCourseId());
+            }
         }
 
-        // P0-04: 修复退款递归循环 — 由 OrderServiceImpl.refund() 统一编排退款和取消选课，
-        // cancelEnrollment 不再重复调用 orderService.refund()
-        if (enrollment.getCourseId() != null) {
+        // P0-2 修复: 退课时若存在 PAID 订单，自动触发退款
+        // REFUND_REENTRANT 防止 refund() 内部调用的 cancelEnrollment() 触发递归循环
+        if (wasEnrolled && enrollment.getCourseId() != null && !REFUND_REENTRANT.get()) {
             LambdaQueryWrapper<Order> orderWrapper = new LambdaQueryWrapper<>();
             orderWrapper.eq(Order::getUserId, enrollment.getUserId())
                     .eq(Order::getCourseId, enrollment.getCourseId())
                     .eq(Order::getStatus, "PAID");
             Order paidOrder = orderRepository.selectOne(orderWrapper);
-            if (paidOrder != null && !REFUND_REENTRANT.get()) {
+            if (paidOrder != null) {
                 REFUND_REENTRANT.set(true);
                 try {
-                    LOG.info("[Enrollment] 取消选课 {} 时跳过退款（由 OrderService 统一编排）", enrollment.getId());
+                    orderService.refund(paidOrder.getId());
+                    LOG.info("[P0-2] 退课时自动退款成功 enrollmentId={} orderId={}", enrollment.getId(), paidOrder.getId());
+                } catch (Exception e) {
+                    LOG.error("[P0-2] 退课时自动退款失败 enrollmentId={} orderId={}", enrollment.getId(), paidOrder.getId(), e);
                 } finally {
                     REFUND_REENTRANT.remove();
                 }
@@ -591,8 +601,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
      *   <li>只晋升一个学生 (不退课一人进课一人,而不是 N 个退课 N 个进)</li>
      *   <li>通知: 给晋升学生发通知</li>
      * </ol>
+     * <p>P1-I-6: 独立事务 REQUIRES_NEW, 晋升失败不影响原 cancel 事务回滚。</p>
      */
-    private void promoteFirstWaitlistToEnrolled(Long courseId) {
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public void promoteFirstWaitlistToEnrolled(Long courseId) {
         // 1. 重新锁 course 行 (与 enroll() 一致的事务隔离保证)
         java.util.Map<String, Object> locked = courseRepository.selectByIdForUpdate(courseId);
         if (locked == null) return;
@@ -764,41 +777,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     @Override
     public void exportEnrollments(Long courseId, HttpServletResponse response) throws IOException {
-        // P0-SEC-FIX: TEACHER 角色添加课程所有权校验，防止 IDOR 导出任意课程数据
-        if (SecurityUtil.hasRole("TEACHER")) {
-            assertCourseOwnership(courseId);
-        }
-        List<EnrollmentVO> enrollments = queryService.getCourseEnrollments(courseId);
-
-        // 设置响应头
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=enrollments_" + courseId + ".xlsx");
-
-        // 使用 Hutool ExcelWriter 导出（try-finally 确保资源释放）
-        ExcelWriter writer = ExcelUtil.getWriter(true);
-        try {
-            writer.addHeaderAlias("id", "选课ID");
-            writer.addHeaderAlias("courseId", "课程ID");
-            writer.addHeaderAlias("courseName", "课程名称");
-            writer.addHeaderAlias("userId", "用户ID");
-            writer.addHeaderAlias("userName", "学生姓名");
-            writer.addHeaderAlias("progress", "学习进度(%)");
-            writer.addHeaderAlias("completed", "是否完成");
-            writer.addHeaderAlias("finalScore", "总评成绩");
-            writer.addHeaderAlias("finalGrade", "成绩等级");
-            writer.addHeaderAlias("enrollmentStatus", "选课状态");
-            writer.addHeaderAlias("sourceChannel", "选课来源");
-            writer.addHeaderAlias("enrolledAt", "选课时间");
-            writer.addHeaderAlias("completedAt", "完成时间");
-
-            writer.write(enrollments, true);
-            writer.flush(response.getOutputStream());
-        } finally {
-            writer.close();
-        }
+        queryService.exportEnrollments(courseId, response);
     }
 
-    /** 课程 Integer 状态码 → 中文描述（消除 3 处重复 if-else 链） */
     private static String describeCourseStatus(Integer status) {
         if (status == null) return "未知";
         CourseStatus cs = CourseStatus.fromCode(status);

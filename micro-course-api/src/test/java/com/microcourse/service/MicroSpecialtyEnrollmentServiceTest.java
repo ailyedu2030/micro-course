@@ -45,6 +45,7 @@ class MicroSpecialtyEnrollmentServiceTest {
     @Mock private MicroSpecialtyEnrollmentQueryService queryService;
     @Mock private MicroSpecialtyProgressService progressService;
     @Mock private DepartmentRepository departmentRepository;
+    @Mock private ClassesRepository classesRepository;
 
     private MicroSpecialtyEnrollmentServiceImpl service;
 
@@ -58,8 +59,8 @@ class MicroSpecialtyEnrollmentServiceTest {
         service = new MicroSpecialtyEnrollmentServiceImpl(
                 enrollmentRepository, msRepository, msCourseRepository,
                 msTeacherRepository, courseEnrollmentRepository, courseRepository,
-                userRepository, notificationService, enrollmentService,
-                msService, certificateService, queryService, progressService);
+                userRepository, classesRepository, notificationService, enrollmentService,
+                msService, certificateService, queryService, progressService, null);
         MicroSpecialtyEnrollmentVO mockVO = new MicroSpecialtyEnrollmentVO();
         mockVO.setId(1L);
         lenient().when(queryService.toVO(any(), any())).thenReturn(mockVO);

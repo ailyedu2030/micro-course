@@ -1,12 +1,14 @@
 package com.microcourse.controller;
 
 import com.microcourse.audit.AuditedLog;
+import com.alibaba.excel.EasyExcel;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.OperationLogVO;
 import com.microcourse.entity.OperationLog;
 import com.microcourse.util.OperationLogAssembler;
 import com.microcourse.service.OperationLogService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -14,6 +16,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -69,6 +74,40 @@ public class OperationLogController {
                 .map(entity -> operationLogAssembler.toVO(entity, userNameMap))
                 .collect(Collectors.toList());
         return R.ok(PageResult.of(vos, result.getTotalElements(), result.getPage(), result.getSize()));
+    }
+
+    /**
+     * P2-10: 导出操作日志为 Excel
+     * GET /api/operation-logs/export
+     * 权限: ADMIN / ACADEMIC
+     */
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public void export(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String module,
+            @RequestParam(required = false) Long targetId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startTime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endTime,
+            HttpServletResponse response) throws IOException {
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        String encodedFileName = URLEncoder.encode("operation_logs.xlsx", StandardCharsets.UTF_8);
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+
+        List<OperationLog> logs = operationLogService.queryForExport(
+                userId, username, action, module, targetId, startTime, endTime);
+
+        Map<Long, String> userNameMap = buildUserNameMap(logs);
+        List<OperationLogVO> vos = logs.stream()
+                .map(entity -> operationLogAssembler.toVO(entity, userNameMap))
+                .collect(Collectors.toList());
+
+        EasyExcel.write(response.getOutputStream(), OperationLogVO.class)
+                .sheet("日志")
+                .doWrite(vos);
     }
 
     /**

@@ -12,13 +12,14 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Video;
 import com.microcourse.entity.VideoBookmark;
-import com.microcourse.entity.VideoStatus;
+import com.microcourse.enums.VideoStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.repository.VideoRepository;
+import com.microcourse.service.AdminSettingService;
 import com.microcourse.service.VideoAccessService;
 import com.microcourse.service.VideoService;
 import com.microcourse.service.VideoTranscodeService;
@@ -56,8 +57,6 @@ public class VideoServiceImpl implements VideoService {
 
     private static final Logger log = LoggerFactory.getLogger(VideoServiceImpl.class);
 
-    private static final long MAX_FILE_SIZE = 2L * 1024 * 1024 * 1024; // 2GB
-
     private final VideoRepository videoRepository;
     private final CourseChapterRepository chapterRepository;
     private final CourseRepository courseRepository;
@@ -66,6 +65,7 @@ public class VideoServiceImpl implements VideoService {
     private final Executor videoUploadExecutor;
     private final VideoAccessService videoAccessService;
     private final VideoSignUtil videoSignUtil;
+    private final AdminSettingService adminSettingService;
 
     /** P1-1: 从配置读取存储目录 */
     @Value("${video.storage-base-dir:/data/videos}")
@@ -84,7 +84,8 @@ public class VideoServiceImpl implements VideoService {
                            VideoTranscodeService videoTranscodeService,
                            @Qualifier("videoUploadExecutor") Executor videoUploadExecutor,
                            VideoAccessService videoAccessService,
-                           VideoSignUtil videoSignUtil) {
+                           VideoSignUtil videoSignUtil,
+                           AdminSettingService adminSettingService) {
         this.videoRepository = videoRepository;
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
@@ -93,6 +94,15 @@ public class VideoServiceImpl implements VideoService {
         this.videoUploadExecutor = videoUploadExecutor;
         this.videoAccessService = videoAccessService;
         this.videoSignUtil = videoSignUtil;
+        this.adminSettingService = adminSettingService;
+    }
+
+    private long getMaxFileSize() {
+        String v = adminSettingService.getByKey("max_video_size_mb");
+        if (v != null && !v.isBlank()) {
+            try { return Long.parseLong(v) * 1024L * 1024L; } catch (NumberFormatException ignore) {}
+        }
+        return 2L * 1024L * 1024L * 1024L; // 默认 2GB
     }
 
     @Override
@@ -600,7 +610,7 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID,
                     "MIME type 必须为 video/*,当前为 " + contentType);
         }
-        if (file.getSize() > MAX_FILE_SIZE) {
+        if (file.getSize() > getMaxFileSize()) {
             throw new BusinessException(ErrorCode.VIDEO_TOO_LARGE);
         }
         // 文件魔数检测

@@ -9,6 +9,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.repository.VideoRepository;
+import com.microcourse.service.VideoAccessService;
 import com.microcourse.service.VideoBookmarkService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
@@ -23,11 +24,14 @@ public class VideoBookmarkServiceImpl implements VideoBookmarkService {
 
     private final VideoBookmarkRepository bookmarkRepository;
     private final VideoRepository videoRepository;
+    private final VideoAccessService videoAccessService;
 
     public VideoBookmarkServiceImpl(VideoBookmarkRepository bookmarkRepository,
-                                    VideoRepository videoRepository) {
+                                    VideoRepository videoRepository,
+                                    VideoAccessService videoAccessService) {
         this.bookmarkRepository = bookmarkRepository;
         this.videoRepository = videoRepository;
+        this.videoAccessService = videoAccessService;
     }
 
     @Override
@@ -50,6 +54,8 @@ public class VideoBookmarkServiceImpl implements VideoBookmarkService {
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
+
+        videoAccessService.checkStudentAccess(videoId);
 
         Long userId = SecurityUtil.getCurrentUserId();
 

@@ -50,4 +50,13 @@ public interface AdminSettingService {
      * @param value 配置值
      */
     void upsert(String key, String value);
+
+    /**
+     * Upsert 单个配置（含 valueType）
+     *
+     * @param key       配置键
+     * @param value     配置值
+     * @param valueType 值类型（BOOLEAN / NUMBER / STRING / JSON），null 默认 STRING
+     */
+    void upsert(String key, String value, String valueType);
 }

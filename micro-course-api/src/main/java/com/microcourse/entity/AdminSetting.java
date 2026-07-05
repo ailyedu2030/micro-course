@@ -25,6 +25,9 @@ public class AdminSetting {
     @TableField("setting_value")
     private String settingValue;
 
+    @TableField("value_type")
+    private String valueType;
+
     private String description;
 
     @TableField("created_at")
@@ -41,6 +44,8 @@ public class AdminSetting {
     public void setSettingKey(String settingKey) { this.settingKey = settingKey; }
     public String getSettingValue() { return settingValue; }
     public void setSettingValue(String settingValue) { this.settingValue = settingValue; }
+    public String getValueType() { return valueType; }
+    public void setValueType(String valueType) { this.valueType = valueType; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public LocalDateTime getCreatedAt() { return createdAt; }

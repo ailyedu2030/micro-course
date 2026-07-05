@@ -77,4 +77,12 @@ public interface EnrollmentService {
      * @throws IOException 写入异常
      */
     void exportEnrollments(Long courseId, HttpServletResponse response) throws IOException;
+
+    /**
+     * P1-I-6: 候补自动晋升（独立事务 REQUIRES_NEW）。
+     * 当有学生退课腾出名额时,自动将候补队列中最早的一个学生从 WAITLIST 转为 APPROVED。
+     * 独立事务确保晋升失败不影响原 cancel 事务。
+     * @param courseId 课程ID
+     */
+    void promoteFirstWaitlistToEnrolled(Long courseId);
 }

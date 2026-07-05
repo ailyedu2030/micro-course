@@ -20,12 +20,14 @@ public interface AdminSettingRepository extends BaseMapper<AdminSetting> {
     /**
      * P1-3: PostgreSQL 原子 upsert，消除 check-then-insert 竞态
      * INSERT ... ON CONFLICT (setting_key) DO UPDATE
+     * P2-8: 增加 value_type 字段
      */
-    @Insert("INSERT INTO admin_settings (setting_key, setting_value, updated_at) " +
-            "VALUES (#{settingKey}, #{settingValue}, #{updatedAt}) " +
+    @Insert("INSERT INTO admin_settings (setting_key, setting_value, value_type, updated_at) " +
+            "VALUES (#{settingKey}, #{settingValue}, #{valueType}, #{updatedAt}) " +
             "ON CONFLICT (setting_key) DO UPDATE " +
             "SET setting_value = EXCLUDED.setting_value, updated_at = EXCLUDED.updated_at")
     int upsertByKey(@Param("settingKey") String settingKey,
                     @Param("settingValue") String settingValue,
+                    @Param("valueType") String valueType,
                     @Param("updatedAt") LocalDateTime updatedAt);
 }

@@ -11,6 +11,7 @@ import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.Video;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
@@ -54,6 +55,30 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     @Override
     @Transactional(readOnly = true)
     public List<LearningProgressVO> getByUserAndCourse(Long userId, Long courseId) {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        boolean isAdmin = SecurityUtil.isAdmin();
+        if (!currentUserId.equals(userId)) {
+            if (!isAdmin && !SecurityUtil.hasRole("ACADEMIC")) {
+                if (SecurityUtil.hasRole("TEACHER")) {
+                    assertTeacherOwnsCourse(currentUserId, courseId);
+                } else {
+                    throw new BusinessException(ErrorCode.NO_PERMISSION);
+                }
+            }
+        } else if (!isAdmin && !SecurityUtil.hasRole("ACADEMIC") && !SecurityUtil.hasRole("TEACHER")) {
+            long enrollmentCount = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                    .eq(Enrollment::getUserId, userId)
+                    .eq(Enrollment::getCourseId, courseId)
+                    .in(Enrollment::getEnrollmentStatus,
+                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                        EnrollmentStatus.APPROVED.getValue(),
+                        EnrollmentStatus.COMPLETED.getValue()));
+            if (enrollmentCount == 0) {
+                throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再查看学习进度");
+            }
+        }
+
         LambdaQueryWrapper<LearningProgress> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(LearningProgress::getUserId, userId)
                .eq(LearningProgress::getCourseId, courseId);
@@ -157,6 +182,22 @@ public class LearningProgressServiceImpl implements LearningProgressService {
             throw new BusinessException(ErrorCode.LEARNING_PROGRESS_NOT_FOUND);
         }
 
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        Long courseId = progress.getCourseId();
+        if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC") && courseId != null) {
+            long enrollmentCount = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                    .eq(Enrollment::getUserId, currentUserId)
+                    .eq(Enrollment::getCourseId, courseId)
+                    .in(Enrollment::getEnrollmentStatus,
+                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                        EnrollmentStatus.APPROVED.getValue(),
+                        EnrollmentStatus.COMPLETED.getValue()));
+            if (enrollmentCount == 0) {
+                throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再更新学习进度");
+            }
+        }
+
         LambdaUpdateWrapper<LearningProgress> wrapper = new LambdaUpdateWrapper<>();
         if (request.getVideoProgress() != null) {
             wrapper.set(LearningProgress::getVideoProgress, request.getVideoProgress());
@@ -209,6 +250,22 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         if (request.getCourseId() == null || courseRepository.selectById(request.getCourseId()) == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
+
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC") && !SecurityUtil.hasRole("TEACHER")) {
+            long enrollmentCount = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                    .eq(Enrollment::getUserId, userId)
+                    .eq(Enrollment::getCourseId, request.getCourseId())
+                    .in(Enrollment::getEnrollmentStatus,
+                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                        EnrollmentStatus.APPROVED.getValue(),
+                        EnrollmentStatus.COMPLETED.getValue()));
+            if (enrollmentCount == 0) {
+                throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再记录学习进度");
+            }
+        }
+
         // Validate chapterId exists if provided (FK constraint)
         if (request.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(request.getChapterId());

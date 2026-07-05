@@ -3,12 +3,14 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyProposalRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
 import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyProposal;
 import com.microcourse.entity.MicroSpecialtyTeacher;
+import com.microcourse.enums.MicroSpecialtyProposalStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -77,7 +79,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         proposal.setSemester(request.getSemester());
         proposal.setMaxStudents(request.getMaxStudents());
         if (request.getCredits() != null) proposal.setCredits(request.getCredits());
-        proposal.setStatus("PENDING_REVIEW");
+        proposal.setStatus(MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue());
         proposal.setCreatedAt(LocalDateTime.now());
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.insert(proposal);
@@ -161,12 +163,12 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
 
-        if (!"PENDING_REVIEW".equals(proposal.getStatus())) {
+        if (!MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可批准");
         }
 
         // 更新 proposal 为 APPROVED
-        proposal.setStatus("APPROVED");
+        proposal.setStatus(MicroSpecialtyProposalStatus.APPROVED.getValue());
         proposal.setReviewedBy(SecurityUtil.getCurrentUserId());
         proposal.setReviewedAt(LocalDateTime.now());
         proposal.setUpdatedAt(LocalDateTime.now());
@@ -231,11 +233,11 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
 
-        if (!"PENDING_REVIEW".equals(proposal.getStatus())) {
+        if (!MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可驳回");
         }
 
-        proposal.setStatus("REJECTED");
+        proposal.setStatus(MicroSpecialtyProposalStatus.REJECTED.getValue());
         proposal.setReviewComment(reason);
         proposal.setReviewedBy(SecurityUtil.getCurrentUserId());
         proposal.setReviewedAt(LocalDateTime.now());
@@ -257,11 +259,11 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        if (!"PENDING_REVIEW".equals(proposal.getStatus())) {
+        if (!MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可撤回");
         }
 
-        proposal.setStatus("WITHDRAWN");
+        proposal.setStatus(MicroSpecialtyProposalStatus.WITHDRAWN.getValue());
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.updateById(proposal);
     }
@@ -277,7 +279,8 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        if (!"REJECTED".equals(proposal.getStatus()) && !"WITHDRAWN".equals(proposal.getStatus())) {
+        if (!MicroSpecialtyProposalStatus.REJECTED.getValue().equals(proposal.getStatus())
+                && !MicroSpecialtyProposalStatus.WITHDRAWN.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已驳回或已撤回状态可重提");
         }
 
@@ -290,7 +293,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         if (request.getOfferDepartmentId() != null) proposal.setOfferDepartmentId(request.getOfferDepartmentId());
         if (request.getCredits() != null) proposal.setCredits(request.getCredits());
 
-        proposal.setStatus("PENDING_REVIEW");
+        proposal.setStatus(MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue());
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.updateById(proposal);
     }
@@ -329,7 +332,7 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        if (!"WITHDRAWN".equals(proposal.getStatus())) {
+        if (!MicroSpecialtyProposalStatus.WITHDRAWN.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已撤回状态可编辑");
         }
 
@@ -357,7 +360,8 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        if (!"DRAFT".equals(proposal.getStatus()) && !"WITHDRAWN".equals(proposal.getStatus())) {
+        if (!MicroSpecialtyProposalStatus.DRAFT.getValue().equals(proposal.getStatus())
+                && !MicroSpecialtyProposalStatus.WITHDRAWN.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅草稿或已撤回状态可删除");
         }
 
@@ -370,12 +374,17 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) throw new BusinessException(ErrorCode.MS_PROPOSAL_NOT_FOUND);
 
-        if (!"PENDING_REVIEW".equals(proposal.getStatus())) {
+        // ★ 横向扫描 P1-I-5 风格：阻断自审批
+        if (proposal.getProposerId().equals(reviewerId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "不可审批自己的申报");
+        }
+
+        if (!MicroSpecialtyProposalStatus.PENDING_REVIEW.getValue().equals(proposal.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可批准");
         }
 
         // 更新 proposal 为 APPROVED
-        proposal.setStatus("APPROVED");
+        proposal.setStatus(MicroSpecialtyProposalStatus.APPROVED.getValue());
         proposal.setReviewedBy(reviewerId);
         proposal.setReviewedAt(LocalDateTime.now());
         proposal.setUpdatedAt(LocalDateTime.now());
@@ -446,5 +455,38 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             log.error("materialize failed for proposal {}", proposalId, e);
             // 不阻断审批流程, 但记录错误供后续排查
         }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BatchOperationResult batchApproveProposal(List<Long> ids) {
+        BatchOperationResult result = new BatchOperationResult();
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        for (Long id : ids) {
+            try {
+                approveAndCreateSpecialty(id, currentUserId);
+                result.addSuccess(id);
+            } catch (Exception e) {
+                log.warn("批量批准申报失败, id={}, reason={}", id, e.getMessage());
+                result.addFailure(id, e.getMessage());
+            }
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BatchOperationResult batchRejectProposal(List<Long> ids, String reason) {
+        BatchOperationResult result = new BatchOperationResult();
+        for (Long id : ids) {
+            try {
+                rejectProposal(id, reason);
+                result.addSuccess(id);
+            } catch (Exception e) {
+                log.warn("批量驳回申报失败, id={}, reason={}", id, e.getMessage());
+                result.addFailure(id, e.getMessage());
+            }
+        }
+        return result;
     }
 }

@@ -43,6 +43,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,8 @@ import org.slf4j.LoggerFactory;
 public class OrderServiceImpl implements OrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
+
+    private static final Set<Long> REFUNDING_ORDERS = ConcurrentHashMap.newKeySet();
 
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
@@ -327,62 +330,87 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OrderVO refund(Long orderId) {
-        Order order = orderRepository.selectById(orderId);
-        if (order == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单不存在");
-
-        // IDOR 校验: 只有订单所有者或 ADMIN 可退款
-        if (!SecurityUtil.isOwnerOrAdmin(order.getUserId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        if (!REFUNDING_ORDERS.add(orderId)) {
+            log.warn("refund reentrant detected for orderId={}, skipping", orderId);
+            return toVO(orderRepository.selectById(orderId));
         }
+        try {
+            Order order = orderRepository.selectById(orderId);
+            if (order == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单不存在");
 
-        // 业务逻辑审计 P1 修复：使用 canTransitionTo 白名单替代字符串等值校验
-        OrderStatus currentStatus = OrderStatus.fromValue(order.getStatus());
-        if (currentStatus == null || !currentStatus.canTransitionTo(OrderStatus.REFUNDED)) {
-            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "订单当前状态不可退款");
-        }
-
-        // CAS 乐观锁更新状态 PAID → REFUNDED
-        int affected = orderRepository.update(null,
-                new LambdaUpdateWrapper<Order>()
-                        .eq(Order::getId, orderId)
-                        .eq(Order::getStatus, "PAID")
-                        .set(Order::getStatus, "REFUNDED")
-                        .set(Order::getUpdatedAt, LocalDateTime.now()));
-        if (affected == 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更");
-        }
-
-        // 记录退款 Payment
-        String refundTxnId = "RFND" + UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase();
-        Payment refundPayment = new Payment();
-        refundPayment.setOrderId(orderId);
-        refundPayment.setTransactionId(refundTxnId);
-        refundPayment.setPaymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : "REFUND");
-        refundPayment.setAmount(order.getAmount());
-        refundPayment.setStatus("REFUNDED");
-        refundPayment.setCreatedAt(LocalDateTime.now());
-        paymentRepository.insert(refundPayment);
-
-        // P0-3: 退款后取消选课记录，防止学生继续学习已退款的课程
-        if (order.getUserId() != null && order.getCourseId() != null) {
-            LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
-            enrollWrapper.eq(Enrollment::getUserId, order.getUserId())
-                    .eq(Enrollment::getCourseId, order.getCourseId())
-                    .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
-            Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
-            if (enrollment != null) {
-                enrollmentService.cancelEnrollment(enrollment.getId(), order.getUserId());
+            // IDOR 校验: 只有订单所有者或 ADMIN 可退款
+            if (!SecurityUtil.isOwnerOrAdmin(order.getUserId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
             }
-        }
 
-        // 退款时同步取消套餐下的其他必修课（必修课都来自 bundle）
-        // unenrollBundleCourses 内部已 decrement student_count，此处不再重复
-        if (order.getBundleId() != null && order.getUserId() != null) {
-            unenrollBundleCourses(order.getUserId(), order.getBundleId());
-        }
+            // 业务逻辑审计 P1 修复：使用 canTransitionTo 白名单替代字符串等值校验
+            OrderStatus currentStatus = OrderStatus.fromValue(order.getStatus());
+            if (currentStatus == null || !currentStatus.canTransitionTo(OrderStatus.REFUNDED)) {
+                throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "订单当前状态不可退款");
+            }
 
-        log.info("退款成功: orderId={}, refundTxnId={}, amount={}", orderId, refundTxnId, order.getAmount());
-        return toVO(orderRepository.selectById(orderId));
+            // CAS 乐观锁更新状态 PAID → REFUNDED
+            int affected = orderRepository.update(null,
+                    new LambdaUpdateWrapper<Order>()
+                            .eq(Order::getId, orderId)
+                            .eq(Order::getStatus, "PAID")
+                            .set(Order::getStatus, "REFUNDED")
+                            .set(Order::getUpdatedAt, LocalDateTime.now()));
+            if (affected == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更");
+            }
+
+            // 记录退款 Payment
+            String refundTxnId = "RFND" + UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase();
+            Payment refundPayment = new Payment();
+            refundPayment.setOrderId(orderId);
+            refundPayment.setTransactionId(refundTxnId);
+            refundPayment.setPaymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : "REFUND");
+            refundPayment.setAmount(order.getAmount());
+            refundPayment.setStatus("REFUNDED");
+            refundPayment.setCreatedAt(LocalDateTime.now());
+            paymentRepository.insert(refundPayment);
+
+            // 取消订单关联课程的选课
+            if (order.getUserId() != null && order.getCourseId() != null) {
+                LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
+                enrollWrapper.eq(Enrollment::getUserId, order.getUserId())
+                        .eq(Enrollment::getCourseId, order.getCourseId())
+                        .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
+                Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
+                if (enrollment != null) {
+                    enrollmentService.cancelEnrollment(enrollment.getId(), order.getUserId());
+                }
+            }
+
+            // 套餐退款：遍历 course_bundle_items 取消所有必修课 enrollment
+            if (order.getBundleId() != null && order.getUserId() != null) {
+                LambdaQueryWrapper<CourseBundleItem> itemWrapper = new LambdaQueryWrapper<>();
+                itemWrapper.eq(CourseBundleItem::getBundleId, order.getBundleId())
+                        .eq(CourseBundleItem::getIsRequired, true);
+                List<CourseBundleItem> items = bundleItemRepository.selectList(itemWrapper);
+                int cancelledCount = 0;
+                for (CourseBundleItem item : items) {
+                    LambdaQueryWrapper<Enrollment> eWrapper = new LambdaQueryWrapper<>();
+                    eWrapper.eq(Enrollment::getUserId, order.getUserId())
+                            .eq(Enrollment::getCourseId, item.getCourseId())
+                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
+                    Enrollment enrollment = enrollmentRepository.selectOne(eWrapper);
+                    if (enrollment != null) {
+                        enrollmentService.cancelEnrollment(enrollment.getId(), order.getUserId());
+                        cancelledCount++;
+                    }
+                }
+                if (cancelledCount > 0) {
+                    bundleRepository.atomicDecrementStudentCount(order.getBundleId());
+                }
+            }
+
+            log.info("退款成功: orderId={}, refundTxnId={}, amount={}", orderId, refundTxnId, order.getAmount());
+            return toVO(orderRepository.selectById(orderId));
+        } finally {
+            REFUNDING_ORDERS.remove(orderId);
+        }
     }
 
     @Override

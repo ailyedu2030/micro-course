@@ -454,6 +454,28 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
         }
 
+        // P1-I-12: CAS admin/super_admin 角色检查（覆写默认 STUDENT 角色）
+        boolean roleUpgraded = false;
+        String adminUsername = adminSettingService.getByKey("cas_admin_username");
+        if (adminUsername != null && adminUsername.equals(casUsername)) {
+            user.setRole(UserRole.ADMIN);
+            roleUpgraded = true;
+        }
+        String superAdmins = adminSettingService.getByKey("cas_super_admins");
+        if (superAdmins != null && !superAdmins.isBlank()) {
+            for (String sa : superAdmins.split(",")) {
+                if (sa.trim().equals(casUsername)) {
+                    user.setRole(UserRole.ADMIN);
+                    roleUpgraded = true;
+                    break;
+                }
+            }
+        }
+        if (roleUpgraded) {
+            user.setUpdatedAt(LocalDateTime.now());
+            userRepository.updateById(user);
+        }
+
         // Step 5: 生成 JWT
         String accessToken = jwtUtil.generateToken(
                 user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());

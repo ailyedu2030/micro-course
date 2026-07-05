@@ -255,8 +255,9 @@ router.beforeEach(async (to, from, next) => {
           return next('/teacher/micro-specialties')
         }
       } catch (e) {
-        // API 调用失败：放行导航，后端 requireLeadOf() 提供最终防护
-        console.warn('[router] my-role 校验失败，放行导航（依赖后端防护）:', e)
+        // my-role API 失败，降级为只读模式
+        console.warn('[router] my-role API 失败，降级为只读模式:', e)
+        return next({ path: to.path, query: { ...to.query, _readonly: '1' } })
       }
     }
   }

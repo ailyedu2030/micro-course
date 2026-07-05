@@ -38,6 +38,16 @@ public enum MicroSpecialtyStatus {
         return null;
     }
 
+    public static MicroSpecialtyStatus fromString(String status) {
+        if (status == null) return null;
+        for (MicroSpecialtyStatus s : values()) {
+            if (s.name().equals(status)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
     public static MicroSpecialtyStatus fromCode(Integer code) {
         if (code == null) return null;
         for (MicroSpecialtyStatus status : values()) {

@@ -7,6 +7,7 @@ import com.microcourse.dto.SettingUpdateRequest;
 import com.microcourse.dto.ToggleRegisterRequest;
 import com.microcourse.dto.UploadLimitRequest;
 import com.microcourse.service.AdminSettingService;
+import com.microcourse.util.FieldEncryptor;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -24,9 +25,12 @@ import java.util.List;
 public class AdminSettingsController {
 
     private final AdminSettingService adminSettingService;
+    private final FieldEncryptor fieldEncryptor;
 
-    public AdminSettingsController(AdminSettingService adminSettingService) {
+    public AdminSettingsController(AdminSettingService adminSettingService,
+                                    FieldEncryptor fieldEncryptor) {
         this.adminSettingService = adminSettingService;
+        this.fieldEncryptor = fieldEncryptor;
     }
 
     /**
@@ -90,9 +94,9 @@ public class AdminSettingsController {
         adminSettingService.upsert("cas_server_url", cas.getServerUrl());
         adminSettingService.upsert("cas_service_url", cas.getServiceUrl());
         adminSettingService.upsert("cas_version", cas.getVersion());
-        adminSettingService.upsert("cas_admin_username", cas.getAdminUsername());
-        adminSettingService.upsert("cas_super_admins", cas.getSuperAdmins() != null
-                ? String.join(",", cas.getSuperAdmins()) : "");
+        adminSettingService.upsert("cas_admin_username", fieldEncryptor.encrypt(cas.getAdminUsername()));
+        adminSettingService.upsert("cas_super_admins", fieldEncryptor.encrypt(cas.getSuperAdmins() != null
+                ? String.join(",", cas.getSuperAdmins()) : ""));
         adminSettingService.upsert("cas_validate_ssl", String.valueOf(cas.getValidateSsl()));
         return R.ok();
     }
@@ -112,8 +116,8 @@ public class AdminSettingsController {
         dto.setServerUrl(adminSettingService.getByKey("cas_server_url"));
         dto.setServiceUrl(adminSettingService.getByKey("cas_service_url"));
         dto.setVersion(adminSettingService.getByKey("cas_version"));
-        dto.setAdminUsername(adminSettingService.getByKey("cas_admin_username"));
-        String superAdmins = adminSettingService.getByKey("cas_super_admins");
+        dto.setAdminUsername(fieldEncryptor.decrypt(adminSettingService.getByKey("cas_admin_username")));
+        String superAdmins = fieldEncryptor.decrypt(adminSettingService.getByKey("cas_super_admins"));
         dto.setSuperAdmins(superAdmins != null && !superAdmins.isEmpty()
                 ? List.of(superAdmins.split(",")) : List.of());
         dto.setValidateSsl(Boolean.parseBoolean(

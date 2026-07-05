@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import com.microcourse.dto.microSpecialty.ClassImportRequest;
 import com.microcourse.dto.microSpecialty.DropRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyApplyRequest;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyClassImportResultVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyRejectRequest;
 import com.microcourse.service.MicroSpecialtyEnrollmentService;
@@ -58,7 +59,7 @@ public class MicroSpecialtyEnrollmentController {
     /** 班级批量导入 → APPROVED */
     @PostMapping("/class-import")
     @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
-    public R<Integer> classImport(@RequestBody ClassImportRequest request) {
+    public R<MicroSpecialtyClassImportResultVO> classImport(@Valid @RequestBody ClassImportRequest request) {
         List<Long> classIds = request.getClassIds();
         if (classIds == null) {
             classIds = new java.util.ArrayList<>();
@@ -67,8 +68,8 @@ public class MicroSpecialtyEnrollmentController {
         if (classIds.isEmpty() && request.getClassId() != null) {
             classIds.add(request.getClassId());
         }
-        int totalCount = enrollmentService.classImportBatch(request.getMicroSpecialtyId(), classIds);
-        return R.ok(totalCount);
+        MicroSpecialtyClassImportResultVO result = enrollmentService.classImportBatch(request.getMicroSpecialtyId(), classIds);
+        return R.ok(result);
     }
 
     /** 退出修读 */

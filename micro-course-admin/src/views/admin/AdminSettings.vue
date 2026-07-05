@@ -420,22 +420,11 @@ const casFormRules = {
 
 // 获取设置列表
 async function fetchSettings() {
-  // P1-2: 后端存 String，前端需要类型转换
-  // P1-14 修复注意: 以下 BOOLEAN_KEYS / NUMBER_KEYS 必须与后端 admin_settings 表的 key 集合保持同步。
-  // 若后端新增设置项 key，需相应更新此处的类型映射。建议后续改为后端提供 key 类型元数据 API 实现动态配置。
-  const BOOLEAN_KEYS = new Set([
-    'allowRegistration', 'maintenanceMode',
-    'useSsl', 'useTls',
-    'requireNumber', 'requireSpecialChar', 'lockOnFailure', 'require2FA'
-  ])
-  const NUMBER_KEYS = new Set([
-    'maxUploadSize', 'sessionTimeout',
-    'smtpPort',
-    'minPasswordLength', 'maxFailAttempts', 'lockDuration', 'tokenExpiry', 'refreshTokenExpiry'
-  ])
-  function castValue(key, raw) {
-    if (BOOLEAN_KEYS.has(key)) return raw === 'true'
-    if (NUMBER_KEYS.has(key)) { const n = Number(raw); return Number.isNaN(n) ? raw : n }
+  function castValue(setting) {
+    const raw = setting.settingValue
+    const vt = setting.valueType
+    if (vt === 'BOOLEAN') return raw === 'true'
+    if (vt === 'NUMBER') { const n = Number(raw); return Number.isNaN(n) ? raw : n }
     return raw
   }
 
@@ -443,9 +432,9 @@ async function fetchSettings() {
   try {
     const res = await getSettings()
     const items = res.data?.items || res.data || []
-    // 填充到各表单（带类型转换）
+    // 填充到各表单（根据后端 valueType 做类型转换）
     items.forEach(item => {
-      const val = castValue(item.settingKey, item.settingValue)
+      const val = castValue(item)
       if (item.settingKey in systemForm) systemForm[item.settingKey] = val
       if (item.settingKey in mailForm) mailForm[item.settingKey] = val
       if (item.settingKey in securityForm) securityForm[item.settingKey] = val

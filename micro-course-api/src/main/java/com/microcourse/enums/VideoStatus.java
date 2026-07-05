@@ -1,4 +1,4 @@
-package com.microcourse.entity;
+package com.microcourse.enums;
 
 /**
  * 视频状态枚举

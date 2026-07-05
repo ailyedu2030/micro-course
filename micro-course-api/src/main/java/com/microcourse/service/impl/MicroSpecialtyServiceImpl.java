@@ -2,6 +2,7 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyCourseRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyCourseVO;
@@ -312,8 +313,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void cancel(Long id) {
-        adminService.cancel(id);
+    public void cancel(Long id, String reason) {
+        adminService.cancel(id, reason);
     }
 
     @Override
@@ -559,6 +560,18 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     @Override
     public void requireLeadOf(Long msId) {
         adminService.requireLeadOf(msId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BatchOperationResult batchApprove(java.util.List<Long> ids) {
+        return adminService.batchApprove(ids);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BatchOperationResult batchReject(java.util.List<Long> ids, String reason) {
+        return adminService.batchReject(ids, reason);
     }
 
 }

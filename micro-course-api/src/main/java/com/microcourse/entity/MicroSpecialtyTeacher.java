@@ -1,6 +1,7 @@
 package com.microcourse.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
@@ -13,6 +14,9 @@ public class MicroSpecialtyTeacher {
     private Long microSpecialtyId;
     private Long teacherId;
     private String role;
+    /** P1-I-14: INTEGER 备用列，后续迭代切换为主字段 */
+    @TableField(exist = false)
+    private Integer roleCode;
     private Long courseId;
     private String responsibility;
     private String inviteStatus;
@@ -36,6 +40,8 @@ public class MicroSpecialtyTeacher {
     public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    public Integer getRoleCode() { return roleCode; }
+    public void setRoleCode(Integer roleCode) { this.roleCode = roleCode; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public String getResponsibility() { return responsibility; }

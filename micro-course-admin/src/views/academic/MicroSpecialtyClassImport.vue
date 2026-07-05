@@ -35,11 +35,32 @@
         <el-col :span="8"><el-result icon="info" title="跳过" :sub-title="`${result.skipCount || 0} 人`" /></el-col>
         <el-col :span="8"><el-result icon="warning" title="待处理" :sub-title="`${result.pendingCount || 0} 人`" /></el-col>
       </el-row>
+      <el-button v-if="importResult.success.length || importResult.failed.length" type="primary" size="small" class="mg-top-12" @click="showImportResult">查看班级明细</el-button>
       <div v-if="result.errors && result.errors.length" class="error-list mg-top-12">
         <h4>失败详情</h4>
         <div v-for="(err, i) in result.errors" :key="i" class="error-item">{{ err }}</div>
       </div>
     </el-card>
+
+    <!-- 导入明细弹窗 -->
+    <el-dialog v-model="importResultDialogVisible" title="导入结果明细" width="700px">
+      <el-tabs v-model="importResultTab">
+        <el-tab-pane label="成功" :name="'success'">
+          <el-table :data="importResult.success" stripe border v-if="importResult.success.length">
+            <el-table-column prop="className" label="班级" min-width="120" />
+            <el-table-column prop="studentCount" label="成功导入人数" width="140" />
+          </el-table>
+          <el-empty v-else description="暂无成功记录" />
+        </el-tab-pane>
+        <el-tab-pane label="失败" :name="'failed'">
+          <el-table :data="importResult.failed" stripe border v-if="importResult.failed.length">
+            <el-table-column prop="className" label="班级" min-width="120" />
+            <el-table-column prop="errorMsg" label="失败原因" min-width="240" />
+          </el-table>
+          <el-empty v-else description="暂无失败记录" />
+        </el-tab-pane>
+      </el-tabs>
+    </el-dialog>
   </div>
 </template>
 
@@ -61,6 +82,13 @@ const rules = {
 const specialtyOptions = ref([])
 const classOptions = ref([])
 const result = ref(null)
+const importResultDialogVisible = ref(false)
+const importResultTab = ref('success')
+const importResult = ref({ success: [], failed: [] })
+
+const showImportResult = () => {
+  importResultDialogVisible.value = true
+}
 
 const specialtyTitle = computed(() => {
   const s = specialtyOptions.value.find(o => o.id === form.value.microSpecialtyId)
@@ -103,7 +131,10 @@ const handleImport = async () => {
   importing.value = true
   try {
     const { data } = await classImport({ microSpecialtyId: form.value.microSpecialtyId, classIds: form.value.classIds })
-    result.value = typeof data === 'number' ? { successCount: data, skipCount: 0, pendingCount: 0, errors: [] } : data
+    result.value = data
+    const successList = result.value.successList || []
+    const failedList = result.value.failedList || []
+    importResult.value = { success: successList, failed: failedList }
     ElMessage.success('导入完成')
   } catch (e) { ElMessage.error(e?.response?.data?.message || '导入失败') }
   finally { importing.value = false }

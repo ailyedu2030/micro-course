@@ -61,6 +61,28 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- 支付结果明细弹窗 -->
+    <el-dialog v-model="showResultDialog" title="支付结果" width="600px" :close-on-click-modal="false">
+      <p><strong>成功：{{ resultSummary.success.length }} 门</strong></p>
+      <ul v-if="resultSummary.success.length > 0" style="margin-bottom:16px">
+        <li v-for="o in resultSummary.success" :key="o.courseTitle">
+          {{ o.courseTitle }} - ¥{{ o.amount }}
+        </li>
+      </ul>
+      <p v-if="resultSummary.failed.length > 0" style="color:#F56C6C">
+        <strong>失败：{{ resultSummary.failed.length }} 门</strong>
+      </p>
+      <ul v-if="resultSummary.failed.length > 0">
+        <li v-for="o in resultSummary.failed" :key="o.courseTitle" style="color:#F56C6C">
+          {{ o.courseTitle }} - {{ o.errorMsg }}
+        </li>
+      </ul>
+      <template #footer>
+        <el-button @click="showResultDialog = false" v-if="resultSummary.failed.length > 0">关闭</el-button>
+        <el-button type="primary" @click="router.push('/student/my-courses')" v-if="resultSummary.failed.length === 0">查看我的课程</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -80,6 +102,8 @@ const loading = ref(true)
 const submitting = ref(false)
 const paid = ref(false)
 const paymentMethod = ref('BALANCE')
+const resultSummary = ref({ success: [], failed: [] })
+const showResultDialog = ref(false)
 
 onMounted(() => {
   if (!store.hasItems) {
@@ -92,6 +116,7 @@ onMounted(() => {
 })
 
 async function handleSubmit() {
+  if (submitting.value) return  // ★ 防重复提交
   if (!store.hasItems) {
     ElMessage.warning('购物车为空或部分商品已下架')
     return
@@ -103,6 +128,9 @@ async function handleSubmit() {
   } catch { return }
 
   submitting.value = true
+  resultSummary.value = { success: [], failed: [] }
+  const successItems = []
+  const failedItems = []
   try {
     // 优先使用批量下单接口（事务原子性）
     const items = [...store.items]
@@ -111,11 +139,14 @@ async function handleSubmit() {
         items.map(i => i.courseId),
         paymentMethod.value
       )
-      // 全部清除购物车
-      items.forEach(i => store.removeItem(i.courseId))
+      // 全部成功
+      items.forEach(i => {
+        successItems.push({ courseTitle: i.title, amount: i.price, status: 'PAID' })
+        store.removeItem(i.courseId)
+      })
+      resultSummary.value = { success: successItems, failed: [] }
+      showResultDialog.value = true
       paid.value = true
-      ElMessage.success('全部处理完成！')
-      setTimeout(() => router.push('/student/my-courses'), 1500)
       return
     } catch (batchError) {
       // 批量失败，降级到逐一处理
@@ -129,16 +160,18 @@ async function handleSubmit() {
         if (order.status !== 'PAID') {
           await payOrder(order.id, paymentMethod.value)
         }
+        successItems.push({ courseTitle: item.title, amount: item.price, status: 'PAID' })
         store.removeItem(item.courseId)
       } catch (e) {
         const msg = e?.response?.data?.message || e?.response?.data?.code || e.message || '支付失败'
+        failedItems.push({ courseTitle: item.title, amount: item.price, errorMsg: msg, status: 'FAILED' })
         ElMessage.error(`「${item.title}」${msg}`)
       }
     }
-    if (store.count === 0) {
+    resultSummary.value = { success: successItems, failed: failedItems }
+    showResultDialog.value = true
+    if (successItems.length > 0 && failedItems.length === 0) {
       paid.value = true
-      ElMessage.success('全部处理完成！')
-      setTimeout(() => router.push('/student/my-courses'), 1500)
     }
   } finally {
     submitting.value = false

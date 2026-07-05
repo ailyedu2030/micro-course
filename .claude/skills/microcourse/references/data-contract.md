@@ -31,6 +31,7 @@
 | politicalStatus | political_status | String | string | 20 | - | 政治面貌 |
 | studentNo | student_no | String | string | 30 | UNIQUE | 学号（学生） |
 | teacherNo | teacher_no | String | string | 30 | UNIQUE | 工号（教师） |
+| teacherStatus | teacher_status | Integer | number | 1 | default 0 | 教师审核状态（V24 新增）|
 | status | status | Integer | number | 1 | NOT NULL, default 1 | 0=INACTIVE, 1=ACTIVE, 2=DISABLED, 3=DELETED |
 | casBound | cas_bound | Boolean | boolean | - | default false | 是否绑定 CAS |
 | lastLoginAt | last_login_at | LocalDateTime | string | - | - | 最后登录时间 |
@@ -74,7 +75,6 @@
 |------|-------|-----------|---------|------|------|
 | id | id | Long | number | - | PK, AUTO |
 | name | name | String | string | 50 | NOT NULL |
-| teacherStatus | teacher_status | Integer | number | - | V24 新增 |
 | majorId | major_id | Long | number | - | FK→majors, NOT NULL |
 | grade | grade | String | string | 10 | NOT NULL |
 | sortOrder | sort_order | Integer | number | - | default 0 |

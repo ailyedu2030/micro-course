@@ -4,19 +4,17 @@ import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * 选课状态枚举（对齐 docs/状态机设计.md §3 + docs/数据字典.md v0.5 §enrollments.enrollment_status）
+ * 选课状态枚举。
  *
- * <p>契约枚举值仅 7 个：PENDING / APPROVED / WAITLIST / CANCELLED / REJECTED / COMPLETED / DROPPED。
- * 数据字典中 <b>根本不含</b> "ENROLLED" —— 历史代码写入的 "ENROLLED" 是契约外魔法字符串。</p>
+ * 历史兼容：存量数据使用 {@code ENROLLED} 值，新代码统一走 {@code APPROVED}。
+ * {@link #LEGACY_ENROLLED_VALUE} 用于兼容查询。{@link #fromString(String)} 将历史 {@code ENROLLED} 
+ * 字符串映射为 {@code APPROVED} 枚举。
  *
- * <p>P0-2 兼容性策略（UX 零退化）：</p>
- * <ul>
- *   <li>DB / API 中存量的历史值 "ENROLLED" 通过 {@link #fromString(String)} 映射为 {@link #APPROVED}（语义等价：已通过/在读）。</li>
- *   <li>为保证前端无感升级与现有 API 响应字符串值不变，新建选课记录的 enrollment_status <b>仍写入</b>
- *       {@link #LEGACY_ENROLLED_VALUE}（= "ENROLLED"），待后续数据迁移完成后再切换为 {@link #APPROVED} 的契约值。
- *       这是"灰度可控"约束的体现：代码内部用枚举做类型安全与状态机校验，对外字符串保持向后兼容。</li>
- *   <li>{@link EnumValue} / {@link JsonValue} 预留，便于后续将实体字段切换为本枚举类型时自动持久化/序列化。</li>
- * </ul>
+ * 注：V148 migration 已完成存量 ENROLLED → APPROVED 迁移。
+ * 新建选课记录写入 APPROVED（{@code EnrollmentStatus.APPROVED.getValue()}）。
+ *
+ * @since Phase 2
+ * @see docs/状态机设计.md §8.2
  */
 public enum EnrollmentStatus {
 

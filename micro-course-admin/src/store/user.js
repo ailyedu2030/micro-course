@@ -38,6 +38,15 @@ export const useUserStore = defineStore('user', {
         return null  // 静默处理(401等,由调用方自行处理)
       }
     },
+    async refreshUserInfo() {
+      try {
+        const res = await getCurrentUser()
+        this.userInfo = res.data
+        return res.data
+      } catch {
+        return null
+      }
+    },
     async refreshAccessToken() {
       try {
         const res = await refreshTokenApi(this.refreshToken)

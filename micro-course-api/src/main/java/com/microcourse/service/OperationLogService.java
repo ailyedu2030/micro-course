@@ -75,4 +75,11 @@ public interface OperationLogService {
      * @return userId → username 映射
      */
     Map<Long, String> batchFindUsernames(Set<Long> userIds);
+
+    /**
+     * 导出查询（无分页限制，最多 10000 行）
+     */
+    List<OperationLog> queryForExport(Long userId, String username, String action,
+                                       String module, Long targetId,
+                                       LocalDate startDate, LocalDate endDate);
 }

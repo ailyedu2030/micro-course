@@ -3,6 +3,8 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.entity.MicroSpecialty;
+import com.microcourse.enums.MicroSpecialtyFeaturedStatus;
+import com.microcourse.enums.MicroSpecialtyStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -47,16 +49,17 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         // 终态检查
-        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+        MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
 
-        if (!"RECRUITING".equals(ms.getStatus())) {
+        if (msStatus != MicroSpecialtyStatus.RECRUITING) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅招生中状态可申请置顶");
         }
 
-        String currentFeatured = ms.getFeaturedStatus();
-        if (!"NONE".equals(currentFeatured) && !"REJECTED".equals(currentFeatured)) {
+        MicroSpecialtyFeaturedStatus currentFeatured = MicroSpecialtyFeaturedStatus.fromString(ms.getFeaturedStatus());
+        if (currentFeatured == null || !currentFeatured.canTransitionTo(MicroSpecialtyFeaturedStatus.PENDING)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前置顶状态不可申请");
         }
 
@@ -82,15 +85,17 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         // 终态检查
-        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+        MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
         // P2-2 修复: 确认微专业仍处于招生中(可能审批时已被关闭)
-        if (!"RECRUITING".equals(ms.getStatus())) {
+        if (msStatus != MicroSpecialtyStatus.RECRUITING) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业当前非招生状态，不可审批置顶");
         }
 
-        if (!"PENDING".equals(ms.getFeaturedStatus())) {
+        MicroSpecialtyFeaturedStatus currentFeatured = MicroSpecialtyFeaturedStatus.fromString(ms.getFeaturedStatus());
+        if (currentFeatured == null || !currentFeatured.canTransitionTo(MicroSpecialtyFeaturedStatus.APPROVED)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可审批置顶");
         }
 
@@ -123,15 +128,17 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         // 终态检查
-        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+        MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
         // P2-3 修复: 与 approveFeatured/setGoldFeatured 一致,加 RECRUITING 检查
-        if (!"RECRUITING".equals(ms.getStatus())) {
+        if (msStatus != MicroSpecialtyStatus.RECRUITING) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业当前非招生状态");
         }
 
-        if (!"PENDING".equals(ms.getFeaturedStatus())) {
+        MicroSpecialtyFeaturedStatus currentFeatured = MicroSpecialtyFeaturedStatus.fromString(ms.getFeaturedStatus());
+        if (currentFeatured == null || !currentFeatured.canTransitionTo(MicroSpecialtyFeaturedStatus.REJECTED)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可驳回置顶");
         }
 
@@ -161,11 +168,13 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         // 终态检查
-        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+        MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
 
-        if (!"APPROVED".equals(ms.getFeaturedStatus())) {
+        MicroSpecialtyFeaturedStatus currentFeatured = MicroSpecialtyFeaturedStatus.fromString(ms.getFeaturedStatus());
+        if (currentFeatured == null || !currentFeatured.canTransitionTo(MicroSpecialtyFeaturedStatus.NONE)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已通过状态可取消置顶");
         }
 
@@ -191,11 +200,12 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         // 终态检查
-        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+        MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
         // P2-2 修复: 金标仅可在招生中设置
-        if (!"RECRUITING".equals(ms.getStatus())) {
+        if (msStatus != MicroSpecialtyStatus.RECRUITING) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业当前非招生状态，不可设金标");
         }
 
@@ -227,7 +237,8 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         // 终态检查
-        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+        MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
 

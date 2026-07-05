@@ -36,6 +36,7 @@
               <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
               <el-button size="small" @click="handleCancel(row)">取消</el-button>
             </template>
+            <el-button v-if="row.status === 'COMPLETED' && (userStore.role === 'ACADEMIC' || userStore.role === 'ADMIN')" size="small" type="primary" @click="handleReopen(row)">重新开课</el-button>
             <el-button v-if="row.status === 'COMPLETED'" size="small" type="info" @click="handleArchive(row)">归档</el-button>
           </template>
         </el-table-column>
@@ -82,7 +83,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getMicroSpecialtyList, approveMicroSpecialty, rejectMicroSpecialty, cancelMicroSpecialty, archiveMicroSpecialty } from '@/api/microSpecialty'
+import { getMicroSpecialtyList, approveMicroSpecialty, rejectMicroSpecialty, cancelMicroSpecialty, archiveMicroSpecialty, reopenMicroSpecialty } from '@/api/microSpecialty'
 import { useUserStore } from '@/store/user'
 import { sanitizeHtml } from '@/utils/xss'
 
@@ -155,6 +156,21 @@ const handleCancel = async (row) => {
   catch { return }
   try { await cancelMicroSpecialty(row.id); ElMessage.success('已取消'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+}
+
+const handleReopen = async (row) => {
+  try {
+    await ElMessageBox.confirm('确认将此微专业从 COMPLETED 重置为 RECRUITING？', '重新开课', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await reopenMicroSpecialty(row.id)
+    ElMessage.success('已重新开课')
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
+  }
 }
 
 const handleArchive = async (row) => {

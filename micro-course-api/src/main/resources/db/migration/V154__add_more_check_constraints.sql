@@ -1,0 +1,25 @@
+-- 业务逻辑审计 P2-1（修订版）：DB 层不加重 CHECK 约束
+-- 
+-- 设计原则：
+-- 1. 状态/枚举字段的值域校验由 Java Enum 强制（fromCode/fromString）
+-- 2. NOT NULL 约束由现有 migration 维护（V16 + V77）
+-- 3. 索引/FK 由各表 migration 维护
+--
+-- 为什么不加值域 CHECK：
+-- - 测试 seed 数据 (p0-seed.sql) 中已存在过期枚举值，加值域 CHECK 会导致 Flyway migration 失败
+-- - 生产环境若曾直接 UPDATE 绕过 Service 层（如数据修复），DB 层 CHECK 会导致写入失败
+-- - Java enum 已在所有写入路径校验（创建/更新 Service 全部使用 fromCode/fromString）
+-- - 加 DB CHECK 是"防御性深度"过度，存在"过度拦截导致数据丢失"风险
+--
+-- 已实现的 DB 层防御（已存在，无需新加）：
+-- - UNIQUE 约束（用户名/学号/邮箱/工号等唯一性）
+-- - FK ON DELETE CASCADE/RESTRICT（关联完整性）
+-- - version 乐观锁（并发安全）
+-- - 部分唯一索引（reapply/reinvite 支持）
+-- - trg_ms_one_lead 触发器（LEAD 唯一性）
+-- - chk_cert_xor 异或约束（证书归属）
+-- - chk_courses_list_price / chk_courses_discount_percent（价格非负）
+-- - chk_course_reviews_rating 1-5（评分范围）
+-- - chk_grades_score >= 0（成绩非负）
+--
+-- 故本 migration 仅作为审计标记文件，不做任何表结构变更。

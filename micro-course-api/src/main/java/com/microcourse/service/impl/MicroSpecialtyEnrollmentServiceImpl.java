@@ -3,7 +3,10 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyClassImportResultVO;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyClassImportResultVO.ClassImportItemVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
+import com.microcourse.entity.Classes;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.MicroSpecialty;
@@ -16,6 +19,7 @@ import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.dto.EnrollmentCreateRequest;
+import com.microcourse.repository.ClassesRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyCourseRepository;
@@ -35,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -56,12 +61,14 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     private final EnrollmentRepository courseEnrollmentRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
+    private final ClassesRepository classesRepository;
     private final NotificationService notificationService;
     private final EnrollmentService enrollmentService;
     private final MicroSpecialtyService msService;
     private final CertificateService certificateService;
     private final MicroSpecialtyEnrollmentQueryService queryService;
     private final MicroSpecialtyProgressService progressService;
+    private final MicroSpecialtyEnrollmentService self;
 
     public MicroSpecialtyEnrollmentServiceImpl(MicroSpecialtyEnrollmentRepository enrollmentRepository,
                                                MicroSpecialtyRepository msRepository,
@@ -70,12 +77,14 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                                                EnrollmentRepository courseEnrollmentRepository,
                                                CourseRepository courseRepository,
                                                UserRepository userRepository,
+                                               ClassesRepository classesRepository,
                                                NotificationService notificationService,
                                                EnrollmentService enrollmentService,
                                                @Lazy MicroSpecialtyService msService,
                                                CertificateService certificateService,
                                                MicroSpecialtyEnrollmentQueryService queryService,
-                                               MicroSpecialtyProgressService progressService) {
+                                               MicroSpecialtyProgressService progressService,
+                                               @Lazy MicroSpecialtyEnrollmentService self) {
         this.enrollmentRepository = enrollmentRepository;
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
@@ -83,12 +92,14 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         this.courseEnrollmentRepository = courseEnrollmentRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
+        this.classesRepository = classesRepository;
         this.notificationService = notificationService;
         this.enrollmentService = enrollmentService;
         this.msService = msService;
         this.certificateService = certificateService;
         this.queryService = queryService;
         this.progressService = progressService;
+        this.self = self;
     }
 
     @Override
@@ -350,21 +361,35 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class, timeout = 300)
-    public int classImportBatch(Long microSpecialtyId, java.util.List<Long> classIds) {
+    public MicroSpecialtyClassImportResultVO classImportBatch(Long microSpecialtyId, java.util.List<Long> classIds) {
+        MicroSpecialtyClassImportResultVO result = new MicroSpecialtyClassImportResultVO();
+        List<ClassImportItemVO> successList = new ArrayList<>();
+        List<ClassImportItemVO> failedList = new ArrayList<>();
         int totalCount = 0;
+
         for (Long classId : classIds) {
-            totalCount += classImport(microSpecialtyId, classId);
+            try {
+                int imported = self.classImport(microSpecialtyId, classId);
+                totalCount += imported;
+                Classes cls = classesRepository.selectById(classId);
+                successList.add(new ClassImportItemVO(classId, cls != null ? cls.getName() : "未知班级", imported, null));
+            } catch (Exception e) {
+                log.error("[MS classImportBatch] 班级 {} 导入失败，跳过继续处理下一个班级", classId, e);
+                Classes cls = classesRepository.selectById(classId);
+                failedList.add(new ClassImportItemVO(classId, cls != null ? cls.getName() : "未知班级", 0, e.getMessage()));
+            }
         }
-        return totalCount;
+
+        result.setTotalCount(classIds.size());
+        result.setSuccessCount(successList.size());
+        result.setFailedCount(failedList.size());
+        result.setSuccessList(successList);
+        result.setFailedList(failedList);
+        return result;
     }
 
     @Override
-    // P1-C-12-04 fix: 班级导入大事务超时
-    // 50 人班级 × 10 门课程 = 500 次 enroll() 调用在同一 DB 事务中执行
-    // PostgreSQL 事务超时默认 30s,大型班级会触发 timeout 导致整批失败
-    // 显式设置 5 分钟上限,适配 100 人 × 20 门课程 = 2000 次调用的极端场景
-    @Transactional(rollbackFor = Exception.class, timeout = 300)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class, timeout = 300)
     public int classImport(Long msId, Long classId) {
         MicroSpecialty ms = msRepository.selectForUpdate(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);

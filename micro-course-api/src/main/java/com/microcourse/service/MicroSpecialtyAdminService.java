@@ -1,5 +1,6 @@
 package com.microcourse.service;
 
+import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyLeadTransferRequest;
 import com.microcourse.entity.MicroSpecialty;
 
@@ -40,10 +41,16 @@ public interface MicroSpecialtyAdminService {
     void close(Long id);
 
     /** 教务处强制取消：任意状态 → CANCELLED（终态），事务内级联清理 */
-    void cancel(Long id);
+    void cancel(Long id, String reason);
 
     /** 归档：COMPLETED → ARCHIVED */
     void archive(Long id);
+
+    /** P2-11: 批量审批通过 */
+    BatchOperationResult batchApprove(java.util.List<Long> ids);
+
+    /** P2-11: 批量审批驳回 */
+    BatchOperationResult batchReject(java.util.List<Long> ids, String reason);
 
     // ====== LEAD 继任 ======
 

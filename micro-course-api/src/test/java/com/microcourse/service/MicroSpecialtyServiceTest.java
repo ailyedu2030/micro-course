@@ -103,7 +103,7 @@ class MicroSpecialtyServiceTest {
         lenient().doNothing().when(adminService).reject(anyLong(), anyString());
         lenient().doNothing().when(adminService).open(anyLong());
         lenient().doNothing().when(adminService).close(anyLong());
-        lenient().doNothing().when(adminService).cancel(anyLong());
+        lenient().doNothing().when(adminService).cancel(anyLong(), anyString());
         lenient().doNothing().when(adminService).archive(anyLong());
         lenient().doNothing().when(adminService).transferLeadership(anyLong(), any());
         lenient().doNothing().when(adminService).requireLeadOf(anyLong());
@@ -303,9 +303,9 @@ class MicroSpecialtyServiceTest {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
-            service.cancel(1L);
+            service.cancel(1L, "测试取消原因");
 
-            verify(adminService).cancel(1L);
+            verify(adminService).cancel(1L, "测试取消原因");
         }
     }
 
@@ -316,8 +316,8 @@ class MicroSpecialtyServiceTest {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
             su.when(SecurityUtil::isAdmin).thenReturn(false);
 
-            doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).cancel(1L);
-            BusinessException ex = assertThrows(BusinessException.class, () -> service.cancel(1L));
+            doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).cancel(eq(1L), anyString());
+            BusinessException ex = assertThrows(BusinessException.class, () -> service.cancel(1L, "测试取消原因"));
             assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
         }
     }
@@ -331,9 +331,9 @@ class MicroSpecialtyServiceTest {
             su.when(SecurityUtil::isAdminOrAcademic).thenReturn(true);
 
             // 不应抛 BusinessException
-            service.cancel(1L);
+            service.cancel(1L, "测试取消原因");
 
-            verify(adminService).cancel(1L);
+            verify(adminService).cancel(eq(1L), anyString());
         }
     }
 

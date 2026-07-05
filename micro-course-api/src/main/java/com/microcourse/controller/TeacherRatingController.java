@@ -39,7 +39,7 @@ public class TeacherRatingController {
      * GET /api/teacher-ratings
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<List<TeacherRatingVO>> listAll() {
         return R.ok(ratingService.listAllRatings());
     }
@@ -49,7 +49,7 @@ public class TeacherRatingController {
      * GET /api/teacher-ratings?tier=GOLD
      */
     @GetMapping("/by-tier")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<List<TeacherRatingVO>> listByTier(@RequestParam String tier) {
         return R.ok(ratingService.listByTier(tier.toUpperCase()));
     }
@@ -70,7 +70,7 @@ public class TeacherRatingController {
      * PUT /api/teacher-ratings/{teacherId}/tier
      */
     @PutMapping("/{teacherId}/tier")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> adjustTier(@PathVariable Long teacherId,
                               @RequestParam String newTier,
                               @RequestParam(required = false) String reason) {
@@ -84,7 +84,7 @@ public class TeacherRatingController {
      * POST /api/teacher-ratings/{teacherId}/recalculate
      */
     @PostMapping("/{teacherId}/recalculate")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<TeacherRatingVO> recalculate(@PathVariable Long teacherId) {
         return R.ok(ratingService.recalculate(teacherId));
     }
@@ -94,7 +94,7 @@ public class TeacherRatingController {
      * POST /api/teacher-ratings/recalculate-all
      */
     @PostMapping("/recalculate-all")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Integer> recalculateAll() {
         return R.ok(ratingService.recalculateAll());
     }

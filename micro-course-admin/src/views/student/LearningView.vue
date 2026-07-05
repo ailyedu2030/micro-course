@@ -18,6 +18,11 @@
       @show-notes="activeTab = 'course'"
     />
 
+    <!-- ===================== 1.5 课程状态提示 ===================== -->
+    <div v-if="courseStatusWarning" class="status-warning-bar">
+      <el-alert :title="courseStatusWarning" type="warning" :closable="false" show-icon />
+    </div>
+
     <!-- ===================== 2. 顶部 Tab ===================== -->
     <div class="learning-tabs">
       <div class="tab-bar">
@@ -159,6 +164,13 @@ const progressRawList = ref([]) // 原始进度列表，用于 chapterId 维度�
 const loading = ref(true)
 const drawerOpen = ref(false)
 const expandedChapters = ref([])
+
+// 课程状态警告
+const courseStatusWarning = computed(() => {
+  if (course.value?.status === 5) return '该课程已下架，您仍可继续学习已选内容'
+  if (course.value?.status === 6) return '该课程已归档'
+  return ''
+})
 
 // 总体进度
 const totalProgress = computed(() => {
@@ -714,6 +726,14 @@ onBeforeUnmount(async () => {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ==================== 5. 移动端响应式 ==================== */
+/* 课程状态提示条 */
+.status-warning-bar {
+  max-width: 1400px;
+  margin: var(--space-2) auto 0;
+  padding: 0 var(--space-6);
+  width: 100%;
+}
+
 @media (max-width: 768px) {
   .tab-bar { padding: 0 var(--space-4); }
   .tab-item { padding: var(--space-3) var(--space-3-5); font-size: var(--text-sm); }

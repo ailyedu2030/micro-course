@@ -154,6 +154,7 @@
                 <el-select v-model="formData.gender" placeholder="请选择" class="full-width" clearable>
                   <el-option label="男" value="MALE" />
                   <el-option label="女" value="FEMALE" />
+                  <el-option label="保密" value="SECRET" />
                 </el-select>
               </el-form-item>
             </el-col>

@@ -1,7 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.microcourse.entity.Video;
-import com.microcourse.entity.VideoStatus;
+import com.microcourse.enums.VideoStatus;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.VideoTranscodeService;
 import org.slf4j.Logger;

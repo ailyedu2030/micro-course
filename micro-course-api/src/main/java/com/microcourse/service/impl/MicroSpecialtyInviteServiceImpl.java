@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.invite.AcceptWithChaptersRequest;
+import com.microcourse.dto.invite.InviteStatisticsVO;
 import com.microcourse.dto.invite.AcceptWithChaptersRequest.ChapterDecisionItem;
 import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyTeacher;
@@ -498,5 +499,56 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                     "邀请已接受", teacher.getRealName() + " 已加入微专业团队",
                     record.getMicroSpecialtyId());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public InviteStatisticsVO getInviteStatistics(Long microSpecialtyId) {
+        List<MicroSpecialtyTeacher> records = teacherRepository.selectList(
+                new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                        .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, microSpecialtyId));
+
+        InviteStatisticsVO vo = new InviteStatisticsVO();
+        vo.setTotalInvited(records.size());
+
+        long active = 0, declined = 0, pendingAcademic = 0, removed = 0;
+        long totalAcceptTimeHours = 0;
+        int acceptCount = 0;
+        long expiry = 0;
+        long pending = 0;
+
+        for (MicroSpecialtyTeacher r : records) {
+            String status = r.getInviteStatus();
+            if ("ACTIVE".equals(status)) {
+                active++;
+                if (r.getInvitedAt() != null && r.getRespondedAt() != null) {
+                    long diffHours = java.time.Duration.between(r.getInvitedAt(), r.getRespondedAt()).toHours();
+                    totalAcceptTimeHours += diffHours;
+                    acceptCount++;
+                }
+            } else if ("DECLINED".equals(status)) {
+                declined++;
+            } else if ("PENDING_ACADEMIC".equals(status)) {
+                pendingAcademic++;
+            } else if ("REMOVED".equals(status)) {
+                removed++;
+            }
+            if ("INVITED".equals(status)) {
+                if (r.getInviteExpiresAt() != null && r.getInviteExpiresAt().isBefore(LocalDateTime.now())) {
+                    expiry++;
+                } else {
+                    pending++;
+                }
+            }
+        }
+
+        vo.setActiveCount(active);
+        vo.setDeclinedCount(declined);
+        vo.setPendingAcademicCount(pendingAcademic);
+        vo.setRemovedCount(removed);
+        vo.setAverageAcceptanceTimeHours(acceptCount > 0 ? (double) totalAcceptTimeHours / acceptCount : 0.0);
+        vo.setExpiryCount(expiry);
+        vo.setPendingCount(pending);
+        return vo;
     }
 }

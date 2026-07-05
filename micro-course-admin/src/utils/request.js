@@ -168,6 +168,12 @@ request.interceptors.response.use(response => {
     if (!config._suppressErrorToast) {
       ElMessage.error('无权访问该资源，请联系管理员获取权限')
     }
+  } else if (status === 423) {
+    ElMessage.warning(res.message || '登录失败次数过多，账号已锁定 30 分钟')
+  } else if (status === 429) {
+    ElMessage.warning(res.message || '操作过于频繁，请稍后重试')
+  } else if (status === 413) {
+    ElMessage.error(res.message || '文件过大，超出上传限制')
   } else if (status >= 500) {
     ElMessage.error('服务器错误，请稍后重试')
   } else {

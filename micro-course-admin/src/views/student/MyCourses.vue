@@ -826,7 +826,7 @@ const handleDropOut = async (course) => {
   }
   try {
     await ElMessageBox.confirm(
-      `确定退选《${course.courseTitle || '课程'}》吗?退课后将清除学习进度,此操作不可撤销。`,
+      `退课将自动触发退款（若有已支付订单），并暂停学习记录（数据保留 180 天），是否继续？`,
       '退课确认',
       { confirmButtonText: '确认退课', cancelButtonText: '取消', type: 'warning' }
     )

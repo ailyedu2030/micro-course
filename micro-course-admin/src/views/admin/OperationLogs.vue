@@ -101,6 +101,11 @@
         <div class="card-header">
           <span class="card-title">操作日志</span>
           <span class="card-count">共 {{ totalElements }} 条记录</span>
+          <div class="card-actions">
+            <el-button type="success" :loading="exporting" @click="handleExport">
+              <el-icon><Download /></el-icon>导出 Excel
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -273,8 +278,8 @@ import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage } from 'element-plus'
-import { Search, RefreshRight, View } from '@element-plus/icons-vue'
-import { getLogs } from '@/api/operation-log'
+import { Search, RefreshRight, View, Download } from '@element-plus/icons-vue'
+import { getLogs, exportOperationLogs } from '@/api/operation-log'
 
 // 加载状态
 const loading = ref(false)
@@ -311,6 +316,9 @@ const searchForm = reactive({
 // P2-14: URL 分页同步
 const { bindToQuery } = useUrlPagination()
 bindToQuery(page, size, searchForm, ['userId', 'username', 'module', 'action', 'startTime', 'endTime'])
+
+// 导出状态
+const exporting = ref(false)
 
 // 详情弹窗
 const detailVisible = ref(false)
@@ -448,7 +456,34 @@ function handleViewDetail(row) {
   detailVisible.value = true
 }
 
+// 导出 Excel
+async function handleExport() {
+  exporting.value = true
+  try {
+    const res = await exportOperationLogs(searchForm)
+    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `operation_logs_${formatTimestamp()}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('导出失败')
+  } finally {
+    exporting.value = false
+  }
+}
+
 // 工具方法
+function formatTimestamp() {
+  const d = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}
+
 function formatTime(isoString) {
   if (!isoString) return '-'
   const d = new Date(isoString)
@@ -568,6 +603,11 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.card-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .card-title {

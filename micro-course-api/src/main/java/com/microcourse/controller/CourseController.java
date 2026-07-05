@@ -1,6 +1,9 @@
 package com.microcourse.controller;
 
 import com.microcourse.audit.AuditedLog;
+import com.microcourse.dto.BatchApproveRequest;
+import com.microcourse.dto.BatchOperationResult;
+import com.microcourse.dto.BatchRejectRequest;
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
 import com.microcourse.dto.CoursePricingInfoVO;
@@ -16,6 +19,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.security.RequireRole;
+import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
@@ -39,13 +43,16 @@ public class CourseController {
     private final CourseService courseService;
     private final CourseQueryService courseQueryService;
     private final EnrollmentService enrollmentService;
+    private final CourseAdminService courseAdminService;
 
     public CourseController(CourseService courseService,
                             CourseQueryService courseQueryService,
-                            EnrollmentService enrollmentService) {
+                            EnrollmentService enrollmentService,
+                            CourseAdminService courseAdminService) {
         this.courseService = courseService;
         this.courseQueryService = courseQueryService;
         this.enrollmentService = enrollmentService;
+        this.courseAdminService = courseAdminService;
     }
 
     @GetMapping
@@ -287,6 +294,30 @@ public class CourseController {
     public R<Void> unpublish(@PathVariable Long id) {
         courseService.unpublish(id);
         return R.ok();
+    }
+
+    /**
+     * P2-11: 批量审核通过
+     * POST /api/courses/batch-approve
+     * 权限: ADMIN / ACADEMIC
+     */
+    @PostMapping("/batch-approve")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @AuditedLog("批量课程审核通过")
+    public R<BatchOperationResult> batchApprove(@Valid @RequestBody BatchApproveRequest req) {
+        return R.ok(courseAdminService.batchApprove(req.getIds()));
+    }
+
+    /**
+     * P2-11: 批量审核驳回
+     * POST /api/courses/batch-reject
+     * 权限: ADMIN / ACADEMIC
+     */
+    @PostMapping("/batch-reject")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @AuditedLog("批量课程审核驳回")
+    public R<BatchOperationResult> batchReject(@Valid @RequestBody BatchRejectRequest req) {
+        return R.ok(courseAdminService.batchReject(req.getIds(), req.getReason()));
     }
 
     /**

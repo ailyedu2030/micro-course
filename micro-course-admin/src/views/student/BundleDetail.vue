@@ -46,11 +46,21 @@ v-for="item in items" :key="item.id" class="course-row student-card-item"
               请先登录
             </el-button>
             <el-button v-else-if="isEnrolled" type="primary" size="large" class="buy-btn" @click="startLearning">
-              开始学习
+              {{ firstUncompleted ? '开始学习（下一节）' : '开始学习' }}
             </el-button>
             <el-button v-else type="primary" size="large" class="buy-btn" :loading="buyLoading" @click="handleBuy">
               {{ bundle?.isFree || !bundle?.price ? '立即加入' : '立即购买 · ¥' + bundle?.price }}
             </el-button>
+          </el-card>
+
+          <el-card v-if="isEnrolled && requiredCourses.length" shadow="never" class="path-card">
+            <template #header><span>套餐学习路径</span></template>
+            <div v-for="(c, idx) in requiredCourses" :key="c.id" class="path-row" :class="{ completed: courseProgress[c.courseId || c.id], active: firstUncompleted?.courseId === c.courseId || firstUncompleted?.id === c.id }">
+              <span class="path-order">{{ idx + 1 }}</span>
+              <span class="path-title">{{ c.courseTitle || `课程 ${c.courseId}` }}</span>
+              <el-tag v-if="courseProgress[c.courseId || c.id]" type="success" size="small">已完成</el-tag>
+              <el-tag v-else type="warning" size="small">未完成</el-tag>
+            </div>
           </el-card>
         </el-col>
       </el-row>
@@ -65,7 +75,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowRight } from '@element-plus/icons-vue'
 import { getBundleById, getBundleEnrollmentStatus } from '@/api/bundle'
 import { createOrder, payOrder } from '@/api/order'
+import { batchGetLearningProgress } from '@/api/learning-progress'
 import { useUserStore } from '@/store/user'
+import { getMyEnrollments } from '@/api/enrollment'
 
 const router = useRouter()
 const route = useRoute()
@@ -77,10 +89,19 @@ const items = ref([])
 const loading = ref(false)
 const buyLoading = ref(false)
 const isEnrolled = ref(false)
+const courseProgress = ref({})
 
 const isLoggedIn = computed(() => !!userStore.token)
 const requiredCount = computed(() => items.value.filter(i => i.isRequired).length)
 const electiveCount = computed(() => items.value.filter(i => !i.isRequired).length)
+const enrolledCourseIds = ref(new Set())
+const selectedCount = computed(() => items.value.filter(i => enrolledCourseIds.value.has(i.courseId || i.id)).length)
+const totalCount = computed(() => items.value.length)
+
+const requiredCourses = computed(() => items.value.filter(i => i.isRequired))
+const firstUncompleted = computed(() => {
+  return requiredCourses.value.find(c => !courseProgress.value[c.courseId || c.id])
+})
 
 onMounted(async () => {
   loading.value = true
@@ -89,6 +110,7 @@ onMounted(async () => {
     const promises = [getBundleById(bundleId.value)]
     if (isLoggedIn.value) {
       promises.push(getBundleEnrollmentStatus(bundleId.value))
+      promises.push(getMyEnrollments({ page: 0, size: 999 }))
     }
     const results = await Promise.all(promises)
     const bundleResp = results[0]
@@ -97,17 +119,36 @@ onMounted(async () => {
     if (results.length > 1) {
       isEnrolled.value = results[1].data.enrolled
     }
+    if (results.length > 2) {
+      const enrollData = results[2].data || []
+      const list = Array.isArray(enrollData) ? enrollData : (enrollData.items || [])
+      enrolledCourseIds.value = new Set(list.map(e => e.courseId))
+    }
+    if (isEnrolled.value && items.value.length) {
+      const courseIds = items.value.map(i => i.courseId || i.id).filter(Boolean)
+      if (courseIds.length) {
+        try {
+          const { data: progressList } = await batchGetLearningProgress(courseIds)
+          if (Array.isArray(progressList)) {
+            const map = {}
+            progressList.forEach(p => { map[p.courseId] = p.completed })
+            courseProgress.value = map
+          }
+        } catch { /* 静默 */ }
+      }
+    }
   } catch (e) { ElMessage.error(e?.response?.data?.message || '加载套件失败') }
   finally { loading.value = false }
 })
 
 const goLogin = () => router.push('/login')
 const goCourse = (id) => router.push(`/student/courses/${id}`)
+const handleContinue = () => { handleBuy() }
 
 const startLearning = () => {
-  const firstCourse = bundle.value?.courses?.[0] || items.value?.[0]
-  if (firstCourse) {
-    router.push(`/student/courses/${firstCourse.courseId || firstCourse.id}`)
+  const target = firstUncompleted.value || requiredCourses.value[0] || items.value[0]
+  if (target) {
+    router.push(`/student/courses/${target.courseId || target.id}`)
   } else {
     ElMessage.warning('套餐内暂无课程')
   }
@@ -116,7 +157,8 @@ const startLearning = () => {
 const handleBuy = async () => {
   buyLoading.value = true
   try {
-    const firstRequired = items.value.find(i => i.isRequired)
+    // 找第一个未选课的必修课
+    const firstRequired = items.value.find(i => i.isRequired && !enrolledCourseIds.value.has(i.courseId || i.id))
     if (!firstRequired) { ElMessage.warning('套件无必修课'); return }
     const { data: order } = await createOrder({ courseId: firstRequired.courseId, bundleId: bundleId.value })
     if (order.status === 'PAID') {
@@ -171,4 +213,11 @@ const handleBuy = async () => {
 .student-count { font-size: var(--text-sm); color: var(--el-text-color-secondary); margin: 0 0 var(--space-3); }
 .desc-text { font-size: var(--text-sm); color: var(--el-text-color-secondary); margin: var(--space-1) 0; }
 .buy-btn { width: 100%; margin-top: var(--space-4); height: 46px; font-size: var(--text-md); }
+.path-card { margin-top: var(--space-3); }
+.path-row { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--el-border-color-lighter); font-size: var(--text-sm); }
+.path-row:last-child { border-bottom: none; }
+.path-row.completed { opacity: 0.6; }
+.path-row.active { background: var(--el-color-primary-light-9); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-1); }
+.path-order { width: 20px; height: 20px; border-radius: 50%; background: var(--el-color-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.path-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

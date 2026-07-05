@@ -85,7 +85,9 @@ public class AdminSettingServiceImpl implements AdminSettingService {
         LocalDateTime now = LocalDateTime.now();
         for (SettingUpdateRequest req : settings) {
             // P1-3: 使用 PostgreSQL ON CONFLICT 原子 upsert
-            adminSettingRepository.upsertByKey(req.getKey(), req.getValue(), now);
+            // P2-8: 传递 valueType
+            String vt = req.getValueType() != null && !req.getValueType().isBlank() ? req.getValueType() : "STRING";
+            adminSettingRepository.upsertByKey(req.getKey(), req.getValue(), vt, now);
         }
     }
 
@@ -100,7 +102,21 @@ public class AdminSettingServiceImpl implements AdminSettingService {
     })
     @Transactional(rollbackFor = Exception.class)
     public void upsert(String key, String value) {
-        adminSettingRepository.upsertByKey(key, value, LocalDateTime.now());
+        adminSettingRepository.upsertByKey(key, value, "STRING", LocalDateTime.now());
+    }
+
+    /**
+     * P2-8: 带 valueType 的 upsert
+     */
+    @Override
+    @Caching(evict = {
+            @CacheEvict(value = "adminSettingsList", allEntries = true),
+            @CacheEvict(value = "adminSettingsByKey", allEntries = true)
+    })
+    @Transactional(rollbackFor = Exception.class)
+    public void upsert(String key, String value, String valueType) {
+        String vt = (valueType != null && !valueType.isBlank()) ? valueType : "STRING";
+        adminSettingRepository.upsertByKey(key, value, vt, LocalDateTime.now());
     }
 
     private AdminSettingVO convertToVO(AdminSetting setting) {
@@ -108,6 +124,7 @@ public class AdminSettingServiceImpl implements AdminSettingService {
         vo.setId(setting.getId());
         vo.setSettingKey(setting.getSettingKey());
         vo.setSettingValue(setting.getSettingValue());
+        vo.setValueType(setting.getValueType() != null ? setting.getValueType() : "STRING");
         vo.setDescription(setting.getDescription());
         vo.setUpdatedAt(setting.getUpdatedAt());
         return vo;

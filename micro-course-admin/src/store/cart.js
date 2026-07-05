@@ -4,6 +4,8 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import { logger } from '@/utils/logger'
 import { getCart, addCartItem, removeCartItem as apiRemove, clearCart as apiClear } from '@/api/cart'
 
 const STORAGE_KEY = 'micro_course_cart'
@@ -37,7 +39,10 @@ export const useCartStore = defineStore('cart', () => {
     if (exists) {
       // 异步同步到服务端（确保服务端也有该记录）
       if (synced.value) {
-        try { await addCartItem(course.id, 1) } catch (e) { /* silent */ }
+        try { await addCartItem(course.id, 1) } catch (e) {
+          logger.error('[cart] 服务端同步失败', e)
+          ElMessage.warning('购物车同步失败，请刷新页面')
+        }
       }
       return false  // 已存在，不重复添加
     }
@@ -52,7 +57,10 @@ export const useCartStore = defineStore('cart', () => {
     })
     // 异步同步到服务端
     if (synced.value) {
-      try { await addCartItem(course.id, 1) } catch (e) { /* silent */ }
+      try { await addCartItem(course.id, 1) } catch (e) {
+        logger.error('[cart] 服务端同步失败', e)
+        ElMessage.warning('购物车同步失败，请刷新页面')
+      }
     }
     return true
   }
@@ -60,14 +68,20 @@ export const useCartStore = defineStore('cart', () => {
   async function removeItem(courseId) {
     items.value = items.value.filter(i => i.courseId !== courseId)
     if (synced.value) {
-      try { await apiRemove(courseId) } catch (e) { /* silent */ }
+      try { await apiRemove(courseId) } catch (e) {
+        logger.error('[cart] 服务端同步失败', e)
+        ElMessage.warning('购物车同步失败，请刷新页面')
+      }
     }
   }
 
   async function clear() {
     items.value = []
     if (synced.value) {
-      try { await apiClear() } catch (e) { /* silent */ }
+      try { await apiClear() } catch (e) {
+        logger.error('[cart] 服务端同步失败', e)
+        ElMessage.warning('购物车同步失败，请刷新页面')
+      }
     }
   }
 

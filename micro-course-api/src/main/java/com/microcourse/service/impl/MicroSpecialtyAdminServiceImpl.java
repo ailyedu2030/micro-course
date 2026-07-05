@@ -2,6 +2,7 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyLeadTransferRequest;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.MicroSpecialty;
@@ -11,6 +12,7 @@ import com.microcourse.entity.MicroSpecialtyFeaturedAudit;
 import com.microcourse.entity.MicroSpecialtyTeacher;
 import com.microcourse.entity.User;
 import com.microcourse.enums.EnrollmentStatus;
+import com.microcourse.enums.MicroSpecialtyStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
@@ -91,7 +93,8 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
 
     @Override
     public void checkNotTerminal(MicroSpecialty ms) {
-        if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
+        MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (current == MicroSpecialtyStatus.CANCELLED || current == MicroSpecialtyStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
         }
     }
@@ -106,8 +109,8 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
 
         requireLeadOf(id);
 
-        String currentStatus = ms.getStatus();
-        if (!"DRAFT".equals(currentStatus) && !"REJECTED".equals(currentStatus)) {
+        MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.PENDING_REVIEW)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅草稿或已驳回状态可提交审核");
         }
 
@@ -130,7 +133,7 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, id)
                         .eq(MicroSpecialty::getVersion, oldVersion)
-                        .eq(MicroSpecialty::getStatus, currentStatus)
+                        .eq(MicroSpecialty::getStatus, ms.getStatus())
                         .set(MicroSpecialty::getStatus, "PENDING_REVIEW")
                         .set(MicroSpecialty::getSubmittedAt, LocalDateTime.now())
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
@@ -151,7 +154,8 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
-        if (!"PENDING_REVIEW".equals(ms.getStatus())) {
+        MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.APPROVED)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可审批通过");
         }
 
@@ -160,7 +164,7 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, id)
                         .eq(MicroSpecialty::getVersion, oldVersion)
-                        .eq(MicroSpecialty::getStatus, "PENDING_REVIEW")
+                        .eq(MicroSpecialty::getStatus, ms.getStatus())
                         .set(MicroSpecialty::getStatus, "APPROVED")
                         .set(MicroSpecialty::getApprovedAt, LocalDateTime.now())
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
@@ -179,7 +183,8 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
-        if (!"PENDING_REVIEW".equals(ms.getStatus())) {
+        MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.REJECTED)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅待审核状态可驳回");
         }
 
@@ -188,7 +193,7 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, id)
                         .eq(MicroSpecialty::getVersion, oldVersion)
-                        .eq(MicroSpecialty::getStatus, "PENDING_REVIEW")
+                        .eq(MicroSpecialty::getStatus, ms.getStatus())
                         .set(MicroSpecialty::getStatus, "REJECTED")
                         .set(MicroSpecialty::getRejectReason, com.microcourse.util.XssSanitizer.sanitizePlainText(reason))
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
@@ -209,7 +214,8 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
 
         requireLeadOf(id);
 
-        if (!"APPROVED".equals(ms.getStatus())) {
+        MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.RECRUITING)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已通过状态可开课");
         }
 
@@ -229,7 +235,7 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, id)
                         .eq(MicroSpecialty::getVersion, oldVersion)
-                        .eq(MicroSpecialty::getStatus, "APPROVED")
+                        .eq(MicroSpecialty::getStatus, ms.getStatus())
                         .set(MicroSpecialty::getStatus, "RECRUITING")
                         .set(MicroSpecialty::getOpenedAt, LocalDateTime.now())
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
@@ -259,7 +265,8 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
 
         requireLeadOf(id);
 
-        if (!"RECRUITING".equals(ms.getStatus())) {
+        MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.COMPLETED)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅招生中状态可结业");
         }
 
@@ -268,7 +275,7 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, id)
                         .eq(MicroSpecialty::getVersion, oldVersion)
-                        .eq(MicroSpecialty::getStatus, "RECRUITING")
+                        .eq(MicroSpecialty::getStatus, ms.getStatus())
                         .set(MicroSpecialty::getStatus, "COMPLETED")
                         .set(MicroSpecialty::getClosedAt, LocalDateTime.now())
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
@@ -285,15 +292,32 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void cancel(Long id) {
+    public void cancel(Long id, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "取消原因不能为空");
+        }
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
-        if (!SecurityUtil.isAdminOrAcademic()) {
-            requireLeadOf(id);
+        // ★ P1-I-4 修复：Service 层只允许 ADMIN/ACADEMIC 取消微专业
+        if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC")) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        if ("CANCELLED".equals(ms.getStatus())) throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已被取消");
+        // ★ P1-I-3 修复：已结业不可取消，已归档/已取消不可再取消
+        MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (current == MicroSpecialtyStatus.CANCELLED || current == MicroSpecialtyStatus.ARCHIVED) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "已取消/已归档微专业不能再取消");
+        }
+        if (current == MicroSpecialtyStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "已结业微专业应先归档，不能直接取消");
+        }
+        // P1-I-1 修复：枚举 canTransitionTo 检查
+        if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.CANCELLED)) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前状态不允许取消");
+        }
+
+        String safeReason = com.microcourse.util.XssSanitizer.sanitizePlainText(reason);
 
         int oldVersion = ms.getVersion();
         int affected = msRepository.update(null,
@@ -302,6 +326,7 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                         .eq(MicroSpecialty::getVersion, oldVersion)
                         .eq(MicroSpecialty::getStatus, ms.getStatus())
                         .set(MicroSpecialty::getStatus, "CANCELLED")
+                        .set(MicroSpecialty::getCancelReason, safeReason)
                         .set(MicroSpecialty::getClosedAt, LocalDateTime.now())
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
@@ -357,22 +382,22 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
             audit.setAction("CANCELLED");
             audit.setBeforeValue(new ObjectMapper().writeValueAsString(ms));
             audit.setAfterValue(null);
-            audit.setReason("微专业被取消");
+            audit.setReason(safeReason);
             audit.setCreatedAt(LocalDateTime.now());
             msFeaturedAuditRepository.insert(audit);
         } catch (JsonProcessingException e) {
             log.warn("写入取消审计日志时 JSON 序列化失败: msId={}", id, e);
         }
 
-        // 通知 LEAD
+        // 通知 LEAD（附带原因）
         if (ms.getLeadTeacherId() != null) {
             notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_CANCELLED,
-                    "微专业已取消", "微专业《" + ms.getTitle() + "》已被取消", id);
+                    "微专业已取消", "微专业《" + ms.getTitle() + "》已被取消，原因：" + safeReason, id);
         }
         // 通知所有受影响学生
         for (MicroSpecialtyEnrollment en : enrollments) {
             notificationService.notifyAsync(en.getUserId(), NotificationType.MS_CANCELLED,
-                    "微专业已取消", "您修读的微专业《" + ms.getTitle() + "》已被取消", id);
+                    "微专业已取消", "您修读的微专业《" + ms.getTitle() + "》已被取消，原因：" + safeReason, id);
         }
     }
 
@@ -382,7 +407,8 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
-        if (!"COMPLETED".equals(ms.getStatus())) {
+        MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.ARCHIVED)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已完成状态可归档");
         }
 
@@ -391,7 +417,7 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, id)
                         .eq(MicroSpecialty::getVersion, oldVersion)
-                        .eq(MicroSpecialty::getStatus, "COMPLETED")
+                        .eq(MicroSpecialty::getStatus, ms.getStatus())
                         .set(MicroSpecialty::getStatus, "ARCHIVED")
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
@@ -411,8 +437,8 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
-        String s = ms.getStatus();
-        if ("CANCELLED".equals(s) || "COMPLETED".equals(s) || "ARCHIVED".equals(s)) {
+        MicroSpecialtyStatus s = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (s == MicroSpecialtyStatus.CANCELLED || s == MicroSpecialtyStatus.COMPLETED || s == MicroSpecialtyStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "终态微专业不可转移负责人");
         }
 
@@ -485,5 +511,37 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
         }
         notificationService.notifyAsync(newLeadId, NotificationType.MS_LEAD_TRANSFERRED,
                 "您已成为微专业负责人", "您已被指定为微专业《" + ms.getTitle() + "》新负责人", msId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BatchOperationResult batchApprove(List<Long> ids) {
+        BatchOperationResult result = new BatchOperationResult();
+        for (Long id : ids) {
+            try {
+                approve(id);
+                result.addSuccess(id);
+            } catch (Exception e) {
+                log.warn("批量微专业审批通过失败, id={}, reason={}", id, e.getMessage());
+                result.addFailure(id, e.getMessage());
+            }
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BatchOperationResult batchReject(List<Long> ids, String reason) {
+        BatchOperationResult result = new BatchOperationResult();
+        for (Long id : ids) {
+            try {
+                reject(id, reason);
+                result.addSuccess(id);
+            } catch (Exception e) {
+                log.warn("批量微专业审批驳回失败, id={}, reason={}", id, e.getMessage());
+                result.addFailure(id, e.getMessage());
+            }
+        }
+        return result;
     }
 }

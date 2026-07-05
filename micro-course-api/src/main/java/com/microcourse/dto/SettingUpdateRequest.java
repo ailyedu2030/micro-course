@@ -23,6 +23,9 @@ public class SettingUpdateRequest {
     @JsonProperty("settingValue")
     private String value;
 
+    @JsonProperty("valueType")
+    private String valueType;
+
     public SettingUpdateRequest() {}
 
     public SettingUpdateRequest(String key, String value) {
@@ -34,4 +37,6 @@ public class SettingUpdateRequest {
     public void setKey(String key) { this.key = key; }
     public String getValue() { return value; }
     public void setValue(String value) { this.value = value; }
+    public String getValueType() { return valueType; }
+    public void setValueType(String valueType) { this.valueType = valueType; }
 }

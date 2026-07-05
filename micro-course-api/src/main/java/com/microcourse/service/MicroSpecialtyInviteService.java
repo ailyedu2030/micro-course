@@ -2,6 +2,7 @@ package com.microcourse.service;
 
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.invite.AcceptWithChaptersRequest;
+import com.microcourse.dto.invite.InviteStatisticsVO;
 
 /**
  * 微专业教师邀请 Service 接口。
@@ -36,4 +37,7 @@ public interface MicroSpecialtyInviteService {
 
     /** 每小时扫 INVITED 过期 → DECLINED + 通知 */
     int scanExpired();
+
+    /** P2-15: 获取教师邀请统计 */
+    InviteStatisticsVO getInviteStatistics(Long microSpecialtyId);
 }

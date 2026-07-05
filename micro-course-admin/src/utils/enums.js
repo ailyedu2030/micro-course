@@ -56,6 +56,55 @@ export const EnrollmentStatus = {
   ENROLLED: 'ENROLLED'
 }
 
+/** UserStatus（值=code 整数，对齐后端 UserStatus.getCode()） */
+export const UserStatus = {
+  INACTIVE: 0, ACTIVE: 1, DISABLED: 2, DELETED: 3
+}
+
+/** OrderStatus（值=枚举名，对齐后端 OrderStatus.name()） */
+export const OrderStatus = {
+  PENDING: 'PENDING', PAID: 'PAID',
+  CANCELLED: 'CANCELLED', REFUNDED: 'REFUNDED'
+}
+
+/** TeachingClassStatus（值=code 整数，对齐后端 TeachingClassStatus.getCode()） */
+export const TeachingClassStatus = {
+  CANCELLED: 0, ACTIVE: 1, COMPLETED: 2
+}
+
+/** MicroSpecialtyStatus（值=枚举名，对齐后端 MicroSpecialtyStatus.name()） */
+export const MicroSpecialtyStatus = {
+  DRAFT: 'DRAFT', PENDING_REVIEW: 'PENDING_REVIEW',
+  APPROVED: 'APPROVED', REJECTED: 'REJECTED',
+  RECRUITING: 'RECRUITING', COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED', ARCHIVED: 'ARCHIVED'
+}
+
+/** MicroSpecialtyEnrollmentStatus（值=枚举名，对齐后端 MicroSpecialtyEnrollmentStatus.name()） */
+export const MicroSpecialtyEnrollmentStatus = {
+  PENDING: 'PENDING', APPROVED: 'APPROVED',
+  IN_PROGRESS: 'IN_PROGRESS', COMPLETED: 'COMPLETED',
+  DROPPED: 'DROPPED', FAILED: 'FAILED',
+  REJECTED: 'REJECTED', CERTIFIED: 'CERTIFIED'
+}
+
+/** MicroSpecialtyFeaturedStatus（值=枚举名，对齐后端 MicroSpecialtyFeaturedStatus.name()） */
+export const MicroSpecialtyFeaturedStatus = {
+  NONE: 'NONE', PENDING: 'PENDING',
+  APPROVED: 'APPROVED', REJECTED: 'REJECTED'
+}
+
+/** MicroSpecialtyTeacherRole（值=枚举名，对齐后端 MicroSpecialtyTeacherRole.name()） */
+export const MicroSpecialtyTeacherRole = {
+  LEAD: 'LEAD', MEMBER: 'MEMBER', ASSISTANT: 'ASSISTANT'
+}
+
+/** MicroSpecialtyProposalStatus（值=枚举名，对齐后端 MicroSpecialtyProposalStatus.name()） */
+export const MicroSpecialtyProposalStatus = {
+  DRAFT: 'DRAFT', PENDING_REVIEW: 'PENDING_REVIEW',
+  APPROVED: 'APPROVED', REJECTED: 'REJECTED', WITHDRAWN: 'WITHDRAWN'
+}
+
 /** 通知类型（值=code 字符串，对齐后端 NotificationType.getCode()，持久化进 notifications.type） */
 export const NotificationType = {
   ENROLLMENT_SUCCESS: 'ENROLLMENT_SUCCESS',
@@ -72,7 +121,8 @@ export const NotificationType = {
 /** 性别（值=枚举名，对齐后端 Gender.name()） */
 export const Gender = {
   MALE: 'MALE',
-  FEMALE: 'FEMALE'
+  FEMALE: 'FEMALE',
+  SECRET: 'SECRET'  // ★ 新增
 }
 
 /**

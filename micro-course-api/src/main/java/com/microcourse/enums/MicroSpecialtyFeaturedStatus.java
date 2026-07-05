@@ -27,6 +27,16 @@ public enum MicroSpecialtyFeaturedStatus {
         return null;
     }
 
+    public static MicroSpecialtyFeaturedStatus fromString(String status) {
+        if (status == null) return null;
+        for (MicroSpecialtyFeaturedStatus s : values()) {
+            if (s.name().equals(status)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
     public static MicroSpecialtyFeaturedStatus fromCode(Integer code) {
         if (code == null) return null;
         for (MicroSpecialtyFeaturedStatus status : values()) {
@@ -51,7 +61,9 @@ public enum MicroSpecialtyFeaturedStatus {
                 return target == APPROVED || target == REJECTED;
             case REJECTED:
                 return target == PENDING;  // 可重新申请
-            case APPROVED:  // 终态（除非主动取消置顶）
+            case APPROVED:
+                // 主动撤销置顶是合法操作（unsetFeatured）
+                return target == NONE;
             default:
                 return false;
         }

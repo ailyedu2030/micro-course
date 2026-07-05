@@ -1,5 +1,6 @@
 package com.microcourse.service;
 
+import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyProposalRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
@@ -48,4 +49,10 @@ public interface MicroSpecialtyProposalService {
      * 对于普通 proposal 类型，走原有的 approveProposal 逻辑。</p>
      */
     void approveAndCreateSpecialty(Long proposalId, Long reviewerId);
+
+    /** P2-11: 批量审批通过 */
+    BatchOperationResult batchApproveProposal(java.util.List<Long> ids);
+
+    /** P2-11: 批量审批驳回 */
+    BatchOperationResult batchRejectProposal(java.util.List<Long> ids, String reason);
 }

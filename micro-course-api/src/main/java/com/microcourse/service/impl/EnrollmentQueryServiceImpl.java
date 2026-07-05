@@ -14,6 +14,7 @@ import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.Major;
 import com.microcourse.entity.User;
+import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -29,6 +30,7 @@ import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,6 +39,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import jakarta.servlet.http.HttpServletResponse;
+import cn.hutool.poi.excel.ExcelUtil;
+import cn.hutool.poi.excel.ExcelWriter;
 
 @Service
 public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
@@ -255,6 +260,46 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
             }
         }
         return vo;
+    }
+
+    @Override
+    public void exportEnrollments(Long courseId, HttpServletResponse response) throws IOException {
+        if (SecurityUtil.hasRole("TEACHER")) {
+            Course course = courseRepository.selectById(courseId);
+            if (course == null) {
+                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+            }
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            if (!course.getTeacherId().equals(currentUserId)) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
+        List<EnrollmentVO> enrollments = getCourseEnrollments(courseId);
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=enrollments_" + courseId + ".xlsx");
+
+        ExcelWriter writer = ExcelUtil.getWriter(true);
+        try {
+            writer.addHeaderAlias("id", "选课ID");
+            writer.addHeaderAlias("courseId", "课程ID");
+            writer.addHeaderAlias("courseName", "课程名称");
+            writer.addHeaderAlias("userId", "用户ID");
+            writer.addHeaderAlias("userName", "学生姓名");
+            writer.addHeaderAlias("progress", "学习进度(%)");
+            writer.addHeaderAlias("completed", "是否完成");
+            writer.addHeaderAlias("finalScore", "总评成绩");
+            writer.addHeaderAlias("finalGrade", "成绩等级");
+            writer.addHeaderAlias("enrollmentStatus", "选课状态");
+            writer.addHeaderAlias("sourceChannel", "选课来源");
+            writer.addHeaderAlias("enrolledAt", "选课时间");
+            writer.addHeaderAlias("completedAt", "完成时间");
+
+            writer.write(enrollments, true);
+            writer.flush(response.getOutputStream());
+        } finally {
+            writer.close();
+        }
     }
 
     // ---- Private helpers ---- //

@@ -37,7 +37,7 @@ public class MicroSpecialtyFeaturedController {
 
     /** 批准置顶（ACADEMIC）→ APPROVED */
     @PostMapping("/{id}/approve-featured")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
     public R<Void> approveFeatured(@PathVariable Long id) {
         featuredService.approveFeatured(id);
         return R.ok();
@@ -45,7 +45,7 @@ public class MicroSpecialtyFeaturedController {
 
     /** 驳回置顶（ACADEMIC）→ REJECTED */
     @PostMapping("/{id}/reject-featured")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
     public R<Void> rejectFeatured(@PathVariable Long id,
                                     @Valid @RequestBody FeaturedApplyRequest request) {
         featuredService.rejectFeatured(id, request.getReason());
@@ -54,7 +54,7 @@ public class MicroSpecialtyFeaturedController {
 
     /** 取消置顶（ACADEMIC）APPROVED → NONE */
     @PostMapping("/{id}/unset-featured")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
     public R<Void> unsetFeatured(@PathVariable Long id) {
         featuredService.unsetFeatured(id);
         return R.ok();
@@ -62,7 +62,7 @@ public class MicroSpecialtyFeaturedController {
 
     /** 设置金标（ACADEMIC）：全校最多 2 个 */
     @PostMapping("/{id}/set-gold-featured")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
     public R<Void> setGoldFeatured(@PathVariable Long id) {
         featuredService.setGoldFeatured(id);
         return R.ok();
@@ -70,7 +70,7 @@ public class MicroSpecialtyFeaturedController {
 
     /** 取消金标（ACADEMIC） */
     @PostMapping("/{id}/unset-gold-featured")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
     public R<Void> unsetGoldFeatured(@PathVariable Long id) {
         featuredService.unsetGoldFeatured(id);
         return R.ok();

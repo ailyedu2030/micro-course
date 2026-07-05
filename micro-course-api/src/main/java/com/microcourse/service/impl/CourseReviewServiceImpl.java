@@ -11,6 +11,7 @@ import com.microcourse.entity.CourseReview;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseRepository;
@@ -68,13 +69,17 @@ public class CourseReviewServiceImpl implements CourseReviewService {
             }
             // 回复不需要重复校验选课状态和评分
         } else {
-            // 顶级评价：验证用户已选修该课程
+            // 顶级评价：验证用户已选修该课程（仅 APPROVED/ENROLLED/COMPLETED 状态）
             LambdaQueryWrapper<Enrollment> enrollWrapper = new LambdaQueryWrapper<>();
             enrollWrapper.eq(Enrollment::getUserId, userId)
-                    .eq(Enrollment::getCourseId, courseId);
+                    .eq(Enrollment::getCourseId, courseId)
+                    .in(Enrollment::getEnrollmentStatus,
+                            EnrollmentStatus.APPROVED.getValue(),
+                            EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                            EnrollmentStatus.COMPLETED.getValue());
             Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
             if (enrollment == null) {
-                throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
+                throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND, "未选课或选课状态不允许评价");
             }
 
             // J10-01: 校验用户已完课才能评价（completed=true 或 progress >= 80%）

@@ -133,6 +133,53 @@ public class OperationLogServiceImpl implements OperationLogService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<OperationLog> queryForExport(Long userId, String username, String action,
+                                              String module, Long targetId,
+                                              LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
+
+        List<Long> userIds = null;
+        if (username != null && !username.isBlank()) {
+            userIds = findUserIdsByUsername(username);
+            if (userIds == null || userIds.isEmpty()) {
+                return List.of();
+            }
+        }
+
+        LambdaQueryWrapper<OperationLog> wrapper = new LambdaQueryWrapper<>();
+        if (userId != null) {
+            wrapper.eq(OperationLog::getUserId, userId);
+        }
+        if (userIds != null && !userIds.isEmpty()) {
+            wrapper.in(OperationLog::getUserId, userIds);
+        }
+        if (action != null && !action.isBlank()) {
+            wrapper.eq(OperationLog::getAction, action);
+        }
+        if (module != null && !module.isBlank()) {
+            if ("AUTH".equals(module)) {
+                wrapper.in(OperationLog::getAction, List.of("LOGIN", "LOGOUT"));
+            } else {
+                wrapper.eq(OperationLog::getTargetType, module);
+            }
+        }
+        if (targetId != null) {
+            wrapper.eq(OperationLog::getTargetId, targetId);
+        }
+        if (startDateTime != null) {
+            wrapper.ge(OperationLog::getCreatedAt, startDateTime);
+        }
+        if (endDateTime != null) {
+            wrapper.le(OperationLog::getCreatedAt, endDateTime);
+        }
+        wrapper.orderByDesc(OperationLog::getCreatedAt);
+        wrapper.last("LIMIT 10000");
+        return operationLogRepository.selectList(wrapper);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<Long, String> batchFindUsernames(Set<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             return Collections.emptyMap();

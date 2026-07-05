@@ -1,5 +1,8 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.BatchApproveRequest;
+import com.microcourse.dto.BatchOperationResult;
+import com.microcourse.dto.BatchRejectRequest;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyCourseRequest;
@@ -14,7 +17,9 @@ import com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyUpdateRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
+import com.microcourse.dto.invite.InviteStatisticsVO;
 import com.microcourse.service.MicroSpecialtyEnrollmentService;
+import com.microcourse.service.MicroSpecialtyInviteService;
 import com.microcourse.service.MicroSpecialtyService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,11 +42,14 @@ public class MicroSpecialtyController {
 
     private final MicroSpecialtyService microSpecialtyService;
     private final MicroSpecialtyEnrollmentService msEnrollmentService;
+    private final MicroSpecialtyInviteService microSpecialtyInviteService;
 
     public MicroSpecialtyController(MicroSpecialtyService microSpecialtyService,
-                                     MicroSpecialtyEnrollmentService msEnrollmentService) {
+                                     MicroSpecialtyEnrollmentService msEnrollmentService,
+                                     MicroSpecialtyInviteService microSpecialtyInviteService) {
         this.microSpecialtyService = microSpecialtyService;
         this.msEnrollmentService = msEnrollmentService;
+        this.microSpecialtyInviteService = microSpecialtyInviteService;
     }
 
     // ==================== 查询 ====================
@@ -90,6 +98,13 @@ public class MicroSpecialtyController {
     public R<MicroSpecialtyStatsVO> stats(@PathVariable Long id) {
         MicroSpecialtyStatsVO vo = microSpecialtyService.stats(id);
         return R.ok(vo);
+    }
+
+    /** P2-15: 教师邀请统计 */
+    @GetMapping("/{id}/invite-stats")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC','ADMIN')")
+    public R<InviteStatisticsVO> inviteStats(@PathVariable Long id) {
+        return R.ok(microSpecialtyInviteService.getInviteStatistics(id));
     }
 
     /** 修读名单（§7.5 端点对齐 spec）*/
@@ -143,7 +158,7 @@ public class MicroSpecialtyController {
 
     /** 审批通过 */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
     public R<Void> approve(@PathVariable Long id) {
         microSpecialtyService.approve(id);
         return R.ok();
@@ -151,7 +166,7 @@ public class MicroSpecialtyController {
 
     /** 审批驳回 */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
     public R<Void> reject(@PathVariable Long id, @Valid @RequestBody com.microcourse.dto.RejectRequest request) {
         microSpecialtyService.reject(id, request.getReason());
         return R.ok();
@@ -175,18 +190,32 @@ public class MicroSpecialtyController {
 
     /** 强制取消 */
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasRole('ACADEMIC')")
-    public R<Void> cancel(@PathVariable Long id) {
-        microSpecialtyService.cancel(id);
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    public R<Void> cancel(@PathVariable Long id, @Valid @RequestBody com.microcourse.dto.RejectRequest request) {
+        microSpecialtyService.cancel(id, request.getReason());
         return R.ok();
     }
 
     /** 归档 */
     @PostMapping("/{id}/archive")
-    @PreAuthorize("hasRole('ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
     public R<Void> archive(@PathVariable Long id) {
         microSpecialtyService.archive(id);
         return R.ok();
+    }
+
+    /** P2-11: 批量审批通过 */
+    @PostMapping("/batch-approve")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    public R<BatchOperationResult> batchApprove(@Valid @RequestBody BatchApproveRequest req) {
+        return R.ok(microSpecialtyService.batchApprove(req.getIds()));
+    }
+
+    /** P2-11: 批量审批驳回 */
+    @PostMapping("/batch-reject")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    public R<BatchOperationResult> batchReject(@Valid @RequestBody BatchRejectRequest req) {
+        return R.ok(microSpecialtyService.batchReject(req.getIds(), req.getReason()));
     }
 
     // ==================== 课程编排 ====================

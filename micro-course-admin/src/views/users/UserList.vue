@@ -185,6 +185,7 @@
                 <el-select v-model="formData.gender" placeholder="请选择" clearable class="full-width">
                   <el-option label="男" value="MALE" />
                   <el-option label="女" value="FEMALE" />
+                  <el-option label="保密" value="SECRET" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -906,6 +907,7 @@ const handleToggleStatus = async (row, newStatus) => {
     )
     await updateUserStatus(row.id, { status: newStatus })
     ElMessage.success(`${actionText}成功`)
+    userStore.refreshUserInfo()
     fetchData()
   } catch (e) {
     if (e !== 'cancel') ElMessage.error(`${actionText}失败`)
@@ -918,6 +920,7 @@ const handleSoftDelete = async (row) => {
     await ElMessageBox.confirm(`确定${actionText}该用户？`, '提示', { type: 'warning' })
     await updateUserStatus(row.id, { status: row.status === 3 ? 1 : 3 })
     ElMessage.success(`${actionText}成功`)
+    userStore.refreshUserInfo()
     fetchData()
   } catch (e) {
     if (e !== 'cancel') ElMessage.error(`${actionText}失败`)

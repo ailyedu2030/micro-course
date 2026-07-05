@@ -17,6 +17,9 @@ public class MicroSpecialtyEnrollment {
     private String source;
     private Long classId;
     private String status;
+    /** P1-I-14: INTEGER 备用列，后续迭代切换为主字段 */
+    @TableField(exist = false)
+    private Integer statusCode;
     private BigDecimal progress;
     private BigDecimal creditsEarned;
     private Integer coursesCompleted;
@@ -25,7 +28,8 @@ public class MicroSpecialtyEnrollment {
     private String finalGrade;
     private Long certificateId;
     /** G2: 班级导入时，前置课未通过/容量满/时间冲突/已存在等不能 enroll 的课程。结构 [{courseId, courseName, reason}]，JSON 字符串 */
-    private String pendingCourses;
+    @TableField(value = "pending_courses", typeHandler = com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler.class)
+    private String pendingCourses;  // JSON 字符串
     private LocalDateTime appliedAt;
     private LocalDateTime approvedAt;
     private Long approvedBy;
@@ -54,6 +58,8 @@ public class MicroSpecialtyEnrollment {
     public void setClassId(Long classId) { this.classId = classId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public Integer getStatusCode() { return statusCode; }
+    public void setStatusCode(Integer statusCode) { this.statusCode = statusCode; }
     public BigDecimal getProgress() { return progress; }
     public void setProgress(BigDecimal progress) { this.progress = progress; }
     public BigDecimal getCreditsEarned() { return creditsEarned; }

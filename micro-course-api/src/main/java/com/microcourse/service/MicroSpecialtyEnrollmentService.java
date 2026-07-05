@@ -1,6 +1,7 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.microSpecialty.MicroSpecialtyClassImportResultVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
 
 import java.util.List;
@@ -24,7 +25,7 @@ public interface MicroSpecialtyEnrollmentService {
     int classImport(Long msId, Long classId);
 
     /** 班级批量导入（ACADEMIC/ADMIN） → APPROVED，批量处理多个 classId */
-    int classImportBatch(Long microSpecialtyId, java.util.List<Long> classIds);
+    MicroSpecialtyClassImportResultVO classImportBatch(Long microSpecialtyId, java.util.List<Long> classIds);
 
     /** 退出修读（STUDENT 本人/ADMIN） */
     void drop(Long id, boolean cascade, String reason);

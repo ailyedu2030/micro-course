@@ -26,6 +26,9 @@ public class MicroSpecialty {
     private String trainingObjective;
     private String admissionRequirement;
     private String completionRule;
+    /** P1-I-14: INTEGER 备用列，后续迭代切换为主字段 */
+    @TableField(exist = false)
+    private Integer completionRuleCode;
     private BigDecimal totalCredits;
     private Integer totalHours;
     private Integer requiredCourseCount;
@@ -37,6 +40,9 @@ public class MicroSpecialty {
     private Boolean isFeatured;
     private Integer featuredRank;
     private String featuredStatus;
+    /** P1-I-14: INTEGER 备用列，后续迭代切换为主字段 */
+    @TableField(exist = false)
+    private Integer featuredStatusCode;
     private LocalDateTime featuredApplyAt;
     private String featuredApplyReason;
     private Long featuredApprovedBy;
@@ -45,7 +51,11 @@ public class MicroSpecialty {
     private Long goldFeaturedBy;
     private LocalDateTime goldFeaturedAt;
     private String status;
+    /** P1-I-14: INTEGER 备用列，后续迭代切换为主字段 */
+    @TableField(exist = false)
+    private Integer statusCode;
     private String rejectReason;
+    private String cancelReason;
     private LocalDateTime submittedAt;
     private LocalDateTime approvedAt;
     private LocalDateTime openedAt;
@@ -84,6 +94,8 @@ public class MicroSpecialty {
     public void setAdmissionRequirement(String admissionRequirement) { this.admissionRequirement = admissionRequirement; }
     public String getCompletionRule() { return completionRule; }
     public void setCompletionRule(String completionRule) { this.completionRule = completionRule; }
+    public Integer getCompletionRuleCode() { return completionRuleCode; }
+    public void setCompletionRuleCode(Integer completionRuleCode) { this.completionRuleCode = completionRuleCode; }
     public BigDecimal getTotalCredits() { return totalCredits; }
     public void setTotalCredits(BigDecimal totalCredits) { this.totalCredits = totalCredits; }
     public Integer getTotalHours() { return totalHours; }
@@ -106,6 +118,8 @@ public class MicroSpecialty {
     public void setFeaturedRank(Integer featuredRank) { this.featuredRank = featuredRank; }
     public String getFeaturedStatus() { return featuredStatus; }
     public void setFeaturedStatus(String featuredStatus) { this.featuredStatus = featuredStatus; }
+    public Integer getFeaturedStatusCode() { return featuredStatusCode; }
+    public void setFeaturedStatusCode(Integer featuredStatusCode) { this.featuredStatusCode = featuredStatusCode; }
     public LocalDateTime getFeaturedApplyAt() { return featuredApplyAt; }
     public void setFeaturedApplyAt(LocalDateTime featuredApplyAt) { this.featuredApplyAt = featuredApplyAt; }
     public String getFeaturedApplyReason() { return featuredApplyReason; }
@@ -122,8 +136,12 @@ public class MicroSpecialty {
     public void setGoldFeaturedAt(LocalDateTime goldFeaturedAt) { this.goldFeaturedAt = goldFeaturedAt; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public Integer getStatusCode() { return statusCode; }
+    public void setStatusCode(Integer statusCode) { this.statusCode = statusCode; }
     public String getRejectReason() { return rejectReason; }
     public void setRejectReason(String rejectReason) { this.rejectReason = rejectReason; }
+    public String getCancelReason() { return cancelReason; }
+    public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
     public LocalDateTime getSubmittedAt() { return submittedAt; }
     public void setSubmittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; }
     public LocalDateTime getApprovedAt() { return approvedAt; }

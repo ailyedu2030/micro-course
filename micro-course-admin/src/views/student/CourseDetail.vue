@@ -101,7 +101,8 @@
               <el-button type="primary" size="large" @click="goLogin">登录后学习</el-button>
             </template>
             <template v-else-if="isEnrolled">
-              <el-button type="primary" size="large" @click="goLearn">继续学习</el-button>
+              <el-button v-if="isWaitlisted" type="info" size="large" disabled>候补中</el-button>
+              <el-button v-else type="primary" size="large" @click="goLearn">继续学习</el-button>
             </template>
             <template v-else>
               <el-button type="primary" size="large" :loading="enrollLoading" @click="handleEnroll">
@@ -246,7 +247,11 @@
                     <el-rate v-model="r.rating" disabled size="small" />
                   </div>
                   <p class="review-content">{{ r.content }}</p>
-                  <span class="review-time">{{ formatTime(r.createdAt) }}</span>
+                  <div class="review-footer">
+                    <span class="review-time">{{ formatTime(r.createdAt) }}</span>
+                    <el-button link size="small" :disabled="!canReply" @click="handleReply(r)">回复</el-button>
+                    <el-button link size="small" type="warning" @click.stop="openReportDialog('REVIEW', r.id)">举报</el-button>
+                  </div>
                 </div>
               </div>
               <el-empty v-else description="暂无评价" :image-size="60" />
@@ -255,8 +260,21 @@
         </div>
       </div>
 
-      <!-- 写评价弹窗 -->
-      <el-dialog v-model="reviewDialogVisible" title="写评价" width="480px">
+    <!-- 举报弹窗 -->
+    <el-dialog v-model="reportDialog.visible" title="举报" width="400px" @close="reportDialog.reason = ''">
+      <el-form>
+        <el-form-item label="举报原因">
+          <el-input v-model="reportDialog.reason" type="textarea" :rows="3" placeholder="请描述举报原因..." maxlength="500" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reportDialog.visible = false">取消</el-button>
+        <el-button type="danger" :loading="reportDialog.submitting" @click="submitReport">提交举报</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 写评价弹窗 -->
+    <el-dialog v-model="reviewDialogVisible" title="写评价" width="480px">
         <el-form :model="reviewForm" :rules="reviewRules">
           <el-form-item label="评分" prop="rating">
             <el-rate v-model="reviewForm.rating" />
@@ -287,6 +305,7 @@ import { useCartStore } from '@/store/cart'
 import { createOrder, payOrder } from '@/api/order'
 import { getDefaultCover } from '@/utils/coverHelper'
 import { createReview, getReviews } from '@/api/course-review'
+import { createReport } from '@/api/review'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { useUserStore } from '@/store/user'
 import { getToken } from '@/utils/auth'
@@ -315,6 +334,7 @@ const courseNotFound = ref(false)
 const teacherLoading = ref(false)
 const enrollLoading = ref(false)
 const isEnrolled = ref(false)
+const isWaitlisted = ref(false)
 const reviewLoading = ref(false)
 const reviews = ref([])
 const reviewDialogVisible = ref(false)
@@ -326,6 +346,8 @@ const activeTab = ref('detail')
 const reviewForm = ref({ rating: 5, content: '' })
 const reviewRules = { rating: [{ required: true, message: '请选择评分', trigger: 'change' }], content: [{ required: true, message: '请输入评价内容', trigger: 'blur' }, { max: 500, message: '评价内容不超过500字', trigger: 'blur' }] }
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+
+const canReply = computed(() => course.value?.status !== 6)
 
 const difficultyText = computed(() => {
   const map = { EASY: '简单', MEDIUM: '中等', HARD: '困难', BEGINNER: '初级', INTERMEDIATE: '中级', ADVANCED: '高级' }
@@ -439,7 +461,7 @@ const fetchTeacher = async () => {
 const checkEnrollment = async () => {
   if (!isLoggedIn.value || !courseId.value) return
   const uid = userStore.userInfo?.id; if (!uid) return
-  try { const { data } = await getMyEnrollments(); const list = Array.isArray(data) ? data : (data?.items || []); isEnrolled.value = list.some(e => String(e.courseId) === String(courseId.value) && ['ENROLLED','APPROVED','COMPLETED'].includes(e.enrollmentStatus)) }
+  try { const { data } = await getMyEnrollments(); const list = Array.isArray(data) ? data : (data?.items || []); const match = list.find(e => String(e.courseId) === String(courseId.value)); isEnrolled.value = match && ['ENROLLED','APPROVED','COMPLETED','WAITLIST'].includes(match.enrollmentStatus); isWaitlisted.value = match?.enrollmentStatus === 'WAITLIST' }
   catch (e) { console.warn('[CourseDetail] checkEnrollment 获取选课状态失败', e); isEnrolled.value = false }
 }
 
@@ -511,7 +533,13 @@ const handleChapterClick = (row) => {
   }
 }
 const goLogin = () => router.push({ path: '/login', query: { redirect: route.fullPath } })
-const goLearn = () => { router.push(isInteractive.value ? `/student/courses/${courseId.value}/slides/player` : `/student/learning?courseId=${courseId.value}`) }
+const goLearn = () => {
+  if (isWaitlisted.value) {
+    ElMessage.info('您处于候补队列，暂不可学习')
+    return
+  }
+  router.push(isInteractive.value ? `/student/courses/${courseId.value}/slides/player` : `/student/learning?courseId=${courseId.value}`)
+}
 const goToSlidePlayer = () => router.push(`/student/courses/${courseId.value}/slides/player`)
 
 const fetchReviews = async () => {
@@ -526,7 +554,39 @@ const fetchRanking = async () => {
   try { const { data } = await getCourseRanking(courseId.value, { limit: 10 }); rankingList.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchRanking 获取排行失败', e); ElMessage.warning('排行榜加载失败'); rankingList.value = [] }
 }
 
-const openReviewDialog = () => { if (!isLoggedIn.value) goLogin(); else { reviewForm.value = { rating: 5, content: '' }; reviewDialogVisible.value = true } }
+const openReviewDialog = () => {
+  if (!isLoggedIn.value) { ElMessage.warning('请先登录'); return goLogin() }
+  if (!isEnrolled.value) { ElMessage.warning('请先选修该课程'); return }
+  reviewForm.value = { rating: 5, content: '' }; reviewDialogVisible.value = true
+}
+const reportDialog = reactive({ visible: false, targetType: '', targetId: null, reason: '', submitting: false })
+
+const openReportDialog = (type, id) => {
+  reportDialog.targetType = type
+  reportDialog.targetId = id
+  reportDialog.reason = ''
+  reportDialog.visible = true
+}
+
+const submitReport = async () => {
+  if (!reportDialog.reason.trim()) { ElMessage.warning('请输入举报原因'); return }
+  reportDialog.submitting = true
+  try {
+    await createReport({
+      targetType: reportDialog.targetType,
+      targetId: reportDialog.targetId,
+      reason: reportDialog.reason.trim()
+    })
+    ElMessage.success('举报已提交，管理员将审核')
+    reportDialog.visible = false
+  } catch (e) { ElMessage.error(e?.response?.data?.message || '提交失败') }
+  finally { reportDialog.submitting = false }
+}
+
+const handleReply = (review) => {
+  ElMessage.info('回复功能待开发（请联系管理员）')
+}
+
 const handleSubmitReview = async () => {
   if (!reviewForm.value.rating) { ElMessage.warning('请选择评分'); return }
   reviewSubmitting.value = true
@@ -926,6 +986,11 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   color: var(--el-text-color-primary);
   line-height: var(--leading-relaxed);
   margin: 0 0 var(--space-1);
+}
+.review-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .review-time {
   font-size: var(--text-xs);

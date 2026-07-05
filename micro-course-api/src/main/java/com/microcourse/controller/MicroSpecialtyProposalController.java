@@ -1,5 +1,8 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.BatchApproveRequest;
+import com.microcourse.dto.BatchOperationResult;
+import com.microcourse.dto.BatchRejectRequest;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.RejectProposalRequest;
@@ -81,6 +84,24 @@ public class MicroSpecialtyProposalController {
     public R<Void> rejectProposal(@PathVariable Long id, @RequestBody RejectProposalRequest request) {
         proposalService.rejectProposal(id, request.getReason());
         return R.ok();
+    }
+
+    /**
+     * P2-11: 批量审批通过
+     */
+    @PostMapping("/batch-approve")
+    @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
+    public R<BatchOperationResult> batchApprove(@Valid @RequestBody BatchApproveRequest req) {
+        return R.ok(proposalService.batchApproveProposal(req.getIds()));
+    }
+
+    /**
+     * P2-11: 批量审批驳回
+     */
+    @PostMapping("/batch-reject")
+    @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
+    public R<BatchOperationResult> batchReject(@Valid @RequestBody BatchRejectRequest req) {
+        return R.ok(proposalService.batchRejectProposal(req.getIds(), req.getReason()));
     }
 
     /** 撤回申报 */

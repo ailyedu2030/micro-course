@@ -2,8 +2,11 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.CommentCreateRequest;
 import com.microcourse.dto.DiscussionCommentVO;
+import com.microcourse.dto.PageResult;
 import com.microcourse.entity.DiscussionComment;
 import com.microcourse.entity.DiscussionCommentLike;
 import com.microcourse.entity.DiscussionPost;
@@ -16,6 +19,8 @@ import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.DiscussionCommentService;
 import com.microcourse.util.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
@@ -29,6 +34,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class DiscussionCommentServiceImpl implements DiscussionCommentService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(DiscussionCommentServiceImpl.class);
 
     private final DiscussionCommentRepository commentRepository;
     private final DiscussionPostRepository postRepository;
@@ -210,6 +217,64 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
                             .setSql("like_count = COALESCE(like_count, 0) + 1")
                             .set(DiscussionComment::getUpdatedAt, LocalDateTime.now()));
         }
+    }
+
+    // ========== P2-6 修复: 管理端评论操作 ==========
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DiscussionCommentVO> pageAdmin(int page, int size, String keyword, Long postId) {
+        LambdaQueryWrapper<DiscussionComment> wrapper = new LambdaQueryWrapper<>();
+        if (keyword != null && !keyword.isBlank()) {
+            wrapper.like(DiscussionComment::getContent, keyword);
+        }
+        if (postId != null) {
+            wrapper.eq(DiscussionComment::getPostId, postId);
+        }
+        wrapper.orderByDesc(DiscussionComment::getCreatedAt);
+
+        IPage<DiscussionComment> pageResult = commentRepository.selectPage(new Page<>(page, size), wrapper);
+        List<DiscussionCommentVO> voList = pageResult.getRecords().stream()
+                .map(c -> convertToVO(c))
+                .collect(Collectors.toList());
+        return PageResult.of(voList, pageResult.getTotal(), (int) pageResult.getCurrent() - 1, (int) pageResult.getSize());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteByAdmin(Long id) {
+        DiscussionComment comment = commentRepository.selectById(id);
+        if (comment == null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
+        }
+        commentRepository.update(null,
+                new LambdaUpdateWrapper<DiscussionComment>()
+                        .eq(DiscussionComment::getId, id)
+                        .set(DiscussionComment::getDeletedAt, LocalDateTime.now())
+                        .set(DiscussionComment::getUpdatedAt, LocalDateTime.now()));
+        if (comment.getPostId() != null) {
+            postRepository.update(null,
+                    new LambdaUpdateWrapper<DiscussionPost>()
+                            .eq(DiscussionPost::getId, comment.getPostId())
+                            .setSql("comment_count = GREATEST(COALESCE(comment_count, 0) - 1, 0)"));
+        }
+        LOG.info("[P2-6] 管理员删除评论 id={}", id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void pinComment(Long id, boolean pinned) {
+        DiscussionComment comment = commentRepository.selectById(id);
+        if (comment == null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
+        }
+        int newStatus = pinned ? 2 : 1;
+        commentRepository.update(null,
+                new LambdaUpdateWrapper<DiscussionComment>()
+                        .eq(DiscussionComment::getId, id)
+                        .set(DiscussionComment::getStatus, newStatus)
+                        .set(DiscussionComment::getUpdatedAt, LocalDateTime.now()));
+        LOG.info("[P2-6] 管理员{}评论 id={}", pinned ? "置顶" : "取消置顶", id);
     }
 
     @Override

@@ -29,9 +29,18 @@
     </el-card>
 
     <el-card shadow="never" class="table-card">
+      <div v-if="activeTab === 'pending' && tableData.length > 0" class="batch-toolbar">
+        <el-button type="success" :disabled="!selectedRows.length" @click="handleBatchApprove">
+          批量通过 ({{ selectedRows.length }})
+        </el-button>
+        <el-button type="danger" :disabled="!selectedRows.length" @click="handleBatchReject">
+          批量驳回
+        </el-button>
+      </div>
       <el-skeleton v-if="loading" :rows="5" animated />
       <el-empty v-else-if="tableData.length === 0" description="暂无待审核课程" :image-size="120" />
-      <el-table v-else :data="tableData" stripe border class="data-table">
+      <el-table v-else ref="tableRef" :data="tableData" stripe border class="data-table" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="50" align="center" />
         <el-table-column type="index" label="#" width="50" align="center" />
         <el-table-column prop="title" label="课程名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="teacherName" label="提交教师" width="120" />
@@ -49,10 +58,10 @@
         <el-table-column label="操作" width="260" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleView(row)">查看</el-button>
-            <el-button v-if="row.status === 1 && userStore.role === 'ADMIN'" type="success" link size="small" @click="handleApprove(row)">
+            <el-button v-if="row.status === 1 && (userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC')" type="success" link size="small" @click="handleApprove(row)">
               <el-icon><Select /></el-icon>通过
             </el-button>
-            <el-button v-if="row.status === 1 && userStore.role === 'ADMIN'" type="danger" link size="small" @click="handleReject(row)">
+            <el-button v-if="row.status === 1 && (userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC')" type="danger" link size="small" @click="handleReject(row)">
               <el-icon><Close /></el-icon>驳回
             </el-button>
             <!-- P0 修复：发布按钮仅 ADMIN 可见，后端 @PreAuthorize("hasRole('ADMIN')") 拒绝 ACADEMIC -->
@@ -81,7 +90,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourses, getPendingReviewCourses, approveCourse, rejectCourse, publishCourse } from '@/api/course'
+import { getCourses, getPendingReviewCourses, approveCourse, rejectCourse, publishCourse, batchApproveCourses, batchRejectCourses } from '@/api/course'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -95,7 +104,14 @@ const activeTab = ref('pending')
 
 const searchForm = ref({ keyword: '' })
 
+const selectedRows = ref([])
+const tableRef = ref(null)
+
 const statusMap = { pending: 1, approved: 2, rejected: 3 }
+
+function handleSelectionChange(rows) {
+  selectedRows.value = rows
+}
 
 async function fetchData() {
   loading.value = true
@@ -158,6 +174,40 @@ async function handlePublish(row) {
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
 
+async function handleBatchApprove() {
+  const ids = selectedRows.value.map(r => r.id)
+  try {
+    await ElMessageBox.confirm(`确认批量通过 ${ids.length} 个课程？`, '批量通过', { type: 'warning' })
+    const result = await batchApproveCourses(ids)
+    ElMessage.success(`批量通过完成：成功 ${result.success}，失败 ${result.failed}`)
+    selectedRows.value = []
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || '批量通过失败')
+  }
+}
+
+async function handleBatchReject() {
+  let reason
+  try {
+    const res = await ElMessageBox.prompt('请输入统一的驳回原因', '批量驳回', {
+      confirmButtonText: '确定驳回', cancelButtonText: '取消',
+      inputValidator: v => v?.trim()?.length >= 5 || '驳回原因至少5个字符',
+      inputPlaceholder: '请输入驳回原因（至少5个字符）',
+    })
+    reason = res.value
+  } catch { return }
+  const ids = selectedRows.value.map(r => r.id)
+  try {
+    const result = await batchRejectCourses(ids, reason)
+    ElMessage.success(`批量驳回完成：成功 ${result.success}，失败 ${result.failed}`)
+    selectedRows.value = []
+    fetchData()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '批量驳回失败')
+  }
+}
+
 onMounted(fetchData)
 </script>
 
@@ -168,5 +218,6 @@ onMounted(fetchData)
 .table-card { margin-bottom: var(--space-4); }
 .data-table { width: 100%; }
 .w160 { width: 160px; }
+.batch-toolbar { padding: var(--space-3) var(--space-4); display: flex; gap: var(--space-2); border-bottom: 1px solid var(--el-border-color-lighter); }
 .pagination-wrap { margin-top: var(--space-4); display: flex; justify-content: center; padding: var(--space-4) 0; border-top: 1px solid var(--el-border-color-lighter); }
 </style>

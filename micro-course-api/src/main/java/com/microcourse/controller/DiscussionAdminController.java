@@ -1,9 +1,11 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.DiscussionCommentVO;
 import com.microcourse.dto.DiscussionPageQuery;
 import com.microcourse.dto.DiscussionPostVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.service.DiscussionCommentService;
 import com.microcourse.service.DiscussionPostService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -11,14 +13,19 @@ import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/admin/discussions")
 public class DiscussionAdminController {
 
     private final DiscussionPostService postService;
+    private final DiscussionCommentService commentService;
 
-    public DiscussionAdminController(DiscussionPostService postService) {
+    public DiscussionAdminController(DiscussionPostService postService,
+                                     DiscussionCommentService commentService) {
         this.postService = postService;
+        this.commentService = commentService;
     }
 
     /**
@@ -85,6 +92,45 @@ public class DiscussionAdminController {
     public R<Void> delete(@PathVariable Long id) {
         // DISC-NEW-1 修复:传入真实 userId,避免 Service 层 userId=null 导致权限校验失败
         postService.delete(id, SecurityUtil.getCurrentUserId());
+        return R.ok();
+    }
+
+    // ========== P2-6 修复: 评论管理端点 ==========
+
+    /**
+     * GET /api/admin/discussions/comments
+     * 评论列表（管理端，支持 keyword/postId 筛选）
+     */
+    @GetMapping("/comments")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<PageResult<DiscussionCommentVO>> commentPage(
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 100) int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long postId) {
+        return R.ok(commentService.pageAdmin(page, size, keyword, postId));
+    }
+
+    /**
+     * DELETE /api/admin/discussions/comments/{id}
+     * 删除评论（管理端）
+     */
+    @DeleteMapping("/comments/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> deleteComment(@PathVariable Long id) {
+        commentService.deleteByAdmin(id);
+        return R.ok();
+    }
+
+    /**
+     * PUT /api/admin/discussions/comments/{id}/pin
+     * 置顶/取消置顶评论
+     */
+    @PutMapping("/comments/{id}/pin")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    public R<Void> pinComment(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
+        boolean pinned = body.getOrDefault("pinned", false);
+        commentService.pinComment(id, pinned);
         return R.ok();
     }
 }

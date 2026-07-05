@@ -50,27 +50,27 @@
       <!-- 基本信息 -->
       <el-card shadow="never" class="section-card">
         <template #header><span class="card-title">基本信息</span></template>
-        <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" class="info-form">
+        <el-form ref="formRef" :model="form" :rules="canEdit ? rules : {}" label-width="100px" class="info-form">
           <el-row :gutter="24">
             <el-col :span="12">
-              <el-form-item label="标题" prop="title"><el-input v-model="form.title" /></el-form-item>
-              <el-form-item label="副标题"><el-input v-model="form.subtitle" /></el-form-item>
+              <el-form-item label="标题" prop="title"><el-input v-model="form.title" :disabled="!canEdit" /></el-form-item>
+              <el-form-item label="副标题"><el-input v-model="form.subtitle" :disabled="!canEdit" /></el-form-item>
               <el-form-item label="开课学院"><el-input :model-value="form.collegeName" disabled /></el-form-item>
-              <el-form-item label="学期"><el-input v-model="form.semester" /></el-form-item>
-              <el-form-item label="封面 URL"><el-input v-model="form.coverUrl" /></el-form-item>
+              <el-form-item label="学期"><el-input v-model="form.semester" :disabled="!canEdit" /></el-form-item>
+              <el-form-item label="封面 URL"><el-input v-model="form.coverUrl" :disabled="!canEdit" /></el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="说明">
-                <div class="quill-wrapper"><QuillEditor v-model:content="form.description" content-type="html" toolbar="essential" placeholder="微专业说明..." :style="{ minHeight: '120px' }" /></div>
+                <div class="quill-wrapper"><QuillEditor v-model:content="form.description" content-type="html" toolbar="essential" placeholder="微专业说明..." :style="{ minHeight: '120px' }" :readonly="!canEdit" /></div>
               </el-form-item>
               <el-form-item label="培养目标">
-                <div class="quill-wrapper"><QuillEditor v-model:content="form.trainingObjective" content-type="html" toolbar="essential" placeholder="培养目标..." :style="{ minHeight: '120px' }" /></div>
+                <div class="quill-wrapper"><QuillEditor v-model:content="form.trainingObjective" content-type="html" toolbar="essential" placeholder="培养目标..." :style="{ minHeight: '120px' }" :readonly="!canEdit" /></div>
               </el-form-item>
-              <el-form-item label="准入门槛"><el-input v-model="form.admissionRequirement" type="textarea" :rows="2" /></el-form-item>
+              <el-form-item label="准入门槛"><el-input v-model="form.admissionRequirement" type="textarea" :rows="2" :disabled="!canEdit" /></el-form-item>
             </el-col>
           </el-row>
         </el-form>
-        <div class="form-actions"><el-button type="primary" :loading="saving" :disabled="saving" @click="handleSave">保存</el-button></div>
+        <div class="form-actions"><el-button type="primary" :loading="saving" :disabled="saving || !canEdit" @click="handleSave">保存</el-button></div>
       </el-card>
 
       <!-- 选课列表 -->
@@ -152,6 +152,7 @@ const status = computed(() => detail.value?.status)
 const showSubmit = computed(() => ['DRAFT', 'REJECTED'].includes(status.value))
 const showOpen = computed(() => status.value === 'APPROVED')
 const showClose = computed(() => status.value === 'RECRUITING')
+const canEdit = computed(() => !['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(status.value))
 
 const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', REJECTED: '已驳回', RECRUITING: '招生中', COMPLETED: '已结业', CANCELLED: '已取消', ARCHIVED: '已归档' }
 const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger', RECRUITING: '', COMPLETED: 'info', CANCELLED: 'danger', ARCHIVED: 'info' }

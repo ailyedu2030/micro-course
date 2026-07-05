@@ -1,5 +1,6 @@
 package com.microcourse.service;
 
+import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyCreateRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyDetailVO;
@@ -138,9 +139,10 @@ public interface MicroSpecialtyService {
      * 教务处强制取消：任意状态 → CANCELLED（终态）。
      * 事务内级联设置所有非终态 enrollments 为 DROPPED，通知所有相关人。
      *
-     * @param id 微专业 ID
+     * @param id     微专业 ID
+     * @param reason 取消原因（必填）
      */
-    void cancel(Long id);
+    void cancel(Long id, String reason);
 
     /**
      * 归档：COMPLETED → ARCHIVED。通知 LEAD。
@@ -148,6 +150,12 @@ public interface MicroSpecialtyService {
      * @param id 微专业 ID
      */
     void archive(Long id);
+
+    /** P2-11: 批量审批通过 */
+    BatchOperationResult batchApprove(java.util.List<Long> ids);
+
+    /** P2-11: 批量审批驳回 */
+    BatchOperationResult batchReject(java.util.List<Long> ids, String reason);
 
     // ======================== 课程编排 ========================
 

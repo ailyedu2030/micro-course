@@ -74,7 +74,7 @@
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
-              :model-value="row.enabled"
+              v-model="row.enabled"
               active-text="启用"
               inactive-text="禁用"
               @change="handleToggleStatus(row)"
@@ -189,7 +189,7 @@
  * 管理员 - 轮播图管理
  * Vue 3.4 Composition API + script setup
  */
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
 import {
@@ -357,15 +357,22 @@ async function handleDelete(row) {
   }
 }
 
-// 切换状态
+// 切换状态（带二次确认）
 async function handleToggleStatus(row) {
-  const newEnabled = !row.enabled
+  const newVal = row.enabled
+  const action = newVal ? '上线' : '下线'
   try {
-    await toggleBannerStatus(row.id, newEnabled)
-    ElMessage.success(newEnabled ? '已启用' : '已禁用')
+    await ElMessageBox.confirm(
+      `确认${action}轮播图「${row.title}」？`,
+      `${action}确认`,
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+    )
+    await toggleBannerStatus(row.id, newVal)
+    ElMessage.success(`${action}成功`)
     fetchData()
-  } catch (err) {
-    ElMessage.error(err.message || '状态切换失败')
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
+    row.enabled = !newVal
   }
 }
 

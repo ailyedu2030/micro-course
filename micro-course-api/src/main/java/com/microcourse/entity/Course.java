@@ -47,7 +47,10 @@ public class Course {
     @TableField("tags")  // V23 migration: ALTER TABLE courses ADD COLUMN tags TEXT
     private String tags;
 
+    @TableField("course_type")
     private String courseType;
+
+    @TableField("price")
     private BigDecimal price;
 
     @TableField("free_access_scope")
