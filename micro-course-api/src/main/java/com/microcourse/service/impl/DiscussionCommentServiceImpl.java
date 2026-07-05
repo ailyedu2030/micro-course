@@ -219,6 +219,10 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         return children;
     }
 
+    /**
+     * @deprecated 单参数版本仅供单条创建返回使用;批量查询请用3参数重载(带userMap)
+     */
+    @Deprecated
     private DiscussionCommentVO convertToVO(DiscussionComment comment) {
         DiscussionCommentVO vo = new DiscussionCommentVO();
         vo.setId(comment.getId());

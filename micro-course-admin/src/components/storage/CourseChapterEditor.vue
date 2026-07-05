@@ -71,7 +71,7 @@ v-model="row.semester" placeholder="如：第1学期" size="small"
           :closable="false"
           show-icon
           class="mg-bottom-12" />
-        <el-form :model="currentCourse" label-width="80px" size="small">
+        <el-form :model="currentCourse" ref="chapterFormRef" label-width="80px" size="small">
           <el-table :data="currentCourse.chapters || []" border size="small">
             <el-table-column prop="sortOrder" label="#" width="60" align="center">
               <template #default="{ $index }">
@@ -128,6 +128,7 @@ const localData = ref([])
 const drawerVisible = ref(false)
 const currentCourseIndex = ref(-1)
 const currentCourse = ref(null)
+const chapterFormRef = ref(null)
 
 watch(() => props.modelValue, (v) => {
   // 深拷贝,确保展开行修改不会影响父组件的 data
@@ -212,6 +213,14 @@ function removeChapter(index) {
 }
 
 function saveChapters() {
+  // 校验章节名称是否必填
+  const chapters = currentCourse.value?.chapters || []
+  for (let i = 0; i < chapters.length; i++) {
+    if (!chapters[i].title || !chapters[i].title.trim()) {
+      ElMessageBox.alert(`第 ${i + 1} 章名称不能为空`, '校验不通过', { type: 'warning' })
+      return
+    }
+  }
   // 同步回 courses 列表
   if (currentCourseIndex.value >= 0 && currentCourseIndex.value < localData.value.length) {
     localData.value[currentCourseIndex.value] = currentCourse.value
