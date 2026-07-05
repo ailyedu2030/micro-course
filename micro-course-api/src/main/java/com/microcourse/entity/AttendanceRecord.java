@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 public class AttendanceRecord {
 
     @TableId(type = IdType.AUTO)
-    @TableField("id")
     private Long id;
 
     @TableField("session_id")
