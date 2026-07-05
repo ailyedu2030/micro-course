@@ -146,7 +146,23 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setCourseId(request.getCourseId());
         chapter.setTitle(request.getTitle());
         chapter.setDescription(request.getDescription());
-        chapter.setSortOrder(request.getSortOrder());
+        // 自动分配不重复的sortOrder,避免 UNIQUE(course_id,sort_order) 冲突
+        Integer sortOrder = request.getSortOrder();
+        // 自动分配不重复的sortOrder,避免 UNIQUE(course_id,sort_order) 冲突
+        Long conflictCount = (sortOrder != null && sortOrder > 0) ? chapterRepository.selectCount(
+            new LambdaQueryWrapper<CourseChapter>()
+                .eq(CourseChapter::getCourseId, request.getCourseId())
+                .eq(CourseChapter::getSortOrder, sortOrder)) : 1L;
+        if (sortOrder == null || sortOrder <= 0 || conflictCount > 0) {
+            // 查询该课程的最大sortOrder
+            CourseChapter maxChapter = chapterRepository.selectOne(
+                new LambdaQueryWrapper<CourseChapter>()
+                    .eq(CourseChapter::getCourseId, request.getCourseId())
+                    .orderByDesc(CourseChapter::getSortOrder)
+                    .last("LIMIT 1"));
+            sortOrder = (maxChapter != null ? maxChapter.getSortOrder() : 0) + 1;
+        }
+        chapter.setSortOrder(sortOrder);
         String chapterType = request.getChapterType() != null ? request.getChapterType() : "VIDEO";
         validateChapterType(chapterType);
         chapter.setChapterType(chapterType);
