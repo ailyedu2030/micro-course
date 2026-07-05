@@ -468,7 +468,7 @@ const handleCreate = () => {
   formData.maxAttempts = null
   formData.shuffleQuestions = false
   formData.shuffleOptions = false
-  formChapterOptions.value = searchForm.chapterId ? chapterOptions.value : []
+  if (formData.courseId) handleFormCourseChange(formData.courseId)
   dialogVisible.value = true
 }
 
@@ -485,14 +485,11 @@ const handleEdit = async (row) => {
   formData.maxAttempts = row.maxAttempts || null
   formData.shuffleQuestions = row.shuffleQuestions || false
   formData.shuffleOptions = row.shuffleOptions || false
-  formChapterOptions.value = chapterOptions.value
-  if (row.courseId && formChapterOptions.value.length === 0) {
-    // P1-I: 搜索区未选课程时,直接按练习所属课程加载章节列表
-    try {
-      const { data } = await getChapters({ courseId: row.courseId })
-      formChapterOptions.value = data?.items || []
-    } catch { /* ignore */ }
-  }
+  // P1-C: 始终按练习所属课程加载章节(不依赖搜索区缓存,避免课程错配)
+  try {
+    const { data } = await getChapters({ courseId: row.courseId, size: 1000 })
+    formChapterOptions.value = data?.items || []
+  } catch { formChapterOptions.value = [] }
   dialogVisible.value = true
 }
 

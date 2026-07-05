@@ -372,6 +372,7 @@ const handleCreate = () => {
 }
 
 const handleDialogCourseChange = async (courseId) => {
+  formData.chapterId = null
   if (!courseId) { chapterOptions.value = []; return }
   try {
     const { data } = await getChapters({ courseId, size: 1000 })
