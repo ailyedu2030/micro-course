@@ -182,7 +182,21 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         // Partial update
         if (request.getTitle() != null) chapter.setTitle(request.getTitle());
         if (request.getDescription() != null) chapter.setDescription(request.getDescription());
-        if (request.getSortOrder() != null) chapter.setSortOrder(request.getSortOrder());
+        if (request.getSortOrder() != null && !request.getSortOrder().equals(chapter.getSortOrder())) {
+            int newSort = request.getSortOrder();
+            // 检查sortOrder是否冲突(排除自身)
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM course_chapters WHERE course_id = ? AND sort_order = ? AND id != ?",
+                Integer.class, chapter.getCourseId(), newSort, id);
+            if (count != null && count > 0) {
+                // 冲突时自动分配max+1
+                Integer max = jdbcTemplate.queryForObject(
+                    "SELECT COALESCE(MAX(sort_order), 0) FROM course_chapters WHERE course_id = ?",
+                    Integer.class, chapter.getCourseId());
+                newSort = (max != null ? max : 0) + 1;
+            }
+            chapter.setSortOrder(newSort);
+        }
         if (request.getChapterType() != null) {
             validateChapterType(request.getChapterType());
             chapter.setChapterType(request.getChapterType());
