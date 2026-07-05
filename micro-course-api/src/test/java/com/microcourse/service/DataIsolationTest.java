@@ -163,7 +163,7 @@ class DataIsolationTest extends BaseIntegrationTest {
         Long courseId = insertIsolatedCourse(4); // PUBLISHED
         try {
             jdbc.update("INSERT INTO enrollments(course_id, user_id, progress, completed, enrollment_status) "
-                    + "VALUES(?, 7, 80.0, FALSE, 'ENROLLED')", courseId);
+                    + "VALUES(?, 7, 80.0, FALSE, 'APPROVED')", courseId);
             // admin（非该课任何选课学员）请求 → 榜单中所有成员对其而言均非本人，userId 必须为 null。
             String body = mockMvc.perform(get("/api/enrollments/course/" + courseId + "/ranking")
                             .header("Authorization", bearerAdmin()))
@@ -223,6 +223,8 @@ class DataIsolationTest extends BaseIntegrationTest {
     @DisplayName("[隔离] 下架课程对学生不可见 → 404")
     void closedCourseShouldBe404ForStudent() throws Exception {
         Long courseId = insertIsolatedCourse(5); // CLOSED
+        // 清除可能的旧缓存（跨测试环境 Redis 污染）
+        try { redisUtil.delete("mc:course:detail:" + courseId); } catch (Exception ignored) {}
         try {
             mockMvc.perform(get("/api/courses/" + courseId)
                             .header("Authorization", "Bearer " + loginAs("student", "student123")))

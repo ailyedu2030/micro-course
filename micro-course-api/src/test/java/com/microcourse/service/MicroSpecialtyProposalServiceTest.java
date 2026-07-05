@@ -95,14 +95,20 @@ class MicroSpecialtyProposalServiceTest {
         proposal.setSemester("2026秋季");
         proposal.setMaxStudents(60);
         proposal.setStatus("PENDING_REVIEW");
+        proposal.setVersion(0); // AC04: 乐观锁必须
         when(proposalRepository.selectById(100L)).thenReturn(proposal);
-        when(proposalRepository.updateById(any())).thenReturn(1);
+        // 使用 Answer 让 update() 修改 proposal 对象状态，确保 re-select 后状态正确
+        when(proposalRepository.update(any(), any())).thenAnswer(inv -> {
+            proposal.setStatus("APPROVED");
+            return 1;
+        });
         doAnswer(inv -> {
             MicroSpecialty ms = inv.getArgument(0);
             ms.setId(200L);
             return 1;
         }).when(msRepository).insert(any(MicroSpecialty.class));
         lenient().when(msTeacherRepository.insert(any())).thenReturn(1);
+        lenient().when(proposalRepository.updateById(any())).thenReturn(1);
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(1L);
@@ -129,8 +135,14 @@ class MicroSpecialtyProposalServiceTest {
         proposal.setTitle("人工智能微专业");
         proposal.setProposerId(10L);
         proposal.setStatus("PENDING_REVIEW");
+        proposal.setVersion(0); // AC04: 乐观锁必须
         when(proposalRepository.selectById(100L)).thenReturn(proposal);
-        when(proposalRepository.updateById(any())).thenReturn(1);
+        // 使用 Answer 让 update() 修改 proposal 对象状态
+        when(proposalRepository.update(any(), any())).thenAnswer(inv -> {
+            proposal.setStatus("REJECTED");
+            proposal.setReviewComment("材料不全");
+            return 1;
+        });
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(1L);
@@ -139,7 +151,7 @@ class MicroSpecialtyProposalServiceTest {
 
             assertEquals("REJECTED", proposal.getStatus());
             assertEquals("材料不全", proposal.getReviewComment());
-            verify(proposalRepository).updateById(any());
+            verify(proposalRepository).update(any(), any());
             verify(notificationService).notifyAsync(eq(10L), eq(NotificationType.MS_PROPOSAL_REJECTED),
                     anyString(), contains("材料不全"), isNull());
         }

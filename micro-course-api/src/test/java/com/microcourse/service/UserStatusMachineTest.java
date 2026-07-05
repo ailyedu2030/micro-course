@@ -44,8 +44,8 @@ class UserStatusMachineTest extends BaseIntegrationTest {
     /** 旁路插入用户记录（status / deleted_at 由参数指定），用于构造各状态机场景。 */
     private Long insertUser(int status, Timestamp deletedAt) {
         return jdbcTemplate.queryForObject(
-                "INSERT INTO users(username, password, real_name, role, status, cas_bound, deleted_at, created_at, updated_at) " +
-                "VALUES (?, ?, ?, 'STUDENT', ?, false, ?, now(), now()) RETURNING id",
+                "INSERT INTO users(username, password, real_name, role, status, cas_bound, deleted_at, created_at, updated_at, version) " +
+                "VALUES (?, ?, ?, 'STUDENT', ?, false, ?, now(), now(), 0) RETURNING id",
                 Long.class,
                 "ustest-" + uniq(),
                 "$2b$12$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuv",

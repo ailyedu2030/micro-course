@@ -76,8 +76,8 @@ class UserStatusCheckFilterTest extends BaseIntegrationTest {
     /** 旁路插入 STUDENT 用户（status / deleted_at 由参数指定），返回自增 ID。 */
     private Long insertStudent(int status, Timestamp deletedAt) {
         Long id = jdbcTemplate.queryForObject(
-                "INSERT INTO users(username, password, real_name, role, status, cas_bound, deleted_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, 'STUDENT', ?, false, ?, now(), now()) RETURNING id",
+                "INSERT INTO users(username, password, real_name, role, status, cas_bound, deleted_at, created_at, updated_at, version) "
+                        + "VALUES (?, ?, ?, 'STUDENT', ?, false, ?, now(), now(), 0) RETURNING id",
                 Long.class,
                 "r82test-" + uniq(),
                 "$2b$12$abcdefghijklmnopqrstuvabcdefghijklmnopqrstuv",
@@ -114,6 +114,11 @@ class UserStatusCheckFilterTest extends BaseIntegrationTest {
             } catch (Exception ignored) {
             }
             clearStatusCache(id);
+            // 清除用户级 Token 黑名单，防止 ID 被序列重置后复用时误判
+            try {
+                redisUtil.delete("mc:jwt:user-blacklist:" + id);
+            } catch (Exception ignored) {
+            }
         }
         createdUserIds.clear();
     }

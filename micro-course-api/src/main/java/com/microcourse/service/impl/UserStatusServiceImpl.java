@@ -88,16 +88,9 @@ public class UserStatusServiceImpl implements UserStatusService {
                     throw new BusinessException(ErrorCode.DELETED_USER_RETENTION_EXPIRED);
                 }
             }
-            // P1I-050 修复: 使用 LambdaUpdateWrapper + 显式 version 乐观锁替代 restoreToActive
-            Integer currentVersion = user.getVersion();
-            int affected = userRepository.update(null,
-                    new LambdaUpdateWrapper<User>()
-                            .eq(User::getId, id)
-                            .eq(User::getVersion, currentVersion)
-                            .set(User::getStatus, 1)
-                            .set(User::getDeletedAt, (LocalDateTime) null)
-                            .set(User::getUpdatedAt, LocalDateTime.now())
-                            .setSql("version = version + 1"));
+            // 修复: 恢复操作使用原生 SQL 绕过 @Version 检查
+            // raw SQL INSERT 的版本字段可能为 0 或 null，@Version 乐观锁会导致 updateById 返回 0
+            int affected = userRepository.restoreToActive(id);
             if (affected == 0) {
                 throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION,
                         "用户状态已被其他操作修改，请刷新后重试");
