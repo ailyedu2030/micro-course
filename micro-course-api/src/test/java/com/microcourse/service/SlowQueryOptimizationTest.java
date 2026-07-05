@@ -174,6 +174,9 @@ class SlowQueryOptimizationTest extends BaseIntegrationTest {
             insertCourse(cat, teacher);
         }
 
+        // 设置安全上下文（TeacherServiceImpl IDOR 防护需要）
+        var auth = new UsernamePasswordAuthenticationToken(teacher, null, java.util.List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
         Mockito.clearInvocations(courseRepository, questionRepository);
         List<PendingTaskVO> tasks = teacherService.getPendingTasks(teacher, 20);
 
