@@ -98,8 +98,11 @@ class VideoLearningFlowIntegrationTest extends BaseIntegrationTest {
     private void enrollStudent7InCourse1() {
         jdbc.update(
                 "INSERT INTO enrollments(course_id, user_id, progress, completed, enrollment_status, enrolled_at, updated_at) " +
-                        "SELECT 1, 7, 0, false, 'ENROLLED', now(), now() " +
+                        "SELECT 1, 7, 0, false, 'APPROVED', now(), now() " +
                         "WHERE NOT EXISTS (SELECT 1 FROM enrollments WHERE user_id = 7 AND course_id = 1 AND deleted_at IS NULL)");
+        // P1C-024: 视频进度阈值检查 — 创建一条课程级已完成学习进度
+        jdbc.update("INSERT INTO learning_progress (user_id, course_id, video_progress, completed, total_watch_time, created_at, updated_at) " +
+                "VALUES (7, 1, 100.0, true, 300, now(), now()) ON CONFLICT DO NOTHING");
     }
 
     private String fetchSign(String bearer, long videoId) throws Exception {
@@ -127,6 +130,7 @@ class VideoLearningFlowIntegrationTest extends BaseIntegrationTest {
     @DisplayName("2·学生上报视频进度 → 200 + progress 更新")
     void studentReportVideoProgress_Returns200() throws Exception {
         long videoId = insertVideo(2, "/api/videos/stream/test/index.m3u8");
+        enrollStudent7InCourse1(); // P1C-024: 选课 + 学习进度记录
         String token = "Bearer " + loginAs("student", "student123");
         mockMvc.perform(post("/api/videos/" + videoId + "/progress")
                         .header("Authorization", token)
@@ -160,6 +164,7 @@ class VideoLearningFlowIntegrationTest extends BaseIntegrationTest {
     @DisplayName("4·并发上报同一视频进度 → 全部成功（并发安全，无 5xx）")
     void concurrentReportProgress_AllSucceed() throws Exception {
         long videoId = insertVideo(2, "/api/videos/stream/test/index.m3u8");
+        enrollStudent7InCourse1(); // P1C-024: 选课 + 学习进度记录
         String token = "Bearer " + loginAs("student", "student123");
 
         int threads = 5;

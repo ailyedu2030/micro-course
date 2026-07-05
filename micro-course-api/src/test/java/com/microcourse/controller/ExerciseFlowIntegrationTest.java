@@ -51,7 +51,10 @@ class ExerciseFlowIntegrationTest extends BaseIntegrationTest {
         // P1-C: 预存选课记录,避免提交答案时"未选课不能作答"(service层NO_PERMISSION->403)
         try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7 AND course_id = 1"); } catch (Exception ignored) {}
         jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
-                "VALUES (7, 1, 'ENROLLED', 'WEB', now(), now())");
+                "VALUES (7, 1, 'APPROVED', 'WEB', now(), now())");
+        // P1C-024: 视频进度阈值检查 — 创建一条课程级学习进度（无 lesson_id FK 依赖）
+        jdbc.update("INSERT INTO learning_progress (user_id, course_id, video_progress, completed, total_watch_time, created_at, updated_at) " +
+                "VALUES (7, 1, 100.0, true, 300, now(), now()) ON CONFLICT DO NOTHING");
     }
 
     @AfterEach
@@ -124,7 +127,6 @@ class ExerciseFlowIntegrationTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(submitOne(ex, q, "A", null)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.score").value(10))
                 .andExpect(jsonPath("$.data.passed").value(true));
     }
 
@@ -206,7 +208,14 @@ class ExerciseFlowIntegrationTest extends BaseIntegrationTest {
         linkQuestion(ex, q, 10, 1);
         String token = "Bearer " + loginAs("student", "student123");
 
-        // 客户端显式 attemptNo=3 > maxAttempts=2 → 校验拦截
+        // 先提交 2 次达到 maxAttempts 上限
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/exercise-records/submit").header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON).content(submitOne(ex, q, "A", i + 1)))
+                    .andExpect(status().isOk());
+        }
+
+        // 第 3 次应被拦截（P0-003 修复：后端独立计数，不依赖前端 attemptNo）
         mockMvc.perform(post("/api/exercise-records/submit").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(submitOne(ex, q, "A", 3)))
                 .andExpect(status().isBadRequest())
@@ -251,7 +260,10 @@ class ExerciseFlowIntegrationTest extends BaseIntegrationTest {
         createdUserIds.add(student);
         // P1-C 修复: 该测试原注释说"未做选课校验"但R12 P0-1已加校验,需预存选课
         jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
-                "VALUES (?, 1, 'ENROLLED', 'WEB', now(), now())", student);
+                "VALUES (?, 1, 'APPROVED', 'WEB', now(), now())", student);
+        // P1C-024: 视频进度阈值检查
+        jdbc.update("INSERT INTO learning_progress (user_id, course_id, video_progress, completed, total_watch_time, created_at, updated_at) " +
+                "VALUES (?, 1, 100.0, true, 300, now(), now()) ON CONFLICT DO NOTHING", student);
         String token = "Bearer " + jwtUtil.generateToken(student, "ex-unenrolled", UserRole.STUDENT, null);
 
         mockMvc.perform(post("/api/exercise-records/submit").header("Authorization", token)

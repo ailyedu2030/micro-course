@@ -59,7 +59,7 @@ class VideoAccessControlTest extends BaseIntegrationTest {
     private void enrollStudent7(long courseId) {
         jdbc.update(
                 "INSERT INTO enrollments(course_id, user_id, progress, completed, enrollment_status, enrolled_at, updated_at) " +
-                        "SELECT ?, 7, 0, false, 'ENROLLED', now(), now() " +
+                        "SELECT ?, 7, 0, false, 'APPROVED', now(), now() " +
                         "WHERE NOT EXISTS (SELECT 1 FROM enrollments WHERE user_id = 7 AND course_id = ? AND deleted_at IS NULL)",
                 courseId, courseId);
     }

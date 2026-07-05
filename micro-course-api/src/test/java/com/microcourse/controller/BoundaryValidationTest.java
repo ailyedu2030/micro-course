@@ -51,7 +51,7 @@ class BoundaryValidationTest extends BaseIntegrationTest {
         try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7 AND course_id = 1"); } catch (Exception ignored) {}
         try { jdbc.update("UPDATE courses SET student_count = 0 WHERE id = 1"); } catch (Exception ignored) {}
         jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
-                "VALUES (7, 1, 'ENROLLED', 'WEB', now(), now()) ON CONFLICT DO NOTHING");
+                "VALUES (7, 1, 'APPROVED', 'WEB', now(), now()) ON CONFLICT DO NOTHING");
     }
 
     @AfterEach

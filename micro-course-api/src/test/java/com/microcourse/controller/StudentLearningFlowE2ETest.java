@@ -89,6 +89,9 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
     @org.junit.jupiter.api.BeforeEach
     void ensureEnrolled() {
         enrollStudent7InCourse1();
+        // P1C-024: 视频进度阈值检查 — 创建一条课程级已完成学习进度
+        jdbc.update("INSERT INTO learning_progress (user_id, course_id, video_progress, completed, total_watch_time, created_at, updated_at) " +
+                "VALUES (7, 1, 100.0, true, 300, now(), now()) ON CONFLICT DO NOTHING");
     }
 
     @AfterEach
@@ -196,7 +199,7 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
     private void enrollStudent7InCourse1() {
         jdbc.update(
                 "INSERT INTO enrollments(course_id, user_id, progress, completed, enrollment_status, enrolled_at, updated_at) "
-                        + "SELECT ?, ?, 0, false, 'ENROLLED', now(), now() "
+                        + "SELECT ?, ?, 0, false, 'APPROVED', now(), now() "
                         + "WHERE NOT EXISTS (SELECT 1 FROM enrollments WHERE user_id = ? AND course_id = ? AND deleted_at IS NULL)",
                 COURSE_ID, STUDENT_ID, STUDENT_ID, COURSE_ID);
     }

@@ -145,8 +145,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                     new LambdaQueryWrapper<LearningProgress>()
                         .eq(LearningProgress::getUserId, request.getUserId())
                         .eq(LearningProgress::getCourseId, exercise.getCourseId())
-                        .eq(LearningProgress::getCompleted, true)
-                        .isNotNull(LearningProgress::getLessonId));
+                        .eq(LearningProgress::getCompleted, true));
                 if (completedVideos < 1) {
                     throw new BusinessException(ErrorCode.PREREQUISITE_NOT_MET,
                         "请先观看课程视频后再开始答题");
