@@ -664,6 +664,8 @@ const fetchEnrollments = async () => {
             newProgressMap[pdata.courseId] = {
               completedExercises: pdata.completedExercises ?? pdata.completed ?? 0,
               totalExercises: pdata.totalExercises ?? pdata.total ?? 0,
+              completedVideos: pdata.completedVideos ?? 0,
+              totalVideos: pdata.totalVideos ?? 0,
               progress: completionMap[pdata.courseId]?.progress ?? inProgress.find(e => e.courseId === pdata.courseId)?.progress ?? 0
             }
           }
@@ -796,11 +798,19 @@ const handleContinue = async (courseId) => {
   try {
     const res = await getCourseById(courseId)
     if (res.data?.courseType === 'INTERACTIVE') {
-      // 尝试从学习进度获取上次学习的章节
-      const progress = courseProgressMap.value[courseId]
-      const lastChapterId = progress?.lastChapterId || ''
-      const suffix = lastChapterId ? `?chapterId=${lastChapterId}` : ''
-      router.push(`/student/courses/${courseId}/slides/player${suffix}`)
+      // 直接从后端获取学习进度，取最后学习的章节
+      try {
+        const progressRes = await getLearningProgress({ courseId })
+        const records = progressRes.data || []
+        // 取最后一个有进度的章节（lastWatchAt最新的）
+        const sorted = records.filter(r => r.chapterId).sort((a, b) =>
+          new Date(b.lastWatchAt || 0) - new Date(a.lastWatchAt || 0))
+        const lastChapterId = sorted[0]?.chapterId || ''
+        const suffix = lastChapterId ? `?chapterId=${lastChapterId}` : ''
+        router.push(`/student/courses/${courseId}/slides/player${suffix}`)
+      } catch {
+        router.push(`/student/courses/${courseId}/slides/player`)
+      }
       return
     }
   } catch { /* 查询失败则降级到 learning 页面 */ }

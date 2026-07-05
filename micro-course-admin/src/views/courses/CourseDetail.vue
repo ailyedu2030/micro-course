@@ -33,7 +33,7 @@
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
           <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">课件总览</el-button>
-          <el-button type="primary" plain @click="switchToEdit">编辑</el-button>
+          <el-button type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">编辑</el-button>
           <el-button type="warning" plain @click="handleCopy" v-if="!isEditMode">复制</el-button>
           <el-button type="info" plain @click="previewAsStudent">
             <el-icon><View /></el-icon> 學生預覽
@@ -486,7 +486,13 @@ const goSlides = () => router.push(`/teacher/courses/${route.params.id}/slides/m
 const previewAsStudent = () => {
   window.open(`/student/courses/${courseId.value}`, '_blank')
 }
-const switchToEdit = () => router.push(`/courses/${courseId.value}/edit`)
+const switchToEdit = () => {
+  if (courseData.value?.status === 4) {
+    ElMessage.warning('已发布课程不可编辑，请先下架')
+    return
+  }
+  router.push(`/courses/${courseId.value}/edit`)
+}
 const switchToView = () => router.push(`/courses/${courseId.value}`)
 
 const handleSubmitForReview = async () => {

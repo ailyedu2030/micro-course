@@ -155,6 +155,7 @@ const activeTab = ref('course')
 const course = ref({})
 const chapters = ref([])
 const progressMap = ref({}) // lessonId -> progress
+const progressRawList = ref([]) // 原始进度列表，用于 chapterId 维度查询（非 VIDEO 章节）
 const loading = ref(true)
 const drawerOpen = ref(false)
 const expandedChapters = ref([])
@@ -239,8 +240,10 @@ async function loadCourse(cid) {
 
     course.value = courseRes.data || {}
 
-    // ✅ 构建 progressMap（key=lessonId）
-    progressMap.value = buildProgressMap(progressRes.data || [])
+    // ✅ 构建 progressMap（key=lessonId）+ 保存原始列表供 chapterId 查询
+    const rawProgress = progressRes.data || []
+    progressMap.value = buildProgressMap(rawProgress)
+    progressRawList.value = rawProgress
 
     // 构建视频映射：chapterId → videos[]
     const videosList = videosRes.data?.items || []
@@ -350,7 +353,7 @@ async function loadProgress() {
               l.status = prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
             } else {
               // 非 VIDEO 章节: 按 chapterId 查找进度（子页面通过 chapterId 创建进度记录）
-              const chapterProgress = (progressRes.data || []).find(p => p.chapterId === ch.id)
+              const chapterProgress = progressRawList.value.find(p => p.chapterId === ch.id)
               l.status = chapterProgress?.completed ? 'COMPLETED' : 'NOT_STARTED'
             }
           })

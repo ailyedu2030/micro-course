@@ -387,7 +387,7 @@ async function ensureProgress() {
         chapterId: chapterId.value ? Number(chapterId.value) : undefined,
       })
     }
-  } catch { /* 静默失败,不影响主功能 */ }
+  } catch (e) { if (courseId.value) console.warn('[SlidePlayer] ensureProgress failed', e.message) }
 }
 
 // P0-2: 翻到最后一页时标记完成

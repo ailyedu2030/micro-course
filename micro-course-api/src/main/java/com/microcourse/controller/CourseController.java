@@ -190,6 +190,10 @@ public class CourseController {
     @RequireRole({"TEACHER", "ADMIN", "ACADEMIC"})
     public R<Void> updateStatus(@PathVariable Long id,
                                 @RequestParam Integer status) {
+        // TEACHER 不能通过此方法将课程转为 PUBLISHED，必须走正式 publish 流程（含课件检查/通知）
+        if (status == 4 && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         courseService.updateStatus(id, status);
         return R.ok();
     }

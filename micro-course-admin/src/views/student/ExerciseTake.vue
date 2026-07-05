@@ -638,7 +638,7 @@ let elapsedTimerInterval = null
 const totalQuestions = computed(() => questionIds.value.length)
 const progressPercent = computed(() => {
   if (totalQuestions.value === 0) return 0
-  return Math.round(((currentIndex.value + 1) / totalQuestions.value) * 100)
+  return Math.round((answeredCount.value / totalQuestions.value) * 100)
 })
 
 const currentQuestion = computed(() => {

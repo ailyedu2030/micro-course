@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.beans.TypeMismatchException;
@@ -131,6 +132,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(R.fail(ErrorCode.BAD_REQUEST_PARAM.getCode(), message));
     }
 
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<R<Void>> handleMissingHeader(MissingRequestHeaderException e) {
+        return ResponseEntity.badRequest().body(R.fail(ErrorCode.BAD_REQUEST_PARAM.getCode(), "缺少请求头: " + e.getHeaderName()));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<R<Void>> handleDataIntegrity(DataIntegrityViolationException e) {
         log.warn("DataIntegrityViolation: {}", e.getMessage());
@@ -149,8 +155,31 @@ public class GlobalExceptionHandler {
             }
             cause = cause.getCause();
         }
-        log.error("Unhandled exception", e);
-        return ResponseEntity.status(500).body(R.fail(500, "服务器内部错误"));
+        int httpStatus = determineHttpStatus(e);
+        if (httpStatus < 500) {
+            log.warn("Unhandled exception (status={}): {}", httpStatus, e.getMessage());
+        } else {
+            log.error("Unhandled exception (status={})", httpStatus, e);
+        }
+        return ResponseEntity.status(httpStatus).body(R.fail(httpStatus, "服务器内部错误"));
+    }
+
+    /**
+     * 根据异常类型推断 HTTP 状态码，用于兜底处理器的日志级别区分。
+     * 默认返回 500；可在此扩展按异常类型返回 4xx。
+     */
+    private int determineHttpStatus(Exception e) {
+        if (e instanceof org.springframework.security.authentication.BadCredentialsException
+            || e instanceof org.springframework.security.authentication.CredentialsExpiredException
+            || e instanceof org.springframework.security.authentication.LockedException
+            || e instanceof org.springframework.security.authentication.DisabledException) {
+            return 401;
+        }
+        if (e instanceof IllegalArgumentException
+            || e instanceof IllegalStateException) {
+            return 400;
+        }
+        return 500;
     }
 
     /**

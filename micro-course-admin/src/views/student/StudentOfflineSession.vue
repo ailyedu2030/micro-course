@@ -138,8 +138,6 @@ async function handleCheckin(session) {
   try {
     await checkin(session.id)
     ElMessage.success('签到成功')
-    // P1-I: 乐观更新本地状态，不等 API 刷新
-    attendanceMap.value[session.id] = { ...attendanceMap.value[session.id], status: 'PRESENT' }
     await fetchAttendance()
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '签到失败，请稍后重试')

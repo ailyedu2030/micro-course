@@ -7,6 +7,7 @@ import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
+import com.microcourse.entity.CourseNote;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.User;
 import com.microcourse.entity.Video;
@@ -30,11 +31,16 @@ import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.DiscussionPostRepository;
+import com.microcourse.entity.DiscussionComment;
 import com.microcourse.entity.DiscussionPost;
+import com.microcourse.entity.VideoBookmark;
+import com.microcourse.repository.CourseNoteRepository;
+import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.entity.Exercise;
 import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.enums.NotificationType;
@@ -77,6 +83,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final VideoRepository videoRepository;
     private final LearningProgressRepository learningProgressRepository;
     private final DiscussionPostRepository discussionPostRepository;
+    private final DiscussionCommentRepository discussionCommentRepository;
+    private final CourseNoteRepository courseNoteRepository;
+    private final VideoBookmarkRepository videoBookmarkRepository;
     private final ExerciseRepository exerciseRepository;
     private final NotificationService notificationService;
     private final CourseSlideMapper courseSlideMapper;
@@ -95,6 +104,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   EnrollmentRepository enrollmentRepository,
                                   PluginGrantRepository pluginGrantRepository,
                                   LearningProgressRepository learningProgressRepository,
+                                   DiscussionCommentRepository discussionCommentRepository,
+                                   CourseNoteRepository courseNoteRepository,
+                                   VideoBookmarkRepository videoBookmarkRepository,
                                    ExerciseRepository exerciseRepository,
                                    NotificationService notificationService,
                                    DiscussionPostRepository discussionPostRepository,
@@ -110,6 +122,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.pluginGrantRepository = pluginGrantRepository;
         this.videoRepository = videoRepository;
         this.learningProgressRepository = learningProgressRepository;
+        this.discussionCommentRepository = discussionCommentRepository;
+        this.courseNoteRepository = courseNoteRepository;
+        this.videoBookmarkRepository = videoBookmarkRepository;
         this.exerciseRepository = exerciseRepository;
         this.notificationService = notificationService;
         this.discussionPostRepository = discussionPostRepository;
@@ -308,6 +323,22 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                 new LambdaUpdateWrapper<DiscussionPost>()
                         .eq(DiscussionPost::getCourseId, id)
                         .set(DiscussionPost::getDeletedAt, LocalDateTime.now()));
+
+        // 补全级联: 讨论回复
+        discussionCommentRepository.update(null,
+                new LambdaUpdateWrapper<DiscussionComment>()
+                        .inSql(DiscussionComment::getPostId,
+                                "SELECT id FROM discussion_posts WHERE course_id = " + id)
+                        .set(DiscussionComment::getDeletedAt, LocalDateTime.now()));
+
+        // 补全级联: 课程笔记
+        courseNoteRepository.delete(new LambdaQueryWrapper<CourseNote>()
+                .eq(CourseNote::getCourseId, id));
+
+        // 补全级联: 视频书签
+        videoBookmarkRepository.delete(new LambdaQueryWrapper<VideoBookmark>()
+                .inSql(VideoBookmark::getVideoId,
+                        "SELECT id FROM videos WHERE course_id = " + id));
 
         LOG.info("课程已关闭（含级联清理）, id={}", id);
     }
@@ -524,21 +555,6 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         Course course = getCourseOrThrow(id);
-
-        // 教師自己的草稿可直接發布（跳過審核流程）
-        if (CourseStatus.DRAFT.getCode() == course.getStatus() && SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-            long chapterCount = chapterRepository.selectCount(
-                    new LambdaQueryWrapper<CourseChapter>().eq(CourseChapter::getCourseId, id));
-            if (chapterCount == 0) {
-                LOG.warn("课程 {} 无章节内容，仍直接发布", id);
-            }
-            course.setStatus(CourseStatus.PUBLISHED.getCode());
-            course.setPublishedAt(LocalDateTime.now());
-            courseRepository.updateById(course);
-            recordReviewLog(id, "PUBLISH", CourseStatus.DRAFT.getCode(), CourseStatus.PUBLISHED.getCode(), null);
-            LOG.info("课程从草稿直接发布成功, id={}", id);
-            return;
-        }
 
         // P2-7: INTERACTIVE 课程发布前必须检查课件是否已就绪（status=2）
         if ("INTERACTIVE".equals(course.getCourseType())) {

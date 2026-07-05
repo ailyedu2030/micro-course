@@ -139,7 +139,7 @@
       </div>
 
       <!-- 继续学习 -->
-      <div v-if="recentCourse.title" class="continue-learning">
+      <div v-if="recentCourse.title" class="continue-learning" @click="navigateToLearning(recentCourse)" style="cursor:pointer">
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner">
             <div class="continue-info">
@@ -410,7 +410,7 @@
       </div>
 
       <!-- 继续学习 -->
-      <div v-if="recentCourse.title" class="continue-learning h5-continue">
+      <div v-if="recentCourse.title" class="continue-learning h5-continue" @click="navigateToLearning(recentCourse)" style="cursor:pointer">
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner h5-continue-inner">
             <div class="continue-info">
@@ -826,6 +826,8 @@ async function getRecent(sharedEnrollments) {
         console.warn('[LearningCenter] 获取学习进度失败', e)
       }
       recentCourse.value = {
+        courseId: inProgress.courseId,
+        courseType: inProgress.courseType || '',
         title: inProgress.courseTitle || inProgress.title || '课程',
         currentChapter,
         progress: inProgress.progress || 0,
