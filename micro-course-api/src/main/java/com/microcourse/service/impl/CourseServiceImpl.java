@@ -32,6 +32,7 @@ import com.microcourse.util.SecurityUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -54,6 +55,7 @@ public class CourseServiceImpl implements CourseService {
     private final CourseQueryService queryService;
     private final CourseAdminService adminService;
     private final NotificationService notificationService;
+    @Lazy
     private final EnrollmentService enrollmentService;
 
     public CourseServiceImpl(CourseRepository courseRepository,
@@ -63,8 +65,8 @@ public class CourseServiceImpl implements CourseService {
                              CoursePricingService pricingService,
                              CourseQueryService queryService,
                              CourseAdminService adminService,
-                             NotificationService notificationService,
-                             EnrollmentService enrollmentService) {
+                              NotificationService notificationService,
+                              @Lazy EnrollmentService enrollmentService) {
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.enrollmentRepository = enrollmentRepository;
