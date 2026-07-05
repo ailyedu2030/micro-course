@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.OperationLogVO;
@@ -52,6 +53,7 @@ public class OperationLogController {
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @AuditedLog("查询操作日志")
     public R<PageResult<OperationLogVO>> page(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String username,

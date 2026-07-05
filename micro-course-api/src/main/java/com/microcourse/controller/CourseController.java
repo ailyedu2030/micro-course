@@ -90,14 +90,18 @@ public class CourseController {
     @PreAuthorize("isAuthenticated()")
     public R<CourseVO> getById(@PathVariable Long id) {
         CourseVO vo = courseService.getById(id);
+        // P1-C 修复: status 判空再拆箱，避免空指针崩溃
+        Integer statusVal = vo.getStatus();
+        if (statusVal == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程状态不能为空");
+        }
+        int status = statusVal.intValue();
         // Round 11-1 数据隔离：下架(CLOSED)/归档(ARCHIVED)课程对学生等非授权角色不可见。
         //   - ADMIN / ACADEMIC：运营与教务全程可见；
         //   - TEACHER：仅本人课程可见（继续管理已下架课程）；
         //   - 其余（STUDENT 等）：返回 404 模拟"不存在"，避免泄露下架课程的存在与元数据。
-        Integer status = vo.getStatus();
-        if (status != null
-                && (status.intValue() == CourseStatus.CLOSED.getCode()
-                    || status.intValue() == CourseStatus.ARCHIVED.getCode())) {
+        if (status == CourseStatus.CLOSED.getCode()
+                || status == CourseStatus.ARCHIVED.getCode()) {
             boolean privileged = SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC");
             boolean ownerTeacher = SecurityUtil.hasRole("TEACHER")
                     && vo.getTeacherId() != null
@@ -107,9 +111,9 @@ public class CourseController {
             }
         }
         // P1-C 修复: REJECTED/DRAFT 课程对 STUDENT 角色也不可见
-        if (SecurityUtil.hasRole("STUDENT") && status != null) {
-            if (status.intValue() == CourseStatus.REJECTED.getCode()
-                    || status.intValue() == CourseStatus.DRAFT.getCode()) {
+        if (SecurityUtil.hasRole("STUDENT")) {
+            if (status == CourseStatus.REJECTED.getCode()
+                    || status == CourseStatus.DRAFT.getCode()) {
                 throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
             }
         }
@@ -235,13 +239,12 @@ public class CourseController {
      * POST /api/courses/{id}/reject
      * 审核拒绝（待审核 → 已驳回）
      * 权限：ADMIN, ACADEMIC
-     * @param body {"reason": "拒绝原因"}
      */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     @AuditedLog("课程审核驳回")
-    public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String reason = body.getOrDefault("reason", "");
+    public R<Void> reject(@PathVariable Long id, @Valid @RequestBody com.microcourse.dto.RejectRequest request) {
+        String reason = request.getReason();
         // P0#3 修复:驳回原因不能为空或过短
         if (reason == null || reason.isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因不能为空");
@@ -327,16 +330,18 @@ public class CourseController {
     @AuditedLog("课程下架")
     public R<Void> unpublish(@PathVariable Long id) {
         // 客户体验修复 v1.7.0: 下架前先取课程信息,下架后通知所有在学学生 (U20)
+        // P1-C 修复: before 判空避免空指针
         CourseVO before = courseService.getById(id);
+        if (before == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND, "课程不存在");
+        }
         courseService.updateStatus(id, CourseStatus.CLOSED.getCode());
-        if (before != null) {
-            try {
-                notifyCourseUnpublished(id, before.getTitle());
-            } catch (Exception e) {
-                // 通知失败不影响主流程,只记录日志
-                org.slf4j.LoggerFactory.getLogger(CourseController.class)
-                    .warn("课程下架通知失败: courseId={}, err={}", id, e.getMessage());
-            }
+        try {
+            notifyCourseUnpublished(id, before.getTitle());
+        } catch (Exception e) {
+            // 通知失败不影响主流程,只记录日志
+            org.slf4j.LoggerFactory.getLogger(CourseController.class)
+                .warn("课程下架通知失败: courseId={}, err={}", id, e.getMessage());
         }
         return R.ok();
     }

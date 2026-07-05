@@ -780,6 +780,8 @@ async function startExercise(exercise) {
   try {
     const { data } = await getExerciseById(exercise.id)
     currentExercise.value = data
+    // A11Y-030: 设置页面标题
+    document.title = (data.title || '随堂练习') + ' - 微课平台'
 
     // 加载每个题目的完整内容
     const ids = (data.questions || []).map(q => q.questionId)

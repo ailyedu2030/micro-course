@@ -77,6 +77,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MultipartException.class)
     public ResponseEntity<R<Void>> handleMultipart(MultipartException e) {
+        // P2-10 修复：检查异常消息是否包含 MaxUploadSizeExceededException 或 SizeLimitExceededException
+        String msg = e.getMessage();
+        if (msg != null && (msg.contains("MaxUploadSizeExceed") || msg.contains("SizeLimitExceeded"))) {
+            log.warn("[MultipartException] 文件大小超过限制: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(R.fail(ErrorCode.VIDEO_TOO_LARGE.getCode(), "文件大小超过限制"));
+        }
         log.warn("[MultipartException] {}", e.getMessage());
         return ResponseEntity.badRequest().body(R.fail(ErrorCode.BAD_REQUEST_PARAM.getCode(), "上传请求格式错误,请检查文件大小和格式"));
     }

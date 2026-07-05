@@ -52,7 +52,8 @@ class DataIsolationTest extends BaseIntegrationTest {
             "$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK";
 
     private static final String RAW_PHONE = "13812345678";
-    private static final String RAW_EMAIL = "isostudent@example.com";
+    /** 动态生成唯一 email，避免跨测试数据污染 */
+    private String uniqueEmail;
     private static final String MASKED_PHONE = "138****5678";
     private static final String MASKED_EMAIL = "i***@example.com";
 
@@ -65,9 +66,15 @@ class DataIsolationTest extends BaseIntegrationTest {
      * 清除本类所用种子账号的登录失败计数（login:lock:*）。
      * <p>历史误用错误口令的运行可能残留失败计数（30min TTL），借应用同一 Redis 连接清零，
      * 保证 p0_teacher / student 正确口令登录不被 1006（账号锁定）误拦，测试自治、可重复。</p>
+     * <p>同时重新生成唯一 email，避免隔离学员跨测试数据污染。</p>
      */
     @BeforeEach
-    void clearLoginLocks() {
+    void setUp() {
+        clearLoginLocks();
+        uniqueEmail = "isostudent_" + System.nanoTime() + "@example.com";
+    }
+
+    private void clearLoginLocks() {
         redisUtil.clearLoginFailure("p0_teacher");
         redisUtil.clearLoginFailure("student");
         redisUtil.clearLoginFailure("admin");
@@ -80,8 +87,9 @@ class DataIsolationTest extends BaseIntegrationTest {
     void studentPhoneShouldBeMaskedForTeacher() throws Exception {
         Long studentId = insertIsolatedStudent();
         // P1-C: 将学生加入教师课程,避免"该学生不在您的授课课程中"->403
+        // 使用 APPROVED（契约值）而非 ENROLLED（遗留值），因为 countByTeacherAndStudent SQL 只查 APPROVED/COMPLETED
         jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
-                "VALUES (?, 1, 'ENROLLED', 'WEB', now(), now())", studentId);
+                "VALUES (?, 1, 'APPROVED', 'WEB', now(), now())", studentId);
         try {
             String body = mockMvc.perform(get("/api/enrollments/student-detail/" + studentId)
                             .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123")))
@@ -98,15 +106,16 @@ class DataIsolationTest extends BaseIntegrationTest {
     @DisplayName("[隔离] 教师查看学员详情 → 邮箱脱敏 i***@example.com")
     void studentEmailShouldBeMaskedForTeacher() throws Exception {
         Long studentId = insertIsolatedStudent();
+        // 使用 APPROVED 以匹配 countByTeacherAndStudent SQL 查询条件
         jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
-                "VALUES (?, 1, 'ENROLLED', 'WEB', now(), now())", studentId);
+                "VALUES (?, 1, 'APPROVED', 'WEB', now(), now())", studentId);
         try {
             String body = mockMvc.perform(get("/api/enrollments/student-detail/" + studentId)
                             .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123")))
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
             String email = JsonPath.read(body, "$.data.email");
-            assertEquals(RAW_EMAIL, email, "教师可查看自己课程学生的邮箱");
+            assertEquals(uniqueEmail, email, "教师可查看自己课程学生的邮箱");
         } finally {
             deleteUser(studentId);
         }
@@ -122,7 +131,7 @@ class DataIsolationTest extends BaseIntegrationTest {
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
             assertEquals(RAW_PHONE, JsonPath.read(body, "$.data.phone"), "管理员应看到完整手机号");
-            assertEquals(RAW_EMAIL, JsonPath.read(body, "$.data.email"), "管理员应看到完整邮箱");
+            assertEquals(uniqueEmail, JsonPath.read(body, "$.data.email"), "管理员应看到完整邮箱");
         } finally {
             deleteUser(studentId);
         }
@@ -132,14 +141,14 @@ class DataIsolationTest extends BaseIntegrationTest {
     @DisplayName("[隔离] 本人查看自己用户详情 → 手机/邮箱完整")
     void studentCanSeeOwnDetail() throws Exception {
         // student(id=7) 种子无敏感信息，临时补齐后由本人 token 读取，验证"本人完整"路径，finally 复原。
-        jdbc.update("UPDATE users SET phone = ?, email = ? WHERE id = 7", RAW_PHONE, RAW_EMAIL);
+        jdbc.update("UPDATE users SET phone = ?, email = ? WHERE id = 7", RAW_PHONE, uniqueEmail);
         try {
             String body = mockMvc.perform(get("/api/users/7")
                             .header("Authorization", "Bearer " + loginAs("student", "student123")))
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
             assertEquals(RAW_PHONE, JsonPath.read(body, "$.data.phone"), "本人应看到完整手机号");
-            assertEquals(RAW_EMAIL, JsonPath.read(body, "$.data.email"), "本人应看到完整邮箱");
+            assertEquals(uniqueEmail, JsonPath.read(body, "$.data.email"), "本人应看到完整邮箱");
         } finally {
             jdbc.update("UPDATE users SET phone = NULL, email = NULL WHERE id = 7");
         }
@@ -244,7 +253,7 @@ class DataIsolationTest extends BaseIntegrationTest {
                 "INSERT INTO users(username, password, real_name, role, status, cas_bound, "
                         + "email, phone, created_at, updated_at) "
                         + "VALUES(?, ?, '隔离学员', 'STUDENT', 1, FALSE, ?, ?, NOW(), NOW()) RETURNING id",
-                Long.class, "iso_stu_" + System.nanoTime(), BCRYPT_STUDENT123, RAW_EMAIL, RAW_PHONE);
+                Long.class, "iso_stu_" + System.nanoTime(), BCRYPT_STUDENT123, uniqueEmail, RAW_PHONE);
     }
 
     /** 插入一门归属 p0_teacher(id=6) 的隔离课程（category_id=1 来自 p0-seed），返回其 id。 */

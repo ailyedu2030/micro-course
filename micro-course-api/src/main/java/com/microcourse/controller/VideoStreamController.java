@@ -4,6 +4,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.VideoAccessService;
 import com.microcourse.util.SecurityUtil;
+import com.microcourse.util.VideoSignUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,9 +36,12 @@ public class VideoStreamController {
     private String storageBaseDir;
 
     private final VideoAccessService videoAccessService;
+    private final VideoSignUtil videoSignUtil;
 
-    public VideoStreamController(VideoAccessService videoAccessService) {
+    public VideoStreamController(VideoAccessService videoAccessService,
+                                  VideoSignUtil videoSignUtil) {
         this.videoAccessService = videoAccessService;
+        this.videoSignUtil = videoSignUtil;
     }
 
     /**
@@ -51,14 +55,21 @@ public class VideoStreamController {
     public ResponseEntity<Resource> stream(
             @PathVariable Long courseId,
             @PathVariable Long videoId,
-            @PathVariable String filename) {
+            @PathVariable String filename,
+            @RequestParam(value = "sign", required = false) String sign) {
 
-        // ★ Round 8-1 修复：HLS 流式端点选课校验（仅 STUDENT；先于一切文件处理，未选课直接 403）
+        // ★ Round 8-1 修复：HLS 流式端点选课校验（仅 STUDENT；先于一切文件处理，未选课直接 8005）
+        // P1-C 修复: 先选课校验 → 再签名校验, 与 VideoController.play() 对齐
         if (SecurityUtil.hasRole("STUDENT")) {
+            // 先选课校验（未选课返回 8005 NOT_ENROLLED，而非 12003 VIDEO_SIGN_INVALID）
             VideoAccessService.AccessResult access =
                     videoAccessService.checkVideoAccess(SecurityUtil.getCurrentUserId(), courseId);
             if (!access.allowed) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
+            }
+            // 再验证视频签名
+            if (sign == null || !videoSignUtil.verifySign(videoId, sign)) {
+                throw new BusinessException(ErrorCode.VIDEO_SIGN_INVALID, "视频签名无效或已过期");
             }
         }
 

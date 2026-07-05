@@ -692,7 +692,7 @@ watch(() => searchForm.keyword, (newVal, oldVal) => {
       page.value = 1
       fetchCourses()
     }, 100)
-  } else if (newVal.length >= 1) {
+  } else if (newVal.length >= 2) {
     debounceTimer = setTimeout(() => {
       page.value = 1
       fetchCourses()

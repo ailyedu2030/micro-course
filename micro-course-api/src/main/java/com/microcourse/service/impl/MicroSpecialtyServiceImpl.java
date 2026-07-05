@@ -48,6 +48,26 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
     private static final Logger log = LoggerFactory.getLogger(MicroSpecialtyServiceImpl.class);
 
+    // ====== 微专业状态常量 ======
+    private static final String MS_STATUS_DRAFT = "DRAFT";
+    private static final String MS_STATUS_REJECTED = "REJECTED";
+    private static final String MS_STATUS_COMPLETED = "COMPLETED";
+    private static final String MS_STATUS_CANCELLED = "CANCELLED";
+    private static final String MS_STATUS_ARCHIVED = "ARCHIVED";
+    private static final String MS_STATUS_RECRUITING = "RECRUITING";
+    private static final String FEATURED_STATUS_NONE = "NONE";
+
+    // ====== 教师角色常量 ======
+    private static final String TEACHER_ROLE_LEAD = "LEAD";
+    private static final String TEACHER_ROLE_MEMBER = "MEMBER";
+    private static final String TEACHER_ROLE_ASSISTANT = "ASSISTANT";
+
+    // ====== 邀请状态常量 ======
+    private static final String INVITE_STATUS_INVITED = "INVITED";
+    private static final String INVITE_STATUS_ACTIVE = "ACTIVE";
+    private static final String INVITE_STATUS_DECLINED = "DECLINED";
+    private static final String INVITE_STATUS_REMOVED = "REMOVED";
+
     private final MicroSpecialtyRepository msRepository;
     private final MicroSpecialtyCourseRepository msCourseRepository;
     private final MicroSpecialtyTeacherRepository msTeacherRepository;
@@ -155,14 +175,14 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         ms.setCompletionRule(request.getCompletionRule());
         ms.setSemester(request.getSemester());
         ms.setMaxStudents(request.getMaxStudents());
-        ms.setStatus("DRAFT");
+        ms.setStatus(MS_STATUS_DRAFT);
         ms.setCreatorId(SecurityUtil.getCurrentUserId());
         ms.setCreatedAt(LocalDateTime.now());
         ms.setUpdatedAt(LocalDateTime.now());
         ms.setVersion(0);
         ms.setIsFeatured(false);
         ms.setIsGoldFeatured(false);
-        ms.setFeaturedStatus("NONE");
+        ms.setFeaturedStatus(FEATURED_STATUS_NONE);
         ms.setStudentCount(0);
 
         msRepository.insert(ms);
@@ -171,8 +191,8 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         MicroSpecialtyTeacher leadRecord = new MicroSpecialtyTeacher();
         leadRecord.setMicroSpecialtyId(ms.getId());
         leadRecord.setTeacherId(request.getLeadTeacherId());
-        leadRecord.setRole("LEAD");
-        leadRecord.setInviteStatus("INVITED");
+        leadRecord.setRole(TEACHER_ROLE_LEAD);
+        leadRecord.setInviteStatus(INVITE_STATUS_INVITED);
         leadRecord.setInvitedBy(SecurityUtil.getCurrentUserId());
         leadRecord.setInvitedAt(LocalDateTime.now());
         leadRecord.setInviteExpiresAt(LocalDateTime.now().plusDays(7));
@@ -198,7 +218,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         // 状态编辑范围校验（§9.11）
         String status = ms.getStatus();
-        if ("COMPLETED".equals(status) || "CANCELLED".equals(status) || "ARCHIVED".equals(status)) {
+        if (MS_STATUS_COMPLETED.equals(status) || MS_STATUS_CANCELLED.equals(status) || MS_STATUS_ARCHIVED.equals(status)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前状态不允许编辑");
         }
 
@@ -236,7 +256,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         // 仅 DRAFT/REJECTED/ARCHIVED 可删除
         String s = ms.getStatus();
-        if (!"DRAFT".equals(s) && !"REJECTED".equals(s) && !"ARCHIVED".equals(s)) {
+        if (!MS_STATUS_DRAFT.equals(s) && !MS_STATUS_REJECTED.equals(s) && !MS_STATUS_ARCHIVED.equals(s)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前状态不允许删除");
         }
         // FK 业务检查：有选课记录时禁止删除
@@ -314,7 +334,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         // §9.11 编辑范围：RECRUITING 后不允许添加课程（仅可排序）
         String s = ms.getStatus();
-        if ("RECRUITING".equals(s) || "COMPLETED".equals(s) || "CANCELLED".equals(s) || "ARCHIVED".equals(s)) {
+        if (MS_STATUS_RECRUITING.equals(s) || MS_STATUS_COMPLETED.equals(s) || MS_STATUS_CANCELLED.equals(s) || MS_STATUS_ARCHIVED.equals(s)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前微专业状态不允许添加课程");
         }
 
@@ -344,7 +364,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         String s = ms.getStatus();
 
         // RECRUITING: only allow sort_order modification (version 乐观锁保护)
-        if ("RECRUITING".equals(s)) {
+        if (MS_STATUS_RECRUITING.equals(s)) {
             MicroSpecialtyCourse recItem = msCourseRepository.selectById(itemId);
             if (recItem == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
             int recVersion = recItem.getVersion();
@@ -363,7 +383,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
             return queryService.toCourseVO(msCourseRepository.selectById(itemId));
         }
 
-        if ("COMPLETED".equals(s) || "CANCELLED".equals(s) || "ARCHIVED".equals(s)) {
+        if (MS_STATUS_COMPLETED.equals(s) || MS_STATUS_CANCELLED.equals(s) || MS_STATUS_ARCHIVED.equals(s)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前微专业状态不允许修改课程");
         }
 
@@ -403,7 +423,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         // §9.11 编辑范围校验
         String s = ms.getStatus();
-        if ("RECRUITING".equals(s) || "COMPLETED".equals(s) || "CANCELLED".equals(s) || "ARCHIVED".equals(s)) {
+        if (MS_STATUS_RECRUITING.equals(s) || MS_STATUS_COMPLETED.equals(s) || MS_STATUS_CANCELLED.equals(s) || MS_STATUS_ARCHIVED.equals(s)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前微专业状态不允许移除课程");
         }
 
@@ -427,17 +447,17 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         adminService.checkNotTerminal(ms);
 
         // 校验角色枚举
-        if (!"LEAD".equals(request.getRole()) && !"MEMBER".equals(request.getRole()) && !"ASSISTANT".equals(request.getRole())) {
+        if (!TEACHER_ROLE_LEAD.equals(request.getRole()) && !TEACHER_ROLE_MEMBER.equals(request.getRole()) && !TEACHER_ROLE_ASSISTANT.equals(request.getRole())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "角色必须为 LEAD/MEMBER/ASSISTANT");
         }
 
         // LEAD 唯一性校验
-        if ("LEAD".equals(request.getRole())) {
+        if (TEACHER_ROLE_LEAD.equals(request.getRole())) {
             Long activeLeadCount = msTeacherRepository.selectCount(
                     new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                             .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
-                            .eq(MicroSpecialtyTeacher::getRole, "LEAD")
-                            .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
+                            .eq(MicroSpecialtyTeacher::getRole, TEACHER_ROLE_LEAD)
+                            .eq(MicroSpecialtyTeacher::getInviteStatus, INVITE_STATUS_ACTIVE));
             if (activeLeadCount > 0) throw new BusinessException(ErrorCode.MS_LEAD_EXISTS);
         }
 
@@ -455,7 +475,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
                         .eq(MicroSpecialtyTeacher::getTeacherId, request.getTeacherId())
-                        .notIn(MicroSpecialtyTeacher::getInviteStatus, "DECLINED", "REMOVED"));
+                        .notIn(MicroSpecialtyTeacher::getInviteStatus, INVITE_STATUS_DECLINED, INVITE_STATUS_REMOVED));
         if (existCount > 0) throw new BusinessException(ErrorCode.MS_DUPLICATE_TEACHER);
 
         MicroSpecialtyTeacher record = new MicroSpecialtyTeacher();
@@ -464,7 +484,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         record.setRole(request.getRole());
         record.setCourseId(request.getCourseId());
         record.setResponsibility(request.getResponsibility());
-        record.setInviteStatus("INVITED");
+        record.setInviteStatus(INVITE_STATUS_INVITED);
         record.setInvitedBy(SecurityUtil.getCurrentUserId());
         record.setInvitedAt(LocalDateTime.now());
         record.setInviteExpiresAt(LocalDateTime.now().plusDays(7));
@@ -505,11 +525,11 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
                         .eq(MicroSpecialtyTeacher::getTeacherId, teacherId)
-                        .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
+                        .eq(MicroSpecialtyTeacher::getInviteStatus, INVITE_STATUS_ACTIVE));
         if (teacher == null) throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND);
 
         // LEAD 禁止被直接移除, 需走 transferLeadership 流程
-        if ("LEAD".equals(teacher.getRole())) {
+        if (TEACHER_ROLE_LEAD.equals(teacher.getRole())) {
             throw new BusinessException(ErrorCode.MS_LEAD_CANNOT_REMOVE);
         }
 
@@ -517,7 +537,7 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
                 .eq(MicroSpecialtyTeacher::getId, teacher.getId())
                 .eq(MicroSpecialtyTeacher::getVersion, teacher.getVersion())
                 .setSql("version = version + 1")
-                .set(MicroSpecialtyTeacher::getInviteStatus, "REMOVED")
+                .set(MicroSpecialtyTeacher::getInviteStatus, INVITE_STATUS_REMOVED)
                 .set(MicroSpecialtyTeacher::getLeftAt, LocalDateTime.now());
         int affected = msTeacherRepository.update(null, wrapper);
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);

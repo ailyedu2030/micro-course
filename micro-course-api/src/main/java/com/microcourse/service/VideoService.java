@@ -13,6 +13,7 @@ public interface VideoService {
 
     VideoVO getById(Long id);
 
+    @Deprecated
     Video findEntityById(Long id);
 
     VideoVO create(VideoCreateRequest request);
@@ -44,5 +45,6 @@ public interface VideoService {
     /**
      * P2: 按 MD5 查询是否已有重复视频（秒传）
      */
+    @Deprecated
     Video findByMd5(String md5);
 }

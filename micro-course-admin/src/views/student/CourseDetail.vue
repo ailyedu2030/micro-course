@@ -324,7 +324,7 @@ const activeChapters = ref([])
 const activeTab = ref('detail')
 
 const reviewForm = ref({ rating: 5, content: '' })
-const reviewRules = { rating: [{ required: true, message: '请选择评分', trigger: 'change' }], content: [{ max: 500, message: '评价内容不超过500字', trigger: 'blur' }] }
+const reviewRules = { rating: [{ required: true, message: '请选择评分', trigger: 'change' }], content: [{ required: true, message: '请输入评价内容', trigger: 'blur' }, { max: 500, message: '评价内容不超过500字', trigger: 'blur' }] }
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 
 const difficultyText = computed(() => {
@@ -475,21 +475,23 @@ const handleEnroll = async () => {
     await ElMessageBox.confirm(`确认加入学习？${freeNote}`, '加入课程', { confirmButtonText: '确认加入', cancelButtonText: '取消', type: 'info' })
     await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push(enrollTarget())
   } catch (e) {
+    if (e?.toString().includes('cancel')) {
+      ElMessage.info('已取消支付')
+      return
+    }
     if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
   } finally { enrollLoading.value = false }
 }
 
-function handleAddCart() {
+async function handleAddCart() {
   if (!isLoggedIn.value) { goLogin(); return }
   const c = course.value
   if (!c) return
-  // 使用 pricingInfo 中的实际价格
-  const displayPrice = pricingInfo.value?.finalPrice ?? c.price
-  const added = cartStore.addItem({
+  const added = await cartStore.addItem({
     id: Number(courseId.value),
     title: c.title,
     coverUrl: c.coverUrl,
-    price: displayPrice,
+    price: pricingInfo.value?.finalPrice ?? c.price,
     isFree: pricingInfo.value?.free ?? c.isFree,
     teacherName: c.teacherName,
   })

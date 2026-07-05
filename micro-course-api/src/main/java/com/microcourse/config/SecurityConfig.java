@@ -110,8 +110,8 @@ public class SecurityConfig {
                         // 暴露内容为 hikaricp_*/jvm_*/http_* 等运行时指标，不含业务敏感数据。
                         // ⚠️ 生产环境须在网络层（nginx/防火墙）进一步限制 /actuator/** 仅监控内网可达（见 docs/监控指标.md §3）。
                         .requestMatchers("GET", "/actuator/health", "/actuator/prometheus").permitAll()
-                        // P3-9（Phase D-2）：枚举导出端点 —— 前端首屏可选拉取，仅公开枚举元数据，无敏感信息
-                        .requestMatchers("GET", "/api/enums/export").permitAll()
+                        // P1-C 加固：枚举导出端点 —— 需登录后访问，避免枚举元数据泄露
+                        .requestMatchers("GET", "/api/enums/export").authenticated()
                         // Round 5-3 (P1-10)：公开系统配置 —— 前端首屏渲染站点名称/Logo/是否开放注册等
                         // 非敏感元数据，权限矩阵 v2.0 定义为「所有用户（含未登录）」。Controller 内白名单
                         // 严格限定可返回键，CAS/上传上限等敏感配置永不暴露。须先于通配 authenticated。
@@ -133,7 +133,8 @@ public class SecurityConfig {
                         // P2-1: Swagger 文档路径（生产禁用见 application-prod.yml springdoc.api-docs.enabled=false）
                         .requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
                         // P0-1: HLS 流式端点 — hls.js 通过 xhrSetup 携带 JWT，需认证
-                        .requestMatchers("GET", "/api/videos/stream/**").authenticated()
+                        // P0-07 修复：路径与 VideoStreamController @RequestMapping("/api/video-stream") 对齐
+                        .requestMatchers("GET", "/api/video-stream/**").authenticated()
                         // P0-8 修复：收窄 /api/files/** —— 按文件类型分类授权（白名单顺序须先于通配 authenticated）
                         // 封面图片：非敏感，前端 img :src 需无 Auth 访问
                         .requestMatchers("GET", "/api/files/covers/**").permitAll()

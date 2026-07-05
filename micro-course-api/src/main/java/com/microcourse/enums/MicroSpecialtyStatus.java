@@ -1,5 +1,12 @@
 package com.microcourse.enums;
 
+/**
+ * 微专业状态枚举
+ * ⚠️ 注意：DB 列 micro_specialties.status 为 VARCHAR(20)，存储字符串值（如 'DRAFT'）
+ * 此枚举的 @EnumValue 标注在 Integer code 上（目前未标注），与 DB 类型不兼容。
+ * 请勿将实体字段 MicroSpecialty.status 的类型从 String 切换为此枚举类型，
+ * 除非同时修改 DB 列类型为 INTEGER。
+ */
 public enum MicroSpecialtyStatus {
     DRAFT(0, "草稿"),
     PENDING_REVIEW(1, "待审核"),

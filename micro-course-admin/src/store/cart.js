@@ -32,17 +32,24 @@ export const useCartStore = defineStore('cart', () => {
   const hasItems = computed(() => items.value.length > 0)
 
   async function addItem(course) {
-    // 本地立即显示
-    if (!items.value.some(i => i.courseId === course.id)) {
-      items.value.push({
-        courseId: course.id,
-        title: course.title,
-        coverUrl: course.coverUrl,
-        price: course.price || 0,
-        isFree: course.isFree ?? (course.price == null || course.price === 0),
-        teacherName: course.teacherName || '',
-      })
+    // 检查是否已在购物车
+    const exists = items.value.some(i => i.courseId === course.id)
+    if (exists) {
+      // 异步同步到服务端（确保服务端也有该记录）
+      if (synced.value) {
+        try { await addCartItem(course.id, 1) } catch (e) { /* silent */ }
+      }
+      return false  // 已存在，不重复添加
     }
+    // 本地立即显示
+    items.value.push({
+      courseId: course.id,
+      title: course.title,
+      coverUrl: course.coverUrl,
+      price: course.price || 0,
+      isFree: course.isFree ?? (course.price == null || course.price === 0),
+      teacherName: course.teacherName || '',
+    })
     // 异步同步到服务端
     if (synced.value) {
       try { await addCartItem(course.id, 1) } catch (e) { /* silent */ }
@@ -51,10 +58,9 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   async function removeItem(courseId) {
-    const item = items.value.find(i => i.courseId === courseId)
     items.value = items.value.filter(i => i.courseId !== courseId)
-    if (synced.value && item) {
-      try { await apiRemove(item.id) } catch (e) { /* silent */ }
+    if (synced.value) {
+      try { await apiRemove(courseId) } catch (e) { /* silent */ }
     }
   }
 

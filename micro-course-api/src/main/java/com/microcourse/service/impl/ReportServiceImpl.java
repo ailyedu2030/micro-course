@@ -20,6 +20,7 @@ import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.ReviewReportRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.ReportService;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,22 +40,36 @@ public class ReportServiceImpl implements ReportService {
     private final CourseReviewRepository courseReviewRepository;
     private final DiscussionPostRepository discussionPostRepository;
     private final DiscussionCommentRepository discussionCommentRepository;
+    /** P1-24: 举报频率限制 */
+    private final StringRedisTemplate stringRedisTemplate;
 
     public ReportServiceImpl(ReviewReportRepository reviewReportRepository,
                              UserRepository userRepository,
                              CourseReviewRepository courseReviewRepository,
                              DiscussionPostRepository discussionPostRepository,
-                             DiscussionCommentRepository discussionCommentRepository) {
+                             DiscussionCommentRepository discussionCommentRepository,
+                             StringRedisTemplate stringRedisTemplate) {
         this.reviewReportRepository = reviewReportRepository;
         this.userRepository = userRepository;
         this.courseReviewRepository = courseReviewRepository;
         this.discussionPostRepository = discussionPostRepository;
         this.discussionCommentRepository = discussionCommentRepository;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void create(Long userId, CreateReportRequest req) {
+        // P1-24: 基于 Redis 的举报频率限制（每小时最多 10 条）
+        String rateKey = "report:rate:" + userId;
+        Long count = stringRedisTemplate.opsForValue().increment(rateKey);
+        if (count == 1) {
+            stringRedisTemplate.expire(rateKey, 1, java.util.concurrent.TimeUnit.HOURS);
+        }
+        if (count > 10) {
+            throw new BusinessException(ErrorCode.RATE_LIMITED, "举报太频繁，请稍后再试");
+        }
+
         String type = req.getReportedItemType();
         if (!List.of("REVIEW", "DISCUSSION_POST", "DISCUSSION_COMMENT").contains(type)) {
             throw new BusinessException(ErrorCode.REPORT_INVALID_TYPE);
@@ -122,7 +137,7 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void review(Long reportId, ReviewReportActionRequest req, Long reviewerId) {
         ReviewReport report = reviewReportRepository.selectById(reportId);
         if (report == null) {

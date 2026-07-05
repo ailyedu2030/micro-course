@@ -32,6 +32,23 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
 
     private static final Logger log = LoggerFactory.getLogger(MicroSpecialtyProgressServiceImpl.class);
 
+    // ====== 选课状态常量 ======
+    private static final String ENROLLMENT_STATUS_IN_PROGRESS = "IN_PROGRESS";
+    private static final String ENROLLMENT_STATUS_APPROVED = "APPROVED";
+    private static final String ENROLLMENT_STATUS_COMPLETED = "COMPLETED";
+    private static final String ENROLLMENT_STATUS_FAILED = "FAILED";
+
+    // ====== 最终成绩等级常量 ======
+    private static final String FINAL_GRADE_EXCELLENT = "EXCELLENT";
+    private static final String FINAL_GRADE_GOOD = "GOOD";
+    private static final String FINAL_GRADE_PASS = "PASS";
+    private static final String FINAL_GRADE_FAIL = "FAIL";
+
+    // ====== 完成规则常量 ======
+    private static final String COMPLETION_RULE_ALL_REQUIRED = "ALL_REQUIRED";
+    private static final String COMPLETION_RULE_CREDITS_MIN = "CREDITS_MIN";
+    private static final String COMPLETION_RULE_MIXED = "MIXED";
+
     private final MicroSpecialtyEnrollmentRepository enrollmentRepository;
     private final MicroSpecialtyRepository msRepository;
     private final MicroSpecialtyCourseRepository msCourseRepository;
@@ -62,7 +79,7 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
         MicroSpecialtyEnrollment en = enrollmentRepository.selectById(enrollmentId);
         if (en == null) return;
 
-        if (!"IN_PROGRESS".equals(en.getStatus()) && !"APPROVED".equals(en.getStatus())) return;
+        if (!ENROLLMENT_STATUS_IN_PROGRESS.equals(en.getStatus()) && !ENROLLMENT_STATUS_APPROVED.equals(en.getStatus())) return;
 
         MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
         if (ms == null) return;
@@ -180,11 +197,11 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
         // 判定完成（§6.8）
         boolean isCompleted = false;
         String rule = ms.getCompletionRule();
-        if ("ALL_REQUIRED".equals(rule)) {
+        if (COMPLETION_RULE_ALL_REQUIRED.equals(rule)) {
             isCompleted = coursesCompleted >= (ms.getRequiredCourseCount() != null ? ms.getRequiredCourseCount() : requiredCourses.size());
-        } else if ("CREDITS_MIN".equals(rule)) {
+        } else if (COMPLETION_RULE_CREDITS_MIN.equals(rule)) {
             isCompleted = ms.getMinCredits() != null && creditsEarned.compareTo(ms.getMinCredits()) >= 0;
-        } else if ("MIXED".equals(rule)) {
+        } else if (COMPLETION_RULE_MIXED.equals(rule)) {
             boolean requiredOk = coursesCompleted >= (ms.getRequiredCourseCount() != null ? ms.getRequiredCourseCount() : requiredCourses.size());
             boolean creditsOk = ms.getMinCredits() != null && creditsEarned.compareTo(ms.getMinCredits()) >= 0;
             isCompleted = requiredOk && creditsOk;
@@ -195,16 +212,16 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
         if (isCompleted) {
             // P0-12: 计算 final_grade（§6.8）
             String finalGrade;
-            if (finalScore >= 90) finalGrade = "EXCELLENT";
-            else if (finalScore >= 75) finalGrade = "GOOD";
-            else if (finalScore >= 60) finalGrade = "PASS";
-            else finalGrade = "FAIL";
+            if (finalScore >= 90) finalGrade = FINAL_GRADE_EXCELLENT;
+            else if (finalScore >= 75) finalGrade = FINAL_GRADE_GOOD;
+            else if (finalScore >= 60) finalGrade = FINAL_GRADE_PASS;
+            else finalGrade = FINAL_GRADE_FAIL;
 
             int affected = enrollmentRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                             .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
                             .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
-                            .set(MicroSpecialtyEnrollment::getStatus, "COMPLETED")
+                            .set(MicroSpecialtyEnrollment::getStatus, ENROLLMENT_STATUS_COMPLETED)
                             .set(MicroSpecialtyEnrollment::getProgress, BigDecimal.valueOf(progress))
                             .set(MicroSpecialtyEnrollment::getCreditsEarned, creditsEarned)
                             .set(MicroSpecialtyEnrollment::getCoursesCompleted, coursesCompleted)
@@ -233,7 +250,7 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
                         new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                                 .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
                                 .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
-                                .set(MicroSpecialtyEnrollment::getStatus, "FAILED")
+                                .set(MicroSpecialtyEnrollment::getStatus, ENROLLMENT_STATUS_FAILED)
                                 .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                                 .setSql("version = version + 1"));
                 if (failedAffected == 0) {
@@ -249,17 +266,17 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
             }
 
             // P0 FIX: APPROVED → IN_PROGRESS 自动转换 (学生首门必修课学习时触发)
-            if ("APPROVED".equals(en.getStatus()) && coursesCompleted > 0) {
+            if (ENROLLMENT_STATUS_APPROVED.equals(en.getStatus()) && coursesCompleted > 0) {
                 int approvedAffected = enrollmentRepository.update(null,
                         new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                                 .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
                                 .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
-                                .set(MicroSpecialtyEnrollment::getStatus, "IN_PROGRESS")
+                                .set(MicroSpecialtyEnrollment::getStatus, ENROLLMENT_STATUS_IN_PROGRESS)
                                 .setSql("version = version + 1"));
                 if (approvedAffected == 0) {
                     log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (APPROVED→IN_PROGRESS)", enrollmentId);
                 } else {
-                    en.setStatus("IN_PROGRESS");
+                    en.setStatus(ENROLLMENT_STATUS_IN_PROGRESS);
                     log.info("enrollment.id={} APPROVED → IN_PROGRESS", enrollmentId);
                 }
             }

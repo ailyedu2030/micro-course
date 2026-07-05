@@ -27,7 +27,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CartItem addItem(Long userId, Long courseId, Integer quantity) {
         if (quantity == null || quantity < 1) quantity = 1;
         LambdaQueryWrapper<CartItem> wrapper = new LambdaQueryWrapper<>();
@@ -36,13 +36,10 @@ public class CartServiceImpl implements CartService {
                 .isNull(CartItem::getDeletedAt);
         CartItem existing = cartItemRepository.selectOne(wrapper);
         if (existing != null) {
-            // CON-003 修复: 使用原子 SQL 更新数量, 避免 read-modify-write 竞态
-            cartItemRepository.update(null,
-                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<CartItem>()
-                            .eq(CartItem::getId, existing.getId())
-                            .setSql("quantity = quantity + " + quantity)
-                            .set(CartItem::getUpdatedAt, LocalDateTime.now()));
+            // CON-003 修复: 使用 MyBatis-Plus 参数化方式（替代 setSql 拼接，避免 SQL 注入风险）
             existing.setQuantity(existing.getQuantity() + quantity);
+            existing.setUpdatedAt(LocalDateTime.now());
+            cartItemRepository.updateById(existing);
             return existing;
         }
         CartItem item = new CartItem();
@@ -56,7 +53,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CartItem updateQuantity(Long userId, Long cartItemId, Integer quantity) {
         CartItem item = cartItemRepository.selectById(cartItemId);
         if (item == null || !item.getUserId().equals(userId)) {
@@ -69,7 +66,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void removeItem(Long userId, Long cartItemId) {
         CartItem item = cartItemRepository.selectById(cartItemId);
         if (item == null || !item.getUserId().equals(userId)) {
@@ -79,7 +76,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void clearCart(Long userId) {
         LambdaQueryWrapper<CartItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CartItem::getUserId, userId).isNull(CartItem::getDeletedAt);

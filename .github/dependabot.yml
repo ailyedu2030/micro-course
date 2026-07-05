@@ -1,32 +1,14 @@
 version: 2
 updates:
   - package-ecosystem: maven
-    directory: /
+    directory: /micro-course-api
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
-    groups:
-      dependencies:
-        update-types:
-          - minor
-          - patch
-
   - package-ecosystem: npm
-    directory: micro-course-admin
+    directory: /micro-course-admin
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
-    groups:
-      dependencies:
-        update-types:
-          - minor
-          - patch
-    ignore:
-      - dependency-name: '*'
-        update-types: ['major']
-
-  - package-ecosystem: github-actions
+  - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5

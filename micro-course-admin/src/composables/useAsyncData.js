@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 
 /**
  * 统一异步数据加载 composable（Round 11-3）
@@ -14,24 +14,36 @@ import { ref } from 'vue'
  * @param {Function} asyncFn 返回 Promise 的异步函数
  * @returns {{ data: import('vue').Ref, loading: import('vue').Ref<boolean>, error: import('vue').Ref, execute: Function }}
  */
-export function useAsyncData(asyncFn) {
+export function useAsyncData(asyncFn, immediate = false) {
   const data = ref(null)
   const loading = ref(false)
   const error = ref(null)
+  const unmounted = ref(false)
+
+  onUnmounted(() => { unmounted.value = true })
 
   const execute = async (...args) => {
     loading.value = true
     error.value = null
     try {
-      data.value = await asyncFn(...args)
+      const result = await asyncFn(...args)
+      if (!unmounted.value) {
+        data.value = result
+      }
       return data.value
     } catch (e) {
-      error.value = e
+      if (!unmounted.value) {
+        error.value = e
+      }
       throw e
     } finally {
-      loading.value = false
+      if (!unmounted.value) {
+        loading.value = false
+      }
     }
   }
+
+  if (immediate) execute()
 
   return { data, loading, error, execute }
 }

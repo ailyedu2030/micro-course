@@ -14,6 +14,7 @@ import com.microcourse.repository.DiscussionPostRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.DiscussionCommentService;
 import com.microcourse.util.SecurityUtil;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
@@ -32,15 +33,19 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     private final DiscussionPostRepository postRepository;
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
+    /** P1-17: 评论频率限制 */
+    private final StringRedisTemplate stringRedisTemplate;
 
     public DiscussionCommentServiceImpl(DiscussionCommentRepository commentRepository,
                                         DiscussionPostRepository postRepository,
                                         UserRepository userRepository,
-                                        JdbcTemplate jdbcTemplate) {
+                                        JdbcTemplate jdbcTemplate,
+                                        StringRedisTemplate stringRedisTemplate) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     @Override
@@ -79,6 +84,16 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DiscussionCommentVO create(CommentCreateRequest req, Long userId) {
+        // P1-17: 基于 Redis 的评论频率限制（每小时最多 20 条）
+        String rateKey = "discussion:rate:" + userId;
+        Long count = stringRedisTemplate.opsForValue().increment(rateKey);
+        if (count == 1) {
+            stringRedisTemplate.expire(rateKey, 1, java.util.concurrent.TimeUnit.HOURS);
+        }
+        if (count > 20) {
+            throw new BusinessException(ErrorCode.RATE_LIMITED, "发帖太频繁，请稍后再试");
+        }
+
         // P1: 评论防刷—30 秒内只能评论一次
         DiscussionComment lastComment = commentRepository.selectOne(
                 new LambdaQueryWrapper<DiscussionComment>()

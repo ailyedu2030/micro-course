@@ -186,7 +186,7 @@
         </el-alert>
         <div class="import-template">
           <p class="template-title">Excel 模板格式：</p>
-          <el-table :data="templateData" size="small" border class="template-table">
+          <el-table :data="[]" size="small" border class="template-table">
             <el-table-column prop="username" label="username (必填)" />
             <el-table-column prop="realName" label="realName (必填)" />
             <el-table-column prop="password" label="password (可选，留空自动生成)" />
@@ -336,9 +336,7 @@ const importResult = ref({
   errors: []
 })
 
-const templateData = [
-  { username: 'zhangsan', realName: '张三', password: '', role: 'STUDENT', departmentName: '计算机学院', majorName: '软件工程', className: '软工 2023-1 班' }
-]
+// 模板预览数据由 handleDownloadTemplate 动态生成，不硬编码测试数据
 
 // 详情弹窗
 const detailVisible = ref(false)

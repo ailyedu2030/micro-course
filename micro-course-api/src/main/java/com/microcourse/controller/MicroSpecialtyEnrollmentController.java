@@ -5,6 +5,7 @@ import com.microcourse.dto.R;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
 import com.microcourse.service.MicroSpecialtyEnrollmentService;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -58,6 +59,7 @@ public class MicroSpecialtyEnrollmentController {
     /** 班级批量导入 → APPROVED */
     @PostMapping("/class-import")
     @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    @Transactional(rollbackFor = Exception.class)
     public R<Integer> classImport(@RequestBody Map<String, Object> body) {
         Long microSpecialtyId = body.get("microSpecialtyId") != null
                 ? ((Number) body.get("microSpecialtyId")).longValue()

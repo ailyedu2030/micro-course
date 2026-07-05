@@ -525,11 +525,14 @@ function formatRevenue(val) {
   return Number(val).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function formatTxTime(ts) {
-  if (!ts) return ''
-  const d = new Date(ts)
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}`
+function formatTxTime(time) {
+  if (!time) return ''
+  const date = new Date(time)
+  const now = new Date()
+  if (date.getFullYear() === now.getFullYear()) {
+    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+  }
+  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
 }
 
 // 评级
@@ -781,6 +784,7 @@ async function startRefresh() {
 }
 
 onMounted(async () => {
+  document.title = '教师工作台 - 微课平台'
   await Promise.all([
     loadStats(),
     loadActivity(),

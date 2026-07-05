@@ -1,2 +1,2 @@
--- gap: V118 从未创建,无对应迁移
+-- Gap placeholder — 版本号跳过后保留的空占位
 SELECT 1;

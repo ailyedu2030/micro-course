@@ -64,8 +64,8 @@ public class VideoController {
     private final LearningProgressService learningProgressService;
     private final VideoAccessService videoAccessService;
 
-    /** P1-1: 上传目录从配置注入 */
-    @Value("${video.upload-dir:uploads/videos}")
+    /** P1-1: 上传目录从配置注入（P0-01 统一为 storage-base-dir） */
+    @Value("${video.storage-base-dir:uploads/videos}")
     private String uploadDir;
 
     public VideoController(VideoService videoService,

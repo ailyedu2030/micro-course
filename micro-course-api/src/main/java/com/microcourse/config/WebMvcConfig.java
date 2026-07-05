@@ -1,5 +1,6 @@
 package com.microcourse.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.audit.AuditLogWriter;
 import com.microcourse.audit.AuditedLogInterceptor;
 import com.microcourse.security.FileAccessLogger;
@@ -31,12 +32,14 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final RedisUtil redisUtil;
     private final FileAccessLogger fileAccessLogger;
     private final AuditLogWriter auditLogWriter;
+    private final ObjectMapper objectMapper;
 
     public WebMvcConfig(RedisUtil redisUtil, FileAccessLogger fileAccessLogger,
-                        AuditLogWriter auditLogWriter) {
+                        AuditLogWriter auditLogWriter, ObjectMapper objectMapper) {
         this.redisUtil = redisUtil;
         this.fileAccessLogger = fileAccessLogger;
         this.auditLogWriter = auditLogWriter;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -54,7 +57,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         // P2-10: @AuditedLog 审计拦截器 —— 仅对标注了 @AuditedLog 的 handler 异步写
         // operation_logs；其余请求在拦截器内首行透传，零影响、零阻塞。
-        registry.addInterceptor(new AuditedLogInterceptor(auditLogWriter))
+        // P1-22 修复：传入 ObjectMapper 以安全构建 JSON，避免字符串拼接注入风险
+        registry.addInterceptor(new AuditedLogInterceptor(auditLogWriter, objectMapper))
                 .addPathPatterns("/api/**");
 
         // P1-11: 封面 URL 枚举防护 —— 仅对 /api/files/covers/** 限速（60/分钟/IP）+ 访问审计；

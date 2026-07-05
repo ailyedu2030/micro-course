@@ -41,6 +41,10 @@ public class EnrollmentController {
     @PreAuthorize("hasRole('STUDENT')")
     @AuditedLog("创建选课")
     public R<EnrollmentVO> enroll(@Valid @RequestBody EnrollmentCreateRequest request) {
+        // P0-06 修复：禁止客户端直接传入 PAYMENT sourceChannel
+        if ("PAYMENT".equals(request.getSourceChannel())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法请求来源");
+        }
         Long userId = SecurityUtil.getCurrentUserId();
         request.setUserId(userId);
         EnrollmentVO vo = enrollmentService.enroll(request);

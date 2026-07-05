@@ -67,6 +67,10 @@ public class OrderServiceImpl implements OrderService {
     @Value("${payment.callback-secret:}")
     private String payCallbackSecret;
 
+    /** P1-05: 活跃环境标识，用于生产环境强制密钥检查 */
+    @Value("${spring.profiles.active:}")
+    private String activeProfiles;
+
     public OrderServiceImpl(OrderRepository orderRepository,
                             PaymentRepository paymentRepository,
                             CourseRepository courseRepository,
@@ -382,12 +386,20 @@ public class OrderServiceImpl implements OrderService {
     /**
      * 支付回调（外部网关调用，无 JWT 认证上下文）
      * J9-03: 增加 HMAC 签名验证（mock 模式下跳过）
+     * P1-05: 即使 mock 模式也验证来源安全
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void paymentCallback(Map<String, String> params) {
-        // J9-03: HMAC 签名验证（mock 模式跳过）
-        if (!"mock".equalsIgnoreCase(payMode) && payCallbackSecret != null && !payCallbackSecret.isBlank()) {
+        // P1-05 修复：生产环境强制验证签名
+        boolean isProduction = activeProfiles != null && activeProfiles.contains("prod");
+        if (payCallbackSecret == null || payCallbackSecret.isBlank()) {
+            if (isProduction) {
+                log.error("[SECURITY] 生产环境 payment.callback-secret 未配置，拒绝支付回调");
+                throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "支付回调密钥未配置");
+            }
+            log.warn("[paymentCallback] ⚠️ 开发环境无回调密钥，mock 模式下允许");
+        } else {
             String receivedSign = params.get("sign");
             if (receivedSign == null || receivedSign.isBlank()) {
                 log.warn("[paymentCallback] 缺少签名，拒绝回调: params={}",

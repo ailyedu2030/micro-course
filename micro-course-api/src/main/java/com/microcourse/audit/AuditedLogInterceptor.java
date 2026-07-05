@@ -1,5 +1,7 @@
 package com.microcourse.audit;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.entity.OperationLog;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -9,6 +11,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * {@link AuditedLog} 运行期审计拦截器（P2-10）。
@@ -47,8 +52,12 @@ public class AuditedLogInterceptor implements HandlerInterceptor {
 
     private final AuditLogWriter auditLogWriter;
 
-    public AuditedLogInterceptor(AuditLogWriter auditLogWriter) {
+    /** P1-22 修复：使用 ObjectMapper 安全构建 JSON，避免字符串拼接注入风险 */
+    private final ObjectMapper objectMapper;
+
+    public AuditedLogInterceptor(AuditLogWriter auditLogWriter, ObjectMapper objectMapper) {
         this.auditLogWriter = auditLogWriter;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -139,18 +148,23 @@ public class AuditedLogInterceptor implements HandlerInterceptor {
     }
 
     /** 构造 detail JSON：方法标识 + 请求路径 + HTTP 状态（+ 异常类名） */
-    private static String buildDetail(HttpServletRequest request, HandlerMethod handlerMethod,
-                                      int status, Exception ex) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\"method\":\"").append(handlerMethod.getBeanType().getSimpleName())
-                .append('.').append(handlerMethod.getMethod().getName());
-        sb.append("\",\"path\":\"").append(request.getMethod()).append(' ').append(request.getRequestURI());
-        sb.append("\",\"status\":").append(status);
+    /** P1-22 修复：使用 Map + ObjectMapper 替代手动字符串拼接，防止 JSON 注入 */
+    private String buildDetail(HttpServletRequest request, HandlerMethod handlerMethod,
+                                int status, Exception ex) {
+        Map<String, Object> detailMap = new LinkedHashMap<>();
+        detailMap.put("method", handlerMethod.getBeanType().getSimpleName() + "."
+                + handlerMethod.getMethod().getName());
+        detailMap.put("path", request.getMethod() + " " + request.getRequestURI());
+        detailMap.put("status", status);
         if (ex != null) {
-            sb.append(",\"error\":\"").append(ex.getClass().getSimpleName()).append('"');
+            detailMap.put("error", ex.getClass().getSimpleName());
         }
-        sb.append('}');
-        return sb.toString();
+        try {
+            return objectMapper.writeValueAsString(detailMap);
+        } catch (JsonProcessingException e) {
+            log.warn("[AuditLog] 构建 detail JSON 失败", e);
+            return "{}";
+        }
     }
 
     private static String truncate(String s, int max) {

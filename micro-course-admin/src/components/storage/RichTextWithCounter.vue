@@ -2,6 +2,7 @@
   <div class="rich-text-counter">
     <div class="quill-wrapper">
       <QuillEditor
+        ref="quillRef"
         :content="modelValue"
         content-type="html"
         toolbar="essential"
@@ -17,9 +18,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onBeforeUnmount } from 'vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+
+const quillRef = ref(null)
 
 const props = defineProps({
   modelValue: String,
@@ -31,6 +34,18 @@ const props = defineProps({
 })
 
 defineEmits(['update:modelValue'])
+
+// R-004: 组件卸载时显式清理 QuillEditor 实例
+onBeforeUnmount(() => {
+  try {
+    const quill = quillRef.value?.getQuill()
+    if (quill) {
+      quill.destroy()
+    }
+  } catch (e) {
+    // 静默处理，防止卸载时异常
+  }
+})
 
 const count = computed(() => {
   if (!props.modelValue) return 0

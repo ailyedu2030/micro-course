@@ -50,6 +50,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     private static final Logger LOG = LoggerFactory.getLogger(EnrollmentServiceImpl.class);
 
+    /** P0-04: 防止 OrderServiceImpl.refund() → cancelEnrollment → orderService.refund() 递归循环 */
+    private static final ThreadLocal<Boolean> REFUND_REENTRANT = ThreadLocal.withInitial(() -> false);
+
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentHistoryRepository enrollmentHistoryRepository;
     private final CourseRepository courseRepository;
@@ -159,17 +162,17 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
                         "课程" + describeCourseStatus(checkStatus) + "，无法重新选课");
                 }
-                // 物理删除旧 enrollment (走 @TableLogic 会被软删,但 uk_enroll_user_course 是硬唯一,阻挡)
-                // 走独立事务 (TransactionTemplate REQUIRES_NEW), 避免主事务回滚时撤销删除
-                final Long eid = existingEnrollment.getId();
-                Integer deleted = txTemplate.execute(status -> enrollmentRepository.physicalDeleteById(eid));
-                if (deleted == null || deleted == 0) {
-                    LOG.warn("删旧 CANCELLED 失败: enrollmentId={}", eid);
-                } else {
-                    LOG.info("退课后重新选课-物理删成功: enrollmentId={}", eid);
-                }
+                // P1-25: 退课物理删除改用软更新 — 复用旧记录，避免 REQUIRES_NEW 事务影响主事务
+                enrollmentRepository.update(null,
+                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Enrollment>()
+                        .eq(Enrollment::getId, existingEnrollment.getId())
+                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
+                        .set(Enrollment::getEnrollmentStatus, "REENROLLING")
+                        .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
+                LOG.info("退课后重新选课-软更新旧 enrollment 为 REENROLLING: enrollmentId={}", existingEnrollment.getId());
                 // 注意: cancelEnrollment 已 atomicDecrementStudentCount, 这里不要再 +1
                 // 走下面的正常 enroll 流程会自动 +1
+                // P1-25: 旧 CANCELLED enrollment 已软更新为 REENROLLING，不再物理删除
                 // 不 return, 继续走下面的正常 enroll 流程
             } else {
                 // 其他状态 (APPROVED/ENROLLED/IN_PROGRESS/COMPLETED/WAITLIST) 幂等返回
@@ -209,6 +212,18 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
+        // P0-06 修复：若 sourceChannel 为 PAYMENT，验证用户有该课程的 PAID 订单
+        if ("PAYMENT".equals(request.getSourceChannel())) {
+            // 【P1-05 修复】pay() 调用 autoEnroll() 时订单仍为 PENDING（先选课再标记支付），
+            // 因此同时检查 PENDING 和 PAID 订单，避免"非法支付来源"误拦截
+            Long paidCount = orderRepository.selectCount(new LambdaQueryWrapper<Order>()
+                    .eq(Order::getUserId, request.getUserId())
+                    .eq(Order::getCourseId, request.getCourseId())
+                    .in(Order::getStatus, "PENDING", "PAID"));
+            if (paidCount == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法支付来源");
+            }
+        }
         if (!"PAYMENT".equals(request.getSourceChannel())) {
             com.microcourse.dto.CoursePricingInfoVO pricing = courseService.getMyPricing(request.getCourseId());
             boolean studentShouldPay = pricing != null
@@ -230,7 +245,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         int inserted = enrollmentRepository.atomicInsertIfCapacity(
                 request.getUserId(),
                 request.getCourseId(),
-                EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                EnrollmentStatus.APPROVED.getValue(),
                 request.getSourceChannel());
 
         if (inserted == 0) {
@@ -443,22 +458,20 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             promoteFirstWaitlistToEnrolled(enrollment.getCourseId());
         }
 
-        // 同步检查关联订单：若有 PAID 订单则标记为 REFUNDED 并记录日志
+        // P0-04: 修复退款递归循环 — 由 OrderServiceImpl.refund() 统一编排退款和取消选课，
+        // cancelEnrollment 不再重复调用 orderService.refund()
         if (enrollment.getCourseId() != null) {
             LambdaQueryWrapper<Order> orderWrapper = new LambdaQueryWrapper<>();
             orderWrapper.eq(Order::getUserId, enrollment.getUserId())
                     .eq(Order::getCourseId, enrollment.getCourseId())
                     .eq(Order::getStatus, "PAID");
             Order paidOrder = orderRepository.selectOne(orderWrapper);
-            if (paidOrder != null) {
-                // J9-02: 取消选课时自动触发退款
-                LOG.info("取消选课触发退款: orderId={}, userId={}, courseId={}",
-                        paidOrder.getId(), enrollment.getUserId(), enrollment.getCourseId());
+            if (paidOrder != null && !REFUND_REENTRANT.get()) {
+                REFUND_REENTRANT.set(true);
                 try {
-                    orderService.refund(paidOrder.getId());
-                } catch (Exception e) {
-                    LOG.error("退款失败: orderId={}, error={}", paidOrder.getId(), e.getMessage(), e);
-                    // 退款失败不影响取消选课操作，但需记录异常
+                    LOG.info("[Enrollment] 取消选课 {} 时跳过退款（由 OrderService 统一编排）", enrollment.getId());
+                } finally {
+                    REFUND_REENTRANT.remove();
                 }
             }
         }
@@ -597,7 +610,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Enrollment>()
                         .eq(Enrollment::getId, next.getId())
                         .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())
-                        .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE)
+                        .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.APPROVED.getValue())
                         .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
         if (updated == 0) {
             LOG.warn("候补晋升 CAS 失败, id={} (并发取消冲突,下次重试)", next.getId());
@@ -691,7 +704,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     public void assertStudentInTeachersCourses(Long teacherId, Long studentId) {
         long count = enrollmentRepository.countByTeacherAndStudent(teacherId, studentId,
-                EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                EnrollmentStatus.APPROVED.getValue(),
                 EnrollmentStatus.APPROVED.getValue(),
                 EnrollmentStatus.COMPLETED.getValue());
         if (count == 0) {
@@ -708,7 +721,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     public List<Long> findActiveUserIdsByCourseId(Long courseId) {
         return enrollmentRepository.findActiveUserIdsByCourseId(
                 courseId,
-                EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                EnrollmentStatus.APPROVED.getValue(),
                 EnrollmentStatus.APPROVED.getValue(),
                 EnrollmentStatus.COMPLETED.getValue());
     }

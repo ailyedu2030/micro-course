@@ -33,6 +33,7 @@ import com.microcourse.repository.WrongQuestionRepository;
 import com.microcourse.service.ExerciseRecordService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.enums.NotificationType;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,17 +58,20 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final NotificationService notificationService;
+    /** P0-05: 答题 attemptNo 分布式锁 */
+    private final StringRedisTemplate stringRedisTemplate;
 
     public ExerciseRecordServiceImpl(ExerciseRecordRepository exerciseRecordRepository,
-                                       ExerciseRepository exerciseRepository,
-                                       ExerciseQuestionRepository exerciseQuestionRepository,
-                                       QuestionRepository questionRepository,
-                                       WrongQuestionRepository wrongQuestionRepository,
-                                       GradeRepository gradeRepository,
-                                       ObjectMapper objectMapper,
-                                       CourseRepository courseRepository,
-                                       EnrollmentRepository enrollmentRepository,
-                                       NotificationService notificationService) {
+                                        ExerciseRepository exerciseRepository,
+                                        ExerciseQuestionRepository exerciseQuestionRepository,
+                                        QuestionRepository questionRepository,
+                                        WrongQuestionRepository wrongQuestionRepository,
+                                        GradeRepository gradeRepository,
+                                        ObjectMapper objectMapper,
+                                        CourseRepository courseRepository,
+                                        EnrollmentRepository enrollmentRepository,
+                                        NotificationService notificationService,
+                                        StringRedisTemplate stringRedisTemplate) {
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.exerciseRepository = exerciseRepository;
         this.exerciseQuestionRepository = exerciseQuestionRepository;
@@ -78,6 +82,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.notificationService = notificationService;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     @Override
@@ -159,18 +164,30 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         // P0 修复: 检查是否有需要人工批改的主观题（SHORT_ANSWER/ESSAY）
         boolean hasManualGrading = gradingResults.stream().anyMatch(r -> r.needsManualGrading);
 
-        // 6. 计算 attemptNo:用 MAX(attempt_no) 在事务内获取当前最大值 +1,并捕获 DuplicateKeyException 兜底(CON-004 修复)
+        // 6. P0-05: 使用 Redis 分布式锁确保 attemptNo 原子递增，防止并发竞态
+        String lockKey = "attempt:lock:" + request.getUserId() + ":" + request.getExerciseId();
         int attemptNo;
         try {
-            QueryWrapper<ExerciseRecord> maxWrapper = new QueryWrapper<>();
-            maxWrapper.eq("user_id", request.getUserId())
-                    .eq("exercise_id", request.getExerciseId())
-                    .select("COALESCE(MAX(attempt_no), 0) AS max_no");
-            Map<String, Object> maxRow = exerciseRecordRepository.selectMaps(maxWrapper).stream()
-                    .findFirst().orElse(java.util.Collections.singletonMap("max_no", 0));
-            Object maxVal = maxRow.get("max_no");
-            long currentMax = (maxVal instanceof Number n) ? n.longValue() : 0L;
-            attemptNo = (int) currentMax + 1;
+            Boolean locked = stringRedisTemplate.opsForValue().setIfAbsent(lockKey, "1",
+                    java.time.Duration.ofSeconds(5));
+            if (!Boolean.TRUE.equals(locked)) {
+                throw new BusinessException(ErrorCode.RATE_LIMITED, "操作太频繁，请稍后重试");
+            }
+            try {
+                QueryWrapper<ExerciseRecord> maxWrapper = new QueryWrapper<>();
+                maxWrapper.eq("user_id", request.getUserId())
+                        .eq("exercise_id", request.getExerciseId())
+                        .select("COALESCE(MAX(attempt_no), 0) AS max_no");
+                Map<String, Object> maxRow = exerciseRecordRepository.selectMaps(maxWrapper).stream()
+                        .findFirst().orElse(java.util.Collections.singletonMap("max_no", 0));
+                Object maxVal = maxRow.get("max_no");
+                long currentMax = (maxVal instanceof Number n) ? n.longValue() : 0L;
+                attemptNo = (int) currentMax + 1;
+            } finally {
+                stringRedisTemplate.delete(lockKey);
+            }
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("[ExerciseRecord] attemptNo 计算失败,使用默认值 1", e);
             attemptNo = 1;

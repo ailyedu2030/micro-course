@@ -10,7 +10,7 @@
  *   const { data, refresh } = useSWR('/api/courses', { staleTime: 30000 })
  */
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import request from '@/utils/request'
 
 const cache = new Map()
 const inflight = new Map()
@@ -27,7 +27,7 @@ export function useSWR(key, options = {}) {
   async function fetcher(url) {
     // 复用 in-flight 请求
     if (inflight.has(url)) return inflight.get(url)
-    const promise = axios.get(url).then(res => res.data)
+    const promise = request.get(url).then(res => res.data)
     inflight.set(url, promise)
     promise.finally(() => inflight.delete(url))
     return promise

@@ -152,9 +152,8 @@ public class MicroSpecialtyController {
     /** 审批驳回 */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('ACADEMIC')")
-    public R<Void> reject(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String reason = body.getOrDefault("reason", "");
-        microSpecialtyService.reject(id, reason);
+    public R<Void> reject(@PathVariable Long id, @Valid @RequestBody com.microcourse.dto.RejectRequest request) {
+        microSpecialtyService.reject(id, request.getReason());
         return R.ok();
     }
 

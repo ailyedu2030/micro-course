@@ -399,6 +399,12 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件中无有效数据行");
         }
 
+        // P1-23 修复：批量导入行数限制，最多 10000 条
+        if (rows.size() > 10000) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "批量导入最多支持 10000 条数据，当前文件含 " + rows.size() + " 行");
+        }
+
         // Step 2: P0-2 预加载院系/专业/班级 name→id 映射（非事务，只读查询）
         Map<String, Long> deptNameMap = buildDepartmentNameMap();
         Map<String, Long> majorNameMap = buildMajorNameMap();

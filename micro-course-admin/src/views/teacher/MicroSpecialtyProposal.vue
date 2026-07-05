@@ -599,7 +599,8 @@ async function removeChapterAssign(assign, memberIndex) {
 }
 
 // ==================== 下拉选项 ====================
-const typeOptions = ['急需紧缺型']
+// TODO: 从后端配置接口动态获取类型选项
+const typeOptions = ['急需紧缺型', '学科交叉型', '产教融合型']
 const audienceOptions = ['专科', '本科', '硕士', '博士']
 const titleOptions = ['教授', '副教授', '讲师', '助教', '企业导师']
 const unitTypeOptions = [
@@ -776,6 +777,13 @@ async function handleSave() {
   if (!draftId.value) {
     ElMessage.warning('草稿尚未初始化')
     return
+  }
+  // D-009: 检查共享单位中是否有暂不支持的字段
+  const hasUnsupportedFields = sharedUnits.value.some(u =>
+    u.opinionText || u.signatureImageUrl || u.sealImageUrl || u.signDate
+  )
+  if (hasUnsupportedFields) {
+    ElMessage.info('共享单位的签名/公章等字段暂不支持保存，仅保存单位名称和类型')
   }
   // P1-C-11 修复：增加程序化表单校验
   try {

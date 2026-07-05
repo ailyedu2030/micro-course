@@ -240,6 +240,11 @@ async function loadCourse(cid) {
 
     course.value = courseRes.data || {}
 
+    // A11Y-023: 动态设置页面标题
+    if (course.value.title) {
+      document.title = course.value.title + ' - 微课平台'
+    }
+
     // ✅ 构建 progressMap（key=lessonId）+ 保存原始列表供 chapterId 查询
     const rawProgress = progressRes.data || []
     progressMap.value = buildProgressMap(rawProgress)
@@ -380,7 +385,7 @@ async function checkFavorite() {
   try {
     const res = await getMyFavorites()
     const favorites = res.data || []
-    isFavorited.value = favorites.some(f => f.courseId === courseId.value)
+    isFavorited.value = favorites.some(f => String(f.courseId) === String(courseId.value))
   } catch (e) {
     console.warn('[LearningView] checkFavorite 查询收藏状态失败', e)
   }

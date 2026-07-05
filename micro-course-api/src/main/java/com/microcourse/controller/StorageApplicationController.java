@@ -78,6 +78,8 @@ public class StorageApplicationController {
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
     public R<StorageApplicationVO> getDetail(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
+        // P0-03 修复：添加 owner 校验，与 exportWord()/exportPdf() 方法一致，防止 IDOR
+        storageApplicationService.validateOwner(id, userId);
         return R.ok(storageApplicationService.getDetail(id, userId));
     }
 
@@ -228,13 +230,20 @@ public class StorageApplicationController {
      * getDetail() 会联查所有子表 + 用户名/院系名，而导出文件名仅需 title 字段。
      *
      * <p>R-003 fix: 对用户可控的标题进行文件名校验，移除路径遍历和特殊字符。</p>
+     * <p>S-010 fix: 限制文件名长度为 50 字符，仅保留中文/英文/数字/括号/短横。</p>
      */
     private String resolveSchoolName(Long proposalId) {
         try {
             MicroSpecialtyProposal p = proposalRepository.selectById(proposalId);
             String name = p != null && p.getTitle() != null ? p.getTitle() : "申报高校";
             // Sanitize: remove characters unsafe for filenames across OS
-            return name.replaceAll("[/\\\\:*?\"<>|]", "").trim();
+            String sanitized = name.replaceAll("[/\\\\:*?\"<>|]", "").trim();
+            // S-010: length limit and character whitelist
+            sanitized = sanitized.replaceAll("[^\\u4e00-\\u9fa5\\w\\-（）()]", "").trim();
+            if (sanitized.length() > 50) {
+                sanitized = sanitized.substring(0, 50);
+            }
+            return sanitized.isEmpty() ? "申报高校" : sanitized;
         } catch (Exception e) {
             return "申报高校";
         }

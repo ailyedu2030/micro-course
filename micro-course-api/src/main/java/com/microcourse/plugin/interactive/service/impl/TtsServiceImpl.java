@@ -122,14 +122,24 @@ public class TtsServiceImpl implements TtsService {
         try {
             ProcessBuilder pb = new ProcessBuilder(MMX_CMD, "--version");
             Process process = pb.start();
-            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
-            if (finished && process.exitValue() == 0) {
-                mmxAvailable = true;
-                mmxCheckMessage = "可用";
-                log.info("[TTS] mmx CLI 检测通过（降级模式）");
-            } else {
-                mmxCheckMessage = "mmx CLI 执行失败或超时";
-                log.warn("[TTS] mmx CLI 不可用，TTS 将降级为纯文本模式");
+            try (var stdout = process.getInputStream();
+                 var stderr = process.getErrorStream()) {
+                // 消费输出流，防止缓冲区满导致进程挂起
+                byte[] buffer = new byte[4096];
+                while (stdout.read(buffer) != -1) { /* discard */ }
+                while (stderr.read(buffer) != -1) { /* discard */ }
+
+                boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+                if (finished && process.exitValue() == 0) {
+                    mmxAvailable = true;
+                    mmxCheckMessage = "可用";
+                    log.info("[TTS] mmx CLI 检测通过（降级模式）");
+                } else {
+                    mmxCheckMessage = "mmx CLI 执行失败或超时";
+                    log.warn("[TTS] mmx CLI 不可用，TTS 将降级为纯文本模式");
+                }
+            } finally {
+                process.destroy();
             }
         } catch (IOException e) {
             mmxCheckMessage = "mmx CLI 未安装或不在 PATH 中: " + e.getMessage();
@@ -312,23 +322,28 @@ public class TtsServiceImpl implements TtsService {
             );
 
             Process process = pb.start();
-            boolean finished = process.waitFor(120, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                throw new IOException("mmx TTS 超时");
-            }
+            try (var stdout = process.getInputStream();
+                 var stderr = process.getErrorStream()) {
+                // 消费 stdout（即使不关心输出），防止缓冲区满导致进程挂起
+                byte[] buffer = new byte[4096];
+                while (stdout.read(buffer) != -1) { /* discard */ }
 
-            int exitCode = process.exitValue();
-            if (exitCode != 0) {
-                StringBuilder errMsg = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getErrorStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) { errMsg.append(line); }
+                boolean finished = process.waitFor(120, TimeUnit.SECONDS);
+                if (!finished) {
+                    process.destroyForcibly();
+                    throw new IOException("mmx TTS 超时");
                 }
-                throw new IOException("mmx TTS 失败 exit=" + exitCode + ": " + errMsg);
+
+                // 进程已结束，读取 stderr 获取错误信息
+                String errorOutput = new String(stderr.readAllBytes());
+                int exitCode = process.exitValue();
+                if (exitCode != 0) {
+                    throw new IOException("mmx TTS 失败 exit=" + exitCode + ": " + errorOutput);
+                }
+                return 0;
+            } finally {
+                process.destroy();
             }
-            return 0;
         } finally {
             try { Files.deleteIfExists(tempTextFile); } catch (IOException ignored) { }
         }

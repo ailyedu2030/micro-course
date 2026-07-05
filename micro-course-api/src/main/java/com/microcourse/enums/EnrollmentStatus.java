@@ -36,12 +36,12 @@ public enum EnrollmentStatus {
     DROPPED("DROPPED");
 
     /**
-     * 历史遗留的"在读/已选"对外字符串值。
-     *
-     * <p>该值 <b>不是</b> 数据字典契约内的枚举名，而是旧代码（EnrollmentServiceImpl）契约外写入的魔法字符串，
-     * 语义等价于 {@link #APPROVED}。集中定义于此，消除散落的魔法字符串，并标记为后续可灰度替换的迁移点：
-     * 当 DB 数据从 "ENROLLED" 全量迁移到 "APPROVED" 后，可将所有引用替换为 {@code APPROVED.getValue()} 并删除本常量。</p>
+     * 历史遗留值 —— 已废弃。
+     * 新代码统一使用 {@link #APPROVED}，不再写入此值。
+     * 保留仅供 {@link #fromString(String)} 后向兼容存量数据。
+     * @deprecated 不再写入，仅用于解析存量数据
      */
+    @Deprecated
     public static final String LEGACY_ENROLLED_VALUE = "ENROLLED";
 
     @EnumValue   // MyBatis-Plus 持久化用（实体字段切换为本枚举类型时生效）

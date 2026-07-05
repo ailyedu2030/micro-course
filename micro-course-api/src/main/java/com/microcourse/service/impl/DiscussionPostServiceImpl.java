@@ -25,6 +25,7 @@ import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.service.DiscussionPostService;
 import com.microcourse.util.SecurityUtil;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,19 +45,23 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
     private final EnrollmentRepository enrollmentRepository;
+    /** P1-17: 发帖频率限制 */
+    private final StringRedisTemplate stringRedisTemplate;
 
     public DiscussionPostServiceImpl(DiscussionPostRepository postRepository,
-                                     DiscussionCommentRepository commentRepository,
-                                     UserRepository userRepository,
-                                     CourseRepository courseRepository,
-                                     CourseChapterRepository courseChapterRepository,
-                                     EnrollmentRepository enrollmentRepository) {
+                                      DiscussionCommentRepository commentRepository,
+                                      UserRepository userRepository,
+                                      CourseRepository courseRepository,
+                                      CourseChapterRepository courseChapterRepository,
+                                      EnrollmentRepository enrollmentRepository,
+                                      StringRedisTemplate stringRedisTemplate) {
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
        @Override
@@ -285,6 +290,16 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DiscussionPostVO create(PostCreateRequest req, Long userId) {
+        // P1-17: 基于 Redis 的发帖频率限制（每小时最多 20 帖）
+        String rateKey = "discussion:rate:" + userId;
+        Long count = stringRedisTemplate.opsForValue().increment(rateKey);
+        if (count == 1) {
+            stringRedisTemplate.expire(rateKey, 1, java.util.concurrent.TimeUnit.HOURS);
+        }
+        if (count > 20) {
+            throw new BusinessException(ErrorCode.RATE_LIMITED, "发帖太频繁，请稍后再试");
+        }
+
         // 1. 先解析 courseId：优先用请求中的，否则从 chapterId 反查
         Long resolvedCourseId = req.getCourseId();
         if (resolvedCourseId == null && req.getChapterId() != null) {

@@ -87,7 +87,8 @@ async function fetchData() {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch (err) {
-    ElMessage.error('加载评价列表失败')
+    tableData.value = []
+    ElMessage.error('获取数据失败')
   } finally {
     loading.value = false
   }
@@ -95,10 +96,13 @@ async function fetchData() {
 
 async function handleApprove(row) {
   try {
+    await ElMessageBox.confirm('确认通过该评价？', '操作确认', { confirmButtonText: '通过', cancelButtonText: '取消', type: 'warning' })
     await approveReview(row.id)
     ElMessage.success('已通过')
     fetchData()
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('操作失败')
+  }
 }
 
 async function handleReject(row) {

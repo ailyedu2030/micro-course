@@ -180,7 +180,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         course.setCourseNature(request.getCourseNature());
         course.setMaxStudents(request.getMaxStudents());
         course.setDifficulty(request.getDifficulty());
-        course.setDescription(request.getDescription());
+        course.setDescription(com.microcourse.util.XssSanitizer.sanitize(request.getDescription()));
         course.setTags(request.getTags());
         course.setCourseType(request.getCourseType());
         course.setPrice(request.getPrice());
@@ -233,7 +233,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (request.getCourseNature() != null) course.setCourseNature(request.getCourseNature());
         if (request.getMaxStudents() != null) course.setMaxStudents(request.getMaxStudents());
         if (request.getDifficulty() != null) course.setDifficulty(request.getDifficulty());
-        if (request.getDescription() != null) course.setDescription(request.getDescription());
+        if (request.getDescription() != null) course.setDescription(com.microcourse.util.XssSanitizer.sanitize(request.getDescription()));
         if (request.getTags() != null) course.setTags(request.getTags());
         if (request.getCourseType() != null) {
             checkPluginGrant(course.getTeacherId(), request.getCourseType());
