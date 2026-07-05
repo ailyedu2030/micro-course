@@ -29,16 +29,14 @@ import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseChapterService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 @Service
 public class CourseChapterServiceImpl implements CourseChapterService {
@@ -52,7 +50,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private final CourseNoteRepository courseNoteRepository;
     private final QuestionChapterRepository questionChapterRepository;
     private final ExerciseChapterRepository exerciseChapterRepository;
-    private final JdbcTemplate jdbcTemplate;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
                                      CourseRepository courseRepository,
@@ -62,8 +59,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
                                      LearningProgressRepository learningProgressRepository,
                                      CourseNoteRepository courseNoteRepository,
                                      QuestionChapterRepository questionChapterRepository,
-                                     ExerciseChapterRepository exerciseChapterRepository,
-                                     JdbcTemplate jdbcTemplate) {
+                                     ExerciseChapterRepository exerciseChapterRepository) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.videoRepository = videoRepository;
@@ -73,7 +69,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         this.courseNoteRepository = courseNoteRepository;
         this.questionChapterRepository = questionChapterRepository;
         this.exerciseChapterRepository = exerciseChapterRepository;
-        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -83,7 +78,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (courseId != null) {
             wrapper.eq(CourseChapter::getCourseId, courseId);
         }
-        wrapper.orderByAsc(CourseChapter::getSortOrder);
+        wrapper.orderByAsc(CourseChapter::getSortOrder).orderByAsc(CourseChapter::getId);
 
         IPage<CourseChapter> ipage = chapterRepository.selectPage(
                 new Page<>(page + 1, size), wrapper);
@@ -138,32 +133,25 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ChapterVO create(ChapterCreateRequest request) {
-        // Validate course exists
         Course course = courseRepository.selectById(request.getCourseId());
         if (course == null) {
             throw new BusinessException(ErrorCode.CHAPTER_COURSE_NOT_FOUND);
         }
-        // Owner check: only course teacher or ADMIN can create chapter
         assertCourseOwner(course);
 
         CourseChapter chapter = new CourseChapter();
         chapter.setCourseId(request.getCourseId());
         chapter.setTitle(request.getTitle());
         chapter.setDescription(request.getDescription());
-        // sortOrder: 用户指定时腾位插入,未指定时追加到末尾
+        // sortOrder: 用户指定的值直接使用(约束已删除,不会冲突)
+        // 未指定(0/null)时自动追加到末尾
         int sortOrder = request.getSortOrder() != null ? request.getSortOrder() : 0;
         if (sortOrder <= 0) {
-            sortOrder = nextSortOrder(request.getCourseId());
-        } else if (sortOrder > 0) {
-            // 两阶段大偏移腾位: 所有行(含软删) +10000 → -9999 = net+1
-            jdbcTemplate.update(
-                "UPDATE course_chapters SET sort_order = sort_order + 10000, updated_at = NOW() " +
-                "WHERE course_id = ? AND sort_order >= ?",
-                request.getCourseId(), sortOrder);
-            jdbcTemplate.update(
-                "UPDATE course_chapters SET sort_order = sort_order - 9999, updated_at = NOW() " +
-                "WHERE course_id = ? AND sort_order >= 10000",
-                request.getCourseId());
+            CourseChapter max = chapterRepository.selectOne(
+                new LambdaQueryWrapper<CourseChapter>()
+                    .eq(CourseChapter::getCourseId, request.getCourseId())
+                    .orderByDesc(CourseChapter::getSortOrder));
+            sortOrder = (max != null && max.getSortOrder() != null ? max.getSortOrder() : 0) + 1;
         }
         chapter.setSortOrder(sortOrder);
         String chapterType = request.getChapterType() != null ? request.getChapterType() : "VIDEO";
@@ -175,7 +163,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
 
         chapterRepository.insert(chapter);
         ChapterVO vo = convertToVO(chapter);
-        // 新建章节时 videoCount 默认为 0
         return vo;
     }
 
@@ -186,23 +173,14 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (chapter == null) {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
-        // Owner check: only course teacher or ADMIN can update chapter
         assertCourseOwnerByCourseId(chapter.getCourseId());
 
-        // Partial update — sortOrder变更时两阶段腾位(含软删)
-        if (request.getSortOrder() != null && !request.getSortOrder().equals(chapter.getSortOrder())) {
-            int newSort = request.getSortOrder();
-            // 两阶段: 所有行(含软删) +10000 → -9999 = net+1, 排除自身
-            jdbcTemplate.update(
-                "UPDATE course_chapters SET sort_order = sort_order + 10000, updated_at = NOW() " +
-                "WHERE course_id = ? AND sort_order >= ? AND id != ?",
-                chapter.getCourseId(), newSort, id);
-            jdbcTemplate.update(
-                "UPDATE course_chapters SET sort_order = sort_order - 9999, updated_at = NOW() " +
-                "WHERE course_id = ? AND sort_order >= 10000 AND id != ?",
-                chapter.getCourseId(), id);
-            chapter.setSortOrder(newSort);
+        // Partial update — sortOrder直接设置(约束已删除,不会冲突)
+        if (request.getSortOrder() != null) {
+            chapter.setSortOrder(request.getSortOrder());
         }
+        if (request.getTitle() != null) chapter.setTitle(request.getTitle());
+        if (request.getDescription() != null) chapter.setDescription(request.getDescription());
         if (request.getChapterType() != null) {
             validateChapterType(request.getChapterType());
             chapter.setChapterType(request.getChapterType());
@@ -210,8 +188,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (request.getDuration() != null) chapter.setDuration(request.getDuration());
 
         chapter.setUpdatedAt(LocalDateTime.now());
-
         chapterRepository.updateById(chapter);
+
         ChapterVO vo = convertToVO(chapter);
         Long vc = videoRepository.selectCount(
             new LambdaQueryWrapper<com.microcourse.entity.Video>()
@@ -227,9 +205,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (chapter == null) {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
-        // Owner check: only course teacher or ADMIN can delete chapter
         assertCourseOwnerByCourseId(chapter.getCourseId());
-        // MISC-NEW-4 修复:级联删除章节下的视频/练习/线下活动,避免孤儿记录
         videoRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Video>()
                 .eq(com.microcourse.entity.Video::getChapterId, id));
         exerciseRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Exercise>()
@@ -240,7 +216,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
                 .eq(LearningProgress::getChapterId, id));
         courseNoteRepository.delete(new LambdaQueryWrapper<CourseNote>()
                 .eq(CourseNote::getChapterId, id));
-        // P1-C: 补全章节删除级联 — 清理题目-章节和练习-章节关联
         questionChapterRepository.delete(new LambdaQueryWrapper<QuestionChapter>()
                 .eq(QuestionChapter::getChapterId, id));
         exerciseChapterRepository.delete(new LambdaQueryWrapper<ExerciseChapter>()
@@ -248,10 +223,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapterRepository.deleteById(id);
     }
 
-    /**
-     * 更新所有章节排序：使用逐条 updateById（安全替代 CASE WHEN 字符串拼接，消除 SQL 注入风险）。
-     * P3 性能优化：使用 Map 查找替代双重循环 O(N*M) → O(N+M)。
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sort(List<ChapterSortRequest> requests) {
@@ -261,7 +232,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         List<Long> ids = requests.stream().map(ChapterSortRequest::getId).collect(Collectors.toList());
         List<CourseChapter> chapters = chapterRepository.selectBatchIds(ids);
 
-        // 校验所有章节存在且属于同一课程
         if (chapters.isEmpty()) return;
         Set<Long> courseIds = chapters.stream()
                 .map(CourseChapter::getCourseId)
@@ -272,8 +242,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         Long courseId = courseIds.iterator().next();
         assertCourseOwnerByCourseId(courseId);
 
-        // P0-SEC-FIX: 使用逐条 updateById 替代 CASE WHEN 字符串拼接，消除 SQL 注入风险
-        // P3 性能优化: 使用 Map 查找替代双重循环 O(N*M) → O(N+M)
         Map<Long, CourseChapter> chapterMap = chapters.stream()
                 .collect(Collectors.toMap(CourseChapter::getId, Function.identity()));
         for (ChapterSortRequest r : requests) {
@@ -302,14 +270,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         return vo;
     }
 
-    /**
-     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
-     * <p>通用模式：实现逻辑与 ExerciseServiceImpl / VideoServiceImpl / OfflineSessionServiceImpl /
-     * LessonServiceImpl / QuestionServiceImpl 中的同名方法一致。若需统一重构，可抽取到公共工具类。</p>
-     *
-     * @param courseId 课程 ID
-     * @throws BusinessException NOT_FOUND 课程不存在，NO_PERMISSION 无权限
-     */
     private void assertCourseOwnerByCourseId(Long courseId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
@@ -318,13 +278,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         assertCourseOwner(course);
     }
 
-    /**
-     * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
-     * <p>通用模式：实现逻辑与 VideoServiceImpl.assertCourseOwner(Course) 一致。</p>
-     *
-     * @param course 课程实体（非 null）
-     * @throws BusinessException NO_PERMISSION 无权限
-     */
     private void assertCourseOwner(Course course) {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
@@ -339,20 +292,5 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (chapterType != null && !VALID_CHAPTER_TYPES.contains(chapterType)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无效的章节类型: " + chapterType);
         }
-    }
-
-    private boolean hasConflictSortOrder(Long courseId, int sortOrder) {
-        Integer count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM course_chapters WHERE course_id = ? AND sort_order = ?",
-            Integer.class, courseId, sortOrder);
-        return count != null && count > 0;
-    }
-
-    private int nextSortOrder(Long courseId) {
-        // 使用JdbcTemplate执行原生SQL,完全绕过MyBatis-Plus的@TableLogic过滤
-        Integer max = jdbcTemplate.queryForObject(
-            "SELECT COALESCE(MAX(sort_order), 0) FROM course_chapters WHERE course_id = ?",
-            Integer.class, courseId);
-        return (max != null ? max : 0) + 1;
     }
 }
