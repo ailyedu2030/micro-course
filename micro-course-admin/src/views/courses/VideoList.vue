@@ -376,7 +376,8 @@ const handleDialogCourseChange = async (courseId) => {
   if (!courseId) { chapterOptions.value = []; return }
   try {
     const { data } = await getChapters({ courseId, size: 1000 })
-    chapterOptions.value = data.items || []
+    // 只显示VIDEO类型的章节(INTERACTIVE/EXERCISE/OFFLINE不可添加视频)
+    chapterOptions.value = (data.items || []).filter(ch => ch.chapterType === 'VIDEO')
   } catch { chapterOptions.value = [] }
 }
 
@@ -388,7 +389,7 @@ const handleEdit = async (row) => {
   formData.courseId = row.courseId
   formData.chapterId = row.chapterId
   formData.sortOrder = row.sortOrder || 0
-  await handleCourseChange(row.courseId)
+  await handleDialogCourseChange(row.courseId)
   if (row.chapterId && !chapterOptions.value.find(c => c.id === row.chapterId)) {
     formData.chapterId = null
   }
