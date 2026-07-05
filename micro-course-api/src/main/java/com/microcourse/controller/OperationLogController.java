@@ -4,6 +4,7 @@ import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.OperationLogVO;
+import com.microcourse.entity.OperationLog;
 import com.microcourse.util.OperationLogAssembler;
 import com.microcourse.service.OperationLogService;
 import jakarta.validation.constraints.PositiveOrZero;

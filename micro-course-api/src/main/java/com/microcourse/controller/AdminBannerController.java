@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.microcourse.dto.BannerToggleStatusRequest;
 import com.microcourse.dto.BannerVO;
 import com.microcourse.dto.R;
+import jakarta.validation.Valid;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.BannerService;

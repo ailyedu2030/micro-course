@@ -1,4 +1,5 @@
 package com.microcourse.service;
+import com.microcourse.dto.PricingForAdopterVO;
 
 import com.microcourse.dto.CoursePricingInfoVO;
 import com.microcourse.dto.CoursePricingRequest;
