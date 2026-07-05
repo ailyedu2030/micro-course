@@ -124,7 +124,8 @@ class MicroSpecialtyFeaturedServiceTest {
     @DisplayName("setGoldFeatured: 正常设置金标（< 2 个）")
     void setGoldFeatured_success() {
         MicroSpecialty ms = msWithStatus("RECRUITING");
-        when(msRepository.selectById(1L)).thenReturn(ms);
+        lenient().doNothing().when(msRepository).acquireGoldFeaturedLock();
+        when(msRepository.selectForUpdate(1L)).thenReturn(ms);
         when(msRepository.selectCount(any())).thenReturn(1L);
         when(msRepository.update(any(), any())).thenReturn(1);
 
@@ -141,7 +142,8 @@ class MicroSpecialtyFeaturedServiceTest {
     @DisplayName("setGoldFeatured: 超 2 个限制抛出 MS_GOLD_LIMIT")
     void setGoldFeatured_limitExceeded() {
         MicroSpecialty ms = msWithStatus("RECRUITING");
-        when(msRepository.selectById(1L)).thenReturn(ms);
+        lenient().doNothing().when(msRepository).acquireGoldFeaturedLock();
+        when(msRepository.selectForUpdate(1L)).thenReturn(ms);
         when(msRepository.selectCount(any())).thenReturn(2L);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.setGoldFeatured(1L));

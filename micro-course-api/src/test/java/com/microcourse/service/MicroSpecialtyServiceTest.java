@@ -75,7 +75,8 @@ class MicroSpecialtyServiceTest {
                 courseRepository, msRepository, msCourseRepository, msTeacherRepository,
                 msEnrollmentRepository, notificationService,
                 proposalChapterRepository, chapterAssignRepo,
-                queryService, adminService);
+                queryService, adminService,
+                userRepository);
     }
 
     // ==================== create() ====================
