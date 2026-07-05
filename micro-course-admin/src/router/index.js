@@ -99,7 +99,7 @@ const routes = [
   { path: '/student', redirect: '/student/courses' },
   // 学生端路由
   { path: '/student/courses', name: 'StudentCourseSquare', component: () => import('../views/student/CourseSquare.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '广场', menuIcon: 'Grid', menuOrder: 1 } },
-  { path: '/student/courses/:id', name: 'StudentCourseDetail', component: () => import('../views/student/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/courses/:id', name: 'StudentCourseDetail', component: () => import('../views/student/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
   // P0 闭环修复 Round 4: 学生端课程套件路由(原 BundleSquare/BundleDetail.vue 存在但无路由,学生点击 → 404)
   { path: '/student/bundles', name: 'StudentBundleSquare', component: () => import('../views/student/BundleSquare.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/bundles/:id', name: 'StudentBundleDetail', component: () => import('../views/student/BundleDetail.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
@@ -143,7 +143,7 @@ const routes = [
   { path: '/student/settings', name: 'StudentSettings', component: () => import('../views/student/Settings.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/achievements', name: 'StudentAchievements', component: () => import('../views/student/AchievementWall.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'ADMIN'] } },
   // P0-1: SlidePlayer 学生端 PPT 播放路由
-  { path: '/student/courses/:courseId/slides/player', name: 'StudentSlidePlayer', component: () => import('../views/student/SlidePlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/student/courses/:courseId/slides/player', name: 'StudentSlidePlayer', component: () => import('../views/student/SlidePlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
   { path: '/student/chapters/:chapterId/offline', name: 'StudentOfflineSession', component: () => import('../views/student/StudentOfflineSession.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // P1-4: 404 通配路由 — 根据角色重定向到对应首页
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue'), beforeEnter: (to, from, next) => {
