@@ -18,9 +18,9 @@
           <el-tag :type="statusType" size="small" class="status-tag">{{ statusLabel }}</el-tag>
         </div>
         <div class="header-actions">
-          <el-button v-if="showSubmit" type="success" :loading="submitting" @click="handleSubmit">提交审核</el-button>
-          <el-button v-if="showOpen" type="warning" :loading="actioning" @click="handleOpen">开课</el-button>
-          <el-button v-if="showClose" type="danger" :loading="actioning" @click="handleClose">结业</el-button>
+          <el-button v-if="showSubmit" type="success" :loading="submitting" :disabled="submitting || actioning" @click="handleSubmit">提交审核</el-button>
+          <el-button v-if="showOpen" type="warning" :loading="actioning" :disabled="actioning" @click="handleOpen">开课</el-button>
+          <el-button v-if="showClose" type="danger" :loading="actioning" :disabled="actioning" @click="handleClose">结业</el-button>
           <el-button v-if="detail.status === 'APPROVED' || detail.status === 'RECRUITING'" @click="showFeaturedDialog">申请置顶</el-button>
         </div>
       </div>
@@ -70,7 +70,7 @@
             </el-col>
           </el-row>
         </el-form>
-        <div class="form-actions"><el-button type="primary" :loading="saving" @click="handleSave">保存</el-button></div>
+        <div class="form-actions"><el-button type="primary" :loading="saving" :disabled="saving" @click="handleSave">保存</el-button></div>
       </el-card>
 
       <!-- 选课列表 -->
@@ -109,7 +109,7 @@
       </el-form>
       <template #footer>
         <el-button @click="featuredVisible = false">取消</el-button>
-        <el-button type="primary" :loading="featuring" @click="handleFeatured">提交申请</el-button>
+        <el-button type="primary" :loading="featuring" :disabled="featuring" @click="handleFeatured">提交申请</el-button>
       </template>
     </el-dialog>
   </div>

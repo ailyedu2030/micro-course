@@ -22,4 +22,10 @@ public interface CertificateService {
     boolean hasCertificate(Long userId, Long courseId);
 
     byte[] generateCertificatePdf(Long certificateId);
+
+    /** 获取证书并校验是否为当前用户所有或管理员 */
+    CertificateVO getByIdWithOwnerCheck(Long id, Long currentUserId);
+
+    /** 下载证书 PDF 并校验是否为当前用户所有或管理员 */
+    byte[] downloadCertificateWithOwnerCheck(Long id, Long currentUserId);
 }

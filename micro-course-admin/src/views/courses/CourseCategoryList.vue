@@ -81,7 +81,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -123,7 +123,8 @@ const formData = reactive({
 
 // P2-18: 表单中不存在 level 字段（formData.level 虽定义但无对应表单控件），移除无效校验规则
 const formRules = {
-  name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
+  code: [{ required: true, message: '请输入分类编码', trigger: 'blur' }]
 }
 
 const fetchData = async () => {
@@ -207,6 +208,7 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return

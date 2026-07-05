@@ -106,7 +106,7 @@
       </el-form>
       <template #footer>
         <el-button @click="uploadDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="uploading" @click="submitUpload">开始上传</el-button>
+        <el-button type="primary" :loading="uploading" :disabled="uploading" @click="submitUpload">开始上传</el-button>
       </template>
     </el-dialog>
 

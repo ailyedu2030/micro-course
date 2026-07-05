@@ -2,8 +2,12 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.Video;
 import com.microcourse.enums.EnrollmentStatus;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.VideoAccessService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
@@ -34,9 +38,12 @@ public class VideoAccessServiceImpl implements VideoAccessService {
     private static final Logger log = LoggerFactory.getLogger(VideoAccessServiceImpl.class);
 
     private final EnrollmentRepository enrollmentRepository;
+    private final VideoRepository videoRepository;
 
-    public VideoAccessServiceImpl(EnrollmentRepository enrollmentRepository) {
+    public VideoAccessServiceImpl(EnrollmentRepository enrollmentRepository,
+                                  VideoRepository videoRepository) {
         this.enrollmentRepository = enrollmentRepository;
+        this.videoRepository = videoRepository;
     }
 
     /**
@@ -68,6 +75,25 @@ public class VideoAccessServiceImpl implements VideoAccessService {
             log.debug("[VideoAccess] 拒绝访问：userId={} 未选课 courseId={}", userId, courseId);
         }
         return VideoAccessService.AccessResult.denied("请先选课");
+    }
+
+    /**
+     * 检查学生是否有权限访问指定视频。
+     * 仅 STUDENT 角色需要检查；ADMIN / ACADEMIC / TEACHER 直接放行。
+     */
+    @Override
+    public void checkStudentAccess(Long videoId) {
+        if (!SecurityUtil.hasRole("STUDENT")) {
+            return; // 非学生（教师/管理员/教务）放行
+        }
+        Video video = videoRepository.selectById(videoId);
+        if (video == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        AccessResult result = checkVideoAccess(SecurityUtil.getCurrentUserId(), video.getCourseId());
+        if (!result.allowed) {
+            throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
+        }
     }
 
     /**

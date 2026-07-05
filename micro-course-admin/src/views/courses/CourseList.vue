@@ -252,7 +252,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
 
@@ -293,7 +293,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showOfflineDialog = false">取消</el-button>
-        <el-button type="primary" :loading="offlineSubmitting" @click="submitOffline">新增</el-button>
+        <el-button type="primary" :loading="offlineSubmitting" :disabled="offlineSubmitting" @click="submitOffline">新增</el-button>
       </template>
     </el-dialog>
   </div>
@@ -383,7 +383,10 @@ const coverFile = ref(null)
 const formRules = {
   title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }]
+  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }],
+  courseType: [{ required: true, message: '请选择课程类型', trigger: 'change' }],
+  price: [{ type: 'number', min: 0, message: '价格不能为负数', trigger: 'blur' }],
+  creditHours: [{ type: 'number', min: 0, max: 20, message: '学分范围为 0-20', trigger: 'blur' }]
 }
 
 const fetchCategories = async () => {
@@ -671,6 +674,7 @@ const goSlides = (row) => {
   router.push(`/teacher/courses/${row.id}/slides/manage`)
 }
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   try {
     const valid = await formRef.value.validate()

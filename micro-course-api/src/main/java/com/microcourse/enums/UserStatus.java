@@ -22,7 +22,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
  *   <li>INACTIVE → ACTIVE / DELETED</li>
  *   <li>ACTIVE → DISABLED / DELETED</li>
  *   <li>DISABLED → ACTIVE / DELETED</li>
- *   <li>DELETED → INACTIVE（恢复，业务层校验删除距今 ≤ 180 天）</li>
+ *   <li>DELETED → ACTIVE（恢复，业务层校验删除距今 ≤ 180 天）</li>
  * </ul>
  *
  * <p>注意：{@link EnumValue}/{@link JsonValue} 预留，便于后续将 {@code User.status} 字段
@@ -36,7 +36,7 @@ public enum UserStatus {
     ACTIVE(1, "ACTIVE"),
     /** 已禁用。 */
     DISABLED(2, "DISABLED"),
-    /** 已删除（软删除，180 天保留窗口内可恢复为 INACTIVE）。 */
+    /** 已删除（软删除，180 天保留窗口内可恢复为 ACTIVE）。 */
     DELETED(3, "DELETED");
 
     @EnumValue   // MyBatis-Plus 持久化用（实体字段切换为本枚举类型时生效）
@@ -76,7 +76,7 @@ public enum UserStatus {
             case DISABLED:
                 return target == ACTIVE || target == DELETED;
             case DELETED:
-                return target == INACTIVE; // 恢复；180 天窗口由业务层校验
+                return target == ACTIVE; // S-05: 恢复目标为 ACTIVE(1)；180 天窗口由业务层校验
             default:
                 return false;
         }

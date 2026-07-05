@@ -350,6 +350,16 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class, timeout = 300)
+    public int classImportBatch(Long microSpecialtyId, java.util.List<Long> classIds) {
+        int totalCount = 0;
+        for (Long classId : classIds) {
+            totalCount += classImport(microSpecialtyId, classId);
+        }
+        return totalCount;
+    }
+
+    @Override
     // P1-C-12-04 fix: 班级导入大事务超时
     // 50 人班级 × 10 门课程 = 500 次 enroll() 调用在同一 DB 事务中执行
     // PostgreSQL 事务超时默认 30s,大型班级会触发 timeout 导致整批失败

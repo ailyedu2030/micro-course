@@ -2,6 +2,8 @@ package com.microcourse.plugin.interactive.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.Enrollment;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
@@ -9,6 +11,7 @@ import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.TtsService;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.util.SecurityUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -49,6 +52,7 @@ public class TtsServiceImpl implements TtsService {
 
     private final SlidePageMapper slidePageMapper;
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final TransactionTemplate transactionTemplate;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -85,9 +89,11 @@ public class TtsServiceImpl implements TtsService {
 
     public TtsServiceImpl(SlidePageMapper slidePageMapper,
                           CourseRepository courseRepository,
+                          EnrollmentRepository enrollmentRepository,
                           TransactionTemplate transactionTemplate) {
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -402,6 +408,29 @@ public class TtsServiceImpl implements TtsService {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         }
         return page;
+    }
+
+    @Override
+    public void verifyAccess(Long courseId) {
+        if (SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC")) return;
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+
+        boolean allowed = false;
+        if (SecurityUtil.hasRole("TEACHER")
+                && course.getTeacherId() != null
+                && course.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
+            allowed = true;
+        }
+        if (!allowed && SecurityUtil.hasRole("STUDENT")) {
+            long count = enrollmentRepository.selectCount(
+                    new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
+                            .eq(Enrollment::getCourseId, courseId)
+                            .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
+            if (count > 0) allowed = true;
+        }
+        if (!allowed) throw new BusinessException(ErrorCode.NO_PERMISSION);
     }
 
     private void checkOwner(Long courseId) {

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.dto.CoursePricingInfoVO;
 import com.microcourse.dto.CoursePricingRequest;
+import com.microcourse.dto.PricingForAdopterVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Department;
 import com.microcourse.entity.User;
@@ -26,8 +27,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -145,20 +144,19 @@ public class CoursePricingServiceImpl implements CoursePricingService {
     }
 
     @Override
-    public Map<String, Object> getPricingForAdopter(Long courseId) {
+    public PricingForAdopterVO getPricingForAdopter(Long courseId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         Long adopterTeacherId = SecurityUtil.getCurrentUserId();
         User adopter = userRepository.selectById(adopterTeacherId);
         if (adopter == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
 
-        Map<String, Object> result = new HashMap<>();
+        PricingForAdopterVO vo = new PricingForAdopterVO();
         BigDecimal basePrice = course.getPrice() != null ? course.getPrice() : BigDecimal.ZERO;
-        result.put("basePrice", basePrice);
-        result.put("sameSchool", false);
-        result.put("sameDept", false);
-        result.put("finalPrice", basePrice);
-        result.put("feeNote", "");
+        vo.setOriginalPrice(basePrice);
+        vo.setAdjustedPrice(basePrice);
+        vo.setPricingMessage("");
+        vo.setIsFree(false);
 
         if (adopter.getDepartmentId() != null) {
             Department adopterDept = departmentRepository.selectById(adopter.getDepartmentId());
@@ -166,31 +164,32 @@ public class CoursePricingServiceImpl implements CoursePricingService {
                 if (SCOPE_SAME_DEPARTMENT.equals(course.getFreeAccessScope()) && course.getFreeDeptIds() != null) {
                     java.util.List<Long> deptIds = parseDeptIds(course.getFreeDeptIds());
                     if (deptIds.contains(adopter.getDepartmentId())) {
-                        result.put("finalPrice", BigDecimal.ZERO);
-                        result.put("freeAccess", true);
-                        result.put("feeNote", "免费（同院系）");
-                        return result;
+                        vo.setAdjustedPrice(BigDecimal.ZERO);
+                        vo.setIsFree(true);
+                        vo.setPricingMessage("免费（同院系）");
+                        return vo;
                     }
                 }
                 if (SCOPE_SAME_COLLEGE.equals(course.getFreeAccessScope())) {
-                    result.put("finalPrice", BigDecimal.ZERO);
-                    result.put("freeAccess", true);
-                    result.put("feeNote", "免费（同学院）");
-                    return result;
+                    vo.setAdjustedPrice(BigDecimal.ZERO);
+                    vo.setIsFree(true);
+                    vo.setPricingMessage("免费（同学院）");
+                    return vo;
                 }
                 if (SCOPE_SAME_SCHOOL.equals(course.getDiscountScope())) {
-                    result.put("sameSchool", true);
+                    vo.setDiscountScope(SCOPE_SAME_SCHOOL);
                     long percent = course.getDiscountPercent() != null ? course.getDiscountPercent() : 70;
                     BigDecimal finalPrice = basePrice.multiply(BigDecimal.valueOf(100 - percent))
                             .divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
-                    result.put("finalPrice", finalPrice);
-                    result.put("feeNote", percent + "% 折扣 (同校)");
-                    return result;
+                    vo.setAdjustedPrice(finalPrice);
+                    vo.setDiscountPercent((int) percent);
+                    vo.setPricingMessage(percent + "% 折扣 (同校)");
+                    return vo;
                 }
             }
         }
-        result.put("feeNote", "跨院系选课，按原价计费");
-        return result;
+        vo.setPricingMessage("跨院系选课，按原价计费");
+        return vo;
     }
 
     @Override

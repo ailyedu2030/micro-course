@@ -104,7 +104,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const hasAccess = ['ACADEMIC', 'ADMIN'].includes(userStore.role)
 const items = ref([])
-const page = ref(0)
+const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 
@@ -127,7 +127,7 @@ const fetchData = async () => {
   loading.value = true
   error.value = false
   try {
-    const params = { page: page.value, size: size.value }
+    const params = { page: page.value - 1, size: size.value }
     if (activeTab.value === 'PENDING') params.status = 'PENDING_REVIEW'
     const { data } = await getAllProposals(params)
     items.value = data.items || data || []

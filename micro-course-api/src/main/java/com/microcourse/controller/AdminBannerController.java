@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.BannerToggleStatusRequest;
 import com.microcourse.dto.BannerVO;
 import com.microcourse.dto.R;
 import com.microcourse.exception.BusinessException;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/banners")
@@ -78,9 +78,8 @@ public class AdminBannerController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
-    public R<Void> toggleStatus(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
-        Boolean enabled = body.get("enabled");
-        bannerService.toggleStatus(id, enabled);
+    public R<Void> toggleStatus(@PathVariable Long id, @Valid @RequestBody BannerToggleStatusRequest request) {
+        bannerService.toggleStatus(id, request.getEnabled());
         return R.ok();
     }
 }

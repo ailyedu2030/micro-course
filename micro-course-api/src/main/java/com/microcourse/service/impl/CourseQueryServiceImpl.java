@@ -229,6 +229,28 @@ public class CourseQueryServiceImpl implements CourseQueryService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
+        // 数据隔离：CLOSED/ARCHIVED 课程对学生等非授权角色不可见（移自 Controller getById）
+        Integer statusVal = vo.getStatus();
+        if (statusVal == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程状态不能为空");
+        }
+        int st = statusVal.intValue();
+        if (st == CourseStatus.CLOSED.getCode() || st == CourseStatus.ARCHIVED.getCode()) {
+            boolean privileged = SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC");
+            boolean ownerTeacher = SecurityUtil.hasRole("TEACHER")
+                    && vo.getTeacherId() != null
+                    && vo.getTeacherId().equals(SecurityUtil.getCurrentUserId());
+            if (!privileged && !ownerTeacher) {
+                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+            }
+        }
+        // REJECTED/DRAFT 课程对 STUDENT 角色也不可见
+        if (SecurityUtil.hasRole("STUDENT")) {
+            if (st == CourseStatus.REJECTED.getCode() || st == CourseStatus.DRAFT.getCode()) {
+                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+            }
+        }
+
         return vo;
     }
 

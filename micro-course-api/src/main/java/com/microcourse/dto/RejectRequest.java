@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 public class RejectRequest {
 
     @NotBlank(message = "驳回原因不能为空")
-    @Size(max = 500, message = "驳回原因不能超过500字")
+    @Size(min = 10, max = 500, message = "驳回原因至少10个字符，不能超过500字")
     private String reason;
 
     public String getReason() {

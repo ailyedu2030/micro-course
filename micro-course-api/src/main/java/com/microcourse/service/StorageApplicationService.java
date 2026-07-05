@@ -47,4 +47,9 @@ public interface StorageApplicationService {
 
     /** 11. 导出前置校验 */
     ExportValidationResult validateForExport(Long proposalId, Long userId);
+
+    /**
+     * 解析学校名称（用于导出的文件名），对标题进行安全过滤。
+     */
+    String resolveSchoolName(Long proposalId);
 }

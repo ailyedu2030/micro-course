@@ -5,7 +5,9 @@ import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.order.BatchOrderRequest;
+import com.microcourse.dto.order.OrderCreateRequest;
 import com.microcourse.dto.order.OrderVO;
+import com.microcourse.dto.order.PayRequest;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.OrderService;
@@ -17,16 +19,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -54,37 +53,24 @@ public class OrderController {
     @PostMapping
     @PreAuthorize("hasAnyRole('STUDENT')")
     @AuditedLog("创建订单")
-    public R<OrderVO> createOrder(@RequestBody Map<String, Long> body) {
-        // P2 #32 fix: explicit null-safe access (Map.get returns null for missing key, getOrDefault handles both null value and missing key)
-        Long bundleId = body == null ? null : body.getOrDefault("bundleId", null);
+    public R<OrderVO> createOrder(@Valid @RequestBody OrderCreateRequest request) {
         Long userId = SecurityUtil.getCurrentUserId();
         return R.ok(orderService.createOrder(userId,
-                body == null ? null : body.get("courseId"),
-                bundleId));
+                request.getCourseId(),
+                request.getBundleId()));
     }
 
     /**
      * J9-05: 批量下单 — 事务原子性创建多个订单并支付。
      * 创建过程中任一失败则全部回滚；支付失败不阻断其他课程（订单保持 PENDING）。
+     * 事务管理已在 Service 层 {@link OrderService#batchCreate} 配置。
      */
     @PostMapping("/batch")
     @PreAuthorize("hasAnyRole('STUDENT')")
     @AuditedLog("批量下单")
-    @Transactional(rollbackFor = Exception.class)
     public R<List<OrderVO>> batchCreate(@Valid @RequestBody BatchOrderRequest request) {
         Long userId = SecurityUtil.getCurrentUserId();
-        List<OrderVO> orders = new ArrayList<>();
-        for (Long courseId : request.getCourseIds()) {
-            // 原子创建订单（创建失败触发整个事务回滚）
-            OrderVO order = orderService.createOrder(userId, courseId, null);
-            orders.add(order);
-            // 立即支付（支付失败不阻断其他课程，但记录日志）
-            try {
-                order = orderService.pay(order.getId(), request.getPaymentMethod());
-            } catch (Exception e) {
-                log.warn("[BatchOrder] 课程 {} 支付失败: {}", courseId, e.getMessage());
-            }
-        }
+        List<OrderVO> orders = orderService.batchCreate(userId, request.getCourseIds(), request.getPaymentMethod());
         return R.ok(orders);
     }
 
@@ -105,8 +91,9 @@ public class OrderController {
     @PostMapping("/{id}/pay")
     @PreAuthorize("hasAnyRole('STUDENT')")
     @AuditedLog("订单支付")
-    public R<OrderVO> pay(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        return R.ok(orderService.pay(id, body.getOrDefault("paymentMethod", "BALANCE")));
+    public R<OrderVO> pay(@PathVariable Long id, @Valid @RequestBody PayRequest request) {
+        String paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod() : "BALANCE";
+        return R.ok(orderService.pay(id, paymentMethod));
     }
 
     @PostMapping("/{id}/cancel")

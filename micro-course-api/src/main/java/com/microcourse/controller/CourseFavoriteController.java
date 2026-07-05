@@ -1,9 +1,11 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.CourseFavoriteVO;
+import com.microcourse.dto.FavoriteCreateRequest;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.CourseFavoriteService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,10 +26,9 @@ public class CourseFavoriteController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public R<Void> favorite(@RequestBody java.util.Map<String, Long> body) {
-        Long courseId = body.get("courseId");
+    public R<Void> favorite(@Valid @RequestBody FavoriteCreateRequest request) {
         Long userId = getCurrentUserId();
-        favoriteService.favorite(userId, courseId);
+        favoriteService.favorite(userId, request.getCourseId());
         return R.ok();
     }
 

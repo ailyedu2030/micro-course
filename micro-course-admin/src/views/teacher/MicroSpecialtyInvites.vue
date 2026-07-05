@@ -107,7 +107,7 @@
       </template>
       <template #footer>
         <el-button @click="acceptDrawerVisible = false">取消</el-button>
-        <el-button type="primary" :loading="accepting" @click="confirmAcceptWithChapters">确认接受并保存决策</el-button>
+        <el-button type="primary" :loading="accepting" :disabled="accepting" @click="confirmAcceptWithChapters">确认接受并保存决策</el-button>
       </template>
     </el-drawer>
   </div>
@@ -117,7 +117,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPendingInvites, acceptInvite, declineInvite, leaveTeam, acceptWithChapters } from '@/api/microSpecialty'
-import request from '@/utils/request'
+import { searchChapters } from '@/api/chapter'
 
 const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
 
@@ -178,7 +178,7 @@ async function searchPlatformChapters() {
   if (!chapterSearchKeyword.value) return
   chapterSearchLoading.value = true
   try {
-    const { data } = await request({ method:'GET', url:'/courses/chapters/search', params:{ keyword: chapterSearchKeyword.value, page:0, size:10 }})
+    const { data } = await searchChapters({ keyword: chapterSearchKeyword.value, page: 0, size: 10 })
     chapterSearchResults.value = data.items || []
   } catch (e) { ElMessage.error('搜索失败') }
   finally { chapterSearchLoading.value = false }

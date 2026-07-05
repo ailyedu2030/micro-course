@@ -44,6 +44,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -381,6 +383,24 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("退款成功: orderId={}, refundTxnId={}, amount={}", orderId, refundTxnId, order.getAmount());
         return toVO(orderRepository.selectById(orderId));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<OrderVO> batchCreate(Long userId, List<Long> courseIds, String paymentMethod) {
+        List<OrderVO> orders = new ArrayList<>();
+        for (Long courseId : courseIds) {
+            // 原子创建订单（创建失败触发整个事务回滚）
+            OrderVO order = createOrder(userId, courseId, null);
+            orders.add(order);
+            // 立即支付（支付失败不阻断其他课程，但记录日志）
+            try {
+                order = pay(order.getId(), paymentMethod);
+            } catch (Exception e) {
+                log.warn("[BatchOrder] 课程 {} 支付失败: {}", courseId, e.getMessage());
+            }
+        }
+        return orders;
     }
 
     /**

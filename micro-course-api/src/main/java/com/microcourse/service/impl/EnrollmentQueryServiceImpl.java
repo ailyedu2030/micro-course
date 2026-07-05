@@ -84,6 +84,11 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
         // 构建查询条件
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
 
+        // S-04: TEACHER 数据隔离 — 强制限制只能查本人为教师的课程
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            query.setTeacherId(SecurityUtil.getCurrentUserId());
+        }
+
         // 预处理：studentName → 子查询条件
         if (query.getStudentName() != null && !query.getStudentName().isBlank()) {
             String escaped = escapeLike(query.getStudentName().trim());
@@ -136,6 +141,13 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<EnrollmentVO> getCourseEnrollmentPage(Long courseId, int page, int size) {
+        // S-03: TEACHER 数据隔离 — 非 ADMIN 的 TEACHER 只能查自己课程的学员数据
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            Course course = courseRepository.selectById(courseId);
+            if (course == null || !course.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权查看此课程的学员数据");
+            }
+        }
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Enrollment::getCourseId, courseId)
                 .orderByDesc(Enrollment::getEnrolledAt);

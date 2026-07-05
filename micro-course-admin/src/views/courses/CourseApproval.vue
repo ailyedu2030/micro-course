@@ -131,6 +131,8 @@ function handleReset() { searchForm.value.keyword = ''; page.value = 1; fetchDat
 function handleView(row) { router.push(`/courses/${row.id}`) }
 
 async function handleApprove(row) {
+  try { await ElMessageBox.confirm('确定通过该课程审核吗？', '提示', { type: 'info' }) }
+  catch { return }
   try { await approveCourse(row.id); ElMessage.success('已通过'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }
@@ -150,6 +152,8 @@ async function handleReject(row) {
 }
 
 async function handlePublish(row) {
+  try { await ElMessageBox.confirm('确定发布该课程吗？发布后学生将可见。', '提示', { type: 'info' }) }
+  catch { return }
   try { await publishCourse(row.id); ElMessage.success('已发布'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
 }

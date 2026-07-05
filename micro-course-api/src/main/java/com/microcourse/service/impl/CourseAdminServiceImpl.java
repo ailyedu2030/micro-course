@@ -61,6 +61,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 课程管理（CUD + 状态机）实现。
@@ -324,21 +325,33 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                         .eq(DiscussionPost::getCourseId, id)
                         .set(DiscussionPost::getDeletedAt, LocalDateTime.now()));
 
-        // 补全级联: 讨论回复
-        discussionCommentRepository.update(null,
-                new LambdaUpdateWrapper<DiscussionComment>()
-                        .inSql(DiscussionComment::getPostId,
-                                "SELECT id FROM discussion_posts WHERE course_id = " + id)
-                        .set(DiscussionComment::getDeletedAt, LocalDateTime.now()));
+        // 补全级联: 讨论回复（S-06: 参数化子查询防 SQL 注入）
+        List<Long> postIds = discussionPostRepository.selectList(
+                new LambdaQueryWrapper<DiscussionPost>()
+                        .eq(DiscussionPost::getCourseId, id)
+                        .select(DiscussionPost::getId))
+                .stream().map(DiscussionPost::getId).collect(Collectors.toList());
+        if (!postIds.isEmpty()) {
+            discussionCommentRepository.update(null,
+                    new LambdaUpdateWrapper<DiscussionComment>()
+                            .in(DiscussionComment::getPostId, postIds)
+                            .set(DiscussionComment::getDeletedAt, LocalDateTime.now()));
+        }
 
         // 补全级联: 课程笔记
         courseNoteRepository.delete(new LambdaQueryWrapper<CourseNote>()
                 .eq(CourseNote::getCourseId, id));
 
-        // 补全级联: 视频书签
-        videoBookmarkRepository.delete(new LambdaQueryWrapper<VideoBookmark>()
-                .inSql(VideoBookmark::getVideoId,
-                        "SELECT id FROM videos WHERE course_id = " + id));
+        // 补全级联: 视频书签（S-06: 参数化子查询防 SQL 注入）
+        List<Long> videoIds = videoRepository.selectList(
+                new LambdaQueryWrapper<Video>()
+                        .eq(Video::getCourseId, id)
+                        .select(Video::getId))
+                .stream().map(Video::getId).collect(Collectors.toList());
+        if (!videoIds.isEmpty()) {
+            videoBookmarkRepository.delete(new LambdaQueryWrapper<VideoBookmark>()
+                    .in(VideoBookmark::getVideoId, videoIds));
+        }
 
         LOG.info("课程已关闭（含级联清理）, id={}", id);
     }
@@ -453,10 +466,12 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (current == null || target == null || !current.canTransitionTo(target)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, current.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, target.getCode())
                         .set(Course::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
@@ -488,10 +503,12 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (chapterCount == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请至少添加一个章节再提交审核");
         }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, current.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
                         .set(Course::getRejectReason, (String) null)
                         .set(Course::getUpdatedAt, LocalDateTime.now())
@@ -506,10 +523,16 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void approve(Long id) {
         Course course = getCourseOrThrow(id);
+        // P1-I: approve 增加角色校验
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, CourseStatus.APPROVED.getCode())
                         .set(Course::getRejectReason, (String) null)
                         .set(Course::getUpdatedAt, LocalDateTime.now())
@@ -530,11 +553,17 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void reject(Long id, String reason) {
         Course course = getCourseOrThrow(id);
+        // P1-I: reject 增加角色校验
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         String safeReason = com.microcourse.util.XssSanitizer.sanitizePlainText(reason);
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, CourseStatus.REJECTED.getCode())
                         .set(Course::getRejectReason, safeReason)
                         .set(Course::getUpdatedAt, LocalDateTime.now())
@@ -555,6 +584,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         Course course = getCourseOrThrow(id);
+        // S-02: 发布权限校验 — 仅有课程教师或 ADMIN 可发布
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
 
         // P2-7: INTERACTIVE 课程发布前必须检查课件是否已就绪（status=2）
         if ("INTERACTIVE".equals(course.getCourseType())) {
@@ -566,9 +599,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "互动课件尚未就绪，请先上传并等待课件渲染完成");
             }
         }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
+                        .eq(Course::getVersion, currentVersion)
                         .in(Course::getStatus, CourseStatus.APPROVED.getCode(), CourseStatus.CLOSED.getCode())
                         .set(Course::getStatus, CourseStatus.PUBLISHED.getCode())
                         .set(Course::getPublishedAt, LocalDateTime.now())
@@ -606,10 +641,12 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (current == null || !current.canTransitionTo(CourseStatus.CLOSED)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "当前状态不允许下架");
         }
+        Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, current.getCode())
+                        .eq(Course::getVersion, currentVersion)
                         .set(Course::getStatus, CourseStatus.CLOSED.getCode())
                         .set(Course::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));

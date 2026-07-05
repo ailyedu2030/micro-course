@@ -148,14 +148,15 @@ public class CheckInServiceImpl implements CheckInService {
     public void updateDuration(Long userId, int duration) {
         LocalDate today = LocalDate.now();
 
-        // 使用增量 SQL 避免并发丢失更新
-        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<CheckIn> wrapper =
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-        wrapper.eq(CheckIn::getUserId, userId)
-                .eq(CheckIn::getCheckinDate, today)
-                .setSql("duration = COALESCE(duration, 0) + " + duration);
-        int affected = checkInRepository.update(null, wrapper);
-        if (affected == 0) {
+        // P1-I: 改为先查询再更新，避免 setSql 字符串拼接参数
+        CheckIn checkIn = checkInRepository.selectOne(
+                new LambdaQueryWrapper<CheckIn>()
+                        .eq(CheckIn::getUserId, userId)
+                        .eq(CheckIn::getCheckinDate, today));
+        if (checkIn != null) {
+            checkIn.setDuration((checkIn.getDuration() != null ? checkIn.getDuration() : 0) + duration);
+            checkInRepository.updateById(checkIn);
+        } else {
             log.warn("[CheckIn] updateDuration 无匹配 userId={} date={}, 可能是今日未打卡", userId, today);
         }
     }

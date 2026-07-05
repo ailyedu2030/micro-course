@@ -102,7 +102,7 @@ const router = useRouter()
 const payingId = ref(null)
 const refundingId = ref(null)
 const orders = ref([])
-const page = ref(0)
+const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 
@@ -112,7 +112,7 @@ bindToQuery(page, size, null, [])
 
 // Round 11-3: 统一异步加载 + 统一错误处理
 const { handleError, handleSuccess } = useErrorHandler()
-const { loading, execute } = useAsyncData((p) => getMyOrders({ page: p, size: size.value }))
+const { loading, execute } = useAsyncData((p) => getMyOrders({ page: p - 1, size: size.value }))
 
 const fetchOrders = async () => {
   try {

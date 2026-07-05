@@ -5,3 +5,4 @@ export function createChapter(data) { return request({ method:'POST', url:'/chap
 export function updateChapter(id, data) { return request({ method:'PUT', url:`/chapters/${id}`, data }) }
 export function deleteChapter(id) { return request({ method:'DELETE', url:`/chapters/${id}` }) }
 export function sortChapters(chapterSorts) { return request({ method:'PUT', url:'/chapters/sort', data: chapterSorts }) }
+export function searchChapters(params) { return request({ method:'GET', url:'/courses/chapters/search', params }) }

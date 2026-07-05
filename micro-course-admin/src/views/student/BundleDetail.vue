@@ -61,7 +61,7 @@ v-for="item in items" :key="item.id" class="course-row student-card-item"
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowRight } from '@element-plus/icons-vue'
 import { getBundleById, getBundleEnrollmentStatus } from '@/api/bundle'
 import { createOrder, payOrder } from '@/api/order'
@@ -128,6 +128,14 @@ const handleBuy = async () => {
       items.value = data.items || []
       return
     }
+    const amount = bundle.value?.price || order.amount || 0
+    try {
+      await ElMessageBox.confirm(
+        `确认支付 ¥${amount} 吗？`,
+        '支付确认',
+        { confirmButtonText: '确认支付', cancelButtonText: '取消', type: 'warning' }
+      )
+    } catch { buyLoading.value = false; return }
     await payOrder(order.id, 'BALANCE')
     // 重新拉取最新状态
     try {

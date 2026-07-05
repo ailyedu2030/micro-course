@@ -184,7 +184,7 @@
       </el-form>
       <template #footer>
         <el-button @click="changeStatusVisible = false">取消</el-button>
-        <el-button type="primary" :loading="changingStatus" @click="confirmChangeStatus">确定</el-button>
+        <el-button type="primary" :loading="changingStatus" :disabled="changingStatus" @click="confirmChangeStatus">确定</el-button>
       </template>
     </el-dialog>
   </div>

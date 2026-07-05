@@ -96,7 +96,7 @@
 
           <div class="invite-bar" v-if="selectedCandidates.length > 0">
             <span>已选 <strong>{{ selectedCandidates.length }}</strong> 位教师</span>
-            <el-button type="primary" :loading="inviting" @click="handleBatchInvite">批量邀请</el-button>
+            <el-button type="primary" :loading="inviting" :disabled="inviting" @click="handleBatchInvite">批量邀请</el-button>
           </div>
         </el-card>
       </template>

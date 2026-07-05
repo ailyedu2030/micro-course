@@ -2,6 +2,8 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.dto.InviteTeacherRequest;
+import com.microcourse.dto.TeacherActionRequest;
 import com.microcourse.dto.invite.AcceptWithChaptersRequest;
 import com.microcourse.service.MicroSpecialtyInviteService;
 import jakarta.validation.Valid;
@@ -84,12 +86,9 @@ public class MicroSpecialtyTeacherController {
     @PostMapping("/{inviteId}/review-cross-dept")
     @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
     public R<Void> reviewCrossDept(@PathVariable Long inviteId,
-                                    @RequestBody Map<String, Object> body) {
-        boolean approve = "approve".equals(body.get("action"))
-                || (body.get("approve") instanceof Boolean && (Boolean) body.get("approve"));
-        String reason = body.get("reason") instanceof String
-                ? (String) body.get("reason") : "";
-        inviteService.reviewCrossDept(inviteId, approve, reason);
+                                     @Valid @RequestBody TeacherActionRequest request) {
+        boolean approve = "approve".equals(request.getAction());
+        inviteService.reviewCrossDept(inviteId, approve, request.getReason());
         return R.ok();
     }
 
@@ -97,15 +96,8 @@ public class MicroSpecialtyTeacherController {
     @PostMapping("/{inviteId}/reinvite")
     @PreAuthorize("hasRole('TEACHER')")
     public R<Void> reinviteTeacher(@PathVariable Long inviteId,
-                                    @RequestBody Map<String, Object> body) {
-        String role = body.get("role") instanceof String
-                ? (String) body.get("role") : null;
-        String responsibility = body.get("responsibility") instanceof String
-                ? (String) body.get("responsibility") : null;
-        Long courseId = body.get("courseId") != null
-                ? ((Number) body.get("courseId")).longValue()
-                : null;
-        inviteService.reinviteTeacher(inviteId, role, responsibility, courseId);
+                                     @Valid @RequestBody InviteTeacherRequest request) {
+        inviteService.reinviteTeacher(inviteId, request.getRole(), request.getMessage(), request.getTeacherId());
         return R.ok();
     }
 }

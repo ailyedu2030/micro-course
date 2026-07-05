@@ -921,47 +921,56 @@ function nextQuestion() {
 
 // ===== 提交 =====
 async function handleSubmit() {
-  // 检查是否所有题都答了（包括多选题）
-  const unanswered = questionIds.value.filter(id => !isQuestionAnswered(id))
-  if (unanswered.length > 0) {
-    try {
-      await ElMessageBox.confirm(
-        `还有 ${unanswered.length} 题未作答，确定要提交吗？`,
-        '未完成提示',
-        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
-      )
-    } catch {
-      // 用户选择继续答题 → 跳转到第一个未答题目
-      const firstUnansweredIdx = questionIds.value.findIndex(id => !isQuestionAnswered(id))
-      if (firstUnansweredIdx >= 0) currentIndex.value = firstUnansweredIdx
-      return
+  if (submitting.value) return // 防重复提交（在 confirm 前即锁定）
+  submitting.value = true
+  try {
+    // 检查是否所有题都答了（包括多选题）
+    const unanswered = questionIds.value.filter(id => !isQuestionAnswered(id))
+    if (unanswered.length > 0) {
+      try {
+        await ElMessageBox.confirm(
+          `还有 ${unanswered.length} 题未作答，确定要提交吗？`,
+          '未完成提示',
+          { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+        )
+      } catch {
+        // 用户选择继续答题 → 跳转到第一个未答题目
+        const firstUnansweredIdx = questionIds.value.findIndex(id => !isQuestionAnswered(id))
+        if (firstUnansweredIdx >= 0) currentIndex.value = firstUnansweredIdx
+        submitting.value = false
+        return
+      }
     }
-  }
-  // 检查多选题是否完整作答（仅选1项可能不完整）
-  const partialMultiples = questionIds.value.filter(id => {
-    const q = questions.value.find(q => q.id === id)
-    if (!q || q.questionType !== 'MULTIPLE') return false
-    const arr = multipleAnswers[id]
-    return Array.isArray(arr) && arr.length === 1
-  })
-  if (partialMultiples.length > 0) {
-    try {
-      await ElMessageBox.confirm(
-        `有 ${partialMultiples.length} 道多选题仅选了 1 个选项，可能未完整作答，确定提交吗？`,
-        '多选题提示',
-        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
-      )
-    } catch {
-      const firstPartialIdx = questionIds.value.findIndex(id => partialMultiples.includes(id))
-      if (firstPartialIdx >= 0) currentIndex.value = firstPartialIdx
-      return
+    // 检查多选题是否完整作答（仅选1项可能不完整）
+    const partialMultiples = questionIds.value.filter(id => {
+      const q = questions.value.find(q => q.id === id)
+      if (!q || q.questionType !== 'MULTIPLE') return false
+      const arr = multipleAnswers[id]
+      return Array.isArray(arr) && arr.length === 1
+    })
+    if (partialMultiples.length > 0) {
+      try {
+        await ElMessageBox.confirm(
+          `有 ${partialMultiples.length} 道多选题仅选了 1 个选项，可能未完整作答，确定提交吗？`,
+          '多选题提示',
+          { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+        )
+      } catch {
+        const firstPartialIdx = questionIds.value.findIndex(id => partialMultiples.includes(id))
+        if (firstPartialIdx >= 0) currentIndex.value = firstPartialIdx
+        submitting.value = false
+        return
+      }
     }
+    await doSubmit()
+  } catch (e) {
+    submitting.value = false
+    throw e
   }
-  await doSubmit()
 }
 
 async function doSubmit() {
-  if (submitting.value) return // 防重复提交
+  // submitting 已由 handleSubmit 在 confirm 前设置为 true，此处确保状态
   submitting.value = true
 
   if (!currentExercise.value?.id) {

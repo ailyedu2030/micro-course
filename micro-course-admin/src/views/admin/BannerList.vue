@@ -64,7 +64,7 @@
         </el-table-column>
         <el-table-column prop="linkUrl" label="跳转链接" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
-            <a v-if="row.linkUrl" :href="row.linkUrl" target="_blank" class="banner-link">
+            <a v-if="row.linkUrl" :href="row.linkUrl" target="_blank" rel="noopener noreferrer" class="banner-link">
               {{ row.linkUrl }}
             </a>
             <span v-else class="text-secondary">-</span>
@@ -225,7 +225,12 @@ const form = reactive({
 
 // 表单验证
 const formRules = {
-  imageUrl: [{ required: true, message: '请上传轮播图图片', trigger: ['blur', 'change'] }]
+  imageUrl: [{ required: true, message: '请上传轮播图图片', trigger: ['blur', 'change'] }],
+  linkUrl: [{
+    pattern: /^$|^https?:\/\/.+/i,
+    message: '请输入正确的 URL 格式（以 http:// 或 https:// 开头）',
+    trigger: 'blur'
+  }]
 }
 
 // 获取数据

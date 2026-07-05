@@ -3,6 +3,7 @@ package com.microcourse.service;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.OperationLog;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,25 @@ public interface OperationLogService {
     PageResult<OperationLog> pageQuery(Long userId, List<Long> userIds, String action,
                                         String module, Long targetId,
                                         LocalDateTime startTime, LocalDateTime endTime,
+                                        int page, int size);
+
+    /**
+     * 分页查询操作日志（LocalDate 版本，自动处理日期转换 + username→userIds 搜索）
+     *
+     * @param userId     操作用户ID（可选，精确匹配）
+     * @param username   用户名（可选，模糊搜索后转换为 userIds）
+     * @param action     操作类型（可选）
+     * @param module     功能模块（可选）
+     * @param targetId   目标对象ID（可选）
+     * @param startDate  开始日期（可选，自动转为 00:00:00）
+     * @param endDate    结束日期（可选，自动转为 23:59:59）
+     * @param page       页码（从0开始）
+     * @param size       每页大小
+     * @return 分页结果
+     */
+    PageResult<OperationLog> pageQuery(Long userId, String username, String action,
+                                        String module, Long targetId,
+                                        LocalDate startDate, LocalDate endDate,
                                         int page, int size);
 
     /**

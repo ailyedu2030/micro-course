@@ -83,7 +83,7 @@
       </el-form>
       <template #footer>
         <el-button @click="addVisible = false">取消</el-button>
-        <el-button type="primary" :loading="adding" @click="handleAdd">添加</el-button>
+        <el-button type="primary" :loading="adding" :disabled="adding" @click="handleAdd">添加</el-button>
       </template>
     </el-dialog>
 
@@ -102,7 +102,7 @@
       </el-form>
       <template #footer>
         <el-button @click="assignVisible = false">取消</el-button>
-        <el-button type="primary" :loading="assigning" @click="handleAssignTeacher">确认</el-button>
+        <el-button type="primary" :loading="assigning" :disabled="assigning" @click="handleAssignTeacher">确认</el-button>
       </template>
     </el-dialog>
 
@@ -127,7 +127,7 @@
       </el-form>
       <template #footer>
         <el-button @click="editVisible = false">取消</el-button>
-        <el-button type="primary" :loading="editing" @click="handleEditSave">保存</el-button>
+        <el-button type="primary" :loading="editing" :disabled="editing" @click="handleEditSave">保存</el-button>
       </template>
     </el-dialog>
   </div>

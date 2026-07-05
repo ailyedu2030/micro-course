@@ -42,8 +42,12 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
+import cn.hutool.poi.excel.ExcelUtil;
+import cn.hutool.poi.excel.ExcelWriter;
 
 @Service
 public class EnrollmentServiceImpl implements EnrollmentService {
@@ -323,6 +327,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<EnrollmentVO> getEnrollmentPage(EnrollmentQueryRequest query) {
+        // SECURITY: TEACHER 只能查自己课程的学员，强制覆写 teacherId
+        if (SecurityUtil.hasRole("TEACHER")) {
+            query.setTeacherId(SecurityUtil.getCurrentUserId());
+        }
         return queryService.getEnrollmentPage(query);
     }
 
@@ -334,6 +342,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<EnrollmentVO> getCourseEnrollmentPage(Long courseId, int page, int size) {
+        // SECURITY: TEACHER 必须为课程 owner；ADMIN/ACADEMIC 跳过
+        if (SecurityUtil.hasRole("TEACHER")) {
+            assertCourseOwnership(courseId);
+        }
         return queryService.getCourseEnrollmentPage(courseId, page, size);
     }
 
@@ -733,7 +745,57 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (enrollment == null) {
             throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND);
         }
-        return convertToVO(enrollment);
+        EnrollmentVO vo = convertToVO(enrollment);
+        // 角色级权限校验：ADMIN/ACADEMIC 无限制，TEACHER 必须为课程 owner，STUDENT 仅本人
+        if (SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC")) {
+            return vo;
+        }
+        if (SecurityUtil.hasRole("TEACHER")) {
+            assertCourseOwnership(vo.getCourseId());
+            return vo;
+        }
+        // STUDENT：仅本人
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (vo.getUserId() == null || !vo.getUserId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        return vo;
+    }
+
+    @Override
+    public void exportEnrollments(Long courseId, HttpServletResponse response) throws IOException {
+        // P0-SEC-FIX: TEACHER 角色添加课程所有权校验，防止 IDOR 导出任意课程数据
+        if (SecurityUtil.hasRole("TEACHER")) {
+            assertCourseOwnership(courseId);
+        }
+        List<EnrollmentVO> enrollments = queryService.getCourseEnrollments(courseId);
+
+        // 设置响应头
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=enrollments_" + courseId + ".xlsx");
+
+        // 使用 Hutool ExcelWriter 导出（try-finally 确保资源释放）
+        ExcelWriter writer = ExcelUtil.getWriter(true);
+        try {
+            writer.addHeaderAlias("id", "选课ID");
+            writer.addHeaderAlias("courseId", "课程ID");
+            writer.addHeaderAlias("courseName", "课程名称");
+            writer.addHeaderAlias("userId", "用户ID");
+            writer.addHeaderAlias("userName", "学生姓名");
+            writer.addHeaderAlias("progress", "学习进度(%)");
+            writer.addHeaderAlias("completed", "是否完成");
+            writer.addHeaderAlias("finalScore", "总评成绩");
+            writer.addHeaderAlias("finalGrade", "成绩等级");
+            writer.addHeaderAlias("enrollmentStatus", "选课状态");
+            writer.addHeaderAlias("sourceChannel", "选课来源");
+            writer.addHeaderAlias("enrolledAt", "选课时间");
+            writer.addHeaderAlias("completedAt", "完成时间");
+
+            writer.write(enrollments, true);
+            writer.flush(response.getOutputStream());
+        } finally {
+            writer.close();
+        }
     }
 
     /** 课程 Integer 状态码 → 中文描述（消除 3 处重复 if-else 链） */

@@ -157,7 +157,7 @@ async function fetchData() {
     const { data } = await getAdminReports(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
-    computeStats()
+    await computeStats()
   } catch (err) {
     ElMessage.error('加载举报列表失败')
   } finally {
@@ -165,12 +165,25 @@ async function fetchData() {
   }
 }
 
-function computeStats() {
-  const all = tableData.value
-  stats.total = totalElements.value
-  stats.pending = all.filter(r => r.status === 0).length
-  stats.dismissed = all.filter(r => r.status === 1).length
-  stats.processed = all.filter(r => r.status === 2).length
+async function computeStats() {
+  try {
+    const [pendingRes, dismissedRes, processedRes] = await Promise.all([
+      getAdminReports({ page: 0, size: 1, status: 0 }),
+      getAdminReports({ page: 0, size: 1, status: 1 }),
+      getAdminReports({ page: 0, size: 1, status: 2 })
+    ])
+    stats.pending = pendingRes.data.totalElements || 0
+    stats.dismissed = dismissedRes.data.totalElements || 0
+    stats.processed = processedRes.data.totalElements || 0
+    stats.total = stats.pending + stats.dismissed + stats.processed
+  } catch {
+    // 静默降级：从当前页数据估算
+    const all = tableData.value
+    stats.total = totalElements.value
+    stats.pending = all.filter(r => r.status === 0).length
+    stats.dismissed = all.filter(r => r.status === 1).length
+    stats.processed = all.filter(r => r.status === 2).length
+  }
 }
 
 function handleSearch() {

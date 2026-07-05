@@ -364,6 +364,13 @@ async function handleDelete(row) {
 
 async function handleSubmit() {
   if (!formRef.value) return
+  // 排课必填字段校验：至少一条完整的时间段记录
+  const hasValidSchedule = formData.classSchedules.length > 0 &&
+    formData.classSchedules.every(s => s.dayOfWeek && s.startPeriod && s.endPeriod)
+  if (!hasValidSchedule) {
+    ElMessage.warning('请至少添加一条完整的排课时间段（星期、节次）')
+    return
+  }
   await formRef.value.validate(async (valid) => {
     if (!valid) return
     submitLoading.value = true

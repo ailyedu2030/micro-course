@@ -2,8 +2,6 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.CertificateVO;
 import com.microcourse.dto.R;
-import com.microcourse.exception.BusinessException;
-import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.CertificateService;
 import com.microcourse.util.SecurityUtil;
 import org.springframework.http.HttpHeaders;
@@ -13,7 +11,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/certificates")
@@ -39,25 +36,16 @@ public class CertificateController {
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public R<CertificateVO> getById(@PathVariable Long id) {
-        CertificateVO cert = certificateService.getById(id);
-        Long certUserId = cert.getUserId();
         Long currentUserId = SecurityUtil.getCurrentUserId();
-        if (!Objects.equals(certUserId, currentUserId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
+        CertificateVO cert = certificateService.getByIdWithOwnerCheck(id, currentUserId);
         return R.ok(cert);
     }
 
     @GetMapping("/{id}/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> downloadCertificate(@PathVariable Long id) {
-        CertificateVO cert = certificateService.getById(id);
-        Long certUserId = cert.getUserId();
         Long currentUserId = SecurityUtil.getCurrentUserId();
-        if (!Objects.equals(certUserId, currentUserId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
-        byte[] pdfBytes = certificateService.generateCertificatePdf(id);
+        byte[] pdfBytes = certificateService.downloadCertificateWithOwnerCheck(id, currentUserId);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentDispositionFormData("attachment", "certificate-" + id + ".pdf");

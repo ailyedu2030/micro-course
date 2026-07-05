@@ -3,9 +3,14 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.narration.NarrationSettingRequest;
 import com.microcourse.dto.narration.NarrationSettingVO;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.NarrationSetting;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.NarrationSettingRepository;
 import com.microcourse.service.NarrationSettingService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,9 +22,12 @@ import java.time.LocalDateTime;
 public class NarrationSettingServiceImpl implements NarrationSettingService {
 
     private final NarrationSettingRepository repository;
+    private final CourseRepository courseRepository;
 
-    public NarrationSettingServiceImpl(NarrationSettingRepository repository) {
+    public NarrationSettingServiceImpl(NarrationSettingRepository repository,
+                                       CourseRepository courseRepository) {
         this.repository = repository;
+        this.courseRepository = courseRepository;
     }
 
     @Override
@@ -79,6 +87,16 @@ public class NarrationSettingServiceImpl implements NarrationSettingService {
         sb.append("⑤纯文本，不包含 Markdown 标记 ");
         sb.append("⑥开头可以直接进入主题，不要使用「同学」「大家好」等称呼开头");
         return sb.toString();
+    }
+
+    @Override
+    public void verifyCourseOwner(Long courseId) {
+        if (SecurityUtil.isAdmin()) return;
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
     }
 
     private NarrationSetting createDefault(Long courseId) {

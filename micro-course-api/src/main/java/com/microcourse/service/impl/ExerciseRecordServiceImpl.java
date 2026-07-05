@@ -42,6 +42,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ExerciseRecordServiceImpl implements ExerciseRecordService {
@@ -646,6 +647,46 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                 .findFirst().orElse(Collections.singletonMap("max_no", 0));
         Object maxVal = row.get("max_no");
         return (maxVal instanceof Number n) ? n.intValue() : 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExerciseRecordVO> getResult(Long exerciseId, Long currentUserId) {
+        // STUDENT（非 ADMIN）：仅返回本人答题记录
+        if (SecurityUtil.hasRole("STUDENT") && !SecurityUtil.isAdmin()) {
+            return getMyRecords(currentUserId, exerciseId);
+        }
+        // TEACHER / ADMIN：返回该练习全部答题记录
+        return getRecordsByExercise(exerciseId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAnalytics(Long exerciseId) {
+        List<ExerciseRecordVO> records = getRecordsByExercise(exerciseId);
+        int totalAttempts = records.size();
+        long passedCount = records.stream()
+                .filter(r -> Boolean.TRUE.equals(r.getPassed()))
+                .count();
+        long participantCount = records.stream()
+                .map(ExerciseRecordVO::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+        double avgScore = records.stream()
+                .filter(r -> r.getScore() != null)
+                .mapToInt(ExerciseRecordVO::getScore)
+                .average()
+                .orElse(0.0);
+
+        Map<String, Object> analytics = new HashMap<>();
+        analytics.put("exerciseId", exerciseId);
+        analytics.put("totalAttempts", totalAttempts);
+        analytics.put("participantCount", participantCount);
+        analytics.put("passedCount", passedCount);
+        analytics.put("passRate", totalAttempts > 0 ? (double) passedCount / totalAttempts : 0.0);
+        analytics.put("avgScore", avgScore);
+        return analytics;
     }
 
     private ExerciseRecordVO convertToVO(ExerciseRecord record, Exercise exercise) {

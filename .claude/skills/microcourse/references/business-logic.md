@@ -52,10 +52,10 @@
 | ACTIVE → DISABLED | 管理员/系统 | `status=2, JWT 立即失效` | 幂等 |
 | DISABLED → ACTIVE | 管理员 | `status=1, 恢复所有权限` | 幂等 |
 | ACTIVE/DISABLED → DELETED | 用户/管理员 | `status=3, deleted_at=NOW()` | 幂等 |
-| DELETED → ACTIVE | 管理员 | `status=1, deleted_at=NULL`（180 天内可恢复） | 不可超过 180 天 |
+| DELETED → ACTIVE | 管理员 | `status=1, deleted_at=NULL`（180 天内可恢复，S-05 修复：恢复目标从 INACTIVE(0) 修正为 ACTIVE(1)） | 不可超过 180 天 |
 | **T6: DISABLED → DELETED** | **定时任务（180 天后管理员强制删除）** | `status=3, deleted_at=NOW()` | 不可逆（已超时） |
 
-**端点映射**：`PUT /api/users/{id}/status` 接受 `status=0`（软删/禁用）或 `status=1`（启用/恢复）。
+**端点映射**：`PUT /api/users/{id}/status` 接受 `status=0`（禁用）或 `status=1`（启用/恢复/DELETED→ACTIVE）。DELETED 用户恢复目标为 ACTIVE(1)，非 INACTIVE(0)。
 
 ---
 

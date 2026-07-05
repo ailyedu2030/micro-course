@@ -395,7 +395,24 @@ const mailFormRules = {
   smtpHost: [{ required: true, message: '请输入 SMTP 服务器地址', trigger: ['blur', 'change'] }]
 }
 
-const securityFormRules = {}
+const securityFormRules = {
+  minPasswordLength: [
+    { required: true, message: '请设置密码最小长度', trigger: 'blur' },
+    { type: 'number', min: 6, max: 32, message: '长度范围为 6-32', trigger: 'blur' }
+  ],
+  tokenExpiry: [
+    { type: 'number', min: 30, max: 86400, message: 'Token 有效期范围为 30-86400 分钟', trigger: 'blur' }
+  ],
+  refreshTokenExpiry: [
+    { type: 'number', min: 1, max: 30, message: '刷新 Token 有效期范围为 1-30 天', trigger: 'blur' }
+  ],
+  maxFailAttempts: [
+    { type: 'number', min: 3, max: 10, message: '失败次数上限范围为 3-10', trigger: 'blur' }
+  ],
+  lockDuration: [
+    { type: 'number', min: 5, max: 1440, message: '锁定时长范围为 5-1440 分钟', trigger: 'blur' }
+  ]
+}
 
 const casFormRules = {
   serverUrl: [{ required: true, message: '请输入 CAS 服务器 URL', trigger: ['blur', 'change'] }]

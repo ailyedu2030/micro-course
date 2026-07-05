@@ -141,7 +141,7 @@
       </el-form>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreate">新增</el-button>
+        <el-button type="primary" :loading="creating" :disabled="creating" @click="handleCreate">新增</el-button>
       </template>
     </el-dialog>
   </div>

@@ -13,4 +13,7 @@ public interface NarrationSettingService {
 
     /** 构建 AI 生成讲述稿的 system prompt */
     String buildSystemPrompt(Long courseId);
+
+    /** 校验当前用户是否为课程负责人或管理员 */
+    void verifyCourseOwner(Long courseId);
 }

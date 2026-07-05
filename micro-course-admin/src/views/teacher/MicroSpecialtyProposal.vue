@@ -13,7 +13,7 @@
         </el-button>
         <h2 class="page-title">微专业申报表</h2>
         <div class="header-actions">
-          <el-button :loading="saving" @click="handleSave">保存</el-button>
+          <el-button :loading="saving" :disabled="saving" @click="handleSave">保存</el-button>
           <span v-if="saveStatus" class="save-status" :class="{ 'save-error': saveStatus === '保存失败' || saveStatus === '⚠ 未保存' }">
             {{ saveStatus }}
           </span>

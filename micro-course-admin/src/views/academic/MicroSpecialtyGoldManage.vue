@@ -85,7 +85,7 @@ const fetchMicroSpecialties = async () => {
   error.value = false
   try {
     const res = await getMicroSpecialtyList({
-      page: page.value,
+      page: page.value - 1,
       size: size.value,
       status: 'RECRUITING'
     })

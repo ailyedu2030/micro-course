@@ -93,7 +93,7 @@ const fetchData = async () => {
   loading.value = true
   error.value = false
   try {
-    const params = { page: page.value, size: size.value }
+    const params = { page: page.value - 1, size: size.value }
     if (activeTab.value === 'PENDING') params.featuredStatus = 'PENDING'
     const res = await getMicroSpecialtyList(params)
     items.value = res.data.items || res.data || []

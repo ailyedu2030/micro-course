@@ -20,7 +20,7 @@
         <h1 class="course-title">{{ courseData.title || '未命名课程' }}</h1>
         <div class="action-buttons">
           <template v-if="courseData.status === 0">
-            <el-button type="primary" @click="handleSubmitForReview" :loading="submitLoading">提交审核</el-button>
+            <el-button type="primary" @click="handleSubmitForReview" :loading="submitLoading" :disabled="submitLoading">提交审核</el-button>
           </template>
           <template v-if="courseData.status === 1">
             <el-button type="success" @click="handleApprove">审核通过</el-button>
@@ -191,7 +191,7 @@
           </el-table-column>
         </el-table>
         <div v-if="chapters.length > 0" class="sort-bar">
-          <el-button type="warning" size="small" :loading="saveSortLoading" @click="handleSaveSort">保存排序</el-button>
+          <el-button type="warning" size="small" :loading="saveSortLoading" :disabled="saveSortLoading" @click="handleSaveSort">保存排序</el-button>
         </div>
       </el-card>
     </template>
@@ -303,7 +303,7 @@
 
       <!-- 操作按钮 -->
       <div class="submit-bar">
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">保存</el-button>
         <el-button @click="switchToView">取消</el-button>
       </div>
     </template>
@@ -342,7 +342,7 @@
       </el-form>
       <template #footer>
         <el-button @click="handleChapterCancel">取消</el-button>
-        <el-button type="primary" :loading="chapterSubmitLoading" @click="handleChapterSubmit">确定</el-button>
+        <el-button type="primary" :loading="chapterSubmitLoading" :disabled="chapterSubmitLoading" @click="handleChapterSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -496,6 +496,7 @@ const switchToEdit = () => {
 const switchToView = () => router.push(`/courses/${courseId.value}`)
 
 const handleSubmitForReview = async () => {
+  if (submitLoading.value) return
   try { await ElMessageBox.confirm('确定提交审核？', '提示', { type: 'info' }) } catch { return }
   submitLoading.value = true
   try { await submitCourseForReview(courseId.value); ElMessage.success('已提交审核'); fetchCourse() }
@@ -556,6 +557,7 @@ const handleRemoveCover = () => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   try {
     const valid = await formRef.value.validate()
@@ -614,6 +616,7 @@ const handleSaveSort = async () => {
   finally { saveSortLoading.value = false }
 }
 const handleChapterSubmit = async () => {
+  if (chapterSubmitLoading.value) return
   if (!chapterFormRef.value) return
   try { await chapterFormRef.value.validate() } catch { return }
   chapterSubmitLoading.value = true

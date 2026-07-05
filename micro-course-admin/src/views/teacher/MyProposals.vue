@@ -88,7 +88,7 @@ import { exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 const loading = ref(false)
 const error = ref(false)
 const proposals = ref([])
-const page = ref(0)
+const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 
@@ -102,7 +102,7 @@ const formatTime = (t) => t ? new Date(t).toLocaleString('zh-CN', { year: 'numer
 
 const fetchData = async () => {
   error.value = false; loading.value = true
-  try { const { data } = await getMyProposals({ page: page.value, size: size.value }); proposals.value = data.items || data || []; total.value = data.totalElements || 0 }
+  try { const { data } = await getMyProposals({ page: page.value - 1, size: size.value }); proposals.value = data.items || data || []; total.value = data.totalElements || 0 }
   catch (e) { ElMessage.error(e?.response?.data?.message || '获取申报列表失败'); error.value = true }
   finally { loading.value = false }
 }

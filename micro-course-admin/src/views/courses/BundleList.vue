@@ -44,9 +44,11 @@
       <div class="pagination mg-top-12">
         <el-pagination
           v-model:current-page="page"
-          :page-size="size"
+          v-model:page-size="size"
           :total="totalElements"
-          layout="total, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="fetchBundles"
           @current-change="fetchBundles"
         />
       </div>
@@ -67,7 +69,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button type="primary" :loading="saving" :disabled="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
 

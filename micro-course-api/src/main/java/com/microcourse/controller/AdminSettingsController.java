@@ -4,13 +4,14 @@ import com.microcourse.dto.AdminSettingVO;
 import com.microcourse.dto.CasSettingsDTO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.SettingUpdateRequest;
+import com.microcourse.dto.ToggleRegisterRequest;
+import com.microcourse.dto.UploadLimitRequest;
 import com.microcourse.service.AdminSettingService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 系统配置控制器
@@ -58,9 +59,8 @@ public class AdminSettingsController {
      */
     @PutMapping("/register")
     @PreAuthorize("hasRole('ADMIN')")
-    public R<Void> toggleRegister(@RequestBody Map<String, Object> body) {
-        Boolean enabled = body != null && body.containsKey("enabled") && body.get("enabled") instanceof Boolean
-                ? (Boolean) body.get("enabled") : false;
+    public R<Void> toggleRegister(@Valid @RequestBody ToggleRegisterRequest request) {
+        boolean enabled = request.getEnabled() != null ? request.getEnabled() : false;
         adminSettingService.upsert("allowRegistration", String.valueOf(enabled));
         return R.ok();
     }
@@ -72,10 +72,8 @@ public class AdminSettingsController {
      */
     @PutMapping("/upload")
     @PreAuthorize("hasRole('ADMIN')")
-    public R<Void> updateUploadLimit(@RequestBody Map<String, Object> body) {
-        // P1-6: null 安全 + getOrDefault
-        Object raw = body != null ? body.getOrDefault("maxVideoSizeMb", 100) : 100;
-        int maxVideoSizeMb = (raw instanceof Number) ? ((Number) raw).intValue() : 100;
+    public R<Void> updateUploadLimit(@Valid @RequestBody UploadLimitRequest request) {
+        int maxVideoSizeMb = request.getMaxVideoSizeMb() != null ? request.getMaxVideoSizeMb() : 100;
         adminSettingService.upsert("max_video_size_mb", String.valueOf(maxVideoSizeMb));
         return R.ok();
     }

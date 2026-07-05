@@ -13,7 +13,7 @@ public interface CoursePricingService {
 
     void reviewPricing(Long courseId, boolean approved, String reason);
 
-    Map<String, Object> getPricingForAdopter(Long courseId);
+    PricingForAdopterVO getPricingForAdopter(Long courseId);
 
     CoursePricingInfoVO getMyPricing(Long courseId);
 }

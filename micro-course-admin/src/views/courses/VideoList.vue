@@ -166,7 +166,7 @@
           />
           <div class="footer-buttons">
             <el-button @click="dialogVisible = false" :disabled="submitLoading">取消</el-button>
-            <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+            <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
           </div>
         </div>
       </template>
@@ -189,7 +189,7 @@
       </el-upload>
       <template #footer>
         <el-button @click="coverDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="coverSubmitLoading" @click="handleSubmitCover">确定</el-button>
+        <el-button type="primary" :loading="coverSubmitLoading" :disabled="coverSubmitLoading" @click="handleSubmitCover">确定</el-button>
       </template>
     </el-dialog>
 
@@ -410,6 +410,7 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  if (submitLoading.value) return
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return

@@ -9,6 +9,7 @@ import com.microcourse.dto.GradeUpdateRequest;
 import com.microcourse.dto.GradeVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.dto.ManualGradeRequest;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.GradeService;
@@ -114,8 +115,8 @@ public class GradeController {
     @PostMapping("/{recordId}/manual-grade")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("手动评阅")
-    public R<Void> manualGrade(@PathVariable Long recordId, @RequestBody Map<String, Object> body) {
-        gradeService.manualGrade(recordId, body, getCurrentUserId());
+    public R<Void> manualGrade(@PathVariable Long recordId, @Valid @RequestBody ManualGradeRequest request) {
+        gradeService.manualGrade(recordId, request.getScore(), request.getComment(), getCurrentUserId());
         return R.ok();
     }
 

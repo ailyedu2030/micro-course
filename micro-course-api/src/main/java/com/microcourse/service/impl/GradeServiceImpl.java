@@ -404,7 +404,7 @@ public class GradeServiceImpl implements GradeService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void manualGrade(Long recordId, Map<String, Object> body, Long teacherId) {
+    public void manualGrade(Long recordId, Double score, String comment, Long teacherId) {
         ExerciseRecord record = exerciseRecordRepository.selectById(recordId);
         if (record == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题记录不存在");

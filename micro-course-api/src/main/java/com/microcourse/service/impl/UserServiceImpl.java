@@ -12,7 +12,9 @@ import com.microcourse.dto.UserStatusRequest;
 import com.microcourse.dto.UserUpdateRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.entity.Classes;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.Department;
+import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Major;
 import com.microcourse.entity.OperationLog;
 import com.microcourse.entity.User;
@@ -22,7 +24,9 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.listener.UserBatchImportListener;
 import com.microcourse.repository.ClassesRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DepartmentRepository;
+import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.security.UserStatusCheckFilter;
@@ -30,6 +34,7 @@ import com.microcourse.service.OperationLogService;
 import com.microcourse.service.UserService;
 import com.microcourse.util.IpUtil;
 import com.microcourse.util.RedisUtil;
+import com.microcourse.util.SecurityUtil;
 import com.microcourse.service.UserQueryService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -41,6 +46,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -65,6 +71,8 @@ public class UserServiceImpl implements UserService {
     private final DepartmentRepository departmentRepository;
     private final MajorRepository majorRepository;
     private final ClassesRepository classesRepository;
+    private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final RedisUtil redisUtil;
     private final OperationLogService operationLogService;
 
@@ -78,6 +86,8 @@ public class UserServiceImpl implements UserService {
                            DepartmentRepository departmentRepository,
                            MajorRepository majorRepository,
                            ClassesRepository classesRepository,
+                           CourseRepository courseRepository,
+                           EnrollmentRepository enrollmentRepository,
                            RedisUtil redisUtil,
                            UserQueryService queryService,
                            OperationLogService operationLogService,
@@ -87,6 +97,8 @@ public class UserServiceImpl implements UserService {
         this.departmentRepository = departmentRepository;
         this.majorRepository = majorRepository;
         this.classesRepository = classesRepository;
+        this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
         this.redisUtil = redisUtil;
         this.operationLogService = operationLogService;
         this.queryService = queryService;
@@ -96,6 +108,28 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<UserVO> pageUsers(UserPageQuery query) {
+        // TEACHER 角色仅看自己的任课学生
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            Long teacherId = SecurityUtil.getCurrentUserId();
+            // 查该教师的所有课程ID → 对应的选课学生ID
+            List<Long> courseIds = courseRepository.selectList(
+                new LambdaQueryWrapper<Course>()
+                    .eq(Course::getTeacherId, teacherId)
+                    .isNull(Course::getDeletedAt)
+                    .select(Course::getId)
+            ).stream().map(Course::getId).collect(Collectors.toList());
+            if (!courseIds.isEmpty()) {
+                List<Long> studentIds = enrollmentRepository.selectList(
+                    new LambdaQueryWrapper<Enrollment>()
+                        .in(Enrollment::getCourseId, courseIds)
+                        .isNull(Enrollment::getDeletedAt)
+                        .select(Enrollment::getUserId)
+                ).stream().map(Enrollment::getUserId).distinct().collect(Collectors.toList());
+                query.setInUserIds(studentIds.isEmpty() ? Collections.singletonList(-1L) : studentIds);
+            } else {
+                query.setInUserIds(Collections.singletonList(-1L));
+            }
+        }
         return queryService.pageUsers(query);
     }
 
@@ -243,8 +277,8 @@ public class UserServiceImpl implements UserService {
                     "不允许从 " + currentStatus + " 转换到 " + newStatus);
         }
 
-        // DELETED → INACTIVE 恢复：180 天保留窗口检查 + 绕过逻辑删除恢复
-        if (currentStatus == UserStatus.DELETED && newStatus == UserStatus.INACTIVE) {
+        // S-05: DELETED → ACTIVE 恢复（business-logic.md 要求恢复为 ACTIVE(1)）：180 天保留窗口检查 + 绕过逻辑删除恢复
+        if (currentStatus == UserStatus.DELETED && newStatus == UserStatus.ACTIVE) {
             if (user.getDeletedAt() != null) {
                 long daysSinceDeleted = ChronoUnit.DAYS.between(user.getDeletedAt(), LocalDateTime.now());
                 if (daysSinceDeleted > 180) {
@@ -252,7 +286,7 @@ public class UserServiceImpl implements UserService {
                 }
             }
             // updateById 会自动追加 deleted_at IS NULL 条件，无法命中已删除行，故走原生恢复 SQL
-            userRepository.restoreToInactive(id);
+            userRepository.restoreToActive(id);
             writeStatusAuditLog(user, oldStatus, newStatusCode);
             // Round 8-2：状态变更后立即清除状态缓存，确保 UserStatusCheckFilter 即时放行恢复后的用户
             evictUserStatusCache(id);
@@ -276,7 +310,7 @@ public class UserServiceImpl implements UserService {
                 user.setDeletedAt(LocalDateTime.now());
                 redisUtil.clearLoginFailure(user.getUsername());
                 break;
-            default: // INACTIVE 仅 DELETED→INACTIVE 合法，已在恢复分支处理；此处理论不可达
+            default: // INACTIVE 仅 DELETED→ACTIVE 合法，已在恢复分支处理；此处理论不可达
                 user.setStatus(newStatusCode);
                 break;
         }
@@ -632,7 +666,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public String uploadAvatar(Long userId, MultipartFile file) {
         User user = userRepository.selectById(userId);
         if (user == null) {
@@ -640,38 +673,72 @@ public class UserServiceImpl implements UserService {
         }
         // SECURITY: 图片魔数校验（JPEG: FFD8FF, PNG: 89504E47）
         validateImageMagic(file);
+
+        // P1-I: 将文件 I/O 移到事务开始之前执行，避免文件写入成功但 DB 操作失败留下脏文件
+        String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
+        java.io.File dir = new java.io.File(uploadDir);
+        if (!dir.exists()) dir.mkdirs();
+
+        String contentType = file.getContentType();
+        String ext = ".jpg";
+        if ("image/png".equals(contentType)) ext = ".png";
+        else if ("image/gif".equals(contentType)) ext = ".gif";
+        else if ("image/webp".equals(contentType)) ext = ".webp";
+        String filename = userId + "_" + System.currentTimeMillis() + ext;
+        java.io.File dest = new java.io.File(uploadDir + filename);
+
         try {
-            // 保存到 uploads/avatars/ 目录
-            String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
-            java.io.File dir = new java.io.File(uploadDir);
-            if (!dir.exists()) dir.mkdirs();
-
-            // 文件名: userId_timestamp.jpg(不信任用户提供的扩展名,用 MIME 类型映射)
-            String contentType = file.getContentType();
-            String ext = ".jpg";
-            if ("image/png".equals(contentType)) ext = ".png";
-            else if ("image/gif".equals(contentType)) ext = ".gif";
-            else if ("image/webp".equals(contentType)) ext = ".webp";
-            String filename = userId + "_" + System.currentTimeMillis() + ext;
-            java.io.File dest = new java.io.File(uploadDir + filename);
             file.transferTo(dest);
-
-            // 更新数据库
-            String avatarUrl = "/api/files/avatars/" + filename;
-            // 清理旧头像文件
-            if (user.getAvatar() != null && user.getAvatar().startsWith("/api/files/avatars/")) {
-                String oldFilename = user.getAvatar().substring("/api/files/avatars/".length());
-                java.io.File oldFile = new java.io.File(uploadDir + oldFilename);
-                if (oldFile.exists()) oldFile.delete();
-            }
-            user.setAvatar(avatarUrl);
-            userRepository.updateById(user);
-
-            return avatarUrl;
         } catch (Exception e) {
-            log.error("[User] 头像上传失败 userId={}", user != null ? user.getId() : "null", e);
+            log.error("[User] 头像文件保存失败 userId={}", userId, e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像文件保存失败");
+        }
+
+        // 清理旧头像文件（文件 I/O，不在事务内执行）
+        String oldAvatarToDelete = null;
+        if (user.getAvatar() != null && user.getAvatar().startsWith("/api/files/avatars/")) {
+            oldAvatarToDelete = user.getAvatar().substring("/api/files/avatars/".length());
+        }
+        final String oldFileToClean = oldAvatarToDelete;
+
+        // 在事务内更新数据库头像 URL
+        String avatarUrl = "/api/files/avatars/" + filename;
+        try {
+            self.updateAvatarInDb(userId, avatarUrl);
+        } catch (Exception e) {
+            // DB 更新失败，清理已写入的文件
+            if (dest.exists()) {
+                dest.delete();
+            }
+            log.error("[User] 头像 DB 更新失败，已清理文件 userId={}", userId, e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像上传失败");
         }
+
+        // 事务成功后清理旧文件
+        if (oldFileToClean != null) {
+            try {
+                java.io.File oldFile = new java.io.File(uploadDir + oldFileToClean);
+                if (oldFile.exists()) oldFile.delete();
+            } catch (Exception e) {
+                log.warn("[User] 清理旧头像文件失败 userId={}, oldFile={}", userId, oldFileToClean, e);
+            }
+        }
+
+        return avatarUrl;
+    }
+
+    /**
+     * P1-I: 在事务内执行头像 DB 更新，文件 I/O 已在事务外完成。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    protected void updateAvatarInDb(Long userId, String avatarUrl) {
+        User user = userRepository.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        user.setAvatar(avatarUrl);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.updateById(user);
     }
 
     private void validateImageMagic(MultipartFile file) {

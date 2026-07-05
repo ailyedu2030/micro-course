@@ -60,7 +60,7 @@
           :total="totalElements"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
-          @size-change="fetchData"
+          @size-change="handleSizeChange"
           @current-change="fetchData"
 />
       </div>
@@ -125,6 +125,11 @@ async function handleDelete(row) {
     ElMessage.success('已删除')
     fetchData()
   } catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
+}
+
+function handleSizeChange() {
+  page.value = 1
+  fetchData()
 }
 
 function formatDate(iso) {

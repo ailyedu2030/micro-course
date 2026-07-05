@@ -23,6 +23,9 @@ public interface MicroSpecialtyEnrollmentService {
     /** 班级批量导入（ACADEMIC/ADMIN） → APPROVED */
     int classImport(Long msId, Long classId);
 
+    /** 班级批量导入（ACADEMIC/ADMIN） → APPROVED，批量处理多个 classId */
+    int classImportBatch(Long microSpecialtyId, java.util.List<Long> classIds);
+
     /** 退出修读（STUDENT 本人/ADMIN） */
     void drop(Long id, boolean cascade, String reason);
 

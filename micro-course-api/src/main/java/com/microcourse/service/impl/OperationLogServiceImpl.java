@@ -15,7 +15,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -91,6 +93,29 @@ public class OperationLogServiceImpl implements OperationLogService {
         wrapper.orderByDesc(OperationLog::getCreatedAt);
         IPage<OperationLog> result = operationLogRepository.selectPage(pg, wrapper);
         return PageResult.of(result.getRecords(), result.getTotal(), page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<OperationLog> pageQuery(Long userId, String username, String action,
+                                              String module, Long targetId,
+                                              LocalDate startDate, LocalDate endDate,
+                                              int page, int size) {
+        // P0-1: LocalDate → LocalDateTime 转换（开始日期取 00:00:00，结束日期取 23:59:59）
+        LocalDateTime startDateTime = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime endDateTime = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
+
+        // P0-3: username 模糊搜索 → 转换为 userIds
+        List<Long> userIds = null;
+        if (username != null && !username.isBlank()) {
+            userIds = findUserIdsByUsername(username);
+            if (userIds == null || userIds.isEmpty()) {
+                return PageResult.of(List.of(), 0L, page, size);
+            }
+        }
+
+        return pageQuery(userId, userIds, action, module, targetId,
+                startDateTime, endDateTime, page, size);
     }
 
     @Override

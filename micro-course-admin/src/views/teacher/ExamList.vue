@@ -114,7 +114,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showSchedule = false">取消</el-button>
-        <el-button type="primary" :loading="scheduling" @click="submitSchedule">确认安排</el-button>
+        <el-button type="primary" :loading="scheduling" :disabled="scheduling" @click="submitSchedule">确认安排</el-button>
       </template>
     </el-dialog>
 
@@ -148,7 +148,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showCreate = false">取消</el-button>
-        <el-button type="primary" :loading="generating" @click="handleGenerate">一键组卷</el-button>
+        <el-button type="primary" :loading="generating" :disabled="generating" @click="handleGenerate">一键组卷</el-button>
       </template>
     </el-dialog>
   </div>

@@ -99,7 +99,7 @@ public class CourseBundleController {
 
     @GetMapping("/{id}/my-enrollment")
     @PreAuthorize("isAuthenticated()")
-    public R<Map<String, Object>> getMyEnrollmentStatus(@PathVariable Long id) {
+    public R<Map<String, Boolean>> getMyEnrollmentStatus(@PathVariable Long id) {
         boolean enrolled = bundleService.isUserEnrolledInBundle(SecurityUtil.getCurrentUserId(), id);
         return R.ok(Map.of("enrolled", enrolled));
     }
