@@ -522,7 +522,7 @@ const fetchCourses = async () => {
     const params = {
       page: page.value - 1,
       size: size.value,
-      status: 2
+        status: undefined
     }
     if (searchForm.keyword) params.keyword = searchForm.keyword
     if (selectedCategoryId.value) params.categoryId = selectedCategoryId.value
@@ -550,8 +550,8 @@ const fetchCourses = async () => {
 const fetchSideCourses = async () => {
   try {
     const [hotRes, newestRes] = await Promise.all([
-      getCourses({ page: 0, size: 5, sortBy: 'studentCount', sortOrder: 'desc', status: 2 }),
-      getCourses({ page: 0, size: 5, sortBy: 'createdAt', sortOrder: 'desc', status: 2 })
+      getCourses({ page: 0, size: 5, sortBy: 'studentCount', sortOrder: 'desc', status: undefined }),
+      getCourses({ page: 0, size: 5, sortBy: 'createdAt', sortOrder: 'desc', status: undefined })
     ])
     hotCourses.value = (hotRes.data?.items || []).slice(0, 5)
     newestCourses.value = (newestRes.data?.items || []).slice(0, 5)
@@ -564,7 +564,7 @@ const fetchSideCourses = async () => {
 // 拉精选推荐
 const loadRecommended = async () => {
   try {
-    const { data } = await getCourses({ recommended: true, size: 8, status: 2 })
+    const { data } = await getCourses({ recommended: true, size: 8, status: undefined })
     recommendedCourses.value = (data?.items || []).map(c => ({
       ...c,
       coverUrl: c.coverUrl || getDefaultCover(c)
