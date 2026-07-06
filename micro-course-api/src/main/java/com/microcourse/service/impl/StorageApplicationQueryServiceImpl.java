@@ -73,11 +73,23 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
     // ================================================================
     @Override
     public PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size) {
+        // I-05 fix: 如果请求页码越界（page >= totalPages 且 totalPages > 0），自动回退到最后一页
         IPage<MicroSpecialtyProposal> ipage = proposalRepository.selectPage(
                 new Page<>(page + 1, size),
                 new LambdaQueryWrapper<MicroSpecialtyProposal>()
                         .eq(MicroSpecialtyProposal::getProposerId, userId)
                         .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
+
+        if (ipage.getPages() > 0 && page >= ipage.getPages()) {
+            int lastPage = (int) ipage.getPages() - 1;
+            log.warn("getMyDrafts: page {} out of bounds (totalPages={}), re-querying last page {}", page, ipage.getPages(), lastPage);
+            ipage = proposalRepository.selectPage(
+                    new Page<>(lastPage + 1, size),
+                    new LambdaQueryWrapper<MicroSpecialtyProposal>()
+                            .eq(MicroSpecialtyProposal::getProposerId, userId)
+                            .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
+            page = lastPage;
+        }
 
         List<MicroSpecialtyProposal> proposals = ipage.getRecords();
 
@@ -103,6 +115,8 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
             vo.setDepartmentName(deptNameMap.getOrDefault(p.getOfferDepartmentId(), ""));
             vo.setCreatedAt(p.getCreatedAt());
             vo.setUpdatedAt(p.getUpdatedAt());
+            // P2-02: 映射自动保存时间
+            vo.setLastAutoSavedAt(p.getLastAutoSavedAt());
             result.add(vo);
         }
 
@@ -161,6 +175,8 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
             vo.setDepartmentName(deptNameMap.getOrDefault(p.getOfferDepartmentId(), ""));
             vo.setCreatedAt(p.getCreatedAt());
             vo.setUpdatedAt(p.getUpdatedAt());
+            // P2-02: 映射自动保存时间
+            vo.setLastAutoSavedAt(p.getLastAutoSavedAt());
             // 添加申请人信息
             vo.setProposerName(proposerNameMap.getOrDefault(p.getProposerId(), ""));
             result.add(vo);
@@ -218,12 +234,19 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         if (proposal == null) {
             throw new BusinessException(ErrorCode.SA_NOT_FOUND);
         }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
+        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdminOrAcademic()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
         StorageApplicationSaveRequest req = buildRequest(proposal);
-        List<String> errors = StorageValidator.validateForSubmit(req);
+        List<String> errors;
+
+        // DRAFT 状态：仅做格式校验（手机号/日期格式），不阻断内容完整性
+        if ("DRAFT".equals(proposal.getStatus())) {
+            errors = StorageValidator.validateFormatOnly(req);
+        } else {
+            errors = StorageValidator.validateForSubmit(req);
+        }
 
         ExportValidationResult result = new ExportValidationResult();
         for (String error : errors) {
@@ -307,6 +330,9 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         vo.setSharedUnits(buildSharedUnitItems(proposal.getId()));
         vo.setChapterAssignments(buildAssignmentItems(proposal.getId()));
 
+        // P1-C-2 修复: 填充审核信息
+        vo.setReviewComment(proposal.getReviewComment());
+
         // 关联查询字段
         vo.setProposerName(lookupUserName(proposal.getProposerId()));
         if (proposal.getOfferDepartmentId() != null) {
@@ -363,6 +389,9 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         vo.setSignatures(buildSignatureItems(proposal.getId()));
         vo.setSharedUnits(buildSharedUnitItems(proposal.getId()));
         vo.setChapterAssignments(buildAssignmentItems(proposal.getId()));
+
+        // P1-C-2 修复: 预览VO也填充reviewComment
+        vo.setReviewComment(proposal.getReviewComment());
 
         return vo;
     }

@@ -76,7 +76,15 @@ const emit = defineEmits(['update:modelValue'])
 function buildDefaultRow() {
   const row = {}
   for (const col of props.columns) {
-    row[col.key] = col.type === 'number' ? null : ''
+    if (col.defaultValue !== undefined) {
+      row[col.key] = col.defaultValue
+    } else if (col.type === 'number') {
+      row[col.key] = null
+    } else if (col.type === 'select' && col.options && col.options.length > 0) {
+      row[col.key] = col.options[0].value ?? col.options[0]
+    } else {
+      row[col.key] = ''
+    }
   }
   return row
 }

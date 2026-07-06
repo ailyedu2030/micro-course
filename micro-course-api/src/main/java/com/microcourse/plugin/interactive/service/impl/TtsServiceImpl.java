@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -45,6 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
+@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 @Transactional(rollbackFor = Exception.class)
 public class TtsServiceImpl implements TtsService {
 
@@ -358,6 +360,12 @@ public class TtsServiceImpl implements TtsService {
     @Override
     @Async("slideRenderExecutor")
     public void generateAll(Long courseId) {
+        // P1-I-01: 检查 TTS 后端可用性
+        if (!ttsLocalAvailable && !mmxAvailable) {
+            log.warn("[Tts] 无可用 TTS 后端，跳过批量音频生成 courseId={}", courseId);
+            markAllPagesError(courseId, "TTS 音频生成失败：无可用 TTS 后端（Qwen3-TTS 和 mmx 均不可用）");
+            return;
+        }
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getCourseId, courseId)
                 .in(SlidePage::getNarrationStatus, "AI_GENERATED", "TEACHER_EDITED")
@@ -440,6 +448,31 @@ public class TtsServiceImpl implements TtsService {
         }
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+    }
+
+    /**
+     * P1-I-01: 批量失败时将课程所有页面标记为原始状态，让前端轮询可见。
+     */
+    private void markAllPagesError(Long courseId, String errorMessage) {
+        try {
+            transactionTemplate.execute(tx -> {
+                LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(SlidePage::getCourseId, courseId);
+                List<SlidePage> pages = slidePageMapper.selectList(wrapper);
+                for (SlidePage page : pages) {
+                    if ("AUDIO_GENERATING".equals(page.getNarrationStatus())
+                            || "AUDIO_READY".equals(page.getNarrationStatus())) {
+                        page.setNarrationStatus("TEACHER_EDITED");
+                        page.setUpdatedAt(LocalDateTime.now());
+                        slidePageMapper.updateById(page);
+                    }
+                }
+                log.warn("[Tts] 批量音频生成失败已标记 courseId={}, pages={}, error={}", courseId, pages.size(), errorMessage);
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("[Tts] 标记页面音频错误状态失败 courseId={}", courseId, e);
         }
     }
 

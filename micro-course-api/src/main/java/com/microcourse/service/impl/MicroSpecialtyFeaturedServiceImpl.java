@@ -56,7 +56,8 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         // 终态检查
         MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003) 作为状态错误唯一错误码
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
 
         if (msStatus != MicroSpecialtyStatus.RECRUITING) {
@@ -95,7 +96,8 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         // 终态检查
         MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
         // P2-2 修复: 确认微专业仍处于招生中(可能审批时已被关闭)
         if (msStatus != MicroSpecialtyStatus.RECRUITING) {
@@ -147,7 +149,8 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         // 终态检查
         MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
         // P2-3 修复: 与 approveFeatured/setGoldFeatured 一致,加 RECRUITING 检查
         if (msStatus != MicroSpecialtyStatus.RECRUITING) {
@@ -187,12 +190,15 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         // 终态检查
         MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
 
-        MicroSpecialtyFeaturedStatus currentFeatured = MicroSpecialtyFeaturedStatus.fromString(ms.getFeaturedStatus());
-        if (currentFeatured == null || !currentFeatured.canTransitionTo(MicroSpecialtyFeaturedStatus.NONE)) {
-            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已通过状态可取消置顶");
+        // BUG-006 fix: 取消置顶允许在任何非 NONE 的 featuredStatus 下操作
+        // 原守卫限制了仅 APPROVED→NONE, 但 PENDING/REJECTED 的脏数据也应可清理
+        String currentFeaturedStr = ms.getFeaturedStatus();
+        if (currentFeaturedStr == null || "NONE".equals(currentFeaturedStr)) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前未设置置顶，无需取消");
         }
 
         int oldVersion = ms.getVersion();
@@ -200,7 +206,7 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
                 new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
                         .eq(MicroSpecialty::getVersion, oldVersion)
-                        .eq(MicroSpecialty::getFeaturedStatus, "APPROVED")
+                        .in(MicroSpecialty::getFeaturedStatus, "PENDING", "APPROVED", "REJECTED")
                         .set(MicroSpecialty::getFeaturedStatus, "NONE")
                         .set(MicroSpecialty::getIsFeatured, false)
                         .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
@@ -214,14 +220,22 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
     @Transactional(rollbackFor = Exception.class)
     public void setGoldFeatured(Long msId) {
         // P0-S02: 获取排他锁，保证"全校 ≤ 2"约束的原子性
-        msRepository.acquireGoldFeaturedLock();
+        // BUG-005 fix: 捕获 advisory lock 执行中的非 BusinessException (如 MyBatisSystemException),
+        // 返回友好错误而非 500 服务器内部错误
+        try {
+            msRepository.acquireGoldFeaturedLock();
+        } catch (Exception e) {
+            log.error("获取金标排他锁失败 msId={}", msId, e);
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "系统繁忙，请稍后重试");
+        }
         MicroSpecialty ms = msRepository.selectForUpdate(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         // 终态检查
         MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
         // P2-2 修复: 金标仅可在招生中设置
         if (msStatus != MicroSpecialtyStatus.RECRUITING) {
@@ -258,7 +272,8 @@ public class MicroSpecialtyFeaturedServiceImpl implements MicroSpecialtyFeatured
         // 终态检查
         MicroSpecialtyStatus msStatus = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (msStatus == MicroSpecialtyStatus.CANCELLED || msStatus == MicroSpecialtyStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
 
         int oldVersion = ms.getVersion();

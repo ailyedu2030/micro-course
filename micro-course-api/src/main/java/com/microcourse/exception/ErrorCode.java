@@ -66,7 +66,7 @@ public enum ErrorCode {
     VIDEO_UPLOAD_INVALID_FORMAT(12001, "无效的视频文件格式", 400),
     VIDEO_UPLOAD_TOO_LARGE(12002, "视频文件大小超过限制（最大 2GB）", 413),
     VIDEO_SIGN_INVALID(12003, "视频播放签名无效或已过期", 403),
-    VIDEO_TRANSCODE_FAILED(12004, "视频转码失败", 500),
+    VIDEO_TRANSCODE_FAILED(12004, "视频转码尚未完成", 503),
     COURSE_REVIEW_NOT_FOUND(12005, "课程评价不存在", 404),
     COURSE_REVIEW_ALREADY_EXISTS(12006, "已存在课程评价", 409),
     COURSE_REVIEW_INVALID_RATING(12007, "评分必须在1-5之间", 400),

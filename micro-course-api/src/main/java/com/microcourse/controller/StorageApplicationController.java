@@ -11,6 +11,7 @@ import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -19,6 +20,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -28,8 +31,11 @@ import java.util.List;
  * 预览构建、Word/PDF 导出、模块/全部重置。
  */
 @RestController
+@Validated
 @RequestMapping("/api/storage-applications")
 public class StorageApplicationController {
+
+    private static final Logger log = LoggerFactory.getLogger(StorageApplicationController.class);
 
     private final StorageApplicationService storageApplicationService;
     private final StorageApplicationExportService exportService;
@@ -70,7 +76,7 @@ public class StorageApplicationController {
      * GET /api/storage-applications/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC','ADMIN')")
     public R<StorageApplicationVO> getDetail(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         // P0-03 修复：添加 owner 校验，与 exportWord()/exportPdf() 方法一致，防止 IDOR
@@ -103,8 +109,13 @@ public class StorageApplicationController {
     public R<Void> autoSave(
             @PathVariable Long id,
             @RequestBody StorageApplicationSaveRequest request) {  // 不使用 @Valid：autoSave 是部分保存，允许不完整数据
-        Long userId = SecurityUtil.getCurrentUserId();
-        storageApplicationService.autoSave(id, userId, request);
+        // P2-10: 捕获反序列化及业务异常，静默跳过避免前台反复 400
+        try {
+            Long userId = SecurityUtil.getCurrentUserId();
+            storageApplicationService.autoSave(id, userId, request);
+        } catch (Exception e) {
+            log.warn("[autoSave] 自动保存失败，静默跳过: proposalId={}, error={}", id, e.getMessage());
+        }
         return R.ok();
     }
 
@@ -127,7 +138,7 @@ public class StorageApplicationController {
      * GET /api/storage-applications/{id}/preview
      */
     @GetMapping("/{id}/preview")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC','ADMIN')")
     public R<StorageApplicationPreviewVO> preview(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         return R.ok(storageApplicationService.buildPreview(id, userId));
@@ -138,11 +149,17 @@ public class StorageApplicationController {
      * GET /api/storage-applications/{id}/export-word
      */
     @GetMapping("/{id}/export-word")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC','ADMIN')")
     public ResponseEntity<byte[]> exportWord(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         // 校验 owner 权限，防止 IDOR（P0 安全修复）
         storageApplicationService.validateOwner(id, userId);
+        // P2-01: 导出前执行数据完整性校验
+        ExportValidationResult valResult = storageApplicationService.validateForExport(id, userId);
+        if (!valResult.isValid()) {
+            throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
+                    "请补全以下必填项：\n" + String.join("\n", valResult.getErrors()));
+        }
         byte[] bytes = exportService.exportWord(id);
         String schoolName = storageApplicationService.resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"
@@ -164,11 +181,17 @@ public class StorageApplicationController {
      * GET /api/storage-applications/{id}/export-pdf
      */
     @GetMapping("/{id}/export-pdf")
-    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC','ADMIN')")
     public ResponseEntity<byte[]> exportPdf(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
         // 校验 owner 权限，防止 IDOR（P0 安全修复）
         storageApplicationService.validateOwner(id, userId);
+        // P2-01: 导出前执行数据完整性校验
+        ExportValidationResult valResult = storageApplicationService.validateForExport(id, userId);
+        if (!valResult.isValid()) {
+            throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
+                    "请补全以下必填项：\n" + String.join("\n", valResult.getErrors()));
+        }
         byte[] bytes = exportService.exportPdf(id);
         String schoolName = storageApplicationService.resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"

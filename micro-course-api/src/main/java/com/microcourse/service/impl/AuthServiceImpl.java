@@ -222,6 +222,8 @@ public class AuthServiceImpl implements AuthService {
             logEntry.setTargetId(user.getId());
             logEntry.setIp(IpUtil.getClientIp());
             logEntry.setSuccess(true);
+            logEntry.setDetail("{\"method\":\"AuthController.login\",\"path\":\"POST /api/auth/login\",\"status\":200}");
+            logEntry.setDurationMs(0);
             operationLogService.log(logEntry);
 
             // Step 9: 构建响应
@@ -523,6 +525,8 @@ public class AuthServiceImpl implements AuthService {
         logEntry.setTargetId(user.getId());
         logEntry.setIp(IpUtil.getClientIp());
         logEntry.setSuccess(true);
+        logEntry.setDetail("{\"method\":\"AuthController.casLogin\",\"path\":\"POST /api/auth/cas/login\",\"status\":200}");
+        logEntry.setDurationMs(0);
         operationLogService.log(logEntry);
 
         // Step 8: 构建响应
@@ -602,6 +606,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserVO updateProfile(UpdateProfileRequest request) {
+        // P1-I: 至少需要一个字段
+        if (request.getRealName() == null && request.getEmail() == null
+                && request.getPhone() == null && request.getGender() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "至少需要更新一个字段（realName/email/phone/gender）");
+        }
         Long userId = queryService.getCurrentUserId();
         User user = userRepository.selectById(userId);
         if (user == null) {

@@ -53,6 +53,9 @@ public class StorageApplicationVO {
     // Phase 2: 章节-教师分配
     private List<ChapterAssignmentItem> chapterAssignments;
 
+    // === 审核信息 ===
+    private String reviewComment;
+
     // === 关联查询字段 ===
     private String proposerName;
     private String departmentName;
@@ -140,6 +143,9 @@ public class StorageApplicationVO {
     public void setSharedUnits(List<ProposalSharedUnitItem> sharedUnits) { this.sharedUnits = sharedUnits; }
     public List<ChapterAssignmentItem> getChapterAssignments() { return chapterAssignments; }
     public void setChapterAssignments(List<ChapterAssignmentItem> chapterAssignments) { this.chapterAssignments = chapterAssignments; }
+
+    public String getReviewComment() { return reviewComment; }
+    public void setReviewComment(String reviewComment) { this.reviewComment = reviewComment; }
 
     public String getProposerName() { return proposerName; }
     public void setProposerName(String proposerName) { this.proposerName = proposerName; }

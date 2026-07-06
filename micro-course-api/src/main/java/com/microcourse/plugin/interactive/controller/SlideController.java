@@ -15,6 +15,7 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/courses/{courseId}/slides")
+@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 public class SlideController {
 
     private static final Logger log = LoggerFactory.getLogger(SlideController.class);
@@ -206,8 +208,9 @@ public class SlideController {
 
     /**
      * P1 安全修复: 课件文件魔数校验。
-     * PPTX 文件是 ZIP 格式，魔数为 PK\x03\x04；
-     * 图片文件魔数为 JPEG(FFD8FF) / PNG(89504E47)。
+     * PPTX 文件是 ZIP 格式，魔数为 PK\x03\x04。
+     * P1-I-02 修复：统一为仅允许 PPTX（ZIP 魔数），移除 JPEG/PNG 分支。
+     * Service 层扩展名校验仅接受 .pptx，两层标准一致。
      */
     private void validateSlideFileMagic(MultipartFile file) throws IOException {
         byte[] magic = new byte[8];
@@ -220,18 +223,9 @@ public class SlideController {
         // ZIP/PPTX: PK\x03\x04
         boolean isZip = magic[0] == 'P' && magic[1] == 'K'
                 && magic[2] == 0x03 && magic[3] == 0x04;
-        // JPEG: FFD8FF
-        boolean isJpeg = (magic[0] & 0xFF) == 0xFF
-                && (magic[1] & 0xFF) == 0xD8
-                && (magic[2] & 0xFF) == 0xFF;
-        // PNG: 89504E47
-        boolean isPng = (magic[0] & 0xFF) == 0x89
-                && magic[1] == 'P'
-                && magic[2] == 'N'
-                && magic[3] == 'G';
-        if (!isZip && !isJpeg && !isPng) {
+        if (!isZip) {
             throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID,
-                    "不支持的课件格式（仅支持 PPTX/JPEG/PNG 格式）");
+                    "不支持的课件格式（仅支持 PPTX 格式）");
         }
     }
 }

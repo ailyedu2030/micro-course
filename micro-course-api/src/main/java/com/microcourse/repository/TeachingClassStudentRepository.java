@@ -14,7 +14,7 @@ public interface TeachingClassStudentRepository extends BaseMapper<TeachingClass
     @Select("SELECT * FROM teaching_class_students WHERE class_id = #{classId}")
     List<TeachingClassStudent> selectByClassId(@Param("classId") Long classId);
 
-    @Select("SELECT * FROM teaching_class_students WHERE class_id = #{classId} AND status = 'ENROLLED'")
+    @Select("SELECT * FROM teaching_class_students WHERE class_id = #{classId} AND status = 'APPROVED'")
     List<TeachingClassStudent> selectActiveByClassId(@Param("classId") Long classId);
 
     @Select("SELECT COUNT(*) > 0 FROM teaching_class_students WHERE class_id = #{classId} AND user_id = #{userId}")

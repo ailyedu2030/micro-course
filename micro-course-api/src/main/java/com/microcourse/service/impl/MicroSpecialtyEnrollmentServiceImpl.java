@@ -108,8 +108,14 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
-        if (!"RECRUITING".equals(ms.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_ENROLLMENT_CLOSED);
+        // BUG-002 fix: 区分"未开放招生"和"已结束"两种错误场景
+        String msStatus = ms.getStatus();
+        if (!"RECRUITING".equals(msStatus)) {
+            if ("DRAFT".equals(msStatus) || "PENDING_REVIEW".equals(msStatus) || "APPROVED".equals(msStatus)) {
+                throw new BusinessException(ErrorCode.MS_ENROLLMENT_CLOSED, "微专业当前未在招生期");
+            } else {
+                throw new BusinessException(ErrorCode.MS_ENROLLMENT_CLOSED, "微专业已结束，无法操作");
+            }
         }
 
         // Fix 2: 人数上限校验
@@ -180,7 +186,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
         if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
 
         // P1-C-1: 校验 MS 必须是 RECRUITING 状态
@@ -343,7 +350,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
         if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
 
         // 校验操作用户是该微专业的负责人
@@ -683,7 +691,8 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         MicroSpecialty ms = msRepository.selectById(en.getMicroSpecialtyId());
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
         if ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
         // P1C-038: 校验微专业是否仍处于招生中
         if (!"RECRUITING".equals(ms.getStatus())) {

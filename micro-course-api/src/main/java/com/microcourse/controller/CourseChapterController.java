@@ -32,6 +32,9 @@ public class CourseChapterController {
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
             @RequestParam(required = false) Long courseId) {
+        if (courseId == null) {
+            throw new com.microcourse.exception.BusinessException(com.microcourse.exception.ErrorCode.BAD_REQUEST_PARAM, "courseId 不能为空");
+        }
         PageResult<ChapterVO> result = chapterService.page(page, size, courseId);
         return R.ok(result);
     }

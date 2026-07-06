@@ -3,6 +3,7 @@ package com.microcourse.plugin.interactive.controller;
 import com.microcourse.dto.R;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.service.TtsService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/courses/{courseId}/slides")
+@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 public class TtsController {
 
     private final TtsService ttsService;

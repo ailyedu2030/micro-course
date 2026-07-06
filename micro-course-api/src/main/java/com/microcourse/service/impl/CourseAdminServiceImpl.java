@@ -278,6 +278,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                         .eq(Course::getId, id)
                         .eq(Course::getStatus, currentStatus)
                         .set(Course::getStatus, CourseStatus.CLOSED.getCode())
+                        .set(Course::getDeletedAt, LocalDateTime.now())
                         .set(Course::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = COALESCE(version, 0) + 1"));
         if (affected == 0) {
@@ -379,6 +380,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         wrapper.eq(CourseChapter::getCourseId, id).orderByAsc(CourseChapter::getSortOrder);
         List<CourseChapter> chapters = chapterRepository.selectList(wrapper);
         for (CourseChapter ch : chapters) {
+            Long originalChapterId = ch.getId();
             CourseChapter copyCh = new CourseChapter();
             copyCh.setCourseId(course.getId());
             copyCh.setTitle(ch.getTitle());
@@ -388,11 +390,26 @@ public class CourseAdminServiceImpl implements CourseAdminService {
             copyCh.setDuration(ch.getDuration());
             copyCh.setLearningObjectives(ch.getLearningObjectives());
             chapterRepository.insert(copyCh);
+
+            // P1-C-03 修复: 复制章节下的视频（仅元数据，不复制实际视频文件）
+            List<Video> videos = videoRepository.selectList(
+                    new LambdaQueryWrapper<Video>()
+                            .eq(Video::getChapterId, originalChapterId)
+                            .isNull(Video::getDeletedAt));
+            for (Video v : videos) {
+                Video copyV = new Video();
+                copyV.setChapterId(copyCh.getId());
+                copyV.setCourseId(course.getId());
+                copyV.setTitle(v.getTitle());
+                copyV.setSortOrder(v.getSortOrder());
+                copyV.setDuration(v.getDuration());
+                videoRepository.insert(copyV);
+            }
         }
 
         LOG.info("课程复制成功, originalId={}, newId={}, operator={}", id, course.getId());
         CourseVO vo = convertToVO(course);
-        vo.setVideoCopied(false);
+        vo.setVideoCopied(true);
         return vo;
     }
 
@@ -437,7 +454,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         CourseStatus current = CourseStatus.fromCode(course.getStatus());
         CourseStatus target = CourseStatus.fromCode(status);
         if (current == null || target == null || !current.canTransitionTo(target)) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
+            String currentDesc = current != null ? current.getDescription() + "(" + current.getCode() + ")" : "未知";
+            String targetDesc = target != null ? target.getDescription() + "(" + target.getCode() + ")" : "未知";
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED,
+                    "不允许的状态转换：当前状态为 " + currentDesc + "，目标状态为 " + targetDesc);
         }
         // ARCHIVED 是业务终态，非软删除，不设 deleted_at
         // ARCHIVED ≠ CLOSED：归档是有序完结，关闭是强制终止

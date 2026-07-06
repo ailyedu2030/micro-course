@@ -19,6 +19,7 @@ import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -46,6 +47,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 @Service
+@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 public class SlideServiceImpl implements SlideService {
 
     private static final Logger log = LoggerFactory.getLogger(SlideServiceImpl.class);
@@ -212,12 +214,12 @@ public class SlideServiceImpl implements SlideService {
         try {
             pageVO = getPage(courseId, pageNumber);
         } catch (BusinessException e) {
-            log.warn("[Slide] 获取页面信息失败，返回占位图 courseId={} pageNumber={}", courseId, pageNumber);
-            return generateFallbackImage(pageImageWidth, "第" + pageNumber + "页");
+            // P2-01: 页面不存在 → 抛出异常（404），不再 fallback 占位图
+            throw e;
         }
         if (pageVO.getSlideId() == null) {
             log.warn("[Slide] slideId 为空 courseId={} pageNumber={}", courseId, pageNumber);
-            return generateFallbackImage(pageImageWidth, "第" + pageNumber + "页");
+            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         }
         String imageFileName = pageVO.getFileUuid() != null
                 ? pageVO.getFileUuid() + ".png"

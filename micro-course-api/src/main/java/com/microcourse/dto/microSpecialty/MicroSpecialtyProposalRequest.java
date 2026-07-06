@@ -1,5 +1,6 @@
 package com.microcourse.dto.microSpecialty;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -9,7 +10,9 @@ public class MicroSpecialtyProposalRequest {
     @NotBlank(message = "微专业名称不能为空")
     private String title;
 
+    // BUG-003 fix: 前端传 offerDepartmentIds(复数), 后端字段名对齐
     @NotNull(message = "开课学院不能为空")
+    @JsonProperty("offerDepartmentIds")
     private Long offerDepartmentId;
 
     private String description;

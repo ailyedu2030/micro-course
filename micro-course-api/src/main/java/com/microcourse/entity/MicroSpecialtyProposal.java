@@ -115,6 +115,12 @@ public class MicroSpecialtyProposal {
     /** P0-4 修复：微专业名称（独立于 title 的申报高校名称） */
     private String microSpecialtyName;
 
+    /** 申报高校全称（独立于 title，用于导出文件名等场景） */
+    private String universityFullName;
+
+    /** P2-02: 最近一次自动保存时间 */
+    private LocalDateTime lastAutoSavedAt;
+
     public MicroSpecialtyProposal() {}
 
     public Long getId() { return id; }
@@ -213,4 +219,12 @@ public class MicroSpecialtyProposal {
     public void setApplyDate(LocalDateTime applyDate) { this.applyDate = applyDate; }
     public String getMicroSpecialtyName() { return microSpecialtyName; }
     public void setMicroSpecialtyName(String microSpecialtyName) { this.microSpecialtyName = microSpecialtyName; }
+
+    // P2-02
+    public LocalDateTime getLastAutoSavedAt() { return lastAutoSavedAt; }
+    public void setLastAutoSavedAt(LocalDateTime lastAutoSavedAt) { this.lastAutoSavedAt = lastAutoSavedAt; }
+
+    // P2-03
+    public String getUniversityFullName() { return universityFullName; }
+    public void setUniversityFullName(String universityFullName) { this.universityFullName = universityFullName; }
 }

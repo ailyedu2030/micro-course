@@ -117,7 +117,8 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
 
         // 终态检查
         if (ms != null && ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus()))) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
 
         // 跨学院检测（§9.4）
@@ -279,7 +280,8 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
 
         // 终态检查 (先于 DB 更新)
         if (ms != null && ("CANCELLED".equals(ms.getStatus()) || "ARCHIVED".equals(ms.getStatus()))) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003)
+throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
 
         String newStatus = approve ? "ACTIVE" : "REJECTED";

@@ -70,7 +70,7 @@ public class BannerServiceImpl implements BannerService {
     @Override
     @CacheEvict(value = "banners", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
-    public BannerVO create(String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled) {
+    public BannerVO create(String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled, String title) {
         // P1I-007: 外部链接域名白名单校验
         validateLinkUrl(linkUrl);
 
@@ -79,6 +79,7 @@ public class BannerServiceImpl implements BannerService {
         banner.setLinkUrl(linkUrl);
         banner.setSortOrder(sortOrder);
         banner.setEnabled(enabled);
+        banner.setTitle(title != null ? title : "");
         banner.setCreatedAt(LocalDateTime.now());
         banner.setUpdatedAt(LocalDateTime.now());
         bannerRepository.insert(banner);
@@ -247,6 +248,7 @@ public class BannerServiceImpl implements BannerService {
     private BannerVO convertToVO(Banner banner) {
         BannerVO vo = new BannerVO();
         vo.setId(banner.getId());
+        vo.setTitle(banner.getTitle());
         vo.setImageUrl(banner.getImageUrl());
         vo.setLinkUrl(banner.getLinkUrl());
         vo.setSortOrder(banner.getSortOrder());

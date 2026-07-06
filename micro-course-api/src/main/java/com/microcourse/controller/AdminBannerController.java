@@ -41,6 +41,7 @@ public class AdminBannerController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public R<BannerVO> create(@RequestParam MultipartFile image,
+                              @RequestParam(required = false) String title,
                               @RequestParam String linkUrl,
                               @RequestParam(defaultValue = "0") Integer sortOrder,
                               @RequestParam(defaultValue = "true") Boolean enabled) {
@@ -50,7 +51,7 @@ public class AdminBannerController {
         // SEC-007 修复: 文件名路径穿越校验
         com.microcourse.util.FileUploadUtil.assertSafeFilename(image.getOriginalFilename());
         String imageUrl = bannerService.saveBannerImage(image);
-        BannerVO banner = bannerService.create(imageUrl, linkUrl, sortOrder, enabled);
+        BannerVO banner = bannerService.create(imageUrl, linkUrl, sortOrder, enabled, title);
         return R.ok(banner);
     }
 

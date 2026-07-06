@@ -3,6 +3,7 @@ package com.microcourse.plugin.interactive.controller;
 import com.microcourse.dto.R;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.service.NarrationService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,6 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/courses/{courseId}/slides")
+@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 public class NarrationController {
 
     private final NarrationService narrationService;

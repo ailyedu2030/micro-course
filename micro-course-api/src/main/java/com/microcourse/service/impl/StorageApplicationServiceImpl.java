@@ -136,9 +136,22 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             log.warn("initDraft: 无法获取用户学院信息, userId={}", userId);
         }
         proposalRepository.insert(proposal);
+        Long newId = proposal.getId();
+
+        // P1-C-1 修复: 创建3行固定签字 (LEAD/DEPT/SCHOOL)
+        // DB表有 DEFAULT CURRENT_TIMESTAMP, 自动填充时间
+        String[] fixedLevels = {"LEAD", "DEPT", "SCHOOL"};
+        for (int i = 0; i < fixedLevels.length; i++) {
+            ProposalSignature sig = new ProposalSignature();
+            sig.setProposalId(newId);
+            sig.setSignLevel(fixedLevels[i]);
+            sig.setUnitSeq(i);
+            signatureRepository.insert(sig);
+        }
+
         log.info("initDraft: userId={}, proposalId={}, departmentId={}",
-            userId, proposal.getId(), proposal.getOfferDepartmentId());
-        return proposal.getId();
+            userId, newId, proposal.getOfferDepartmentId());
+        return newId;
     }
 
     // ================================================================
@@ -224,6 +237,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         // 仅更新非空字段到主表
         cudService.applyRequestToProposal(proposal, request);
         proposal.setUpdatedAt(LocalDateTime.now());
+        // P2-02: 记录自动保存时间
+        proposal.setLastAutoSavedAt(LocalDateTime.now());
         // RT-1: 使用 @Version 乐观锁防止 autoSave 与 submit 的竞态条件
         // update(entity, wrapper) 将 WHERE 条件加入 version 检查，冲突时返回 0 行
         int rows = proposalRepository.update(proposal, new LambdaQueryWrapper<MicroSpecialtyProposal>()
@@ -276,29 +291,42 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         }
 
         // P2-2 fix (S-004): verify file content via magic bytes (not just extension)
-        boolean validMagic = false;
+        // I-02 fix: cross-validate extension vs content magic
+        boolean isJpegMagic = false;
+        boolean isPngMagic = false;
         try (InputStream is = file.getInputStream()) {
             byte[] header = new byte[8];
             int read = is.read(header, 0, 8);
             if (read >= 8) {
                 // JPEG: FF D8 FF
                 if (header[0] == (byte)0xFF && header[1] == (byte)0xD8 && header[2] == (byte)0xFF) {
-                    validMagic = true;
+                    isJpegMagic = true;
                 }
                 // PNG: 89 50 4E 47 0D 0A 1A 0A
                 if (header[0] == (byte)0x89 && header[1] == 0x50 && header[2] == 0x4E &&
                     header[3] == 0x47 && header[4] == 0x0D && header[5] == 0x0A &&
                     header[6] == 0x1A && header[7] == 0x0A) {
-                    validMagic = true;
+                    isPngMagic = true;
                 }
             }
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
                 "无法读取文件内容");
         }
-        if (!validMagic) {
+        if (!isJpegMagic && !isPngMagic) {
             throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
                 "文件内容不是有效的 jpg/png 图片");
+        }
+        // I-02 fix: cross-validate extension vs content magic to prevent PNG disguised as .jpg
+        boolean isJpegExt = lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg");
+        boolean isPngExt = lowerName.endsWith(".png");
+        if (isJpegMagic && !isJpegExt) {
+            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
+                "文件内容与扩展名不匹配：JPEG 内容需使用 .jpg/.jpeg 扩展名");
+        }
+        if (isPngMagic && !isPngExt) {
+            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
+                "文件内容与扩展名不匹配：PNG 内容需使用 .png 扩展名");
         }
 
         // 保存文件到本地 uploads 目录
@@ -594,7 +622,15 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     public String resolveSchoolName(Long proposalId) {
         try {
             MicroSpecialtyProposal p = proposalRepository.selectById(proposalId);
-            String name = p != null && p.getTitle() != null ? p.getTitle() : "申报高校";
+            // P2-03: 优先使用 universityFullName，fallback 到 title
+            String name = "申报高校";
+            if (p != null) {
+                name = p.getUniversityFullName();
+                if (name == null || name.isBlank()) {
+                    name = p.getTitle();
+                }
+                if (name == null) name = "申报高校";
+            }
             // Sanitize: remove characters unsafe for filenames across OS
             String sanitized = name.replaceAll("[/\\\\:*?\"<>|]", "").trim();
             // S-010: length limit and character whitelist

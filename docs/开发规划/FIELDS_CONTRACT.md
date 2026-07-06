@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2434
+- 后端实体字段总数: 2439
 
 - 前端引用字段总数: 427
 
@@ -1202,7 +1202,7 @@
 
 | MicroSpecialtyLeadTransferRequest | 1 | 0 |
 
-| MicroSpecialtyProposal | 44 | 0 |
+| MicroSpecialtyProposal | 46 | 0 |
 
 | MicroSpecialtyProposalRequest | 8 | 0 |
 
@@ -1328,13 +1328,13 @@
 
 | StorageApplicationAutoSaveRequest | 35 | 0 |
 
-| StorageApplicationPreviewVO | 35 | 0 |
+| StorageApplicationPreviewVO | 36 | 0 |
 
 | StorageApplicationSaveRequest | 35 | 0 |
 
-| StorageApplicationSummaryVO | 9 | 0 |
+| StorageApplicationSummaryVO | 10 | 0 |
 
-| StorageApplicationVO | 40 | 0 |
+| StorageApplicationVO | 41 | 0 |
 
 | StudentActivityVO | 4 | 0 |
 

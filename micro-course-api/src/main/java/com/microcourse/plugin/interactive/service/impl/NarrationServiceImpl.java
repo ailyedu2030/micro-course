@@ -15,6 +15,7 @@ import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 @Transactional(rollbackFor = Exception.class)
 public class NarrationServiceImpl implements NarrationService {
 
@@ -154,6 +156,8 @@ public class NarrationServiceImpl implements NarrationService {
     public void generateAll(Long courseId) {
         if (deepseekApiKey == null || deepseekApiKey.isBlank()) {
             log.warn("[Narration] DEEPSEEK_API_KEY 未配置，跳过 AI 讲述稿批量生成 courseId={}", courseId);
+            // P1-I-01: 批量失败时更新 DB 状态，让前端轮询可见
+            markAllPagesError(courseId, "AI 讲述稿生成失败：DeepSeek API Key 未配置");
             return;
         }
 
@@ -196,6 +200,8 @@ public class NarrationServiceImpl implements NarrationService {
             fullScript = callDeepSeek(systemPrompt, userPrompt);
         } catch (Exception e) {
             log.error("[Narration] 批量生成连贯讲述稿失败 courseId={}", courseId, e);
+            // P1-I-01: 批量失败时更新 DB 状态，让前端轮询可见
+            markAllPagesError(courseId, "AI 讲述稿生成失败：" + e.getMessage());
             return;
         }
 
@@ -345,6 +351,31 @@ public class NarrationServiceImpl implements NarrationService {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         }
         return page;
+    }
+
+    /**
+     * P1-I-01: 批量失败时将课程所有页面标记为 PENDING 并记录错误到日志。
+     * 使用独立事务避免异步失败导致未提交的变更丢失。
+     */
+    private void markAllPagesError(Long courseId, String errorMessage) {
+        try {
+            transactionTemplate.execute(tx -> {
+                LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(SlidePage::getCourseId, courseId);
+                List<SlidePage> pages = slidePageMapper.selectList(wrapper);
+                for (SlidePage page : pages) {
+                    if ("AI_GENERATED".equals(page.getNarrationStatus()) || "PENDING".equals(page.getNarrationStatus())) {
+                        page.setNarrationStatus("PENDING");
+                        page.setUpdatedAt(LocalDateTime.now());
+                        slidePageMapper.updateById(page);
+                    }
+                }
+                log.warn("[Narration] 批量生成失败已标记 courseId={}, pages={}, error={}", courseId, pages.size(), errorMessage);
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("[Narration] 标记页面错误状态失败 courseId={}", courseId, e);
+        }
     }
 
     private void checkOwner(Long courseId) {

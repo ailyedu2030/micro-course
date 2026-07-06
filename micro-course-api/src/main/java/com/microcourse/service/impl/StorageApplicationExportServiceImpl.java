@@ -47,6 +47,11 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
             throw new BusinessException(ErrorCode.SA_NOT_FOUND);
         }
 
+        // H-01: WITHDRAWN 状态禁止导出
+        if ("WITHDRAWN".equals(data.getStatus())) {
+            throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "已撤回的申请表不可导出");
+        }
+
         return wordGenerator.generate(data);
     }
 
@@ -58,6 +63,11 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
 
         if (data == null) {
             throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+        }
+
+        // H-01: WITHDRAWN 状态禁止导出
+        if ("WITHDRAWN".equals(data.getStatus())) {
+            throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "已撤回的申请表不可导出");
         }
 
         return pdfGenerator.generate(data);

@@ -57,7 +57,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">模块1：表头基础信息</span>
-          <el-button type="warning" plain size="small" @click="handleResetModule('module1')">重置模块</el-button>
+          <!-- 模块1为主表字段，无可重置的子表，隐藏重置按钮 -->
         </div>
       </template>
       <el-form :model="form" :rules="rules" ref="formRef1" label-width="100px" class="proposal-form">
@@ -101,7 +101,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">模块2：微专业基本情况</span>
-          <el-button type="warning" plain size="small" @click="handleResetModule('module2')">重置模块</el-button>
+          <!-- 模块2为主表字段，无可重置的子表，隐藏重置按钮 -->
         </div>
       </template>
       <el-form :model="form" label-width="100px" class="proposal-form">
@@ -194,7 +194,7 @@
         <el-divider content-position="left">内容描述</el-divider>
 
         <el-form-item label="微专业介绍">
-          <RichTextWithCounter v-model="form.introduction" placeholder="详细介绍微专业的定位、特色与价值..." :min-height="160" />
+          <RichTextWithCounter v-model="form.introduction" placeholder="详细介绍微专业的定位、特色与价值..." :min-height="160" :recommend-threshold="300" />
         </el-form-item>
 
         <el-form-item label="就业前景">
@@ -229,7 +229,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">模块3：教学团队</span>
-          <el-button type="warning" plain size="small" @click="handleResetModule('module3')">重置模块</el-button>
+          <el-button type="warning" plain size="small" @click="handleResetModule('teamMembers')">重置模块</el-button>
         </div>
       </template>
       <el-form :model="form" :rules="rules3" label-width="110px" class="proposal-form">
@@ -343,7 +343,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">模块4：牵头单位意见</span>
-          <el-button type="warning" plain size="small" @click="handleResetModule('module4')">重置模块</el-button>
+          <el-button type="warning" plain size="small" @click="handleResetModule('signatures')">重置模块</el-button>
         </div>
       </template>
       <SignatureBlock title="① 微专业负责人意见" v-model="signatures[0]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
@@ -356,7 +356,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">模块5：共建共享单位</span>
-          <el-button type="warning" plain size="small" @click="handleResetModule('module5')">重置模块</el-button>
+          <el-button type="warning" plain size="small" @click="handleResetModule('sharedUnits')">重置模块</el-button>
         </div>
       </template>
       <div v-if="sharedUnits.length === 0" class="empty-hint">
@@ -699,6 +699,7 @@ watch(courses, () => {
 }, { deep: true })
 
 // 表单是否完整(用于禁用"提交审核"按钮,防止误点)
+// B-003: 添加行级校验 — 团队成员姓名必填、课程名称必填、签名至少有一个非空
 const formComplete = computed(() => {
   return !!(
     form.value.title &&
@@ -708,7 +709,10 @@ const formComplete = computed(() => {
     /^\+?[1-9]\d{4,14}$/.test(form.value.contactPhone) &&
     form.value.applyDate &&
     courses.value.length > 0 &&
-    teamMembers.value.length > 0
+    courses.value.every(c => c.courseName?.trim()) &&
+    teamMembers.value.length > 0 &&
+    teamMembers.value.every(m => m.name?.trim()) &&
+    signatures.value.some(s => s.opinionText?.trim())
   )
 })
 

@@ -55,11 +55,13 @@ public class CourseController {
         this.courseAdminService = courseAdminService;
     }
 
+    private static final int MAX_PAGE_SIZE = 200;
+
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
+            @RequestParam(defaultValue = "20") @PositiveOrZero int size,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
@@ -74,6 +76,9 @@ public class CourseController {
             @RequestParam(required = false) Long offerDepartmentId) {
         CoursePageQuery query = new CoursePageQuery();
         query.setPage(page);
+        // P2: clamp size 到 [1, MAX_PAGE_SIZE]
+        if (size < 1) size = 1;
+        if (size > MAX_PAGE_SIZE) size = MAX_PAGE_SIZE;
         query.setSize(size);
         query.setTitle(title);
         query.setKeyword(keyword);

@@ -95,7 +95,8 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
     public void checkNotTerminal(MicroSpecialty ms) {
         MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (current == MicroSpecialtyStatus.CANCELLED || current == MicroSpecialtyStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.MS_TERMINAL_STATUS);
+            // BUG-004 fix: 统一使用 MS_STATUS_INVALID(17003) 作为状态错误唯一错误码
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终态，无法操作");
         }
     }
 

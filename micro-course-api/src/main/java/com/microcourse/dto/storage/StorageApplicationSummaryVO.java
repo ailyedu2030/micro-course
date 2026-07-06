@@ -13,6 +13,7 @@ public class StorageApplicationSummaryVO {
     private String proposerName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime lastAutoSavedAt;
 
     public StorageApplicationSummaryVO() {}
 
@@ -34,4 +35,6 @@ public class StorageApplicationSummaryVO {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getLastAutoSavedAt() { return lastAutoSavedAt; }
+    public void setLastAutoSavedAt(LocalDateTime lastAutoSavedAt) { this.lastAutoSavedAt = lastAutoSavedAt; }
 }

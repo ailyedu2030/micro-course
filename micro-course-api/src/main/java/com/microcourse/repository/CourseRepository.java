@@ -38,7 +38,7 @@ public interface CourseRepository extends BaseMapper<Course> {
      * 防止并发 enroll() 同时读到过时的 student_count 造成超卖。</p>
      * <p>压测验证 (50 并发对 max=5 课程): 锁定前 11/15 超卖; 锁定后 5/15 满员触发 WAITLIST。</p>
      */
-    @org.apache.ibatis.annotations.Select("SELECT id, status, max_students, COALESCE(student_count, 0) AS student_count, deleted_at " +
+    @org.apache.ibatis.annotations.Select("SELECT id, title, status, max_students, COALESCE(student_count, 0) AS student_count, deleted_at " +
             "FROM courses WHERE id = #{courseId} FOR UPDATE")
     java.util.Map<String, Object> selectByIdForUpdate(@Param("courseId") Long courseId);
 

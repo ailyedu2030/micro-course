@@ -18,8 +18,15 @@ public class StorageApplicationWordGenerator {
     public byte[] generate(StorageApplicationVO data) {
         try (XWPFDocument doc = new XWPFDocument()) {
 
+            // H-02: DRAFT 状态添加"草稿"水印 — 在每个段落后添加红色"DRAFT 草稿"标记
+            boolean isDraft = "DRAFT".equals(data.getStatus());
+
             // === 标题 ===
             createCenteredParagraph(doc, "高校开放共享\u201C微专业\u201D资源平台推荐表", true, 18, "宋体");
+            // H-02: DRAFT 水印标记
+            if (isDraft) {
+                createCenteredDraftMark(doc, "DRAFT 草稿");
+            }
             createEmptyParagraph(doc);
 
             // === 模块1：基础信息表（3行4列）===
@@ -43,6 +50,9 @@ public class StorageApplicationWordGenerator {
             createEmptyParagraph(doc);
 
             // === 模块2：一、微专业基本情况 ===
+            if (isDraft) {
+                createDraftFooter(doc, "DRAFT 草稿");
+            }
             createLeftParagraph(doc, "一、微专业基本情况", true, 14, "宋体");
 
             XWPFTable basicTable = doc.createTable(7, 4);
@@ -94,6 +104,9 @@ public class StorageApplicationWordGenerator {
             createEmptyParagraph(doc);
 
             // === 模块3：教学团队 ===
+            if (isDraft) {
+                createDraftFooter(doc, "DRAFT 草稿");
+            }
             createLeftParagraph(doc, "二、微专业教学团队情况", true, 14, "宋体");
             createLeftParagraph(doc, "专业负责人信息：", true, 12, "宋体");
 
@@ -182,6 +195,30 @@ public class StorageApplicationWordGenerator {
     }
 
     // ====== 辅助方法 ======
+
+    // H-02: 创建居中的红色"DRAFT 草稿"水印标记
+    private void createCenteredDraftMark(XWPFDocument doc, String text) {
+        XWPFParagraph p = doc.createParagraph();
+        p.setAlignment(ParagraphAlignment.CENTER);
+        XWPFRun r = p.createRun();
+        r.setBold(true);
+        r.setFontSize(16);
+        r.setFontFamily("宋体");
+        r.setColor("FF0000");
+        r.setText(text);
+    }
+
+    // H-02: 创建页脚水印（红色小字）
+    private void createDraftFooter(XWPFDocument doc, String text) {
+        XWPFParagraph p = doc.createParagraph();
+        p.setAlignment(ParagraphAlignment.RIGHT);
+        XWPFRun r = p.createRun();
+        r.setBold(true);
+        r.setFontSize(8);
+        r.setFontFamily("宋体");
+        r.setColor("FF0000");
+        r.setText(text);
+    }
 
     private void createCenteredParagraph(XWPFDocument doc, String text, boolean bold, int fontSize, String fontFamily) {
         XWPFParagraph p = doc.createParagraph();

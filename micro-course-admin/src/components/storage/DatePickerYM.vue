@@ -1,9 +1,9 @@
 <template>
   <el-date-picker
     :model-value="modelValue"
-    type="date"
-    format="YYYY.M.D"
-    value-format="YYYY.M.D"
+    type="month"
+    format="YYYY.M"
+    value-format="YYYY.M"
     :placeholder="placeholder"
     :disabled-date="disabledDate"
     style="width:160px"
@@ -22,7 +22,7 @@ defineEmits(['update:modelValue'])
 
 const disabledDate = (time) => {
   const now = new Date()
-  const min = new Date('2024-01-01')
+  const min = new Date(new Date().getFullYear() - 5, 0, 1)
   if (props.future) {
     // 开课时间模式: 只允许今天及未来, 禁用过去
     const minTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()

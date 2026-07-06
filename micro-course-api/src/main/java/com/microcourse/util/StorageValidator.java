@@ -95,23 +95,54 @@ public final class StorageValidator {
     }
 
     /**
+     * DRAFT 状态下导出用 — 仅校验格式（手机号/日期），不检查内容完整性。
+     */
+    public static List<String> validateFormatOnly(StorageApplicationSaveRequest req) {
+        List<String> errors = new ArrayList<>();
+        // 仅检查手机号格式
+        if (req.getContactPhone() != null && !req.getContactPhone().isBlank()) {
+            if (!req.getContactPhone().matches("^1[3-9]\\d{9}$")) {
+                errors.add("请输入正确的手机号");
+            }
+        }
+        // 仅检查日期格式
+        if (req.getApplyDate() != null && !req.getApplyDate().isBlank()) {
+            if (!req.getApplyDate().matches("^\\d{4}\\.\\d{1,2}\\.\\d{1,2}$")
+                && !req.getApplyDate().matches("^\\d{4}-\\d{2}-\\d{2}$")) {
+                errors.add("申请时间格式错误，正确格式：yyyy.M.d（如 2026.7.1）或 yyyy-MM-dd");
+            }
+        }
+        return errors;
+    }
+
+    /**
      * 提交前校验并在有错误时直接抛出异常（确保异常路径不会被遗漏）。
      * <p>与 {@link #validateForSubmit} 使用相同的校验逻辑。</p>
      */
     public static void validateAndThrow(StorageApplicationSaveRequest req) {
         List<String> errors = validateForSubmit(req);
         if (!errors.isEmpty()) {
+            // I-01: 使用 \\n 替代字面换行符，避免 JSON 序列化后出现未转义的 control character (RFC 8259 §7)
             throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
-                    "请补全以下必填项：\n" + String.join("\n", errors));
+                    "请补全以下必填项： " + String.join("; ", errors));
         }
     }
 
     private static void checkRichTextWordCount(List<String> errors, String html,
                                                 String fieldName, int warning) {
         if (html == null || html.isBlank()) {
+            // I-08: 富文本为空时也需要校验 — 空 HTML(如 <p></p>) 经 stripHtmlAndCount 后字数为 0
+            if (warning > 0) {
+                errors.add(fieldName + "不能为空");
+            }
             return;
         }
         int count = WordCountUtil.stripHtmlAndCount(html);
+        // I-08: 添加最小字数校验 — 空标签（如 <p></p>）字数为 0 应被拦截
+        if (count < 1 && warning > 0) {
+            errors.add(fieldName + "不能为空");
+            return;
+        }
         if (count > warning * 2) {
             errors.add(fieldName + "字数严重超限（当前 " + count + " 字，建议 " + warning + " 字以内）");
         } else if (count > warning) {

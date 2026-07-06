@@ -75,31 +75,84 @@ public class StorageApplicationPdfGenerator {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document doc = new Document(PageSize.A4, 50, 50, 70, 50);
 
+        // H-02: DRAFT 状态需要添加水印
+        boolean isDraft = "DRAFT".equals(data.getStatus());
+        log.info("PDF generate: status={}, isDraft={}, title={}", data.getStatus(), isDraft, data.getTitle());
+
         try {
             PdfWriter writer = PdfWriter.getInstance(doc, out);
 
-            // === 页眉/页脚 ===
-            writer.setPageEvent(new PdfPageEventHelper() {
-                @Override
-                public void onEndPage(PdfWriter writer, Document document) {
-                    PdfContentByte cb = writer.getDirectContent();
-                    Phrase footer = new Phrase(
-                        "教育部高校学生司（高校毕业生就业服务司）制    文件编制时间：2026年3月    -" + writer.getPageNumber() + "-",
-                        smallFont);
-                    ColumnText.showTextAligned(cb, Element.ALIGN_CENTER,
-                        footer,
-                        (document.left() + document.right()) / 2,
-                        20, 0);
-                }
-            });
+            // H-02: DRAFT 水印 — 在每页叠加半透明红色"DRAFT"文字
+            if (isDraft) {
+                writer.setPageEvent(new PdfPageEventHelper() {
+                    private BaseFont watermarkFont;
+                    {
+                        try { watermarkFont = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED); }
+                        catch (Exception e) { watermarkFont = null; }
+                    }
+
+                    @Override
+                    public void onEndPage(PdfWriter writer, Document document) {
+                        log.info("PDF watermark onEndPage called, font={}", watermarkFont);
+                        if (watermarkFont == null) {
+                            log.warn("PDF watermark font is null, skipping watermark");
+                            return;
+                        }
+                        PdfContentByte cb = writer.getDirectContentUnder();
+                        cb.saveState();
+                        cb.setColorFill(new java.awt.Color(255, 0, 0, 30));
+                        cb.beginText();
+                        cb.setFontAndSize(watermarkFont, 72);
+                        cb.showTextAligned(Element.ALIGN_CENTER, "DRAFT",
+                            (document.left() + document.right()) / 2,
+                            (document.top() + document.bottom()) / 2, 45);
+                        cb.endText();
+                        cb.restoreState();
+
+                        PdfContentByte headerCb = writer.getDirectContent();
+                        headerCb.saveState();
+                        headerCb.setColorFill(new java.awt.Color(255, 0, 0));
+                        headerCb.beginText();
+                        headerCb.setFontAndSize(watermarkFont, 10);
+                        headerCb.showTextAligned(Element.ALIGN_RIGHT, "DRAFT",
+                            document.right(), document.top() + 10, 0);
+                        headerCb.endText();
+                        headerCb.restoreState();
+                    }
+                });
+            } else {
+                // === 正式版页脚 ===
+                writer.setPageEvent(new PdfPageEventHelper() {
+                    @Override
+                    public void onEndPage(PdfWriter writer, Document document) {
+                        PdfContentByte cb = writer.getDirectContent();
+                        Phrase footer = new Phrase(
+                            "教育部高校学生司（高校毕业生就业服务司）制    文件编制时间：2026年3月    -" + writer.getPageNumber() + "-",
+                            smallFont);
+                        ColumnText.showTextAligned(cb, Element.ALIGN_CENTER,
+                            footer,
+                            (document.left() + document.right()) / 2,
+                            20, 0);
+                    }
+                });
+            }
 
             doc.open();
 
             // === 主标题 ===
+            // H-02: DRAFT 状态下在标题旁加红字标记
             Paragraph title = new Paragraph("高校开放共享\u201C微专业\u201D资源平台推荐表", titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(10);
             doc.add(title);
+
+            // H-02: DRAFT 水印文字标记
+            if (isDraft) {
+                Paragraph draftMark = new Paragraph("DRAFT 草稿", new Font(Font.HELVETICA, 14, Font.BOLD, new java.awt.Color(255, 0, 0)));
+                draftMark.setAlignment(Element.ALIGN_CENTER);
+                draftMark.setSpacingAfter(6);
+                doc.add(draftMark);
+            }
 
             // === 模块1：表头信息表（3行4列）===
             PdfPTable headerTable = new PdfPTable(4);

@@ -133,7 +133,10 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
         if (request.getIsIndustryAcademic() != null) {
             proposal.setIsIndustryAcademic(request.getIsIndustryAcademic());
         }
-        if (request.getIndustryPartners() != null) {
+        // I-03: 产教融合开关关闭时主动清空 industryPartners，防止残留脏数据
+        if (request.getIsIndustryAcademic() != null && !request.getIsIndustryAcademic()) {
+            proposal.setIndustryPartners(null);
+        } else if (request.getIndustryPartners() != null) {
             proposal.setIndustryPartners(request.getIndustryPartners());
         }
         if (request.getIntroduction() != null) {
@@ -254,6 +257,8 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                 // 前端旧 ID 导致 FK 约束 violation
                 // P1-C-1 修复: 当映射找不到时,用 resolvedCourseId 在 allChapters 中回退匹配,
                 // 仍然找不到则跳过该条 assignment 并记 warning,避免用过期 ID 插入 FK 崩溃
+                // I-04 修复: 在前端章节(新创建无旧 ID)时,先用章节标题在 allChapters 中精确匹配,
+                // 再按课程ID+第一个章节兜底,避免跳过新章节的分配
                 if (request.getChapterAssignments() != null && !request.getChapterAssignments().isEmpty()) {
                     assignmentRepository.delete(new LambdaQueryWrapper<ChapterTeacherAssignment>()
                             .eq(ChapterTeacherAssignment::getProposalId, proposalId));
@@ -263,15 +268,28 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                             Long oldChapterId = assignItem.getChapterId();
                             ProposalChapter mappedCh = oldIdToNewChapterMap.get(oldChapterId);
 
-                            // 回退查找: 当直接 ID 映射失败时(如章节刚创建无旧 ID),
-                            // 解析新课程序号后在 allChapters 中按课程匹配第一个章节
+                            // 回退查找: 当直接 ID 映射失败时(如章节刚创建无旧 ID)
                             if (mappedCh == null) {
                                 Long resolvedCourseId = oldToNewCourseIdMap.getOrDefault(
                                         assignItem.getCourseId(), assignItem.getCourseId());
-                                for (ProposalChapter fallbackCh : allChapters) {
-                                    if (Objects.equals(fallbackCh.getCourseId(), resolvedCourseId)) {
-                                        mappedCh = fallbackCh;
-                                        break;
+                                // I-04: 优先用章节标题在同课程内精确匹配
+                                String chTitle = assignItem.getChapterTitle();
+                                if (chTitle != null && !chTitle.isBlank()) {
+                                    for (ProposalChapter fallbackCh : allChapters) {
+                                        if (Objects.equals(fallbackCh.getCourseId(), resolvedCourseId)
+                                                && chTitle.equals(fallbackCh.getTitle())) {
+                                            mappedCh = fallbackCh;
+                                            break;
+                                        }
+                                    }
+                                }
+                                // I-04: 标题匹配不到时,再按课程匹配第一个章节(向后兼容)
+                                if (mappedCh == null) {
+                                    for (ProposalChapter fallbackCh : allChapters) {
+                                        if (Objects.equals(fallbackCh.getCourseId(), resolvedCourseId)) {
+                                            mappedCh = fallbackCh;
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -482,7 +500,13 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                         java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
                 return ym.atDay(1).atStartOfDay();
             }
-            // ISO 格式 / yyyy-MM-dd / yyyy-MM-dd'T'HH:mm:ss / yyyy-MM-dd HH:mm:ss
+            // P1-C-4 修复: yyyy-MM-dd 纯日期格式（如 "2026-09-01"）
+            if (trimmed.matches("\\d{4}-\\d{2}-\\d{2}") && !trimmed.contains("T") && !trimmed.contains(" ")) {
+                java.time.LocalDate date = java.time.LocalDate.parse(trimmed,
+                        java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+                return date.atStartOfDay();
+            }
+            // ISO 格式 / yyyy-MM-dd'T'HH:mm:ss / yyyy-MM-dd HH:mm:ss
             return LocalDateTime.parse(trimmed.replace(" ", "T"),
                     java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         } catch (Exception e) {

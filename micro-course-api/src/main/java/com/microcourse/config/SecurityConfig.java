@@ -119,9 +119,10 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/system-configs/public").permitAll()
                         // Phase 14: 微专业公共端点 - 课程广场和详情页无需登录
                         .requestMatchers("GET", "/api/micro-specialties/square").permitAll()
-                        .requestMatchers("GET", "/api/micro-specialties/{id}").permitAll()
-                        .requestMatchers("GET", "/api/micro-specialties/{id}/courses").permitAll()
-                        .requestMatchers("GET", "/api/micro-specialties/{id}/teachers").permitAll()
+                        // BUG-001 fix: Spring Security MvcRequestMatcher 不识别 {id} 语法,使用 Ant 通配符 *
+                        .requestMatchers("GET", "/api/micro-specialties/*").permitAll()
+                        .requestMatchers("GET", "/api/micro-specialties/*/courses").permitAll()
+                        .requestMatchers("GET", "/api/micro-specialties/*/teachers").permitAll()
                         // P0 闭环修复 Round 4: 公开 Banner API（学生端首页轮播）
                         .requestMatchers("GET", "/api/banners").permitAll()
                         // 前端错误自动上报 —— 需登录态。Controller 仅落日志、不返回敏感数据、不写库。

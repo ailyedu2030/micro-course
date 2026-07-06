@@ -46,6 +46,9 @@ public class StorageApplicationPreviewVO {
     private List<ProposalSharedUnitItem> sharedUnits;
     private List<ChapterAssignmentItem> chapterAssignments;
 
+    // === 审核信息 ===
+    private String reviewComment;
+
     public StorageApplicationPreviewVO() {}
 
     // === getter/setter ===
@@ -124,4 +127,7 @@ public class StorageApplicationPreviewVO {
     public void setSharedUnits(List<ProposalSharedUnitItem> sharedUnits) { this.sharedUnits = sharedUnits; }
     public List<ChapterAssignmentItem> getChapterAssignments() { return chapterAssignments; }
     public void setChapterAssignments(List<ChapterAssignmentItem> chapterAssignments) { this.chapterAssignments = chapterAssignments; }
+
+    public String getReviewComment() { return reviewComment; }
+    public void setReviewComment(String reviewComment) { this.reviewComment = reviewComment; }
 }

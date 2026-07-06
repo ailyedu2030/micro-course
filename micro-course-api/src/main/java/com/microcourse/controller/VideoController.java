@@ -110,6 +110,9 @@ public class VideoController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("courseId") Long courseId,
             @RequestParam(value = "chapterId", required = false) Long chapterId) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
+        }
         VideoVO vo = videoService.uploadVideo(file, courseId, chapterId);
         return R.ok(vo);
     }

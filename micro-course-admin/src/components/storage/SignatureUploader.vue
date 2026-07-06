@@ -65,7 +65,10 @@ async function handleUpload({ file }) {
     try {
       const res = await props.uploadHandler(file)
       imageUrl.value = res.data?.url || URL.createObjectURL(file)
-    } catch { ElMessage.error('上传失败') }
+    } catch {
+      ElMessage.error('上传失败')
+      if (imageUrl.value) { URL.revokeObjectURL(imageUrl.value); imageUrl.value = ''; }
+    }
   } else {
     imageUrl.value = URL.createObjectURL(file)
   }

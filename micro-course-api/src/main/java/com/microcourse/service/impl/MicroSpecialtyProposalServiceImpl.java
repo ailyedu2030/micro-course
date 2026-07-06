@@ -358,6 +358,9 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         vo.setPrerequisites(proposal.getPrerequisites());
         vo.setSemester(proposal.getSemester());
         vo.setMaxStudents(proposal.getMaxStudents());
+        // I-07 fix: 映射缺失字段
+        vo.setOfferDepartmentId(proposal.getOfferDepartmentId());
+        vo.setCredits(proposal.getCredits());
         return vo;
     }
 
@@ -401,8 +404,9 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
         }
 
         if (!MicroSpecialtyProposalStatus.DRAFT.getValue().equals(proposal.getStatus())
-                && !MicroSpecialtyProposalStatus.WITHDRAWN.getValue().equals(proposal.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅草稿或已撤回状态可删除");
+                && !MicroSpecialtyProposalStatus.WITHDRAWN.getValue().equals(proposal.getStatus())
+                && !MicroSpecialtyProposalStatus.REJECTED.getValue().equals(proposal.getStatus())) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅草稿、已撤回或已驳回状态可删除");
         }
 
         proposalRepository.deleteById(proposalId);

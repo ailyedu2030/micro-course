@@ -19,7 +19,7 @@ public interface BannerService {
      */
     String saveBannerImage(MultipartFile file);
 
-    BannerVO create(String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled);
+    BannerVO create(String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled, String title);
 
     BannerVO update(Long id, String imageUrl, String linkUrl, Integer sortOrder, Boolean enabled);
 
