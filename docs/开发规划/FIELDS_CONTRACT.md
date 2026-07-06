@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2439
+- 后端实体字段总数: 2442
 
 - 前端引用字段总数: 427
 
@@ -930,11 +930,11 @@
 
 | BadgeVO | 5 | 0 |
 
-| Banner | 8 | 0 |
+| Banner | 9 | 0 |
 
 | BannerToggleStatusRequest | 1 | 0 |
 
-| BannerVO | 7 | 0 |
+| BannerVO | 8 | 0 |
 
 | BatchApproveRequest | 1 | 0 |
 
@@ -1204,7 +1204,7 @@
 
 | MicroSpecialtyProposal | 46 | 0 |
 
-| MicroSpecialtyProposalRequest | 8 | 0 |
+| MicroSpecialtyProposalRequest | 9 | 0 |
 
 | MicroSpecialtyRejectRequest | 1 | 0 |
 

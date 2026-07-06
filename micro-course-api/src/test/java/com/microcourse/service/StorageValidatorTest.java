@@ -33,6 +33,10 @@ class StorageValidatorTest {
         req.setEnrollmentQuota(50);
         req.setClassSize(25);
         req.setIntroduction("<p>介绍</p>");
+        req.setMarketDemandAnalysis("<p>市场需求分析内容</p>");
+        req.setSpecialtyOverview("<p>专业概述内容</p>");
+        req.setCurriculumDesign("<p>课程设计内容</p>");
+        req.setConstructionGuarantee("<p>建设保障内容</p>");
 
         ProposalCourseItem course = new ProposalCourseItem();
         course.setCourseName("整理学");

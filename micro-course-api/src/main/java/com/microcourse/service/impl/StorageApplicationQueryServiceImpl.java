@@ -396,6 +396,15 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         return vo;
     }
 
+    @Override
+    public StorageApplicationSaveRequest buildValidationRequest(Long proposalId) {
+        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+        if (proposal == null) {
+            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+        }
+        return buildRequest(proposal);
+    }
+
     /**
      * 从 proposal 构建 StorageApplicationSaveRequest（用于校验）
      */

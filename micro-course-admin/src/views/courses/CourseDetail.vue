@@ -111,9 +111,20 @@
       </el-card>
 
       <!-- 封面 -->
-      <el-card shadow="never" class="info-card" v-if="courseData.coverUrl">
+      <el-card shadow="never" class="info-card">
         <template #header><span class="card-title">课程封面</span></template>
-        <el-image :src="courseData.coverUrl" fit="contain" class="cover-img" />
+        <template v-if="courseData.coverUrl">
+          <el-image :src="courseData.coverUrl" fit="contain" class="cover-img" />
+        </template>
+        <template v-else>
+          <el-alert
+            title="尚未设置课程封面"
+            type="warning"
+            :closable="false"
+            show-icon
+            description="提交审核前必须上传封面，点击「编辑」按钮后在封面区域上传"
+          />
+        </template>
       </el-card>
 
       <!-- 课程描述 -->
@@ -514,6 +525,11 @@ const switchToView = () => router.push(`/courses/${courseId.value}`)
 
 const handleSubmitForReview = async () => {
   if (submitLoading.value) return
+  // 提交前预检：封面必须已上传
+  if (!courseData.value?.coverUrl) {
+    ElMessage.warning('请先上传课程封面再提交审核（点击「编辑」按钮，在封面区域上传）')
+    return
+  }
   try { await ElMessageBox.confirm('确定提交审核？', '提示', { type: 'info' }) } catch { return }
   submitLoading.value = true
   try { await submitCourseForReview(courseId.value); ElMessage.success('已提交审核'); fetchCourse() }

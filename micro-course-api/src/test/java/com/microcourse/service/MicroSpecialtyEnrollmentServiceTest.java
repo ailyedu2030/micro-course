@@ -194,7 +194,7 @@ class MicroSpecialtyEnrollmentServiceTest {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(2L);
 
             BusinessException ex = assertThrows(BusinessException.class, () -> service.approve(1L));
-            assertEquals(ErrorCode.MS_TERMINAL_STATUS.getCode(), ex.getCode());
+            assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
         }
     }
 

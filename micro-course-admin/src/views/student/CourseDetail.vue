@@ -316,7 +316,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading, ShoppingCart, ArrowRight } from '@element-plus/icons-vue'

@@ -17,6 +17,7 @@ import com.microcourse.service.StorageApplicationQueryService;
 import com.microcourse.service.StorageApplicationService;
 import com.microcourse.util.FileUploadUtil;
 import com.microcourse.util.SecurityUtil;
+import com.microcourse.util.StorageValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -407,11 +408,23 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿或已驳回状态可提交审核");
         }
 
-        // 执行提交前校验（委托至 queryService）
-        ExportValidationResult validation = queryService.validateForExport(proposalId, userId);
-        if (!validation.isValid()) {
+        // 执行提交前校验 — 使用完整校验，与导出校验(validateForExport)分离
+        StorageApplicationSaveRequest validationReq = queryService.buildValidationRequest(proposalId);
+        List<String> submitErrors = StorageValidator.validateForSubmit(validationReq);
+        // 追加子表存在性校验
+        long courseCount = courseRepository.selectCount(
+            new LambdaQueryWrapper<ProposalCourse>().eq(ProposalCourse::getProposalId, proposalId));
+        long memberCount = teamMemberRepository.selectCount(
+            new LambdaQueryWrapper<ProposalTeamMember>().eq(ProposalTeamMember::getProposalId, proposalId));
+        long sigCount = signatureRepository.selectCount(
+            new LambdaQueryWrapper<ProposalSignature>().eq(ProposalSignature::getProposalId, proposalId));
+        if (courseCount == 0) submitErrors.add("课程表至少需要 1 门课程");
+        if (memberCount == 0) submitErrors.add("教学团队至少需要 1 名成员");
+        if (sigCount == 0) submitErrors.add("至少需要 1 个签字记录");
+        
+        if (!submitErrors.isEmpty()) {
             throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
-                    "请补全以下必填项：\n" + String.join("\n", validation.getErrors()));
+                    "请补全以下必填项： " + String.join("; ", submitErrors));
         }
 
         proposal.setStatus("PENDING_REVIEW");

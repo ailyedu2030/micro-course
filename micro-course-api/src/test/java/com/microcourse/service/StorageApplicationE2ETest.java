@@ -49,6 +49,10 @@ class StorageApplicationE2ETest extends BaseIntegrationTest {
             + "\"enrollmentQuota\":50,\"classSize\":25,\"startDate\":\"2026.9.1\",\"duration\":\"1学期\","
             + "\"isIndustryAcademic\":true,\"industryPartners\":\"某企业\","
             + "\"introduction\":\"<p>微专业介绍</p>\","
+            + "\"marketDemandAnalysis\":\"<p>市场需求分析</p>\","
+            + "\"specialtyOverview\":\"<p>专业概述</p>\","
+            + "\"curriculumDesign\":\"<p>课程设计</p>\","
+            + "\"constructionGuarantee\":\"<p>建设保障</p>\","
             + "\"courses\":[{\"moduleName\":\"基础\",\"courseName\":\"整理学\",\"hours\":32,\"credits\":2,\"semester\":\"第1学期\"}],"
             + "\"teamMembers\":[{\"name\":\"李教授\",\"age\":45,\"title\":\"教授\",\"organization\":\"测试大学\",\"profession\":\"教育\"}],"
             + "\"signatures\":[{\"signLevel\":\"LEAD\",\"opinionText\":\"同意\",\"signature\":{\"type\":\"TEXT\",\"text\":\"李\"},\"signDate\":\"2026.9.1\"}]"
@@ -132,7 +136,7 @@ class StorageApplicationE2ETest extends BaseIntegrationTest {
         Number pid = JsonPath.read(initResult.getResponse().getContentAsString(), "$.data");
         Long proposalId = pid.longValue();
 
-        String form = "{\"title\":\"测试\",\"microSpecialtyName\":\"微专业\",\"leadName\":\"李\",\"contactPhone\":\"13800138000\",\"applyDate\":\"2026.9.1\",\"type\":\"急需紧缺型\",\"targetAudience\":\"本科\",\"totalCredits\":12,\"courseCount\":4,\"enrollmentQuota\":50,\"classSize\":25,\"introduction\":\"<p>t</p>\",\"courses\":[{\"moduleName\":\"M\",\"courseName\":\"C\",\"hours\":32,\"credits\":2,\"semester\":\"S1\"}],\"teamMembers\":[{\"name\":\"N\",\"age\":30,\"title\":\"T\",\"organization\":\"O\",\"profession\":\"P\"}],\"signatures\":[{\"signLevel\":\"LEAD\",\"opinionText\":\"OK\",\"signature\":{\"type\":\"TEXT\",\"text\":\"L\"},\"signDate\":\"2026.9.1\"}]}";
+        String form = "{\"title\":\"测试\",\"microSpecialtyName\":\"微专业\",\"leadName\":\"李\",\"contactPhone\":\"13800138000\",\"applyDate\":\"2026.9.1\",\"type\":\"急需紧缺型\",\"targetAudience\":\"本科\",\"totalCredits\":12,\"courseCount\":4,\"enrollmentQuota\":50,\"classSize\":25,\"introduction\":\"<p>t</p>\",\"marketDemandAnalysis\":\"<p>m</p>\",\"specialtyOverview\":\"<p>s</p>\",\"curriculumDesign\":\"<p>c</p>\",\"constructionGuarantee\":\"<p>g</p>\",\"courses\":[{\"moduleName\":\"M\",\"courseName\":\"C\",\"hours\":32,\"credits\":2,\"semester\":\"S1\"}],\"teamMembers\":[{\"name\":\"N\",\"age\":30,\"title\":\"T\",\"organization\":\"O\",\"profession\":\"P\"}],\"signatures\":[{\"signLevel\":\"LEAD\",\"opinionText\":\"OK\",\"signature\":{\"type\":\"TEXT\",\"text\":\"L\"},\"signDate\":\"2026.9.1\"}]}";
         mockMvc.perform(put("/api/storage-applications/{id}", proposalId)
                 .header("Authorization", "Bearer " + teacherToken)
                 .contentType(MediaType.APPLICATION_JSON).content(form))

@@ -141,14 +141,23 @@ async function handleSubmit() {
         items.map(i => i.courseId),
         paymentMethod.value
       )
-      // 全部成功
-      items.forEach(i => {
-        successItems.push({ courseTitle: i.title, amount: i.price, status: 'PAID' })
-        store.removeItem(i.courseId)
+      // LD-005 修复: 逐项检查订单状态，非PAID订单放入失败列表
+      const failedOrders = []
+      orders.forEach((order, idx) => {
+        if (order && order.status === 'PAID') {
+          successItems.push({ courseTitle: items[idx]?.title || order.courseName, amount: order.amount, status: 'PAID' })
+          store.removeItem(items[idx]?.courseId)
+        } else {
+          failedOrders.push({ courseTitle: items[idx]?.title || '未知', amount: order?.amount, status: order?.status || 'FAILED' })
+        }
       })
-      resultSummary.value = { success: successItems, failed: [] }
+      resultSummary.value = { success: successItems, failed: failedOrders }
       showResultDialog.value = true
-      paid.value = true
+      if (failedOrders.length === 0) {
+        paid.value = true
+      } else {
+        ElMessage.warning(`${failedOrders.length} 个订单支付异常，请查看详情`)
+      }
       return
     } catch (batchError) {
       // 批量失败，降级到逐一处理

@@ -28,4 +28,7 @@ public interface StorageApplicationQueryService {
 
     /** 导出前置校验 */
     ExportValidationResult validateForExport(Long proposalId, Long userId);
+
+    /** 构建提交校验请求（从DB读取完整数据） */
+    StorageApplicationSaveRequest buildValidationRequest(Long proposalId);
 }

@@ -74,6 +74,9 @@ public abstract class BaseIntegrationTest {
                 String key = new String(cursor.next());
                 stringRedis.delete(key);
             }
+            // 清空 JWT 黑名单和 refresh token 缓存，防止跨测试污染
+            clearRedisPattern("mc:jwt:blacklist:*");
+            clearRedisPattern("mc:refresh:*");
             applicationContext.getBean(com.microcourse.service.AuthService.class).resetLoginLockout();
         } catch (Exception ignored) {}
     }
@@ -115,5 +118,20 @@ public abstract class BaseIntegrationTest {
      */
     protected void clearAdminToken() {
         cachedAdminToken = null;
+    }
+
+    /** 按 pattern 清空 Redis key（用于清理跨测试状态的 key） */
+    private void clearRedisPattern(String pattern) {
+        try {
+            org.springframework.data.redis.core.StringRedisTemplate stringRedis =
+                    applicationContext.getBean(org.springframework.data.redis.core.StringRedisTemplate.class);
+            org.springframework.data.redis.core.Cursor<byte[]> cursor = stringRedis.getRequiredConnectionFactory()
+                    .getConnection().keyCommands().scan(
+                            org.springframework.data.redis.core.ScanOptions.scanOptions()
+                                    .match(pattern).count(1000).build());
+            while (cursor.hasNext()) {
+                stringRedis.delete(new String(cursor.next()));
+            }
+        } catch (Exception ignored) {}
     }
 }
