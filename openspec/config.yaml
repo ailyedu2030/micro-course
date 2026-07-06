@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  # 微课管理平台 · 项目上下文
+  Tech stack: Spring Boot 3.2.12 + Java 17 + MyBatis-Plus 3.5.6 + PostgreSQL 17.5 + Redis 7
+  Frontend: Vue 3.4 + Element Plus 2.5 + Pinia 2.1 + Vite 5 + Axios 1.6
+  Commits: Conventional Commits (feat/fix/refactor/test/docs/chore) + scope (Phase 编号)
+  Domain: 高校微课管理平台（课程管理、选课学习、微专业/教学班、订单支付）
+  Constitution: .claude/skills/microcourse/ (25条禁止项 + 6份references)
+  Lombok: 已禁用，手写 getter/setter + 构造器注入
+  Architecture: Controller → Service → Repository (MyBatis-Plus BaseMapper)
+  Auth: JWT + @PreAuthorize (hasRole/hasAnyRole) + SecurityUtil
+  DB: PostgreSQL + Flyway migration (V${number}__${description}.sql)
+  DB naming: snake_case; Java naming: camelCase
+  Spec docs: docs/数据字典.md v0.5, docs/API契约-Phase1.md v1.2,
+    docs/状态机设计.md v1.0, docs/权限矩阵.md v2.0, docs/开发规范.md v1.4
+  Recent audit: docs/审计/项目业务逻辑审计-2026-07-06-细粒度/ (165项缺陷已闭环)
+
+rules:
+  proposal:
+    - 必须引用 docs/开发规划/phase*-spec.md 中的当前 Phase
+    - 引用最近审计发现的对应缺陷 ID（如有）
+    - 必须给出"前置条件"和"影响范围"（跨 3 域以上需标注）
+  design:
+    - 后端设计必须引用 AGENTS.md 的 25 条禁止项
+    - 数据库变更必须注明 Flyway migration 版本号
+    - 状态机变更必须更新 docs/状态机设计.md
+  tasks:
+    - 每个任务必须有验收标准（参考 references/verification-checklist.md）
+    - 跨模块任务必须拆分为多个子任务
+    - 单任务工作量不超过 2 小时
