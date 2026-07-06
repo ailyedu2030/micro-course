@@ -105,6 +105,16 @@ public class UserStatusServiceImpl implements UserStatusService {
             case ACTIVE:
                 user.setStatus(1);
                 user.setDeletedAt(null);
+                /* ---- 【P0-2 补审】ACTIVE 恢复时清除用户 Token 黑名单 ---- */
+                /* 【根因】DISABLED→ACTIVE 时，redisUtil.blacklistUserTokens() 设置的
+                 *        mc:jwt:user-blacklist:{userId} 未被清除，
+                 *        导致恢复后的用户即使拿到新 Token 也无法访问系统（JwtAuthenticationFilter 拦截） */
+                try {
+                    redisUtil.delete("mc:jwt:user-blacklist:" + id);
+                    log.info("用户激活清除 Token 黑名单: userId={}", id);
+                } catch (Exception e) {
+                    log.error("清除 Token 黑名单失败 userId={}，不影响主流程", id, e);
+                }
                 /* ---- 【I-14(跨域)修复】DISABLED→ACTIVE 无 enrollment 恢复 ---- */
                 /* 【根因】用户从 DISABLED(2) 恢复为 ACTIVE(1) 时，
                  *        原 cascadeDisableEnrollments() 级联暂停的选课记录(SUSPENDED)

@@ -18,6 +18,9 @@ public enum NotificationType {
     COURSE_PUBLISHED("COURSE_PUBLISHED", "课程已上架"),
     // 客户体验修复 v1.7.0: 课程下架通知 (P1 perf 优化 - 用异步批量替换同步循环)
     COURSE_UNPUBLISHED("COURSE_UNPUBLISHED", "课程已下架"),
+
+    // P0-2 补审: 退课通知
+    ENROLLMENT_DROPPED("ENROLLMENT_DROPPED", "退课成功"),
     VIDEO_TRANSCODED("VIDEO_TRANSCODED", "视频转码完成"),
     DISCUSSION_REPLY("DISCUSSION_REPLY", "讨论区有新回复"),
     // P1I-023: 新帖审核通过通知发帖人

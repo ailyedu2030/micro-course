@@ -435,7 +435,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         boolean wasEnrolled = (fromStatus != EnrollmentStatus.CANCELLED
                 && fromStatus != EnrollmentStatus.WAITLIST);
         // C-12 修复：退课前进度检查 — 超过 50% 不允许退课
+        // P0-2 补审：区分已完成课程和进行中超过50%的退课，给出不同的错误提示
         if (wasEnrolled && enrollment.getProgress() != null && enrollment.getProgress() > 50.0) {
+            if (Boolean.TRUE.equals(enrollment.getCompleted())) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程已完成，无法退课");
+            }
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程学习进度已超过50%，无法退课");
         }
         if (wasEnrolled && enrollment.getCourseId() != null) {
@@ -449,6 +453,32 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (wasEnrolled && enrollment.getCourseId() != null) {
             promoteFirstWaitlistToEnrolled(enrollment.getCourseId());
         }
+        // P0-2 修复: 退课后发送通知给学生和教师
+        if (wasEnrolled && enrollment.getCourseId() != null) {
+            try {
+                Course dropCourse = courseRepository.selectById(enrollment.getCourseId());
+                String courseTitle = dropCourse != null ? dropCourse.getTitle() : ("课程#" + enrollment.getCourseId());
+                // 通知学生退课成功
+                notificationService.notifyAsync(
+                        effectiveUserId,
+                        NotificationType.ENROLLMENT_DROPPED,
+                        "退课成功",
+                        "您已成功退课《" + courseTitle + "》",
+                        enrollment.getCourseId());
+                // 通知课程教师
+                if (dropCourse != null && dropCourse.getTeacherId() != null) {
+                    notificationService.notifyAsync(
+                            dropCourse.getTeacherId(),
+                            NotificationType.ENROLLMENT_DROPPED,
+                            "学生退课通知",
+                            "学生 " + (enrollment.getUserId() != null ? "#" + enrollment.getUserId() : "") + " 已退出课程《" + courseTitle + "》",
+                            enrollment.getCourseId());
+                }
+            } catch (Exception e) {
+                LOG.warn("[Enrollment] 退课通知发送失败 enrollmentId={}", enrollment.getId(), e);
+            }
+        }
+
         // P0-2 修复: 退课时若存在 PAID 订单，自动触发退款
         // REFUND_REENTRANT 防止 refund() 内部调用的 cancelEnrollment() 触发递归循环
         if (wasEnrolled && enrollment.getCourseId() != null && !REFUND_REENTRANT.get()) {
