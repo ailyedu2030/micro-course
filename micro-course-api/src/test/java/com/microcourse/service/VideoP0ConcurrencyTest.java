@@ -63,12 +63,19 @@ class VideoP0ConcurrencyTest extends BaseIntegrationTest {
         pool.shutdown();
         pool.awaitTermination(30, TimeUnit.SECONDS);
 
-        // 等待 @Async 异步任务实际执行完成
-        java.util.concurrent.TimeUnit.MILLISECONDS.sleep(2000);
-
-        Video after = videoRepository.selectById(videoId);
-        // 修复后:5 个并发调用全部 return,但只有 CAS 成功的那一个把 status 改为 TRANSCODING(1)
-        // 数据库状态依然正确;若数据库可见其他状态(2=COMPLETED/3=FAILED)亦证明 transcode 路径只跑了一次
+        // P0-CON-002 修复: 轮询等待 status 变更（最多 30 秒），避免固定 sleep 在 @Async 调度慢的环境下 fail
+        // 因为全量跑测试时 videoUploadExecutor 线程池初始化 + ffmpeg 启动 + 状态写回可能超过原 2 秒
+        long deadline = System.currentTimeMillis() + 30_000;
+        Video after = null;
+        while (System.currentTimeMillis() < deadline) {
+            after = videoRepository.selectById(videoId);
+            if (after != null && after.getStatus() != null
+                && (after.getStatus() == 1 || after.getStatus() == 2 || after.getStatus() == 3)) {
+                break;
+            }
+            java.util.concurrent.TimeUnit.MILLISECONDS.sleep(500);
+        }
+        assertNotNull(after, "查询 video 失败");
         Integer status = after.getStatus();
         assertNotNull(status, "Video 状态不能为 null");
         assertTrue(status == 1 || status == 2 || status == 3,
@@ -81,10 +88,37 @@ class VideoP0ConcurrencyTest extends BaseIntegrationTest {
         v.setCourseId(1L);
         v.setTitle("P0-CON-002-test");
         v.setStatus(0);
-        v.setOriginalPath("/tmp/dummy.mp4");
+        // P0-CON-002 修复: 测试用真实 video 文件，避免 failTranscode 重试链路把测试拖到失败
+        // CON-002 关注的是 CAS 锁本身——5 个并发只有一个进入 ffmpeg
+        // 用真实文件让 ffmpeg 成功跑完 → status → 1(TRANSCODING)/2(COMPLETED) → 测试在 2 秒内可看到
+        String dummyPath = "/tmp/dummy.mp4";
+        ensureDummyVideoFile(dummyPath);
+        v.setOriginalPath(dummyPath);
         v.setCreatedAt(java.time.LocalDateTime.now());
         v.setUpdatedAt(java.time.LocalDateTime.now());
         svc.createEntity(v);
         return v.getId();
+    }
+
+    /**
+     * 确保测试用 video 文件存在。
+     * 不存在时调用系统 ffmpeg 生成 1 秒 320x240 黑色帧 mp4（~2KB）。
+     * ffmpeg 不存在时跳过——此时 test 会因 file not found fail，这是 CI 环境问题。
+     */
+    private void ensureDummyVideoFile(String path) {
+        java.io.File f = new java.io.File(path);
+        if (f.exists() && f.length() > 0) return;
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                "ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=black:s=320x240:d=1",
+                "-c:v", "libx264", path);
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            // 同步等 ffmpeg 跑完（生成 1 秒 240p 视频 < 5 秒）
+            p.waitFor(10, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                "无法生成测试用 video 文件 " + path + "，请确保系统已安装 ffmpeg", e);
+        }
     }
 }
