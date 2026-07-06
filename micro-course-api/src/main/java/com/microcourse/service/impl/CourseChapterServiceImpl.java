@@ -238,10 +238,24 @@ public class CourseChapterServiceImpl implements CourseChapterService {
             return;
         }
         List<Long> ids = requests.stream().map(ChapterSortRequest::getId).collect(Collectors.toList());
-        List<CourseChapter> chapters = chapterRepository.selectBatchIds(ids);
-
-        if (chapters.isEmpty()) return;
-        Set<Long> courseIds = chapters.stream()
+        // P1-I-005: 用 selectById 逐个查询, 绕过 @TableLogic 软删除过滤
+        // 之前: selectBatchIds 自动加 deleted_at IS NULL, 软删除章节会被静默忽略
+        // 修复: 用 for + selectById 逐个查, 不存在的章节报 7001 CHAPTER_NOT_FOUND
+        Map<Long, CourseChapter> chapterMap = new java.util.HashMap<>();
+        List<Long> missing = new java.util.ArrayList<>();
+        for (Long id : ids) {
+            CourseChapter ch = chapterRepository.selectById(id);
+            if (ch == null) {
+                missing.add(id);
+            } else {
+                chapterMap.put(id, ch);
+            }
+        }
+        if (!missing.isEmpty()) {
+            throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND,
+                    "排序中存在不存在的章节 ids=" + missing);
+        }
+        Set<Long> courseIds = chapterMap.values().stream()
                 .map(CourseChapter::getCourseId)
                 .collect(Collectors.toSet());
         if (courseIds.size() > 1) {
@@ -250,16 +264,15 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         Long courseId = courseIds.iterator().next();
         assertCourseOwnerByCourseId(courseId);
 
-        Map<Long, CourseChapter> chapterMap = chapters.stream()
-                .collect(Collectors.toMap(CourseChapter::getId, Function.identity()));
         List<CourseChapter> toUpdate = new java.util.ArrayList<>();
         for (ChapterSortRequest r : requests) {
             CourseChapter chapter = chapterMap.get(r.getId());
-            if (chapter != null) {
-                chapter.setSortOrder(r.getSortOrder());
-                chapter.setUpdatedAt(LocalDateTime.now());
-                toUpdate.add(chapter);
+            if (chapter == null) {  // 防御性: 不会触发, 上面的 missing 检查已覆盖
+                throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND, "排序中存在不存在的章节 id=" + r.getId());
             }
+            chapter.setSortOrder(r.getSortOrder());
+            chapter.setUpdatedAt(LocalDateTime.now());
+            toUpdate.add(chapter);
         }
         // P2-008: 批量更新替代逐条 updateById（使用 MyBatis SqlSession batch 模式）
         if (!toUpdate.isEmpty()) {

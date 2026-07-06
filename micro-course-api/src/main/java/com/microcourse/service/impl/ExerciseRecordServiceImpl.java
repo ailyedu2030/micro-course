@@ -640,7 +640,13 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         if (record == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题记录不存在");
         }
-        if (!record.getUserId().equals(userId)) {
+        // P1-I-006: ADMIN/TEACHER/ACADEMIC 可查看任意学生的答题记录, 普通学生只能看自己
+        // 之前: 只允许 record 本人查询, 导致教师后台"答题详情"页面无法打开学生答题记录
+        boolean isOwner = record.getUserId().equals(userId);
+        boolean isPrivileged = SecurityUtil.isAdmin()
+                || SecurityUtil.hasRole("TEACHER")
+                || SecurityUtil.hasRole("ACADEMIC");
+        if (!isOwner && !isPrivileged) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 

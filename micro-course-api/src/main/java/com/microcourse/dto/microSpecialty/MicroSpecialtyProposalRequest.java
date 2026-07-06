@@ -20,7 +20,10 @@ public class MicroSpecialtyProposalRequest {
     private String prerequisites;
     private String semester;
     private Integer maxStudents;
+    /** 总学分（兼容旧字段 credits，同时支持新字段 totalCredits） */
     private BigDecimal credits;
+    /** 总学分（新字段，Phase 15 数据字典 §12.1）。与 credits 同义但类型为 Integer */
+    private Integer totalCredits;
 
     public MicroSpecialtyProposalRequest() {}
 
@@ -47,4 +50,7 @@ public class MicroSpecialtyProposalRequest {
 
     public BigDecimal getCredits() { return credits; }
     public void setCredits(BigDecimal credits) { this.credits = credits; }
+
+    public Integer getTotalCredits() { return totalCredits; }
+    public void setTotalCredits(Integer totalCredits) { this.totalCredits = totalCredits; }
 }
