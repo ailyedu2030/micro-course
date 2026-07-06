@@ -11,6 +11,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * 课程评价控制器
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/courses/{id}/reviews")
+@Tag(name = "CourseReviewController", description = "CourseReviewController 自动生成 OpenAPI 文档")
 public class CourseReviewController {
 
     private final CourseReviewService courseReviewService;
@@ -34,7 +36,7 @@ public class CourseReviewController {
      * 权限: STUDENT 或 ADMIN
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<CourseReviewVO> create(@PathVariable Long id,
                                     @Valid @RequestBody CourseReviewRequest request) {
         Long userId = SecurityUtil.getCurrentUserId();

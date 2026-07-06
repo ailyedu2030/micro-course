@@ -29,4 +29,28 @@ public interface LearningProgressRepository extends BaseMapper<LearningProgress>
      */
     @Select("SELECT COALESCE(SUM(total_watch_time), 0) FROM learning_progress WHERE deleted_at IS NULL")
     Long sumTotalWatchTime();
+
+    /**
+     * 视频分析 - 唯一观看人数 (按 chapterId)
+     */
+    @Select("SELECT COUNT(DISTINCT user_id) FROM learning_progress WHERE chapter_id = #{chapterId} AND deleted_at IS NULL")
+    Long countUniqueViewersByChapterId(Long chapterId);
+
+    /**
+     * 视频分析 - 总播放次数 (按 chapterId)
+     */
+    @Select("SELECT COUNT(*) FROM learning_progress WHERE chapter_id = #{chapterId} AND deleted_at IS NULL")
+    Long countByChapterId(Long chapterId);
+
+    /**
+     * 视频分析 - 平均观看时长 (秒, 按 chapterId)
+     */
+    @Select("SELECT COALESCE(AVG(total_watch_time), 0) FROM learning_progress WHERE chapter_id = #{chapterId} AND deleted_at IS NULL")
+    Double avgWatchSecondsByChapterId(Long chapterId);
+
+    /**
+     * 视频分析 - 完成人数 (按 chapterId)
+     */
+    @Select("SELECT COUNT(*) FROM learning_progress WHERE chapter_id = #{chapterId} AND completed = TRUE AND deleted_at IS NULL")
+    Long countCompletedByChapterId(Long chapterId);
 }

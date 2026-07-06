@@ -27,6 +27,13 @@ public interface EnrollmentService {
     /** 保留全量查询（供导出使用） */
     List<EnrollmentVO> getCourseEnrollments(Long courseId);
 
+    /**
+     * 获取课程学生列表, 含 Owner 校验 (Controller 调用)
+     * - TEACHER 非 ADMIN 必须为课程 owner, 否则 NO_PERMISSION
+     * - ADMIN / ACADEMIC 跳过校验
+     */
+    List<EnrollmentVO> getCourseEnrollmentsWithOwnerCheck(Long courseId);
+
     List<EnrollmentRankingVO> getCourseRanking(Long courseId, int limit, Long currentUserId);
 
     EnrollmentVO updateEnrollment(Long id, EnrollmentUpdateRequest request);

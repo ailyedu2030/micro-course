@@ -62,6 +62,30 @@ public interface VideoService {
     void updateStatus(Long videoId, int status);
 
     /**
+     * 【权限矩阵 v4.0 §3.5】重试失败的转码任务
+     * @param id 视频 ID
+     * @return 更新后的 VideoVO (status=1 表示重新进入转码中)
+     */
+    VideoVO retryTranscode(Long id);
+
+    /**
+     * 【权限矩阵 v4.0 §3.5】视频播放分析
+     * @param id 视频 ID
+     * @return VideoAnalyticsVO (播放次数, 平均观看时长, 完成率)
+     */
+    com.microcourse.dto.VideoAnalyticsVO getAnalytics(Long id);
+
+    /**
+     * 【权限矩阵 v4.0 §3.5】批量上传视频文件
+     * @param files 多个视频文件
+     * @param courseId 所属课程
+     * @param chapterId 所属章节
+     * @return 上传结果列表 (每项包含 videoId, filename, status)
+     */
+    java.util.List<VideoVO> batchUpload(org.springframework.web.multipart.MultipartFile[] files,
+                                        Long courseId, Long chapterId);
+
+    /**
      * P0-2: 校验当前用户是否为课程 owner 或 ADMIN
      */
     void assertCourseOwnership(Long courseId);

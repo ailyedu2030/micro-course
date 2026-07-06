@@ -8,6 +8,9 @@ import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
 import com.microcourse.dto.CoursePricingInfoVO;
 import com.microcourse.dto.CoursePricingRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.dto.PricingForAdopterVO;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
@@ -37,7 +40,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/courses")
-@Validated
+@Tag(name = "课程管理", description = "课程 CRUD、审批、定价、发布等 23 端点")
 public class CourseController {
 
     private final CourseService courseService;
@@ -59,6 +62,7 @@ public class CourseController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "分页查询课程列表 (CourseStatus 自动按角色过滤: STUDENT 仅看 APPROVED+PUBLISHED, TEACHER 仅看自己, 其他全部)")
     public R<PageResult<CourseVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @PositiveOrZero int size,
@@ -98,6 +102,7 @@ public class CourseController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "获取课程详情 (含缓存, 数据隔离在 Service 层)")
     public R<CourseVO> getById(@PathVariable Long id) {
         return R.ok(courseService.getById(id));
     }
@@ -105,9 +110,26 @@ public class CourseController {
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("创建课程")
+        @Operation(summary = "创建课程 (TEACHER 创建者自动绑定, OFFLINE 不需要插件授权, INTERACTIVE 需要)")
     public R<CourseVO> create(@Valid @RequestBody CourseCreateRequest request) {
         CourseVO vo = courseService.create(request);
         return R.ok(vo);
+    }
+
+    /**
+     * GET /api/courses/teacher/{teacherId}
+     * 按教师查询课程列表 (权限矩阵 v4.0 §3.3 GET_TEACHER_COURSES)
+     * 权限：TEACHER(本人) / ADMIN / ACADEMIC / STUDENT
+     * - TEACHER 必须 teacherId == 当前用户
+     */
+    @GetMapping("/teacher/{teacherId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC','STUDENT')")
+        @Operation(summary = "按教师查询课程列表 (TEACHER 仅本人, ADMIN/ACADEMIC 全部)")
+    public R<List<CourseVO>> listByTeacher(@PathVariable Long teacherId,
+                                           @RequestParam(defaultValue = "true") boolean includeDrafts) {
+        // TEACHER Owner 校验下沉到 Service 层
+        List<CourseVO> courses = courseQueryService.listByTeacherIdWithOwnerCheck(teacherId, includeDrafts);
+        return R.ok(courses);
     }
 
     /**
@@ -118,6 +140,7 @@ public class CourseController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("更新课程信息")
+        @Operation(summary = "更新课程信息 (TEACHER owner, Service 层 isOwnerOrAdmin 校验)")
     public R<CourseVO> update(@PathVariable Long id,
                               @Valid @RequestBody CourseUpdateRequest request) {
         CourseVO vo = courseService.update(id, request);
@@ -128,6 +151,7 @@ public class CourseController {
     @PutMapping("/{id}/pricing")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
     @AuditedLog("更新课程定价")
+        @Operation(summary = "更新课程定价 (含审批流: DRAFT→PENDING→APPROVED/REJECTED)")
     public R<Void> updatePricing(@PathVariable Long id, @Valid @RequestBody CoursePricingRequest request) {
         courseService.updatePricing(id, request);
         return R.ok();
@@ -136,6 +160,7 @@ public class CourseController {
     /** Phase 4: 查询课程对某教师的费用 */
     @GetMapping("/{id}/pricing-for-adopter")
     @PreAuthorize("hasRole('TEACHER')")
+        @Operation(summary = "教师查询自身课程对学生的预期定价 (含院系匹配)")
     public R<PricingForAdopterVO> getPricingForAdopter(@PathVariable Long id) {
         return R.ok(courseService.getPricingForAdopter(id));
     }
@@ -143,6 +168,7 @@ public class CourseController {
     /** Round 1: 查询课程对当前登录用户的价格（学生端可见，公开端点） */
     @GetMapping("/{id}/my-price")
     @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "学生查询本课程个性化定价 (基于部门/学院/学校)")
     public R<CoursePricingInfoVO> getMyPricing(@PathVariable Long id) {
         return R.ok(courseService.getMyPricing(id));
     }
@@ -151,6 +177,7 @@ public class CourseController {
     @PostMapping("/{id}/pricing/submit-review")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
     @AuditedLog("提交定价审核")
+        @Operation(summary = "提交定价审核 (DRAFT→PENDING)")
     public R<Void> submitPricingForReview(@PathVariable Long id) {
         courseService.submitPricingForReview(id);
         return R.ok();
@@ -160,6 +187,7 @@ public class CourseController {
     @PostMapping("/{id}/pricing/review")
     @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
     @AuditedLog("审核课程定价")
+        @Operation(summary = "审批定价 (ADMIN/ACADEMIC, approved 决定 APPROVED 或 REJECTED)")
     public R<Void> reviewPricing(@PathVariable Long id,
                                   @RequestParam boolean approved,
                                   @RequestParam(required = false) String reason) {
@@ -179,6 +207,7 @@ public class CourseController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     @RequireRole({"TEACHER", "ADMIN", "ACADEMIC"})
     @AuditedLog("变更课程状态")
+        @Operation(summary = "通用状态变更 (仅支持 CLOSED/ARCHIVED, PENDING_REVIEW/PUBLISHED 须用专用端点)")
     public R<Void> updateStatus(@PathVariable Long id,
                                 @RequestParam Integer status) {
         courseService.updateStatus(id, status);
@@ -188,6 +217,7 @@ public class CourseController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("删除课程")
+        @Operation(summary = "删除课程 (级联清理章节/视频/进度/讨论/笔记/书签/练习/课件)")
     public R<Void> delete(@PathVariable Long id) {
         courseService.delete(id);
         return R.ok();
@@ -196,11 +226,13 @@ public class CourseController {
     /**
      * POST /api/courses/{id}/submit
      * 提交课程审核（草稿 → 待审核）
-     * 权限：TEACHER, ADMIN
+     * 权限：TEACHER（创建者本人） — Service 层 isOwnerOrAdmin 校验
+     * 【权限矩阵 v4.0】仅 TEACHER，ADMIN 不能越权提交
      */
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasRole('TEACHER')")
     @AuditedLog("提交课程审核")
+        @Operation(summary = "提交课程审核 (DRAFT→PENDING_REVIEW, 守卫检查标题/分类/封面/章节/视频练习课件)")
     public R<Void> submitForReview(@PathVariable Long id) {
         courseService.submitForReview(id);
         return R.ok();
@@ -214,6 +246,7 @@ public class CourseController {
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     @AuditedLog("课程审核通过")
+        @Operation(summary = "审核通过 (PENDING_REVIEW→APPROVED, 自审批阻断, 通知教师)")
     public R<Void> approve(@PathVariable Long id) {
         courseService.approve(id);
         return R.ok();
@@ -227,6 +260,7 @@ public class CourseController {
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     @AuditedLog("课程审核驳回")
+        @Operation(summary = "审核驳回 (PENDING_REVIEW→REJECTED, reason ≥ 10 字符)")
     public R<Void> reject(@PathVariable Long id, @Valid @RequestBody com.microcourse.dto.RejectRequest request) {
         courseService.reject(id, request.getReason());
         return R.ok();
@@ -240,6 +274,7 @@ public class CourseController {
     @PostMapping("/{id}/publish")
     @PreAuthorize("hasRole('ADMIN')")
     @AuditedLog("课程上架")
+        @Operation(summary = "发布课程 (APPROVED/CLOSED→PUBLISHED, 定价/课件/插件守卫, 通知在学学生)")
     public R<Void> publish(@PathVariable Long id) {
         courseService.publish(id);
         return R.ok();
@@ -254,6 +289,7 @@ public class CourseController {
     @PostMapping("/{id}/copy")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("复制课程")
+        @Operation(summary = "复制课程 (含章节/视频元数据, 复制后状态 DRAFT)")
     public R<CourseVO> copy(@PathVariable Long id) {
         CourseVO vo = courseService.copy(id);
         return R.ok(vo);
@@ -266,6 +302,7 @@ public class CourseController {
      */
     @GetMapping("/pending-review")
     @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "待审核课程列表 (仅 ADMIN/ACADEMIC)")
     public R<PageResult<CourseVO>> pendingReview(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
@@ -285,12 +322,10 @@ public class CourseController {
      */
     @GetMapping("/{id}/students")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+        @Operation(summary = "获取课程选课学生列表 (TEACHER owner 校验)")
     public R<List<EnrollmentVO>> getCourseStudents(@PathVariable Long id) {
-        // TEACHER（非 ADMIN）必须为课程 owner，否则 403；ADMIN/ACADEMIC 跳过校验
-        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            enrollmentService.assertCourseOwnership(id);
-        }
-        List<EnrollmentVO> students = enrollmentService.getCourseEnrollments(id);
+        // 【V3 修复】TEACHER Owner 校验下沉到 Service 层
+        List<EnrollmentVO> students = enrollmentService.getCourseEnrollmentsWithOwnerCheck(id);
         return R.ok(students);
     }
 
@@ -305,6 +340,7 @@ public class CourseController {
     @PostMapping("/{id}/unpublish")
     @PreAuthorize("hasRole('ADMIN')")
     @AuditedLog("课程下架")
+        @Operation(summary = "下架课程 (PUBLISHED→CLOSED, 通知在学学生)")
     public R<Void> unpublish(@PathVariable Long id) {
         courseService.unpublish(id);
         return R.ok();
@@ -318,6 +354,7 @@ public class CourseController {
     @PostMapping("/batch-approve")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     @AuditedLog("批量课程审核通过")
+        @Operation(summary = "批量审核通过 (ADMIN/ACADEMIC)")
     public R<BatchOperationResult> batchApprove(@Valid @RequestBody BatchApproveRequest req) {
         return R.ok(courseAdminService.batchApprove(req.getIds()));
     }
@@ -330,6 +367,7 @@ public class CourseController {
     @PostMapping("/batch-reject")
     @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     @AuditedLog("批量课程审核驳回")
+        @Operation(summary = "批量审核驳回 (ADMIN/ACADEMIC)")
     public R<BatchOperationResult> batchReject(@Valid @RequestBody BatchRejectRequest req) {
         return R.ok(courseAdminService.batchReject(req.getIds(), req.getReason()));
     }
@@ -342,16 +380,11 @@ public class CourseController {
     @PostMapping("/{id}/cover")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("更新课程封面")
+        @Operation(summary = "更新课程封面 (JPEG/PNG 魔数校验, ≤2MB)")
     public R<CourseVO> updateCover(@PathVariable Long id,
                                    @RequestParam("file") MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件不能为空");
-        }
-        if (file.getSize() > 2 * 1024 * 1024) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件不能超过 2MB");
-        }
-        // P1 安全修复: 封面魔数校验（JPEG/PNG）
-        validateCoverImageMagic(file);
+        // 【V2 修复】文件校验下沉到 FileUploadUtil 工具类, Controller 不再直接读 InputStream
+        com.microcourse.util.FileUploadUtil.assertImage(file, com.microcourse.util.FileUploadUtil.DEFAULT_IMAGE_MAX_BYTES);
         CourseVO vo = courseService.updateCover(id, file);
         return R.ok(vo);
     }
@@ -365,35 +398,9 @@ public class CourseController {
      */
     @GetMapping("/{id}/stats")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+        @Operation(summary = "获取课程统计 (选课人数/完成率/平均分, 含 Redis 缓存)")
     public R<CourseStatsVO> getCourseStats(@PathVariable Long id) {
         return R.ok(courseService.computeStats(id));
     }
 
-    /**
-     * P1 安全修复: 封面图片魔数校验（JPEG: FFD8FF, PNG: 89504E47）
-     */
-    private void validateCoverImageMagic(MultipartFile file) {
-        try (java.io.InputStream is = file.getInputStream()) {
-            byte[] magic = new byte[8];
-            int read = is.read(magic);
-            if (read < 4) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件过小，无法验证格式");
-            }
-            boolean isJpeg = (magic[0] & 0xFF) == 0xFF
-                    && (magic[1] & 0xFF) == 0xD8
-                    && (magic[2] & 0xFF) == 0xFF;
-            boolean isPng = (magic[0] & 0xFF) == 0x89
-                    && magic[1] == 'P'
-                    && magic[2] == 'N'
-                    && magic[3] == 'G';
-            if (!isJpeg && !isPng) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面必须为 JPEG 或 PNG 格式（魔数校验失败）");
-            }
-        } catch (java.io.IOException e) {
-            org.slf4j.LoggerFactory.getLogger(CourseController.class)
-                .warn("封面文件读取失败: {}", e.getMessage());
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取封面文件");
-        }
     }
-
-}

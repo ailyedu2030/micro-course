@@ -16,6 +16,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.AdminSettingService;
@@ -65,6 +66,7 @@ public class VideoServiceImpl implements VideoService {
     private final VideoSignUtil videoSignUtil;
     private final AdminSettingService adminSettingService;
     private final RedisUtil redisUtil;
+    private final LearningProgressRepository learningProgressRepository;
 
     /** P1-1: 从配置读取存储目录 */
     @Value("${video.storage-base-dir:/data/videos}")
@@ -85,13 +87,15 @@ public class VideoServiceImpl implements VideoService {
                             VideoAccessService videoAccessService,
                             VideoSignUtil videoSignUtil,
                             AdminSettingService adminSettingService,
-                            RedisUtil redisUtil) {
+                            RedisUtil redisUtil,
+                            LearningProgressRepository learningProgressRepository) {
         this.videoRepository = videoRepository;
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.videoBookmarkRepository = videoBookmarkRepository;
         this.videoTranscodeService = videoTranscodeService;
         this.videoUploadExecutor = videoUploadExecutor;
+        this.learningProgressRepository = learningProgressRepository;
         this.videoAccessService = videoAccessService;
         this.videoSignUtil = videoSignUtil;
         this.adminSettingService = adminSettingService;
@@ -366,6 +370,102 @@ public class VideoServiceImpl implements VideoService {
         if (affected == 0) {
             throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION, "视频状态已被修改，请刷新");
         }
+    }
+
+    /**
+     * 重试失败的转码任务 (权限矩阵 v4.0 §3.5 RETRY_TRANSCODE)
+     * 仅 FAILED(3) 状态的视频可重试, 重置为 TRANSCODING(1) 并清空错误信息
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public VideoVO retryTranscode(Long id) {
+        Video v = videoRepository.selectById(id);
+        if (v == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        // owner 校验
+        assertCourseOwnership(v.getCourseId());
+
+        if (v.getStatus() == null || v.getStatus() != VideoStatus.FAILED.getCode()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "仅 FAILED 状态的视频可重试转码, 当前状态: " + v.getStatus());
+        }
+
+        videoRepository.update(null,
+                new LambdaUpdateWrapper<Video>()
+                        .eq(Video::getId, id)
+                        .set(Video::getStatus, VideoStatus.TRANSCODING.getCode())
+                        .set(Video::getErrorMessage, (String) null)
+                        .set(Video::getProgress, 0)
+                        .set(Video::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        log.info("[RetryTranscode] 视频重新进入转码: id={}", id);
+        return getById(id);
+    }
+
+    /**
+     * 视频播放分析 (权限矩阵 v4.0 §3.5 GET_VIDEO_ANALYTICS)
+     */
+    @Override
+    public com.microcourse.dto.VideoAnalyticsVO getAnalytics(Long id) {
+        Video v = videoRepository.selectById(id);
+        if (v == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        assertCourseOwnership(v.getCourseId());
+
+        com.microcourse.dto.VideoAnalyticsVO vo = new com.microcourse.dto.VideoAnalyticsVO();
+        vo.setVideoId(v.getId());
+        vo.setVideoTitle(v.getTitle());
+        vo.setTotalDuration(v.getDuration());
+
+        // 学习进度聚合: LearningProgress 通过 chapterId 关联视频 (一个 chapter 对应一个视频)
+        Long chapterId = v.getChapterId();
+        Long uniqueViewers = chapterId != null ? learningProgressRepository.countUniqueViewersByChapterId(chapterId) : 0L;
+        Long playCount = chapterId != null ? learningProgressRepository.countByChapterId(chapterId) : 0L;
+        Double avgWatchSeconds = chapterId != null ? learningProgressRepository.avgWatchSecondsByChapterId(chapterId) : 0.0;
+        Long completedCount = chapterId != null ? learningProgressRepository.countCompletedByChapterId(chapterId) : 0L;
+
+        vo.setUniqueViewers(uniqueViewers != null ? uniqueViewers : 0L);
+        vo.setPlayCount(playCount != null ? playCount : 0L);
+        vo.setAvgWatchSeconds(avgWatchSeconds != null ? avgWatchSeconds.intValue() : 0);
+        if (uniqueViewers != null && uniqueViewers > 0 && completedCount != null) {
+            vo.setCompletionRate(java.math.BigDecimal.valueOf(completedCount)
+                    .divide(java.math.BigDecimal.valueOf(uniqueViewers), 4,
+                            java.math.RoundingMode.HALF_UP));
+        } else {
+            vo.setCompletionRate(java.math.BigDecimal.ZERO);
+        }
+        return vo;
+    }
+
+    /**
+     * 批量上传视频 (权限矩阵 v4.0 §3.5 BATCH_UPLOAD_VIDEO)
+     * 复用单文件上传逻辑, 任一文件失败不中断其他文件
+     */
+    @Override
+    public java.util.List<VideoVO> batchUpload(org.springframework.web.multipart.MultipartFile[] files,
+                                                Long courseId, Long chapterId) {
+        if (files == null || files.length == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
+        }
+        assertCourseOwnership(courseId);
+        java.util.List<VideoVO> results = new java.util.ArrayList<>();
+        for (org.springframework.web.multipart.MultipartFile file : files) {
+            try {
+                VideoVO vo = uploadVideo(file, courseId, chapterId);
+                results.add(vo);
+            } catch (Exception e) {
+                log.error("[BatchUpload] 文件上传失败: filename={}, err={}",
+                        file.getOriginalFilename(), e.getMessage());
+                // 单文件失败不阻塞其他文件, 但需要返回失败信息
+                VideoVO failed = new VideoVO();
+                failed.setTitle(file.getOriginalFilename());
+                failed.setErrorMessage(e.getMessage());
+                results.add(failed);
+            }
+        }
+        return results;
     }
     /**
      * P0-3 修复：封面 URL 改为可访问的 API 路径

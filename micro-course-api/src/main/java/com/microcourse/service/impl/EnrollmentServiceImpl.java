@@ -290,6 +290,16 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     public List<EnrollmentVO> getCourseEnrollments(Long courseId) {
         return queryService.getCourseEnrollments(courseId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EnrollmentVO> getCourseEnrollmentsWithOwnerCheck(Long courseId) {
+        // SECURITY: TEACHER 非 ADMIN 必须为课程 owner
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            assertCourseOwnership(courseId);
+        }
+        return queryService.getCourseEnrollments(courseId);
+    }
     @Override
     @Transactional(readOnly = true)
     public PageResult<EnrollmentVO> getCourseEnrollmentPage(Long courseId, int page, int size) {
