@@ -15,9 +15,10 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.security.UserStatusCheckFilter;
-// P1-I 拆分残留：原导入保留以兼容历史代码，现在已不使用
+
 import com.microcourse.service.OperationLogService;
 import com.microcourse.service.UserStatusService;
+import com.microcourse.service.UserStatusStateMachine;
 import com.microcourse.util.IpUtil;
 import com.microcourse.util.RedisUtil;
 import org.slf4j.Logger;
@@ -37,15 +38,18 @@ public class UserStatusServiceImpl implements UserStatusService {
     private final RedisUtil redisUtil;
     private final OperationLogService operationLogService;
     private final EnrollmentRepository enrollmentRepository;
+    private final UserStatusStateMachine userStatusStateMachine;
 
     public UserStatusServiceImpl(UserRepository userRepository,
                                   RedisUtil redisUtil,
                                   OperationLogService operationLogService,
-                                  EnrollmentRepository enrollmentRepository) {
+                                  EnrollmentRepository enrollmentRepository,
+                                  UserStatusStateMachine userStatusStateMachine) {
         this.userRepository = userRepository;
         this.redisUtil = redisUtil;
         this.operationLogService = operationLogService;
         this.enrollmentRepository = enrollmentRepository;
+        this.userStatusStateMachine = userStatusStateMachine;
     }
 
     @Override
@@ -120,7 +124,7 @@ public class UserStatusServiceImpl implements UserStatusService {
 
         switch (newStatus) {
             case ACTIVE:
-                user.setStatus(1);
+                user.setStatus(UserStatus.ACTIVE.getCode());
                 user.setDeletedAt(null);
                 /* ---- 【P0-2 补审】ACTIVE 恢复时清除用户 Token 黑名单 ---- */
                 /* 【根因】DISABLED→ACTIVE 时，redisUtil.blacklistUserTokens() 设置的
@@ -153,7 +157,7 @@ public class UserStatusServiceImpl implements UserStatusService {
                 }
                 break;
             case DISABLED:
-                user.setStatus(2);
+                user.setStatus(UserStatus.DISABLED.getCode());
                 redisUtil.clearLoginFailure(user.getUsername());
                 // P1I-001: 禁用用户时批量作废该用户所有活跃 Token（黑名单 TTL = 2h，匹配 accessToken 有效期）
                 redisUtil.blacklistUserTokens(id, 7200L);
@@ -161,7 +165,7 @@ public class UserStatusServiceImpl implements UserStatusService {
                 cascadeDisableEnrollments(id);
                 break;
             case DELETED:
-                user.setStatus(3);
+                user.setStatus(UserStatus.DELETED.getCode());
                 user.setDeletedAt(LocalDateTime.now());
                 redisUtil.clearLoginFailure(user.getUsername());
                 break;

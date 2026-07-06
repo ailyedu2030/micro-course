@@ -16,6 +16,7 @@ import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Major;
 import com.microcourse.entity.User;
 import com.microcourse.enums.UserRole;
+import com.microcourse.enums.UserStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ClassesRepository;
@@ -146,7 +147,10 @@ public class UserServiceImpl implements UserService {
         user.setGraduationYear(request.getGraduationYear());
         user.setGrade(request.getGrade());
         user.setPoliticalStatus(request.getPoliticalStatus());
-        user.setStatus(request.getStatus() != null ? request.getStatus() : 1);
+        // 【user-domain-drift-fix】状态字段改用枚举引用
+        user.setStatus(request.getStatus() != null
+                ? UserStatus.fromCode(request.getStatus()).getCode()
+                : UserStatus.ACTIVE.getCode());
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
@@ -207,7 +211,8 @@ public class UserServiceImpl implements UserService {
         // P2-017: 合并状态变更与普通字段更新为单次 DB 写操作
         if (request.getStatus() != null) {
             if (!Objects.equals(user.getStatus(), request.getStatus())) {
-                user.setStatus(request.getStatus());
+                // 【user-domain-drift-fix】状态字段改用枚举引用
+                user.setStatus(UserStatus.fromCode(request.getStatus()).getCode());
             }
         }
 
@@ -365,12 +370,17 @@ public class UserServiceImpl implements UserService {
         }
 
         if (user.getStatus() != null) {
-            switch (user.getStatus()) {
-                case 0: vo.setStatusText("未激活"); break;
-                case 1: vo.setStatusText("正常"); break;
-                case 2: vo.setStatusText("禁用"); break;
-                case 3: vo.setStatusText("已删除"); break;
-                default: vo.setStatusText("未知");
+            UserStatus us = UserStatus.fromCode(user.getStatus());
+            if (us != null) {
+                switch (us) {
+                    case INACTIVE: vo.setStatusText("未激活"); break;
+                    case ACTIVE:   vo.setStatusText("正常"); break;
+                    case DISABLED: vo.setStatusText("禁用"); break;
+                    case DELETED:  vo.setStatusText("已删除"); break;
+                    default:       vo.setStatusText("未知");
+                }
+            } else {
+                vo.setStatusText("未知");
             }
         }
 

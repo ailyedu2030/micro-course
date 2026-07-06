@@ -7,6 +7,7 @@ import com.microcourse.dto.RegisterRequest;
 import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.entity.User;
+import com.microcourse.enums.UserStatus;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -190,10 +191,10 @@ public class AuthServiceImpl implements AuthService {
             if (user.getStatus() == 0) {
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
-            if (user.getStatus() == 2) {
+            if (user.getStatus() != null && user.getStatus().intValue() == UserStatus.DISABLED.getCode()) {
                 throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
             }
-            if (user.getStatus() == 3) {
+            if (user.getStatus() != null && user.getStatus().intValue() == UserStatus.DELETED.getCode()) {
                 throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
             }
 
@@ -291,7 +292,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Step 3: 查找用户
         User user = userRepository.selectById(userId);
-        if (user == null || user.getStatus() != 1) {
+        if (user == null || user.getStatus() == null || user.getStatus().intValue() != UserStatus.ACTIVE.getCode()) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         // Step 4: 生成新的 accessToken + refreshToken(携带当前 token 代数)
@@ -459,7 +460,7 @@ public class AuthServiceImpl implements AuthService {
             user.setUsername(casUsername);
             user.setRole(UserRole.STUDENT);
             user.setCasBound(true);
-            user.setStatus(1);
+            user.setStatus(UserStatus.ACTIVE.getCode());
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.insert(user);
@@ -474,13 +475,13 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Step 4.5: 检查用户状态
-        if (user.getStatus() != null && user.getStatus() == 0) {
+        if (user.getStatus() != null && user.getStatus().intValue() == UserStatus.INACTIVE.getCode()) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "账号未激活");
         }
-        if (user.getStatus() != null && user.getStatus() == 2) {
+        if (user.getStatus() != null && user.getStatus().intValue() == UserStatus.DISABLED.getCode()) {
             throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
         }
-        if (user.getStatus() != null && user.getStatus() == 3) {
+        if (user.getStatus() != null && user.getStatus().intValue() == UserStatus.DELETED.getCode()) {
             throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
         }
 

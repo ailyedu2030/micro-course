@@ -11,6 +11,7 @@ import com.microcourse.entity.User;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.enums.UserStatus;
 import com.microcourse.listener.UserBatchImportListener;
 import com.microcourse.repository.ClassesRepository;
 import com.microcourse.repository.DepartmentRepository;
@@ -218,7 +219,7 @@ public class UserBatchImportServiceImpl implements UserBatchImportService {
         User user = new User();
         user.setUsername(username);
         user.setRealName(row.getRealName());
-        user.setStatus(1);
+        user.setStatus(UserStatus.ACTIVE.getCode());
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         user.setPassword(passwordEncoder.encode(row.getPassword()));

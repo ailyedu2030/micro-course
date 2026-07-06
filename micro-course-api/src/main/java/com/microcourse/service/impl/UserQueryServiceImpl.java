@@ -12,6 +12,7 @@ import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Major;
 import com.microcourse.entity.User;
 import com.microcourse.enums.EnrollmentStatus;
+import com.microcourse.enums.UserStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ClassesRepository;
@@ -301,12 +302,17 @@ public class UserQueryServiceImpl implements UserQueryService {
 
         // statusText
         if (user.getStatus() != null) {
-            switch (user.getStatus()) {
-                case 0: vo.setStatusText("未激活"); break;
-                case 1: vo.setStatusText("正常"); break;
-                case 2: vo.setStatusText("禁用"); break;
-                case 3: vo.setStatusText("已删除"); break;
-                default: vo.setStatusText("未知");
+            UserStatus us = UserStatus.fromCode(user.getStatus());
+            if (us != null) {
+                switch (us) {
+                    case INACTIVE: vo.setStatusText("未激活"); break;
+                    case ACTIVE:   vo.setStatusText("正常"); break;
+                    case DISABLED: vo.setStatusText("禁用"); break;
+                    case DELETED:  vo.setStatusText("已删除"); break;
+                    default:       vo.setStatusText("未知");
+                }
+            } else {
+                vo.setStatusText("未知");
             }
         }
 
