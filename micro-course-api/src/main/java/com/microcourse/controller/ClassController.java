@@ -1,6 +1,8 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.ClassCreateRequest;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.microcourse.dto.ClassStudentVO;
 import com.microcourse.dto.ClassUpdateRequest;
 import com.microcourse.dto.ClassVO;
@@ -17,6 +19,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/classes")
+@Tag(name = "班级管理", description = "班级管理 API")
 public class ClassController {
 
     private final ClassService classService;

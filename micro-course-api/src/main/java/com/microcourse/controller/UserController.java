@@ -1,6 +1,8 @@
 package com.microcourse.controller;
 
 import com.microcourse.audit.AuditedLog;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.UserCreateRequest;
@@ -35,6 +37,7 @@ import java.io.InputStream;
 
 @RestController
 @RequestMapping("/api/users")
+@Tag(name = "用户管理", description = "用户管理 API")
 public class UserController {
 
     private final UserService userService;

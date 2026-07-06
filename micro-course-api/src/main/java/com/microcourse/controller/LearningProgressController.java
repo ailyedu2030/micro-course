@@ -1,6 +1,8 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.LearningProgressVO;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.dto.ProgressUpdateRequest;
 import com.microcourse.dto.R;
@@ -19,6 +21,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/learning-progress")
+@Tag(name = "学习进度", description = "学习进度 API")
 public class LearningProgressController {
 
     private final LearningProgressService learningProgressService;

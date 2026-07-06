@@ -1,6 +1,8 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.DepartmentCreateRequest;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.microcourse.dto.DepartmentStatsVO;
 import com.microcourse.dto.DepartmentUpdateRequest;
 import com.microcourse.dto.DepartmentVO;
@@ -19,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/departments")
+@Tag(name = "院系管理", description = "院系管理 API")
 public class DepartmentController {
 
     private final DepartmentService departmentService;

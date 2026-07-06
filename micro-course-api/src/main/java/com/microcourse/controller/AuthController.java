@@ -1,6 +1,8 @@
 package com.microcourse.controller;
 
 import com.microcourse.audit.AuditedLog;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.microcourse.dto.ChangePasswordRequest;
 import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
@@ -27,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "用户认证", description = "用户认证 API")
 public class AuthController {
 
     private final AuthService authService;

@@ -1,6 +1,8 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.ClassVO;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.microcourse.dto.MajorCreateRequest;
 import com.microcourse.dto.MajorUpdateRequest;
 import com.microcourse.dto.MajorVO;
@@ -18,6 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/majors")
+@Tag(name = "专业管理", description = "专业管理 API")
 public class MajorController {
 
     private final MajorService majorService;
