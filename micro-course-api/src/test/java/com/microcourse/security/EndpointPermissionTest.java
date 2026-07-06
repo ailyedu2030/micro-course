@@ -26,7 +26,7 @@ public class EndpointPermissionTest extends BaseIntegrationTest {
     @Test
     @DisplayName("1. permission-matrix-v4.0.yaml 存在且格式正确")
     public void test_yamlExists() throws Exception {
-        Path yamlPath = Paths.get("docs/permission-matrix-v4.0.yaml");
+        Path yamlPath = Paths.get("../docs/permission-matrix-v4.0.yaml");
         assertTrue(Files.exists(yamlPath), "权限矩阵 YAML 必须存在: " + yamlPath);
 
         String content = Files.readString(yamlPath);
@@ -40,7 +40,7 @@ public class EndpointPermissionTest extends BaseIntegrationTest {
     @Test
     @DisplayName("2. 端点路径符合 API 契约 (无 /api/v1 前缀)")
     public void test_endpointPathsNoV1Prefix() throws Exception {
-        Path yamlPath = Paths.get("docs/permission-matrix-v4.0.yaml");
+        Path yamlPath = Paths.get("../docs/permission-matrix-v4.0.yaml");
         String content = Files.readString(yamlPath);
         Matcher matcher = Pattern.compile("path: \"(/api/[^\"]+)\"").matcher(content);
         Set<String> paths = new HashSet<>();
@@ -58,7 +58,7 @@ public class EndpointPermissionTest extends BaseIntegrationTest {
     @Test
     @DisplayName("3. 权限角色声明格式正确")
     public void test_roleFormat() throws Exception {
-        Path yamlPath = Paths.get("docs/permission-matrix-v4.0.yaml");
+        Path yamlPath = Paths.get("../docs/permission-matrix-v4.0.yaml");
         String content = Files.readString(yamlPath);
         Matcher matcher = Pattern.compile("roles:\\s*\\[([^\\]]+)\\]").matcher(content);
         Set<String> validRoles = Set.of("STUDENT", "TEACHER", "ADMIN", "ACADEMIC");
