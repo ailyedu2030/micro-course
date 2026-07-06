@@ -1,0 +1,462 @@
+# 微课平台权限矩阵 v4.0 (机器可读)
+# 用途: EndpointPermissionTest 自动验证 @PreAuthorize 与权限矩阵一致性
+# 同步来源: docs/权限矩阵.md v4.0
+# 最后更新: 2026-07-07
+
+version: "4.0"
+last_updated: "2026-07-07"
+
+# 端点 × 角色矩阵
+# 角色: STUDENT / TEACHER / ADMIN / ACADEMIC
+# roles: 列出允许访问该端点的角色
+endpoints:
+
+  # ========== 课程管理域 (23 端点) ==========
+  - path: "/api/courses"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "分页查询课程列表 (按角色自动过滤)"
+
+  - path: "/api/courses/{id}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取课程详情"
+
+  - path: "/api/courses/teacher/{teacherId}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "按教师查询课程列表"
+
+  - path: "/api/courses"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "创建课程"
+
+  - path: "/api/courses/{id}"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "更新课程信息"
+
+  - path: "/api/courses/{id}"
+    method: DELETE
+    roles: [TEACHER, ADMIN]
+    description: "删除课程"
+
+  - path: "/api/courses/{id}/submit"
+    method: POST
+    roles: [TEACHER]
+    description: "提交课程审核 (DRAFT→PENDING_REVIEW)"
+
+  - path: "/api/courses/{id}/approve"
+    method: POST
+    roles: [ADMIN, ACADEMIC]
+    description: "审核通过"
+
+  - path: "/api/courses/{id}/reject"
+    method: POST
+    roles: [ADMIN, ACADEMIC]
+    description: "审核驳回"
+
+  - path: "/api/courses/{id}/publish"
+    method: POST
+    roles: [ADMIN]
+    description: "发布课程"
+
+  - path: "/api/courses/{id}/unpublish"
+    method: POST
+    roles: [ADMIN]
+    description: "下架课程"
+
+  - path: "/api/courses/{id}/copy"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "复制课程"
+
+  - path: "/api/courses/{id}/status"
+    method: PUT
+    roles: [ADMIN]
+    description: "通用状态变更 (仅支持 CLOSED/ARCHIVED)"
+
+  - path: "/api/courses/{id}/cover"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "更新课程封面"
+
+  - path: "/api/courses/{id}/students"
+    method: GET
+    roles: [TEACHER, ADMIN, ACADEMIC]
+    description: "获取课程选课学生列表"
+
+  - path: "/api/courses/{id}/stats"
+    method: GET
+    roles: [TEACHER, ADMIN, ACADEMIC]
+    description: "获取课程统计"
+
+  - path: "/api/courses/{id}/pricing"
+    method: PUT
+    roles: [TEACHER, ADMIN, ACADEMIC]
+    description: "更新课程定价"
+
+  - path: "/api/courses/{id}/pricing/submit-review"
+    method: POST
+    roles: [TEACHER, ADMIN, ACADEMIC]
+    description: "提交定价审核"
+
+  - path: "/api/courses/{id}/pricing/review"
+    method: POST
+    roles: [ADMIN, ACADEMIC]
+    description: "审批定价"
+
+  - path: "/api/courses/{id}/my-price"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "查询我的定价"
+
+  - path: "/api/courses/{id}/pricing-for-adopter"
+    method: GET
+    roles: [TEACHER]
+    description: "教师查询预期定价"
+
+  - path: "/api/courses/pending-review"
+    method: GET
+    roles: [ADMIN]
+    description: "待审核课程列表"
+
+  - path: "/api/courses/batch-approve"
+    method: POST
+    roles: [ADMIN, ACADEMIC]
+    description: "批量审核通过"
+
+  - path: "/api/courses/batch-reject"
+    method: POST
+    roles: [ADMIN, ACADEMIC]
+    description: "批量审核驳回"
+
+  # ========== 章节管理 (6 端点) ==========
+  - path: "/api/chapters"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "分页查询章节"
+
+  - path: "/api/chapters/{id}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取章节详情"
+
+  - path: "/api/chapters"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "添加章节"
+
+  - path: "/api/chapters/{id}"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "更新章节"
+
+  - path: "/api/chapters/{id}"
+    method: DELETE
+    roles: [TEACHER, ADMIN]
+    description: "删除章节"
+
+  - path: "/api/chapters/sort"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "章节排序"
+
+  # ========== 视频管理 (11 端点) ==========
+  - path: "/api/videos"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "分页查询视频"
+
+  - path: "/api/videos/{id}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取视频详情"
+
+  - path: "/api/videos"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "创建视频元数据"
+
+  - path: "/api/videos/{id}"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "更新视频信息"
+
+  - path: "/api/videos/{id}"
+    method: DELETE
+    roles: [TEACHER, ADMIN]
+    description: "删除视频"
+
+  - path: "/api/videos/upload"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "上传视频"
+
+  - path: "/api/videos/batch-upload"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "批量上传视频"
+
+  - path: "/api/videos/{id}/sign"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取播放签名"
+
+  - path: "/api/videos/{id}/play"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "播放视频"
+
+  - path: "/api/videos/{id}/cover"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "上传视频封面"
+
+  - path: "/api/videos/{id}/retry"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "重试转码"
+
+  - path: "/api/videos/{id}/analytics"
+    method: GET
+    roles: [TEACHER, ADMIN]
+    description: "视频播放分析"
+
+  # ========== 课程分类 (5 端点) ==========
+  - path: "/api/course-categories"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "分页查询课程分类"
+
+  - path: "/api/course-categories/{id}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取分类详情"
+
+  - path: "/api/course-categories"
+    method: POST
+    roles: [ADMIN, ACADEMIC]
+    description: "创建课程分类"
+
+  - path: "/api/course-categories/{id}"
+    method: PUT
+    roles: [ADMIN, ACADEMIC]
+    description: "更新分类"
+
+  - path: "/api/course-categories/{id}"
+    method: DELETE
+    roles: [ADMIN, ACADEMIC]
+    description: "删除分类"
+
+  # ========== 标签 (7 端点) ==========
+  - path: "/api/tags"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "分页查询标签"
+
+  - path: "/api/tags"
+    method: POST
+    roles: [ADMIN]
+    description: "创建标签"
+
+  - path: "/api/tags/{id}"
+    method: PUT
+    roles: [ADMIN]
+    description: "更新标签"
+
+  - path: "/api/tags/{id}"
+    method: DELETE
+    roles: [ADMIN]
+    description: "删除标签"
+
+  - path: "/api/tags/course/{courseId}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取课程标签"
+
+  - path: "/api/tags/course/{courseId}"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "添加课程标签"
+
+  - path: "/api/tags/course/{courseId}/{tagId}"
+    method: DELETE
+    roles: [TEACHER, ADMIN]
+    description: "移除课程标签"
+
+  # ========== 课程套件 (10 端点) ==========
+  - path: "/api/course-bundles"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "分页查询课程套件"
+
+  - path: "/api/course-bundles/{id}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取套件详情"
+
+  - path: "/api/course-bundles"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "创建套件"
+
+  - path: "/api/course-bundles/{id}"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "更新套件"
+
+  - path: "/api/course-bundles/{id}/publish"
+    method: PATCH
+    roles: [TEACHER, ADMIN]
+    description: "上架套件"
+
+  - path: "/api/course-bundles/{id}/unpublish"
+    method: PATCH
+    roles: [TEACHER, ADMIN]
+    description: "下架套件"
+
+  - path: "/api/course-bundles/{id}/items"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "添加课程到套件"
+
+  - path: "/api/course-bundles/{id}/items/{itemId}"
+    method: DELETE
+    roles: [TEACHER, ADMIN]
+    description: "从套件移除课程"
+
+  - path: "/api/course-bundles/{id}"
+    method: DELETE
+    roles: [ADMIN]
+    description: "删除套件 (仅 ADMIN)"
+
+  - path: "/api/course-bundles/{id}/my-enrollment"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "查询我的套件选课状态"
+
+  # ========== 课时 (6 端点) ==========
+  - path: "/api/lessons"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "创建课时"
+
+  - path: "/api/lessons/{id}"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "更新课时"
+
+  - path: "/api/lessons/{id}"
+    method: DELETE
+    roles: [TEACHER, ADMIN]
+    description: "删除课时"
+
+  - path: "/api/lessons/sort"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "课时排序"
+
+  - path: "/api/lessons/chapter/{chapterId}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "按章节查询课时"
+
+  - path: "/api/lessons/{id}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取课时详情"
+
+  # ========== 课件/幻灯片 (11 端点) ==========
+  - path: "/api/courses/{courseId}/slides/upload"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "上传课件"
+
+  - path: "/api/courses/{courseId}/slides"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取课件"
+
+  - path: "/api/courses/{courseId}/slides/pages"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取课件页面"
+
+  - path: "/api/courses/{courseId}/slides/pages/{pageNumber}"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取指定页面"
+
+  - path: "/api/courses/{courseId}/slides/pages/{pageNumber}/image"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取页面图片"
+
+  - path: "/api/courses/{courseId}/slides/pages/{pageNumber}/thumbnail"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取缩略图"
+
+  - path: "/api/courses/{courseId}/slides"
+    method: DELETE
+    roles: [TEACHER, ADMIN]
+    description: "删除课件"
+
+  - path: "/api/courses/{courseId}/slides/pages/{pageNumber}"
+    method: DELETE
+    roles: [TEACHER, ADMIN]
+    description: "删除页面"
+
+  - path: "/api/courses/{courseId}/slides/pages/reorder"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "页面重排"
+
+  - path: "/api/courses/{courseId}/slides/pages/{pageNumber}"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "更新页面"
+
+  - path: "/api/courses/{courseId}/slides/download"
+    method: GET
+    roles: [TEACHER, ADMIN]
+    description: "下载原始课件"
+
+  # ========== 课程评价 (5 端点) ==========
+  - path: "/api/courses/{id}/reviews"
+    method: POST
+    roles: [STUDENT]
+    description: "发表课程评价"
+
+  - path: "/api/courses/{id}/reviews"
+    method: GET
+    roles: [STUDENT, TEACHER, ADMIN, ACADEMIC]
+    description: "获取课程评价列表"
+
+  - path: "/api/courses/{id}/reviews/{reviewId}/approve"
+    method: POST
+    roles: [ADMIN, ACADEMIC]
+    description: "审核通过评价"
+
+  - path: "/api/courses/{id}/reviews/{reviewId}/reject"
+    method: POST
+    roles: [ADMIN, ACADEMIC]
+    description: "审核驳回评价"
+
+  - path: "/api/courses/{id}/reviews/{reviewId}"
+    method: DELETE
+    roles: [ADMIN]
+    description: "删除评价 (仅 ADMIN)"
+
+  # ========== 收藏 (2 端点, 新增路径) ==========
+  - path: "/api/courses/{id}/favorite"
+    method: POST
+    roles: [STUDENT]
+    description: "收藏课程"
+
+  - path: "/api/courses/{id}/favorite"
+    method: DELETE
+    roles: [STUDENT]
+    description: "取消收藏"
