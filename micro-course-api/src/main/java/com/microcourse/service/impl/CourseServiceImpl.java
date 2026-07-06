@@ -154,8 +154,15 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long id, Integer status) {
-        // TEACHER 不能通过此方法将课程转为 PUBLISHED，必须走正式 publish 流程（含课件检查/通知）
-        if (status == 4 && !SecurityUtil.isAdmin()) {
+        CourseStatus target = CourseStatus.fromCode(status);
+        // 【S4 修复】status=1 (PENDING_REVIEW) 和 status=4 (PUBLISHED) 是业务转换，
+        // 必须走专用端点 /submit 和 /publish，绕过会有安全风险
+        if (target == CourseStatus.PENDING_REVIEW || target == CourseStatus.PUBLISHED) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED,
+                    "请使用 /submit 或 /publish 专用端点进行此状态变更");
+        }
+        // 非 admin 仅可关闭/归档，不能发布
+        if (target == CourseStatus.PUBLISHED && !SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         adminService.updateStatus(id, status);
@@ -234,7 +241,7 @@ public class CourseServiceImpl implements CourseService {
         LOG.info("[P1I-040] 开始检查课程审核超时...");
         List<Course> pendingCourses = courseRepository.selectList(
                 new LambdaQueryWrapper<Course>()
-                        .eq(Course::getStatus, 5) // PENDING_REVIEW
+                        .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
                         .lt(Course::getUpdatedAt, LocalDateTime.now().minusHours(48)));
         for (Course course : pendingCourses) {
             try {

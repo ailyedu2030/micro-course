@@ -36,6 +36,8 @@ public class Course {
     private Integer studentCount;
     private BigDecimal avgRating;
     private LocalDateTime publishedAt;
+    @TableField("last_published_at")
+    private LocalDateTime lastPublishedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     @Version
@@ -123,6 +125,8 @@ public class Course {
     public void setAvgRating(BigDecimal avgRating) { this.avgRating = avgRating; }
     public LocalDateTime getPublishedAt() { return publishedAt; }
     public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+    public LocalDateTime getLastPublishedAt() { return lastPublishedAt; }
+    public void setLastPublishedAt(LocalDateTime lastPublishedAt) { this.lastPublishedAt = lastPublishedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
