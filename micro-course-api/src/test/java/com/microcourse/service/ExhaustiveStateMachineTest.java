@@ -725,7 +725,10 @@ public class ExhaustiveStateMachineTest extends BaseIntegrationTest {
                 "INSERT INTO users(username, password, real_name, role, status, cas_bound, created_at, updated_at, version) " +
                         "VALUES (?, ?, ?, 'STUDENT', 1, false, now(), now(), 0) RETURNING id",
                 Long.class, "orderuser-" + uniq(), "$2b$12$abcdefg", "订单测试用户");
-        String shortOrderNo = "O" + Long.toString(System.nanoTime(), 36).substring(0, 10);
+        // CI 修复: nanoTime → base36 在测试早期可能不足 10 位,左补零防 StringIndexOutOfBounds
+        String nano36 = Long.toString(System.nanoTime(), 36);
+        while (nano36.length() < 10) nano36 = "0" + nano36;
+        String shortOrderNo = "O" + nano36.substring(0, 10);
         Long catId = jdbcTemplate.queryForObject(
                 "INSERT INTO course_categories(name, level, sort_order, created_at, updated_at) " +
                         "VALUES ('ordercat', 1, 0, now(), now()) RETURNING id", Long.class);
