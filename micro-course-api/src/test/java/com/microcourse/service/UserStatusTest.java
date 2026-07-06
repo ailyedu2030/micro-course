@@ -37,7 +37,8 @@ class UserStatusTest {
     void canTransitionToShouldRespectWhitelist() {
         // 合法转换
         assertTrue(UserStatus.INACTIVE.canTransitionTo(UserStatus.ACTIVE));
-        assertTrue(UserStatus.INACTIVE.canTransitionTo(UserStatus.DELETED));
+        // 【user-domain-drift-fix 修复】移除 INACTIVE→DELETED 超额转换 (状态机设计 §1.3)
+        assertFalse(UserStatus.INACTIVE.canTransitionTo(UserStatus.DELETED));
         assertTrue(UserStatus.ACTIVE.canTransitionTo(UserStatus.DISABLED));
         assertTrue(UserStatus.ACTIVE.canTransitionTo(UserStatus.DELETED));
         assertTrue(UserStatus.DISABLED.canTransitionTo(UserStatus.ACTIVE));

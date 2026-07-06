@@ -27,4 +27,11 @@ public interface ClassService {
      * @return 学生 VO 列表；班级不存在抛 CLASS_NOT_FOUND
      */
     List<ClassStudentVO> getStudents(Long classId);
+
+    /**
+     * 【P1-C 修复】按专业 ID 查询班级列表
+     * @param majorId 专业 ID
+     * @return 班级列表
+     */
+    List<ClassVO> listByMajorId(Long majorId);
 }

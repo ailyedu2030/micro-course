@@ -66,6 +66,19 @@ public class ClassServiceImpl implements ClassService {
     }
 
     @Override
+    public List<ClassVO> listByMajorId(Long majorId) {
+        // 【P1-C 修复】按专业查询班级列表, 权限矩阵 v4.1 §3.3
+        if (majorRepository.selectById(majorId) == null) {
+            throw new BusinessException(ErrorCode.MAJOR_NOT_FOUND);
+        }
+        List<Classes> classes = classesRepository.selectList(
+                new LambdaQueryWrapper<Classes>()
+                        .eq(Classes::getMajorId, majorId)
+                        .orderByAsc(Classes::getSortOrder));
+        return classes.stream().map(this::convertToVO).collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public ClassVO create(ClassCreateRequest request) {
         Major major = majorRepository.selectById(request.getMajorId());

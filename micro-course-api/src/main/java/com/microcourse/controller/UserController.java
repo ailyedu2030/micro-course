@@ -48,7 +48,7 @@ public class UserController {
     // P2-权限对齐：TEACHER 权限受 Service 层数据范围限制（仅能查看自己课程的学生）
     public R<PageResult<UserVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) Long departmentId,
@@ -68,6 +68,13 @@ public class UserController {
         return R.ok(result);
     }
 
+    /**
+     * GET /api/users/{id}
+     * 权限矩阵 v4.1: TEACHER 仅可访问自己的 + 自己的学生 (数据范围), 否则 403
+     * 当前实现: TEACHER 仅可访问自己 (#id == principal), 数据范围由 Service 层控制
+     * (UserServiceImpl.getUserById L93 TEACHER 检查)
+     * ADMIN/ACADEMIC 可访问全部
+     */
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated() and (#id == authentication.principal or hasRole('ADMIN') or hasRole('ACADEMIC'))")
     public R<UserVO> getById(@PathVariable Long id) {
@@ -110,8 +117,13 @@ public class UserController {
         return R.ok(vo);
     }
 
+    /**
+     * PUT /api/users/{id}/status
+     * 修改用户状态 (权限矩阵 v4.1: 仅 ADMIN, 移除 ACADEMIC)
+     * 教务处 (ACADEMIC) 不再有用户状态管理权限, 收敛到纯统计/查询
+     */
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasRole('ADMIN')")
     @AuditedLog("修改用户状态")
     public R<Void> updateStatus(@PathVariable Long id,
                                  @Valid @RequestBody UserStatusRequest request) {

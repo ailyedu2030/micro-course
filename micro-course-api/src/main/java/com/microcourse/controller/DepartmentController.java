@@ -4,30 +4,36 @@ import com.microcourse.dto.DepartmentCreateRequest;
 import com.microcourse.dto.DepartmentStatsVO;
 import com.microcourse.dto.DepartmentUpdateRequest;
 import com.microcourse.dto.DepartmentVO;
+import com.microcourse.dto.MajorVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.DepartmentService;
+import com.microcourse.service.MajorService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/departments")
 public class DepartmentController {
 
     private final DepartmentService departmentService;
+    private final MajorService majorService;
 
-    public DepartmentController(DepartmentService departmentService) {
+    public DepartmentController(DepartmentService departmentService, MajorService majorService) {
         this.departmentService = departmentService;
+        this.majorService = majorService;
     }
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<DepartmentVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         PageResult<DepartmentVO> result = departmentService.page(page, size);
         return R.ok(result);
     }
@@ -37,6 +43,17 @@ public class DepartmentController {
     public R<DepartmentVO> getById(@PathVariable Long id) {
         DepartmentVO vo = departmentService.getById(id);
         return R.ok(vo);
+    }
+
+    /**
+     * GET /api/departments/{id}/majors
+     * 【P1-C 修复】按院系查询专业列表 (权限矩阵 v4.1)
+     * 权限: STUDENT / TEACHER / ADMIN / ACADEMIC
+     */
+    @GetMapping("/{id}/majors")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<MajorVO>> getMajorsByDepartment(@PathVariable Long id) {
+        return R.ok(majorService.listByDepartmentId(id));
     }
 
     @PostMapping

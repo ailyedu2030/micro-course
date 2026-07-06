@@ -70,7 +70,11 @@ public enum UserStatus {
         }
         switch (this) {
             case INACTIVE:
-                return target == ACTIVE || target == DELETED;
+                // 【P1-C 修复】移除 INACTIVE→DELETED 超额转换
+                // 设计文档 §1.3 T4 明确禁止 (仅 ACTIVE/DISABLED → DELETED)
+                // INACTIVE 用户需先激活 (ACTIVE) 再走正常删除路径
+                // 物理清理由 UserRetentionCleanupJob @Scheduled 处理
+                return target == ACTIVE;
             case ACTIVE:
                 return target == DISABLED || target == DELETED;
             case DISABLED:

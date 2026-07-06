@@ -66,6 +66,19 @@ public class MajorServiceImpl implements MajorService {
     }
 
     @Override
+    public List<MajorVO> listByDepartmentId(Long departmentId) {
+        // 【P1-C 修复】按院系 ID 查询专业列表, 权限矩阵 v4.1 §3.2
+        if (departmentRepository.selectById(departmentId) == null) {
+            throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+        }
+        List<Major> majors = majorRepository.selectList(
+                new LambdaQueryWrapper<Major>()
+                        .eq(Major::getDepartmentId, departmentId)
+                        .orderByAsc(Major::getSortOrder));
+        return majors.stream().map(this::convertToVO).collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
      public MajorVO create(MajorCreateRequest request) {
         if (departmentRepository.selectById(request.getDepartmentId()) == null) {

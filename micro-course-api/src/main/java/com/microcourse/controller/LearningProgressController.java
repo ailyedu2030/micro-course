@@ -38,6 +38,18 @@ public class LearningProgressController {
     }
 
     /**
+     * GET /api/users/{id}/learning-progress (权限矩阵 v4.1 路径别名)
+     * 【P1-C 修复】为兼容旧路径, 添加路由别名委托到 /progress
+     * 实际数据查询仍走 /api/learning-progress/progress
+     */
+    @GetMapping("/users/{id}/learning-progress")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<LearningProgressVO>> getByUserAlias(@PathVariable Long id,
+                                                        @RequestParam Long courseId) {
+        return getByUserAndCourse(id, courseId);
+    }
+
+    /**
      * GET /api/learning-progress/progress?userId=&courseId=
      * 获取指定用户在某课程的学习进度（IDOR 防护已下沉 Service 层）。
      */

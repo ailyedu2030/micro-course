@@ -1,10 +1,12 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.ClassVO;
 import com.microcourse.dto.MajorCreateRequest;
 import com.microcourse.dto.MajorUpdateRequest;
 import com.microcourse.dto.MajorVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
+import com.microcourse.service.ClassService;
 import com.microcourse.service.MajorService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -12,21 +14,25 @@ import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/majors")
 public class MajorController {
 
     private final MajorService majorService;
+    private final ClassService classService;
 
-    public MajorController(MajorService majorService) {
+    public MajorController(MajorService majorService, ClassService classService) {
         this.majorService = majorService;
+        this.classService = classService;
     }
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<MajorVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
         PageResult<MajorVO> result = majorService.page(page, size);
         return R.ok(result);
     }
@@ -36,6 +42,17 @@ public class MajorController {
     public R<MajorVO> getById(@PathVariable Long id) {
         MajorVO vo = majorService.getById(id);
         return R.ok(vo);
+    }
+
+    /**
+     * GET /api/majors/{id}/classes
+     * 【P1-C 修复】按专业查询班级列表 (权限矩阵 v4.1)
+     * 权限: STUDENT / TEACHER / ADMIN / ACADEMIC
+     */
+    @GetMapping("/{id}/classes")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<ClassVO>> getClassesByMajor(@PathVariable Long id) {
+        return R.ok(classService.listByMajorId(id));
     }
 
     @PostMapping

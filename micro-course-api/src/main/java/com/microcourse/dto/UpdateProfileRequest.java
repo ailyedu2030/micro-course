@@ -13,6 +13,13 @@ public class UpdateProfileRequest {
 
     private String gender;
 
+    /**
+     * 【P1-C 修复】avatar 字段 (补充契约)
+     * API 契约-Phase1 声明该字段可更新, 但 DTO 缺失
+     * 允许用户通过此端点更新头像 URL (实际头像通过 POST /api/auth/me/avatar 上传)
+     */
+    private String avatar;
+
     public UpdateProfileRequest() {}
 
     public String getRealName() { return realName; }
@@ -23,4 +30,6 @@ public class UpdateProfileRequest {
     public void setPhone(String phone) { this.phone = phone; }
     public String getGender() { return gender; }
     public void setGender(String gender) { this.gender = gender; }
+    public String getAvatar() { return avatar; }
+    public void setAvatar(String avatar) { this.avatar = avatar; }
 }

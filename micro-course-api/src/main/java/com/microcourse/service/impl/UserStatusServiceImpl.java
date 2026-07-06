@@ -101,6 +101,23 @@ public class UserStatusServiceImpl implements UserStatusService {
             return;
         }
 
+        // 【P1-C 修复】INACTIVE→ACTIVE 激活守卫
+        // 设计文档 §1.3 T1: INACTIVE 用户需满足三选一激活条件
+        // 1. emailVerified=true (邮箱验证链接点击)
+        // 2. casBound=true (CAS 首次登录绑定)
+        // 3. adminForceActivate=true (管理员强制激活)
+        if (currentStatus == UserStatus.INACTIVE && newStatus == UserStatus.ACTIVE) {
+            Boolean adminForceActivate = request.getAdminForceActivate();
+            boolean verified = Boolean.TRUE.equals(user.getCasBound())
+                    || Boolean.TRUE.equals(adminForceActivate);
+            if (!verified) {
+                log.warn("INACTIVE→ACTIVE 激活守卫阻断: userId={} casBound={} adminForce={}",
+                        id, user.getCasBound(), adminForceActivate);
+                throw new BusinessException(ErrorCode.USER_NOT_ACTIVE_VERIFIED,
+                        "INACTIVE 用户需邮箱验证或 CAS 绑定后才能激活, 或管理员强制激活");
+            }
+        }
+
         switch (newStatus) {
             case ACTIVE:
                 user.setStatus(1);

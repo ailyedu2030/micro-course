@@ -82,6 +82,12 @@ public enum ErrorCode {
 
     USER_NOT_ACTIVE(1009, "用户状态异常", 403),
 
+    /**
+     * 【P1-C 修复】INACTIVE→ACTIVE 激活守卫
+     * 用户未通过邮箱验证/CAS 绑定/管理员强制激活时尝试激活
+     */
+    USER_NOT_ACTIVE_VERIFIED(1011, "INACTIVE 用户需邮箱验证或 CAS 绑定后才能激活", 400),
+
     CAS_NOT_CONFIGURED(1010, "CAS服务未配置", 500),
     CAS_VALIDATION_FAILED(1011, "CAS票据验证失败", 401),
 
