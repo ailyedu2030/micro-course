@@ -1,4 +1,4 @@
-version: "3.9"
+name: micro-course
 
 services:
   postgres:
@@ -20,7 +20,16 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+    # 修复 P0 配置残缺: 当 REDIS_PASSWORD 未设时不能传空字符串给 --requirepass (会触发 "wrong number of arguments" 死循环重启)
+    # 改用条件式: 有密码时附加 --requirepass, 无密码时不附加
+    command: >
+      sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          exec redis-server --requirepass \"$$REDIS_PASSWORD\"
+        else
+          exec redis-server
+        fi
+      "
     volumes:
       - redis_data:/data
     ports:
