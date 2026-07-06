@@ -921,7 +921,10 @@ const handleToggleStatus = async (row, newStatus) => {
     userStore.refreshUserInfo()
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(`${actionText}失败`)
+    if (e !== 'cancel') {
+      const msg = e?.response?.data?.message || e?.message || `${actionText}失败`
+      ElMessage.error(msg)
+    }
   }
 }
 
@@ -934,7 +937,10 @@ const handleSoftDelete = async (row) => {
     userStore.refreshUserInfo()
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(`${actionText}失败`)
+    if (e !== 'cancel') {
+      const msg = e?.response?.data?.message || e?.message || `${actionText}失败`
+      ElMessage.error(msg)
+    }
   }
 }
 

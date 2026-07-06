@@ -102,7 +102,7 @@ public class StorageApplicationController {
     @PreAuthorize("hasRole('TEACHER')")
     public R<Void> autoSave(
             @PathVariable Long id,
-            @Valid @RequestBody StorageApplicationSaveRequest request) {
+            @RequestBody StorageApplicationSaveRequest request) {  // 不使用 @Valid：autoSave 是部分保存，允许不完整数据
         Long userId = SecurityUtil.getCurrentUserId();
         storageApplicationService.autoSave(id, userId, request);
         return R.ok();

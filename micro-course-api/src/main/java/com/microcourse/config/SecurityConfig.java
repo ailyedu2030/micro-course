@@ -102,7 +102,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         // login/cas: 公开; refresh: refreshToken 在 body 中作为凭证
-                        .requestMatchers("/api/auth/login", "/api/auth/cas", "/api/auth/refresh", "/api/auth/register").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/cas", "/api/auth/refresh", "/api/auth/register", "/api/auth/registration-status").permitAll()
                         .requestMatchers("GET", "/api/admin/stats/health").permitAll()
                         // P3-14/P3-15（Round 7-3）：监控端点放行 —— 仅放行 health 与 prometheus 两个具体路径
                         // （收窄白名单，不放行 /actuator/** 通配，避免未来误暴露 env/beans/heapdump 等敏感端点）。
@@ -110,8 +110,9 @@ public class SecurityConfig {
                         // 暴露内容为 hikaricp_*/jvm_*/http_* 等运行时指标，不含业务敏感数据。
                         // ⚠️ 生产环境须在网络层（nginx/防火墙）进一步限制 /actuator/** 仅监控内网可达（见 docs/监控指标.md §3）。
                         .requestMatchers("GET", "/actuator/health", "/actuator/prometheus").permitAll()
-                        // P1-C 加固：枚举导出端点 —— 需登录后访问，避免枚举元数据泄露
-                        .requestMatchers("GET", "/api/enums/export").authenticated()
+                        // 枚举导出端点 —— 匿名可访问。仅含枚举名/label，无敏感数据。
+                        // 前端首屏在登录前即需加载枚举。Controller 层 @PreAuthorize("permitAll()") 一致。
+                        .requestMatchers("GET", "/api/enums/export").permitAll()
                         // Round 5-3 (P1-10)：公开系统配置 —— 前端首屏渲染站点名称/Logo/是否开放注册等
                         // 非敏感元数据，权限矩阵 v2.0 定义为「所有用户（含未登录）」。Controller 内白名单
                         // 严格限定可返回键，CAS/上传上限等敏感配置永不暴露。须先于通配 authenticated。
