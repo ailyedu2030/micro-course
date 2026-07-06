@@ -1517,3 +1517,26 @@
   white-space: nowrap !important;
   border: 0 !important;
 }
+
+/* ====== BUG-007/010 修复：全局 el-dialog 容器适配 ======
+ * 现象：el-dialog 没设置 teleport-to="body" 时，dialog 渲染在 main 容器内，
+ *       main 的 overflow: auto 会把超长 dialog 底部裁切掉。
+ * 方案：强制 .el-dialog 用 fixed 定位 + 视口内 max-height + 内部滚动，
+ *       无论 dialog 渲染在哪个 DOM 容器下都能完整显示。
+ * 影响：全项目 41 个 el-dialog，1 处 CSS 治本。
+ */
+.el-dialog {
+  position: fixed !important;
+  top: 5vh !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  max-height: 90vh !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.el-dialog__body {
+  max-height: calc(90vh - 120px) !important;
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+}

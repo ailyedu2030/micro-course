@@ -311,7 +311,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -536,14 +536,17 @@ async function loadTrends() {
       courses: courseRes.data || [],
       students: (courseRes.data || []).map(item => ({ date: item.date, count: item.enrollments ?? 0 }))
     }
+    // BUG-001 修复: 必须在 nextTick + 关闭 loading 之后再 render，否则 ref 还没挂载
+    trendsLoading.value = false
+    await nextTick()
     renderTrendsChart(data)
   } catch (e) {
     trendsError.value = true
     trendsErrorMsg.value = e?.message || e?.toString?.() || '趋势数据加载失败'
     ElMessage.error('趋势数据加载失败')
-    renderTrendsChart({ users: [], courses: [], students: [] })
-  } finally {
     trendsLoading.value = false
+    await nextTick()
+    renderTrendsChart({ users: [], courses: [], students: [] })
   }
 }
 
@@ -603,15 +606,21 @@ async function loadCategoryStats() {
   categoryError.value = false
   try {
     const res = await getCourseDistribution()
-    const data = res.data || {}
-    const items = Object.entries(data).map(([name, value]) => ({ name, value }))
+    // BUG-003 修复: 后端返回数组 [{status, count}, ...]，不是对象
+    const items = (res.data || []).map(item => ({
+      name: item.status,
+      value: item.count
+    }))
+    // BUG-002 修复: nextTick + 关 loading 之后再 render
+    categoryLoading.value = false
+    await nextTick()
     renderCategoryChart(items)
   } catch (e) {
     categoryError.value = true
     categoryErrorMsg.value = e?.message || e?.toString?.() || '分类数据加载失败'
-    renderCategoryChart([])
-  } finally {
     categoryLoading.value = false
+    await nextTick()
+    renderCategoryChart([])
   }
 }
 
@@ -648,13 +657,16 @@ async function loadActivity() {
   try {
     const res = await getDailyActivity(30)
     const items = res.data || []
+    // BUG-004 修复: nextTick + 关 loading 之后再 render
+    activityLoading.value = false
+    await nextTick()
     renderActivityChart(items)
   } catch (e) {
     activityError.value = true
     activityErrorMsg.value = e?.message || e?.toString?.() || '活跃数据加载失败'
-    renderActivityChart([])
-  } finally {
     activityLoading.value = false
+    await nextTick()
+    renderActivityChart([])
   }
 }
 

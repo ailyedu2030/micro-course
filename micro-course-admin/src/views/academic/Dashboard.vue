@@ -243,7 +243,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Reading, User, TrendCharts, Finished, Refresh, DataAnalysis, Collection, Setting, ArrowLeft } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
@@ -479,12 +479,15 @@ async function loadDepartmentStats() {
       const res = await getDepartmentStats()
       items = res.data || []
     }
+    // BUG-009 修复: nextTick + 关 loading 之后再 render
+    deptLoading.value = false
+    await nextTick()
     renderDeptChart(items)
   } catch {
     deptError.value = true
-    renderDeptChart([])
-  } finally {
     deptLoading.value = false
+    await nextTick()
+    renderDeptChart([])
   }
 }
 
@@ -557,12 +560,15 @@ async function loadTrend() {
     ])
     const participationData = participationRes.data || []
     const completionData = completionRes.data || []
+    // BUG-009 修复: nextTick + 关 loading 之后再 render
+    trendLoading.value = false
+    await nextTick()
     renderTrendChart(participationData, completionData)
   } catch {
     trendError.value = true
-    renderTrendChart([], [])
-  } finally {
     trendLoading.value = false
+    await nextTick()
+    renderTrendChart([], [])
   }
 }
 

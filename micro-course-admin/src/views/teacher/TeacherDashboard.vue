@@ -457,7 +457,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star, Plus, OfficeBuilding, ChatDotRound, Medal, TrendCharts } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useUserStore } from '@/store/user'
@@ -600,15 +600,18 @@ async function loadActivity() {
   try {
     const res = await getStudentActivity(7)
     const data = res.data || []
+    // BUG-009 修复: nextTick + 关 loading 之后再 render
+    activityLoading.value = false
+    await nextTick()
     renderStudyChart(data)
     renderActiveChart(data)
   } catch {
     activityError.value = true
     ElMessage.error('学情数据加载失败')
+    activityLoading.value = false
+    await nextTick()
     renderStudyChart([])
     renderActiveChart([])
-  } finally {
-    activityLoading.value = false
   }
 }
 

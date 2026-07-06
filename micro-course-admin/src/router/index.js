@@ -42,6 +42,14 @@ const routes = [
   { path: '/bundles', name: 'BundleList', component: () => import('../views/courses/BundleList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN', 'ACADEMIC'] } },
 
   { path: '/admin', redirect: '/admin/dashboard' },
+  // BUG-006 修复: 补齐 /admin/courses 系列重定向，与 /admin/dashboard 风格一致
+  { path: '/admin/courses', redirect: '/courses' },
+  { path: '/admin/courses/create', redirect: '/courses/create' },
+  { path: '/admin/courses/:id', redirect: '/courses/:id' },
+  { path: '/admin/courses/:id/edit', redirect: '/courses/:id/edit' },
+  { path: '/admin/courses/review', redirect: '/courses/review' },
+  { path: '/admin/videos', redirect: '/videos' },
+  { path: '/admin/chapters', redirect: '/chapters' },
   // 管理后台路由
   { path: '/admin/dashboard', name: 'AdminDashboard', component: () => import('../views/admin/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/admin/users', name: 'AdminUserList', component: () => import('../views/admin/UserList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
