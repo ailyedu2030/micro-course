@@ -253,10 +253,12 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         boolean isManager = SecurityUtil.isAdmin() || SecurityUtil.hasRole("TEACHER") || SecurityUtil.hasRole("ACADEMIC");
         if (post.getStatus() != null) {
             if (post.getStatus() == 0 && !isManager) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子正在审核中，暂时无法查看");
+                // P1-C: 用专门的"帖子审核中"错误码, 而非通用 BAD_REQUEST_PARAM
+                throw new BusinessException(ErrorCode.DISCUSSION_POST_PENDING_REVIEW);
             }
             if (post.getStatus() == 2 && !isManager) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子已被驳回");
+                // P1-C: 用专门的"帖子已驳回"错误码
+                throw new BusinessException(ErrorCode.DISCUSSION_POST_REJECTED);
             }
         }
 
@@ -589,10 +591,12 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
         }
         if (status == 0) { // PENDING
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子正在审核中，暂时无法操作");
+            // P1-C: 用专门的"帖子审核中"错误码, 而非通用 BAD_REQUEST_PARAM
+            throw new BusinessException(ErrorCode.DISCUSSION_POST_PENDING_REVIEW);
         }
         if (status == 2) { // REJECTED
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子已被驳回");
+            // P1-C: 用专门的"帖子已驳回"错误码, 而非通用 BAD_REQUEST_PARAM
+            throw new BusinessException(ErrorCode.DISCUSSION_POST_REJECTED);
         }
     }
 
