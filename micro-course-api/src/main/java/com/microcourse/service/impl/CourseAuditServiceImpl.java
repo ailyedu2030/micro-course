@@ -7,7 +7,10 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.CourseReviewLog;
 import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.Exercise;
 import com.microcourse.entity.PluginGrant;
+import com.microcourse.entity.User;
+import com.microcourse.entity.Video;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
@@ -19,8 +22,12 @@ import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.PluginGrantRepository;
+import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseAuditService;
+import com.microcourse.service.CourseStateMachine;
+import com.microcourse.service.CourseStateMachine.TransitionContext;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
@@ -41,7 +48,10 @@ public class CourseAuditServiceImpl implements CourseAuditService {
     private final CourseReviewLogRepository reviewLogRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final PluginGrantRepository pluginGrantRepository;
+    private final VideoRepository videoRepository;
+    private final ExerciseRepository exerciseRepository;
     private final CourseSlideMapper courseSlideMapper;
+    private final CourseStateMachine courseStateMachine;
     private final NotificationService notificationService;
 
     public CourseAuditServiceImpl(CourseRepository courseRepository,
@@ -49,14 +59,20 @@ public class CourseAuditServiceImpl implements CourseAuditService {
                                   CourseReviewLogRepository reviewLogRepository,
                                   EnrollmentRepository enrollmentRepository,
                                   PluginGrantRepository pluginGrantRepository,
+                                  VideoRepository videoRepository,
+                                  ExerciseRepository exerciseRepository,
                                   CourseSlideMapper courseSlideMapper,
+                                  CourseStateMachine courseStateMachine,
                                   NotificationService notificationService) {
         this.courseRepository = courseRepository;
         this.chapterRepository = chapterRepository;
         this.reviewLogRepository = reviewLogRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.pluginGrantRepository = pluginGrantRepository;
+        this.videoRepository = videoRepository;
+        this.exerciseRepository = exerciseRepository;
         this.courseSlideMapper = courseSlideMapper;
+        this.courseStateMachine = courseStateMachine;
         this.notificationService = notificationService;
     }
 
@@ -67,39 +83,9 @@ public class CourseAuditServiceImpl implements CourseAuditService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        CourseStatus current = CourseStatus.fromCode(course.getStatus());
-        if (current == null || !current.canTransitionTo(CourseStatus.PENDING_REVIEW)) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "当前状态不允许提交审核");
-        }
-        // T11: 提交审核前置完整性校验 — 标题/分类/封面
-        if (course.getTitle() == null || course.getTitle().isBlank()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先填写课程标题再提交审核");
-        }
-        if (course.getCategoryId() == null) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先选择课程分类再提交审核");
-        }
-        if (course.getCoverUrl() == null || course.getCoverUrl().isBlank()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先上传课程封面再提交审核");
-        }
-        long chapterCount = chapterRepository.selectCount(
-                new LambdaQueryWrapper<CourseChapter>()
-                        .eq(CourseChapter::getCourseId, id));
-        if (chapterCount == 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请至少添加一个章节再提交审核");
-        }
-        Integer currentVersion = course.getVersion();
-        int affected = courseRepository.update(null,
-                new LambdaUpdateWrapper<Course>()
-                        .eq(Course::getId, id)
-                        .eq(Course::getStatus, current.getCode())
-                        .eq(Course::getVersion, currentVersion)
-                        .set(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
-                        .set(Course::getRejectReason, (String) null)
-                        .set(Course::getUpdatedAt, LocalDateTime.now())
-                        .setSql("version = version + 1"));
-        if (affected == 0) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
-        }
+        // 【状态机重构】所有守卫下沉到 CourseStateMachineConfig 注册, 此处只委托
+        User actor = SecurityUtil.getCurrentUser();
+        courseStateMachine.transition(id, CourseStatus.PENDING_REVIEW, actor, TransitionContext.empty());
         LOG.info("课程提交审核, id={}", id);
     }
 
@@ -107,21 +93,9 @@ public class CourseAuditServiceImpl implements CourseAuditService {
     @Transactional(rollbackFor = Exception.class)
     public void approve(Long id) {
         Course course = getCourseOrThrow(id);
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        SecurityUtil.assertNotSelf(currentUserId, course.getTeacherId(), "不能审批自己的课程");
-        Integer currentVersion = course.getVersion();
-        int affected = courseRepository.update(null,
-                new LambdaUpdateWrapper<Course>()
-                        .eq(Course::getId, id)
-                        .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
-                        .eq(Course::getVersion, currentVersion)
-                        .set(Course::getStatus, CourseStatus.APPROVED.getCode())
-                        .set(Course::getRejectReason, (String) null)
-                        .set(Course::getUpdatedAt, LocalDateTime.now())
-                        .setSql("version = version + 1"));
-        if (affected == 0) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "审核通过失败，请检查课程状态");
-        }
+        // 【状态机重构】自审批阻断下沉到 CourseStateMachine.transition 内部
+        User actor = SecurityUtil.getCurrentUser();
+        courseStateMachine.transition(id, CourseStatus.APPROVED, actor, TransitionContext.empty());
         recordReviewLog(id, "APPROVE", CourseStatus.PENDING_REVIEW.getCode(), CourseStatus.APPROVED.getCode(), null);
         if (course.getTeacherId() != null) {
             notificationService.notifyAsync(course.getTeacherId(),
@@ -135,22 +109,10 @@ public class CourseAuditServiceImpl implements CourseAuditService {
     @Transactional(rollbackFor = Exception.class)
     public void reject(Long id, String reason) {
         Course course = getCourseOrThrow(id);
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        SecurityUtil.assertNotSelf(currentUserId, course.getTeacherId(), "不能驳回自己的课程");
         String safeReason = com.microcourse.util.XssSanitizer.sanitizePlainText(reason);
-        Integer currentVersion = course.getVersion();
-        int affected = courseRepository.update(null,
-                new LambdaUpdateWrapper<Course>()
-                        .eq(Course::getId, id)
-                        .eq(Course::getStatus, CourseStatus.PENDING_REVIEW.getCode())
-                        .eq(Course::getVersion, currentVersion)
-                        .set(Course::getStatus, CourseStatus.REJECTED.getCode())
-                        .set(Course::getRejectReason, safeReason)
-                        .set(Course::getUpdatedAt, LocalDateTime.now())
-                        .setSql("version = version + 1"));
-        if (affected == 0) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "驳回失败，请检查课程状态");
-        }
+        // 【状态机重构】长度校验和自审批下沉到 CourseStateMachine 守卫
+        User actor = SecurityUtil.getCurrentUser();
+        courseStateMachine.transition(id, CourseStatus.REJECTED, actor, TransitionContext.ofReject(safeReason));
         recordReviewLog(id, "REJECT", CourseStatus.PENDING_REVIEW.getCode(), CourseStatus.REJECTED.getCode(), safeReason);
         if (course.getTeacherId() != null) {
             notificationService.notifyAsync(course.getTeacherId(),
@@ -167,17 +129,8 @@ public class CourseAuditServiceImpl implements CourseAuditService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        /* ---- 【CR-2 修复】publish 缺少 assertNotSelf ---- */
-        /* 【根因】publish() 中没有调用 assertNotSelf，ADMIN 可发布自己审核通过的课程 */
-        /* 【修复】增加 assertNotSelf 防止管理员发布自己审核通过的课程 */
-        /* 【防止再发】所有敏感状态变更操作统一使用 assertNotSelf 阻断 */
-        SecurityUtil.assertNotSelf(SecurityUtil.getCurrentUserId(), course.getTeacherId(), "管理员不能发布自己审核通过的课程");
 
-        /* ---- 【I-8 修复】发布时检查定价审批状态 ---- */
-        /* 【根因】定价状态（DRAFT/PENDING/APPROVED/REJECTED）与课程主状态完全独立 */
-        /*        可能出现课程已发布但定价仍是 DRAFT 的不一致场景 */
-        /* 【修复】发布时若课程非免费且有定价状态，要求定价已审批 */
-        /* 【防止再发】发布操作必须校验定价状态与主状态机的一致性 */
+        /* ---- 定价审批状态检查 (业务守卫, 与状态机守卫并行) ---- */
         if (!Boolean.TRUE.equals(course.getIsFree()) && course.getPricingStatus() != null
                 && !"APPROVED".equals(course.getPricingStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程定价尚未审批通过，无法发布");
@@ -194,20 +147,11 @@ public class CourseAuditServiceImpl implements CourseAuditService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "互动课件尚未就绪，请先上传并等待课件渲染完成");
             }
         }
-        Integer currentVersion = course.getVersion();
-        int affected = courseRepository.update(null,
-                new LambdaUpdateWrapper<Course>()
-                        .eq(Course::getId, id)
-                        .eq(Course::getVersion, currentVersion)
-                        .in(Course::getStatus, CourseStatus.APPROVED.getCode(), CourseStatus.CLOSED.getCode())
-                        .set(Course::getStatus, CourseStatus.PUBLISHED.getCode())
-                        .set(Course::getPublishedAt, LocalDateTime.now())
-                        .set(Course::getUpdatedAt, LocalDateTime.now())
-                        .setSql("version = version + 1"));
-        if (affected == 0) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "发布失败，请检查课程状态");
-        }
-        recordReviewLog(id, "PUBLISH", course.getStatus(), CourseStatus.PUBLISHED.getCode(), null);
+        // 【状态机重构】所有状态变更守卫 (含 CLOSED→PUBLISHED 历史校验, 自审批阻断, 乐观锁) 下沉到 CourseStateMachine
+        Integer previousStatus = course.getStatus();
+        User actor = SecurityUtil.getCurrentUser();
+        courseStateMachine.transition(id, CourseStatus.PUBLISHED, actor, TransitionContext.empty());
+        recordReviewLog(id, "PUBLISH", previousStatus, CourseStatus.PUBLISHED.getCode(), null);
         List<Enrollment> activeEnrollments = enrollmentRepository.selectList(
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, id)

@@ -42,6 +42,8 @@ import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CourseAuditService;
+import com.microcourse.service.CourseStateMachine;
+import com.microcourse.service.CourseStateMachine.TransitionContext;
 import com.microcourse.util.FileUploadUtil;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
@@ -83,6 +85,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final CourseSlideMapper courseSlideMapper;
     private final SlidePageMapper slidePageMapper;
     private final CourseAuditService auditService;
+    private final CourseStateMachine courseStateMachine;
 
     @Value("${upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -103,7 +106,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   DiscussionPostRepository discussionPostRepository,
                                   CourseSlideMapper courseSlideMapper,
                                   SlidePageMapper slidePageMapper,
-                                  CourseAuditService auditService) {
+                                  CourseAuditService auditService,
+                                  CourseStateMachine courseStateMachine) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -121,6 +125,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
         this.auditService = auditService;
+        this.courseStateMachine = courseStateMachine;
     }
 
     private void checkPluginGrant(Long teacherId, String courseType) {
@@ -451,29 +456,15 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        CourseStatus current = CourseStatus.fromCode(course.getStatus());
         CourseStatus target = CourseStatus.fromCode(status);
-        if (current == null || target == null || !current.canTransitionTo(target)) {
-            String currentDesc = current != null ? current.getDescription() + "(" + current.getCode() + ")" : "未知";
-            String targetDesc = target != null ? target.getDescription() + "(" + target.getCode() + ")" : "未知";
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED,
-                    "不允许的状态转换：当前状态为 " + currentDesc + "，目标状态为 " + targetDesc);
+        if (target == null) {
+            throw new BusinessException(ErrorCode.COURSE_INVALID_STATUS, "无效的状态码: " + status);
         }
-        // ARCHIVED 是业务终态，非软删除，不设 deleted_at
-        // ARCHIVED ≠ CLOSED：归档是有序完结，关闭是强制终止
-        Integer currentVersion = course.getVersion();
-        int affected = courseRepository.update(null,
-                new LambdaUpdateWrapper<Course>()
-                        .eq(Course::getId, id)
-                        .eq(Course::getStatus, current.getCode())
-                        .eq(Course::getVersion, currentVersion)
-                        .set(Course::getStatus, target.getCode())
-                        .set(Course::getUpdatedAt, LocalDateTime.now())
-                        .setSql("version = version + 1"));
-        if (affected == 0) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
-        }
-        LOG.info("课程状态更新, id={}, from={}, to={}", id, current, target);
+        // 【状态机重构】所有转换/守卫/乐观锁下沉到 CourseStateMachine
+        // ARCHIVED 是业务终态, ARCHIVED ≠ CLOSED (归档是有序完结, 关闭是强制终止)
+        User actor = SecurityUtil.getCurrentUser();
+        courseStateMachine.transition(id, target, actor, TransitionContext.empty());
+        LOG.info("课程状态更新, id={}, target={}", id, target);
     }
 
     private Course getCourseOrThrow(Long id) {

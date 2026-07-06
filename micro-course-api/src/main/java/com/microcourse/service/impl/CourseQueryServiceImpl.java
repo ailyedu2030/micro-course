@@ -27,6 +27,7 @@ import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
@@ -185,6 +186,41 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         result.setTotalElements(ipage.getTotal());
         result.setTotalPages(ipage.getPages());
         return result;
+    }
+
+    @Override
+    public List<CourseVO> listByTeacherId(Long teacherId, boolean includeDrafts) {
+        LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Course::getTeacherId, teacherId);
+        if (!includeDrafts) {
+            // 学生端: 仅 APPROVED + PUBLISHED
+            wrapper.in(Course::getStatus, List.of(
+                    CourseStatus.APPROVED.getCode(), CourseStatus.PUBLISHED.getCode()));
+        }
+        wrapper.orderByDesc(Course::getCreatedAt);
+        List<Course> courses = courseRepository.selectList(wrapper);
+        if (courses.isEmpty()) return List.of();
+
+        // 批量预加载避免 N+1
+        Map<Long, CourseCategory> categoryMap = buildCategoryMap(courses);
+        Map<Long, User> teacherMap = buildTeacherMap(courses);
+        Map<Long, Long> ratingCountMap = buildRatingCountMap(courses);
+
+        return courses.stream()
+                .map(c -> convertToVOFromMaps(c, categoryMap, teacherMap, ratingCountMap))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourseVO> listByTeacherIdWithOwnerCheck(Long teacherId, boolean includeDrafts) {
+        // TEACHER Owner 校验下沉
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()
+                && !teacherId.equals(SecurityUtil.getCurrentUserId())) {
+            throw new com.microcourse.exception.BusinessException(
+                    com.microcourse.exception.ErrorCode.NO_PERMISSION, "教师只能查看自己的课程列表");
+        }
+        return listByTeacherId(teacherId, includeDrafts);
     }
 
     @Override

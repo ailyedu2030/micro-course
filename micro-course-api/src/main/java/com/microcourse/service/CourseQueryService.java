@@ -9,4 +9,16 @@ public interface CourseQueryService {
     PageResult<CourseVO> page(CoursePageQuery query);
 
     CourseVO getById(Long id);
+
+    /**
+     * 按教师 ID 查询课程列表 (权限矩阵 v4.0 §3.3 GET_TEACHER_COURSES)
+     * @param teacherId 教师 ID
+     * @param includeDrafts 是否包含草稿/驳回等非发布状态 (true: 课程详情页用, false: 学生端列表用)
+     */
+    java.util.List<CourseVO> listByTeacherId(Long teacherId, boolean includeDrafts);
+
+    /**
+     * 按教师查询课程列表 (含 TEACHER owner 校验)
+     */
+    java.util.List<CourseVO> listByTeacherIdWithOwnerCheck(Long teacherId, boolean includeDrafts);
 }

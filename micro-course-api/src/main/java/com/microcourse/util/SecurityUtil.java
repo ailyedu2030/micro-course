@@ -1,5 +1,6 @@
 package com.microcourse.util;
 
+import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import org.slf4j.Logger;
@@ -20,6 +21,15 @@ public final class SecurityUtil {
     private static final Logger log = LoggerFactory.getLogger(SecurityUtil.class);
 
     private SecurityUtil() {
+    }
+
+    /**
+     * 获取当前登录用户 (仅含 ID, 供状态机自审批检查使用)
+     */
+    public static User getCurrentUser() {
+        User user = new User();
+        user.setId(getCurrentUserId());
+        return user;
     }
 
     /**
