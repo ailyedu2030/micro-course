@@ -83,4 +83,40 @@ public final class FileUploadUtil {
                     "图片文件读取失败: " + e.getMessage());
         }
     }
+
+    /**
+     * Excel 文件大小 + 魔数校验 (.xls D0CF11E0, .xlsx PK)
+     */
+    public static void assertExcel(MultipartFile file) {
+        assertFileSize(file, DEFAULT_IMAGE_MAX_BYTES, "Excel 导入文件");
+        assertExcelMagic(file);
+    }
+
+    /**
+     * Excel 魔数校验 (xls: D0CF11E0, xlsx: 50 4B 03 04)
+     */
+    public static void assertExcelMagic(MultipartFile file) {
+        try (InputStream is = file.getInputStream()) {
+            byte[] magic = new byte[8];
+            int read = is.read(magic);
+            if (read < 4) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Excel 文件过小");
+            }
+            boolean isXls = (magic[0] & 0xFF) == 0xD0
+                    && (magic[1] & 0xFF) == 0xCF
+                    && (magic[2] & 0xFF) == 0x11
+                    && (magic[3] & 0xFF) == 0xE0;
+            boolean isXlsx = magic[0] == 0x50
+                    && magic[1] == 0x4B
+                    && magic[2] == 0x03
+                    && magic[3] == 0x04;
+            if (!isXls && !isXlsx) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                        "仅支持 Excel 文件 (.xls/.xlsx, 魔数校验失败)");
+            }
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE,
+                    "Excel 文件读取失败: " + e.getMessage());
+        }
+    }
 }

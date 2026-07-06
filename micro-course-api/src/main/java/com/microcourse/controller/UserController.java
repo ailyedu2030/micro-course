@@ -149,24 +149,17 @@ public class UserController {
      * POST /api/users/batch
      * 批量导入用户（Excel）
      */
+    /**
+     * POST /api/users/batch
+     * 批量导入用户 (Excel)
+     * 权限: ADMIN (权限矩阵 v4.1)
+     * 【V4 修复】文件校验下沉到 FileUploadUtil, Controller 不再直接读 InputStream
+     */
     @PostMapping("/batch")
     @PreAuthorize("hasRole('ADMIN')")
     @AuditedLog("批量导入用户")
     public R<BatchImportResultVO> batchImport(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
-        }
-        if (file.getSize() > 5 * 1024 * 1024) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件大小不能超过 5MB");
-        }
-        String contentType = file.getContentType();
-        if (contentType == null || (
-                !contentType.startsWith("application/vnd.ms-excel") &&
-                !contentType.startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 Excel 文件 (.xls/.xlsx)");
-        }
-        // P1-1: Excel 魔数校验（防御 Content-Type 伪造）
-        verifyExcelMagic(file);
+        com.microcourse.util.FileUploadUtil.assertExcel(file);
         BatchImportResultVO result = userService.batchImportUsers(file);
         return R.ok(result);
     }
@@ -193,27 +186,4 @@ public class UserController {
         return R.ok(avatarUrl);
     }
 
-    /**
-     * P1-1: Excel 文件魔数校验（防御 Content-Type 伪造）
-     * XLS:  D0 CF 11 E0（OLE2 复合文档）
-     * XLSX: PK\x03\x04（ZIP 压缩包）
-     */
-    private void verifyExcelMagic(MultipartFile file) {
-        try (InputStream is = file.getInputStream()) {
-            byte[] magic = new byte[4];
-            int read = is.read(magic);
-            if (read < 4) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小，无法验证格式");
-            }
-            boolean isXls = (magic[0] & 0xFF) == 0xD0 && (magic[1] & 0xFF) == 0xCF
-                         && (magic[2] & 0xFF) == 0x11 && (magic[3] & 0xFF) == 0xE0;
-            boolean isXlsx = (magic[0] & 0xFF) == 0x50 && magic[1] == 0x4B
-                          && magic[2] == 0x03 && magic[3] == 0x04;
-            if (!isXls && !isXlsx) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请上传有效的 Excel 文件（魔数校验失败）");
-            }
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
-        }
-    }
 }

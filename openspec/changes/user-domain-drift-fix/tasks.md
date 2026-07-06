@@ -91,7 +91,7 @@
 
 ## 阶段 5: OpenAPI 集成 (模式 1 治本)
 
-- [ ] **5.1 5 个 Controller 加 @Tag**
+- [x] **5.1 5 个 Controller 加 @Tag**
 - [ ] **5.2 关键 25 端点加 @Operation**
 - [ ] **5.3 复用 openapi-gen.sh 增量生成 docs/api/openapi.yaml**
 
