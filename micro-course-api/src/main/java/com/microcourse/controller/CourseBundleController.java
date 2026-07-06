@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.audit.AuditedLog;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.bundle.AddCourseRequest;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/course-bundles")
+@Tag(name = "CourseBundleController", description = "CourseBundleController 自动生成 OpenAPI 文档")
 @Validated
 public class CourseBundleController {
 

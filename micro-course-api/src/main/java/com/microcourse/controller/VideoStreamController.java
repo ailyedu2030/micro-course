@@ -1,7 +1,11 @@
 package com.microcourse.controller;
 
 import com.microcourse.exception.BusinessException;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.exception.ErrorCode;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.service.VideoAccessService;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.VideoSignUtil;
@@ -28,6 +32,7 @@ import java.nio.file.Paths;
  */
 @RestController
 @RequestMapping("/api/video-stream")
+@Tag(name = "VideoStreamController", description = "VideoStreamController 自动生成 OpenAPI 文档")
 public class VideoStreamController {
 
     private static final Logger log = LoggerFactory.getLogger(VideoStreamController.class);

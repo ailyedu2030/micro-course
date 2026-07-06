@@ -11,9 +11,11 @@ import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/course-categories")
+@Tag(name = "CourseCategoryController", description = "CourseCategoryController 自动生成 OpenAPI 文档")
 public class CourseCategoryController {
 
     private final CourseCategoryService courseCategoryService;

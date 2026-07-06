@@ -6,7 +6,11 @@ import com.microcourse.dto.TagCreateRequest;
 import com.microcourse.dto.TagUpdateRequest;
 import com.microcourse.dto.TagVO;
 import com.microcourse.exception.BusinessException;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.exception.ErrorCode;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.service.TagService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -19,6 +23,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tags")
+@Tag(name = "TagController", description = "TagController 自动生成 OpenAPI 文档")
 public class TagController {
 
     private final TagService tagService;

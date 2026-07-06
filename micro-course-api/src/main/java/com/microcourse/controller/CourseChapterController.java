@@ -14,10 +14,12 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/chapters")
+@Tag(name = "CourseChapterController", description = "CourseChapterController 自动生成 OpenAPI 文档")
 public class CourseChapterController {
 
     private final CourseChapterService chapterService;

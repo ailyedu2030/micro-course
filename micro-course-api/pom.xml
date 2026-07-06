@@ -55,6 +55,13 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- OpenAPI 自动生成: 课程管理域 85 端点契约文档化 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
         <!-- P3-14 DB 连接池监控：Actuator 端点 + Micrometer Prometheus registry -->
         <!-- Actuator 暴露 /actuator/prometheus；micrometer 自动绑定 HikariCP/JVM/HTTP 指标 -->
         <!-- HikariCP hikaricp_connections_* 指标由 Spring Boot DataSourcePoolMetricsAutoConfiguration 自动注入，无需手写 metric-registry -->
