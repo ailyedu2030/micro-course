@@ -145,6 +145,13 @@ public interface MicroSpecialtyService {
     void cancel(Long id, String reason);
 
     /**
+     * 【C-17】重新开课：COMPLETED/CANCELLED → APPROVED。仅 ACADEMIC/ADMIN。
+     *
+     * @param id 微专业 ID
+     */
+    void reopen(Long id);
+
+    /**
      * 归档：COMPLETED → ARCHIVED。通知 LEAD。
      *
      * @param id 微专业 ID

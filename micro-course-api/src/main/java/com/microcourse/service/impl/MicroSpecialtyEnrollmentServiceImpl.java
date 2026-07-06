@@ -162,7 +162,13 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
 
         // 校验操作用户是该微专业的负责人
         Long userId = SecurityUtil.getCurrentUserId();
-        if (!msService.isLeadOf(en.getMicroSpecialtyId(), userId) && !SecurityUtil.isAdmin()) {
+        /* ---- 【C-19修复】approve() Service 层排除 ACADEMIC ---- */
+        /* 【根因】Service 层二次校验只允许 isLeadOf() || isAdmin()，排除了 ACADEMIC 角色
+         * 【修复】增加 hasRole("ACADEMIC") 放行条件，与 Controller 的 @PreAuthorize 统一
+         * 【防止再发】Service 层鉴权必须与 @PreAuthorize 角色集合一致 */
+        if (!msService.isLeadOf(en.getMicroSpecialtyId(), userId)
+                && !SecurityUtil.isAdmin()
+                && !SecurityUtil.hasRole("ACADEMIC")) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可审批报名");
         }
 
@@ -342,7 +348,11 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
 
         // 校验操作用户是该微专业的负责人
         Long userId = SecurityUtil.getCurrentUserId();
-        if (!msService.isLeadOf(en.getMicroSpecialtyId(), userId) && !SecurityUtil.isAdmin()) {
+        /* ---- 【C-19修复】reject() Service 层排除 ACADEMIC ---- */
+        /* 【根因】【防止再发】同 approve() 修复 */
+        if (!msService.isLeadOf(en.getMicroSpecialtyId(), userId)
+                && !SecurityUtil.isAdmin()
+                && !SecurityUtil.hasRole("ACADEMIC")) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "仅微专业负责人可驳回报名");
         }
 
@@ -401,6 +411,12 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         MicroSpecialty ms = msRepository.selectForUpdate(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
+        // P2-7: 班级导入检查微专业容量上限，maxStudents <= 0 视为不限
+        if (ms.getMaxStudents() != null && ms.getMaxStudents() > 0
+                && ms.getStudentCount() != null && ms.getStudentCount() >= ms.getMaxStudents()) {
+            throw new BusinessException(ErrorCode.MS_MAX_STUDENTS_REACHED, "微专业已满员，无法导入班级");
+        }
+
         if (!"RECRUITING".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅招生中状态可班级导入");
         }
@@ -432,7 +448,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         int studentsWithPending = 0;
         List<MicroSpecialtyEnrollment> batch = new ArrayList<>(BATCH_SIZE);
         // 收集每个新生的 (userId, pendingCoursesJson)，待主 enrollment 写入后回写
-        Map<Long, List<PendingCourseItem>> pendingByUser = new HashMap<>();
+        Map<Long, List<PendingCourseJsonUtil.PendingCourseItem>> pendingByUser = new HashMap<>();
 
         for (User student : students) {
             if (existingUserIds.contains(student.getId())) continue;
@@ -454,7 +470,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             en.setVersion(0);
 
             // G2: 逐门课程前置检查（自动 enroll）
-            List<PendingCourseItem> pending = new ArrayList<>();
+            List<PendingCourseJsonUtil.PendingCourseItem> pending = new ArrayList<>();
             for (Long courseId : courseIds) {
                 try {
                     EnrollmentCreateRequest req = new EnrollmentCreateRequest();
@@ -466,13 +482,13 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                     // 不可自动 enroll，记录到 pendingCourses（不抛，不阻断主流程）
                     Course course = courseRepository.selectById(courseId);
                     String courseName = (course != null) ? course.getTitle() : ("课程#" + courseId);
-                    pending.add(new PendingCourseItem(courseId, courseName, e.getMessage()));
+                    pending.add(new PendingCourseJsonUtil.PendingCourseItem(courseId, courseName, e.getMessage()));
                     log.info("[MS classImport] student={} course={} -> pending: {}",
                             student.getId(), courseId, e.getMessage());
                 } catch (Exception e) {
                     Course course = courseRepository.selectById(courseId);
                     String courseName = (course != null) ? course.getTitle() : ("课程#" + courseId);
-                    pending.add(new PendingCourseItem(courseId, courseName,
+                    pending.add(new PendingCourseJsonUtil.PendingCourseItem(courseId, courseName,
                             e.getMessage() != null ? e.getMessage() : "未知错误"));
                     log.warn("[MS classImport] student={} course={} unexpected: {}",
                             student.getId(), courseId, e.getMessage());
@@ -480,7 +496,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
             }
 
             if (!pending.isEmpty()) {
-                String json = toPendingJson(pending);
+                String json = PendingCourseJsonUtil.toPendingJson(pending);
                 en.setPendingCourses(json);
                 pendingByUser.put(student.getId(), pending);
                 totalPendingCount += pending.size();
@@ -524,7 +540,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         // 通知学生（含 pendingCourses 提示）
         for (User student : students) {
             if (existingUserIds.contains(student.getId())) continue;
-            List<PendingCourseItem> pending = pendingByUser.get(student.getId());
+            List<PendingCourseJsonUtil.PendingCourseItem> pending = pendingByUser.get(student.getId());
             String tip = "";
             if (pending != null && !pending.isEmpty()) {
                 tip = "，其中 " + pending.size() + " 门课程需您或负责人后续处理（前置/容量/已选）";
@@ -561,50 +577,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         return imported;
     }
 
-    /** G2: pendingCourses 内部数据结构（DTO 序列化为 JSON） */
-    private static class PendingCourseItem {
-        Long courseId;
-        String courseName;
-        String reason;
-        PendingCourseItem(Long courseId, String courseName, String reason) {
-            this.courseId = courseId; this.courseName = courseName; this.reason = reason;
-        }
-    }
-
-    /** G2: List<PendingCourseItem> → JSON 字符串（轻量手写避免引入 Jackson 依赖问题） */
-    private String toPendingJson(List<PendingCourseItem> list) {
-        if (list == null || list.isEmpty()) return "[]";
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < list.size(); i++) {
-            PendingCourseItem p = list.get(i);
-            if (i > 0) sb.append(",");
-            sb.append("{\"courseId\":").append(p.courseId)
-              .append(",\"courseName\":").append(jsonEscape(p.courseName))
-              .append(",\"reason\":").append(jsonEscape(p.reason)).append("}");
-        }
-        sb.append("]");
-        return sb.toString();
-    }
-
-    private String jsonEscape(String s) {
-        if (s == null) return "\"\"";
-        StringBuilder sb = new StringBuilder("\"");
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            switch (c) {
-                case '"': sb.append("\\\""); break;
-                case '\\': sb.append("\\\\"); break;
-                case '\n': sb.append("\\n"); break;
-                case '\r': sb.append("\\r"); break;
-                case '\t': sb.append("\\t"); break;
-                default:
-                    if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
-                    else sb.append(c);
-            }
-        }
-        sb.append("\"");
-        return sb.toString();
-    }
+    // PendingCourseJsonUtil.PendingCourseItem / toPendingJson / jsonEscape 已提取到 PendingCourseJsonUtil
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -780,7 +753,12 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
 
         // 更新状态为 CERTIFIED
         int oldVersion = en.getVersion();
-        enrollmentRepository.update(null,
+        /* ---- 【C-18修复】issueCertificate 并发未检查 affected rows ---- */
+        /* 【根因】enrollmentRepository.update(null, wrapper) 的返回值被忽略，
+         *        并发场景下可能未命中任何行（version 或 status 不匹配）但操作被视为成功
+         * 【修复】增加 affected 检查，为 0 时抛出 MS_CONCURRENT_MODIFICATION
+         * 【防止再发】所有 update/delete 操作必须检查 affected rows */
+        int certAffected = enrollmentRepository.update(null,
                 new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                         .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
                         .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
@@ -788,6 +766,9 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
                         .set(MicroSpecialtyEnrollment::getStatus, "CERTIFIED")
                         .set(MicroSpecialtyEnrollment::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
+        if (certAffected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
+        }
     }
 
     @Override

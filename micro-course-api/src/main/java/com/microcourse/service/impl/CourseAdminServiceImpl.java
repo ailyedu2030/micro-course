@@ -124,7 +124,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     }
 
     private void checkPluginGrant(Long teacherId, String courseType) {
-        if (courseType == null || "VIDEO".equals(courseType)) return;
+        /* ---- 【C-1 修复】OFFLINE 不要求互动课件插件授权 ---- */
+        /* 【根因】条件 `"VIDEO".equals(courseType)` 只排除 VIDEO，导致 OFFLINE 也被要求 interactive 插件授权 */
+        /* 【修复】改为只对 INTERACTIVE 类型检查，其他类型自动跳过 */
+        /* 【防止再发】条件翻转 `!"INTERACTIVE".equals` 确保未来新增类型也不会误触发 */
+        if (courseType == null || !"INTERACTIVE".equals(courseType)) return;
         if (SecurityUtil.isAdmin()) return;
         LambdaQueryWrapper<com.microcourse.entity.PluginGrant> q = new LambdaQueryWrapper<>();
         q.eq(com.microcourse.entity.PluginGrant::getPluginId, "interactive")
@@ -435,6 +439,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (current == null || target == null || !current.canTransitionTo(target)) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
+        // ARCHIVED 是业务终态，非软删除，不设 deleted_at
+        // ARCHIVED ≠ CLOSED：归档是有序完结，关闭是强制终止
         Integer currentVersion = course.getVersion();
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()

@@ -316,13 +316,14 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        // ★ P1-I-3 修复：已结业不可取消，已归档/已取消不可再取消
+        // ★ I-18 修复：移除 COMPLETED 阻断，让状态机做最终裁决
+        // 【根因】cancel() 中显式阻断 COMPLETED→CANCELLED，但状态机 canTransitionTo()
+        //        允许此转换（任意非终态→CANCELLED）。代码与状态机矛盾。
+        // 【修复】移除 COMPLETED 阻断块，统一由状态机决定
+        // 【防止再发】状态流转的逻辑判定以状态机枚举为唯一权威，各方法不应重复加码
         MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
         if (current == MicroSpecialtyStatus.CANCELLED || current == MicroSpecialtyStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "已取消/已归档微专业不能再取消");
-        }
-        if (current == MicroSpecialtyStatus.COMPLETED) {
-            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "已结业微专业应先归档，不能直接取消");
         }
         // P1-I-1 修复：枚举 canTransitionTo 检查
         if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.CANCELLED)) {
@@ -383,6 +384,27 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                                     .set(Enrollment::getUpdatedAt, LocalDateTime.now())
                                     .setSql("version = version + 1"));
                 }
+            }
+        }
+
+        /* ---- 【I-20修复】cancel() 未重置 is_featured/is_gold_featured ---- */
+        /* 【根因】cancel() 级联清理了 enrollment 和 course enrollment，
+         *        但未还原 is_featured/is_gold_featured 标记。取消后的微专业
+         *        不应再出现在置顶/金标展示位。
+         * 【修复】在级联清理后，重置 featured 标记
+         * 【防止再发】所有进入终态的操作必须同时清理展示位标记 */
+        if (ms.getIsFeatured() || ms.getIsGoldFeatured()) {
+            int featAffected = msRepository.update(null,
+                    new LambdaUpdateWrapper<MicroSpecialty>()
+                            .eq(MicroSpecialty::getId, id)
+                            .eq(MicroSpecialty::getVersion, oldVersion + 1)
+                            .set(MicroSpecialty::getIsFeatured, false)
+                            .set(MicroSpecialty::getIsGoldFeatured, false)
+                            .set(MicroSpecialty::getFeaturedStatus, "NONE")
+                            .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
+                            .setSql("version = version + 1"));
+            if (featAffected == 0) {
+                log.warn("cancel() 重置 featured 乐观锁冲突（不影响主流程）: msId={}", id);
             }
         }
 

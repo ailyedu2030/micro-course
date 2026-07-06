@@ -114,6 +114,10 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
             throw new BusinessException(ErrorCode.RATE_LIMITED, "发帖太频繁，请稍后再试");
         }
 
+        // C-23 修复: 检查帖子状态，只有已发布的帖子可评论
+        DiscussionPost targetPost = postRepository.selectById(req.getPostId());
+        checkCommentPostStatus(targetPost);
+
         // P1: 评论防刷—30 秒内只能评论一次
         DiscussionComment lastComment = commentRepository.selectOne(
                 new LambdaQueryWrapper<DiscussionComment>()
@@ -178,13 +182,16 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         return convertToVO(comment);
     }
 
+    /**
+     * 【根因】C-23: delete() 中 comment.getStatus() == 0 时统一抛 NOT_FOUND
+     * 【修复】区分 PENDING(0) → 提示"评论正在审核中"；null/deleted → NOT_FOUND
+     * 【防止再发】统一使用 checkCommentStatus 模式
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id, Long userId) {
         DiscussionComment comment = commentRepository.selectById(id);
-        if (comment == null || comment.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
-        }
+        checkCommentStatus(comment);
         // 所有权校验：仅作者本人或 ADMIN/TEACHER 可删除(DISC-NEW-5 修复)
         User currentUser = userRepository.selectById(userId);
         boolean isAdminOrTeacher = currentUser != null
@@ -212,9 +219,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     @Transactional(rollbackFor = Exception.class)
     public void like(Long id, Long userId) {
         DiscussionComment comment = commentRepository.selectById(id);
-        if (comment == null || comment.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
-        }
+        checkCommentStatus(comment);
         // P1-I: 使用 MyBatis-Plus LambdaQueryWrapper 替代 JdbcTemplate 硬编码 SQL
         long likeCount = commentLikeRepository.selectCount(
                 new LambdaQueryWrapper<DiscussionCommentLike>()
@@ -396,6 +401,45 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
             vo.setIsOp(false);
         }
         return vo;
+    }
+
+    /**
+     * 【根因】C-23: 评论前未检查帖子状态，导致 PENDING/REJECTED 帖子仍可接收评论
+     * 【修复】创建评论前检查帖子状态：PENDING/REJECTED 时拒绝评论
+     * 【防止再发】所有涉及帖子状态的评论操作必须调用此方法
+     */
+    private void checkCommentPostStatus(DiscussionPost post) {
+        if (post == null || post.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        Integer status = post.getStatus();
+        if (status == null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        if (status == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子正在审核中，暂时无法评论");
+        }
+        if (status == 2) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子已被驳回，暂时无法评论");
+        }
+    }
+
+    /**
+     * 【根因】C-23: 评论操作中 status==0 统一抛 NOT_FOUND，将"待审核"与"不存在"混为一谈
+     * 【修复】区分 PENDING(0) → 可感知提示，null/deleted → NOT_FOUND
+     * 【防止再发】所有涉及评论状态的操作必须调用此方法
+     */
+    private void checkCommentStatus(DiscussionComment comment) {
+        if (comment == null || comment.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
+        }
+        Integer status = comment.getStatus();
+        if (status == null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_COMMENT_NOT_FOUND);
+        }
+        if (status == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "评论正在审核中，暂时无法操作");
+        }
     }
 
     /**

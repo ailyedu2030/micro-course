@@ -258,6 +258,7 @@
             </el-col>
           </el-row>
           <el-divider content-position="left">定价规则</el-divider>
+          <!-- 【I-9 硬编码定价范围】当新增枚举值需同步更新此处 -->
           <el-row :gutter="20">
             <el-col :span="8">
               <el-form-item label="免费范围">
@@ -527,7 +528,7 @@ const handleApprove = async () => {
 const handleReject = async () => {
   // eslint-disable-next-line no-useless-assignment -- reason 在 try 块内被用户输入覆盖
   let reason = ''
-  try { const res = await ElMessageBox.prompt('请输入驳回原因', '驳回', { confirmButtonText: '确定', inputType: 'textarea' }); reason = res.value }
+  try { const res = await ElMessageBox.prompt('请输入驳回原因', '驳回', { confirmButtonText: '确定', inputType: 'textarea', inputValidator: (v) => { if (!v || v.trim().length < 10) { return '驳回原因至少10个字' } return true } }); reason = res.value }
   catch { return }
   try { await rejectCourse(courseId.value, reason); ElMessage.success('已驳回'); fetchCourse() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }

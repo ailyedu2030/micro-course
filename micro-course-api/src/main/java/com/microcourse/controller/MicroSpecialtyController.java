@@ -196,6 +196,14 @@ public class MicroSpecialtyController {
         return R.ok();
     }
 
+    /** 【C-17】重新开课：COMPLETED/CANCELLED → APPROVED */
+    @PostMapping("/{id}/reopen")
+    @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")
+    public R<Void> reopen(@PathVariable Long id) {
+        microSpecialtyService.reopen(id);
+        return R.ok();
+    }
+
     /** 归档 */
     @PostMapping("/{id}/archive")
     @PreAuthorize("hasAnyRole('ACADEMIC','ADMIN')")

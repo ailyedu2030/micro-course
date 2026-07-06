@@ -135,7 +135,18 @@ public class CoursePricingServiceImpl implements CoursePricingService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "驳回原因不能为空");
             }
             course.setPricingStatus(PRICING_STATUS_REJECTED);
-            course.setRejectReason(XssSanitizer.sanitizePlainText(reason));
+            /* ---- 【I-11 修复】定价驳回原因追加而非覆盖 ---- */
+            /* 【根因】reviewPricing() 使用课程表的 reject_reason 字段，与主审批共享同一字段 */
+            /*        定价驳回时会覆盖主审批的驳回原因 */
+            /* 【修复】将定价驳回原因追加到原有驳回原因的末尾，而非直接覆盖 */
+            /* 【防止再发】共享字段的写入操作必须考虑其他功能模块的使用场景 */
+            String existingReason = course.getRejectReason();
+            String pricingReason = XssSanitizer.sanitizePlainText(reason);
+            if (existingReason != null && !existingReason.isBlank()) {
+                course.setRejectReason(existingReason + " | 定价驳回: " + pricingReason);
+            } else {
+                course.setRejectReason("定价驳回: " + pricingReason);
+            }
         }
         course.setPricingReviewedAt(LocalDateTime.now());
         course.setPricingReviewedBy(SecurityUtil.getCurrentUserId());
@@ -210,10 +221,15 @@ public class CoursePricingServiceImpl implements CoursePricingService {
         vo.setDiscountScope(course.getDiscountScope());
         vo.setDiscountPercent(course.getDiscountPercent());
 
-        if (PRICING_STATUS_REJECTED.equals(course.getPricingStatus())) {
+        /* ---- 【C-6(跨域)修复】DRAFT/PENDING 定价未审批即可生效 ---- */
+        /* 【根因】getMyPricing() 只检查了 REJECTED 状态返回全价，DRAFT/PENDING
+         *        的定价未审批即被学生看到并购买（免费/折扣直接应用）
+         * 【修复】若定价状态不是 APPROVED，返回全价并标注"定价待审批"
+         * 【防止再发】所有价格展示逻辑必须以 pricingStatus == APPROVED 为生效前提 */
+        if (!PRICING_STATUS_APPROVED.equals(course.getPricingStatus())) {
             vo.setFinalPrice(listPrice);
             vo.setFree(false);
-            vo.setFeeNote("定价已被驳回，请联系教师或管理员");
+            vo.setFeeNote("定价待审批");
             return vo;
         }
 

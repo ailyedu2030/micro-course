@@ -2,7 +2,6 @@ package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.EnrollmentCreateRequest;
@@ -14,7 +13,6 @@ import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Order;
 import com.microcourse.entity.Payment;
 import com.microcourse.entity.CourseBundleItem;
-import com.microcourse.entity.Enrollment;
 import com.microcourse.enums.OrderStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -46,8 +44,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -219,9 +215,12 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public PageResult<OrderVO> getMyOrders(Long userId, int page, int size) {
+    public PageResult<OrderVO> getMyOrders(Long userId, int page, int size, Long courseId, String status) {
         LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Order::getUserId, userId).orderByDesc(Order::getCreatedAt);
+        wrapper.eq(Order::getUserId, userId)
+               .eq(courseId != null, Order::getCourseId, courseId)
+               .eq(status != null && !status.isBlank(), Order::getStatus, status)
+               .orderByDesc(Order::getCreatedAt);
         IPage<Order> ipage = orderRepository.selectPage(new Page<>(page + 1, size), wrapper);
 
         // N+1 修复：批量预加载 course 标题
@@ -268,20 +267,13 @@ public class OrderServiceImpl implements OrderService {
             autoEnroll(order.getUserId(), order.getCourseId());
         }
 
-        // SECURITY: CAS 乐观锁更新状态——防止并发重复支付
+        // C-28 修复：使用 @Version 乐观锁替代手动 CAS（updateById 自动拼接 WHERE version = ?）
         String transactionId = "TXN" + UUID.randomUUID().toString().replace("-", "").substring(0, 24).toUpperCase();
         order.setStatus("PAID");
         order.setPaymentMethod(paymentMethod);
         order.setPaidAt(LocalDateTime.now());
         order.setUpdatedAt(LocalDateTime.now());
-        int affected = orderRepository.update(null,
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
-                        .eq(Order::getId, orderId)
-                        .eq(Order::getStatus, "PENDING")
-                        .set(Order::getStatus, "PAID")
-                        .set(Order::getPaymentMethod, paymentMethod)
-                        .set(Order::getPaidAt, LocalDateTime.now())
-                        .set(Order::getUpdatedAt, LocalDateTime.now()));
+        int affected = orderRepository.updateById(order);
         if (affected == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更，请刷新后重试");
         }
@@ -311,15 +303,10 @@ public class OrderServiceImpl implements OrderService {
         if (currentStatus == null || !currentStatus.canTransitionTo(OrderStatus.CANCELLED)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "订单当前状态不可取消");
         }
+        // C-28 修复：使用 @Version 乐观锁替代手动 CAS
         order.setStatus(OrderStatus.CANCELLED.getValue());
         order.setUpdatedAt(LocalDateTime.now());
-        // 用 CAS 更新防止并发
-        int affected = orderRepository.update(null,
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
-                        .eq(Order::getId, orderId)
-                        .eq(Order::getStatus, OrderStatus.PENDING.getValue())
-                        .set(Order::getStatus, OrderStatus.CANCELLED.getValue())
-                        .set(Order::getUpdatedAt, LocalDateTime.now()));
+        int affected = orderRepository.updateById(order);
         if (affected == 0) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更");
         return toVO(orderRepository.selectById(orderId));
     }
@@ -350,13 +337,10 @@ public class OrderServiceImpl implements OrderService {
                 throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "订单当前状态不可退款");
             }
 
-            // CAS 乐观锁更新状态 PAID → REFUNDED
-            int affected = orderRepository.update(null,
-                    new LambdaUpdateWrapper<Order>()
-                            .eq(Order::getId, orderId)
-                            .eq(Order::getStatus, "PAID")
-                            .set(Order::getStatus, "REFUNDED")
-                            .set(Order::getUpdatedAt, LocalDateTime.now()));
+            // C-28 修复：使用 @Version 乐观锁替代手动 CAS
+            order.setStatus("REFUNDED");
+            order.setUpdatedAt(LocalDateTime.now());
+            int affected = orderRepository.updateById(order);
             if (affected == 0) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更");
             }
@@ -391,7 +375,10 @@ public class OrderServiceImpl implements OrderService {
                 List<Enrollment> bundleEnrollments = enrollmentRepository.selectList(bundleProgressWrapper);
                 for (Enrollment be : bundleEnrollments) {
                     if (be.getProgress() != null && be.getProgress() > 10.0) {
-                        throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "套餐内课程学习进度已超过10%，无法退款");
+                        Course c = courseRepository.selectById(be.getCourseId());
+                        String courseName = (c != null) ? c.getTitle() : ("课程#" + be.getCourseId());
+                        throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                                "套餐内包含学习进度超过10%的课程（" + courseName + "），无法整体退款。如需部分退款请联系管理员");
                     }
                 }
             }
@@ -545,18 +532,15 @@ public class OrderServiceImpl implements OrderService {
             autoEnroll(order.getUserId(), order.getCourseId());
         }
 
-        // CAS 更新
+        // C-28 修复：使用 @Version 乐观锁替代手动 CAS
         String transactionId = "TXN" + UUID.randomUUID().toString().replace("-", "").substring(0, 24).toUpperCase();
-        int affected = orderRepository.update(null,
-                new LambdaUpdateWrapper<Order>()
-                        .eq(Order::getId, orderId)
-                        .eq(Order::getStatus, "PENDING")
-                        .set(Order::getStatus, "PAID")
-                        .set(Order::getPaymentMethod, paymentMethod)
-                        .set(Order::getPaidAt, LocalDateTime.now())
-                        .set(Order::getUpdatedAt, LocalDateTime.now()));
+        order.setStatus("PAID");
+        order.setPaymentMethod(paymentMethod);
+        order.setPaidAt(LocalDateTime.now());
+        order.setUpdatedAt(LocalDateTime.now());
+        int affected = orderRepository.updateById(order);
         if (affected == 0) {
-            log.warn("[processPayment] CAS failed, order already paid: id={}", orderId);
+            log.warn("[processPayment] @Version optimistic lock failed, order already modified: id={}", orderId);
             return;
         }
 
@@ -730,13 +714,11 @@ public class OrderServiceImpl implements OrderService {
             }
 
             int cancelledCount = 0;
-            for (Order order : expiredOrders) {
-                int affected = orderRepository.update(null,
-                        new LambdaUpdateWrapper<Order>()
-                                .eq(Order::getId, order.getId())
-                                .eq(Order::getStatus, OrderStatus.PENDING.getValue())
-                                .set(Order::getStatus, OrderStatus.CANCELLED.getValue())
-                                .set(Order::getUpdatedAt, LocalDateTime.now()));
+            for (Order expiredOrder : expiredOrders) {
+                // C-28 修复：使用 @Version 乐观锁替代手动 CAS
+                expiredOrder.setStatus(OrderStatus.CANCELLED.getValue());
+                expiredOrder.setUpdatedAt(LocalDateTime.now());
+                int affected = orderRepository.updateById(expiredOrder);
                 if (affected > 0) {
                     cancelledCount++;
                 }

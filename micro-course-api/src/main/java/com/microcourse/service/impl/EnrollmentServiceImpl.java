@@ -157,27 +157,23 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                         .eq(Enrollment::getCourseId, request.getCourseId()));
         if (existingEnrollment != null) {
             if (EnrollmentStatus.CANCELLED.getValue().equals(existingEnrollment.getEnrollmentStatus())) {
-                LOG.info("退课后重新选课: userId={}, courseId={}, 软更新旧 enrollmentId={}",
+                /* ---- 【P0-3 修复】REENROLLING 路径改用物理删除 ---- */
+                /* 【根因】软更新为 REENROLLING 后，atomicInsertIfCapacity 中的 NOT EXISTS 子句
+                   因旧记录的 deleted_at IS NULL 而阻挡新记录插入，导致 enrollment 永久卡在 REENROLLING */
+                /* 【修复】物理删除旧记录后从头走完整选课流程 */
+                /* 【防止再发】物理删除后 existingEnrollment=null 跳过幂等返回，从头创建新记录 */
+                LOG.info("退课后重新选课: userId={}, courseId={}, 物理删除旧 enrollmentId={}",
                     request.getUserId(), request.getCourseId(), existingEnrollment.getId());
-                enrollmentRepository.update(null,
-                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Enrollment>()
-                        .eq(Enrollment::getId, existingEnrollment.getId())
-                        .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
-                        .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.REENROLLING.getValue())
-                        .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
-                LOG.info("退课后重新选课-软更新旧 enrollment 为 REENROLLING: enrollmentId={}", existingEnrollment.getId());
-                // 注意: cancelEnrollment 已 atomicDecrementStudentCount, 这里不要再 +1
-                // 走下面的正常 enroll 流程会自动 +1
+                enrollmentRepository.deleteById(existingEnrollment.getId()); // 物理删除
+                existingEnrollment = null; // 跳过幂等返回，继续走完整 enroll 流程
             } else {
                 // 其他状态 (APPROVED/COMPLETED/WAITLIST/SUSPENDED) 幂等返回
                 return convertToVO(existingEnrollment);
             }
         }
         // SECURITY: 付费课程必须通过订单支付,不能直接选课
-        Course course = courseRepository.selectById(request.getCourseId());
-        if (course == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        }
+        // I-13 修复: 从 lockedCourse（L137 的 selectByIdForUpdate 结果）中提取课程数据，复用行锁结果避免重复查询
+        String courseTitle = (String) lockedCourse.get("title");
         // P0-06 修复：若 sourceChannel 为 PAYMENT，验证用户有该课程的 PAID 订单
         if ("PAYMENT".equals(request.getSourceChannel())) {
             Long paidCount = orderRepository.selectCount(new LambdaQueryWrapper<Order>()
@@ -245,8 +241,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                 request.getUserId(),
                                 NotificationType.ENROLLMENT_WAITLIST,
                                 "已进入候补队列",
-                                "您已进入《" + course.getTitle() + "》的候补队列，当前位置 #" + position,
-                                course.getId());
+                                "您已进入《" + courseTitle + "》的候补队列，当前位置 #" + position,
+                                request.getCourseId());
                         recordHistory(waitlistEnrollment.getId(), null, EnrollmentStatus.WAITLIST, request.getUserId(), "WAITLIST");
                         metrics.recordWaitlist();
                         return convertToVO(waitlistEnrollment);
@@ -273,8 +269,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 request.getUserId(),
                 NotificationType.ENROLLMENT_SUCCESS,
                 "选课成功",
-                "您已成功选课《" + course.getTitle() + "》，开始学习吧！",
-                course.getId());
+                "您已成功选课《" + courseTitle + "》，开始学习吧！",
+                                request.getCourseId());
         return convertToVO(newEnrollment);
     }
     @Override
@@ -328,7 +324,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (request.getCompleted() != null) {
             enrollment.setCompleted(request.getCompleted());
             if (request.getCompleted()) {
+                // C-13 修复（路径 A）：completed=true 时同步设置 enrollmentStatus=COMPLETED，消除双路径不同步
                 enrollment.setCompletedAt(LocalDateTime.now());
+                enrollment.setEnrollmentStatus(EnrollmentStatus.COMPLETED.getValue());
                 try {
                     certificateService.issueCertificate(enrollment.getUserId(), enrollment.getCourseId());
                 } catch (Exception e) {
@@ -352,7 +350,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
         // T15: 成绩锁定 — COMPLETED 状态后禁止修改成绩
         EnrollmentStatus currentEnrollStatus = EnrollmentStatus.fromString(enrollment.getEnrollmentStatus());
-        boolean isCompleted = currentEnrollStatus == EnrollmentStatus.COMPLETED;
+        // C-14 修复：同时检查 enrollmentStatus==COMPLETED 和 completed 布尔字段，覆盖双路径不同步导致的遗漏
+        boolean isCompleted = currentEnrollStatus == EnrollmentStatus.COMPLETED
+                || Boolean.TRUE.equals(enrollment.getCompleted());
         if (isCompleted && (request.getFinalScore() != null || request.getFinalGrade() != null)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程已完成，成绩已锁定，无法修改");
         }
@@ -379,6 +379,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 enrollment.setEnrollmentStatus(targetStatus.getValue());
             }
             // currentStatus == targetStatus：同状态幂等，无变更、无审计
+            // C-13 修复（路径 B）：enrollmentStatus=COMPLETED 时同步设置 completed=true、completedAt=now()
+            if (targetStatus == EnrollmentStatus.COMPLETED) {
+                enrollment.setCompleted(true);
+                enrollment.setCompletedAt(LocalDateTime.now());
+            }
             // P1I-028: enrollmentStatus 转换为 COMPLETED 时触发徽章检查
             if (targetStatus == EnrollmentStatus.COMPLETED && enrollment.getUserId() != null) {
                 try {
@@ -429,6 +434,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         // 重复取消（fromStatus 已是 CANCELLED）幂等不重复扣减；GREATEST 兜底不会出现负数。
         boolean wasEnrolled = (fromStatus != EnrollmentStatus.CANCELLED
                 && fromStatus != EnrollmentStatus.WAITLIST);
+        // C-12 修复：退课前进度检查 — 超过 50% 不允许退课
+        if (wasEnrolled && enrollment.getProgress() != null && enrollment.getProgress() > 50.0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程学习进度已超过50%，无法退课");
+        }
         if (wasEnrolled && enrollment.getCourseId() != null) {
             courseRepository.atomicDecrementStudentCount(enrollment.getCourseId());
         }
@@ -449,8 +458,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     .eq(Order::getStatus, "PAID");
             Order paidOrder = orderRepository.selectOne(orderWrapper);
             if (paidOrder != null) {
-                REFUND_REENTRANT.set(true);
+                // P2-5 修复: REFUND_REENTRANT.set(true) 移至 try 内，确保 finally 中 remove() 始终执行
                 try {
+                    REFUND_REENTRANT.set(true);
                     orderService.refund(paidOrder.getId());
                     LOG.info("[P0-2] 退课时自动退款成功 enrollmentId={} orderId={}", enrollment.getId(), paidOrder.getId());
                 } catch (Exception e) {

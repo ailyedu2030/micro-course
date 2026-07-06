@@ -494,6 +494,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments, cancelEnrollment } from '../../api/enrollment'
+import { getMyOrders } from '../../api/order'
 import { getCompletion, getLearningProgress, batchGetLearningProgress } from '../../api/learning-progress'
 import { getChapters } from '../../api/chapter'
 import { getMyFavorites } from '../../api/favorite'
@@ -839,7 +840,7 @@ const handleContinue = async (courseId) => {
   router.push(`/student/learning?courseId=${courseId}`)
 }
 
-// 客户体验修复 v1.7.0: 退课处理 (P0-UX-U4)
+// P2-10 修复: 退课处理，根据是否有付费订单动态提示退款信息
 // course 对象来自 API 返回的选课记录,course.id = enrollmentId
 const handleDropOut = async (course) => {
   if (!course || !course.id) {
@@ -847,8 +848,20 @@ const handleDropOut = async (course) => {
     return
   }
   try {
+    // P2-10: 先查询该课程是否有 PAID 订单，若有则显示含退款说明的确认文案
+    let hasPaidOrder = false
+    try {
+      const orderRes = await getMyOrders({ courseId: course.courseId, status: 'PAID', page: 0, size: 1 })
+      hasPaidOrder = orderRes?.data?.totalElements > 0
+    } catch (orderErr) {
+      // 订单查询失败不阻断退课流程，使用默认文案
+      console.warn('[MyCourses] 查询订单失败', orderErr)
+    }
+    const message = hasPaidOrder
+      ? '确认退课？退课后课程将不再显示在您的课程列表中，并将同步发起退款。'
+      : '确认退课？退课后课程将不再显示在您的课程列表中。'
     await ElMessageBox.confirm(
-      `确认退课？退课后课程将不再显示在您的课程列表中`,
+      message,
       '退课确认',
       { confirmButtonText: '确认退课', cancelButtonText: '取消', type: 'warning' }
     )

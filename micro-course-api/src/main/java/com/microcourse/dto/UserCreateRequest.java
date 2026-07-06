@@ -13,7 +13,11 @@ public class UserCreateRequest {
     private String username;
 
     @NotBlank(message = "密码不能为空")
-    @Size(min = 6, max = 100, message = "密码长度为6-100位")
+    /* ---- 【C-16 修复】密码长度校验与前端一致 ---- */
+    /* 【根因】@Size(min=6) 与 Pattern `.{8,}` 冲突，且与前端 min=8, max=32 不一致 */
+    /* 【修复】统一为 min=8, max=32 */
+    /* 【防止再发】前后端校验规则应共享同一份定义 */
+    @Size(min = 8, max = 32, message = "密码长度为8-32位")
     private String password;
 
     @NotBlank(message = "真实姓名不能为空")

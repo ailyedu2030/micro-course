@@ -105,6 +105,25 @@ public class UserStatusServiceImpl implements UserStatusService {
             case ACTIVE:
                 user.setStatus(1);
                 user.setDeletedAt(null);
+                /* ---- 【I-14(跨域)修复】DISABLED→ACTIVE 无 enrollment 恢复 ---- */
+                /* 【根因】用户从 DISABLED(2) 恢复为 ACTIVE(1) 时，
+                 *        原 cascadeDisableEnrollments() 级联暂停的选课记录(SUSPENDED)
+                 *        不会自动恢复为 APPROVED
+                 * 【修复】恢复所有 SUSPENDED 状态的 enrollment 为 APPROVED
+                 * 【防止再发】所有状态变更的逆向操作必须逆向前置操作的副作用 */
+                try {
+                    int recovered = enrollmentRepository.update(null,
+                            new LambdaUpdateWrapper<Enrollment>()
+                                    .eq(Enrollment::getUserId, id)
+                                    .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.SUSPENDED.getValue())
+                                    .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.APPROVED.getValue())
+                                    .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
+                    if (recovered > 0) {
+                        log.info("用户激活恢复已暂停选课: userId={}, count={}", id, recovered);
+                    }
+                } catch (Exception e) {
+                    log.error("恢复已暂停选课失败 userId={}，不影响主流程", id, e);
+                }
                 break;
             case DISABLED:
                 user.setStatus(2);
@@ -168,8 +187,19 @@ public class UserStatusServiceImpl implements UserStatusService {
         Integer oldStatus = user.getTeacherStatus();
         Integer newStatus = request.getTeacherStatus();
 
-        if (newStatus < 0 || newStatus > 2) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "教师审核状态值无效，应为 0/1/2");
+        /* ---- 【I-15 修复】updateTeacherStatus 增加状态转换白名单 ---- */
+        /* 【根因】updateTeacherStatus() 只校验 0 <= newStatus <= 2，不做状态转换规则检查 */
+        /*        允许任意状态跳转，如直接从"待审核"跳到"已通过"再跳回"待审核"等非法操作 */
+        /* 【修复】增加状态转换白名单，只有合法转换才允许 */
+        /* 【防止再发】所有状态变更必须定义合法转换矩阵 */
+        java.util.Map<Integer, java.util.Set<Integer>> validTransitions = java.util.Map.of(
+            0, java.util.Set.of(1, 2),  // 待审核→通过/驳回
+            1, java.util.Set.of(0),      // 已通过→待审核（撤销审核）
+            2, java.util.Set.of(0)       // 已驳回→待审核（重新提交）
+        );
+        java.util.Set<Integer> allowed = validTransitions.get(oldStatus);
+        if (allowed == null || !allowed.contains(newStatus)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法的教师审核状态转换");
         }
 
         user.setTeacherStatus(newStatus);

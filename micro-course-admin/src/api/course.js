@@ -62,14 +62,13 @@ export function getCourseStats(id) { return request({ method: 'GET', url: `/cour
 export function unpublishCourse(id) { return request({ method: 'POST', url: `/courses/${id}/unpublish` }) }
 export function getPendingReviewCourses(params) { return request({ method: 'GET', url: '/courses/pending-review', params }) }
 
-// 批量通过（串行调用）
-export async function batchApproveCourses(ids) {
-  let success = 0; let failed = 0
-  for (const id of ids) {
-    try { await approveCourse(id); success++ }
-    catch { failed++ }
-  }
-  return { success, failed }
+// 批量通过（调用后端批量端点 POST /api/courses/batch-approve）
+export function batchApproveCourses(ids, idVersionMap) {
+  return request({
+    method: 'POST',
+    url: '/courses/batch-approve',
+    data: { ids, idVersionMap }
+  })
 }
 
 // 批量驳回（串行调用）

@@ -835,7 +835,7 @@
 
 | Major | /api/majors | 5 | - |
 
-| MicroSpecialty | /api/micro-specialties | 27 | - |
+| MicroSpecialty | /api/micro-specialties | 28 | - |
 
 | MicroSpecialtyEnrollment | /api/micro-specialty-enrollments | 8 | - |
 

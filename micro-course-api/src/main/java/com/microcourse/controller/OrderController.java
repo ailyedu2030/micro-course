@@ -81,12 +81,19 @@ public class OrderController {
         return R.ok(orderService.getOrder(id));
     }
 
+    /**
+     * 【根因】P2-10: 退课确认文案无法根据是否有付费订单动态提示退款信息
+     * 【修复】增加 courseId/status 可选筛选参数，前端可查询某课程是否有 PAID 订单
+     * 【防止再发】分页查询接口尽量提供按需筛选能力
+     */
     @GetMapping("/my")
     @PreAuthorize("hasAnyRole('STUDENT')")
     public R<PageResult<OrderVO>> getMyOrders(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
-        return R.ok(orderService.getMyOrders(SecurityUtil.getCurrentUserId(), page, size));
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size,
+            @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) String status) {
+        return R.ok(orderService.getMyOrders(SecurityUtil.getCurrentUserId(), page, size, courseId, status));
     }
 
     @PostMapping("/{id}/pay")

@@ -495,7 +495,7 @@ const fetchTeacher = async () => {
 const checkEnrollment = async () => {
   if (!isLoggedIn.value || !courseId.value) return
   const uid = userStore.userInfo?.id; if (!uid) return
-  try { const { data } = await getMyEnrollments(); const list = Array.isArray(data) ? data : (data?.items || []); const match = list.find(e => String(e.courseId) === String(courseId.value)); isEnrolled.value = match && ['ENROLLED','APPROVED','COMPLETED','WAITLIST'].includes(match.enrollmentStatus); isWaitlisted.value = match?.enrollmentStatus === 'WAITLIST' }
+  try { const { data } = await getMyEnrollments(); const list = Array.isArray(data) ? data : (data?.items || []); const match = list.find(e => String(e.courseId) === String(courseId.value)); isEnrolled.value = match && ['ENROLLED','APPROVED','COMPLETED','WAITLIST','SUSPENDED'].includes(match.enrollmentStatus); isWaitlisted.value = match?.enrollmentStatus === 'WAITLIST' }
   catch (e) { console.warn('[CourseDetail] checkEnrollment 获取选课状态失败', e); isEnrolled.value = false }
 }
 
@@ -529,7 +529,7 @@ const handleEnroll = async () => {
     // 免费课程：增加确认环节
     const freeNote = pricingInfo.value?.feeNote ? `（${pricingInfo.value.feeNote}）` : ''
     await ElMessageBox.confirm(`确认加入学习？${freeNote}`, '加入课程', { confirmButtonText: '确认加入', cancelButtonText: '取消', type: 'info' })
-    await enrollApi({ userId: uid, courseId: courseId.value }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push(enrollTarget())
+    await enrollApi({ userId: uid, courseId: courseId.value, sourceChannel: 'SEARCH' }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push(enrollTarget())
   } catch (e) {
     if (e?.toString().includes('cancel')) {
       ElMessage.info('已取消支付')

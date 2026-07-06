@@ -65,9 +65,12 @@ public class DiscussionAdminController {
     /**
      * PUT /api/discussions/{id}/approve
      * 审核通过
+     * 【根因】I-1: @PreAuthorize 只有 ADMIN/ACADEMIC，TEACHER 被排除，但教师应可审核自己课程的帖子
+     * 【修复】添加 TEACHER 角色
+     * 【防止再发】审核相关端点统一对 TEACHER 开放
      */
     @PutMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC','TEACHER')")
     public R<Void> approve(@PathVariable Long id) {
         postService.updateStatus(id, "APPROVED");
         return R.ok();
@@ -76,9 +79,12 @@ public class DiscussionAdminController {
     /**
      * PUT /api/discussions/{id}/reject
      * 审核驳回（P1C-060: 必填驳回原因）
+     * 【根因】I-1: @PreAuthorize 只有 ADMIN/ACADEMIC，TEACHER 被排除
+     * 【修复】添加 TEACHER 角色
+     * 【防止再发】审核相关端点统一对 TEACHER 开放
      */
     @PutMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC','TEACHER')")
     public R<Void> reject(@PathVariable Long id,
                           @RequestParam @NotBlank(message = "驳回原因不能为空") String reason) {
         postService.rejectWithReason(id, reason);

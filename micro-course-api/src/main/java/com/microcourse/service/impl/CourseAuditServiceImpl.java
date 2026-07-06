@@ -167,6 +167,22 @@ public class CourseAuditServiceImpl implements CourseAuditService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
+        /* ---- 【CR-2 修复】publish 缺少 assertNotSelf ---- */
+        /* 【根因】publish() 中没有调用 assertNotSelf，ADMIN 可发布自己审核通过的课程 */
+        /* 【修复】增加 assertNotSelf 防止管理员发布自己审核通过的课程 */
+        /* 【防止再发】所有敏感状态变更操作统一使用 assertNotSelf 阻断 */
+        SecurityUtil.assertNotSelf(SecurityUtil.getCurrentUserId(), course.getTeacherId(), "管理员不能发布自己审核通过的课程");
+
+        /* ---- 【I-8 修复】发布时检查定价审批状态 ---- */
+        /* 【根因】定价状态（DRAFT/PENDING/APPROVED/REJECTED）与课程主状态完全独立 */
+        /*        可能出现课程已发布但定价仍是 DRAFT 的不一致场景 */
+        /* 【修复】发布时若课程非免费且有定价状态，要求定价已审批 */
+        /* 【防止再发】发布操作必须校验定价状态与主状态机的一致性 */
+        if (!Boolean.TRUE.equals(course.getIsFree()) && course.getPricingStatus() != null
+                && !"APPROVED".equals(course.getPricingStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程定价尚未审批通过，无法发布");
+        }
+
         checkPluginGrant(course.getTeacherId(), course.getCourseType());
 
         if ("INTERACTIVE".equals(course.getCourseType())) {
@@ -279,7 +295,11 @@ public class CourseAuditServiceImpl implements CourseAuditService {
     }
 
     private void checkPluginGrant(Long teacherId, String courseType) {
-        if (courseType == null || "VIDEO".equals(courseType)) return;
+        /* ---- 【C-1 修复】OFFLINE 不要求互动课件插件授权 ---- */
+        /* 【根因】条件 `"VIDEO".equals(courseType)` 只排除 VIDEO，导致 OFFLINE 也被要求 interactive 插件授权 */
+        /* 【修复】改为只对 INTERACTIVE 类型检查，其他类型自动跳过 */
+        /* 【防止再发】条件翻转 `!"INTERACTIVE".equals` 确保未来新增类型也不会误触发 */
+        if (courseType == null || !"INTERACTIVE".equals(courseType)) return;
         if (SecurityUtil.isAdmin()) return;
         LambdaQueryWrapper<PluginGrant> q = new LambdaQueryWrapper<>();
         q.eq(PluginGrant::getPluginId, "interactive")

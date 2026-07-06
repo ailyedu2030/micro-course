@@ -245,14 +245,19 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Transactional(readOnly = true)
     public DiscussionPostVO getById(Long id) {
         DiscussionPost post = postRepository.selectById(id);
-        // P0-7: 区分"不存在"和"待审核"
-        if (post == null) {
+        // C-23 修复: 区分"不存在"、"待审核"、"已驳回"
+        if (post == null || post.getDeletedAt() != null) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
         }
-        // P0-2: 区分权限 —— 管理员/教师/教务可查看待审核帖子，学生不可
+        // 管理员/教师/教务可查看待审核帖子，学生不可
         boolean isManager = SecurityUtil.isAdmin() || SecurityUtil.hasRole("TEACHER") || SecurityUtil.hasRole("ACADEMIC");
-        if (!isManager && post.getStatus() != null && post.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子正在审核中，暂时无法查看");
+        if (post.getStatus() != null) {
+            if (post.getStatus() == 0 && !isManager) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子正在审核中，暂时无法查看");
+            }
+            if (post.getStatus() == 2 && !isManager) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子已被驳回");
+            }
         }
 
         // N+1 修复：批量预加载 post author 和 comment authors
@@ -368,13 +373,16 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         return convertToVO(post);
     }
 
+    /**
+     * 【根因】update() 中 post.getStatus() == 0 时统一抛 NOT_FOUND，将"待审核"与"不存在"混为一谈
+     * 【修复】区分 PENDING(0) → 提示"帖子正在审核中"；REJECTED(2) → 提示"帖子已被驳回"；null/deleted → NOT_FOUND
+     * 【防止再发】所有涉及帖子状态的操作使用统一的状态检查模式
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DiscussionPostVO update(Long id, PostUpdateRequest request, Long userId) {
         DiscussionPost post = postRepository.selectById(id);
-        if (post == null || post.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
-        }
+        checkPostStatus(post);
         // 检查是否是作者或管理员
         User user = userRepository.selectById(userId);
         boolean isAdmin = user != null && user.getRole() == UserRole.ADMIN;
@@ -400,9 +408,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id, Long userId) {
         DiscussionPost post = postRepository.selectById(id);
-        if (post == null || post.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
-        }
+        checkPostStatus(post);
         // 检查是否是作者或管理员
         User user = userRepository.selectById(userId);
         boolean isAdmin = user != null && user.getRole() == UserRole.ADMIN;
@@ -418,9 +424,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Transactional(rollbackFor = Exception.class)
     public void pin(Long id) {
         DiscussionPost post = postRepository.selectById(id);
-        if (post == null || post.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
-        }
+        checkPostStatus(post);
         // 仅课程授课教师可置顶
         if (post.getCourseId() != null && !SecurityUtil.isAdmin()) {
             Course c = courseRepository.selectById(post.getCourseId());
@@ -438,9 +442,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Transactional(rollbackFor = Exception.class)
     public void updatePin(Long id, boolean pinned) {
         DiscussionPost post = postRepository.selectById(id);
-        if (post == null || post.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
-        }
+        checkPostStatus(post);
         // R12 P1-C-6: 仅课程授课教师可置顶
         if (post.getCourseId() != null && !SecurityUtil.isAdmin()) {
             Course c = courseRepository.selectById(post.getCourseId());
@@ -457,9 +459,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Transactional(rollbackFor = Exception.class)
     public void updateEssence(Long id, boolean essence) {
         DiscussionPost post = postRepository.selectById(id);
-        if (post == null || post.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
-        }
+        checkPostStatus(post);
         // R12 P1-C-6: 仅课程授课教师可设精华
         if (post.getCourseId() != null && !SecurityUtil.isAdmin()) {
             Course c = courseRepository.selectById(post.getCourseId());
@@ -482,6 +482,11 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         if (post == null) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
         }
+        /* ---- 【CR-1 修复】讨论审核 assertNotSelf ---- */
+        /* 【根因】课程审核有 assertNotSelf 防止教师审批自己的课程，但讨论审核没有此机制 */
+        /* 【修复】增加 assertNotSelf 检查：发帖者与审核者不能是同一人 */
+        /* 【防止再发】所有审核类操作统一使用 assertNotSelf 阻断自审批 */
+        SecurityUtil.assertNotSelf(SecurityUtil.getCurrentUserId(), post.getUserId(), "不能审核自己的讨论帖");
         // P1C-060: 只能驳回待审核(PENDING=0)或已发布(PUBLISHED=1)的帖子
         int current = post.getStatus() != null ? post.getStatus() : 0;
         if (current != 0 && current != 1) {
@@ -499,6 +504,13 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         DiscussionPost post = postRepository.selectById(id);
         if (post == null) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        /* ---- 【CR-1 修复】讨论审核 assertNotSelf ---- */
+        /* 【根因】课程审核有 assertNotSelf 防止教师审批自己的课程，但讨论审核没有此机制 */
+        /* 【修复】增加 assertNotSelf 检查：发帖者与审核者不能是同一人 */
+        /* 【防止再发】所有审核类操作统一使用 assertNotSelf 阻断自审批 */
+        if ("APPROVED".equals(status) || "PUBLISHED".equals(status)) {
+            SecurityUtil.assertNotSelf(SecurityUtil.getCurrentUserId(), post.getUserId(), "不能审核自己的讨论帖");
         }
         // P1#10: REJECTED 与 DELETED 拆为不同状态码（2=REJECTED 审核驳回，3=DELETED 用户删除）
         Integer target = switch (status) {
@@ -556,13 +568,32 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     @Transactional(rollbackFor = Exception.class)
     public void like(Long postId, Long userId) {
         DiscussionPost post = postRepository.selectById(postId);
-        if (post == null || post.getStatus() == 0 || post.getStatus() == 2 || post.getStatus() == 3) {
-            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
-        }
+        checkPostStatus(post);
         postRepository.update(null,
                 new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<DiscussionPost>()
                         .eq(DiscussionPost::getId, postId)
                         .setSql("like_count = COALESCE(like_count, 0) + 1"));
+    }
+
+    /**
+     * 【根因】C-23: 多个方法中 status==0 统一抛 NOT_FOUND，将"待审核"与"不存在"混为一谈
+     * 【修复】统一状态检查：PENDING(0) → 可感知提示，REJECTED(2) → 可感知提示，null/deleted → NOT_FOUND
+     * 【防止再发】所有涉及帖子状态的操作必须调用此方法
+     */
+    private void checkPostStatus(DiscussionPost post) {
+        if (post == null || post.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        Integer status = post.getStatus();
+        if (status == null) {
+            throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
+        }
+        if (status == 0) { // PENDING
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子正在审核中，暂时无法操作");
+        }
+        if (status == 2) { // REJECTED
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "帖子已被驳回");
+        }
     }
 
     private DiscussionPostVO convertToVO(DiscussionPost post) {

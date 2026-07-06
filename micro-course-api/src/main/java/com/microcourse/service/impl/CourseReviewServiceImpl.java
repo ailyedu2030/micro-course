@@ -22,6 +22,7 @@ import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseReviewService;
 import com.microcourse.service.NotificationService;
+import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -278,6 +279,11 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         if (review == null) {
             throw new BusinessException(ErrorCode.COURSE_REVIEW_NOT_FOUND);
         }
+        /* ---- 【CR-1 修复】评价审核 assertNotSelf ---- */
+        /* 【根因】课程审核有 assertNotSelf 防止教师审批自己的课程，但评价审核没有此机制 */
+        /* 【修复】增加 assertNotSelf 检查：评价创建者与审核者不能是同一人 */
+        /* 【防止再发】所有审核类操作统一使用 assertNotSelf 阻断自审批 */
+        SecurityUtil.assertNotSelf(SecurityUtil.getCurrentUserId(), review.getUserId(), "不能审核自己的课程评价");
         review.setStatus(1); // APPROVED
         review.setUpdatedAt(LocalDateTime.now());
         courseReviewRepository.updateById(review);
@@ -305,6 +311,11 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         if (review == null) {
             throw new BusinessException(ErrorCode.COURSE_REVIEW_NOT_FOUND);
         }
+        /* ---- 【CR-1 修复】评价审核 assertNotSelf ---- */
+        /* 【根因】课程审核有 assertNotSelf 防止教师审批自己的课程，但评价审核没有此机制 */
+        /* 【修复】增加 assertNotSelf 检查：评价创建者与审核者不能是同一人 */
+        /* 【防止再发】所有审核类操作统一使用 assertNotSelf 阻断自审批 */
+        SecurityUtil.assertNotSelf(SecurityUtil.getCurrentUserId(), review.getUserId(), "不能审核自己的课程评价");
         review.setStatus(2); // REJECTED（逻辑驳回，不物理删除）
         review.setUpdatedAt(LocalDateTime.now());
         courseReviewRepository.updateById(review);

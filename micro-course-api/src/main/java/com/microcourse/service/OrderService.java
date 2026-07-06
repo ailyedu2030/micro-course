@@ -12,7 +12,12 @@ public interface OrderService {
 
     OrderVO getOrder(Long orderId);
 
-    PageResult<OrderVO> getMyOrders(Long userId, int page, int size);
+    /**
+     * 【根因】P2-10: 退课确认文案无法根据是否有付费订单动态提示退款信息
+     * 【修复】增加 courseId/status 筛选参数，前端可查询某课程是否有 PAID 订单
+     * 【防止再发】分页查询接口尽量提供按需筛选能力
+     */
+    PageResult<OrderVO> getMyOrders(Long userId, int page, int size, Long courseId, String status);
 
     OrderVO pay(Long orderId, String paymentMethod);
 

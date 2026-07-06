@@ -306,10 +306,16 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * 【根因】P2-8: 容量检查 selectById 与原子递增之间无 DB 级约束，并发请求可同时通过容量检查
+     * 【修复】使用 selectByIdForUpdate 获取行锁，确保容量检查在事务中独占
+     * 【防止再发】所有涉及容量/计数检查的写操作必须使用行锁
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void addStudent(Long classId, Long userId) {
-        TeachingClass tc = teachingClassRepository.selectById(classId);
+        // P2-8 修复: 使用行锁 FOR UPDATE 防止 TOCTOU 竞态
+        TeachingClass tc = teachingClassRepository.selectByIdForUpdate(classId);
         if (tc == null) {
             throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
         }
@@ -320,8 +326,9 @@ public class TeachingClassServiceImpl implements TeachingClassService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        // P1-2: 容量上限检查
+        // P2-8 修复: 在行锁保护下进行容量检查，防止 TOCTOU 竞态
         if (tc.getStudentCount() != null && tc.getMaxStudents() != null
+                && tc.getMaxStudents() > 0
                 && tc.getStudentCount() >= tc.getMaxStudents()) {
             throw new BusinessException(ErrorCode.CLASS_FULL);
         }

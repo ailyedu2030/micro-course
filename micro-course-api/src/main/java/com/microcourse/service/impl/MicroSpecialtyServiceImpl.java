@@ -267,9 +267,12 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         adminService.requireOwnerOrLead(id);
 
-        // 仅 DRAFT/REJECTED/ARCHIVED 可删除
+        /* ---- 【I-19修复】delete() ARCHIVED 可删但 CANCELLED 不可删 ---- */
+        /* 【根因】同为终态的 CANCELLED 未加入可删除列表，导致已取消的微专业无法清理
+         * 【修复】增加 CANCELLED 到可删除状态列表
+         * 【防止再发】所有终态资源的可删除性应以同一逻辑标准判断 */
         String s = ms.getStatus();
-        if (!MS_STATUS_DRAFT.equals(s) && !MS_STATUS_REJECTED.equals(s) && !MS_STATUS_ARCHIVED.equals(s)) {
+        if (!MS_STATUS_DRAFT.equals(s) && !MS_STATUS_REJECTED.equals(s) && !MS_STATUS_ARCHIVED.equals(s) && !MS_STATUS_CANCELLED.equals(s)) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "当前状态不允许删除");
         }
         // FK 业务检查：有选课记录时禁止删除
@@ -327,6 +330,31 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long id, String reason) {
         adminService.cancel(id, reason);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void reopen(Long id) {
+        /* ---- 【C-17修复】重新开课端点 ---- */
+        /* 【根因】前端渲染"重新开课"按钮调用 POST /micro-specialties/{id}/reopen，
+         *        后端仅留有 TODO 注释但从未实现此端点
+         * 【修复】实现 reopen 方法：仅 COMPLETED/CANCELLED → APPROVED
+         * 【防止再发】spec 阶段必须同步完成前后端契约关联端点的实现 */
+        MicroSpecialty ms = msRepository.selectById(id);
+        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        String status = ms.getStatus();
+        if (!MS_STATUS_COMPLETED.equals(status) && !MS_STATUS_CANCELLED.equals(status)) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已结业或已取消的微专业可重新开课");
+        }
+        int oldVersion = ms.getVersion();
+        int affected = msRepository.update(null,
+                new LambdaUpdateWrapper<MicroSpecialty>()
+                        .eq(MicroSpecialty::getId, id)
+                        .eq(MicroSpecialty::getVersion, oldVersion)
+                        .set(MicroSpecialty::getStatus, "APPROVED")
+                        .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
+                        .setSql("version = version + 1"));
+        if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
     }
 
     @Override
@@ -502,6 +530,13 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         boolean isCrossDept = false;
         if (invitedTeacher != null && ms.getOfferDepartmentId() != null && invitedTeacher.getDepartmentId() != null) {
             isCrossDept = !ms.getOfferDepartmentId().equals(invitedTeacher.getDepartmentId());
+        }
+        /* ---- 【I-21修复】inviteTeacher 跨院检测未豁免 ADMIN ---- */
+        /* 【根因】跨院检测对所有角色一视同仁，ADMIN 跨院也应跳过 PENDING_ACADEMIC 直接生效
+         * 【修复】ADMIN 跨院时重置 isCrossDept = false
+         * 【防止再发】所有角色特权豁免必须枚举完全 */
+        if (isCrossDept && SecurityUtil.isAdmin()) {
+            isCrossDept = false;
         }
 
         MicroSpecialtyTeacher record = new MicroSpecialtyTeacher();

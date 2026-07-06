@@ -116,6 +116,12 @@ public class AuthServiceImpl implements AuthService {
         user.setRealName(request.getUsername()); // 默认使用用户名作为姓名
         user.setRole(UserRole.STUDENT);
         user.setStatus(1); // ACTIVE
+        /* ---- 【I-17 修复】注册显式设置 casBound=false ---- */
+        /* 【根因】register() 创建的 user 没有显式设置 casBound，entity 中为 null */
+        /*        DB 默认 FALSE 但实体语义不清晰 */
+        /* 【修复】在注册时显式设置 casBound=false */
+        /* 【防止再发】所有布尔类型字段初始化时必须显式赋值 */
+        user.setCasBound(false);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.insert(user);

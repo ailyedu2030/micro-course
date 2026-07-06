@@ -178,8 +178,8 @@ async function handleBatchApprove() {
   const ids = selectedRows.value.map(r => r.id)
   try {
     await ElMessageBox.confirm(`确认批量通过 ${ids.length} 个课程？`, '批量通过', { type: 'warning' })
-    const result = await batchApproveCourses(ids)
-    ElMessage.success(`批量通过完成：成功 ${result.success}，失败 ${result.failed}`)
+    const res = await batchApproveCourses(ids)
+    ElMessage.success(`批量通过完成：成功 ${res.data.successCount}，失败 ${res.data.failCount}`)
     selectedRows.value = []
     fetchData()
   } catch (e) {
