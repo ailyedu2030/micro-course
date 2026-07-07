@@ -292,7 +292,7 @@ const previewUrl = ref('')
 const renderProgress = ref(0)
 const renderProgressLabel = ref('')
 let pollTimer = null
-let progressSim = null
+const progressSim = null
 let sortableInstance = null
 
 const narrationDoneCount = computed(() => pages.value.filter(p => p.narrationStatus && p.narrationStatus !== 'PENDING').length)

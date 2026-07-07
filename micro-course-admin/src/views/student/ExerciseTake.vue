@@ -536,7 +536,8 @@
                 <el-button text @click="sheetVisible = false">✕</el-button>
               </div>
               <div class="answer-sheet-grid">
-                <div v-for="(q, idx) in questions" :key="q.id"
+                <div
+v-for="(q, idx) in questions" :key="q.id"
                   class="answer-sheet-item"
                   :class="{ answered: answers[q.id], current: currentIndex === idx }"
                   @click="jumpToQuestion(idx); sheetVisible = false">

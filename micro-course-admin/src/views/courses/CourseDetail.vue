@@ -16,7 +16,8 @@
     <!-- ========== 查看模式 ========== -->
     <template v-if="!isEditMode && !loading">
       <!-- P1C-075: ACADEMIC 只读模式提示 -->
-      <el-alert v-if="userRole === 'ACADEMIC'"
+      <el-alert
+v-if="userRole === 'ACADEMIC'"
         title="您正在以教务处身份查看，当前为只读模式"
         type="warning"
         :closable="false"
@@ -216,7 +217,8 @@
     </template>
 
     <!-- P1C-075: ACADEMIC 编辑模式只读提示 -->
-    <el-alert v-if="isEditMode && userRole === 'ACADEMIC'"
+    <el-alert
+v-if="isEditMode && userRole === 'ACADEMIC'"
       title="您正在以教务处身份查看，当前为只读模式。如需编辑请联系管理员。"
       type="warning"
       :closable="false"
