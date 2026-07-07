@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 267 | Vue 视图数: 59 | Controller 数: 58 | API 文件数: 44
+> 实体数: 269 | Vue 视图数: 59 | Controller 数: 58 | API 文件数: 44
 
 ---
 
@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2442
+- 后端实体字段总数: 2461
 
 - 前端引用字段总数: 427
 
@@ -698,44 +698,48 @@
 
 | 324 | Video | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
 
-| 325 | VideoBookmark | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
+| 325 | VideoAnalyticsVO | `videoId` () | ? | ❌ UNMANAGED | No controller or list page for Video | **需修复** |
 
-| 326 | VideoBookmark | `videoId` () | ? | ❌ UNMANAGED | No controller or list page for Video | **需修复** |
+| 326 | VideoBookmark | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
 
-| 327 | VideoBookmarkVO | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
+| 327 | VideoBookmark | `videoId` () | ? | ❌ UNMANAGED | No controller or list page for Video | **需修复** |
 
-| 328 | VideoBookmarkVO | `videoId` () | ? | ❌ UNMANAGED | No controller or list page for Video | **需修复** |
+| 328 | VideoBookmarkVO | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
 
-| 329 | VideoCreateRequest | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
+| 329 | VideoBookmarkVO | `videoId` () | ? | ❌ UNMANAGED | No controller or list page for Video | **需修复** |
 
-| 330 | VideoCreateRequest | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
+| 330 | VideoCreateRequest | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
 
-| 331 | VideoUpdateRequest | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
+| 331 | VideoCreateRequest | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
 
-| 332 | VideoVO | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
+| 332 | VideoProgressReportRequest | `deviceId` () | ? | ❌ UNMANAGED | No controller or list page for Device | **需修复** |
 
-| 333 | VideoVO | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
+| 333 | VideoUpdateRequest | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
 
-| 334 | WrongQuestion | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
+| 334 | VideoVO | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
 
-| 335 | WrongQuestion | `questionId` () | ? | ❌ UNMANAGED | No controller or list page for Question | **需修复** |
+| 335 | VideoVO | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
 
-| 336 | WrongQuestion | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
+| 336 | WrongQuestion | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
 
-| 337 | WrongQuestionVO | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
+| 337 | WrongQuestion | `questionId` () | ? | ❌ UNMANAGED | No controller or list page for Question | **需修复** |
 
-| 338 | WrongQuestionVO | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
+| 338 | WrongQuestion | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
 
-| 339 | WrongQuestionVO | `questionId` () | ? | ❌ UNMANAGED | No controller or list page for Question | **需修复** |
+| 339 | WrongQuestionVO | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
 
-| 340 | WrongQuestionVO | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
+| 340 | WrongQuestionVO | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
+
+| 341 | WrongQuestionVO | `questionId` () | ? | ❌ UNMANAGED | No controller or list page for Question | **需修复** |
+
+| 342 | WrongQuestionVO | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
 
 
 
 ### FK 管理缺口汇总
 
 
-- ❌ 完全无管理: 340 个
+- ❌ 完全无管理: 342 个
 
 - ⚠️ 有 API 无前端: 0 个
 
@@ -793,7 +797,7 @@
 
 | Class | /api/classes | 6 | - |
 
-| Course | /api/courses | 23 | - |
+| Course | /api/courses | 24 | - |
 
 | CourseBundle | /api/course-bundles | 8 | - |
 
@@ -801,13 +805,13 @@
 
 | CourseChapter | /api/chapters | 6 | - |
 
-| CourseFavorite | /api/favorites | 4 | - |
+| CourseFavorite | /api | 7 | - |
 
 | CourseReview | /api/courses/{id}/reviews | 5 | - |
 
 | CourseReviewLog | /api/course-review-logs | 1 | - |
 
-| Department | /api/departments | 6 | - |
+| Department | /api/departments | 7 | - |
 
 | DiscussionAdmin | /api/admin/discussions | 8 | - |
 
@@ -829,11 +833,11 @@
 
 | Grade | /api/grades | 10 | - |
 
-| LearningProgress | /api/learning-progress | 8 | - |
+| LearningProgress | /api/learning-progress | 9 | - |
 
 | Lesson | /api/lessons | 6 | - |
 
-| Major | /api/majors | 5 | - |
+| Major | /api/majors | 6 | - |
 
 | MicroSpecialty | /api/micro-specialties | 28 | - |
 
@@ -879,7 +883,7 @@
 
 | User | /api/users | 9 | - |
 
-| Video | /api/videos | 11 | - |
+| Video | /api/videos | 14 | - |
 
 | VideoBookmark | /api/videos/{videoId}/bookmarks | 3 | - |
 
@@ -1004,7 +1008,7 @@
 
 | CompletionWarningVO | 6 | 0 |
 
-| Course | 36 | 0 |
+| Course | 37 | 0 |
 
 | CourseBundle | 13 | 0 |
 
@@ -1302,7 +1306,7 @@
 
 | QuestionVO | 20 | 0 |
 
-| R | 4 | 0 |
+| R | 3 | 0 |
 
 | RefreshRequest | 1 | 0 |
 
@@ -1386,7 +1390,7 @@
 
 | TrendPointVO | 2 | 0 |
 
-| UpdateProfileRequest | 4 | 0 |
+| UpdateProfileRequest | 5 | 0 |
 
 | UpdateStudentStatusRequest | 1 | 0 |
 
@@ -1404,7 +1408,7 @@
 
 | UserPageQuery | 10 | 0 |
 
-| UserStatusRequest | 1 | 0 |
+| UserStatusRequest | 2 | 0 |
 
 | UserTrendVO | 3 | 0 |
 
@@ -1414,6 +1418,8 @@
 
 | Video | 30 | 0 |
 
+| VideoAnalyticsVO | 10 | 0 |
+
 | VideoBookmark | 7 | 0 |
 
 | VideoBookmarkCreateRequest | 3 | 0 |
@@ -1421,6 +1427,8 @@
 | VideoBookmarkVO | 7 | 0 |
 
 | VideoCreateRequest | 7 | 0 |
+
+| VideoProgressReportRequest | 7 | 0 |
 
 | VideoUpdateRequest | 4 | 0 |
 

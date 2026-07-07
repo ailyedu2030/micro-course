@@ -289,7 +289,9 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
     void shouldSubmitForReviewWithChapters() throws Exception {
         String token = teacherBearer();
         long courseId = createDraftCourse(token);
-        addChapter(token, courseId);
+        long chapterId = addChapter(token, courseId);
+        // 课程管理 S1 守卫: 至少一个章节下有视频/练习/课件
+        insertDummyCompletedVideo(courseId, chapterId);
 
         mockMvc.perform(post("/api/courses/" + courseId + "/submit")
                         .header("Authorization", token))
@@ -309,7 +311,8 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
         String teacher = teacherBearer();
         String admin = bearerAdmin();
         long courseId = createDraftCourse(teacher);
-        addChapter(teacher, courseId);
+        long chapterId = addChapter(teacher, courseId);
+        insertDummyCompletedVideo(courseId, chapterId);
 
         // DRAFT → PENDING_REVIEW
         mockMvc.perform(post("/api/courses/" + courseId + "/submit")
@@ -345,7 +348,8 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
         String teacher = teacherBearer();
         String admin = bearerAdmin();
         long courseId = createDraftCourse(teacher);
-        addChapter(teacher, courseId);
+        long chapterId = addChapter(teacher, courseId);
+        insertDummyCompletedVideo(courseId, chapterId);
 
         mockMvc.perform(post("/api/courses/" + courseId + "/submit")
                         .header("Authorization", teacher))
@@ -369,7 +373,8 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
         String teacher = teacherBearer();
         String admin = bearerAdmin();
         long courseId = createDraftCourse(teacher);
-        addChapter(teacher, courseId);
+        long chapterId = addChapter(teacher, courseId);
+        insertDummyCompletedVideo(courseId, chapterId);
 
         // 推进至 APPROVED
         mockMvc.perform(post("/api/courses/" + courseId + "/submit")
@@ -459,10 +464,15 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
 
     /** 直接入库一门已完成状态的测试视频（业务要求：提交审核前课程必须有至少一个已完成视频或PPT）。 */
     private void insertDummyCompletedVideo(long courseId) {
+        insertDummyCompletedVideo(courseId, null);
+    }
+
+    /** 直接入库一门已完成状态的测试视频 (可绑定到 chapterId 以满足 S1 守卫要求) */
+    private void insertDummyCompletedVideo(long courseId, Long chapterId) {
         jdbc.update(
-            "INSERT INTO videos(course_id, title, url, status, duration, version, created_at, updated_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?, now(), now())",
-            courseId, "测试视频_" + System.nanoTime(),
+            "INSERT INTO videos(course_id, chapter_id, title, url, status, duration, version, created_at, updated_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, now(), now())",
+            courseId, chapterId, "测试视频_" + System.nanoTime(),
             "/data/videos/dummy.mp4", 2, 120, 0);
     }
 

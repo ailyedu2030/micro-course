@@ -158,7 +158,9 @@ public class CourseStateMachineImpl implements CourseStateMachine {
         // Step 3: 注册的业务守卫
         TransitionGuardResult guardResult = runGuards(current, targetStatus, course, context);
         if (guardResult != TransitionGuardResult.ALLOWED) {
-            throw new BusinessException(ErrorCode.COURSE_INVALID_STATUS, "守卫阻断: " + guardResult);
+            // 守卫阻断: 业务条件不满足, 使用 BAD_REQUEST_PARAM 而非 INVALID_STATUS_TRANSITION
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "业务守卫未通过: " + guardResult);
         }
 
         // Step 4: 乐观锁 CAS 更新
@@ -177,8 +179,11 @@ public class CourseStateMachineImpl implements CourseStateMachine {
             updateWrapper.set(Course::getPublishedAt, now)
                     .set(Course::getLastPublishedAt, now);
         }
-        // 副作用: 重置 rejectReason (进入非 REJECTED 状态时)
-        if (targetStatus != CourseStatus.REJECTED) {
+        // 副作用: 进入 REJECTED 时写入 rejectReason
+        if (targetStatus == CourseStatus.REJECTED) {
+            updateWrapper.set(Course::getRejectReason, context.getRejectReason());
+        } else {
+            // 离开 REJECTED 状态时清空 rejectReason
             updateWrapper.set(Course::getRejectReason, (String) null);
         }
 

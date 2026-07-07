@@ -25,6 +25,7 @@ import com.microcourse.service.VideoService;
 import com.microcourse.service.VideoTranscodeService;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
+import com.microcourse.util.VideoDiskCleanup;
 import com.microcourse.util.VideoSignUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,9 +40,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -294,60 +293,9 @@ public class VideoServiceImpl implements VideoService {
                 .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        cleanupDiskFiles(video);
+                        VideoDiskCleanup.cleanup(video, storageBaseDir, coverDir);
                     }
                 });
-    }
-
-    /**
-     * 清理视频相关磁盘文件
-     */
-    private void cleanupDiskFiles(Video video) {
-        // 清理 HLS 转码目录: {storageBaseDir}/{courseId}/{videoId}/
-        if (video.getCourseId() != null && video.getId() != null) {
-            Path hlsDir = Paths.get(storageBaseDir,
-                    String.valueOf(video.getCourseId()),
-                    String.valueOf(video.getId()));
-            deleteDirectoryQuietly(hlsDir);
-        }
-
-        // 清理原始上传文件
-        if (video.getOriginalPath() != null && !video.getOriginalPath().isBlank()) {
-            deleteFileQuietly(Paths.get(video.getOriginalPath()));
-        }
-
-        // 清理封面文件目录
-        if (video.getId() != null) {
-            Path coverPath = Paths.get(coverDir, String.valueOf(video.getId()));
-            deleteDirectoryQuietly(coverPath);
-        }
-    }
-
-    private void deleteDirectoryQuietly(Path dir) {
-        try {
-            if (Files.exists(dir)) {
-                try (Stream<Path> walk = Files.walk(dir)) {
-                    walk.sorted(Comparator.reverseOrder())
-                            .forEach(p -> {
-                                try {
-                                    Files.deleteIfExists(p);
-                                } catch (IOException e) {
-                                    log.warn("[VideoCleanup] 删除文件失败: {}", p, e);
-                                }
-                            });
-                }
-            }
-        } catch (IOException e) {
-            log.warn("[VideoCleanup] 遍历目录失败: {}", dir, e);
-        }
-    }
-
-    private void deleteFileQuietly(Path file) {
-        try {
-            Files.deleteIfExists(file);
-        } catch (IOException e) {
-            log.warn("[VideoCleanup] 删除文件失败: {}", file, e);
-        }
     }
 
     @Override
@@ -527,25 +475,8 @@ public class VideoServiceImpl implements VideoService {
      * P1-8: 图片魔数校验（JPEG: FFD8FF, PNG: 89504E47）
      */
     private void validateImageMagic(MultipartFile file) {
-        try (InputStream is = file.getInputStream()) {
-            byte[] magic = new byte[8];
-            int read = is.read(magic);
-            if (read < 4) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件过小，无法验证图片格式");
-            }
-            boolean isJpeg = (magic[0] & 0xFF) == 0xFF
-                    && (magic[1] & 0xFF) == 0xD8
-                    && (magic[2] & 0xFF) == 0xFF;
-            boolean isPng = (magic[0] & 0xFF) == 0x89
-                    && magic[1] == 'P'
-                    && magic[2] == 'N'
-                    && magic[3] == 'G';
-            if (!isJpeg && !isPng) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面必须为 JPEG 或 PNG 格式（魔数校验失败）");
-            }
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取封面文件");
-        }
+        // 【复用工具类】FileUploadUtil.assertImageMagic 已有完整实现
+        com.microcourse.util.FileUploadUtil.assertImageMagic(file);
     }
 
     /* ================================================================
@@ -748,15 +679,10 @@ public class VideoServiceImpl implements VideoService {
     /**
      * Round 11-4 安全加固：文件名路径穿越防护。
      * 拒绝含 ".." / 路径分隔符 / null 字节的恶意文件名。
+     * 【复用工具类】已迁移至 FileUploadUtil.assertSafeFilename
      */
     private static void assertSafeFilename(String filename) {
-        if (filename == null || filename.isBlank()) {
-            return;
-        }
-        if (filename.contains("..") || filename.contains("/")
-                || filename.contains("\\") || filename.indexOf('\u0000') >= 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件名不合法");
-        }
+        com.microcourse.util.FileUploadUtil.assertSafeFilename(filename);
     }
 
     /** MP4/MOV 文件魔数：ftyp box */
@@ -774,25 +700,10 @@ public class VideoServiceImpl implements VideoService {
 
     /**
      * P2: 计算文件 MD5
+     * 【复用工具类】已迁移至 HashUtil.computeFileMd5
      */
     private String computeFileMd5(Path filePath) {
-        try (InputStream is = Files.newInputStream(filePath)) {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = is.read(buf)) != -1) {
-                md.update(buf, 0, len);
-            }
-            byte[] digest = md.digest();
-            StringBuilder sb = new StringBuilder(32);
-            for (byte b : digest) {
-                sb.append(String.format("%02x", b & 0xff));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            log.warn("[VideoUpload] MD5 计算失败 path={}", filePath, e);
-            return null;
-        }
+        return com.microcourse.util.HashUtil.computeFileMd5(filePath);
     }
 
     /** P0-2: 校验当前用户是否为课程 owner 或 ADMIN（公开方法） */
@@ -834,56 +745,12 @@ public class VideoServiceImpl implements VideoService {
      * Phase 11 重构目标：extract 公共字段复制，消除两个重载方法中的重复代码
      */
     private VideoVO populateBasicFields(Video video) {
-        VideoVO vo = new VideoVO();
-        vo.setId(video.getId());
-        vo.setChapterId(video.getChapterId());
-        vo.setCourseId(video.getCourseId());
-        vo.setTitle(video.getTitle());
-        vo.setFileName(video.getFileName());
-        vo.setFileSize(video.getFileSize());
-        vo.setFileMd5(video.getFileMd5());
-        vo.setMimeType(video.getMimeType());
-        vo.setDuration(video.getDuration());
-        vo.setUrl(video.getUrl());
-        vo.setHlsUrl(video.getHlsUrl());
-        vo.setThumbnailUrl(video.getThumbnailUrl());
-        vo.setCoverUrl(video.getCoverUrl());
-        vo.setStatus(video.getStatus());
-        vo.setProgress(video.getProgress());
-        vo.setErrorMessage(video.getErrorMessage());
-        vo.setOriginalPath(video.getOriginalPath());
-        vo.setSortOrder(video.getSortOrder());
-        vo.setCreatedAt(video.getCreatedAt());
-        vo.setUpdatedAt(video.getUpdatedAt());
-        vo.setVersion(video.getVersion());
-        return vo;
+        return com.microcourse.util.VideoConverter.populateBasicFields(video);
     }
 
-    /**
-     * Phase 11 重构目标：统一使用 Map 版本的 convertToVO，消除单条查询的 N+1
-     */
     private VideoVO convertToVO(Video video, Map<Long, Course> courseMap,
                                 Map<Long, CourseChapter> chapterMap) {
-        VideoVO vo = populateBasicFields(video);
-
-        // 课程名称
-        if (video.getCourseId() != null) {
-            Course course = courseMap.get(video.getCourseId());
-            if (course != null) {
-                vo.setCourseName(course.getTitle());
-            }
-        }
-
-        // 章节名称
-        if (video.getChapterId() != null) {
-            CourseChapter chapter = chapterMap != null
-                    ? chapterMap.get(video.getChapterId()) : null;
-            if (chapter != null) {
-                vo.setChapterName(chapter.getTitle());
-            }
-        }
-
-        return vo;
+        return com.microcourse.util.VideoConverter.convertToVO(video, courseMap, chapterMap);
     }
 
     /**

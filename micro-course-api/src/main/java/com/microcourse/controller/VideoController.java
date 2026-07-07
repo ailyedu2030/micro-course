@@ -184,7 +184,7 @@ public class VideoController {
     @PostMapping("/{id}/progress")
     @PreAuthorize("hasRole('STUDENT')")
     public R<LearningProgressVO> reportVideoProgress(@PathVariable Long id,
-                                                      @RequestBody(required = false) VideoProgressReportRequest body) {
+                                                      @RequestBody(required = false) @Valid VideoProgressReportRequest body) {
         // 【V9 修复】Map → DTO, 契约优先
         Long userId = SecurityUtil.getCurrentUserId();
         VideoVO video = videoService.getById(id);
