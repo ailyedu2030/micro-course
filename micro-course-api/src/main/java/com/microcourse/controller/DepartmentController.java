@@ -36,7 +36,7 @@ public class DepartmentController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<DepartmentVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 1000) int size) {
         PageResult<DepartmentVO> result = departmentService.page(page, size);
         return R.ok(result);
     }

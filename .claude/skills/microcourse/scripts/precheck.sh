@@ -486,6 +486,29 @@ check_flyway_version_unique() {
     fi
 }
 
+# ----------------------------------------------------------------------------
+# 18b. 分页 size 契约一致性（根因：2026-07-08 生产 /api/departments?size=1000 返回 400）
+# 依据：前端 dropdown 用 size: 1000-10000 拉全量；后端 @Range max 必须 ≥ 前端调用值
+# ----------------------------------------------------------------------------
+check_pagination_size_contract() {
+    local backend_max
+    backend_max=$(grep -rh "@Range.*max.*=" "$ROOT/micro-course-api/src/main/java/com/microcourse/controller/" 2>/dev/null \
+        | grep -oE "max\s*=\s*[0-9]+" | grep -oE "[0-9]+" | sort -n | tail -1)
+    local frontend_max
+    frontend_max=$(grep -rh "size\s*:\s*[0-9]\+\|size\s*=\s*[0-9]\+" "$ROOT/micro-course-admin/src/" 2>/dev/null \
+        | grep -oE "size\s*[:=]\s*[0-9]+" | grep -oE "[0-9]+" | sort -n | tail -1)
+    if [ -z "$backend_max" ] || [ -z "$frontend_max" ]; then
+        PASS=$((PASS+1))
+        return
+    fi
+    if [ "$backend_max" -lt "$frontend_max" ]; then
+        FAILS+=("[PAGE-SIZE] 后端 @Range max=$backend_max 小于前端最大调用 $frontend_max，会返回 400 (must be greater than or equal)")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
 check_bak_files
 check_no_evidence_claims
 check_controller_valid
@@ -493,6 +516,7 @@ check_entity_version
 check_entity_updated_at
 check_service_class_size
 check_flyway_version_unique
+check_pagination_size_contract
 
 # ----------------------------------------------------------------------------
 # 19. 契约审计 — Entity 字段 vs 数据字典（防止代码-文档漂移）

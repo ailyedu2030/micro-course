@@ -51,7 +51,7 @@ public class UserController {
     // P2-权限对齐：TEACHER 权限受 Service 层数据范围限制（仅能查看自己课程的学生）
     public R<PageResult<UserVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 1000) int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) Long departmentId,
