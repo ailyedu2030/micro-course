@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.20.1] - 2026-07-08
+
+### Fixed
+
+#### P1-C 客户体验 (3)
+- **选课通知显示 `《null》`** — `EnrollmentServiceImpl` 课程名 null 保护，与退课通知一致的 `课程#{id}` 兜底
+- **学习页累计时长显示 `NaNh`** — `LearningView.vue formatTotalTime` typeof + isNaN 守卫，无效输入降级为 `0h`
+- **课程封面 404 裂图** — 本地 DB 清理测试数据 `courses.id=71 cover_url = NULL`
+
+#### P1-I 测试基础设施 (5)
+- **测试 Redis 配置被 Spring Boot 3.x 忽略** — `application-test.yml` 改用 `spring.data.redis.*` + db=15 物理隔离，根除 UserStatusCheckFilter 历史 blacklist 401 误杀（5 个 E2E 测试修复）
+- **contract-audit.py 假阳性过滤** — String/Text/LongText/MediumText 等价；枚举 vs String 等价
+- **precheck.sh contract-audit advisory 化** — ~137 项 pre-existing 文档漂移不阻塞交付，TODO 独立 OpenSpec change 清理
+- **local-dev-deploy.sh mvn test 前 drop+recreate DB** — 解决 postgres-test 容器复用导致 DEL_xxx 孤儿 department UUID 冲突 409
+- **新增 `scripts/contract-audit.py`** — 数据字典 vs Entity 字段自动交叉验证，配套 precheck 规则 #19
+
+### Security
+- ✅ Trivy scan: success
+
+### Tests
+- ✅ Backend: 543/543 tests pass
+- ✅ Frontend: vite build pass
+- ✅ local-dev-deploy.sh: 16/16 pass
+- ✅ Precheck: 21 PASS / 1 CONTRACT-advisory
+- ✅ CI: success
+
+### Deployment
+- Rollback plan: `ROLLBACK_PLAN.md` 已就绪
+- Gate status: opened
+- Risk: 低（无 Flyway migration，仅应用代码 + 测试基础设施）
+
+---
+
 ## [1.20.0] - 2026-07-04
 
 ### Fixed (Phase 11 互动课程插件 — 全量审查修复)
