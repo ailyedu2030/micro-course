@@ -57,6 +57,8 @@ public class OfflineSessionController {
         return R.ok(vo);
     }
 
+
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("更新线下活动")

@@ -1,11 +1,11 @@
 import request from '@/utils/request'
 
 export function getOfflineSessions(chapterId, params) {
-  return request({ url: `/chapters/${chapterId}/offline-sessions`, method: 'get', params })
+  return request({ url: `/offline-sessions/${chapterId}/chapters`, method: 'get', params })
 }
 
 export function createOfflineSession(chapterId, data) {
-  return request({ url: `/chapters/${chapterId}/offline-sessions`, method: 'post', data })
+  return request({ url: `/offline-sessions/${chapterId}/chapters`, method: 'post', data })
 }
 
 export function updateOfflineSession(id, data) {
@@ -21,7 +21,7 @@ export function checkin(sessionId) {
 }
 
 export function getMyAttendance(chapterId) {
-  return request({ url: `/chapters/${chapterId}/my-attendance`, method: 'get' })
+  return request({ url: `/offline-sessions/${chapterId}/my-attendance`, method: 'get' })
 }
 
 export function getAttendance(sessionId, params) {
