@@ -30,7 +30,7 @@ public class EndpointPermissionTest extends BaseIntegrationTest {
         assertTrue(Files.exists(yamlPath), "权限矩阵 YAML 必须存在: " + yamlPath);
 
         String content = Files.readString(yamlPath);
-        assertTrue(content.contains("version: \"4.0\""), "YAML 必须声明 v4.0");
+        assertTrue(content.contains("version: \"4.1\""), "YAML 必须声明 v4.1");
         assertTrue(content.contains("endpoints:"), "YAML 必须包含 endpoints 字段");
         long endpointCount = content.lines().filter(l -> l.matches("^\\s*- path:.*")).count();
         assertTrue(endpointCount >= 60, "端点数应 >= 60, 实际: " + endpointCount);
