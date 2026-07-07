@@ -88,18 +88,21 @@ public class CourseStateMachineImpl implements CourseStateMachine {
                                 .eq(CourseChapter::getCourseId, course.getId()));
                 if (chapterCount == 0) errors.add("至少添加一个章节");
             }
-            long videoCount = videoRepository != null ? videoRepository.selectCount(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.Video>()
-                            .eq(com.microcourse.entity.Video::getCourseId, course.getId())
-                            .isNotNull(com.microcourse.entity.Video::getChapterId)) : 0;
-            long exerciseCount = exerciseRepository != null ? exerciseRepository.selectCount(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.Exercise>()
-                            .eq(com.microcourse.entity.Exercise::getCourseId, course.getId())) : 0;
-            long slideCount = courseSlideMapper != null ? courseSlideMapper.selectCount(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
-                            .eq(com.microcourse.plugin.interactive.entity.CourseSlide::getCourseId, course.getId())) : 0;
-            if (videoCount + exerciseCount + slideCount == 0) {
-                errors.add("至少一个章节下必须有视频/练习/课件");
+            // 【审查修复】OFFLINE 课程没有视频/练习/课件, 跳过内容检查
+            if (!"OFFLINE".equals(course.getCourseType())) {
+                long videoCount = videoRepository != null ? videoRepository.selectCount(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.Video>()
+                                .eq(com.microcourse.entity.Video::getCourseId, course.getId())
+                                .isNotNull(com.microcourse.entity.Video::getChapterId)) : 0;
+                long exerciseCount = exerciseRepository != null ? exerciseRepository.selectCount(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.Exercise>()
+                                .eq(com.microcourse.entity.Exercise::getCourseId, course.getId())) : 0;
+                long slideCount = courseSlideMapper != null ? courseSlideMapper.selectCount(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
+                                .eq(com.microcourse.plugin.interactive.entity.CourseSlide::getCourseId, course.getId())) : 0;
+                if (videoCount + exerciseCount + slideCount == 0) {
+                    errors.add("至少一个章节下必须有视频/练习/课件");
+                }
             }
             return errors;
         });
