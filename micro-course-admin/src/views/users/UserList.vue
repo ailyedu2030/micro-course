@@ -111,12 +111,12 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-switch
-              :model-value="row.status"
-              :active-value="1"
-              :inactive-value="2"
-              @change="(val) => handleToggleStatus(row, val)"
-            />
+            <el-tag v-if="row.status === 1" type="success" size="small" style="cursor:pointer" @click="handleToggleStatus(row, 2)">
+              正常
+            </el-tag>
+            <el-tag v-else type="danger" size="small" style="cursor:pointer" @click="handleToggleStatus(row, 1)">
+              禁用
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" min-width="160" />
