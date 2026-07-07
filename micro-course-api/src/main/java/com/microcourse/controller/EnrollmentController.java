@@ -62,7 +62,7 @@ public class EnrollmentController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<EnrollmentVO>> getEnrollments(
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 100) Integer size,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 1000) Integer size,
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) String studentName,
             @RequestParam(required = false) String courseName,

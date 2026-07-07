@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.20.2] - 2026-07-08
+
+### Fixed (生产 P0 热修复)
+- **UserList 页首次加载弹窗** — 部署流程只更新了后端 jar，前端容器 (admin-1) 残留旧代码（el-switch @change 自动触发）。已同步部署前端 dist
+- **6 个 dropdown 端点返回 400** — `@Range(max=100)` 被前端 `size: 1000` 调用突破。Department/Major/Class/User/Tag/BadgeController max → 1000
+
+### Added
+- **precheck #18b** — 分页 size 契约一致性检查：自动扫描前端 size 最大值 vs 后端 @Range max，不一致即 FAIL
+- **precheck #19** — contract-audit.py Entity vs 数据字典交叉验证（advisory 模式，137 项 pre-existing 文档漂移不阻塞）
+
+### Changed
+- **测试 Redis 配置** — `spring.redis.*` → `spring.data.redis.*` (Spring Boot 3.x 强约束) + db=15 物理隔离
+- **local-dev-deploy.sh** — mvn test 前 drop+recreate 测试 DB，解决容器复用导致孤儿数据 409
+
+### Tests
+- ✅ Backend: 543/543 tests pass
+- ✅ Frontend: vite build pass
+- ✅ local-dev-deploy.sh: 16/16 pass
+- ✅ Precheck: 22 PASS / 1 CONTRACT-advisory
+- ✅ CI: success
+- ✅ Trivy: success
+
+### Rollback
+- 后端: `docker cp /opt/micro-course/backups/app.jar.v1.20.1.backup.20260708 micro-course-api-1:/app/app.jar && kill -HUP 1`
+- 前端: `docker cp /opt/micro-course/backups/frontend-v1.20.0-20260708.tar.gz` → 解压到 `/usr/share/nginx/html`（待提取）
+
+---
+
 ## [1.20.1] - 2026-07-08
 
 ### Fixed
