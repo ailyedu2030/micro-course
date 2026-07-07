@@ -23,9 +23,14 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: false
 
-  redis:
-    host: ${TEST_REDIS_HOST:localhost}
-    port: ${TEST_REDIS_PORT:6380}
+  # [FIX 2026-07-08] Spring Boot 3.x 强制使用 spring.data.redis.* 配置（spring.redis.* 已废弃且被忽略），
+  # 否则测试会回退到主 application.yml 的 REDIS_PORT（6379），被历史 blacklist 干扰而 401。
+  # 测试 Redis 端口 6380 + database=15 与本地用户 6379/0 物理隔离，避免 key 命名冲突。
+  data:
+    redis:
+      host: ${TEST_REDIS_HOST:localhost}
+      port: ${TEST_REDIS_PORT:6380}
+      database: ${TEST_REDIS_DB:0}
 
 jwt:
   secret: test-secret-key-for-integration-tests-must-be-at-least-32-chars

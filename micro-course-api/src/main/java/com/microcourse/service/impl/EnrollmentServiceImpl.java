@@ -174,6 +174,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         // SECURITY: 付费课程必须通过订单支付,不能直接选课
         // I-13 修复: 从 lockedCourse（L137 的 selectByIdForUpdate 结果）中提取课程数据，复用行锁结果避免重复查询
         String courseTitle = (String) lockedCourse.get("title");
+        if (courseTitle == null) {
+            courseTitle = "课程#" + request.getCourseId();
+        }
         // P0-06 修复：若 sourceChannel 为 PAYMENT，验证用户有该课程的 PAID 订单
         if ("PAYMENT".equals(request.getSourceChannel())) {
             Long paidCount = orderRepository.selectCount(new LambdaQueryWrapper<Order>()

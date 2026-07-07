@@ -227,8 +227,10 @@ const isFavorited = ref(false)
 // ==================== 工具函数 ====================
 function formatTotalTime(data) {
   if (!data) return '0h'
-  const seconds = data.totalSeconds || data || 0
-  if (seconds < 60) return `${seconds}s`
+  const raw = typeof data === 'number' ? data : data.totalSeconds
+  const seconds = (typeof raw === 'number' && !isNaN(raw)) ? raw : 0
+  if (seconds <= 0) return '0h'
+  if (seconds < 60) return `${Math.round(seconds)}s`
   if (seconds < 3600) return `${Math.round(seconds / 60)}min`
   return `${(seconds / 3600).toFixed(1)}h`
 }

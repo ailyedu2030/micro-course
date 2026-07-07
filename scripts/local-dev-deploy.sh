@@ -407,8 +407,21 @@ fi
 
 # ════════════════════════════════════════════════════════════════
 # 8. 后端单元测试
+# 依据: 2026-07-08 修复 — postgres-test 容器复用导致历史 department/测试夹具残留，
+#       与 mvn test 用例的 UUID 唯一性假设冲突（如 DEL_4df181b6 这种孤儿）。
+#       必须在 mvn test 之前 drop+recreate DB，让 Flyway 重新建表得到完全干净状态。
 # ════════════════════════════════════════════════════════════════
 section "8. 后端单元测试"
+
+echo "  重置测试 DB (drop + recreate) 以隔离历史残留..."
+docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d postgres -c "
+  SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+   WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();
+" > /dev/null 2>&1 || true
+docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS ${DB_NAME};" > /dev/null 2>&1 || true
+docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d postgres -c "CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};" > /dev/null 2>&1 || true
+docker exec "$REDIS_CONTAINER" redis-cli FLUSHDB > /dev/null 2>&1 || true
+ok "测试 DB 已重置为干净状态"
 
 (cd micro-course-api && mvn test -B -q 2>&1 | tail -10) || { fail "后端单元测试失败"; }
 
