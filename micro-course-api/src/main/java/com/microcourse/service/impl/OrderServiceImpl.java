@@ -472,8 +472,11 @@ public class OrderServiceImpl implements OrderService {
             log.warn("[paymentCallback] order not found: orderNo={}", orderNo);
             return;
         }
-        if (!"PENDING".equals(order.getStatus())) {
-            log.warn("[paymentCallback] order status not PENDING: orderNo={}, status={}", orderNo, order.getStatus());
+        // 【P1-C 修复】改用 canTransitionTo 白名单替代字符串等值校验
+        OrderStatus callbackCurrentStatus = OrderStatus.fromValue(order.getStatus());
+        if (callbackCurrentStatus == null || !callbackCurrentStatus.canTransitionTo(OrderStatus.PAID)) {
+            log.warn("[paymentCallback] order status cannot transition to PAID: orderNo={}, status={}",
+                    orderNo, order.getStatus());
             return;
         }
 
