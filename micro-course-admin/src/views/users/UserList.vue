@@ -54,9 +54,9 @@
         <div class="card-header">
           <span class="card-title">用户列表</span>
           <div class="header-actions">
-            <el-button type="warning" @click="teacherApprovalVisible = true">教师审核</el-button>
-            <el-button type="success" v-if="userRole !== 'ACADEMIC'" @click="batchImportVisible = true">批量导入</el-button>
-            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增用户</el-button>
+            <el-button v-if="userRole === 'ADMIN'" type="warning" @click="teacherApprovalVisible = true">教师审核</el-button>
+            <el-button v-if="userRole === 'ADMIN'" type="success" @click="batchImportVisible = true">批量导入</el-button>
+            <el-button v-if="userRole === 'ADMIN'" type="primary" @click="handleCreate">新增用户</el-button>
           </div>
         </div>
       </template>
@@ -111,10 +111,10 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 1" type="success" size="small" style="cursor:pointer" @click="handleToggleStatus(row, 2)">
+            <el-tag v-if="row.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="success" size="small" style="cursor:pointer" @click="handleToggleStatus(row, 2)">
               正常
             </el-tag>
-            <el-tag v-else type="danger" size="small" style="cursor:pointer" @click="handleToggleStatus(row, 1)">
+            <el-tag v-else-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" size="small" style="cursor:pointer" @click="handleToggleStatus(row, 1)">
               禁用
             </el-tag>
           </template>
@@ -123,7 +123,7 @@
         <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleSoftDelete(row)">删除</el-button>
+            <el-button v-if="userRole === 'ADMIN'" type="danger" link size="small" @click="handleSoftDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

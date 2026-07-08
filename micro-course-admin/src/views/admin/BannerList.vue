@@ -12,8 +12,8 @@
           <span class="card-title">轮播图管理</span>
         </div>
         <div class="toolbar-right">
-          <el-button type="primary" @click="handleAdd" aria-label="新增轮播图">
-<el-icon><Plus /></el-icon>新增轮播图
+          <el-button v-if="userRole === 'ADMIN'" type="primary" @click="handleAdd" aria-label="新增轮播图">
+            <el-icon><Plus /></el-icon>新增轮播图
           </el-button>
         </div>
       </div>
@@ -88,11 +88,11 @@
         </el-table-column>
         <el-table-column label="操作" width="160" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)" aria-label="编辑">
-<el-icon><Edit /></el-icon>编辑
+            <el-button v-if="userRole === 'ADMIN'" type="primary" link @click="handleEdit(row)" aria-label="编辑">
+            <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button type="danger" link @click="handleDelete(row)" aria-label="删除">
-<el-icon><Delete /></el-icon>删除
+            <el-button v-if="userRole === 'ADMIN'" type="danger" link @click="handleDelete(row)" aria-label="删除">
+            <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
         </el-table-column>
