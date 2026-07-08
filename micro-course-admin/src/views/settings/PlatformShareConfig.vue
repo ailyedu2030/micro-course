@@ -47,7 +47,7 @@
         </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click.stop="handleEdit(row)">
+            <el-button v-if="userRole === 'ADMIN'" type="primary" link size="small" @click.stop="handleEdit(row)">
               编辑
             </el-button>
           </template>

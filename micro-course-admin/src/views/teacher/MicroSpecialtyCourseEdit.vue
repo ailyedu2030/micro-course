@@ -49,7 +49,7 @@
               <template #default="{ row }">
                 <el-button size="small" @click="showEditItem(row)">编辑</el-button>
                 <el-button size="small" @click="showAssignTeacher(row)">指派教师</el-button>
-                <el-button size="small" type="danger" @click="handleRemove(row)">删除</el-button>
+                <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" type="danger" @click="handleRemove(row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>

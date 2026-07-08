@@ -77,8 +77,8 @@
         </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link size="small" type="primary" @click.stop="goEdit(row)">编辑</el-button>
-            <el-button link size="small" type="danger" :disabled="deleting === row.courseId" @click.stop="handleDelete(row)">{{ deleting === row.courseId ? '删除中…' : '删除' }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="primary" @click.stop="goEdit(row)">编辑</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :disabled="deleting === row.courseId" @click.stop="handleDelete(row)">{{ deleting === row.courseId ? '删除中…' : '删除' }}</el-button>
           </template>
         </el-table-column>
       </el-table>
