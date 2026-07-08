@@ -23,6 +23,9 @@
           <el-button v-if="showClose" type="danger" :loading="actioning" :disabled="actioning" @click="handleClose">结业</el-button>
           <el-button v-if="detail.status === 'APPROVED' || detail.status === 'RECRUITING'" @click="showFeaturedDialog">申请置顶</el-button>
           <el-button v-if="detail.featuredStatus === 'APPROVED'" type="warning" :loading="unfeaturing" :disabled="unfeaturing" @click="handleUnsetFeatured">取消置顶</el-button>
+          <el-button v-if="status === 'COMPLETED' || status === 'CANCELLED' || status === 'ARCHIVED'" type="danger" :loading="actioning" :disabled="actioning" @click="handleCancel">强制取消</el-button>
+          <el-button v-if="(status === 'COMPLETED' || status === 'CANCELLED') && (userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC')" type="primary" :loading="actioning" :disabled="actioning" @click="handleReopen">重新开课</el-button>
+          <el-button v-if="status === 'COMPLETED'" type="info" :loading="actioning" :disabled="actioning" @click="handleArchive">归档</el-button>
         </div>
       </div>
 
@@ -121,7 +124,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
-import { getMicroSpecialtyDetail, updateMicroSpecialty, submitMicroSpecialty, openMicroSpecialty, closeMicroSpecialty, cancelMicroSpecialty, applyFeatured, unsetFeatured, getStats, getEnrollmentList } from '@/api/microSpecialty'
+import { getMicroSpecialtyDetail, updateMicroSpecialty, submitMicroSpecialty, openMicroSpecialty, closeMicroSpecialty, cancelMicroSpecialty, reopenMicroSpecialty, archiveMicroSpecialty, applyFeatured, unsetFeatured, getStats, getEnrollmentList } from '@/api/microSpecialty'
 import { getEnrollments } from '@/api/enrollment'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
@@ -224,9 +227,32 @@ const handleClose = async () => {
 }
 
 const handleCancel = async () => {
-  try { await ElMessageBox.confirm('确定取消该微专业？此操作不可恢复。', '确认', { type: 'warning' }) } catch { return }
+  try {
+    const { value } = await ElMessageBox.prompt('请填写取消原因', '取消微专业', {
+      confirmButtonText: '确定取消', cancelButtonText: '取消',
+      inputType: 'textarea', inputPlaceholder: '请填写取消原因（必填）',
+      inputValidator: v => v?.trim()?.length >= 1 || '取消原因不能为空'
+    })
+    actioning.value = true
+    await cancelMicroSpecialty(msId.value, value)
+    ElMessage.success('已取消')
+    fetchDetail()
+  } catch (e) { if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || '操作失败') }
+  finally { actioning.value = false }
+}
+
+const handleReopen = async () => {
+  try { await ElMessageBox.confirm('确认重新开课？这将重置微专业为招生中状态。', '确认', { type: 'warning' }) } catch { return }
   actioning.value = true
-  try { await cancelMicroSpecialty(msId.value); ElMessage.success('已取消'); fetchDetail() }
+  try { await reopenMicroSpecialty(msId.value); ElMessage.success('已重新开课'); fetchDetail() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  finally { actioning.value = false }
+}
+
+const handleArchive = async () => {
+  try { await ElMessageBox.confirm('确认归档该微专业？归档后不再显示，不可再操作。', '确认', { type: 'warning' }) } catch { return }
+  actioning.value = true
+  try { await archiveMicroSpecialty(msId.value); ElMessage.success('已归档'); fetchDetail() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actioning.value = false }
 }
