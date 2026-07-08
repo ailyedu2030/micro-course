@@ -205,7 +205,7 @@ public class UserController {
      * 查看当前用户的 API Key（脱敏）。未生成时返回 null。
      */
     @GetMapping("/me/api-key")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public R<UserApiKeyResponse> getMyApiKey() {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         User user = userRepository.selectById(currentUserId);
@@ -225,7 +225,7 @@ public class UserController {
      * 生成 / 重新生成当前用户的 API Key。返回明文（仅此一次）。
      */
     @PostMapping("/me/api-key")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public R<UserApiKeyResponse> generateMyApiKey() {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         User user = userRepository.selectById(currentUserId);
@@ -237,7 +237,10 @@ public class UserController {
                 + java.util.UUID.randomUUID().toString().replace("-", "");
         user.setApiKey(newKey);
         user.setUpdatedAt(java.time.LocalDateTime.now());
-        userRepository.updateById(user);
+        int rows = userRepository.updateById(user);
+        if (rows == 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成 API Key 失败（乐观锁或无记录），请重试");
+        }
         return R.ok(UserApiKeyResponse.full(
                 newKey,
                 UserApiKeyResponse.mask(newKey),
@@ -249,7 +252,7 @@ public class UserController {
      * 撤销当前用户的 API Key。
      */
     @DeleteMapping("/me/api-key")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public R<Void> revokeMyApiKey() {
         Long currentUserId = SecurityUtil.getCurrentUserId();
         User user = userRepository.selectById(currentUserId);

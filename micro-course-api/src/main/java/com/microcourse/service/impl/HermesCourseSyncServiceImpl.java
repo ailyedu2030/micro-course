@@ -3,12 +3,14 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseCategory;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.HermesCourseMapping;
 import com.microcourse.entity.Lesson;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.HermesCourseMappingRepository;
@@ -42,17 +44,20 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
 
 private final HermesCourseMappingRepository mappingRepository;
     private final CourseRepository courseRepository;
+    private final CourseCategoryRepository categoryRepository;
     private final CourseChapterRepository chapterRepository;
     private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
 
     public HermesCourseSyncServiceImpl(HermesCourseMappingRepository mappingRepository,
                                       CourseRepository courseRepository,
+                                      CourseCategoryRepository categoryRepository,
                                       CourseChapterRepository chapterRepository,
                                       LessonRepository lessonRepository,
                                       UserRepository userRepository) {
         this.mappingRepository = mappingRepository;
         this.courseRepository = courseRepository;
+        this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
         this.lessonRepository = lessonRepository;
         this.userRepository = userRepository;
@@ -67,6 +72,14 @@ private final HermesCourseMappingRepository mappingRepository;
         User callerTeacher = userRepository.selectById(callerTeacherId);
         if (callerTeacher == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 验证 categoryId 存在
+        if (request.getCategoryId() != null) {
+            CourseCategory category = categoryRepository.selectById(request.getCategoryId());
+            if (category == null) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "分类 ID " + request.getCategoryId() + " 不存在");
+            }
         }
 
         // 如果 body 里有 teacherId，必须等于 caller（防越权）
@@ -189,8 +202,15 @@ private final HermesCourseMappingRepository mappingRepository;
 
         List<Long> courseIds = mappings.stream().map(HermesCourseMapping::getCourseId).toList();
         List<Course> courses = courseRepository.selectBatchIds(courseIds);
+        if (courses == null) return List.of();
         java.util.Map<Long, Course> courseMap = courses.stream()
                 .collect(java.util.stream.Collectors.toMap(Course::getId, c -> c));
+
+        java.util.Map<Long, String> categoryNames = new java.util.HashMap<>();
+        courses.stream().map(Course::getCategoryId).filter(java.util.Objects::nonNull).distinct().forEach(cid -> {
+            CourseCategory cat = categoryRepository.selectById(cid);
+            if (cat != null) categoryNames.put(cid, cat.getName());
+        });
 
         return mappings.stream().map(m -> {
             Course c = courseMap.get(m.getCourseId());
@@ -198,7 +218,7 @@ private final HermesCourseMappingRepository mappingRepository;
             return new HermesCourseListVO(
                     m.getHermesCourseId(), c.getId(), c.getTitle(),
                     c.getStatus(), c.getStatus() != null ? CourseStatus.fromCode(c.getStatus()).name() : "UNKNOWN",
-                    c.getCategoryId(), null, c.getCourseType(),
+                    c.getCategoryId(), categoryNames.get(c.getCategoryId()), c.getCourseType(),
                     m.getLastSyncAt(), c.getCreatedAt());
         }).filter(java.util.Objects::nonNull).toList();
     }
@@ -212,6 +232,13 @@ private final HermesCourseMappingRepository mappingRepository;
 
         Course course = courseRepository.selectById(mapping.getCourseId());
         if (course == null) return null;
+
+        // 权限检查：只能读自己的课程
+        if (!course.getTeacherId().equals(callerTeacherId)) {
+            log.warn("[HermesSync] Permission denied: course.teacherId={}, caller={}",
+                    course.getTeacherId(), callerTeacherId);
+            return null;
+        }
 
         User teacher = userRepository.selectById(callerTeacherId);
         if (teacher == null) return null;
