@@ -141,6 +141,7 @@ public class StorageApplicationController {
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC','ADMIN')")
     public R<StorageApplicationPreviewVO> preview(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
+        storageApplicationService.validateOwner(id, userId);
         return R.ok(storageApplicationService.buildPreview(id, userId));
     }
 
