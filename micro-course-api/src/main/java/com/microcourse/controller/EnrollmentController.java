@@ -131,7 +131,7 @@ public class EnrollmentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<EnrollmentVO> updateEnrollment(@PathVariable Long id,
                                             @Valid @RequestBody EnrollmentUpdateRequest request) {
         EnrollmentVO vo = enrollmentService.updateEnrollment(id, request);

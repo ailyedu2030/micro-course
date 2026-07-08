@@ -11,7 +11,7 @@
 
     <div class="page-header">
       <h1>{{ chapterTitle || '线下课管理' }}</h1>
-      <el-button type="primary" @click="openCreateDialog">
+      <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" @click="openCreateDialog">
         <el-icon><Plus /></el-icon>新增场次
       </el-button>
     </div>
@@ -58,8 +58,8 @@
           </div>
           <div class="session-actions">
             <el-button size="small" @click="openAttendanceDialog(session)">签到管理</el-button>
-            <el-button size="small" @click="openEditDialog(session)">编辑</el-button>
-            <el-button size="small" type="danger" plain @click="handleDelete(session)">删除</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" @click="openEditDialog(session)">编辑</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" type="danger" plain @click="handleDelete(session)">删除</el-button>
           </div>
         </div>
       </el-card>
