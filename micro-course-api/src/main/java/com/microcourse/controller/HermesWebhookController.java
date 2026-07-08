@@ -1,6 +1,8 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.R;
+import com.microcourse.dto.hermes.HermesCourseDetailVO;
+import com.microcourse.dto.hermes.HermesCourseListVO;
 import com.microcourse.dto.hermes.HermesWebhookRequest;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
@@ -13,15 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
-/**
- * Hermes 课程同步 Webhook。
- *
- * <p>认证方式：每个教师在个人设置里生成自己的 API Key，
- * 调用方在 {@code X-API-Key} Header 中传入。
- * 服务端用 API Key 反查 {@code users} 表，得到调用方教师身份。</p>
- */
 @RestController
 @RequestMapping("/api/hermes/webhook")
 public class HermesWebhookController {
@@ -37,24 +33,44 @@ public class HermesWebhookController {
         this.userRepository = userRepository;
     }
 
-    @PostMapping("/courses")
-    public R<HermesSyncResult> receiveCourse(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
-                                              @Valid @RequestBody HermesWebhookRequest request) {
+    private User authenticate(String apiKey) {
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("[HermesWebhook] Missing X-API-Key header");
             throw new BusinessException(ErrorCode.HERMES_INVALID_API_KEY);
         }
-
         Optional<User> callerOpt = userRepository.findByApiKey(apiKey);
         if (callerOpt.isEmpty()) {
             log.warn("[HermesWebhook] API key not found or user inactive");
             throw new BusinessException(ErrorCode.HERMES_INVALID_API_KEY);
         }
-        User caller = callerOpt.get();
+        return callerOpt.get();
+    }
 
+    @PostMapping("/courses")
+    public R<HermesSyncResult> receiveCourse(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
+                                              @Valid @RequestBody HermesWebhookRequest request) {
+        User caller = authenticate(apiKey);
         HermesSyncResult result = syncService.upsertCourse(request, caller.getId());
         log.info("[HermesSync] userId={} username={} hermesCourseId={} action={}",
                 caller.getId(), caller.getUsername(), request.getHermesCourseId(), result.getAction());
         return R.ok(result);
+    }
+
+    @GetMapping("/courses")
+    public R<List<HermesCourseListVO>> listCourses(@RequestHeader(value = "X-API-Key", required = false) String apiKey) {
+        User caller = authenticate(apiKey);
+        List<HermesCourseListVO> courses = syncService.listCoursesByTeacher(caller.getId());
+        return R.ok(courses);
+    }
+
+    @GetMapping("/courses/{hermesCourseId}")
+    public R<HermesCourseDetailVO> getCourse(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
+                                              @PathVariable String hermesCourseId) {
+        User caller = authenticate(apiKey);
+        HermesCourseDetailVO course = syncService.getCourseDetail(hermesCourseId, caller.getId());
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        return R.ok(course);
     }
 }

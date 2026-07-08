@@ -15,6 +15,11 @@ import com.microcourse.repository.HermesCourseMappingRepository;
 import com.microcourse.repository.LessonRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.HermesCourseSyncService;
+import com.microcourse.dto.hermes.HermesCourseDetailVO;
+import com.microcourse.dto.hermes.HermesCourseDetailVO.ChapterVo;
+import com.microcourse.dto.hermes.HermesCourseDetailVO.LessonVo;
+import com.microcourse.dto.hermes.HermesCourseDetailVO.PricingVo;
+import com.microcourse.dto.hermes.HermesCourseListVO;
 import com.microcourse.dto.hermes.HermesWebhookRequest;
 import com.microcourse.dto.hermes.HermesWebhookRequest.ChapterDto;
 import com.microcourse.dto.hermes.HermesWebhookRequest.LessonDto;
@@ -173,6 +178,108 @@ private final HermesCourseMappingRepository mappingRepository;
         }
 
         return course;
+    }
+
+    @Override
+    public List<HermesCourseListVO> listCoursesByTeacher(Long teacherId) {
+        List<HermesCourseMapping> mappings = mappingRepository.selectList(
+                new LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesTeacherId, String.valueOf(teacherId)));
+        if (mappings.isEmpty()) return List.of();
+
+        List<Long> courseIds = mappings.stream().map(HermesCourseMapping::getCourseId).toList();
+        List<Course> courses = courseRepository.selectBatchIds(courseIds);
+        java.util.Map<Long, Course> courseMap = courses.stream()
+                .collect(java.util.stream.Collectors.toMap(Course::getId, c -> c));
+
+        return mappings.stream().map(m -> {
+            Course c = courseMap.get(m.getCourseId());
+            if (c == null) return null;
+            return new HermesCourseListVO(
+                    m.getHermesCourseId(), c.getId(), c.getTitle(),
+                    c.getStatus(), c.getStatus() != null ? CourseStatus.fromCode(c.getStatus()).name() : "UNKNOWN",
+                    c.getCategoryId(), null, c.getCourseType(),
+                    m.getLastSyncAt(), c.getCreatedAt());
+        }).filter(java.util.Objects::nonNull).toList();
+    }
+
+    @Override
+    public HermesCourseDetailVO getCourseDetail(String hermesCourseId, Long callerTeacherId) {
+        LambdaQueryWrapper<HermesCourseMapping> q = new LambdaQueryWrapper<>();
+        q.eq(HermesCourseMapping::getHermesCourseId, hermesCourseId);
+        HermesCourseMapping mapping = mappingRepository.selectOne(q);
+        if (mapping == null) return null;
+
+        Course course = courseRepository.selectById(mapping.getCourseId());
+        if (course == null) return null;
+
+        User teacher = userRepository.selectById(callerTeacherId);
+        if (teacher == null) return null;
+
+        HermesCourseDetailVO vo = new HermesCourseDetailVO();
+        vo.setHermesCourseId(mapping.getHermesCourseId());
+        vo.setCourseId(course.getId());
+        vo.setTitle(course.getTitle());
+        vo.setSubtitle(course.getSubtitle());
+        vo.setSummary(course.getSummary());
+        vo.setCoverUrl(course.getCoverUrl());
+        vo.setCategoryId(course.getCategoryId());
+        vo.setTeacherId(course.getTeacherId());
+        vo.setTeacherName(teacher.getRealName() != null ? teacher.getRealName() : teacher.getUsername());
+        vo.setOfferDepartmentId(course.getOfferDepartmentId());
+        vo.setSemester(course.getSemester());
+        vo.setCreditHours(course.getCreditHours());
+        vo.setCourseNature(course.getCourseNature());
+        vo.setMaxStudents(course.getMaxStudents());
+        vo.setDifficulty(course.getDifficulty());
+        vo.setStatus(course.getStatus());
+        vo.setStatusText(course.getStatus() != null ? CourseStatus.fromCode(course.getStatus()).name() : "UNKNOWN");
+        vo.setDescription(course.getDescription());
+        vo.setTags(course.getTags());
+        vo.setCourseType(course.getCourseType());
+        vo.setRejectReason(course.getRejectReason());
+        vo.setStudentCount(course.getStudentCount());
+        vo.setAvgRating(course.getAvgRating());
+        vo.setPublishedAt(course.getPublishedAt());
+        vo.setLastSyncAt(mapping.getLastSyncAt());
+        vo.setCreatedAt(course.getCreatedAt());
+
+        PricingVo pricing = new PricingVo();
+        pricing.setIsFree(course.getIsFree());
+        pricing.setPrice(course.getPrice());
+        pricing.setFreeAccessScope(course.getFreeAccessScope());
+        pricing.setFreeDeptIds(course.getFreeDeptIds());
+        vo.setPricing(pricing);
+
+        List<CourseChapter> chapters = chapterRepository.selectList(
+                new LambdaQueryWrapper<CourseChapter>()
+                        .eq(CourseChapter::getCourseId, course.getId())
+                        .orderByAsc(CourseChapter::getSortOrder));
+        List<ChapterVo> chapterVos = chapters.stream().map(ch -> {
+            ChapterVo cv = new ChapterVo();
+            cv.setId(ch.getId());
+            cv.setTitle(ch.getTitle());
+            cv.setSortOrder(ch.getSortOrder());
+
+            List<Lesson> lessons = lessonRepository.selectList(
+                    new LambdaQueryWrapper<Lesson>()
+                            .eq(Lesson::getChapterId, ch.getId())
+                            .orderByAsc(Lesson::getSortOrder));
+            List<LessonVo> lessonVos = lessons.stream().map(l -> {
+                LessonVo lv = new LessonVo();
+                lv.setId(l.getId());
+                lv.setTitle(l.getTitle());
+                lv.setLessonType(l.getLessonType());
+                lv.setDurationMinutes(l.getDuration());
+                lv.setSortOrder(l.getSortOrder());
+                return lv;
+            }).toList();
+            cv.setLessons(lessonVos);
+            return cv;
+        }).toList();
+        vo.setChapters(chapterVos);
+
+        return vo;
     }
 
     private void syncChapters(Long courseId, List<ChapterDto> chapters) {
