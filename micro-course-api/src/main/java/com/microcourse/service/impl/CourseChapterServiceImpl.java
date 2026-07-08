@@ -11,6 +11,7 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.entity.ChapterOfflineSession;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
+import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ChapterOfflineSessionRepository;
@@ -143,6 +144,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
             throw new BusinessException(ErrorCode.CHAPTER_COURSE_NOT_FOUND);
         }
         assertCourseOwner(course);
+        if (course.getStatus() == CourseStatus.PUBLISHED.getCode()) {
+            throw new BusinessException(ErrorCode.COURSE_PUBLISHED_CANNOT_EDIT);
+        }
 
         CourseChapter chapter = new CourseChapter();
         chapter.setCourseId(request.getCourseId());
@@ -182,6 +186,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
         assertCourseOwnerByCourseId(chapter.getCourseId());
+        if (isCoursePublished(chapter.getCourseId())) {
+            throw new BusinessException(ErrorCode.COURSE_PUBLISHED_CANNOT_EDIT);
+        }
 
         // Partial update — sortOrder直接设置(约束已删除,不会冲突)
         if (request.getSortOrder() != null) {
@@ -214,6 +221,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
         assertCourseOwnerByCourseId(chapter.getCourseId());
+        if (isCoursePublished(chapter.getCourseId())) {
+            throw new BusinessException(ErrorCode.COURSE_PUBLISHED_CANNOT_EDIT);
+        }
         videoRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Video>()
                 .eq(com.microcourse.entity.Video::getChapterId, id));
         exerciseRepository.delete(new LambdaQueryWrapper<com.microcourse.entity.Exercise>()
@@ -323,6 +333,11 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private static final java.util.Set<String> VALID_CHAPTER_TYPES = java.util.Set.of(
         "VIDEO", "INTERACTIVE", "EXERCISE", "OFFLINE"
     );
+
+    private boolean isCoursePublished(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        return course != null && course.getStatus() == CourseStatus.PUBLISHED.getCode();
+    }
 
     private void validateChapterType(String chapterType) {
         if (chapterType != null && !VALID_CHAPTER_TYPES.contains(chapterType)) {
