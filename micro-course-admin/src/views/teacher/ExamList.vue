@@ -3,8 +3,8 @@
     <header class="page-header">
       <h1>试卷管理</h1>
       <div class="header-actions">
-        <el-button type="primary" :icon="Plus" @click="showCreate = true">{{ chapterIdFromRoute ? '智能组卷' : '新增试卷' }}</el-button>
-        <el-button v-if="chapterIdFromRoute" type="success" :icon="Plus" @click="openScheduleDialog">安排考试</el-button>
+        <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" :icon="Plus" @click="showCreate = true">{{ chapterIdFromRoute ? '智能组卷' : '新增试卷' }}</el-button>
+        <el-button v-if="chapterIdFromRoute && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="success" :icon="Plus" @click="openScheduleDialog">安排考试</el-button>
       </div>
     </header>
 
@@ -45,7 +45,7 @@
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button link size="small" type="danger" :loading="deleting === row.id" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :loading="deleting === row.id" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
