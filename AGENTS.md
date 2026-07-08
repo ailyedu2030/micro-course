@@ -4,6 +4,23 @@
 > 按场景按需加载 `docs/` 下的详细规范，见下方 **按需加载规则**。
 > 详细开发流程 → `docs/开发流程-完整版.md`
 > 发布管理规范 → `docs/发布管理.md`
+> **生产安全铁律（必读）** → `docs/PRODUCTION_SAFETY.md`
+
+---
+
+## 🚨 P0 · 生产安全核心铁律 (5 行版)
+
+**触发即 P0 事故：必须立即停止 + 报告用户 + 写事故复盘。**
+
+1. **未通过本地 16/16 验证，禁止部署到生产**（`bash scripts/local-dev-deploy.sh` 必须 `✅ 16 通过`）
+2. **禁止在生产服务器上调试**（禁止 `docker exec` 调试、`docker cp` 临时文件、ssh 做实验、Playwright 调试生产 URL）
+3. **一次只做一件事**：同一容器 5 分钟内禁止重启/重建 > 1 次；第二次失败 → **必须停下来报告用户**，禁止第三次
+4. **变更前必须备份**且 rollback 步骤写在 commit message 里
+5. **生产 DB 写操作必须先 ask user**（引用 SQL 解释），禁止直连"修复脏数据"或"清理测试数据"
+
+详细铁律 + 触发停手条件 + 违规识别清单 → `docs/PRODUCTION_SAFETY.md`
+
+**违规后果**：任何 commit 含生产调试痕迹 = P0 事故 → 立即 revert + 24 小时内写 `docs/incidents/YYYY-MM-DD-<title>.md`
 
 ---
 
