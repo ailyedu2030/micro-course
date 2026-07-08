@@ -258,7 +258,10 @@ public class UserController {
         }
         user.setApiKey(null);
         user.setUpdatedAt(java.time.LocalDateTime.now());
-        userRepository.updateById(user);
+        int rows = userRepository.updateById(user);
+        if (rows == 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "撤销 API Key 失败（乐观锁或无记录）");
+        }
         return R.ok();
     }
 

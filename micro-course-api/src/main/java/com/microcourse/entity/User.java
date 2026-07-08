@@ -87,7 +87,7 @@ public class User {
      * 用于 Hermes / 第三方系统调用 webhook 时认证教师身份。
      * 明文存储（性能考虑；DB 仅微课平台内部访问）。
      */
-    @TableField("api_key")
+    @TableField(value = "api_key", updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.IGNORED)
     private String apiKey;
 
     public User() {}

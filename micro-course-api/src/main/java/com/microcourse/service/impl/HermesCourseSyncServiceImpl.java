@@ -5,12 +5,14 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.HermesCourseMapping;
+import com.microcourse.entity.Lesson;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.HermesCourseMappingRepository;
+import com.microcourse.repository.LessonRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.HermesCourseSyncService;
 import com.microcourse.dto.hermes.HermesWebhookRequest;
@@ -33,18 +35,21 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(HermesCourseSyncServiceImpl.class);
 
-    private final HermesCourseMappingRepository mappingRepository;
+private final HermesCourseMappingRepository mappingRepository;
     private final CourseRepository courseRepository;
     private final CourseChapterRepository chapterRepository;
+    private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
 
     public HermesCourseSyncServiceImpl(HermesCourseMappingRepository mappingRepository,
-                                     CourseRepository courseRepository,
-                                     CourseChapterRepository chapterRepository,
-                                     UserRepository userRepository) {
+                                      CourseRepository courseRepository,
+                                      CourseChapterRepository chapterRepository,
+                                      LessonRepository lessonRepository,
+                                      UserRepository userRepository) {
         this.mappingRepository = mappingRepository;
         this.courseRepository = courseRepository;
         this.chapterRepository = chapterRepository;
+        this.lessonRepository = lessonRepository;
         this.userRepository = userRepository;
     }
 
@@ -90,7 +95,7 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
         HermesCourseMapping mapping = new HermesCourseMapping();
         mapping.setHermesCourseId(request.getHermesCourseId());
         mapping.setCourseId(courseId);
-        mapping.setHermesTeacherId(String.valueOf(request.getTeacherId()));
+        mapping.setHermesTeacherId(String.valueOf(callerTeacher.getId()));
         mapping.setLastSyncAt(LocalDateTime.now());
         mapping.setCreatedAt(LocalDateTime.now());
         mapping.setUpdatedAt(LocalDateTime.now());
@@ -181,6 +186,10 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
             chapter.setCourseId(courseId);
             chapter.setTitle(chapterDto.getTitle());
             chapter.setSortOrder(chapterDto.getSortOrder() != null ? chapterDto.getSortOrder() : chapterIndex + 1);
+
+            String chapterType = "VIDEO";
+            chapter.setChapterType(chapterType);
+            chapter.setDuration(0);
             chapter.setCreatedAt(LocalDateTime.now());
             chapter.setUpdatedAt(LocalDateTime.now());
             chapterRepository.insert(chapter);
@@ -193,9 +202,21 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
 
             int lessonIndex = 0;
             for (LessonDto lessonDto : lessons) {
-                log.info("[HermesSync] Lesson not fully materialized: chapterId={}, lesson={}, type={}, url={}",
-                        chapter.getId(), lessonDto.getTitle(), lessonDto.getType(), lessonDto.getContentUrl());
+                Lesson lesson = new Lesson();
+                lesson.setChapterId(chapter.getId());
+                lesson.setCourseId(courseId);
+                lesson.setTitle(lessonDto.getTitle());
+                lesson.setLessonType(lessonDto.getType() != null ? lessonDto.getType() : "VIDEO");
+                lesson.setSortOrder(lessonDto.getSortOrder() != null ? lessonDto.getSortOrder() : lessonIndex + 1);
+                lesson.setDuration(lessonDto.getDurationMinutes());
+                lesson.setVisible(true);
+                lesson.setCreatedAt(LocalDateTime.now());
+                lesson.setUpdatedAt(LocalDateTime.now());
+                lessonRepository.insert(lesson);
                 lessonIndex++;
+
+                log.debug("[HermesSync] Inserted lesson: chapterId={}, lessonId={}, title={}",
+                        chapter.getId(), lesson.getId(), lessonDto.getTitle());
             }
         }
     }
