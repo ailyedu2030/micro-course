@@ -52,3 +52,7 @@ export function createVideoBookmark(videoId, data) {
 export function deleteVideoBookmark(videoId, bookmarkId) {
   return request({ method: 'DELETE', url: `/videos/${videoId}/bookmarks/${bookmarkId}` })
 }
+
+export function retryVideoTranscode(videoId) {
+  return request({ method: 'POST', url: `/videos/${videoId}/retry` })
+}

@@ -96,9 +96,10 @@
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
         <el-table-column label="操作" width="210" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="success" link size="small" @click="handleSetCover(row)">设置封面</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="success" link size="small" @click="handleSetCover(row)">设置封面</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="row.status === 3 && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="warning" link size="small" :loading="retryingId === row.id" @click="handleRetry(row)">重试转码</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -207,7 +208,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, UploadFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo } from '@/api/video'
+import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo, retryVideoTranscode } from '@/api/video'
 import { getCourses, getCourseById } from '@/api/course'
 import { getChapters, getChapterById } from '@/api/chapter'
 import { getToken } from '@/utils/auth'
@@ -228,6 +229,7 @@ const isTeacherRole = computed(() => userStore.role === 'TEACHER')
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const retryingId = ref(null)
 const submitProgress = ref(0)
 const tableData = ref([])
 const totalElements = ref(0)
@@ -497,6 +499,14 @@ const handleSubmitCover = async () => {
   } finally {
     coverSubmitLoading.value = false
   }
+}
+
+const handleRetry = async (row) => {
+  try { await ElMessageBox.confirm('确定重新转码该视频？', '确认', { type: 'warning' }) } catch { return }
+  retryingId.value = row.id
+  try { await retryVideoTranscode(row.id); ElMessage.success('已重新提交转码'); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || '重试失败') }
+  finally { retryingId.value = null }
 }
 
 const handlePreviewCover = (row) => {
