@@ -197,6 +197,13 @@ const TEACHER = [
       { label: '邀请列表', path: '/teacher/micro-specialties/invites', icon: 'UserFilled' },
     ],
   },
+  {
+    group: '个人设置',
+    icon: 'Setting',
+    children: [
+      { label: '个人资料 / API Key', path: '/teacher/profile', icon: 'User' },
+    ],
+  },
 ]
 
 export const menuConfig = { ADMIN, ACADEMIC, TEACHER }

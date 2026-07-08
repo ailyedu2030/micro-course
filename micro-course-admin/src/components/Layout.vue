@@ -288,7 +288,12 @@ async function handleCommand(cmd) {
       router.push('/login')
     } catch (e) { ElMessage.error(e?.response?.data?.message || '退出失败') }
   } else if (cmd === 'profile') {
-    router.push('/profile')
+    // 教师进教师设置（含 API Key 管理），其他角色进通用 Profile
+    if (userStore.role === 'TEACHER') {
+      router.push('/teacher/profile')
+    } else {
+      router.push('/profile')
+    }
   } else if (cmd === 'settings') {
     router.push('/admin/settings')
   }
