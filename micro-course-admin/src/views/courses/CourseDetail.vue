@@ -42,8 +42,8 @@ v-if="userRole === 'ACADEMIC'"
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
           <el-button v-if="courseData.courseType === 'INTERACTIVE' && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="success" @click="goSlides">课件总览</el-button>
-          <el-button v-if="userRole !== 'ACADEMIC'" type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">编辑</el-button>
-          <el-button v-if="userRole !== 'ACADEMIC'" type="warning" plain @click="handleCopy">复制</el-button>
+          <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">编辑</el-button>
+          <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="warning" plain @click="handleCopy">复制</el-button>
           <el-button type="info" plain @click="previewAsStudent">
             <el-icon><View /></el-icon> 學生預覽
           </el-button>
@@ -138,8 +138,8 @@ v-if="userRole === 'ACADEMIC'"
       <el-card shadow="never" class="chapter-card">
         <template #header>
           <div class="card-header-row">
-            <span class="card-title">章节管理 <span v-if="userRole !== 'ACADEMIC'" class="hint">（可拖拽排序）</span></span>
-            <el-button v-if="userRole !== 'ACADEMIC'" type="primary" size="small" @click="handleCreateChapter">新增章节</el-button>
+            <span class="card-title">章节管理 <span v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" class="hint">（可拖拽排序）</span></span>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" size="small" @click="handleCreateChapter">新增章节</el-button>
           </div>
         </template>
         <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe row-key="id">
@@ -203,7 +203,7 @@ v-if="userRole === 'ACADEMIC'"
               </template>
             </template>
           </el-table-column>
-          <el-table-column v-if="userRole !== 'ACADEMIC'" label="操作" width="120" align="center" fixed="right">
+          <el-table-column v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
               <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">删除</el-button>
