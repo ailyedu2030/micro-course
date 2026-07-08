@@ -16,7 +16,7 @@
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <span class="toolbar-title">标签管理</span>
-        <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增标签</el-button>
+        <el-button type="primary" v-if="userRole === 'ADMIN'" @click="handleCreate">新增标签</el-button>
       </div>
     </el-card>
 

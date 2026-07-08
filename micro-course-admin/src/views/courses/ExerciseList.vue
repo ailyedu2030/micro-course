@@ -37,7 +37,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">练习列表</span>
-          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增练习</el-button>
+          <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">新增练习</el-button>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />

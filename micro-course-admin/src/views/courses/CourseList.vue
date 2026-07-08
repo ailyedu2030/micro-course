@@ -66,7 +66,7 @@
             >
               <el-icon><Download /></el-icon>导出
             </el-button>
-            <el-button type="primary" v-if="userRole !== 'ACADEMIC' && !route.query.courseType" @click="handleCreate">新增课程</el-button>
+            <el-button type="primary" v-if="(userRole === 'TEACHER' || userRole === 'ADMIN') && !route.query.courseType" @click="handleCreate">新增课程</el-button>
             <el-button type="primary" v-if="route.query.courseType === 'OFFLINE'" @click="showOfflineDialog = true" :icon="Plus">新增安排</el-button>
             <el-button v-if="route.query.courseType" @click="router.push('/teacher/courses')">返回课程列表</el-button>
           </div>

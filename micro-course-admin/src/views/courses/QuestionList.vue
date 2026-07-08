@@ -90,7 +90,7 @@
               <el-button type="success" size="small" :disabled="!selectedCourse">导入Excel</el-button>
             </el-upload>
             <el-button type="warning" size="small" @click="handleExportExcel">导出Excel</el-button>
-            <el-button type="primary" v-if="userRole !== 'ACADEMIC'" :disabled="!selectedCourse" @click="handleCreate">新增题目</el-button>
+            <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" :disabled="!selectedCourse" @click="handleCreate">新增题目</el-button>
           </div>
         </div>
       </template>
