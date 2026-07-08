@@ -2,7 +2,7 @@
   <aside class="panel panel-sidebar">
     <div class="panel-header">
       <span>课程结构</span>
-      <el-button size="small" text @click="$emit('addChapter')"><el-icon><Plus /></el-icon> 章节</el-button>
+      <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" text @click="$emit('addChapter')"><el-icon><Plus /></el-icon> 章节</el-button>
     </div>
     <div class="outline-tree">
       <div v-for="ch in structure" :key="ch.id" class="chapter-group" :data-chapter-id="ch.id">
@@ -30,7 +30,7 @@ v-for="lesson in ch.lessons" :key="lesson.id" class="lesson-row"
             <span class="lesson-status empty" v-else>◌</span>
           </div>
         </div>
-        <el-button size="small" text class="add-lesson-btn" @click="$emit('addLesson', ch)">
+        <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" text class="add-lesson-btn" @click="$emit('addLesson', ch)">
           <el-icon><Plus /></el-icon> 课时
         </el-button>
       </div>

@@ -1,6 +1,6 @@
 <template>
   <div class="video-editor">
-    <div class="upload-area" v-loading="uploading" element-loading-text="正在上传中，请勿离开...">
+    <div v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" class="upload-area" v-loading="uploading" element-loading-text="正在上传中，请勿离开...">
       <el-upload drag :show-file-list="false" accept="video/*" :disabled="uploading" :before-upload="handleUpload">
         <el-icon :size="32" class="upload-icon"><UploadFilled /></el-icon>
         <div class="upload-text">拖拽视频到此处，或 <em>点击上传</em></div>
