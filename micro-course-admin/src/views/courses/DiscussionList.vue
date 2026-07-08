@@ -80,7 +80,7 @@
             <el-button v-if="(row.status === 'PENDING' || row.statusStr === 'PENDING')" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
             <el-button v-if="row.status === 'PUBLISHED' || row.statusStr === 'PUBLISHED'" type="warning" link size="small" @click="handleTogglePin(row)">{{ row.isPinned ? '取消置顶' : '置顶' }}</el-button>
             <el-button v-if="row.status === 'PUBLISHED' || row.statusStr === 'PUBLISHED'" type="success" link size="small" @click="handleToggleEssence(row)">{{ row.isEssence ? '取消精华' : '精华' }}</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

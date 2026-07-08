@@ -20,7 +20,7 @@
           <div class="header-actions">
             <el-button v-if="postData.status === 'PENDING'" type="success" @click="handleApprove">通过</el-button>
             <el-button v-if="postData.status === 'PENDING'" type="danger" @click="handleReject">驳回</el-button>
-            <el-button type="danger" @click="handleDelete">删除</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" @click="handleDelete">删除</el-button>
             <el-button @click="handleBack">返回</el-button>
           </div>
         </div>
@@ -61,7 +61,7 @@
           <div class="reply-header">
             <span class="reply-author">{{ reply.authorName || '-' }}</span>
             <span class="reply-time">{{ formatDateTime(reply.createdAt) || '-' }}</span>
-            <el-button type="danger" link size="small" @click="handleDeleteReply(reply)">删除</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDeleteReply(reply)">删除</el-button>
           </div>
           <div class="reply-content">{{ reply.content }}</div>
         </div>
