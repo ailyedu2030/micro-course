@@ -1,6 +1,8 @@
 # 微课平台应急回滚预案
 
 > 部署失败或重大故障时执行。优先 5 分钟应用层回滚，如数据库结构变更导致问题则执行 30 分钟回滚。
+>
+> **最后更新**: 2026-07-09 (v1.21.0 docker 部署适配)
 
 ---
 
@@ -8,51 +10,52 @@
 
 当应用启动失败、接口大量报 500、或健康检查持续不通过时，执行应用层回滚。
 
-### 步骤 1：停止当前应用
+### 生产环境信息
+
+| 容器 | 宿主机 IP | 用途 |
+|------|-----------|------|
+| `micro-course-micro-course-api-1` | 100.74.122.13 | 后端 API (8080) |
+| `micro-course-micro-course-admin-1` | 100.74.122.13 | 前端 Admin |
+| `micro-course-postgres-1` | 100.74.122.13 | PostgreSQL (5432) |
+| `micro-course-redis-1` | 100.74.122.13 | Redis (6379) |
+
+### 步骤 1：备份当前问题版本
 
 ```bash
-systemctl stop micro-course-api
+# 登录生产服务器
+ssh ubuntu@100.74.122.13
+
+# 备份当前运行中的 jar（以防需要回滚到当前版本）
+docker cp micro-course-micro-course-api-1:/app/app.jar /tmp/app.jar.backup.$(date +%Y%m%d_%H%M%S)
 ```
 
-### 步骤 2：切回上一个稳定版本
+### 步骤 2：回滚到上一个稳定版本
 
 ```bash
-# 假设上一个稳定版本目录为 v1.17.0
-ln -sf /opt/micro-course/versions/v1.17.0 /opt/micro-course/current
+# 假设上一个稳定版本 jar 在 /tmp/ 下（部署时已备份）
+# 例如回滚到 v1.20.2
+docker cp /tmp/micro-course-api-1.0.0.jar.v1.20.2 micro-course-micro-course-api-1:/app/app.jar
 
-# 确认切换成功
-ls -la /opt/micro-course/current
+# 优雅重启（不是 kill -9）
+docker exec micro-course-micro-course-api-1 kill -s HUP 1
+
+# 确认重启
+sleep 5
+docker logs micro-course-micro-course-api-1 --since=30s | grep -E "Started|ERROR|Exception"
 ```
 
-### 步骤 3：启动旧版本
-
-```bash
-systemctl start micro-course-api
-
-# 确认启动成功
-systemctl status micro-course-api
-```
-
-### 步骤 4：验证回滚成功
+### 步骤 3：验证回滚成功
 
 ```bash
 # 健康检查
 curl -s http://localhost:8080/actuator/health
 # 预期: {"status":"UP"}
 
-# 检查日志无新增 ERROR
-journalctl -u micro-course-api --since="5 minutes ago" | grep -i error
-```
+# 检查日志无新增 ERROR（最近 5 分钟）
+docker logs micro-course-micro-course-api-1 --since=5m | grep -i error | head -20
 
-### 版本管理建议
-
-```bash
-# 部署前创建版本目录
-mkdir -p /opt/micro-course/versions/v1.17.0
-mkdir -p /opt/micro-course/versions/v1.18.0  # 新版本
-
-# 部署后如新版本稳定，将新版本标记为当前
-ln -sf /opt/micro-course/versions/v1.18.0 /opt/micro-course/current
+# 前端也可检查
+curl -s http://localhost:8088/ | head -5
 ```
 
 ---
@@ -63,7 +66,7 @@ ln -sf /opt/micro-course/versions/v1.18.0 /opt/micro-course/current
 
 ### 触发条件
 
-- V80/V81 迁移执行后应用无法启动
+- Flyway 迁移执行后应用无法启动
 - 迁移导致数据损坏（如误删数据、约束冲突）
 - 需要立即恢复服务且应用层回滚无效
 
@@ -71,98 +74,60 @@ ln -sf /opt/micro-course/versions/v1.18.0 /opt/micro-course/current
 
 ```bash
 # 1. 立即停止应用（防止写入更多数据）
-systemctl stop micro-course-api
+docker exec micro-course-micro-course-api-1 kill -s TERM 1
 
 # 2. 确认有完整备份可恢复
-ls -la /backup/micro_course_*.dump
+ssh ubuntu@100.74.122.13 "docker exec micro-course-postgres-1 pg_dump -U microcourse_user micro_course" > /tmp/micro_course_backup.$(date +%Y%m%d_%H%M%S).sql
 ```
 
-### 回滚 V81 添加的 FK 约束
+### 回滚 V174 (hermes_course_mapping 表)
 
 ```sql
--- 连接到数据库
-psql -U microcourse_user -d micro_course
+-- 连接到生产数据库
+psql -h 100.74.122.13 -U microcourse_user -d micro_course
 
--- 删除 V81 添加的所有 FK 约束（幂等操作）
-ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_user_id_fkey;
-ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_course_id_fkey;
-ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_bundle_id_fkey;
-ALTER TABLE course_bundles DROP CONSTRAINT IF EXISTS course_bundles_creator_id_fkey;
-ALTER TABLE course_bundle_items DROP CONSTRAINT IF EXISTS course_bundle_items_bundle_id_fkey;
-ALTER TABLE course_bundle_items DROP CONSTRAINT IF EXISTS course_bundle_items_course_id_fkey;
-ALTER TABLE lessons DROP CONSTRAINT IF EXISTS lessons_chapter_id_fkey;
-ALTER TABLE lessons DROP CONSTRAINT IF EXISTS lessons_course_id_fkey;
-ALTER TABLE course_slides DROP CONSTRAINT IF EXISTS course_slides_lesson_id_fkey;
+-- 删除 hermes_course_mapping 表（幂等操作）
+DROP TABLE IF EXISTS hermmes_course_mapping;
 
--- 删除 V81 添加的索引
-DROP INDEX IF EXISTS idx_users_student_no;
-DROP INDEX IF EXISTS idx_users_email;
-DROP INDEX IF EXISTS idx_users_username;
-```
-
-### 回滚 V80 添加的 deleted_at 列
-
-```sql
--- 为以下 11 张表删除 deleted_at 列
-ALTER TABLE banners DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE classes DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE course_categories DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE course_tag_relations DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE departments DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE majors DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE tags DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE question_tag_relations DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE teaching_classes DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE course_bundles DROP COLUMN IF EXISTS deleted_at;
-ALTER TABLE course_bundle_items DROP COLUMN IF EXISTS deleted_at;
-```
-
-### 回滚 V79 添加的 status 列
-
-```sql
--- 删除 course_reviews 的 status 列（仅在确认 V79 是问题来源时执行）
-ALTER TABLE course_reviews DROP COLUMN IF EXISTS status;
-DROP INDEX IF EXISTS idx_course_reviews_status;
-```
-
-### 标记 Flyway 回滚（可选）
-
-```sql
--- 将 flyway_schema_history 中的失败记录标记为回滚（不推荐，优先恢复备份）
--- DELETE FROM flyway_schema_history WHERE version IN ('V79','V80','V81');
+-- 从 flyway_schema_history 中移除记录
+DELETE FROM flyway_schema_history WHERE version = 'V174';
 ```
 
 ### 恢复数据库备份（最终手段）
 
 ```bash
-# 如果上述回滚无效，从备份恢复
-pg_restore -U microcourse_user -d micro_course -c /backup/micro_course_YYYYMMDD_HHMMSS.dump
+# 从备份恢复
+cat /tmp/micro_course_backup.YYYYMMDD_HHMMSS.sql | docker exec -i micro-course-postgres-1 psql -U microcourse_user -d micro_course
 ```
 
 ### 验证数据库回滚
 
 ```sql
--- 确认 FK 约束已删除
-SELECT constraint_name FROM information_schema.table_constraints
-WHERE table_name IN ('orders','course_bundles','course_bundle_items','lessons','course_slides')
-AND constraint_type = 'FOREIGN KEY';
+-- 确认 hermes_course_mapping 表已删除
+SELECT table_name FROM information_schema.tables WHERE table_name = 'hermes_course_mapping';
+-- 应返回空
 
--- 确认 deleted_at 列已删除
-SELECT column_name FROM information_schema.columns
-WHERE table_name = 'banners' AND column_name = 'deleted_at';  -- 应返回空
-
--- 确认 status 列已删除
-SELECT column_name FROM information_schema.columns
-WHERE table_name = 'course_reviews' AND column_name = 'status';  -- 应返回空
+-- 确认 flyway 记录已移除
+SELECT version, description FROM flyway_schema_history WHERE version = 'V174';
+-- 应返回空
 ```
 
 ### 重启应用验证
 
 ```bash
-systemctl start micro-course-api
+docker exec micro-course-micro-course-api-1 kill -s HUP 1
 sleep 10
 curl -s http://localhost:8080/actuator/health
 ```
+
+---
+
+## 版本历史（最近 3 个版本）
+
+| 版本 | 部署时间 | 变更 | 回滚命令 |
+|------|----------|------|----------|
+| v1.20.2 | 2026-07-09 之前 | 6 个 dropdown 端点 @Range max 修复 | `docker cp /tmp/app.jar.backup.v1.20.2 micro-course-micro-course-api-1:/app/app.jar` |
+| v1.21.0 | 2026-07-09 | Hermes webhook 课程同步 (V174 新表) | `docker cp /tmp/app.jar.backup.v1.21.0 micro-course-micro-course-api-1:/app/app.jar` |
 
 ---
 
@@ -171,34 +136,65 @@ curl -s http://localhost:8080/actuator/health
 ```bash
 #!/bin/bash
 # quick_rollback.sh - 5分钟应用层回滚
+# 用法: bash quick_rollback.sh <backup_file>
 set -e
 
-CURRENT_VERSION=${1:-"v1.17.0"}
-CURRENT_LINK="/opt/micro-course/current"
-VERSIONS_DIR="/opt/micro-course/versions"
+BACKUP_JAR=${1:-"/tmp/app.jar.backup.v1.20.2"}
+CONTAINER="micro-course-micro-course-api-1"
 
 echo "=== 开始快速回滚 ==="
-echo "目标版本: $CURRENT_VERSION"
+echo "源文件: $BACKUP_JAR"
 
-systemctl stop micro-course-api
-echo "[1/4] 应用已停止"
+# 复制并重启
+docker cp "$BACKUP_JAR" ${CONTAINER}:/app/app.jar
+echo "[1/3] JAR 已复制"
 
-ln -sf ${VERSIONS_DIR}/${CURRENT_VERSION} ${CURRENT_LINK}
-echo "[2/4] 软链接切换到 $CURRENT_VERSION"
+docker exec ${CONTAINER} kill -s HUP 1
+echo "[2/3] 应用已重启 (HUP)"
 
-systemctl start micro-course-api
-echo "[3/4] 应用已启动"
-
-sleep 5
-HEALTH=$(curl -s http://localhost:8080/actuator/health)
-echo "[4/4] 健康检查: $HEALTH"
+sleep 8
+HEALTH=$(curl -s http://localhost:8080/actuator/health || echo "DOWN")
+echo "[3/3] 健康检查: $HEALTH"
 
 if echo "$HEALTH" | grep -q "UP"; then
     echo "=== 回滚成功 ✅ ==="
 else
     echo "=== 回滚失败，请检查日志 ==="
+    docker logs ${CONTAINER} --since=1m | tail -30
     exit 1
 fi
+```
+
+---
+
+## 灰度回滚
+
+如果灰度发布后发现问题，但还没全量：
+
+```bash
+# 从灰度白名单移除问题账号
+bash scripts/gray-release.sh remove <user>
+
+# 或者回滚到指定版本
+bash scripts/gray-release.sh roll-back <version>
+```
+
+---
+
+## 回滚决策树
+
+```
+部署/故障发生
+    │
+    ├─ 应用启动失败/健康检查不通过
+    │   └─ 5分钟回滚（应用层）→ docker cp + HUP
+    │
+    ├─ 数据库迁移失败
+    │   ├─ Flyway 迁移错误 → 修复 SQL → 重跑迁移
+    │   └─ 迁移导致数据问题 → 30分钟回滚（数据库层）
+    │
+    └─ 严重数据损坏
+        └─ 从备份恢复（可能超过 30 分钟）
 ```
 
 ---
@@ -212,24 +208,6 @@ fi
 | 运维工程师 | - | - | - | 服务器、网络问题 |
 | 企业方对接人 | - | - | - | 业务影响确认 |
 | 项目经理 | - | - | - | 协调沟通 |
-
----
-
-## 回滚决策树
-
-```
-部署/故障发生
-    │
-    ├─ 应用启动失败/健康检查不通过
-    │   └─ 5分钟回滚（应用层）
-    │
-    ├─ 数据库迁移失败
-    │   ├─ Flyway 迁移错误 → 修复 SQL → 重跑迁移
-    │   └─ 迁移导致数据问题 → 30分钟回滚（数据库层）
-    │
-    └─ 严重数据损坏
-        └─ 从备份恢复（可能超过 30 分钟）
-```
 
 ---
 

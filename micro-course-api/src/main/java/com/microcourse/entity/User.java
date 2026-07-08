@@ -82,6 +82,14 @@ public class User {
     @TableField("version")
     private Integer version;
 
+    /**
+     * 教师 API Key（V175 增量）。
+     * 用于 Hermes / 第三方系统调用 webhook 时认证教师身份。
+     * 明文存储（性能考虑；DB 仅微课平台内部访问）。
+     */
+    @TableField("api_key")
+    private String apiKey;
+
     public User() {}
 
     public User(Long id, String username, String password, String realName, String email, String phone,
@@ -150,4 +158,6 @@ public class User {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
+    public String getApiKey() { return apiKey; }
+    public void setApiKey(String apiKey) { this.apiKey = apiKey; }
 }

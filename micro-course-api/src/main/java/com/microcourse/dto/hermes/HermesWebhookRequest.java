@@ -18,7 +18,11 @@ public class HermesWebhookRequest {
     @NotNull(message = "分类 ID 不能为空")
     private Long categoryId;
 
-    @NotNull(message = "教师 ID 不能为空")
+    /**
+     * 教师 ID（可选）。
+     * 如果提供，必须等于 API Key 对应的教师 ID；
+     * 不提供则默认使用 API Key 反查得到的教师。
+     */
     private Long teacherId;
 
     private String subtitle;

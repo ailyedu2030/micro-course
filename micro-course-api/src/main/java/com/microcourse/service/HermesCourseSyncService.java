@@ -4,7 +4,13 @@ import com.microcourse.dto.hermes.HermesWebhookRequest;
 
 public interface HermesCourseSyncService {
 
-    HermesSyncResult upsertCourse(HermesWebhookRequest request);
+    /**
+     * 同步/创建课程。
+     *
+     * @param request       Webhook 请求体
+     * @param callerTeacherId 调用方教师 ID（从 API Key 反查得到，必填；body 中的 teacherId 若有必须一致）
+     */
+    HermesSyncResult upsertCourse(HermesWebhookRequest request, Long callerTeacherId);
 
     public static class HermesSyncResult {
         private Long courseId;

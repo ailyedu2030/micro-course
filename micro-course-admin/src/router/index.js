@@ -94,6 +94,7 @@ const routes = [
   { path: '/teacher/students', name: 'StudentList', component: () => import('../views/teacher/StudentList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/grades', name: 'StudentGrades', component: () => import('../views/teacher/StudentGrades.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN', 'ACADEMIC'] } },
   { path: '/teacher/teaching-classes', name: 'TeacherTeachingClasses', component: () => import('../views/teacher/TeacherTeachingClasses.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
+  { path: '/teacher/profile', name: 'TeacherProfile', component: () => import('../views/teacher/settings/TeacherProfile.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '个人设置' } },
   // P0-1: SlidePlayer & SlideManage 路由（修复教师工作台点击 PPT 播放 404）
   { path: '/teacher/courses/:courseId/slides/manage', name: 'TeacherSlideManage', component: () => import('../plugins/interactive/views/teacher/SlideManage.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/slides', name: 'TeacherSlideOverview', component: () => import('../views/teacher/TeacherSlideOverview.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '互动课件管理' } },

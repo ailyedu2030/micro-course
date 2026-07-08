@@ -50,12 +50,20 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
 
     @Override
     @Transactional
-    public HermesSyncResult upsertCourse(HermesWebhookRequest request) {
+    public HermesSyncResult upsertCourse(HermesWebhookRequest request, Long callerTeacherId) {
         String hermesCourseId = request.getHermesCourseId();
 
-        User teacher = userRepository.selectById(request.getTeacherId());
-        if (teacher == null) {
-            throw new BusinessException(ErrorCode.COURSE_TEACHER_NOT_FOUND);
+        // 验证 caller teacher 存在且有效
+        User callerTeacher = userRepository.selectById(callerTeacherId);
+        if (callerTeacher == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 如果 body 里有 teacherId，必须等于 caller（防越权）
+        if (request.getTeacherId() != null && !request.getTeacherId().equals(callerTeacherId)) {
+            log.warn("[HermesSync] teacherId mismatch: caller={}, body={}",
+                    callerTeacherId, request.getTeacherId());
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "API Key 身份与 body 中的 teacherId 不一致");
         }
 
         LambdaQueryWrapper<HermesCourseMapping> wrapper = new LambdaQueryWrapper<>();
@@ -63,14 +71,14 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
         HermesCourseMapping mapping = mappingRepository.selectOne(wrapper);
 
         if (mapping == null) {
-            return createCourse(request, teacher);
+            return createCourse(request, callerTeacher);
         } else {
-            return updateCourse(mapping.getCourseId(), request, teacher);
+            return updateCourse(mapping.getCourseId(), request, callerTeacher);
         }
     }
 
-    private HermesSyncResult createCourse(HermesWebhookRequest request, User teacher) {
-        Course course = buildCourse(request);
+    private HermesSyncResult createCourse(HermesWebhookRequest request, User callerTeacher) {
+        Course course = buildCourse(request, callerTeacher);
         course.setStatus(CourseStatus.DRAFT.getCode());
         course.setStudentCount(0);
         course.setAvgRating(BigDecimal.ZERO);
@@ -95,13 +103,13 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
         return new HermesSyncResult(courseId, "DRAFT", "created");
     }
 
-    private HermesSyncResult updateCourse(Long courseId, HermesWebhookRequest request, User teacher) {
+    private HermesSyncResult updateCourse(Long courseId, HermesWebhookRequest request, User callerTeacher) {
         Course existing = courseRepository.selectById(courseId);
         if (existing == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        Course updated = buildCourse(request);
+        Course updated = buildCourse(request, callerTeacher);
         updated.setId(courseId);
         updated.setStatus(existing.getStatus());
         updated.setStudentCount(existing.getStudentCount());
@@ -128,15 +136,18 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
         return new HermesSyncResult(courseId, CourseStatus.fromCode(existing.getStatus()).name(), "updated");
     }
 
-    private Course buildCourse(HermesWebhookRequest request) {
+    private Course buildCourse(HermesWebhookRequest request, User callerTeacher) {
         Course course = new Course();
         course.setTitle(request.getTitle());
         course.setSubtitle(request.getSubtitle());
         course.setSummary(request.getSummary());
         course.setCoverUrl(request.getCoverUrl());
         course.setCategoryId(request.getCategoryId());
-        course.setTeacherId(request.getTeacherId());
-        course.setOfferDepartmentId(request.getOfferDepartmentId());
+        // teacherId 强制使用 API Key 反查得到的教师身份（不信任 body）
+        course.setTeacherId(callerTeacher.getId());
+        course.setOfferDepartmentId(request.getOfferDepartmentId() != null
+                ? request.getOfferDepartmentId()
+                : callerTeacher.getDepartmentId());
         course.setSemester(request.getSemester());
         course.setCreditHours(request.getCreditHours());
         course.setCourseNature(request.getCourseNature());

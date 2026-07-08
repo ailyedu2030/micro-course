@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.UserApiKeyResponse;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
 import com.microcourse.dto.UserStatusRequest;
@@ -12,9 +13,12 @@ import com.microcourse.dto.UserUpdateRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.TeacherStatusRequest;
+import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.UserRepository;
 import com.microcourse.service.UserService;
+import com.microcourse.util.SecurityUtil;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -22,6 +26,7 @@ import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.Arrays;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,9 +46,11 @@ import java.io.InputStream;
 public class UserController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, UserRepository userRepository) {
         this.userService = userService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping
@@ -189,6 +196,70 @@ public class UserController {
         }
         String avatarUrl = userService.uploadAvatar(id, file);
         return R.ok(avatarUrl);
+    }
+
+    // ==================== API Key 管理（教师个人设置） ====================
+
+    /**
+     * GET /api/users/me/api-key
+     * 查看当前用户的 API Key（脱敏）。未生成时返回 null。
+     */
+    @GetMapping("/me/api-key")
+    @PreAuthorize("isAuthenticated()")
+    public R<UserApiKeyResponse> getMyApiKey() {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User user = userRepository.selectById(currentUserId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        if (user.getApiKey() == null) {
+            return R.ok(null);
+        }
+        return R.ok(UserApiKeyResponse.maskedOnly(
+                UserApiKeyResponse.mask(user.getApiKey()),
+                user.getUpdatedAt() != null ? user.getUpdatedAt().toString() : null));
+    }
+
+    /**
+     * POST /api/users/me/api-key
+     * 生成 / 重新生成当前用户的 API Key。返回明文（仅此一次）。
+     */
+    @PostMapping("/me/api-key")
+    @PreAuthorize("isAuthenticated()")
+    public R<UserApiKeyResponse> generateMyApiKey() {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User user = userRepository.selectById(currentUserId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        // 64 字符 URL-safe base64（48 bytes random -> ~64 chars）
+        String newKey = java.util.UUID.randomUUID().toString().replace("-", "")
+                + java.util.UUID.randomUUID().toString().replace("-", "");
+        user.setApiKey(newKey);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.updateById(user);
+        return R.ok(UserApiKeyResponse.full(
+                newKey,
+                UserApiKeyResponse.mask(newKey),
+                user.getUpdatedAt().toString()));
+    }
+
+    /**
+     * DELETE /api/users/me/api-key
+     * 撤销当前用户的 API Key。
+     */
+    @DeleteMapping("/me/api-key")
+    @PreAuthorize("isAuthenticated()")
+    public R<Void> revokeMyApiKey() {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User user = userRepository.selectById(currentUserId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        user.setApiKey(null);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.updateById(user);
+        return R.ok();
     }
 
 }

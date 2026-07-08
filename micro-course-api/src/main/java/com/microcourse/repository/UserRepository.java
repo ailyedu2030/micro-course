@@ -35,4 +35,11 @@ public interface UserRepository extends BaseMapper<User> {
      */
     @Update("UPDATE users SET status = 1, deleted_at = NULL, version = version + 1, updated_at = now() WHERE id = #{id}")
     int restoreToActive(@Param("id") Long id);
+
+    /**
+     * 按 API Key 查找用户（Hermes Webhook 认证）。
+     * 只查未删除且状态=1（ACTIVE）的用户。
+     */
+    @Select("SELECT * FROM users WHERE api_key = #{apiKey} AND deleted_at IS NULL AND status = 1 LIMIT 1")
+    Optional<User> findByApiKey(@Param("apiKey") String apiKey);
 }

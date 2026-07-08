@@ -190,5 +190,6 @@ mybatis:
     alert-enabled: ${SLOW_SQL_ALERT_ENABLED:true}
 
 # Hermes 课程同步 Webhook 配置
-hermes:
-  api-key: ${HERMES_API_KEY:}  # Hermes 平台 API Key，需在生产环境配置
+# V2 改造：取消共享 API Key，改为每个教师在个人设置里生成独立 API Key
+# 通过 X-API-Key Header 传入，服务端反查 users.api_key 获取教师身份
+# （无需服务端配置；详见 UserController /api/users/me/api-key）
