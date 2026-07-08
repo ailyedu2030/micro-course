@@ -161,7 +161,10 @@ public enum ErrorCode {
 
     // P1I-052: 补充常用系统级错误码
     CONCURRENT_MODIFICATION(409, "数据已被其他操作修改，请刷新重试", 409),
-    INTERNAL_SERVER_ERROR(500, "服务器内部错误", 500);
+    INTERNAL_SERVER_ERROR(500, "服务器内部错误", 500),
+
+    // Hermes 集成错误码
+    HERMES_INVALID_API_KEY(21001, "无效的 Hermes API Key", 401);
 
     private final int code;
     private final String message;

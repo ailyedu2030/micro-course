@@ -188,3 +188,7 @@ mybatis:
   slow-sql:
     threshold-ms: ${SLOW_SQL_THRESHOLD_MS:500}   # 500ms 阈值（业务建议，可调整）
     alert-enabled: ${SLOW_SQL_ALERT_ENABLED:true}
+
+# Hermes 课程同步 Webhook 配置
+hermes:
+  api-key: ${HERMES_API_KEY:}  # Hermes 平台 API Key，需在生产环境配置

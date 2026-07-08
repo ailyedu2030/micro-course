@@ -155,6 +155,8 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/files/**").authenticated()
                         // P0-SEC-FIX: 放行支付回调端点，外部支付网关无法携带 JWT
                         .requestMatchers("POST", "/api/orders/callback").permitAll()
+                        // Hermes 课程同步 Webhook（API Key 校验在 Controller 层）
+                        .requestMatchers("/api/hermes/webhook/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -186,7 +188,8 @@ public class SecurityConfig {
                 "Accept",
                 "X-Requested-With",
                 "X-Tenant-Id",
-                "X-Device-Id"
+                "X-Device-Id",
+                "X-API-Key"
         ));
         cfg.setExposedHeaders(List.of("Authorization"));
         cfg.setAllowCredentials(true);
