@@ -28,20 +28,20 @@ v-if="userRole === 'ACADEMIC'"
       <div class="action-bar">
         <h1 class="course-title">{{ courseData.title || '未命名课程' }}</h1>
         <div class="action-buttons">
-          <template v-if="courseData.status === 0 && userRole !== 'ACADEMIC'">
+          <template v-if="courseData.status === 0 && userRole === 'TEACHER'">
             <el-button type="primary" @click="handleSubmitForReview" :loading="submitLoading" :disabled="submitLoading">提交审核</el-button>
           </template>
-          <template v-if="courseData.status === 1">
+          <template v-if="courseData.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')">
             <el-button type="success" @click="handleApprove">审核通过</el-button>
             <el-button type="danger" @click="handleReject">驳回</el-button>
           </template>
           <template v-if="[2, 5].includes(courseData.status) && userRole === 'ADMIN'">
             <el-button type="primary" @click="handlePublish">{{ courseData.status === 5 ? '重新上架' : '发布' }}</el-button>
           </template>
-          <template v-if="courseData.status === 4 && isOwner">
+          <template v-if="courseData.status === 4 && userRole === 'ADMIN'">
             <el-button type="warning" @click="handleUnpublish">下架</el-button>
           </template>
-          <el-button v-if="courseData.courseType === 'INTERACTIVE'" type="success" @click="goSlides">课件总览</el-button>
+          <el-button v-if="courseData.courseType === 'INTERACTIVE' && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="success" @click="goSlides">课件总览</el-button>
           <el-button v-if="userRole !== 'ACADEMIC'" type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">编辑</el-button>
           <el-button v-if="userRole !== 'ACADEMIC'" type="warning" plain @click="handleCopy">复制</el-button>
           <el-button type="info" plain @click="previewAsStudent">
@@ -181,22 +181,22 @@ v-if="userRole === 'ACADEMIC'"
           <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
           <el-table-column label="内容管理" width="260" fixed="right">
             <template #default="{ row }">
-              <template v-if="row.chapterType === 'VIDEO'">
+              <template v-if="row.chapterType === 'VIDEO' && (userRole === 'TEACHER' || userRole === 'ADMIN')">
                 <el-button link type="primary" @click.stop="gotoChapterContent(row.id, 'manage-videos')">
                   📹 管理视频
                 </el-button>
               </template>
-              <template v-else-if="row.chapterType === 'INTERACTIVE'">
+              <template v-else-if="row.chapterType === 'INTERACTIVE' && (userRole === 'TEACHER' || userRole === 'ADMIN')">
                 <el-button link type="success" @click.stop="gotoChapterContent(row.id, 'manage-slides')">
                   📊 管理课件
                 </el-button>
               </template>
-              <template v-else-if="row.chapterType === 'OFFLINE'">
+              <template v-else-if="row.chapterType === 'OFFLINE' && (userRole === 'TEACHER' || userRole === 'ADMIN')">
                 <el-button link type="info" @click.stop="gotoChapterContent(row.id, 'manage-offline')">
                   📍 配置场次
                 </el-button>
               </template>
-              <template v-else-if="row.chapterType === 'EXERCISE'">
+              <template v-else-if="row.chapterType === 'EXERCISE' && (userRole === 'TEACHER' || userRole === 'ADMIN')">
                 <el-button link type="warning" @click.stop="gotoChapterContent(row.id, 'manage-exam')">
                   📝 智能组卷
                 </el-button>
