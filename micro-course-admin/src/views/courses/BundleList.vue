@@ -6,7 +6,7 @@
       <template #header>
         <div class="card-header">
           <span>套件列表</span>
-          <el-button type="primary" size="small" @click="showCreateDialog">新增套件</el-button>
+          <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" size="small" @click="showCreateDialog">新增套件</el-button>
         </div>
       </template>
 
@@ -31,12 +31,12 @@
         <el-table-column label="操作" width="300" align="center" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="openDetail(row)">管理子课</el-button>
-            <el-button size="small" @click="showEditDialog(row)">编辑</el-button>
-            <template v-if="canManage(row)">
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" @click="showEditDialog(row)">编辑</el-button>
+            <div v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" style="margin-top:4px">
               <el-button v-if="row.status === 1" size="small" type="warning" @click="handleUnpublish(row)">下架</el-button>
               <el-button v-else size="small" type="success" @click="handlePublish(row)">上架</el-button>
-            </template>
-            <el-button v-if="canDelete" size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            </div>
+            <el-button v-if="(userRole === 'TEACHER' || userRole === 'ADMIN') && canDelete" size="small" type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

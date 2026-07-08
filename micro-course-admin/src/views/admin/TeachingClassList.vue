@@ -36,7 +36,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">教学班列表</span>
-          <el-button type="primary" v-if="userRole !== 'ACADEMIC'" @click="handleCreate">新增教学班</el-button>
+          <el-button type="primary" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="handleCreate">新增教学班</el-button>
         </div>
       </template>
       <!-- 骨架屏 -->
