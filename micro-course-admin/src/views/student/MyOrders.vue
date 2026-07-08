@@ -57,6 +57,14 @@
 支付
 </el-button>
             <el-button
+              v-if="row.status === 'PENDING'"
+              size="small" type="warning" plain
+              :loading="cancellingId === row.id"
+              @click="handleCancel(row)"
+            >
+取消订单
+</el-button>
+            <el-button
               v-if="row.status === 'PAID'"
               size="small" type="danger" plain
               :loading="refundingId === row.id"
@@ -93,7 +101,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { getMyOrders, payOrder, refundOrder } from '@/api/order'
+import { getMyOrders, payOrder, cancelOrder, refundOrder } from '@/api/order'
 import { useAsyncData } from '@/composables/useAsyncData'
 import { useUrlPagination } from '@/composables/useUrlPagination'
 import { swrCache } from '@/composables/useStaleWhileRevalidate'
@@ -102,6 +110,7 @@ import { useErrorHandler } from '@/composables/useErrorHandler'
 const router = useRouter()
 const payingId = ref(null)
 const refundingId = ref(null)
+const cancellingId = ref(null)
 const orders = ref([])
 const page = ref(1)
 const size = ref(20)
@@ -155,6 +164,22 @@ const handleRefund = async (row) => {
     }
   } finally {
     refundingId.value = null
+  }
+}
+
+const handleCancel = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定取消该订单？取消后如需购买需重新下单。', '取消订单', {
+      confirmButtonText: '确定取消', cancelButtonText: '不取消', type: 'warning'
+    })
+    cancellingId.value = row.id
+    await cancelOrder(row.id)
+    ElMessage.success('订单已取消')
+    fetchOrders()
+  } catch (e) {
+    if (e !== 'cancel') handleError(e, '取消失败')
+  } finally {
+    cancellingId.value = null
   }
 }
 
