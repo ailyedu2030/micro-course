@@ -863,7 +863,7 @@
 
 | Grade | /api/grades | 10 | - |
 
-| HermesWebhook | /api/hermes/webhook | 4 | - |
+| HermesWebhook | /api/hermes/webhook | 5 | - |
 
 | LearningProgress | /api/learning-progress | 9 | - |
 

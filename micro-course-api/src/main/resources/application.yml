@@ -141,12 +141,14 @@ plugin:
       model: ${LLM_MODEL:deepseek-chat}
       base-url: ${LLM_BASE_URL:https://api.deepseek.com}
     minimax:
-      tts-model: speech-2.8-hd
-      # Qwen3-TTS 0.6B CustomVoice 预定义声音 ID：
-      #   女声: vivian（年轻甜美）, serena（成熟温暖）
-      #   男声: dylan（青年清朗）, ryan（成熟沉稳）, eric（活泼）, aiden（阳光）, uncle_fu（中文地道）
-      #   其他: ono_anna（日语）, sohee（韩语）
-      tts-voice: ${TTS_VOICE:vivian}
+      # MiniMax TTS API 配置
+      api-key: ${MINIMAX_API_KEY:}
+      tts-model: speech-03-hd
+      # MiniMax TTS 预定义声音 ID：
+      #   female-shaonv（甜美少女）, female-qingxin（清新）, female-yujie（御姐）
+      #   male-shaonian（少年）, male-qingnian（青年）, male-dashu（大叔）
+      #   中文: male-chengzhao（沉稳）, female-warm（温暖）
+      tts-voice: ${TTS_VOICE:female-shaonv}
     # TTS 本地服务配置（Qwen3-TTS 0.6B CustomVoice）
     tts:
       local-url: ${TTS_LOCAL_URL:http://127.0.0.1:8000}

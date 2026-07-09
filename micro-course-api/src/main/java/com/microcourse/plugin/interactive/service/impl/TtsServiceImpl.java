@@ -31,6 +31,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -61,12 +62,17 @@ public class TtsServiceImpl implements TtsService {
             .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${plugin.interactive.minimax.tts-model:speech-2.8-hd}")
+    @Value("${plugin.interactive.minimax.tts-model:speech-03-hd}")
     private String ttsModel;
 
     /** Qwen3-TTS 0.6B 预定义声音 ID（vivian/serena/dylan/ryan/eric/aiden/ono_anna/sohee/uncle_fu） */
     @Value("${plugin.interactive.minimax.tts-voice:vivian}")
     private String ttsVoice;
+
+    @Value("${plugin.interactive.minimax.api-key:}")
+    private String minimaxApiKey;
+
+    private static final String MINIMAX_TTS_URL = "https://api.minimax.chat/v1/text_to_speech";
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
@@ -126,35 +132,14 @@ public class TtsServiceImpl implements TtsService {
             log.warn("[TTS] Qwen3-TTS 本地服务不可用: {}，尝试降级到 mmx", e.getMessage());
         }
 
-        // 2. 降级到 mmx CLI
-        try {
-            ProcessBuilder pb = new ProcessBuilder(MMX_CMD, "--version");
-            Process process = pb.start();
-            try (var stdout = process.getInputStream();
-                 var stderr = process.getErrorStream()) {
-                // 消费输出流，防止缓冲区满导致进程挂起
-                byte[] buffer = new byte[4096];
-                while (stdout.read(buffer) != -1) { /* discard */ }
-                while (stderr.read(buffer) != -1) { /* discard */ }
-
-                boolean finished = process.waitFor(5, TimeUnit.SECONDS);
-                if (finished && process.exitValue() == 0) {
-                    mmxAvailable = true;
-                    mmxCheckMessage = "可用";
-                    log.info("[TTS] mmx CLI 检测通过（降级模式）");
-                } else {
-                    mmxCheckMessage = "mmx CLI 执行失败或超时";
-                    log.warn("[TTS] mmx CLI 不可用，TTS 将降级为纯文本模式");
-                }
-            } finally {
-                process.destroy();
-            }
-        } catch (IOException e) {
-            mmxCheckMessage = "mmx CLI 未安装或不在 PATH 中: " + e.getMessage();
-            log.warn("[TTS] mmx CLI 不可用: {}，TTS 将降级为纯文本模式", e.getMessage());
-        } catch (Exception e) {
-            mmxCheckMessage = "检测 mmx 时异常: " + e.getMessage();
-            log.warn("[TTS] 检测 mmx CLI 时发生异常: {}", e.getMessage(), e);
+        // 2. 降级到 MiniMax API（HTTP 直连）
+        if (minimaxApiKey != null && !minimaxApiKey.isBlank()) {
+            mmxAvailable = true;
+            mmxCheckMessage = "MiniMax API 已配置";
+            log.info("[TTS] MiniMax API key 已配置，TTS 将通过 HTTP API 调用");
+        } else {
+            mmxCheckMessage = "MiniMax API key 未配置";
+            log.warn("[TTS] MiniMax API key 未配置，TTS 将降级为纯文本模式");
         }
     }
 
@@ -312,49 +297,45 @@ public class TtsServiceImpl implements TtsService {
     }
 
     /**
-     * 降级方案：调用 mmx CLI（MiniMax）
+     * 调用 MiniMax TTS HTTP API（v3）
      */
     private int callMmxCli(String script, Path audioPath) throws Exception {
-        Path tempTextFile = Files.createTempFile("narration_", ".txt");
-        try {
-            Files.writeString(tempTextFile, script);
-
-            ProcessBuilder pb = new ProcessBuilder(
-                    MMX_CMD, "speech", "synthesize",
-                    "--text-file", tempTextFile.toString(),
-                    "--voice", ttsVoice,
-                    "--model", ttsModel,
-                    "--format", "mp3",
-                    "--out", audioPath.toString(),
-                    "--quiet"
-            );
-
-            Process process = pb.start();
-            try (var stdout = process.getInputStream();
-                 var stderr = process.getErrorStream()) {
-                // 消费 stdout（即使不关心输出），防止缓冲区满导致进程挂起
-                byte[] buffer = new byte[4096];
-                while (stdout.read(buffer) != -1) { /* discard */ }
-
-                boolean finished = process.waitFor(120, TimeUnit.SECONDS);
-                if (!finished) {
-                    process.destroyForcibly();
-                    throw new IOException("mmx TTS 超时");
-                }
-
-                // 进程已结束，读取 stderr 获取错误信息
-                String errorOutput = new String(stderr.readAllBytes());
-                int exitCode = process.exitValue();
-                if (exitCode != 0) {
-                    throw new IOException("mmx TTS 失败 exit=" + exitCode + ": " + errorOutput);
-                }
-                return 0;
-            } finally {
-                process.destroy();
-            }
-        } finally {
-            try { Files.deleteIfExists(tempTextFile); } catch (IOException ignored) { }
+        if (minimaxApiKey == null || minimaxApiKey.isBlank()) {
+            log.warn("[TTS] MiniMax API key 未配置");
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax API key 未配置");
         }
+
+        String requestBody = objectMapper.writeValueAsString(java.util.Map.of(
+                "model", ttsModel,
+                "text", script,
+                "voice_setting", java.util.Map.of(
+                        "voice_id", ttsVoice
+                ),
+                "audio_setting", java.util.Map.of(
+                        "sample_rate", 32000,
+                        "format", "mp3"
+                )
+        ));
+
+        var request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(MINIMAX_TTS_URL))
+                .header("Authorization", "Bearer " + minimaxApiKey)
+                .header("Content-Type", "application/json")
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(requestBody))
+                .timeout(Duration.ofSeconds(ttsTimeoutSeconds))
+                .build();
+
+        var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+
+        if (response.statusCode() != 200) {
+            String errorBody = new String(response.body(), StandardCharsets.UTF_8);
+            log.error("[TTS] MiniMax API 返回错误: status={}, body={}", response.statusCode(), errorBody);
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED,
+                    "MiniMax TTS 失败: HTTP " + response.statusCode());
+        }
+
+        Files.write(audioPath, response.body());
+        return 0;
     }
 
     @Override
