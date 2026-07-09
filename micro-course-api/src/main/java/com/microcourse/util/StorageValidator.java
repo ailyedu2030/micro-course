@@ -38,10 +38,10 @@ public final class StorageValidator {
         }
 
         // 3. 检查日期格式（可为空）
-        // applyDate 格式 yyyy.M.D，仅做长度检查
+        // applyDate 格式 yyyy.M 或 yyyy.M.D，与 parseDate 格式支持保持一致
         if (req.getApplyDate() != null && !req.getApplyDate().isBlank()) {
-            if (!req.getApplyDate().matches("^\\d{4}\\.\\d{1,2}\\.\\d{1,2}$")) {
-                errors.add("申请时间格式错误，正确格式：yyyy.M.D（如 2026.7.1）");
+            if (!req.getApplyDate().matches("^\\d{4}\\.\\d{1,2}(\\.\\d{1,2})?$")) {
+                errors.add("申请时间格式错误，正确格式：yyyy.M（如 2026.7）或 yyyy.M.D（如 2026.7.1）");
             }
         }
 

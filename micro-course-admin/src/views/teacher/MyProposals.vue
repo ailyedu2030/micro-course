@@ -56,6 +56,7 @@
             <template v-else-if="row.status === 'REJECTED'">
               <el-button size="small" type="warning" @click="openEditor(row)">编辑重提</el-button>
               <el-button size="small" @click="handlePreview(row)">预览</el-button>
+              <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" type="danger" @click="handleDelete(row)">删除</el-button>
             </template>
             <template v-else-if="row.status === 'PENDING_REVIEW'">
               <el-button size="small" @click="handlePreview(row)">预览</el-button>
