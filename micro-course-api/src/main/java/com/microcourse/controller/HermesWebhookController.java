@@ -92,10 +92,10 @@ public class HermesWebhookController {
         return R.ok(course);
     }
 
-    @PostMapping("/courses/{hermesCourseId}/lessons/{lessonSortOrder}/slide")
+    @PostMapping("/courses/{hermesCourseId}/lessons/{lessonId}/slide")
     public R<?> uploadSlide(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                             @PathVariable String hermesCourseId,
-                            @PathVariable Integer lessonSortOrder,
+                            @PathVariable Long lessonId,
                             @RequestParam("file") MultipartFile file) {
         User caller = authenticate(apiKey);
 
@@ -108,16 +108,12 @@ public class HermesWebhookController {
 
         Long courseId = mapping.getCourseId();
 
-        // 根据 lessonSortOrder 查找对应课时，获取 chapterId
-        List<Lesson> lessons = lessonRepository.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Lesson>()
-                        .eq(Lesson::getCourseId, courseId)
-                        .eq(Lesson::getSortOrder, lessonSortOrder));
-        if (lessons.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                    "未找到排序号为 " + lessonSortOrder + " 的课时");
+        // 按 lessonId 查找
+        Lesson lesson = lessonRepository.selectById(lessonId);
+        if (lesson == null || !lesson.getCourseId().equals(courseId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课时 ID " + lessonId + " 不属于此课程");
         }
-        Long chapterId = lessons.get(0).getChapterId();
+        Long chapterId = lesson.getChapterId();
 
         String filename = file.getOriginalFilename();
         if (filename == null || !filename.toLowerCase().endsWith(".pptx")) {
@@ -138,8 +134,8 @@ public class HermesWebhookController {
                     slideService.upload(courseId, filename, file.getBytes(), chapterId);
             return R.ok(resp);
         } catch (Exception e) {
-            log.error("[HermesWebhook] Slide upload failed: hermesCourseId={}, lessonSortOrder={}",
-                    hermesCourseId, lessonSortOrder, e);
+            log.error("[HermesWebhook] Slide upload failed: hermesCourseId={}, lessonId={}",
+                    hermesCourseId, lessonId, e);
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "PPT 上传失败: " + e.getMessage());
         } finally {
             SecurityContextHolder.clearContext();
