@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2548
+- 后端实体字段总数: 2551
 
 - 前端引用字段总数: 427
 
@@ -863,7 +863,7 @@
 
 | Grade | /api/grades | 10 | - |
 
-| HermesWebhook | /api/hermes/webhook | 3 | - |
+| HermesWebhook | /api/hermes/webhook | 4 | - |
 
 | LearningProgress | /api/learning-progress | 9 | - |
 
@@ -1176,13 +1176,13 @@
 
 | GradeVO | 19 | 0 |
 
-| HermesCourseDetailVO | 39 | 0 |
+| HermesCourseDetailVO | 40 | 0 |
 
 | HermesCourseListVO | 10 | 0 |
 
 | HermesCourseMapping | 7 | 0 |
 
-| HermesWebhookRequest | 27 | 0 |
+| HermesWebhookRequest | 28 | 0 |
 
 | InviteStatisticsVO | 8 | 0 |
 
@@ -1192,7 +1192,7 @@
 
 | LearningProgressVO | 24 | 0 |
 
-| Lesson | 12 | 0 |
+| Lesson | 13 | 0 |
 
 | LessonCreateRequest | 4 | 0 |
 
