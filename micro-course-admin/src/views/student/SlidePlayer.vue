@@ -274,7 +274,12 @@ function goTo(index) {
   audioProgress.value = 0
   autoCountdown.value = 0
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
-  nextTick(() => { loadAudio(index); if (autoMode.value) playAudio(); preloadAdjacentImages(index); pageNavLock = false })
+  nextTick(async () => {
+    await loadAudio(index)
+    preloadAdjacentImages(index)
+    if (autoMode.value) playAudio()
+    pageNavLock = false
+  })
 }
 
 function preloadAdjacentImages(currentIdx) {
