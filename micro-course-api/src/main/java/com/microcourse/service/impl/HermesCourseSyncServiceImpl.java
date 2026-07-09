@@ -33,6 +33,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.microcourse.util.CourseCacheConstants;
+import com.microcourse.util.RedisUtil;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,19 +50,28 @@ private final HermesCourseMappingRepository mappingRepository;
     private final CourseChapterRepository chapterRepository;
     private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
+    private final RedisUtil redisUtil;
 
     public HermesCourseSyncServiceImpl(HermesCourseMappingRepository mappingRepository,
                                       CourseRepository courseRepository,
                                       CourseCategoryRepository categoryRepository,
                                       CourseChapterRepository chapterRepository,
                                       LessonRepository lessonRepository,
-                                      UserRepository userRepository) {
+                                      UserRepository userRepository,
+                                      RedisUtil redisUtil) {
         this.mappingRepository = mappingRepository;
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
         this.lessonRepository = lessonRepository;
         this.userRepository = userRepository;
+        this.redisUtil = redisUtil;
+    }
+
+    private void evictCourseCache(Long courseId) {
+        String cacheKey = CourseCacheConstants.COURSE_CACHE_PREFIX + courseId;
+        redisUtil.delete(cacheKey);
+        log.debug("[HermesSync] Evicted course cache: cacheKey={}", cacheKey);
     }
 
     @Override
@@ -121,6 +132,9 @@ private final HermesCourseMappingRepository mappingRepository;
 
         syncChapters(courseId, request.getChapters());
 
+        // 清除缓存，确保前端看到最新数据
+        evictCourseCache(courseId);
+
         log.info("[HermesSync] Created course: hermesId={}, courseId={}, title={}",
                 request.getHermesCourseId(), courseId, request.getTitle());
         return new HermesSyncResult(courseId, "DRAFT", "created");
@@ -153,6 +167,9 @@ private final HermesCourseMappingRepository mappingRepository;
         chapterRepository.delete(new LambdaQueryWrapper<CourseChapter>()
                 .eq(CourseChapter::getCourseId, courseId));
         syncChapters(courseId, request.getChapters());
+
+        // 清除缓存，确保前端看到更新后的章节和课时数据
+        evictCourseCache(courseId);
 
         log.info("[HermesSync] Updated course: hermesId={}, courseId={}, title={}",
                 request.getHermesCourseId(), courseId, request.getTitle());
