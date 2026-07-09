@@ -338,7 +338,7 @@ private final HermesCourseMappingRepository mappingRepository;
             chapter.setTitle(chapterDto.getTitle());
             chapter.setSortOrder(chapterDto.getSortOrder() != null ? chapterDto.getSortOrder() : chapterIndex + 1);
 
-            // 章节类型根据第一个课时的类型推断（默认 VIDEO，与后端 create 默认一致）
+            // 章节类型根据第一个课时的类型推断；无课时时默认 VIDEO（保守兜底）
             String chapterType = "VIDEO";
             if (chapterDto.getLessons() != null && !chapterDto.getLessons().isEmpty()) {
                 String firstType = chapterDto.getLessons().get(0).getType();
