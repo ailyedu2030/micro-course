@@ -415,7 +415,8 @@ public class TtsServiceImpl implements TtsService {
     }
 
     private int estimateDuration(long fileSizeBytes) {
-        int estimatedSeconds = (int) (fileSizeBytes / 2000);
+        // MiniMax 128kbps MP3: 128000 bits/sec = 16000 bytes/sec
+        int estimatedSeconds = (int) (fileSizeBytes / 16000);
         return Math.max(1, estimatedSeconds);
     }
 
