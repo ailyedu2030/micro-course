@@ -18,6 +18,9 @@ import com.microcourse.service.HermesCourseSyncService.HermesSyncResult;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -125,6 +128,12 @@ public class HermesWebhookController {
         }
 
         try {
+            // 设置 SecurityContext，让 slideService 权限检查通过
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    caller.getId(), null,
+                    java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
+            SecurityContextHolder.getContext().setAuthentication(auth);
+
             com.microcourse.plugin.interactive.dto.SlideUploadResponse resp =
                     slideService.upload(courseId, filename, file.getBytes(), chapterId);
             return R.ok(resp);
@@ -132,6 +141,79 @@ public class HermesWebhookController {
             log.error("[HermesWebhook] Slide upload failed: hermesCourseId={}, lessonSortOrder={}",
                     hermesCourseId, lessonSortOrder, e);
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "PPT 上传失败: " + e.getMessage());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @PostMapping("/courses/{hermesCourseId}/scripts")
+    public R<?> batchPushScripts(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
+                                 @PathVariable String hermesCourseId,
+                                 @RequestBody java.util.Map<String, Object> body) {
+        User caller = authenticate(apiKey);
+
+        HermesCourseMapping mapping = mappingRepository.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
+        if (mapping == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        Long courseId = mapping.getCourseId();
+
+        String fullScript = (String) body.get("scriptContent");
+        if (fullScript == null || fullScript.isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "scriptContent 不能为空");
+        }
+
+        try {
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    caller.getId(), null,
+                    java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
+            SecurityContextHolder.getContext().setAuthentication(auth);
+
+            com.microcourse.plugin.interactive.dto.SlideVO slide = slideService.getByCourseId(courseId);
+            if (slide == null) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先上传 PPT");
+            }
+            if (slide.getTotalPages() == null || slide.getTotalPages() == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "PPT 尚未渲染完成，请稍后再试");
+            }
+
+            java.util.List<com.microcourse.plugin.interactive.dto.SlidePageVO> pages =
+                    slideService.getPages(courseId, null);
+            if (pages == null || pages.isEmpty()) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "PPT 尚未渲染完成，请稍后再试");
+            }
+
+            int pageCount = pages.size();
+            int chunkSize = Math.max(1, fullScript.length() / pageCount);
+            int updated = 0;
+
+            for (int i = 0; i < pageCount; i++) {
+                int start = i * chunkSize;
+                int end = (i == pageCount - 1) ? fullScript.length() : (i + 1) * chunkSize;
+                String pageScript = fullScript.substring(start, end).trim();
+
+                int pageNumber = pages.get(i).getPageNumber();
+                java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
+                pageBody.put("narrationScript", pageScript);
+                slideService.updatePage(courseId, pageNumber, pageBody);
+                updated++;
+            }
+
+            java.util.Map<String, Object> result = new java.util.HashMap<>();
+            result.put("updated", updated);
+            result.put("totalPages", pageCount);
+            log.info("[HermesWebhook] Scripts pushed: courseId={}, pages={}, chars={}",
+                    courseId, pageCount, fullScript.length());
+            return R.ok(result);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("[HermesWebhook] Script push failed: hermesCourseId={}", hermesCourseId, e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "讲述稿推送失败: " + e.getMessage());
+        } finally {
+            SecurityContextHolder.clearContext();
         }
     }
 }
