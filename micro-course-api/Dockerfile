@@ -6,7 +6,7 @@ COPY src ./src
 RUN mvn package -DskipTests -B
 
 FROM eclipse-temurin:17-jre-alpine
-RUN apk add --no-cache ffmpeg tini
+RUN apk add --no-cache ffmpeg tini wqy-zenhei fontconfig
 RUN addgroup -S microcourse && adduser -S microcourse -G microcourse
 WORKDIR /app
 COPY --from=build /app/target/micro-course-api-1.0.0.jar app.jar
