@@ -33,6 +33,10 @@ public class Lesson {
     @Version
     private Integer version;
 
+    /** 讲述稿/脚本内容，由 Hermes Webhook 推送 */
+    @TableField("script_content")
+    private String scriptContent;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -62,6 +66,8 @@ public class Lesson {
     public void setVisible(Boolean visible) { this.visible = visible; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
+    public String getScriptContent() { return scriptContent; }
+    public void setScriptContent(String scriptContent) { this.scriptContent = scriptContent; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

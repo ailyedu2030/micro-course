@@ -137,6 +137,7 @@ public class HermesCourseDetailVO {
         private String contentUrl;
         private Integer durationMinutes;
         private Integer sortOrder;
+        private String scriptContent;
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
@@ -150,5 +151,7 @@ public class HermesCourseDetailVO {
         public void setDurationMinutes(Integer durationMinutes) { this.durationMinutes = durationMinutes; }
         public Integer getSortOrder() { return sortOrder; }
         public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+        public String getScriptContent() { return scriptContent; }
+        public void setScriptContent(String scriptContent) { this.scriptContent = scriptContent; }
     }
 }

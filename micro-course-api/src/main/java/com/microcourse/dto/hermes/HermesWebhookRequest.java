@@ -102,6 +102,7 @@ public class HermesWebhookRequest {
         private String contentUrl;
         private Integer durationMinutes;
         private Integer sortOrder;
+        private String scriptContent;
 
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }
@@ -113,6 +114,8 @@ public class HermesWebhookRequest {
         public void setDurationMinutes(Integer durationMinutes) { this.durationMinutes = durationMinutes; }
         public Integer getSortOrder() { return sortOrder; }
         public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+        public String getScriptContent() { return scriptContent; }
+        public void setScriptContent(String scriptContent) { this.scriptContent = scriptContent; }
     }
 
     public static class PricingDto {
