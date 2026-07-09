@@ -62,7 +62,7 @@ public class TtsServiceImpl implements TtsService {
             .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${plugin.interactive.minimax.tts-model:speech-03-hd}")
+    @Value("${plugin.interactive.minimax.tts-model:speech-2.8-hd}")
     private String ttsModel;
 
     /** Qwen3-TTS 0.6B 预定义声音 ID（vivian/serena/dylan/ryan/eric/aiden/ono_anna/sohee/uncle_fu） */
@@ -72,7 +72,7 @@ public class TtsServiceImpl implements TtsService {
     @Value("${plugin.interactive.minimax.api-key:}")
     private String minimaxApiKey;
 
-    private static final String MINIMAX_TTS_URL = "https://api.minimax.chat/v1/text_to_speech";
+    private static final String MINIMAX_TTS_URL = "https://api.minimaxi.com/v1/t2a_v2";
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
@@ -297,7 +297,7 @@ public class TtsServiceImpl implements TtsService {
     }
 
     /**
-     * 调用 MiniMax TTS HTTP API（v3）
+     * 调用 MiniMax TTS HTTP API（/v1/t2a_v2）
      */
     private int callMmxCli(String script, Path audioPath) throws Exception {
         if (minimaxApiKey == null || minimaxApiKey.isBlank()) {
@@ -305,17 +305,26 @@ public class TtsServiceImpl implements TtsService {
             throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax API key 未配置");
         }
 
-        String requestBody = objectMapper.writeValueAsString(java.util.Map.of(
-                "model", ttsModel,
-                "text", script,
-                "voice_setting", java.util.Map.of(
-                        "voice_id", ttsVoice
-                ),
-                "audio_setting", java.util.Map.of(
-                        "sample_rate", 32000,
-                        "format", "mp3"
-                )
-        ));
+        var bodyMap = new java.util.LinkedHashMap<String, Object>();
+        bodyMap.put("model", ttsModel);
+        bodyMap.put("text", script);
+
+        var voiceSetting = new java.util.LinkedHashMap<String, Object>();
+        voiceSetting.put("voice_id", ttsVoice);
+        bodyMap.put("voice_setting", voiceSetting);
+
+        var audioSetting = new java.util.LinkedHashMap<String, Object>();
+        audioSetting.put("sample_rate", 32000);
+        audioSetting.put("format", "mp3");
+        audioSetting.put("bitrate", 128000);
+        audioSetting.put("channel", 1);
+        bodyMap.put("audio_setting", audioSetting);
+
+        bodyMap.put("output_format", "hex");
+
+        String requestBody = objectMapper.writeValueAsString(bodyMap);
+        log.debug("[TTS] MiniMax request: model={}, voice={}, textLen={}",
+                ttsModel, ttsVoice, script.length());
 
         var request = java.net.http.HttpRequest.newBuilder()
                 .uri(java.net.URI.create(MINIMAX_TTS_URL))
@@ -326,15 +335,37 @@ public class TtsServiceImpl implements TtsService {
                 .build();
 
         var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+        byte[] respBody = response.body();
+        String respStr = new String(respBody, StandardCharsets.UTF_8);
 
-        if (response.statusCode() != 200) {
-            String errorBody = new String(response.body(), StandardCharsets.UTF_8);
-            log.error("[TTS] MiniMax API 返回错误: status={}, body={}", response.statusCode(), errorBody);
-            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED,
-                    "MiniMax TTS 失败: HTTP " + response.statusCode());
+        // 检查 API 错误
+        if (respStr.contains("\"base_resp\"")) {
+            var parsed = objectMapper.readTree(respBody);
+            int code = parsed.path("base_resp").path("status_code").asInt(0);
+            if (code != 0) {
+                String msg = parsed.path("base_resp").path("status_msg").asText("unknown");
+                log.error("[TTS] MiniMax API 错误: code={}, msg={}", code, msg);
+                throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax 错误: " + msg);
+            }
         }
 
-        Files.write(audioPath, response.body());
+        // 从 data.audio 中提取 hex 音频并解码
+        var root = objectMapper.readTree(respBody);
+        String audioHex = root.path("data").path("audio").asText(null);
+        if (audioHex == null || audioHex.isEmpty()) {
+            log.error("[TTS] MiniMax 响应缺少 audio 数据: {}", respStr.length() > 200 ? respStr.substring(0, 200) : respStr);
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax 响应缺少音频数据");
+        }
+
+        int len = audioHex.length();
+        byte[] audioBytes = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            audioBytes[i / 2] = (byte) ((Character.digit(audioHex.charAt(i), 16) << 4)
+                    + Character.digit(audioHex.charAt(i + 1), 16));
+        }
+
+        Files.write(audioPath, audioBytes);
+        log.info("[TTS] MiniMax 音频生成成功: path={}, size={} bytes", audioPath, audioBytes.length);
         return 0;
     }
 

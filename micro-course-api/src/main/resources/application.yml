@@ -143,7 +143,7 @@ plugin:
     minimax:
       # MiniMax TTS API 配置
       api-key: ${MINIMAX_API_KEY:}
-      tts-model: speech-03-hd
+      tts-model: speech-2.8-hd
       # MiniMax TTS 预定义声音 ID：
       #   female-shaonv（甜美少女）, female-qingxin（清新）, female-yujie（御姐）
       #   male-shaonian（少年）, male-qingnian（青年）, male-dashu（大叔）
