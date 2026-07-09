@@ -105,7 +105,7 @@ public class SlideRenderService {
                         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
                         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-                        g.setPaint(Color.WHITE);
+                        g.setPaint(new Color(10, 10, 15));
                         g.fillRect(0, 0, pageImageWidth, scaledHeight);
                         g.scale(scale, scale);
                         xslfSlide.draw(g);
