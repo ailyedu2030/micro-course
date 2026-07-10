@@ -214,7 +214,45 @@
         </el-form-item>
 
         <!-- 课程体系动态表 -->
-        <el-divider content-position="left">课程体系</el-divider>
+        <el-divider content-position="left">
+          <span>课程体系</span>
+          <el-badge
+            v-if="courseValidation.totalIssues > 0"
+            :value="courseValidation.totalIssues"
+            :type="courseValidation.worstLevel === 'error' ? 'danger' : 'warning'"
+            class="course-issue-badge"
+          />
+        </el-divider>
+
+        <!-- Tier3: 课程学时校验 banner -->
+        <el-alert
+          v-if="showCourseIssueAlert"
+          :type="courseValidation.worstLevel === 'error' ? 'error' : 'warning'"
+          :closable="false"
+          show-icon
+          class="course-hours-alert"
+          :title="courseValidation.errorCount > 0
+            ? `${courseValidation.issueList.length} 个课程学时与章节不一致（${courseValidation.errorCount} 项严重）`
+            : `${courseValidation.issueList.length} 个课程数据需关注`">
+          <template #default>
+            <ul class="course-issue-list">
+              <li v-for="(it, idx) in courseValidation.issueList" :key="idx">
+                <strong :class="`issue-${it.level}`">{{ it.courseName }}：</strong>
+                <span v-for="(d, di) in it.issues" :key="di" :class="`issue-${d.severity}`">
+                  {{ d.message }}<span v-if="di < it.issues.length - 1">；</span>
+                </span>
+              </li>
+            </ul>
+            <div class="course-issue-actions">
+              <el-button size="small" type="primary" @click="fixCourseHoursToChapterSum">
+                一键将课程学时同步为章节学时之和
+              </el-button>
+              <el-button size="small" @click="dismissCourseIssues">本次忽略</el-button>
+              <span class="course-issue-hint">注意：学分不足建议时需手动处理</span>
+            </div>
+          </template>
+        </el-alert>
+
         <div class="table-section">
           <div class="table-summary" v-if="totalCourseHours > 0">
             总学时：<strong>{{ totalCourseHours }}</strong>
@@ -462,6 +500,7 @@ import RichTextWithCounter from '@/components/storage/RichTextWithCounter.vue'
 import DynamicTableEditor from '@/components/storage/DynamicTableEditor.vue'
 import CourseChapterEditor from '@/components/storage/CourseChapterEditor.vue'
 import SignatureBlock from '@/components/storage/SignatureBlock.vue'
+import { validateCourseList, autoFixCourseHours } from '@/utils/courseValidation'
 import SignatureUploader from '@/components/storage/SignatureUploader.vue'
 import DatePickerYM from '@/components/storage/DatePickerYM.vue'
 import { useUserStore } from '@/store/user'
@@ -673,30 +712,40 @@ watch(courses, () => {
   form.value.totalCredits = totalCreditsDisplay.value
 }, { deep: true })
 
-/** 每学分最低16学时校验：学时 < 学分×16 时警告 */
-watch(courses, () => {
-  for (const row of courses.value) {
-    const cred = Number(row.credits) || 0
-    const hrs = Number(row.hours) || 0
-    if (cred > 0 && hrs > 0 && hrs < cred * 16) {
-      console.warn(`[学分·学时] 课程「${row.courseName || ''}」学分 ${cred} 建议至少 ${cred * 16} 学时，当前 ${hrs}`)
-    }
-  }
-}, { deep: true })
-
-/** P2-2 修复: 章节学时之和 vs 课程学时汇总校验警告 */
-watch(courses, () => {
-  for (const row of courses.value) {
-    const courseHrs = Number(row.hours) || 0
-    const chapters = row.chapters || []
-    if (courseHrs > 0 && chapters.length > 0) {
-      const chapterSum = chapters.reduce((s, ch) => s + (Number(ch.hours) || 0), 0)
-      if (chapterSum !== courseHrs) {
-        console.warn(`[章节·学时] 课程「${row.courseName || ''}」课程学时 ${courseHrs} 与 ${chapters.length} 个章节学时之和 ${chapterSum} 不一致`)
+// ==================== 课程学时校验（三档呈现） ====================
+// Tier3 顶部 banner + Tier2 段头 badge 共用此数据
+// 保留 console.warn 兜底（开发态还可看到）
+const courseValidation = computed(() => validateCourseList(courses.value))
+watch(courseValidation, (v) => {
+  if (v.issueList.length > 0) {
+    for (const issue of v.issueList) {
+      for (const det of issue.issues) {
+        const tag = det.severity === 'error' ? '⛔' : '⚠️'
+        console.warn(`${tag} [${det.key}] 课程「${issue.courseName}」${det.message}`)
       }
     }
   }
-}, { deep: true })
+})
+
+// 用户可关闭本次提示（提交后自动重置）
+const courseIssueDismissed = ref(false)
+watch(() => courses.value.length, () => { courseIssueDismissed.value = false })
+
+function fixCourseHoursToChapterSum() {
+  const n = autoFixCourseHours(courses.value)
+  if (n > 0) {
+    ElMessage.success(`已自动同步 ${n} 门课程学时为章节学时之和`)
+    courseIssueDismissed.value = false
+  } else {
+    ElMessage.info('无需要修复的课程学时')
+  }
+}
+
+function dismissCourseIssues() { courseIssueDismissed.value = true }
+
+const showCourseIssueAlert = computed(() =>
+  !courseIssueDismissed.value && courseValidation.value.worstLevel !== 'ok'
+)
 
 // 表单是否完整(用于禁用"提交审核"按钮,防止误点)
 // B-003: 添加行级校验 — 团队成员姓名必填、课程名称必填、签名至少有一个非空
@@ -1320,6 +1369,37 @@ onBeforeUnmount(() => {
 }
 .table-summary strong {
   color: #409eff;
+}
+
+/* 课程学时校验 banner */
+.course-hours-alert {
+  margin: 8px 0 16px;
+}
+.course-issue-list {
+  margin: 4px 0 8px;
+  padding-left: 20px;
+}
+.course-issue-list li {
+  line-height: 1.8;
+  font-size: 13px;
+}
+.course-issue-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.course-issue-hint {
+  color: #909399;
+  font-size: 12px;
+}
+.issue-ok { color: #67c23a; }
+.issue-warn { color: #e6a23c; }
+.issue-error { color: #f56c6c; }
+.course-issue-badge {
+  margin-left: 8px;
+  vertical-align: middle;
 }
 
 /* 共享单位 */

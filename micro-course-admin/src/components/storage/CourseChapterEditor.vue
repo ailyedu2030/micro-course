@@ -1,7 +1,10 @@
 <template>
   <div class="course-chapter-editor">
     <!-- 课程列表 -->
-    <el-table :data="localData" stripe border size="small" @row-click="onRowClick">
+    <el-table
+      :data="localData" stripe border size="small"
+      :row-class-name="rowClassName"
+      @row-click="onRowClick">
       <el-table-column prop="moduleName" label="模块" min-width="120">
         <template #default="{ row }">
           <el-input
@@ -43,6 +46,25 @@ v-model="row.semester" placeholder="如：第1学期" size="small"
             {{ getChapters(row).length }} 章
           </el-tag>
           <span v-else class="muted">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="校验" width="80" align="center">
+        <template #default="{ row }">
+          <el-tooltip
+            v-if="rowValidation(row).issues.length > 0"
+            placement="top"
+            :content="rowValidation(row).issues.map(i => i.message).join('\n')">
+            <span :class="['validation-icon', `validation-${rowValidation(row).level}`]">
+              <el-icon v-if="rowValidation(row).level === 'error'"><CircleCloseFilled /></el-icon>
+              <el-icon v-else><WarningFilled /></el-icon>
+              <span class="validation-text">{{ rowValidation(row).issues.length }}</span>
+            </span>
+          </el-tooltip>
+          <el-tooltip v-else content="校验通过" placement="top">
+            <span class="validation-icon validation-ok">
+              <el-icon><CircleCheckFilled /></el-icon>
+            </span>
+          </el-tooltip>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="160" fixed="right">
@@ -118,6 +140,18 @@ v-model="row.semester" placeholder="如：第1学期" size="small"
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { ElMessageBox } from 'element-plus'
+import { CircleCheckFilled, CircleCloseFilled, WarningFilled } from '@element-plus/icons-vue'
+import { validateCourseHours } from '@/utils/courseValidation'
+
+function rowValidation(row) {
+  return validateCourseHours(row)
+}
+function rowClassName({ row }) {
+  const r = rowValidation(row)
+  if (r.level === 'error') return 'course-row-error'
+  if (r.level === 'warn') return 'course-row-warn'
+  return ''
+}
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] }
@@ -255,5 +289,43 @@ function saveChapters() {
   text-align: center;
   color: var(--el-text-color-secondary);
   font-size: 13px;
+}
+
+/* 课程学时校验 - 行内 icon */
+.validation-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: help;
+  font-size: 16px;
+}
+.validation-ok {
+  color: #67c23a;
+}
+.validation-warn {
+  color: #e6a23c;
+}
+.validation-error {
+  color: #f56c6c;
+}
+.validation-text {
+  font-size: 11px;
+  color: inherit;
+  font-weight: 600;
+}
+
+/* 整行轻染色（更直观） */
+:deep(.course-row-warn) {
+  background: #fdf6ec !important;
+}
+:deep(.course-row-warn:hover > td) {
+  background: #f9ead9 !important;
+}
+:deep(.course-row-error) {
+  background: #fef0f0 !important;
+}
+:deep(.course-row-error:hover > td) {
+  background: #fde2e2 !important;
 }
 </style>
