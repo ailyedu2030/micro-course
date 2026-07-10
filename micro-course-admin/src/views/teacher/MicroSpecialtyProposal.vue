@@ -194,23 +194,23 @@
         <el-divider content-position="left">内容描述</el-divider>
 
         <el-form-item label="微专业介绍">
-          <RichTextWithCounter v-model="form.introduction" placeholder="详细介绍微专业的定位、特色与价值..." :min-height="160" :recommend-threshold="300" />
+          <RichTextWithCounter v-model="form.introduction" placeholder="详细介绍微专业的定位、特色与价值..." :min-height="160" :recommend-threshold="1000" :warning-threshold="1200" :max-threshold="1500" />
         </el-form-item>
 
         <el-form-item label="就业前景">
-          <RichTextWithCounter v-model="form.marketDemandAnalysis" placeholder="描述该微专业的就业方向与市场需求..." :min-height="160" :recommend-threshold="500" />
+          <RichTextWithCounter v-model="form.marketDemandAnalysis" placeholder="描述该微专业的就业方向与市场需求..." :min-height="160" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
         </el-form-item>
 
         <el-form-item label="专业简介">
-          <RichTextWithCounter v-model="form.specialtyOverview" placeholder="微专业的整体概述..." :min-height="180" :recommend-threshold="800" />
+          <RichTextWithCounter v-model="form.specialtyOverview" placeholder="微专业的整体概述..." :min-height="180" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
         </el-form-item>
 
         <el-form-item label="课程体系">
-          <RichTextWithCounter v-model="form.curriculumDesign" placeholder="描述课程设计思路与体系架构..." :min-height="160" :recommend-threshold="500" />
+          <RichTextWithCounter v-model="form.curriculumDesign" placeholder="描述课程设计思路与体系架构..." :min-height="160" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
         </el-form-item>
 
         <el-form-item label="建设保障">
-          <RichTextWithCounter v-model="form.constructionGuarantee" placeholder="描述师资、场地、经费等建设保障..." :min-height="160" :recommend-threshold="500" />
+          <RichTextWithCounter v-model="form.constructionGuarantee" placeholder="描述师资、场地、经费等建设保障..." :min-height="160" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
         </el-form-item>
 
         <!-- 课程体系动态表 -->

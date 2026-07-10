@@ -59,12 +59,13 @@ public final class StorageValidator {
             errors.add("成班人数必须大于 0");
         }
 
-        // 5. 检查富文本字数（建议上限 500 字，预警 1000 字）
-        checkRichTextWordCount(errors, req.getIntroduction(), "简介", 500);
-        checkRichTextWordCount(errors, req.getMarketDemandAnalysis(), "市场需求分析", 1000);
-        checkRichTextWordCount(errors, req.getSpecialtyOverview(), "专业概述", 1000);
-        checkRichTextWordCount(errors, req.getCurriculumDesign(), "课程设计", 2000);
-        checkRichTextWordCount(errors, req.getConstructionGuarantee(), "建设保障", 1000);
+        // 5. 检查富文本字数
+        // 阈值与前端 RichTextWithCounter 推荐值对齐（docs/审计/Phase15-独立审计报告-2026-07-06.md 第240行）
+        checkRichTextWordCount(errors, req.getIntroduction(), "简介", 1000);
+        checkRichTextWordCount(errors, req.getMarketDemandAnalysis(), "市场需求分析", 800);
+        checkRichTextWordCount(errors, req.getSpecialtyOverview(), "专业概述", 800);
+        checkRichTextWordCount(errors, req.getCurriculumDesign(), "课程设计", 800);
+        checkRichTextWordCount(errors, req.getConstructionGuarantee(), "建设保障", 800);
 
         // 6. 检查课程表至少 1 行
         List<ProposalCourseItem> courses = req.getCourses();
