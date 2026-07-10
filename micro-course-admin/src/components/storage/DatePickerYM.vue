@@ -1,9 +1,9 @@
 <template>
   <el-date-picker
     :model-value="modelValue"
-    type="month"
-    format="YYYY.M"
-    value-format="YYYY.M"
+    :type="precision === 'month' ? 'month' : 'date'"
+    :format="precision === 'month' ? 'YYYY.M' : 'YYYY.M.D'"
+    :value-format="precision === 'month' ? 'YYYY.M' : 'YYYY.M.D'"
     :placeholder="placeholder"
     :disabled-date="disabledDate"
     style="width:160px"
@@ -16,7 +16,9 @@ const props = defineProps({
   modelValue: String,
   placeholder: { type: String, default: '选择日期' },
   /** true=只允许未来日期(开课时间), false=只允许过去日期(申请时间) */
-  future: { type: Boolean, default: false }
+  future: { type: Boolean, default: false },
+  /** 'month'=仅年月（如开课时间/某种场景需要精确月份）；'day'=年月日（默认） */
+  precision: { type: String, default: 'day', validator: (v) => ['month', 'day'].includes(v) }
 })
 defineEmits(['update:modelValue'])
 
