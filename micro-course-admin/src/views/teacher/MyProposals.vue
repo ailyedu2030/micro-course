@@ -80,11 +80,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMyProposals, withdrawProposal, deleteProposal } from '@/api/microSpecialty'
 import { exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
+import { useUserStore } from '@/store/user'
+
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const error = ref(false)
