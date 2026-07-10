@@ -303,7 +303,7 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         vo.setPlannedShareUniversities(proposal.getPlannedShareUniversities());
         vo.setEnrollmentQuota(proposal.getEnrollmentQuota());
         vo.setClassSize(proposal.getClassSize());
-        vo.setStartDate(proposal.getStartDate() != null ? proposal.getStartDate().toString() : null);
+        vo.setStartDate(proposal.getStartDate() != null ? java.time.format.DateTimeFormatter.ofPattern("yyyy.M").format(proposal.getStartDate()) : null);
         vo.setDuration(proposal.getDuration());
         vo.setIsIndustryAcademic(proposal.getIsIndustryAcademic());
         vo.setIndustryPartners(proposal.getIndustryPartners());
@@ -369,7 +369,7 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         vo.setPlannedShareUniversities(proposal.getPlannedShareUniversities());
         vo.setEnrollmentQuota(proposal.getEnrollmentQuota());
         vo.setClassSize(proposal.getClassSize());
-        vo.setStartDate(proposal.getStartDate() != null ? proposal.getStartDate().toString() : null);
+        vo.setStartDate(proposal.getStartDate() != null ? java.time.format.DateTimeFormatter.ofPattern("yyyy.M").format(proposal.getStartDate()) : null);
         vo.setDuration(proposal.getDuration());
         vo.setIsIndustryAcademic(proposal.getIsIndustryAcademic());
         vo.setIndustryPartners(proposal.getIndustryPartners());
@@ -424,7 +424,7 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         req.setPlannedShareUniversities(proposal.getPlannedShareUniversities());
         req.setEnrollmentQuota(proposal.getEnrollmentQuota());
         req.setClassSize(proposal.getClassSize());
-        req.setStartDate(proposal.getStartDate() != null ? proposal.getStartDate().toString() : null);
+        req.setStartDate(proposal.getStartDate() != null ? java.time.format.DateTimeFormatter.ofPattern("yyyy.M").format(proposal.getStartDate()) : null);
         req.setDuration(proposal.getDuration());
         req.setIsIndustryAcademic(proposal.getIsIndustryAcademic());
         req.setIndustryPartners(proposal.getIndustryPartners());

@@ -486,7 +486,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowDown } from '@element-plus/icons-vue'
@@ -829,8 +829,17 @@ function makeUploader(type) {
 // ==================== 保存 ====================
 async function handleSave() {
   // 关键：先 validate，再 ensureDraft。否则校验失败会留下孤儿空白 DRAFT
+  // formRef1 仅在 step === 0 时存在；自动跳到 Step 0 后再校验，避免绕过
+  if (step.value !== 0) {
+    step.value = 0
+    await nextTick()
+  }
+  if (!formRef1.value) {
+    ElMessage.warning('请先进入"表头基础"步骤补全必填项')
+    return
+  }
   try {
-    await formRef1.value?.validate()
+    await formRef1.value.validate()
   } catch {
     ElMessage.warning('请补全必填项后再保存')
     return
@@ -978,8 +987,17 @@ async function handleSubmit() {
     return
   }
   // P1-C-11 修复：增加程序化表单校验
+  // 跨步骤校验：formRef1 仅 step===0 时挂载，自动跳到 Step 0 再校验
+  if (step.value !== 0) {
+    step.value = 0
+    await nextTick()
+  }
+  if (!formRef1.value) {
+    ElMessage.warning('请先进入"表头基础"步骤补全必填项')
+    return
+  }
   try {
-    await formRef1.value?.validate()
+    await formRef1.value.validate()
   } catch (errors) {
     // P1-UX: 滚动到第一个错误字段 + 焦点, 用户立即知道改哪里
     const firstErrorField = Object.keys(errors || {})[0]
