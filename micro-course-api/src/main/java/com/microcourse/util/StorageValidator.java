@@ -107,10 +107,11 @@ public final class StorageValidator {
             }
         }
         // 仅检查日期格式
+        // 与 validateForSubmit 保持一致：yyyy.M（仅月）和 yyyy.M.D（含日）都允许
         if (req.getApplyDate() != null && !req.getApplyDate().isBlank()) {
-            if (!req.getApplyDate().matches("^\\d{4}\\.\\d{1,2}\\.\\d{1,2}$")
+            if (!req.getApplyDate().matches("^\\d{4}\\.\\d{1,2}(\\.\\d{1,2})?$")
                 && !req.getApplyDate().matches("^\\d{4}-\\d{2}-\\d{2}$")) {
-                errors.add("申请时间格式错误，正确格式：yyyy.M.d（如 2026.7.1）或 yyyy-MM-dd");
+                errors.add("申请时间格式错误，正确格式：yyyy.M（如 2026.7）或 yyyy.M.D（如 2026.7.1）或 yyyy-MM-dd");
             }
         }
         return errors;

@@ -26,9 +26,9 @@ const disabledDate = (time) => {
   const now = new Date()
   const min = new Date(new Date().getFullYear() - 5, 0, 1)
   if (props.future) {
-    // 开课时间模式: 只允许今天及未来, 禁用过去
+    // 开课时间模式: 禁用今天之前 + 5年前下限（与 else 分支保持一致）
     const minTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-    return time.getTime() < minTs
+    return time.getTime() < min.getTime() || time.getTime() < minTs
   } else {
     // 申请时间模式: 只允许今天及过去, 禁用未来(明天起)
     const max = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()

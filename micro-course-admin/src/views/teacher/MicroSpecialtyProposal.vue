@@ -154,7 +154,7 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="开课时间">
-              <DatePickerYM v-model="form.startDate" placeholder="选择开课时间" future />
+                  <DatePickerYM v-model="form.startDate" placeholder="选择开课时间" future precision="month" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -828,6 +828,20 @@ function makeUploader(type) {
 
 // ==================== 保存 ====================
 async function handleSave() {
+  // 关键：先 validate，再 ensureDraft。否则校验失败会留下孤儿空白 DRAFT
+  try {
+    await formRef1.value?.validate()
+  } catch {
+    ElMessage.warning('请补全必填项后再保存')
+    return
+  }
+  // D-009: 检查共享单位中是否有暂不支持的字段
+  const hasUnsupportedFields = sharedUnits.value.some(u =>
+    u.opinionText || u.signatureImageUrl || u.sealImageUrl || u.signDate
+  )
+  if (hasUnsupportedFields) {
+    ElMessage.info('共享单位的签名/公章等字段暂不支持保存，仅保存单位名称和类型')
+  }
   // 懒创建：用户手动点保存时若草稿未存在, 先创建
   if (!draftId.value) {
     try {
@@ -838,28 +852,15 @@ async function handleSave() {
     }
     if (!draftId.value) return  // ensureDraft 失败
   }
-  // D-009: 检查共享单位中是否有暂不支持的字段
-  const hasUnsupportedFields = sharedUnits.value.some(u =>
-    u.opinionText || u.signatureImageUrl || u.sealImageUrl || u.signDate
-  )
-  if (hasUnsupportedFields) {
-    ElMessage.info('共享单位的签名/公章等字段暂不支持保存，仅保存单位名称和类型')
-  }
-  // P1-C-11 修复：增加程序化表单校验
-  try {
-    await formRef1.value?.validate()
-  } catch {
-    ElMessage.warning('请补全必填项后再保存')
-    return
-  }
   saving.value = true
   try {
     await saveStorageApplication(draftId.value, buildSavePayload())
     saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
-    dirty.value = false
+    dirty.value = false  // 仅在 save 成功后清除 dirty（避免数据丢失）
     autoSaveEnabled.value = true  /* 手动保存成功后启用 autoSave */
     ElMessage.success('保存成功')
   } catch (e) {
+    // 关键：保留 dirty=true，让用户在路由离开/刷新时被警告，避免数据丢失
     saveStatus.value = '保存失败'
     ElMessage.error(e?.response?.data?.message || '保存失败')
   } finally {
@@ -893,7 +894,7 @@ async function performAutoSave() {
   try {
     await autoSaveStorageApplication(draftId.value, buildSavePayload())
     saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
-    dirty.value = false
+    dirty.value = false  // 仅成功时清除 dirty；失败保留让用户被警告，避免数据丢失
   } catch {
     saveStatus.value = '⚠ 保存失败'
   } finally {
