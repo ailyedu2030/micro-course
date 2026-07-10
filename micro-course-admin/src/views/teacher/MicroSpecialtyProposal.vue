@@ -779,9 +779,15 @@ function makeUploader(type) {
 
 // ==================== 保存 ====================
 async function handleSave() {
+  // 懒创建：用户手动点保存时若草稿未存在, 先创建
   if (!draftId.value) {
-    ElMessage.warning('草稿尚未初始化')
-    return
+    try {
+      await ensureDraft()
+    } catch (e) {
+      ElMessage.error(e?.response?.data?.message || '初始化草稿失败')
+      return
+    }
+    if (!draftId.value) return  // ensureDraft 失败
   }
   // D-009: 检查共享单位中是否有暂不支持的字段
   const hasUnsupportedFields = sharedUnits.value.some(u =>
@@ -815,29 +821,60 @@ async function handleSave() {
 // ==================== 自动保存（1.5s 防抖） ====================
 const autoSaveTimer = ref(null)
 
+// 草稿懒创建：仅在用户首次输入/手动保存时才 POST /init
+// 避免"进入表单未填返回"产生空白 DRAFT 污染列表
+let draftInitInFlight = null
+async function ensureDraft() {
+  if (draftId.value) return
+  if (draftInitInFlight) return draftInitInFlight
+  draftInitInFlight = (async () => {
+    try {
+      await initDraft()
+    } finally {
+      draftInitInFlight = null
+    }
+  })()
+  return draftInitInFlight
+}
+
+// 实际执行一次保存（被 scheduleAutoSave 和 handleSave 共用）
+async function performAutoSave() {
+  pendingSave.value = true
+  saveStatus.value = '保存中'
+  try {
+    await autoSaveStorageApplication(draftId.value, buildSavePayload())
+    saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
+    dirty.value = false
+  } catch {
+    saveStatus.value = '⚠ 保存失败'
+  } finally {
+    pendingSave.value = false
+  }
+}
+
 /**
  * Extracted auto-save scheduler — shared by all targeted watchers.
  * Debounces: resets the timer on each call, only fires after 1.5s of inactivity.
+ * 懒创建：第一次输入时先 ensureDraft() 再 autoSave
  */
 function scheduleAutoSave() {
-  if (!draftId.value) return
   if (!initialLoadComplete.value) return
   dirty.value = true  /* 先标记 dirty（即使 autoSave 未启用也能触发离开警告） */
+  // 草稿未创建：懒创建，确保 draftId 后立即跑一次保存
+  if (!draftId.value) {
+    if (draftInitInFlight || !initialLoadComplete.value) return
+    ensureDraft().then(() => {
+      if (!draftId.value) return  // init 失败
+      autoSaveEnabled.value = true  /* 首次创建即启用 autoSave */
+      performAutoSave()
+    }).catch(() => {
+      saveStatus.value = '⚠ 保存失败'
+    })
+    return
+  }
   if (!autoSaveEnabled.value) return
   if (autoSaveTimer.value) clearTimeout(autoSaveTimer.value)
-  autoSaveTimer.value = setTimeout(async () => {
-    pendingSave.value = true  // RT-3: mark save in progress
-    saveStatus.value = '保存中'
-    try {
-      await autoSaveStorageApplication(draftId.value, buildSavePayload())
-      saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
-      dirty.value = false
-    } catch {
-      saveStatus.value = '⚠ 保存失败'
-    } finally {
-      pendingSave.value = false  // RT-3: clear in-progress flag
-    }
-  }, 1500)
+  autoSaveTimer.value = setTimeout(performAutoSave, 1500)
 }
 
 // ---- Targeted watchers (replaces single deep watch) ----
@@ -1149,9 +1186,11 @@ onMounted(async () => {
     const timer = setTimeout(() => { loading.value && (loading.value = false) }, 30000)
     await loadDraft(id)
     clearTimeout(timer)
-  } else {
-    await initDraft()
   }
+  // 无 id：不清创建草稿，避免"进入未填返回"产生空白 DRAFT
+  // 等用户首次输入时由 scheduleAutoSave / handleSave 懒调用 ensureDraft()
+  initialLoadComplete.value = true
+  loading.value = false
 })
 
 // ==================== 清理 ====================
