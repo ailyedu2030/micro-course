@@ -141,22 +141,22 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRealName(request.getRealName());
-        user.setEmail(request.getEmail());
-        user.setPhone(request.getPhone());
+        user.setRealName(request.getRealName());  // NOT NULL, 不归一
+        // 文本字段统一 nullIfBlank：避开 DB chk_users_gender / uk_users_student_no
+        // / uk_users_teacher_no 等约束（Postgres UNIQUE 把空串视为相等，与 NULL 不同）
+        user.setEmail(nullIfBlank(request.getEmail()));
+        user.setPhone(nullIfBlank(request.getPhone()));
         user.setRole(request.getRole());
         user.setDepartmentId(request.getDepartmentId());
         user.setMajorId(request.getMajorId());
         user.setClassId(request.getClassId());
-        // 空字符串归一为 null：DB chk_users_gender / chk_users_role 等检查约束
-        // 不接受空串，但接受 NULL
         user.setGender(nullIfBlank(request.getGender()));
-        user.setStudentNo(request.getStudentNo());
-        user.setTeacherNo(request.getTeacherNo());
+        user.setStudentNo(nullIfBlank(request.getStudentNo()));
+        user.setTeacherNo(nullIfBlank(request.getTeacherNo()));
         user.setEnrollmentYear(request.getEnrollmentYear());
         user.setGraduationYear(request.getGraduationYear());
         user.setGrade(request.getGrade());
-        user.setPoliticalStatus(request.getPoliticalStatus());
+        user.setPoliticalStatus(nullIfBlank(request.getPoliticalStatus()));
         // 【user-domain-drift-fix】状态字段改用枚举引用
         user.setStatus(request.getStatus() != null
                 ? UserStatus.fromCode(request.getStatus()).getCode()
@@ -180,16 +180,16 @@ public class UserServiceImpl implements UserService {
             user.setRealName(request.getRealName());
         }
         if (request.getEmail() != null) {
-            user.setEmail(request.getEmail());
+            user.setEmail(nullIfBlank(request.getEmail()));
         }
         if (request.getPhone() != null) {
-            user.setPhone(request.getPhone());
+            user.setPhone(nullIfBlank(request.getPhone()));
         }
         if (request.getGender() != null) {
             user.setGender(nullIfBlank(request.getGender()));
         }
         if (request.getAvatar() != null) {
-            user.setAvatar(request.getAvatar());
+            user.setAvatar(nullIfBlank(request.getAvatar()));
         }
         if (request.getDepartmentId() != null) {
             user.setDepartmentId(request.getDepartmentId());
@@ -210,13 +210,13 @@ public class UserServiceImpl implements UserService {
             user.setGraduationYear(request.getGraduationYear());
         }
         if (request.getStudentNo() != null) {
-            user.setStudentNo(request.getStudentNo());
+            user.setStudentNo(nullIfBlank(request.getStudentNo()));
         }
         if (request.getTeacherNo() != null) {
-            user.setTeacherNo(request.getTeacherNo());
+            user.setTeacherNo(nullIfBlank(request.getTeacherNo()));
         }
         if (request.getPoliticalStatus() != null) {
-            user.setPoliticalStatus(request.getPoliticalStatus());
+            user.setPoliticalStatus(nullIfBlank(request.getPoliticalStatus()));
         }
         // P2-017: 合并状态变更与普通字段更新为单次 DB 写操作
         if (request.getStatus() != null) {
