@@ -52,6 +52,14 @@ public class UserServiceImpl implements UserService {
 
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,}$");
 
+    /**
+     * 空字符串规范化：DB 检查约束（chk_users_gender 等）不接受空串，
+     * 但接受 NULL。前端表单字段未填写时常以 "" 提交，需归一化为 null。
+     */
+    private static String nullIfBlank(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
+    }
+
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final DepartmentRepository departmentRepository;
@@ -140,7 +148,9 @@ public class UserServiceImpl implements UserService {
         user.setDepartmentId(request.getDepartmentId());
         user.setMajorId(request.getMajorId());
         user.setClassId(request.getClassId());
-        user.setGender(request.getGender());
+        // 空字符串归一为 null：DB chk_users_gender / chk_users_role 等检查约束
+        // 不接受空串，但接受 NULL
+        user.setGender(nullIfBlank(request.getGender()));
         user.setStudentNo(request.getStudentNo());
         user.setTeacherNo(request.getTeacherNo());
         user.setEnrollmentYear(request.getEnrollmentYear());
@@ -176,7 +186,7 @@ public class UserServiceImpl implements UserService {
             user.setPhone(request.getPhone());
         }
         if (request.getGender() != null) {
-            user.setGender(request.getGender());
+            user.setGender(nullIfBlank(request.getGender()));
         }
         if (request.getAvatar() != null) {
             user.setAvatar(request.getAvatar());
