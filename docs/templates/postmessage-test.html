@@ -1,0 +1,117 @@
+<!-- SlidePlayer postMessage 协议测试
+     测试：HTML → 平台（播放/暂停/seek/速度/状态查询）
+          平台 → HTML（playing/paused/ended/loaded/time-update/speed-changed） -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 960px; height: 540px; overflow: hidden; font-family: -apple-system, 'Inter', system-ui, sans-serif; background: #f8f9fa; color: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; }
+.slide { width: 100%; height: 100%; padding: 48px 64px; display: flex; flex-direction: column; }
+h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
+.sub { font-size: 15px; color: #5f6368; margin-bottom: 24px; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.btn { padding: 8px 18px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-size: 14px; font-family: inherit; transition: all 0.15s; }
+.btn:hover { border-color: #1a73e8; background: #e8f0fe; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.status-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; flex: 1; }
+.status-box .label { font-size: 11px; font-weight: 600; color: #a39e98; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.status-box .value { font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; color: #1f1f1f; white-space: pre-wrap; }
+.log-box { background: #1f1f1f; border-radius: 6px; padding: 12px; margin-top: 12px; flex: 1; overflow-y: auto; }
+.log-box .label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+.log-box .log-line { font-family: monospace; font-size: 12px; color: #a0e0a0; line-height: 1.5; }
+.footer { margin-top: 10px; font-size: 12px; color: #a39e98; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.tag-ok { background: #d4edda; color: #155724; }
+.tag-warn { background: #fff3cd; color: #856404; }
+</style>
+</head>
+<body>
+<div class="slide">
+  <h1>📡 postMessage 协议测试</h1>
+  <p class="sub">点击按钮发送命令 → 平台执行 → 返回状态。验证双向通信是否正常工作。</p>
+
+  <div class="controls">
+    <button class="btn" onclick="send('play')">▶ 播放</button>
+    <button class="btn" onclick="send('pause')">⏸ 暂停</button>
+    <button class="btn" onclick="seekTo(0)">⏪ 重播</button>
+    <button class="btn" onclick="send('get-state')">🔍 查状态</button>
+    <button class="btn" onclick="sendSpeed(0.75)">0.75x</button>
+    <button class="btn" onclick="sendSpeed(1.0)">1.0x</button>
+    <button class="btn" onclick="sendSpeed(2.0)">2.0x</button>
+    <span style="color:#a39e98;font-size:12px">翻页用平台 ← → 键</span>
+  </div>
+
+  <div style="display:flex;gap:12px;flex:1;min-height:0;">
+    <div class="status-box" style="flex:1">
+      <div class="label">当前状态</div>
+      <div class="value" id="statusDisplay">等待连接...</div>
+    </div>
+    <div class="log-box" style="flex:1">
+      <div class="label">消息日志</div>
+      <div id="logDisplay"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    协议版本 v1 · <span id="testResult" class="tag tag-warn">等待测试...</span>
+  </div>
+</div>
+
+<script>
+const logEl = document.getElementById('logDisplay')
+const statusEl = document.getElementById('statusDisplay')
+const testResult = document.getElementById('testResult')
+let msgCount = 0
+
+function log(msg, isIncoming = true) {
+  const d = document.createElement('div')
+  d.className = 'log-line'
+  d.textContent = (isIncoming ? '← ' : '→ ') + msg
+  logEl.appendChild(d)
+  logEl.scrollTop = logEl.scrollHeight
+  msgCount++
+}
+
+// 监听平台发回的消息
+window.addEventListener('message', (e) => {
+  const msg = e.data
+  log(JSON.stringify(msg))
+  statusEl.textContent = JSON.stringify(msg, null, 2)
+
+  // 自动检测：如果收到至少一条返回消息，测试通过
+  if (msg.type === 'slide-audio-state') {
+    testResult.className = 'tag tag-ok'
+    testResult.textContent = `✅ 已收到 ${msg.state} — 通信正常`
+  }
+})
+
+// 发送命令
+function send(action) {
+  const msg = { type: 'slide-audio', action }
+  log(JSON.stringify(msg), false)
+  window.parent.postMessage(msg, '*')
+  statusEl.textContent = `sent: ${action} (等待回应...)`
+}
+
+function sendSpeed(rate) {
+  const msg = { type: 'slide-audio', action: 'speed', rate }
+  log(JSON.stringify(msg), false)
+  window.parent.postMessage(msg, '*')
+}
+function seekTo(time) {
+  const msg = { type: 'slide-audio', action: 'seek', time }
+  log(JSON.stringify(msg), false)
+  window.parent.postMessage(msg, '*')
+}
+
+// 初始化：通知平台"我准备好了"
+setTimeout(() => {
+  log('HTML 课件已加载，等待平台消息...', false)
+  send('get-state')
+}, 500)
+</script>
+</body>
+</html>

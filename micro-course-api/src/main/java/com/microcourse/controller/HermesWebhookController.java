@@ -116,11 +116,19 @@ public class HermesWebhookController {
         Long chapterId = lesson.getChapterId();
 
         String filename = file.getOriginalFilename();
-        if (filename == null || !filename.toLowerCase().endsWith(".pptx")) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 .pptx 文件");
+        if (filename == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件名不能为空");
         }
-        if (file.getSize() > 50 * 1024 * 1024) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件大小不能超过 50MB");
+        String lower = filename.toLowerCase();
+        boolean isHtml = lower.endsWith(".html") || lower.endsWith(".htm");
+        boolean isPptx = lower.endsWith(".pptx");
+        if (!isHtml && !isPptx) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 .pptx / .html / .htm 文件");
+        }
+        long maxSize = isHtml ? 5 * 1024 * 1024 : 50 * 1024 * 1024;
+        if (file.getSize() > maxSize) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    isHtml ? "HTML 文件大小不能超过 5MB" : "文件大小不能超过 50MB");
         }
 
         try {
@@ -130,8 +138,14 @@ public class HermesWebhookController {
                     java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
             SecurityContextHolder.getContext().setAuthentication(auth);
 
-            com.microcourse.plugin.interactive.dto.SlideUploadResponse resp =
-                    slideService.upload(courseId, filename, file.getBytes(), chapterId);
+            Object resp;
+            if (isHtml) {
+                // Delete existing slides first, then upload fresh
+                try { slideService.deleteSlide(courseId); } catch (Exception ignored) {}
+                resp = slideService.uploadHtmlFile(courseId, file, chapterId);
+            } else {
+                resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);
+            }
             return R.ok(resp);
         } catch (Exception e) {
             log.error("[HermesWebhook] Slide upload failed: hermesCourseId={}, lessonId={}",

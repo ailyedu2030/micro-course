@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{width:960px;height:540px;overflow:hidden;font-family:-apple-system,'Inter',system-ui,sans-serif;background:#f8f9fa;color:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center}
+.slide{width:100%;height:100%;padding:44px 60px;display:flex;flex-direction:column}
+.num{font-size:12px;font-weight:600;color:#1a73e8;letter-spacing:.5px;margin-bottom:6px}
+h1{font-size:28px;font-weight:700;line-height:1.2;letter-spacing:-.4px;margin-bottom:4px}
+.sub{font-size:15px;color:#5f6368;line-height:1.5;margin-bottom:20px;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
+.card{background:#1f1f1f;border-radius:8px;padding:18px 22px;position:relative}
+.card .lbl{font-size:11px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.card pre{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:1.7;color:#e0e0e0;white-space:pre-wrap;margin:0}
+.cb{position:absolute;top:10px;right:10px;padding:4px 10px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .2s}
+.cb:hover{background:rgba(255,255,255,.15)}
+.cb.copied{background:#0d9e6d;border-color:#0d9e6d}
+.ex{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:16px;overflow-y:auto;flex:1}
+.ex .lbl{font-size:11px;font-weight:600;color:#a39e98;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.ex pre{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:1.6;color:#1f1f1f;white-space:pre-wrap;margin:0}
+.ft{display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-shrink:0;font-size:13px;color:#a39e98}
+</style></head><body>
+<div class="slide">
+  <div class="num">模板卡 趋势分析模板 2/2</div>
+  <h1>趋势分析模板</h1>
+  <p class="sub">AI 输出示例</p><div class="main"><div class="ex"><div class="lbl">AI 输出</div><pre>维度：月度（2026年1-6月）
+| 月份 | 销售额 | 环比 |
+| 1月 | 120.5万 | -- |
+| 2月 | 89.3万 | -25.9% |
+| 3月 | 145.2万 | +62.6% |
+| 4月 | 138.7万 | -4.5% |
+| 5月 | 162.1万 | +16.9% |
+| 6月 | 175.4万 | +8.2% |</pre></div></div>
+  <div class="ft"><span>2/2</span><span>听音频讲解 &rarr;</span></div>
+</div>
+<script>
+
+window.addEventListener('message',function(e){if(e.data&&e.data.type==='slide-audio-state'&&e.data.state==='ended'){var h=document.getElementById('next-hint');if(h)h.style.display='block'}})
+</script>
+</body></html>
