@@ -5,7 +5,19 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
+/// <reference types="vitest/config" />
 export default defineConfig({
+  test: {
+    environment: 'happy-dom',
+    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    globals: true,
+    css: false,  // ignore CSS imports (element-plus theme-chalk etc.)
+    server: {
+      deps: {
+        inline: ['element-plus'],
+      },
+    },
+  },
   plugins: [
     vue(),
     // RES-001 修复: element-plus 按需引入, 减少 vendor-el chunk 从 ~1.1MB 到 ~300KB

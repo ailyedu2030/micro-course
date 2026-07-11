@@ -24,7 +24,7 @@
       </div>
       <div class="header-actions" v-if="slide?.status === 2 && !batchMode">
         <el-button type="primary" plain @click="showPreview = true" :icon="View">预览</el-button>
-        <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx" class="replace-upload">
+        <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.htm" class="replace-upload">
           <el-button :icon="UploadFilled">替换</el-button>
         </el-upload>
         <el-dropdown trigger="click" class="header-dropdown">
@@ -112,7 +112,7 @@ drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.
     <section v-else-if="slide.status === 3" class="error-card">
       <el-result icon="error" title="渲染失败" :sub-title="slide.errorMessage || '未知错误'">
         <template #extra>
-          <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx">
+          <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.htm">
             <el-button type="primary" :icon="Refresh">重新上传</el-button>
           </el-upload>
         </template>
@@ -451,6 +451,11 @@ async function handleGenerateTTS() {
 }
 
 async function handleUpload(file) {
+  // 防并发：uploadProgress 仅单值，并发会互相覆盖
+  if (uploading.value) {
+    ElMessage.warning('已有课件正在上传，请稍候')
+    return false
+  }
   // 前端校验：文件大小和类型
   if (file.size > 50 * 1024 * 1024) {
     ElMessage.warning('文件超过 50MB 限制')

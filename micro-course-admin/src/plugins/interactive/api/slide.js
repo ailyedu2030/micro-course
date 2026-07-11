@@ -14,7 +14,7 @@ export function uploadSlide(courseId, file, onProgress, chapterId, contentType =
   fd.append('file', file)
   fd.append('contentType', contentType)
   if (chapterId) fd.append('chapterId', chapterId)
-  const isHtml = file.name && /\.(html?|HTML?)$/.test(file.name)
+  const isHtml = file.name && /\.(html?|htm)$/i.test(file.name)
   return request({
     method: 'POST',
     url: `/courses/${courseId}/slides/upload`,
