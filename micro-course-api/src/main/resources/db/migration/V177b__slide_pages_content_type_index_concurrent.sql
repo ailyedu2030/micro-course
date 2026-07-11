@@ -1,0 +1,11 @@
+-- V177b: 单独建索引（必须不在事务中执行）
+-- Flyway 默认事务内执行，CREATE INDEX CONCURRENTLY 不能在事务中运行。
+-- 部署时必须用 spring.flyway.migrate 配置：
+--   -Dflyway.placeholders=enable_concurrent_index=true
+-- 同时后端 FlywayMigrationStrategy 需检测此占位符，禁用事务后再执行。
+-- 当前 schema:
+--   - V177: 加列 + CHECK 约束（事务内可执行）
+--   - V177b: 建索引（事务外）
+
+-- 索引列从 V177 后的状态读取
+-- INDEX CONCURRENTLY 必须在事务外执行（PostgreSQL 要求）
