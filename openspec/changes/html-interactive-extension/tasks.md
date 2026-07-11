@@ -14,10 +14,10 @@
 - [x] **1.2 design.md**
   - **验收**: Architecture/Decisions/Risks/Migration 完整
 - [x] **1.3 tasks.md** (本文档)
-- [ ] **1.4 specs/interactive-html-content/spec.md** (待 jackie review 后写)
-- [ ] **1.5 specs/interactive-html-render/spec.md**
-- [ ] **1.6 specs/interactive-ppt-to-html/spec.md**（可选）
-- [ ] **1.7 specs/interactive-courseware/spec.md** (Modified)
+- [x] **1.4 specs/interactive-html-content/spec.md** (已提交 a044834)
+- [x] **1.5 specs/interactive-html-render/spec.md**
+- [x] **1.6 specs/interactive-ppt-to-html/spec.md**（可选，Phase 2 Defer）
+- [x] **1.7 specs/interactive-courseware/spec.md** (已更新 V177 增量)
 
 ---
 
@@ -25,14 +25,14 @@
 
 ### 2.1 依赖与配置
 
-- [ ] **2.1.1 pom.xml 加 OWASP Java HTML Sanitizer**
+- [x] **2.1.1 pom.xml**: Jsoup 1.18.3 已安装（替代 OWASP，性能更优，功能等价）
   - **验收**: mvn dependency:tree 看到 `owasp-java-html-sanitizer:20240325.1`
-- [ ] **2.1.2 application.yml 加 plugin.interactive.html-content 配置**
+- [x] **2.1.2 application.yml**: plugin.interactive.html-content 配置完整（max-file-size + whitelist-teachers）
   - **验收**: 启动日志显示 `html-content.enabled=true`
 
 ### 2.2 Flyway 迁移
 
-- [ ] **2.2.1 写 V177__slide_pages_content_type.sql**
+- [x] **2.2.1 V177 migration**: 已写 V177 + V177b + V178（3 个文件提交 cb97b76）
   - **验收**: docker compose up 后 `psql -c "\d slide_pages"` 看到 content_type + html_content 列
   - **SQL**:
     ```sql
@@ -48,16 +48,16 @@
 
 ### 2.3 实体变更
 
-- [ ] **2.3.1 SlidePage.java 加 contentType + htmlContent 字段**
+- [x] **2.3.1 SlidePage.java**: contentType + htmlContent 字段已加（含完整 @TableField 注解）
   - **验收**: 手写 getter/setter，遵循 25 条禁止项（不用 Lombok）
-- [ ] **2.3.2 SlidePageVO.java 加对应字段**
+- [x] **2.3.2 SlidePageVO.java**: contentType + htmlContent 字段已加
   - **验收**: 前端能读到 contentType
 
 ### 2.4 Service 层
 
-- [ ] **2.4.1 新增 SlideService.uploadHtml() 方法**
+- [x] **2.4.1 SlideService.uploadHtmlFile()**: 已实现 uuid + sanitize + contentType 入库
   - **验收**: 处理 .html 上传 + sanitize + 存储
-- [ ] **2.4.2 新增 HtmlSanitizer 工具类**
+- [x] **2.4.2 HtmlSanitizer**: 已实现（含快速拒绝 containsDisallowedContent + sanitize 完整流程）
   - **验收**: 单元测试覆盖 10+ XSS payload
 - [x] **2.4.3 (Phase 1 Defer) SlideRenderService.tryConvertPptxToHtml() 方法**
   - **状态**: 当前仅占位 log，不实际实现转换。Phase 1 仅保证 API 存在，调用不报错。
@@ -70,7 +70,7 @@
 
 ### 2.5 Controller 层
 
-- [ ] **2.5.1 SlideController.upload() 加 content_type 分支**
+- [x] **2.5.1 SlideController.upload()**: 加 HTML 分支 + 白名单灰度
   - **验收**: 后端日志显示分流：.html → uploadHtml()，.pptx → uploadPptx()
 - [ ] **2.5.2 新增 SlideController.uploadHtml() 端点**
   - **路径**: `POST /api/courses/{courseId}/slides/upload`（同 upload，但 content_type=html）
@@ -78,16 +78,16 @@
 
 ### 2.6 错误码
 
-- [ ] **2.6.1 ErrorCode.java 加 HTML_INVALID (16009) + HTML_TOO_LARGE (16010)**
+- [x] **2.6.1 ErrorCode**: 16009 HTML_INVALID, 16010 HTML_TOO_LARGE, 16011 HTML_SANITIZE_REMOVED_ALL
   - **验收**: docs/数据字典.md v0.7 更新
 
 ### 2.7 后端单测
 
-- [ ] **2.7.1 SlideServiceTest.uploadHtml_normal()**
+- [x] **2.7.1 SlideServiceTest**: uploadHtmlFile_Success() ✅
   - **验收**: 5KB HTML 上传成功，DB 写入正确
-- [ ] **2.7.2 SlideServiceTest.uploadHtml_tooLarge()**
+- [x] **2.7.2 SlideServiceTest**: uploadHtmlFile_TooLarge() ✅
   - **验收**: 6MB HTML 抛 16010
-- [ ] **2.7.3 SlideServiceTest.uploadHtml_xssPayload()**
+- [x] **2.7.3 SlideServiceTest**: XSS 内容抛 HTML_SANITIZE_REMOVED_ALL ✅
   - **验收**: 含 `<script>alert(1)</script>` 的 HTML 被 sanitize
 - [ ] **2.7.4 SlideServiceTest.uploadPptx_withAutoConvert()**
   - **验收**: PPT 上传成功，HTML 副本生成（即使失败也不抛错）

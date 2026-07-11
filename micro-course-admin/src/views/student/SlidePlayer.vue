@@ -56,7 +56,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
                    设计依据：HTML 课件仅用于展示，无需 script/form/弹窗；
                    同源权限会允许恶意脚本访问平台 API（用户信息/选课），是 P0 XSS 漏洞。
                    注：srcdoc 与父页面 postMessage 不受 sandbox 限制 -->
-              <iframe
+               <iframe
                 v-if="currentPage?.contentType === 'HTML_DIRECT' && currentPage?.htmlContent"
                 :srcdoc="currentPage.htmlContent"
                 sandbox=""
@@ -67,6 +67,12 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
                 @error="onHtmlIframeError"
                 @load="onHtmlIframeLoad"
               />
+              <!-- P2-7: HTML 课时下载按钮（sandbox 禁用右键保存，用临时 Blob 下载源码） -->
+              <div v-if="currentPage?.contentType === 'HTML_DIRECT'" class="html-toolbar">
+                <el-button size="small" text @click="downloadHtmlPage">
+                  <el-icon><Download /></el-icon> 下载 HTML
+                </el-button>
+              </div>
               <!-- 正常渲染的图片 -->
               <img
                 v-else-if="imageUrls[current] && !imageErrors[current]"
@@ -188,7 +194,7 @@ import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import { getLearningProgress, createLearningProgress, updateLearningProgress } from '@/api/learning-progress'
-import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loading, RefreshRight, PictureFilled } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loading, RefreshRight, PictureFilled, Download } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const courseId = computed(() => route.params.courseId)
@@ -288,6 +294,22 @@ function onHtmlIframeLoad() {
 function onHtmlIframeError() {
   // 加载失败（罕见）：提示用户刷新
   ElMessage.error('HTML 课件加载失败，请刷新重试')
+}
+
+// P2-7: 下载当前 HTML 页面源码（绕过 sandbox 禁用右键保存的限制）
+function downloadHtmlPage() {
+  const page = currentPage.value
+  if (!page?.htmlContent) {
+    ElMessage.warning('当前页面无 HTML 内容')
+    return
+  }
+  const blob = new Blob([page.htmlContent], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `html-page-${(page.pageNumber || 1)}.html`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 function goTo(index) {
@@ -525,6 +547,8 @@ onUnmounted(() => {
   width: 92vw; height: calc(100dvh - 120px); border: none; border-radius: 4px;
   box-shadow: 0 8px 40px rgba(0,0,0,.5); background: #fff;
 }
+/* HTML 课时工具栏：下载按钮（sandbox 阻止右键保存时的替代方案） */
+.html-toolbar { text-align: center; margin-top: 8px; }
 .slide-gradient {
   position: absolute; inset: 0; border-radius: 4px;
   background: linear-gradient(180deg, transparent 85%, rgba(10,10,15,.4) 100%);

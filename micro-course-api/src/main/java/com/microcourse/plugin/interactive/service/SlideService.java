@@ -12,8 +12,6 @@ public interface SlideService {
 
     SlideUploadResponse upload(Long courseId, String originalFilename, byte[] fileBytes, Long chapterId);
 
-    SlideUploadResponse uploadHtmlContent(Long courseId, String htmlContent, Long chapterId);
-
     SlideUploadResponse uploadHtmlFile(Long courseId, MultipartFile file, Long chapterId);
 
     void tryConvertPptxToHtml(Long slideId, byte[] pptxBytes);

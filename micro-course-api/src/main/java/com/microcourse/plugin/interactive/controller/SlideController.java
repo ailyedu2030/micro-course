@@ -102,18 +102,6 @@ public class SlideController {
         }
     }
 
-    @PostMapping("/upload-html")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<SlideUploadResponse> uploadHtml(@PathVariable Long courseId,
-                                              @RequestBody String htmlContent,
-                                              @RequestParam(required = false) Long chapterId) {
-        if (htmlContent == null || htmlContent.isBlank()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "HTML 内容不能为空");
-        }
-        SlideUploadResponse resp = slideService.uploadHtmlContent(courseId, htmlContent, chapterId);
-        return R.ok(resp);
-    }
-
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<SlideVO> getByCourseId(@PathVariable Long courseId) {

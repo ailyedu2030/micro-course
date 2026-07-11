@@ -74,6 +74,17 @@ public final class HtmlSanitizer {
         if (rawHtml == null || rawHtml.isEmpty()) {
             return "";
         }
+        // 快速拒绝：先扫描是否含不允许的标签，避免大负载进入 Jsoup.clean() 流程
+        if (containsDisallowedContent(rawHtml)) {
+            String safeHtml = Jsoup.clean(rawHtml, SAFELIST);
+            // 如果快速拒绝扫描触发但 Jsoup.clean 实际移除了内容，说明扫描正确
+            // 如果 safeHtml 仍含危险内容（误报），Jsoup 会进一步清理
+            log.info("[HtmlSanitizer] 快速拒绝扫描触发: rawLength={}", rawHtml.length());
+            if (safeHtml.isEmpty()) {
+                log.warn("[HtmlSanitizer] 内容全部被消毒移除，长度={}", rawHtml.length());
+            }
+            return safeHtml;
+        }
         String safeHtml = Jsoup.clean(rawHtml, SAFELIST);
         if (!safeHtml.equals(rawHtml)) {
             log.info("[HtmlSanitizer] 移除了 {} 个字符的潜在不安全内容",

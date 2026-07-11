@@ -55,8 +55,6 @@ public class SlideServiceImpl implements SlideService {
 
     private static final Logger log = LoggerFactory.getLogger(SlideServiceImpl.class);
 
-    private static final long MAX_HTML_SIZE = 5L * 1024 * 1024;
-
     private final CourseSlideMapper courseSlideMapper;
     private final SlidePageMapper slidePageMapper;
     private final CourseRepository courseRepository;
@@ -64,6 +62,9 @@ public class SlideServiceImpl implements SlideService {
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
+
+    @Value("${plugin.interactive.html-content.max-file-size:5242880}")
+    private long maxHtmlSize;
 
     public SlideServiceImpl(CourseSlideMapper courseSlideMapper,
                             SlidePageMapper slidePageMapper,
@@ -83,7 +84,7 @@ public class SlideServiceImpl implements SlideService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
         if (!originalFilename.toLowerCase().endsWith(".pptx")) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
         if (!isZipHeader(fileBytes)) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
-        if (fileBytes.length > MAX_HTML_SIZE * 10) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
+        if (fileBytes.length > maxHtmlSize * 10) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
         if (!validateZipBomb(fileBytes)) { throw new BusinessException(ErrorCode.PPT_PARSE_FAILED); }
 
         String fileHash = sha256(fileBytes);
@@ -131,39 +132,11 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public SlideUploadResponse uploadHtmlContent(Long courseId, String htmlContent, Long chapterId) {
-        Course course = courseRepository.selectById(courseId);
-        if (course == null) { throw new BusinessException(ErrorCode.COURSE_NOT_FOUND); }
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
-        if (htmlContent.length() > MAX_HTML_SIZE) { throw new BusinessException(ErrorCode.HTML_CONTENT_TOO_LARGE); }
-        String safeHtml = HtmlSanitizer.sanitize(htmlContent);
-        if (safeHtml.isEmpty() && !htmlContent.isEmpty()) { throw new BusinessException(ErrorCode.HTML_SANITIZE_REMOVED_ALL); }
-        CourseSlide slide = new CourseSlide();
-        slide.setCourseId(courseId); slide.setFileName("slide.html"); slide.setTotalPages(1); slide.setStatus(2);
-        slide.setFileHash(sha256(safeHtml.getBytes(StandardCharsets.UTF_8)));
-        if (chapterId != null) { slide.setChapterId(chapterId); }
-        slide.setCreatedAt(LocalDateTime.now()); slide.setUpdatedAt(LocalDateTime.now());
-        courseSlideMapper.insert(slide);
-        SlidePage page = new SlidePage();
-        page.setSlideId(slide.getId()); page.setCourseId(courseId);
-        page.setChapterId(chapterId); page.setPageNumber(1);
-        page.setContentType("HTML_DIRECT"); page.setHtmlContent(safeHtml);
-        page.setNarrationStatus("PENDING");
-        page.setCreatedAt(LocalDateTime.now()); page.setUpdatedAt(LocalDateTime.now());
-        slidePageMapper.insert(page);
-        log.info("[Slide-HtmlContent] courseId={}, slideId={}, size={}", courseId, slide.getId(), safeHtml.length());
-        SlideUploadResponse r = new SlideUploadResponse();
-        r.setSlideId(slide.getId()); r.setTotalPages(1); r.setStatus(2); r.setMessage("HTML upload success");
-        return r;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     public SlideUploadResponse uploadHtmlFile(Long courseId, MultipartFile file, Long chapterId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) { throw new BusinessException(ErrorCode.COURSE_NOT_FOUND); }
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
-        if (file.getSize() > MAX_HTML_SIZE) { throw new BusinessException(ErrorCode.HTML_TOO_LARGE); }
+        if (file.getSize() > maxHtmlSize) { throw new BusinessException(ErrorCode.HTML_TOO_LARGE); }
         String rawHtml;
         try {
             rawHtml = new String(file.getBytes(), StandardCharsets.UTF_8);

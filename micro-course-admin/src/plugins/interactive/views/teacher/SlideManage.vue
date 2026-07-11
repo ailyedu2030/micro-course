@@ -63,7 +63,7 @@
       <div class="create-guide">
         <div class="guide-step active">
           <span class="step-num">1</span>
-          <span class="step-text">上传 .pptx 课件</span>
+          <span class="step-text">上传课件（.pptx / .html）</span>
         </div>
         <div class="guide-step">
           <span class="step-num">2</span>

@@ -131,7 +131,8 @@ plugin:
       page-image-width: 1920
       thumbnail-width: 320
     html-content:
-      # V177 灰度白名单：逗号分隔的 username，空表示全量开放
+      # 从环境变量注入 max-file-size 和 whitelist-teachers
+      max-file-size: ${SLIDES_HTML_MAX_SIZE:5242880}
       whitelist-teachers: ${SLIDES_HTML_WHITELIST:}
     deepseek:
       # LLM 配置（OpenAI 兼容 API）

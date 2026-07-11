@@ -49,6 +49,7 @@ class SlideServiceTest {
         slideRenderService = mock(SlideRenderService.class);
         slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository, slideRenderService);
         ReflectionTestUtils.setField(slideService, "storagePath", "/tmp/slides-test");
+        ReflectionTestUtils.setField(slideService, "maxHtmlSize", 5L * 1024 * 1024);
     }
 
     @Nested
@@ -214,87 +215,6 @@ class SlideServiceTest {
             Authentication auth = new UsernamePasswordAuthenticationToken(
                     1L, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
             SecurityContextHolder.getContext().setAuthentication(auth);
-        }
-
-        @Test
-        @DisplayName("纯文本 HTML 内容上传成功")
-        void uploadHtmlContent_Success() {
-            setupAdminContext();
-            try {
-                Course course = new Course();
-                course.setId(1L);
-                course.setTeacherId(1L);
-                when(courseRepository.selectById(1L)).thenReturn(course);
-                when(courseSlideMapper.insert(any(CourseSlide.class))).thenAnswer(inv -> {
-                    CourseSlide s = inv.getArgument(0);
-                    s.setId(42L); // Simulate auto-generated ID
-                    return 1;
-                });
-                when(slidePageMapper.insert(any(SlidePage.class))).thenReturn(1);
-
-                SlideUploadResponse resp = slideService.uploadHtmlContent(1L, "<p>Hello World</p>", null);
-
-                assertNotNull(resp);
-                assertEquals(1, resp.getTotalPages());
-                assertEquals(2, resp.getStatus());
-                assertEquals(42L, resp.getSlideId().longValue());
-                verify(courseSlideMapper).insert(any(CourseSlide.class));
-                verify(slidePageMapper).insert(any(SlidePage.class));
-            } finally {
-                SecurityContextHolder.clearContext();
-            }
-        }
-
-        @Test
-        @DisplayName("课程不存在抛 COURSE_NOT_FOUND")
-        void uploadHtmlContent_CourseNotFound() {
-            setupAdminContext();
-            try {
-                when(courseRepository.selectById(1L)).thenReturn(null);
-
-                BusinessException e = assertThrows(BusinessException.class,
-                        () -> slideService.uploadHtmlContent(1L, "<p>test</p>", null));
-                assertEquals(ErrorCode.COURSE_NOT_FOUND.getCode(), e.getCode());
-            } finally {
-                SecurityContextHolder.clearContext();
-            }
-        }
-
-        @Test
-        @DisplayName("HTML 内容超过 5MB 抛异常")
-        void uploadHtmlContent_TooLarge() {
-            setupAdminContext();
-            try {
-                Course course = new Course();
-                course.setId(1L);
-                course.setTeacherId(1L);
-                when(courseRepository.selectById(1L)).thenReturn(course);
-
-                String bigHtml = "x".repeat(5 * 1024 * 1024 + 1);
-                BusinessException e = assertThrows(BusinessException.class,
-                        () -> slideService.uploadHtmlContent(1L, bigHtml, null));
-                assertEquals(ErrorCode.HTML_CONTENT_TOO_LARGE.getCode(), e.getCode());
-            } finally {
-                SecurityContextHolder.clearContext();
-            }
-        }
-
-        @Test
-        @DisplayName("HTML 内容全部被消毒移除时抛异常")
-        void uploadHtmlContent_AllRemoved() {
-            setupAdminContext();
-            try {
-                Course course = new Course();
-                course.setId(1L);
-                course.setTeacherId(1L);
-                when(courseRepository.selectById(1L)).thenReturn(course);
-
-                BusinessException e = assertThrows(BusinessException.class,
-                        () -> slideService.uploadHtmlContent(1L, "<script>alert('xss')</script>", null));
-                assertEquals(ErrorCode.HTML_SANITIZE_REMOVED_ALL.getCode(), e.getCode());
-            } finally {
-                SecurityContextHolder.clearContext();
-            }
         }
 
         @Test

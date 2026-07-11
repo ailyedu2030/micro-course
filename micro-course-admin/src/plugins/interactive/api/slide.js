@@ -2,17 +2,12 @@ import request from '@/utils/request'
 
 /**
  * 上传课件（统一接口，后端按扩展名自动分支）
- * - .pptx → 走 SlideRenderService 异步渲染 PNG（existing）
- * - .html/.htm → 走 HtmlSanitizer 消毒后入库（新增）
- *
- * 修复 Hermes P0#3 #4 #5：原 uploadHtml() 路由到错的端点 +
- * SlideManage.vue 硬编码 .pptx 过滤导致 HTML 上传链路完全断裂。
- * 现统一走 /upload 多部分上传，contentType 参数保留向后兼容。
+ * - .pptx → POI 异步渲染 PNG
+ * - .html/.htm → HtmlSanitizer 消毒后入库
  */
-export function uploadSlide(courseId, file, onProgress, chapterId, contentType = 'auto') {
+export function uploadSlide(courseId, file, onProgress, chapterId) {
   const fd = new FormData()
   fd.append('file', file)
-  fd.append('contentType', contentType)
   if (chapterId) fd.append('chapterId', chapterId)
   const isHtml = file.name && /\.(html?|htm)$/i.test(file.name)
   return request({
@@ -24,8 +19,7 @@ export function uploadSlide(courseId, file, onProgress, chapterId, contentType =
   })
 }
 
-// 兼容层：保留 uploadHtml 作为 uploadSlide 的别名
-// 注意：移除 Hermes 的错误独立端点（/upload-html 用 @RequestBody String，前后端不匹配）
+// 别名（向后兼容外部引用）
 export const uploadHtml = uploadSlide
 
 export function getSlides(courseId, chapterId) {
