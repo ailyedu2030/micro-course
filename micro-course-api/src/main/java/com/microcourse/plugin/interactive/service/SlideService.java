@@ -6,9 +6,17 @@ import com.microcourse.plugin.interactive.dto.SlideVO;
 
 import java.util.List;
 
+import org.springframework.web.multipart.MultipartFile;
+
 public interface SlideService {
 
     SlideUploadResponse upload(Long courseId, String originalFilename, byte[] fileBytes, Long chapterId);
+
+    SlideUploadResponse uploadHtmlContent(Long courseId, String htmlContent, Long chapterId);
+
+    SlideUploadResponse uploadHtmlFile(Long courseId, MultipartFile file, Long chapterId);
+
+    void tryConvertPptxToHtml(Long slideId, byte[] pptxBytes);
 
     SlideVO getByCourseId(Long courseId);
 

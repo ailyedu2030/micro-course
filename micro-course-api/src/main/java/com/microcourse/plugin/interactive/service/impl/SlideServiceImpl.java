@@ -12,6 +12,7 @@ import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.SlideService;
+import com.microcourse.plugin.interactive.util.HtmlSanitizer;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.util.SecurityUtil;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -31,6 +33,7 @@ import java.io.ByteArrayInputStream;
 import javax.imageio.ImageIO;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -52,11 +55,7 @@ public class SlideServiceImpl implements SlideService {
 
     private static final Logger log = LoggerFactory.getLogger(SlideServiceImpl.class);
 
-    private static final String PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-    private static final byte[] ZIP_MAGIC = new byte[]{0x50, 0x4B, 0x03, 0x04};
-    private static final long MAX_FILE_SIZE = 50L * 1024 * 1024;
-    private static final int MAX_ZIP_ENTRIES = 1000;
-    private static final long MAX_UNCOMPRESSED_SIZE = 500L * 1024 * 1024;
+    private static final long MAX_HTML_SIZE = 5L * 1024 * 1024;
 
     private final CourseSlideMapper courseSlideMapper;
     private final SlidePageMapper slidePageMapper;
@@ -65,12 +64,6 @@ public class SlideServiceImpl implements SlideService {
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
-
-    @Value("${plugin.interactive.slides.page-image-width:1920}")
-    private int pageImageWidth;
-
-    @Value("${plugin.interactive.slides.thumbnail-width:320}")
-    private int thumbnailWidth;
 
     public SlideServiceImpl(CourseSlideMapper courseSlideMapper,
                             SlidePageMapper slidePageMapper,
@@ -86,494 +79,357 @@ public class SlideServiceImpl implements SlideService {
     @Transactional(rollbackFor = Exception.class)
     public SlideUploadResponse upload(Long courseId, String originalFilename, byte[] fileBytes, Long chapterId) {
         Course course = courseRepository.selectById(courseId);
-        if (course == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        }
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
-        if (!originalFilename.toLowerCase().endsWith(".pptx")) {
-            throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID);
-        }
-        if (!isZipHeader(fileBytes)) {
-            throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID);
-        }
-        if (fileBytes.length > MAX_FILE_SIZE) {
-            throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID);
-        }
-        if (!validateZipBomb(fileBytes)) {
-            throw new BusinessException(ErrorCode.PPT_PARSE_FAILED);
-        }
+        if (course == null) { throw new BusinessException(ErrorCode.COURSE_NOT_FOUND); }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
+        if (!originalFilename.toLowerCase().endsWith(".pptx")) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
+        if (!isZipHeader(fileBytes)) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
+        if (fileBytes.length > MAX_HTML_SIZE * 10) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
+        if (!validateZipBomb(fileBytes)) { throw new BusinessException(ErrorCode.PPT_PARSE_FAILED); }
 
         String fileHash = sha256(fileBytes);
-
-        LambdaQueryWrapper<CourseSlide> existing = new LambdaQueryWrapper<>();
-        existing.eq(CourseSlide::getCourseId, courseId);
-        CourseSlide oldSlide = courseSlideMapper.selectOne(existing);
-        if (oldSlide != null) {
-            // P2-6: 覆盖前备份旧版本至 backup/{timestamp}/
+        LambdaQueryWrapper<CourseSlide> qw = new LambdaQueryWrapper<>();
+        qw.eq(CourseSlide::getCourseId, courseId);
+        CourseSlide old = courseSlideMapper.selectOne(qw);
+        if (old != null) {
             backupSlideFiles(courseId);
             cleanupSlideFiles(courseId);
-            courseSlideMapper.deleteById(oldSlide.getId());
-            LambdaQueryWrapper<SlidePage> oldPages = new LambdaQueryWrapper<>();
-            oldPages.eq(SlidePage::getSlideId, oldSlide.getId());
-            slidePageMapper.delete(oldPages);
+            courseSlideMapper.deleteById(old.getId());
+            slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, old.getId()));
         }
-
         CourseSlide slide = new CourseSlide();
-        slide.setCourseId(courseId);
-        slide.setFileName(originalFilename);
-        slide.setFileUrl("pending");
-        slide.setStatus(0);
-        slide.setFileHash(fileHash);
-        if (chapterId != null) {
-            slide.setChapterId(chapterId);
-        }
-        slide.setCreatedAt(LocalDateTime.now());
-        slide.setUpdatedAt(LocalDateTime.now());
+        slide.setCourseId(courseId); slide.setFileName(originalFilename); slide.setFileUrl("pending");
+        slide.setStatus(0); slide.setFileHash(fileHash);
+        if (chapterId != null) { slide.setChapterId(chapterId); }
+        slide.setCreatedAt(LocalDateTime.now()); slide.setUpdatedAt(LocalDateTime.now());
         courseSlideMapper.insert(slide);
 
         Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
         try {
             Files.createDirectories(courseDir);
             Path pptxPath = courseDir.resolve("original.pptx");
-            slide.setFileUrl(pptxPath.toString());
             Files.write(pptxPath, fileBytes);
             slide.setFileUrl(pptxPath.toString());
             courseSlideMapper.updateById(slide);
         } catch (IOException e) {
-            slide.setStatus(3);
-            slide.setErrorMessage("文件保存失败");
-            log.error("[SlideUpload] 文件保存IO异常 courseId={}", courseId, e);
+            slide.setStatus(3); slide.setErrorMessage("文件保存失败");
+            log.error("[SlideUpload] IO异常 courseId={}", courseId, e);
             slide.setUpdatedAt(LocalDateTime.now());
             courseSlideMapper.updateById(slide);
             throw new BusinessException(ErrorCode.PPT_PARSE_FAILED);
         }
-
-        final Long slideId = slide.getId();
-        final Long finalChapterId = chapterId;
-        final byte[] bytesForRender = fileBytes;
+        Long sid = slide.getId();
+        Long fc = chapterId;
+        byte[] fb = fileBytes;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
-            public void afterCommit() {
-                slideRenderService.renderAsync(slideId, finalChapterId, bytesForRender);
-            }
+            public void afterCommit() { slideRenderService.renderAsync(sid, fc, fb); }
         });
+        SlideUploadResponse r = new SlideUploadResponse();
+        r.setSlideId(sid); r.setTotalPages(0); r.setStatus(0); r.setMessage("上传成功，正在后台渲染...");
+        return r;
+    }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SlideUploadResponse uploadHtmlContent(Long courseId, String htmlContent, Long chapterId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) { throw new BusinessException(ErrorCode.COURSE_NOT_FOUND); }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
+        if (htmlContent.length() > MAX_HTML_SIZE) { throw new BusinessException(ErrorCode.HTML_CONTENT_TOO_LARGE); }
+        String safeHtml = HtmlSanitizer.sanitize(htmlContent);
+        if (safeHtml.isEmpty() && !htmlContent.isEmpty()) { throw new BusinessException(ErrorCode.HTML_SANITIZE_REMOVED_ALL); }
+        CourseSlide slide = new CourseSlide();
+        slide.setCourseId(courseId); slide.setFileName("slide.html"); slide.setTotalPages(1); slide.setStatus(2);
+        slide.setFileHash(sha256(safeHtml.getBytes(StandardCharsets.UTF_8)));
+        if (chapterId != null) { slide.setChapterId(chapterId); }
+        slide.setCreatedAt(LocalDateTime.now()); slide.setUpdatedAt(LocalDateTime.now());
+        courseSlideMapper.insert(slide);
+        SlidePage page = new SlidePage();
+        page.setSlideId(slide.getId()); page.setCourseId(courseId);
+        page.setChapterId(chapterId); page.setPageNumber(1);
+        page.setContentType("HTML_DIRECT"); page.setHtmlContent(safeHtml);
+        page.setNarrationStatus("PENDING");
+        page.setCreatedAt(LocalDateTime.now()); page.setUpdatedAt(LocalDateTime.now());
+        slidePageMapper.insert(page);
+        log.info("[Slide-HtmlContent] courseId={}, slideId={}, size={}", courseId, slide.getId(), safeHtml.length());
+        SlideUploadResponse r = new SlideUploadResponse();
+        r.setSlideId(slide.getId()); r.setTotalPages(1); r.setStatus(2); r.setMessage("HTML upload success");
+        return r;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SlideUploadResponse uploadHtmlFile(Long courseId, MultipartFile file, Long chapterId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) { throw new BusinessException(ErrorCode.COURSE_NOT_FOUND); }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
+        if (file.getSize() > MAX_HTML_SIZE) { throw new BusinessException(ErrorCode.HTML_TOO_LARGE); }
+        String rawHtml;
+        try {
+            rawHtml = new String(file.getBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.HTML_INVALID, "HTML 文件读取失败");
+        }
+        String safeHtml = HtmlSanitizer.sanitize(rawHtml);
+        if (safeHtml.isEmpty() && !rawHtml.isEmpty()) { throw new BusinessException(ErrorCode.HTML_SANITIZE_REMOVED_ALL); }
+        CourseSlide slide = new CourseSlide();
+        slide.setCourseId(courseId);
+        slide.setFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");
+        slide.setTotalPages(1);
+        slide.setStatus(2);
+        try { slide.setFileHash(sha256(file.getBytes())); }
+        catch (IOException e) { slide.setFileHash(""); }
+        if (chapterId != null) { slide.setChapterId(chapterId); }
+        slide.setCreatedAt(LocalDateTime.now());
+        slide.setUpdatedAt(LocalDateTime.now());
+        courseSlideMapper.insert(slide);
+        SlidePage page = new SlidePage();
+        page.setSlideId(slide.getId());
+        page.setCourseId(courseId);
+        page.setChapterId(chapterId);
+        page.setPageNumber(1);
+        page.setContentType("HTML_DIRECT");
+        page.setHtmlContent(safeHtml);
+        page.setNarrationStatus("PENDING");
+        page.setCreatedAt(LocalDateTime.now());
+        page.setUpdatedAt(LocalDateTime.now());
+        slidePageMapper.insert(page);
+        log.info("[SlideUpload-HtmlFile] courseId={}, slideId={}, size={}", courseId, slide.getId(), safeHtml.length());
         SlideUploadResponse resp = new SlideUploadResponse();
-        resp.setSlideId(slideId);
-        resp.setTotalPages(0);
-        resp.setStatus(0);
-        resp.setMessage("上传成功，正在后台渲染...");
+        resp.setSlideId(slide.getId());
+        resp.setTotalPages(1);
+        resp.setStatus(2);
+        resp.setMessage("HTML file upload success");
         return resp;
     }
 
     @Override
+    public void tryConvertPptxToHtml(Long slideId, byte[] pptxBytes) {
+        log.info("[PPTtoHTML] convert request slideId={}, size={} (todo)", slideId, pptxBytes.length);
+    }
+
+    @Override
     public SlideVO getByCourseId(Long courseId) {
-        LambdaQueryWrapper<CourseSlide> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CourseSlide::getCourseId, courseId);
-        CourseSlide slide = courseSlideMapper.selectOne(wrapper);
-        if (slide == null) {
-            return null;
-        }
-        return toVO(slide);
+        LambdaQueryWrapper<CourseSlide> qw = new LambdaQueryWrapper<>();
+        qw.eq(CourseSlide::getCourseId, courseId);
+        CourseSlide s = courseSlideMapper.selectOne(qw);
+        return s == null ? null : toVO(s);
     }
 
     @Override
     public List<SlidePageVO> getPages(Long courseId, Long chapterId) {
-        SlideVO slideVO = getByCourseId(courseId);
-        if (slideVO == null) {
-            return java.util.Collections.emptyList();
-        }
-        LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SlidePage::getSlideId, slideVO.getId())
-                .orderByAsc(SlidePage::getPageNumber);
-        if (chapterId != null) {
-            wrapper.eq(SlidePage::getChapterId, chapterId);
-        }
-        return slidePageMapper.selectList(wrapper).stream()
-                .map(this::toPageVO)
-                .collect(Collectors.toList());
+        SlideVO sv = getByCourseId(courseId);
+        if (sv == null) { return java.util.Collections.emptyList(); }
+        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
+        qw.eq(SlidePage::getSlideId, sv.getId()).orderByAsc(SlidePage::getPageNumber);
+        if (chapterId != null) { qw.eq(SlidePage::getChapterId, chapterId); }
+        return slidePageMapper.selectList(qw).stream().map(this::toPageVO).collect(Collectors.toList());
     }
 
     @Override
     public SlidePageVO getPage(Long courseId, Integer pageNumber) {
-        LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SlidePage::getCourseId, courseId)
-                .eq(SlidePage::getPageNumber, pageNumber);
-        SlidePage page = slidePageMapper.selectOne(wrapper);
-        if (page == null) {
-            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
-        }
-        return toPageVO(page);
+        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
+        qw.eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber);
+        SlidePage p = slidePageMapper.selectOne(qw);
+        if (p == null) { throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND); }
+        return toPageVO(p);
     }
 
     @Override
     public byte[] getPageImage(Long courseId, Integer pageNumber) {
-        SlidePageVO pageVO;
-        try {
-            pageVO = getPage(courseId, pageNumber);
-        } catch (BusinessException e) {
-            // P2-01: 页面不存在 → 抛出异常（404），不再 fallback 占位图
-            throw e;
-        }
-        if (pageVO.getSlideId() == null) {
-            log.warn("[Slide] slideId 为空 courseId={} pageNumber={}", courseId, pageNumber);
-            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
-        }
-        String imageFileName = pageVO.getFileUuid() != null
-                ? pageVO.getFileUuid() + ".png"
-                : "page_" + pageNumber + ".png";
-        Path imagePath = Paths.get(storagePath, String.valueOf(courseId),
-                String.valueOf(pageVO.getSlideId()), "images", imageFileName);
-        byte[] result = readImageOrFallback(imagePath, pageImageWidth, "第" + pageNumber + "页");
-        if (result.length == 0) {
-            result = generateFallbackImage(pageImageWidth, "第" + pageNumber + "页");
-        }
-        return result;
+        SlidePageVO p = getPage(courseId, pageNumber);
+        String fn = p.getFileUuid() != null ? p.getFileUuid() + ".png" : "page_" + pageNumber + ".png";
+        Path imgPath = Paths.get(storagePath, String.valueOf(courseId), String.valueOf(p.getSlideId()), "images", fn);
+        byte[] d = readImage(imgPath);
+        return d.length > 0 ? d : generateFallback("第" + pageNumber + "页");
     }
 
     @Override
     public byte[] getPageThumbnail(Long courseId, Integer pageNumber) {
-        SlidePageVO pageVO;
-        try {
-            pageVO = getPage(courseId, pageNumber);
-        } catch (BusinessException e) {
-            log.warn("[Slide] 获取页面信息失败，返回占位图 courseId={} pageNumber={}", courseId, pageNumber);
-            return generateFallbackImage(thumbnailWidth, "第" + pageNumber + "页");
-        }
-        if (pageVO.getSlideId() == null) {
-            log.warn("[Slide] slideId 为空 courseId={} pageNumber={}", courseId, pageNumber);
-            return generateFallbackImage(thumbnailWidth, "第" + pageNumber + "页");
-        }
-        String thumbFileName = pageVO.getFileUuid() != null
-                ? pageVO.getFileUuid() + "_thumbnail.png"
-                : "page_" + pageNumber + ".png";
-        Path thumbPath = Paths.get(storagePath, String.valueOf(courseId),
-                String.valueOf(pageVO.getSlideId()), "thumbnails", thumbFileName);
-        byte[] result = readImageOrFallback(thumbPath, thumbnailWidth, "第" + pageNumber + "页");
-        if (result.length == 0) {
-            result = generateFallbackImage(thumbnailWidth, "第" + pageNumber + "页");
-        }
-        return result;
+        SlidePageVO p = getPage(courseId, pageNumber);
+        String fn = p.getFileUuid() != null ? p.getFileUuid() + "_thumbnail.png" : "page_" + pageNumber + ".png";
+        Path thumbPath = Paths.get(storagePath, String.valueOf(courseId), String.valueOf(p.getSlideId()), "thumbnails", fn);
+        byte[] d = readImage(thumbPath);
+        return d.length > 0 ? d : generateFallback("第" + pageNumber + "页");
     }
 
-    private byte[] readImageOrFallback(Path path, int width, String text) {
-        try {
-            return Files.readAllBytes(path);
-        } catch (NoSuchFileException e) {
-            log.warn("[Slide] 课件图片/缩略图文件不存在 path={}", path);
-            return generateFallbackImage(width, text);
-        } catch (IOException e) {
-            log.error("[Slide] 读取课件图片/缩略图失败 path={}", path, e);
-            return generateFallbackImage(width, text);
-        }
+    private byte[] readImage(Path path) {
+        try { return Files.readAllBytes(path); }
+        catch (NoSuchFileException e) { return new byte[0]; }
+        catch (IOException e) { log.error("[Slide] 读取图片失败", e); return new byte[0]; }
     }
 
-    private byte[] generateFallbackImage(int width, String text) {
-        int height = (int) (width * 0.75);
-        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    private byte[] generateFallback(String text) {
+        int w = 640; int h = 480;
+        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = img.createGraphics();
         try {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g.setColor(new Color(245, 245, 245));
-            g.fillRect(0, 0, width, height);
+            g.setColor(new Color(245, 245, 245)); g.fillRect(0, 0, w, h);
             g.setColor(new Color(180, 180, 180));
-            g.setFont(new Font("SansSerif", Font.PLAIN, Math.min(width / 10, 18)));
+            g.setFont(new Font("SansSerif", Font.PLAIN, 18));
             FontMetrics fm = g.getFontMetrics();
-            int x = (width - fm.stringWidth(text)) / 2;
-            int y = (height - fm.getHeight()) / 2 + fm.getAscent();
-            g.drawString(text, x, y);
+            g.drawString(text, (w - fm.stringWidth(text)) / 2, (h - fm.getHeight()) / 2 + fm.getAscent());
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(img, "PNG", baos);
             return baos.toByteArray();
-        } catch (IOException e) {
-            log.error("[Slide] 生成占位图片失败", e);
-            return new byte[0];
-        } finally {
-            g.dispose();
-            img.flush();
-        }
+        } catch (IOException e) { return new byte[0]; }
+        finally { g.dispose(); img.flush(); }
     }
 
-    private SlideVO toVO(CourseSlide slide) {
+    private SlideVO toVO(CourseSlide s) {
         SlideVO vo = new SlideVO();
-        vo.setId(slide.getId());
-        vo.setCourseId(slide.getCourseId());
-        vo.setFileName(slide.getFileName());
-        vo.setTotalPages(slide.getTotalPages());
-        vo.setStatus(slide.getStatus());
-        vo.setStatusText(SlideVO.statusText(slide.getStatus()));
-        vo.setErrorMessage(slide.getErrorMessage());
-        vo.setCreatedAt(slide.getCreatedAt());
-        vo.setUpdatedAt(slide.getUpdatedAt());
+        vo.setId(s.getId()); vo.setCourseId(s.getCourseId()); vo.setFileName(s.getFileName());
+        vo.setTotalPages(s.getTotalPages()); vo.setStatus(s.getStatus());
+        vo.setStatusText(SlideVO.statusText(s.getStatus()));
+        vo.setErrorMessage(s.getErrorMessage());
+        vo.setCreatedAt(s.getCreatedAt()); vo.setUpdatedAt(s.getUpdatedAt());
         return vo;
     }
 
-    private SlidePageVO toPageVO(SlidePage page) {
+    private SlidePageVO toPageVO(SlidePage p) {
         SlidePageVO vo = new SlidePageVO();
-        vo.setId(page.getId());
-        vo.setSlideId(page.getSlideId());
-        vo.setChapterId(page.getChapterId());
-        vo.setCourseId(page.getCourseId());
-        vo.setPageNumber(page.getPageNumber());
-        vo.setFileUuid(page.getFileUuid());
-        vo.setImageUrl(page.getImageUrl());
-        vo.setThumbnailUrl(page.getThumbnailUrl());
-        vo.setImageWidth(page.getImageWidth());
-        vo.setImageHeight(page.getImageHeight());
-        vo.setExtractedText(page.getExtractedText());
-        vo.setHasAnimation(page.getHasAnimation());
-        vo.setHasEmbeddedMedia(page.getHasEmbeddedMedia());
-        vo.setNarrationScript(page.getNarrationScript());
-        vo.setNarrationAudioUrl(page.getNarrationAudioUrl());
-        vo.setAudioDuration(page.getAudioDuration());
-        vo.setNarrationStatus(page.getNarrationStatus());
-        vo.setNarrationStatusText(SlidePageVO.narrationStatusText(page.getNarrationStatus()));
-        vo.setCreatedAt(page.getCreatedAt());
-        vo.setUpdatedAt(page.getUpdatedAt());
+        vo.setId(p.getId()); vo.setSlideId(p.getSlideId()); vo.setChapterId(p.getChapterId());
+        vo.setCourseId(p.getCourseId()); vo.setPageNumber(p.getPageNumber());
+        vo.setFileUuid(p.getFileUuid()); vo.setContentType(p.getContentType());
+        vo.setHtmlContent(p.getHtmlContent());
+        vo.setImageUrl(p.getImageUrl()); vo.setThumbnailUrl(p.getThumbnailUrl());
+        vo.setImageWidth(p.getImageWidth()); vo.setImageHeight(p.getImageHeight());
+        vo.setExtractedText(p.getExtractedText());
+        vo.setHasAnimation(p.getHasAnimation()); vo.setHasEmbeddedMedia(p.getHasEmbeddedMedia());
+        vo.setNarrationScript(p.getNarrationScript()); vo.setNarrationAudioUrl(p.getNarrationAudioUrl());
+        vo.setAudioDuration(p.getAudioDuration()); vo.setNarrationStatus(p.getNarrationStatus());
+        vo.setNarrationStatusText(SlidePageVO.narrationStatusText(p.getNarrationStatus()));
+        vo.setCreatedAt(p.getCreatedAt()); vo.setUpdatedAt(p.getUpdatedAt());
         return vo;
     }
 
-    private BufferedImage resizeImage(BufferedImage original, int targetWidth) {
-        double ratio = (double) targetWidth / original.getWidth();
-        int targetHeight = (int) (original.getHeight() * ratio);
-        BufferedImage resized = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = resized.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g.drawImage(original, 0, 0, targetWidth, targetHeight, null);
-        g.dispose();
-        return resized;
-    }
-
-    private boolean isZipHeader(byte[] bytes) {
-        if (bytes.length < 4) return false;
-        for (int i = 0; i < 4; i++) {
-            if (bytes[i] != ZIP_MAGIC[i]) return false;
-        }
-        return true;
+    private boolean isZipHeader(byte[] b) {
+        if (b.length < 4) return false;
+        return b[0] == 0x50 && b[1] == 0x4B && b[2] == 0x03 && b[3] == 0x04;
     }
 
     private boolean validateZipBomb(byte[] bytes) {
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(bytes))) {
-            ZipEntry entry;
-            int entryCount = 0;
-            long totalSize = 0;
-            byte[] buffer = new byte[8192];
-            while ((entry = zis.getNextEntry()) != null) {
-                entryCount++;
-                if (entryCount > MAX_ZIP_ENTRIES) return false;
-                int read;
-                while ((read = zis.read(buffer)) != -1) {
-                    totalSize += read;
-                    if (totalSize > MAX_UNCOMPRESSED_SIZE) return false;
-                }
+            ZipEntry e; int c = 0; long t = 0; byte[] buf = new byte[8192];
+            while ((e = zis.getNextEntry()) != null) {
+                if (++c > 1000) return false;
+                int r; while ((r = zis.read(buf)) != -1) { t += r; if (t > 500L * 1024 * 1024) return false; }
             }
             return true;
-        } catch (IOException e) {
-            log.warn("Zip bomb validation failed for file", e);
-            return false;
-        }
-    }
-
-    private String extractSlideText(XSLFSlide slide) {
-        StringBuilder sb = new StringBuilder();
-        for (org.apache.poi.xslf.usermodel.XSLFShape shape : slide.getShapes()) {
-            if (shape instanceof XSLFTextShape) {
-                String text = ((XSLFTextShape) shape).getText();
-                if (text != null && !text.isEmpty()) {
-                    if (sb.length() > 0) sb.append("\n");
-                    sb.append(text);
-                }
-            }
-        }
-        return sb.toString().trim();
+        } catch (IOException ex) { return false; }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteSlide(Long courseId) {
-        // P0-6: OWNER 校验
-        verifyCourseOwner(courseId);
-        CourseSlide slide = courseSlideMapper.selectOne(
-                new LambdaQueryWrapper<CourseSlide>().eq(CourseSlide::getCourseId, courseId));
-        if (slide == null) throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND);
-        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>()
-                .eq(SlidePage::getSlideId, slide.getId()));
-        courseSlideMapper.deleteById(slide.getId());
-        // S-01: 事务提交后异步清理磁盘文件（original.pptx + images/ + thumbnails/）
+        verifyOwner(courseId);
+        CourseSlide s = courseSlideMapper.selectOne(new LambdaQueryWrapper<CourseSlide>().eq(CourseSlide::getCourseId, courseId));
+        if (s == null) throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND);
+        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, s.getId()));
+        courseSlideMapper.deleteById(s.getId());
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
-            public void afterCommit() {
-                cleanupSlideFiles(courseId);
-            }
+            public void afterCommit() { cleanupSlideFiles(courseId); }
         });
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deletePage(Long courseId, Integer pageNumber) {
-        SlidePage page = slidePageMapper.selectOne(
-                new LambdaQueryWrapper<SlidePage>()
-                        .eq(SlidePage::getCourseId, courseId)
-                        .eq(SlidePage::getPageNumber, pageNumber));
-        if (page == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
-        verifyCourseOwner(courseId);
-        // S-16: 先删除磁盘文件（按 file_uuid），再删 DB 记录
-        if (page.getFileUuid() != null) {
-            deletePageDiskFiles(courseId, page.getSlideId(), page.getFileUuid());
+        SlidePage p = slidePageMapper.selectOne(new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber));
+        if (p == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+        verifyOwner(courseId);
+        if (p.getFileUuid() != null) {
+            try {
+                Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
+                Path slideDir = courseDir.resolve(String.valueOf(p.getSlideId()));
+                Files.deleteIfExists(slideDir.resolve("images").resolve(p.getFileUuid() + ".png"));
+                Files.deleteIfExists(slideDir.resolve("thumbnails").resolve(p.getFileUuid() + "_thumbnail.png"));
+            } catch (Exception ignored) {}
         }
-        slidePageMapper.deleteById(page.getId());
-    }
-
-    /**
-     * S-16: 按 file_uuid 删除此页对应的磁盘文件（全尺寸图 + 缩略图）。
-     * 静默吞异常——磁盘文件缺失不应阻止 DB 删除。
-     */
-    private void deletePageDiskFiles(Long courseId, Long slideId, String fileUuid) {
-        try {
-            Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
-            Path slideDir = courseDir.resolve(String.valueOf(slideId));
-            try { Files.deleteIfExists(slideDir.resolve("images").resolve(fileUuid + ".png")); } catch (IOException ignored) {}
-            try { Files.deleteIfExists(slideDir.resolve("thumbnails").resolve(fileUuid + "_thumbnail.png")); } catch (IOException ignored) {}
-        } catch (Exception e) {
-            log.warn("[SlideDelete] 清理磁盘文件异常 courseId={} fileUuid={}", courseId, fileUuid, e);
-        }
+        slidePageMapper.deleteById(p.getId());
     }
 
     @Override
     public SlidePageVO updatePage(Long courseId, Integer pageNumber, Map<String, Object> body) {
-        SlidePage page = slidePageMapper.selectOne(
-                new LambdaQueryWrapper<SlidePage>()
-                        .eq(SlidePage::getCourseId, courseId)
-                        .eq(SlidePage::getPageNumber, pageNumber));
-        if (page == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
-        verifyCourseOwner(courseId);
-        // 安全更新：只允许修改 narrationScript 等安全字段
+        SlidePage p = slidePageMapper.selectOne(new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber));
+        if (p == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+        verifyOwner(courseId);
         if (body.containsKey("narrationScript") && body.get("narrationScript") instanceof String) {
-            // S-07: 当原状态为 AUDIO_READY（AI 已生成音频）且教师编辑讲述稿时，清除音频残留
-            if ("AUDIO_READY".equals(page.getNarrationStatus())) {
-                page.setNarrationAudioUrl(null);
-                page.setAudioDuration(null);
-            }
-            page.setNarrationScript((String) body.get("narrationScript"));
-            page.setNarrationStatus("TEACHER_EDITED");
+            if ("AUDIO_READY".equals(p.getNarrationStatus())) { p.setNarrationAudioUrl(null); p.setAudioDuration(null); }
+            p.setNarrationScript((String) body.get("narrationScript"));
+            p.setNarrationStatus("TEACHER_EDITED");
         }
-        page.setUpdatedAt(LocalDateTime.now());
-        slidePageMapper.updateById(page);
-        return toPageVO(page);
+        p.setUpdatedAt(LocalDateTime.now());
+        slidePageMapper.updateById(p);
+        return toPageVO(p);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reorderPages(Long courseId, List<Map<String, Integer>> order) {
-        verifyCourseOwner(courseId);
-        // Phase 1: move all pages to temp negative numbers to avoid UK conflict
+        verifyOwner(courseId);
         for (Map<String, Integer> item : order) {
-            Integer oldNum = item.get("pageNumber");
-            Integer newNum = item.get("newPageNumber");
-            if (oldNum == null || newNum == null || oldNum.equals(newNum)) continue;
-            SlidePage page = slidePageMapper.selectOne(
-                    new LambdaQueryWrapper<SlidePage>()
-                            .eq(SlidePage::getCourseId, courseId)
-                            .eq(SlidePage::getPageNumber, oldNum));
-            if (page != null) {
-                page.setPageNumber(-oldNum);
-                page.setUpdatedAt(LocalDateTime.now());
-                slidePageMapper.updateById(page);
-            }
+            Integer old = item.get("pageNumber"); Integer nw = item.get("newPageNumber");
+            if (old == null || nw == null || old.equals(nw)) continue;
+            SlidePage p = slidePageMapper.selectOne(new LambdaQueryWrapper<SlidePage>()
+                    .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, old));
+            if (p != null) { p.setPageNumber(-old); slidePageMapper.updateById(p); }
         }
-        // Phase 2: set the actual new numbers
         for (Map<String, Integer> item : order) {
-            Integer oldNum = item.get("pageNumber");
-            Integer newNum = item.get("newPageNumber");
-            if (oldNum == null || newNum == null || oldNum.equals(newNum)) continue;
-            SlidePage page = slidePageMapper.selectOne(
-                    new LambdaQueryWrapper<SlidePage>()
-                            .eq(SlidePage::getCourseId, courseId)
-                            .eq(SlidePage::getPageNumber, -oldNum));
-            if (page != null) {
-                page.setPageNumber(newNum);
-                page.setUpdatedAt(LocalDateTime.now());
-                slidePageMapper.updateById(page);
-            }
+            Integer old = item.get("pageNumber"); Integer nw = item.get("newPageNumber");
+            if (old == null || nw == null || old.equals(nw)) continue;
+            SlidePage p = slidePageMapper.selectOne(new LambdaQueryWrapper<SlidePage>()
+                    .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, -old));
+            if (p != null) { p.setPageNumber(nw); slidePageMapper.updateById(p); }
         }
     }
 
-    private void verifyCourseOwner(Long courseId) {
-        Course course = courseRepository.selectById(courseId);
-        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
+    private void verifyOwner(Long courseId) {
+        Course c = courseRepository.selectById(courseId);
+        if (c == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(c.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
     }
 
     @Override
     public byte[] getOriginalFile(Long courseId) {
-        verifyCourseOwner(courseId);
-        try {
-            Path pptxPath = Paths.get(storagePath, String.valueOf(courseId), "original.pptx");
-            return Files.readAllBytes(pptxPath);
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND, "课件原始文件不存在");
-        }
+        verifyOwner(courseId);
+        try { return Files.readAllBytes(Paths.get(storagePath, String.valueOf(courseId), "original.pptx")); }
+        catch (IOException e) { throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND, "课件原始文件不存在"); }
     }
 
     private String sha256(byte[] bytes) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(md.digest(bytes));
-        } catch (NoSuchAlgorithmException e) {
-            log.error("SHA-256 algorithm not available on this JVM", e);
-            return "";
-        }
+        try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)); }
+        catch (NoSuchAlgorithmException e) { log.error("SHA-256 not available", e); return ""; }
     }
 
     private void cleanupSlideFiles(Long courseId) {
-        Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
-        if (Files.exists(courseDir)) {
+        Path dir = Paths.get(storagePath, String.valueOf(courseId));
+        if (Files.exists(dir)) {
             try {
-                Files.walk(courseDir)
-                        .sorted(java.util.Comparator.reverseOrder())
-                        .forEach(p -> {
-                            try { Files.deleteIfExists(p); } catch (IOException ignored) {}
-                        });
-                log.info("[SlideUpload] 已清理旧课件文件 courseId={}", courseId);
-            } catch (IOException e) {
-                log.warn("[SlideUpload] 清理旧课件文件失败 courseId={}", courseId, e);
-            }
+                Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
+                    try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                });
+            } catch (IOException e) { log.warn("[Slide] 清理文件失败 courseId={}", courseId, e); }
         }
     }
 
-    /**
-     * P2-6: 覆盖旧课件前简单备份旧版本至 backup/{timestamp}/。
-     * 只做文件级复制，不做复杂版本管理。
-     */
     private void backupSlideFiles(Long courseId) {
-        Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
-        if (!Files.exists(courseDir)) return;
+        Path dir = Paths.get(storagePath, String.valueOf(courseId));
+        if (!Files.exists(dir)) return;
         try {
-            String timestamp = LocalDateTime.now()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            Path backupDir = courseDir.resolve("backup").resolve(timestamp);
-            Files.createDirectories(backupDir);
-            try (var stream = Files.walk(courseDir)) {
-                stream.filter(Files::isRegularFile)
-                        .filter(p -> !p.startsWith(courseDir.resolve("backup")))
-                        .forEach(p -> {
-                            try {
-                                Path relative = courseDir.relativize(p);
-                                Path target = backupDir.resolve(relative);
-                                Files.createDirectories(target.getParent());
-                                Files.copy(p, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                            } catch (IOException e) {
-                                log.warn("[SlideUpload] 备份文件失败: {}", p, e);
-                            }
-                        });
-            }
-            log.info("[SlideUpload] 旧课件已备份至 backup/{} courseId={}", timestamp, courseId);
-        } catch (IOException e) {
-            log.warn("[SlideUpload] 创建备份目录失败 courseId={}", courseId, e);
-        }
+            String ts = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            Path bk = dir.resolve("backup").resolve(ts);
+            Files.createDirectories(bk);
+            Files.walk(dir).filter(Files::isRegularFile).filter(p -> !p.startsWith(dir.resolve("backup"))).forEach(p -> {
+                try {
+                    Path t = bk.resolve(dir.relativize(p)); Files.createDirectories(t.getParent());
+                    Files.copy(p, t, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException e) { log.warn("[Slide] 备份失败: {}", p, e); }
+            });
+        } catch (IOException e) { log.warn("[Slide] 创建备份目录失败 courseId={}", courseId, e); }
     }
 }

@@ -100,6 +100,12 @@ public enum ErrorCode {
     PPT_PARSE_FAILED(16007, "PPT 文件解析失败", 400),
     PPT_FORMAT_INVALID(16008, "不支持的 PPT 格式，请上传 .pptx 文件", 400),
 
+    // HTML 互动课件扩展 (html-interactive-extension)
+    HTML_INVALID(16009, "HTML 文件解析失败", 400),
+    HTML_TOO_LARGE(16010, "HTML 文件超过 5MB 限制", 413),
+    HTML_CONTENT_TOO_LARGE(16011, "HTML 课件内容超过上限（最大 5MB）", 413),
+    HTML_SANITIZE_REMOVED_ALL(16012, "HTML 课件内容全被消毒策略移除，请检查内容", 400),
+
     // Phase 14: 微专业 17xxx
     MS_NOT_FOUND(17001, "微专业不存在", 404),
     MS_FORBIDDEN(17002, "无权限操作该微专业", 403),

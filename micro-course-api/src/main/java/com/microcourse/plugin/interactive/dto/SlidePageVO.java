@@ -22,6 +22,8 @@ public class SlidePageVO {
     private Integer audioDuration;
     private String narrationStatus;
     private String narrationStatusText;
+    private String contentType;
+    private String htmlContent;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -63,6 +65,10 @@ public class SlidePageVO {
     public void setNarrationStatus(String narrationStatus) { this.narrationStatus = narrationStatus; }
     public String getNarrationStatusText() { return narrationStatusText; }
     public void setNarrationStatusText(String narrationStatusText) { this.narrationStatusText = narrationStatusText; }
+    public String getContentType() { return contentType; }
+    public void setContentType(String contentType) { this.contentType = contentType; }
+    public String getHtmlContent() { return htmlContent; }
+    public void setHtmlContent(String htmlContent) { this.htmlContent = htmlContent; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
