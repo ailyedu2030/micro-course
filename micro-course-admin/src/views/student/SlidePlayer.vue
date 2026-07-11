@@ -52,14 +52,15 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
           <transition :name="transitionName" mode="out-in">
             <div class="slide-wrapper" :key="current">
               <!-- HTML 课时分支：iframe sandbox 渲染
-                   sandbox="": 完全沙箱，禁用所有权限（脚本/表单/同源/顶级导航/弹窗）
-                   设计依据：HTML 课件仅用于展示，无需 script/form/弹窗；
-                   同源权限会允许恶意脚本访问平台 API（用户信息/选课），是 P0 XSS 漏洞。
+                   sandbox="allow-scripts": 允许脚本执行（互动课件需要），
+                   但未设置 allow-same-origin → iframe 为唯一 origin，
+                   脚本无法访问平台 API/cookie/storage/DOM（浏览器原生隔离）。
+                   安全论证见 docs/HTML课件播放能力增强要求.md。
                    注：srcdoc 与父页面 postMessage 不受 sandbox 限制 -->
-               <iframe
+              <iframe
                 v-if="currentPage?.contentType === 'HTML_DIRECT' && currentPage?.htmlContent"
                 :srcdoc="currentPage.htmlContent"
-                sandbox=""
+                sandbox="allow-scripts"
                 :title="'第' + (current + 1) + '页课件内容'"
                 class="slide-iframe"
                 :key="'html-' + current"
