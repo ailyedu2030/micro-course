@@ -297,6 +297,51 @@ function onHtmlIframeError() {
   ElMessage.error('HTML 课件加载失败，请刷新重试')
 }
 
+// ==================== postMessage 音频控制（Hermes 协议 v1） ====================
+// HTML 课件内通过 postMessage 指挥平台播放器，详见 docs/postMessage-音频控制方案.md
+// 协议：{ type: 'slide-audio', action: 'play'|'pause'|'seek'|'speed'|'get-state' }
+
+function sendMessageToHtmlIframe(msg) {
+  const iframe = document.querySelector('iframe.slide-iframe')
+  if (!iframe?.contentWindow) return
+  iframe.contentWindow.postMessage(msg, '*')
+}
+
+function onSlideAudioMessage(event) {
+  // 安全校验：srcdoc iframe 的 origin 为 null（唯一约制，非伪造消息不可达）
+  if (event.origin !== null) return
+  const msg = event.data
+  if (!msg || typeof msg !== 'object' || msg.type !== 'slide-audio') return
+
+  switch (msg.action) {
+    case 'play':
+      playAudio()
+      break
+    case 'pause':
+      audioRef.value?.pause()
+      playing.value = false
+      break
+    case 'seek':
+      if (audioRef.value && msg.time !== undefined) {
+        audioRef.value.currentTime = msg.time
+      }
+      break
+    case 'speed':
+      if (msg.rate !== undefined) {
+        speed.value = msg.rate
+        if (audioRef.value) audioRef.value.playbackRate = msg.rate
+        sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'speed-changed', rate: msg.rate })
+      }
+      break
+    case 'get-state':
+      sendMessageToHtmlIframe({
+        type: 'slide-audio-state', state: playing.value ? 'playing' : 'paused',
+        time: audioTime.value, duration: audioDuration.value
+      })
+      break
+  }
+}
+
 // P2-7: 下载当前 HTML 页面源码（绕过 sandbox 禁用右键保存的限制）
 function downloadHtmlPage() {
   const page = currentPage.value
@@ -369,7 +414,10 @@ function cleanAudioBlobCache(currentIdx) {
 
 function playAudio() {
   if (!audioRef.value) return
-  audioRef.value.play().then(() => { playing.value = true }).catch(() => { playing.value = false })
+  audioRef.value.play().then(() => {
+    playing.value = true
+    sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'playing', time: audioTime.value, duration: audioDuration.value })
+  }).catch(() => { playing.value = false })
 }
 function togglePlay() { playing.value ? (audioRef.value?.pause(), playing.value = false) : playAudio() }
 function setSpeed() { if (audioRef.value) audioRef.value.playbackRate = speed.value }
@@ -385,10 +433,15 @@ function onTimeUpdate() {
   }
 }
 function onAudioLoaded() {
-  if (audioRef.value) { audioDuration.value = audioRef.value.duration || audioDuration.value; audioRef.value.playbackRate = speed.value }
+  if (audioRef.value) {
+    audioDuration.value = audioRef.value.duration || audioDuration.value
+    audioRef.value.playbackRate = speed.value
+    sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'loaded', duration: audioDuration.value })
+  }
 }
 function onAudioEnded() {
   playing.value = false; autoCountdown.value = 0
+  sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'ended' })
   if (autoMode.value && current.value < pages.value.length - 1) goTo(current.value + 1)
 }
 
@@ -471,6 +524,7 @@ onMounted(async () => {
   if (pages.value.length > 0) loadAudio(0)
   playerRef.value?.focus()
   document.addEventListener('fullscreenchange', onFullscreenChange)
+  window.addEventListener('message', onSlideAudioMessage)
   if (!sessionStorage.getItem('slide-player-hint-shown')) {
     showKeyboardHint.value = true
     sessionStorage.setItem('slide-player-hint-shown', '1')
@@ -481,6 +535,7 @@ onUnmounted(() => {
   if (audioRef.value) { audioRef.value.pause(); audioRef.value.src = '' }
   clearImageCache()
   document.removeEventListener('fullscreenchange', onFullscreenChange)
+  window.removeEventListener('message', onSlideAudioMessage)
 })
 </script>
 
