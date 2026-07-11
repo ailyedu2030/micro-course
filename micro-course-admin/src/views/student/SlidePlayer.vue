@@ -429,7 +429,10 @@ function togglePlay() {
     playAudio()
   }
 }
-function setSpeed() { if (audioRef.value) audioRef.value.playbackRate = speed.value }
+function setSpeed() {
+  if (audioRef.value) audioRef.value.playbackRate = speed.value
+  sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'speed-changed', rate: speed.value })
+}
 function handleStageClick() { if (autoMode.value) autoMode.value = false }
 
 function onTimeUpdate() {
