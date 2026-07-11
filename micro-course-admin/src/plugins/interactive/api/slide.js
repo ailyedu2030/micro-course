@@ -1,17 +1,26 @@
 import request from '@/utils/request'
 
+/**
+ * 上传课件（统一接口，后端按扩展名自动分支）
+ * - .pptx → POI 异步渲染 PNG
+ * - .html/.htm → HtmlSanitizer 消毒后入库
+ */
 export function uploadSlide(courseId, file, onProgress, chapterId) {
   const fd = new FormData()
   fd.append('file', file)
   if (chapterId) fd.append('chapterId', chapterId)
+  const isHtml = file.name && /\.(html?|htm)$/i.test(file.name)
   return request({
     method: 'POST',
     url: `/courses/${courseId}/slides/upload`,
     data: fd,
-    timeout: 300000,
+    timeout: isHtml ? 60000 : 300000,
     onUploadProgress: onProgress
   })
 }
+
+// 别名（向后兼容外部引用）
+export const uploadHtml = uploadSlide
 
 export function getSlides(courseId, chapterId) {
   const params = chapterId ? { chapterId } : {}

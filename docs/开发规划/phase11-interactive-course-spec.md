@@ -288,7 +288,35 @@ private Boolean isFree;        // default TRUE
 | createdAt | created_at | TIMESTAMP | NOT NULL | 创建时间 |
 | updatedAt | updated_at | TIMESTAMP | NOT NULL | 更新时间 |
 
-**索引**：`idx_sp_slide_id`, `uk_sp_course_page (UNIQUE: course_id + page_number)`, `idx_sp_narration_status`
+#### 3.2.1 HTML 互动课件扩展（V177 增量）
+
+| 字段 | DB 列 | 类型 | 约束 | 说明 |
+|------|-------|------|------|------|
+| contentType | content_type | VARCHAR(20) | NOT NULL, default 'PPT_RENDERED', CHECK IN ('PPT_RENDERED', 'HTML_DIRECT') | 内容类型：PPT_RENDERED = 走 POI→PNG 渲染；HTML_DIRECT = 教师直传 HTML |
+| htmlContent | html_content | TEXT | — | 经 HtmlSanitizer 消毒的 HTML 字符串（仅 contentType='HTML_DIRECT' 时使用） |
+
+**新增索引**：`idx_slide_pages_content_type`
+
+**Flyway**：
+- `V177__slide_pages_content_type.sql`（加列 + CHECK 约束，事务内）
+- `V177b__slide_pages_content_type_index_concurrent.sql`（建索引，事务外，CONCURRENTLY）
+- `V178__rollback_slide_pages_content_type.sql`（回滚脚本）
+
+**前端播放分支**：SlidePlayer.vue 检测 `contentType === 'HTML_DIRECT' && htmlContent` 时，渲染 `<iframe sandbox="" srcdoc="...">`（完全沙箱，禁用脚本/表单/同源/顶级导航），不渲染 PNG。
+
+**安全约束**（HtmlSanitizer 策略）：
+- 允许标签：a, abbr, b, blockquote, br, caption, cite, code, dd, del, details, div, dl, dt, em, figcaption, figure, h1-h6, hr, i, img, ins, kbd, li, mark, ol, p, pre, q, s, samp, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var
+- 禁止标签：script, iframe, form, input, button, object, embed, svg, math, style, meta, base, link
+- 禁止属性：style（CSS injection / exfiltration 防护）, id/class（防 CSS 选择器配合残留 style 攻击）, target（防反向 tabnabbing）
+- 协议白名单：img src 仅 http/https（**禁止 data: URI**，绕过 5MB 限制 + 任意 base64 注入）
+- iframe sandbox：sandbox="" 完全沙箱
+
+**大小限制**：
+- HTML 文件：≤5MB（前端 + 后端双校验）
+- 单条 HTML 内容：≤5MB
+- 错误码：16009 HTML_INVALID / 16010 HTML_TOO_LARGE / 16011 HTML_CONTENT_TOO_LARGE / 16012 HTML_SANITIZE_REMOVED_ALL
+
+**索引**：`idx_sp_slide_id`, `uk_sp_course_page (UNIQUE: course_id + page_number)`, `idx_sp_narration_status`, `idx_slide_pages_content_type`
 
 **Flyway**：`V49__plugin_interactive_slides.sql`（同文件）
 

@@ -24,7 +24,7 @@
       </div>
       <div class="header-actions" v-if="slide?.status === 2 && !batchMode">
         <el-button type="primary" plain @click="showPreview = true" :icon="View">预览</el-button>
-        <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx" class="replace-upload">
+        <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.htm" class="replace-upload">
           <el-button :icon="UploadFilled">替换</el-button>
         </el-upload>
         <el-dropdown trigger="click" class="header-dropdown">
@@ -63,7 +63,7 @@
       <div class="create-guide">
         <div class="guide-step active">
           <span class="step-num">1</span>
-          <span class="step-text">上传 .pptx 课件</span>
+          <span class="step-text">上传课件（.pptx / .html）</span>
         </div>
         <div class="guide-step">
           <span class="step-num">2</span>
@@ -86,10 +86,10 @@
         <div class="upload-icon-wrapper">
           <el-icon :size="40"><UploadFilled /></el-icon>
         </div>
-        <h2 class="upload-title">上传 PPT 课件</h2>
-        <p class="upload-desc">支持 .pptx 格式，最大 50MB。上传后将自动渲染为高清幻灯片</p>
+        <h2 class="upload-title">上传课件</h2>
+        <p class="upload-desc">支持 .pptx (最大 50MB) 和 .html (最大 5MB) 格式。PPT 将自动渲染为高清幻灯片，HTML 可在线直接播放</p>
         <el-upload
-drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx" :disabled="uploading"
+drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.htm" :disabled="uploading"
           class="upload-dragger"
 >
           <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
@@ -112,7 +112,7 @@ drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx" :disab
     <section v-else-if="slide.status === 3" class="error-card">
       <el-result icon="error" title="渲染失败" :sub-title="slide.errorMessage || '未知错误'">
         <template #extra>
-          <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx">
+          <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.htm">
             <el-button type="primary" :icon="Refresh">重新上传</el-button>
           </el-upload>
         </template>
@@ -171,6 +171,7 @@ v-if="thumbUrls[page.pageNumber]" :src="thumbUrls[page.pageNumber]"
             <div v-else class="thumb-skeleton" />
             <div class="thumb-overlay">
               <span class="thumb-num">{{ page.pageNumber }}</span>
+              <span v-if="page.contentType === 'HTML_DIRECT'" class="html-badge" title="HTML 课时">HTML</span>
               <button class="thumb-del-btn" @click.stop="handleDeletePage(page)" title="删除此页" aria-label="删除此页">
                 <el-icon :size="12"><Delete /></el-icon>
               </button>
@@ -450,13 +451,30 @@ async function handleGenerateTTS() {
 }
 
 async function handleUpload(file) {
+  // 防并发：uploadProgress 仅单值，并发会互相覆盖
+  if (uploading.value) {
+    ElMessage.warning('已有课件正在上传，请稍候')
+    return false
+  }
   // 前端校验：文件大小和类型
   if (file.size > 50 * 1024 * 1024) {
     ElMessage.warning('文件超过 50MB 限制')
     return false
   }
-  if (!file.name.endsWith('.pptx')) {
-    ElMessage.warning('仅支持 .pptx 格式')
+  // 修复 Hermes P0#4：接受 .pptx 和 .html/.htm 两种格式
+  // 后端 /upload 端点会自动按扩展名分支（PPTX 走渲染，HTML 走消毒入库）
+  const lowerName = file.name.toLowerCase()
+  const isValidType = lowerName.endsWith('.pptx')
+    || lowerName.endsWith('.html')
+    || lowerName.endsWith('.htm')
+  if (!isValidType) {
+    ElMessage.warning('仅支持 .pptx / .html / .htm 格式')
+    return false
+  }
+  // HTML 文件单独校验 5MB（PPTX 上限 50MB）
+  if ((lowerName.endsWith('.html') || lowerName.endsWith('.htm'))
+      && file.size > 5 * 1024 * 1024) {
+    ElMessage.warning('HTML 文件不能超过 5MB')
     return false
   }
   uploading.value = true
@@ -832,6 +850,13 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
   font-size: 13px;
 }
 .batch-count { font-weight: 600; margin-right: 8px; color: var(--el-color-primary); }
+
+/* HTML 课时徽标 */
+.html-badge {
+  position: absolute; top: 4px; right: 4px; z-index: 2;
+  background: #409eff; color: #fff; font-size: 10px; font-weight: 700;
+  padding: 1px 5px; border-radius: 3px; line-height: 1.4;
+}
 
 @media (max-width: 640px) {
   .manage-header { padding: var(--space-3); flex-wrap: wrap; }

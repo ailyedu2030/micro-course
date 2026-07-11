@@ -38,6 +38,14 @@ public class SlideController {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
 
+    /**
+     * HTML 课件白名单：V177 灰度发布。
+     * 配置为空时所有 TEACHER 可上传 HTML；非空时仅白名单内 TEACHER 可上传。
+     * 格式：逗号分隔的 userId 列表，例如 "2,3,5"（ADMIN 不受限制）。
+     */
+    @org.springframework.beans.factory.annotation.Value("${plugin.interactive.html-content.whitelist-teachers:}")
+    private java.util.List<Long> htmlWhitelist;
+
     public SlideController(SlideService slideService,
                            CourseRepository courseRepository,
                            EnrollmentRepository enrollmentRepository) {
@@ -61,11 +69,27 @@ public class SlideController {
             String mime = file.getContentType();
             log.info("[SlideUpload] courseId={}, filename={}, size={}, mime={}",
                     courseId, sanitizeForLog(filename), size, mime);
-            // P0-14: 应用层校验 50MB 早拒绝（Spring multipart 限制 60MB，中间 gap 由此处拦截）
+            // 应用层校验 50MB 早拒绝（Spring multipart 限制 60MB，中间 gap 由此处拦截）
             if (file.getSize() > 50 * 1024 * 1024) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课件文件不能超过 50MB");
             }
-            // P1 安全修复: 文件魔数校验（PPTX=ZIP PK 0x03 0x04, 图片=JPEG/PNG）
+            // HTML 课件分支：跳过 PPTX 魔数校验（修复 Hermes P0-5 错配：/upload 应接受 HTML）
+            String lowerFilename = filename != null ? filename.toLowerCase() : "";
+            boolean isHtmlFile = lowerFilename.endsWith(".html") || lowerFilename.endsWith(".htm");
+            if (isHtmlFile) {
+                // V177 灰度白名单：仅白名单 TEACHER 可上传 HTML，ADMIN 始终允许
+                if (!com.microcourse.util.SecurityUtil.isAdmin()
+                        && !htmlWhitelist.isEmpty()
+                        && !htmlWhitelist.contains(com.microcourse.util.SecurityUtil.getCurrentUserId())) {
+                    log.warn("[SlideUpload] 非白名单用户尝试上传 HTML courseId={}, userId={}, whitelist={}",
+                            courseId, com.microcourse.util.SecurityUtil.getCurrentUserId(), htmlWhitelist);
+                    throw new BusinessException(ErrorCode.NO_PERMISSION,
+                            "HTML 课件上传功能灰度中，仅白名单教师可使用");
+                }
+                SlideUploadResponse resp = slideService.uploadHtmlFile(courseId, file, chapterId);
+                return R.ok(resp);
+            }
+            // PPTX 文件魔数校验（ZIP PK 0x03 0x04）
             validateSlideFileMagic(file);
             SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);
             return R.ok(resp);

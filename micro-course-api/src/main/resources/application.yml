@@ -130,6 +130,10 @@ plugin:
       storage-path: ${SLIDES_STORAGE_PATH:uploads/slides}
       page-image-width: 1920
       thumbnail-width: 320
+    html-content:
+      # 从环境变量注入 max-file-size 和 whitelist-teachers
+      max-file-size: ${SLIDES_HTML_MAX_SIZE:5242880}
+      whitelist-teachers: ${SLIDES_HTML_WHITELIST:}
     deepseek:
       # LLM 配置（OpenAI 兼容 API）
       # 默认用 DeepSeek 云端，可改用本地 Ollama：

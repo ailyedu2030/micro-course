@@ -7,6 +7,7 @@
  */
 export {
   uploadSlide,
+  uploadHtml,
   getSlides,
   getSlidePages,
   getSlidePage,
