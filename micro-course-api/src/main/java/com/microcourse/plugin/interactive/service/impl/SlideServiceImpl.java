@@ -17,6 +17,9 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.util.SecurityUtil;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
+import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
+import org.apache.poi.xslf.usermodel.XSLFShape;
+import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -148,6 +151,7 @@ public class SlideServiceImpl implements SlideService {
         CourseSlide slide = new CourseSlide();
         slide.setCourseId(courseId);
         slide.setFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");
+        slide.setFileUrl("html:inline");  // file_url NOT NULL, HTML 内容在 slide_pages.html_content 中
         slide.setTotalPages(1);
         slide.setStatus(2);
         try { slide.setFileHash(sha256(file.getBytes())); }
@@ -163,6 +167,8 @@ public class SlideServiceImpl implements SlideService {
         page.setPageNumber(1);
         page.setContentType("HTML_DIRECT");
         page.setHtmlContent(safeHtml);
+        // slide_pages.image_url NOT NULL — HTML 没有渲染图片，设置空占位
+        page.setImageUrl("html:no-image");
         page.setNarrationStatus("PENDING");
         page.setCreatedAt(LocalDateTime.now());
         page.setUpdatedAt(LocalDateTime.now());
@@ -178,8 +184,103 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     public void tryConvertPptxToHtml(Long slideId, byte[] pptxBytes) {
-        log.info("[PPTtoHTML] convert request slideId={}, size={} (todo)", slideId, pptxBytes.length);
+        log.info("[PPTtoHTML] convert request slideId={}, size={}", slideId, pptxBytes.length);
+        try {
+            String html = convertPptxToHtmlString(pptxBytes);
+            String safeHtml = HtmlSanitizer.sanitize(html);
+            if (safeHtml.isEmpty()) {
+                log.warn("[PPTtoHTML] sanitize removed all content slideId={}", slideId);
+                return;
+            }
+            // 更新第一页（索引 0）的 htmlContent（如果存在）
+            LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
+            qw.eq(SlidePage::getSlideId, slideId).orderByAsc(SlidePage::getPageNumber).last("LIMIT 1");
+            SlidePage firstPage = slidePageMapper.selectOne(qw);
+            if (firstPage != null) {
+                firstPage.setContentType("HTML_DIRECT");
+                firstPage.setHtmlContent(safeHtml);
+                slidePageMapper.updateById(firstPage);
+                log.info("[PPTtoHTML] convert success slideId={}, firstPageId={}, htmlSize={}",
+                        slideId, firstPage.getId(), safeHtml.length());
+            } else {
+                log.warn("[PPTtoHTML] no pages found for slideId={}", slideId);
+            }
+        } catch (Exception e) {
+            // PPT→HTML 是尽力而为的非关键路径，失败不抛异常
+            log.warn("[PPTtoHTML] convert failed slideId={}, error={}", slideId, e.getMessage());
+        }
     }
+
+    /**
+     * 将 PPTX 字节数组转为语义 HTML 字符串。
+     * 提取每张幻灯片的文本内容（标题+正文），封装为结构化 HTML。
+     * 失败时返回空字符串（非关键路径，不抛异常）。
+     */
+    private String convertPptxToHtmlString(byte[] pptxBytes) {
+        try (org.apache.poi.xslf.usermodel.XMLSlideShow ppt = new org.apache.poi.xslf.usermodel.XMLSlideShow(
+                new ByteArrayInputStream(pptxBytes))) {
+            List<XSLFSlide> slides = ppt.getSlides();
+            if (slides.isEmpty()) { return ""; }
+            StringBuilder html = new StringBuilder();
+            html.append("<div class=\"pptx-html-converted\">\n");
+            char slideLetter = 'A';
+            for (int i = 0; i < slides.size(); i++) {
+                XSLFSlide slide = slides.get(i);
+                html.append("  <div class=\"slide page-").append(i + 1).append("\">\n");
+                // 提取标题（第一个有字体的形状作为标题）
+                boolean hasTitle = false;
+                for (XSLFTextShape shape : slide.getPlaceholders()) {
+                    String text = extractShapeText(shape);
+                    if (!text.isEmpty()) {
+                        html.append("    <h2>").append(escapeHtml(text)).append("</h2>\n");
+                        hasTitle = true;
+                        break;
+                    }
+                }
+                // 提取正文文本（非标题形状）
+                for (XSLFShape shape : slide.getShapes()) {
+                    if (shape instanceof XSLFTextShape && !isTitlePlaceholder((XSLFTextShape) shape)) {
+                        String text = extractShapeText((XSLFTextShape) shape);
+                        if (!text.isEmpty()) {
+                            html.append("    <p>").append(escapeHtml(text)).append("</p>\n");
+                        }
+                    }
+                }
+                html.append("  </div>\n");
+            }
+            html.append("</div>\n");
+            return html.toString();
+        } catch (Exception e) {
+            log.warn("[PPTtoHTML] parse failed: {}", e.getMessage());
+            return "";
+        }
+    }
+
+    private String extractShapeText(XSLFTextShape shape) {
+        StringBuilder sb = new StringBuilder();
+        for (XSLFTextParagraph para : shape.getTextParagraphs()) {
+            for (XSLFTextRun run : para.getTextRuns()) {
+                sb.append(run.getRawText());
+            }
+            sb.append("\n");
+        }
+        return sb.toString().trim();
+    }
+
+    private boolean isTitlePlaceholder(XSLFTextShape shape) {
+        try {
+            String name = shape.getShapeName();
+            return name != null && (name.toLowerCase().contains("title") || name.contains("标题"));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String escapeHtml(String raw) {
+        return raw.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
 
     @Override
     public SlideVO getByCourseId(Long courseId) {
