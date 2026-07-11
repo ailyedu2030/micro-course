@@ -61,11 +61,18 @@ public class SlideController {
             String mime = file.getContentType();
             log.info("[SlideUpload] courseId={}, filename={}, size={}, mime={}",
                     courseId, sanitizeForLog(filename), size, mime);
-            // P0-14: 应用层校验 50MB 早拒绝（Spring multipart 限制 60MB，中间 gap 由此处拦截）
+            // 应用层校验 50MB 早拒绝（Spring multipart 限制 60MB，中间 gap 由此处拦截）
             if (file.getSize() > 50 * 1024 * 1024) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课件文件不能超过 50MB");
             }
-            // P1 安全修复: 文件魔数校验（PPTX=ZIP PK 0x03 0x04, 图片=JPEG/PNG）
+            // HTML 课件分支：跳过 PPTX 魔数校验（修复 Hermes P0-5 错配：/upload 应接受 HTML）
+            String lowerFilename = filename != null ? filename.toLowerCase() : "";
+            boolean isHtmlFile = lowerFilename.endsWith(".html") || lowerFilename.endsWith(".htm");
+            if (isHtmlFile) {
+                SlideUploadResponse resp = slideService.uploadHtmlFile(courseId, file, chapterId);
+                return R.ok(resp);
+            }
+            // PPTX 文件魔数校验（ZIP PK 0x03 0x04）
             validateSlideFileMagic(file);
             SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);
             return R.ok(resp);
@@ -76,6 +83,18 @@ public class SlideController {
             log.warn("[SlideUpload] 业务拒绝 courseId={}, code={}, msg={}", courseId, e.getCode(), e.getMessage());
             throw e;
         }
+    }
+
+    @PostMapping("/upload-html")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<SlideUploadResponse> uploadHtml(@PathVariable Long courseId,
+                                              @RequestBody String htmlContent,
+                                              @RequestParam(required = false) Long chapterId) {
+        if (htmlContent == null || htmlContent.isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "HTML 内容不能为空");
+        }
+        SlideUploadResponse resp = slideService.uploadHtmlContent(courseId, htmlContent, chapterId);
+        return R.ok(resp);
     }
 
     @GetMapping
