@@ -109,8 +109,9 @@ describe('SlidePlayer.vue iframe branch', () => {
     // The iframe should render
     const iframe = wrapper.find('iframe')
     expect(iframe.exists()).toBe(true)
-    // 安全修复 P0 XSS 漏洞（d5e6de3）：sandbox 完全禁用（不允许同源访问）
-    expect(iframe.attributes('sandbox')).toBe('')
+    // sandbox allow-scripts（无 allow-same-origin）：浏览器原生隔离
+    // 安全论证见 docs/HTML课件播放能力增强要求.md
+    expect(iframe.attributes('sandbox')).toBe('allow-scripts')
     expect(iframe.attributes('srcdoc')).toBe('<h1>Hello Test</h1>')
   })
 
