@@ -1921,6 +1921,7 @@
 
 | 版本 | 日期 | 说明 | 作者 |
 |------|------|------|------|
+| v1.2 | 2026-07-10 | 增量 Phase 11.5（HTML 互动课件扩展）：新增 /api/courses/{courseId}/slides/upload 端点的 HTML 分支、HTML 错误码 16009-16012、slide_pages.content_type/html_content 字段说明 | 架构师 |
 | v1.1 | 2026-06-11 | 修复分页格式（统一为 items）、完善 JWT Payload 结构、预留讨论区 API | 架构师 |
 | v1.0 | 2026-06-11 | 初始版本，覆盖 Phase 1 共 24 个 API | 架构师 |
 
@@ -1928,6 +1929,88 @@
 
 > 文档状态：正式发布
 > 下次评审：Phase 2 启动前
+
+---
+
+## Phase 11.5: 互动课件 HTML 扩展 API（V177 增量）
+
+> 本节记录 Phase 11 互动课件插件扩展的 HTML 课件支持。详细设计见 docs/开发规划/phase11-interactive-course-spec.md §3.2.1 和 openspec/changes/html-interactive-extension/。
+
+### POST /api/courses/{courseId}/slides/upload — 上传课件
+
+**功能**：教师上传 PPTX 或 HTML 课件。后端按文件扩展名自动分支：
+- `.pptx` → 走 Apache POI 异步渲染为 PNG（原有 phase 11 流程）
+- `.html`/`.htm` → 走 HtmlSanitizer 消毒后入库，`content_type='HTML_DIRECT'`
+
+**权限**：TEACHER（课程所有者）或 ADMIN；需 `plugin.interactive.enabled=true`
+
+**请求**：`multipart/form-data`
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| file | file | ✅ | .pptx（≤50MB）或 .html/.htm（≤5MB） |
+| chapterId | long | ❌ | 关联章节 ID |
+
+**响应**（200 OK）：
+```json
+{
+  "code": 200,
+  "data": {
+    "slideId": 123,
+    "totalPages": 0,
+    "status": 0,
+    "message": "上传成功，正在后台渲染..."
+  }
+}
+```
+
+HTML 直传响应中 `totalPages=1, status=2`（已就绪，无需渲染）。
+
+**错误码**：
+
+| code | http | 含义 |
+|------|------|------|
+| 400 | PPT_FORMAT_INVALID | .pptx 文件 ZIP 魔数校验失败 |
+| 400 | HTML_INVALID (16009) | HTML 文件读取失败 |
+| 400 | HTML_SANITIZE_REMOVED_ALL (16012) | HTML 全部被消毒策略移除（如仅含 `<script>`） |
+| 413 | HTML_TOO_LARGE (16010) | HTML 文件超过 5MB |
+| 413 | HTML_CONTENT_TOO_LARGE (16011) | HTML 文本内容超过 5MB |
+| 5002 | 400 | 业务校验失败 |
+
+### GET /api/courses/{courseId}/slides/pages/{pageNumber} — 获取单页
+
+**功能**：返回单个 slide_page 详情。`contentType` 和 `htmlContent` 字段为 V177 新增。
+
+**响应**（200 OK）：
+```json
+{
+  "code": 200,
+  "data": {
+    "pageNumber": 1,
+    "contentType": "HTML_DIRECT",
+    "htmlContent": "<p>sanitized HTML</p>",
+    "imageUrl": null,
+    "narrationScript": "...",
+    "narrationStatus": "PENDING",
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
+
+**contentType 取值**：
+- `PPT_RENDERED`（默认）：POI 渲染的 PNG 课时，`imageUrl` 有值，`htmlContent` 为 null
+- `HTML_DIRECT`：教师直传 HTML 课时，`htmlContent` 有值（已消毒），`imageUrl` 为 null
+
+### 数据结构参考
+
+**slide_pages.contentType 字段**（V177 新增）：
+- 类型：VARCHAR(20)
+- 约束：NOT NULL, DEFAULT 'PPT_RENDERED', CHECK IN ('PPT_RENDERED', 'HTML_DIRECT')
+
+**slide_pages.htmlContent 字段**（V177 新增）：
+- 类型：TEXT（可空）
+- 说明：仅 contentType='HTML_DIRECT' 时有值；已通过 HtmlSanitizer 消毒
 
 ---
 
