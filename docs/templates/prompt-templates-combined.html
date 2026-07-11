@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{width:960px;height:540px;overflow:hidden;font-family:-apple-system,'Inter',system-ui,sans-serif;background:#f8f9fa;color:rgba(0,0,0,.9);display:flex}
+.sb{width:180px;height:100%;background:#fff;border-right:1px solid rgba(0,0,0,.08);overflow-y:auto;flex-shrink:0;padding:12px 0}
+.sb .st{font-size:10px;font-weight:600;color:#a39e98;text-transform:uppercase;letter-spacing:.8px;padding:0 14px 6px}
+.s-item{padding:7px 14px;cursor:pointer;font-size:13px;color:#5f6368;border-left:2px solid transparent;transition:all .12s;line-height:1.4}
+.s-item:hover{background:#f6f5f4;color:#1f1f1f}
+.s-item.active{color:#1a73e8;border-left-color:#1a73e8;background:#e8f0fe;font-weight:500}
+.main{flex:1;padding:32px 36px;display:flex;flex-direction:column;overflow:hidden}
+.panel{display:none;flex:1;flex-direction:column}
+.panel.active{display:flex}
+.scenario{font-size:15px;color:#5f6368;line-height:1.5;margin-bottom:16px;flex-shrink:0}
+.card{background:#1f1f1f;border-radius:8px;padding:16px 20px;position:relative;flex:1;display:flex;flex-direction:column}
+.card .lbl{font-size:10px;font-weight:600;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;flex-shrink:0}
+.card pre{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:1.7;color:#e0e0e0;white-space:pre-wrap;overflow-y:auto;flex:1;margin:0}
+.cb{position:absolute;top:10px;right:10px;padding:4px 10px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .2s}
+.cb:hover{background:rgba(255,255,255,.15)}
+.cb.copied{background:#0d9e6d;border-color:#0d9e6d}
+.ft{display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-shrink:0;font-size:12px;color:#a39e98}
+</style></head><body>
+<div class="sb"><div class="st">Prompt 模板</div><div class="s-item active" data-idx="0" onclick="showT(0)">1. 数据概况模板</div>
+<div class="s-item" data-idx="1" onclick="showT(1)">2. 比较分析模板</div>
+<div class="s-item" data-idx="2" onclick="showT(2)">3. 趋势分析模板</div>
+<div class="s-item" data-idx="3" onclick="showT(3)">4. 占比分析模板</div>
+<div class="s-item" data-idx="4" onclick="showT(4)">5. 相关性分析模板</div>
+<div class="s-item" data-idx="5" onclick="showT(5)">6. 异常检测模板</div>
+<div class="s-item" data-idx="6" onclick="showT(6)">7. 预测模板</div>
+<div class="s-item" data-idx="7" onclick="showT(7)">8. 报告生成模板</div>
+</div>
+<div class="main"><div class="panel active" id="p0">
+  <p class="scenario">拿到一份新数据，想知道整体情况</p>
+  <div class="card">
+    <div class="lbl">复制模板</div>
+    <pre id="pt0">你是一个数据分析师。请对以下数据做完整的描述性统计：&#10;① 每列的数据类型和缺失值数量&#10;② 数值列的均值、中位数、标准差、四分位数&#10;③ 分类列的频数分布&#10;④ 初步判断：哪些字段值得进一步分析</pre>
+    <button class="cb" onclick="cp(0)">复制</button>
+  </div>
+</div>
+<div class="panel" id="p1">
+  <p class="scenario">想对比两组数据或两个时间段的差异</p>
+  <div class="card">
+    <div class="lbl">复制模板</div>
+    <pre id="pt1">你是一个商业分析师。请对以下数据做比较分析：&#10;① 将数据按[分组字段]分为两组&#10;② 对比两组的均值、中位数、标准差&#10;③ 做统计检验（t检验/卡方检验），输出p值&#10;④ 用一句话概括核心差异</pre>
+    <button class="cb" onclick="cp(1)">复制</button>
+  </div>
+</div>
+<div class="panel" id="p2">
+  <p class="scenario">想看某个指标随时间的变化趋势</p>
+  <div class="card">
+    <div class="lbl">复制模板</div>
+    <pre id="pt2">你是一个数据分析师。请对以下数据做趋势分析：&#10;① 按时间维度（日/周/月/季）聚合数据&#10;② 计算环比增长率和同比增长率&#10;③ 识别显著的峰值和谷值并解释可能原因&#10;④ 用一句话概括核心趋势</pre>
+    <button class="cb" onclick="cp(2)">复制</button>
+  </div>
+</div>
+<div class="panel" id="p3">
+  <p class="scenario">想看各个部分在整体中的占比</p>
+  <div class="card">
+    <div class="lbl">复制模板</div>
+    <pre id="pt3">你是一个数据分析师。请对以下数据做占比分析：&#10;① 按[分类字段]分组，计算每组的数量和占比&#10;② 从高到低排序，计算累计占比&#10;③ 识别出贡献80%的核心类别（帕累托分析）&#10;④ 输出一个直观的可视化方案</pre>
+    <button class="cb" onclick="cp(3)">复制</button>
+  </div>
+</div>
+<div class="panel" id="p4">
+  <p class="scenario">想看看两个变量之间有没有关系</p>
+  <div class="card">
+    <div class="lbl">复制模板</div>
+    <pre id="pt4">你是一个数据分析师。请对以下数据做相关性分析：&#10;① 计算所有数值列之间的相关系数矩阵&#10;② 标记出|r| &gt;= 0.5的强相关对&#10;③ 对最强相关对分别做散点图描述&#10;④ 警示：相关性不等于因果，给出可能的混淆变量</pre>
+    <button class="cb" onclick="cp(4)">复制</button>
+  </div>
+</div>
+<div class="panel" id="p5">
+  <p class="scenario">想找数据中的异常值和离群点</p>
+  <div class="card">
+    <div class="lbl">复制模板</div>
+    <pre id="pt5">你是一个数据分析师。请对以下数据做异常检测：&#10;① 对每个数值列用IQR方法标记异常值&#10;② 对每个数值列用3sigma方法标记异常值&#10;③ 输出两种方法都标记为异常的数据点&#10;④ 对每个异常点，给出可能的业务解释</pre>
+    <button class="cb" onclick="cp(5)">复制</button>
+  </div>
+</div>
+<div class="panel" id="p6">
+  <p class="scenario">想根据历史数据预测未来的趋势</p>
+  <div class="card">
+    <div class="lbl">复制模板</div>
+    <pre id="pt6">你是一个数据分析师。请对以下数据做时间序列预测：&#10;① 先分析数据的历史趋势和季节性模式&#10;② 选择适合的预测方法&#10;③ 预测未来3个周期&#10;④ 输出预测值和置信区间&#10;⑤ 评估预测的可信度(1-10分)</pre>
+    <button class="cb" onclick="cp(6)">复制</button>
+  </div>
+</div>
+<div class="panel" id="p7">
+  <p class="scenario">要把分析结果写成一份完整的报告</p>
+  <div class="card">
+    <div class="lbl">复制模板</div>
+    <pre id="pt7">你是一个商业分析师。请根据分析结果生成一份商业数据分析报告：&#10;① 执行摘要（3句话以内）&#10;② 分析背景与目的&#10;③ 数据来源与处理方法&#10;④ 核心发现（3-5条，每条配数据证据）&#10;⑤ 结论与行动建议&#10;⑥ 附录：技术细节</pre>
+    <button class="cb" onclick="cp(7)">复制</button>
+  </div>
+</div>
+<div class="ft"><span>点击左侧模板查看</span><span>共 8 个模板</span></div></div>
+<script>
+function showT(i){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.s-item').forEach(s=>s.classList.remove('active'));document.getElementById('p'+i).classList.add('active');document.querySelectorAll('.s-item')[i].classList.add('active')}
+function cp(i){var t=document.getElementById('pt'+i).textContent;var b=document.querySelectorAll('.cb')[i];if(navigator.clipboard?.writeText){navigator.clipboard.writeText(t).then(function(){b.textContent='已复制';b.classList.add('copied');setTimeout(function(){b.textContent='复制';b.classList.remove('copied')},2000)})}}
+window.addEventListener('message',function(e){if(e.data&&e.data.type==='slide-audio-state'&&e.data.state==='ended'){var h=document.getElementById('next-hint');if(h)h.style.display='block'}})
+</script>
+</body></html>

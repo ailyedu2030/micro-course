@@ -146,7 +146,7 @@ public class SlideServiceImpl implements SlideService {
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.HTML_INVALID, "HTML 文件读取失败");
         }
-        String safeHtml = HtmlSanitizer.sanitize(rawHtml);
+        String safeHtml = HtmlSanitizer.sanitizeForCourseware(rawHtml);
         if (safeHtml.isEmpty() && !rawHtml.isEmpty()) { throw new BusinessException(ErrorCode.HTML_SANITIZE_REMOVED_ALL); }
         CourseSlide slide = new CourseSlide();
         slide.setCourseId(courseId);

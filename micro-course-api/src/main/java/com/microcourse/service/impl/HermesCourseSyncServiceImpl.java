@@ -344,7 +344,7 @@ private final HermesCourseMappingRepository mappingRepository;
             if (chapterDto.getLessons() != null && !chapterDto.getLessons().isEmpty()) {
                 String firstType = chapterDto.getLessons().get(0).getType();
                 if (firstType != null) {
-                    chapterType = firstType;
+                    chapterType = firstType.trim().toUpperCase();
                 }
             }
             chapter.setChapterType(chapterType);

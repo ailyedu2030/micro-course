@@ -60,15 +60,74 @@ public final class HtmlSanitizer {
             // 注意：故意不添加 style（CSS 注入面）和 id/class（防 CSS 选择器配合 style 残留攻击）
             .addAttributes(":all", "title", "lang", "dir");
 
+    /** 宽松 Safelist：用于教师上传的 HTML 课件。保留所有教学所需标签和属性。 */
+    private static final Safelist COURSEWARE_SAFELIST = Safelist.relaxed()
+            .addTags("caption", "colgroup", "col", "table", "tbody", "td", "tfoot", "th", "thead", "tr",
+                     "div", "span", "section", "article", "header", "footer", "nav", "main", "aside",
+                     "figure", "figcaption", "details", "summary", "mark", "time", "kbd", "samp", "var",
+                     "sub", "sup", "ins", "del", "s", "u",
+                     "pre", "code", "tt", "samp", "kbd",
+                     "dl", "dt", "dd", "hr", "bdo", "bdi",
+                     "style", "script", "link", "button", "svg",
+                     "form", "input", "label", "select", "option", "textarea", "fieldset", "legend",
+                     "iframe", "object", "embed",
+                     "canvas", "audio", "video", "source", "track", "progress", "meter")
+            .addAttributes(":all", "title", "lang", "dir", "class", "id", "style",
+                           "data-*", "aria-*", "role",
+                           "onclick", "onchange", "oninput", "onfocus", "onblur",
+                           "onmouseover", "onmouseout", "onmousedown", "onmouseup",
+                           "onkeydown", "onkeyup", "onload", "onerror")
+            .addAttributes("a", "href", "target")
+            .addAttributes("img", "src", "alt", "width", "height")
+            .addAttributes("td", "colspan", "rowspan")
+            .addAttributes("th", "colspan", "rowspan")
+            .addAttributes("style", "type")
+            .addAttributes("script", "type", "src")
+            .addAttributes("link", "href", "rel", "type")
+            .addAttributes("button", "type", "disabled", "class", "id", "style")
+            .addAttributes("input", "type", "name", "value", "placeholder", "disabled", "checked",
+                           "min", "max", "step", "required", "readonly", "class", "id", "style")
+            .addAttributes("textarea", "name", "value", "placeholder", "rows", "cols", "disabled",
+                           "required", "readonly", "class", "id", "style")
+            .addAttributes("select", "name", "disabled", "required", "class", "id", "style")
+            .addAttributes("option", "value", "disabled", "selected")
+            .addAttributes("iframe", "src", "width", "height", "allow", "class", "id", "style")
+            .addAttributes("video", "src", "controls", "width", "height", "poster", "class", "id", "style")
+            .addAttributes("audio", "src", "controls", "class", "id", "style")
+            .addAttributes("source", "src", "type")
+            .addAttributes("canvas", "width", "height", "class", "id", "style")
+            .addProtocols("img", "src", "http", "https")
+            .addProtocols("a", "href", "http", "https", "mailto")
+            .addProtocols("link", "href", "http", "https")
+            .addProtocols("iframe", "src", "http", "https")
+            .addProtocols("video", "src", "http", "https")
+            .addProtocols("audio", "src", "http", "https")
+            .addProtocols("source", "src", "http", "https");
+
+
     private HtmlSanitizer() {
         // 工具类禁止实例化
     }
 
     /**
-     * 对输入的 HTML 进行安全消毒。
-     *
-     * @param rawHtml 原始 HTML 内容，可为 null
-     * @return 消毒后的安全 HTML；rawHtml 为 null 时返回 ""
+     * 宽松消毒：用于教师上传的 HTML 课件。
+     * 保留所有教学所需标签和属性（包括 iframe/form/input/script/style 等）。
+     * 安全由 sandbox="allow-scripts" 兜底（无 same-origin，无网络请求）。
+     */
+    public static String sanitizeForCourseware(String rawHtml) {
+        if (rawHtml == null || rawHtml.isEmpty()) {
+            return "";
+        }
+        String safeHtml = Jsoup.clean(rawHtml, COURSEWARE_SAFELIST);
+        if (!safeHtml.equals(rawHtml)) {
+            log.info("[HtmlSanitizer] 课件消毒移除了部分内容: rawLength={}, safeLength={}",
+                    rawHtml.length(), safeHtml.length());
+        }
+        return safeHtml;
+    }
+
+    /**
+     * 对输入的 HTML 进行安全消毒（严格模式，用于用户生成内容）。
      */
     public static String sanitize(String rawHtml) {
         if (rawHtml == null || rawHtml.isEmpty()) {

@@ -667,7 +667,7 @@ const handleChapterSubmit = async () => {
     ElMessage.success(isChapterEdit.value ? '更新成功' : '创建成功')
     chapterDialogVisible.value = false
     await fetchChapters()
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || e?.message || '操作失败') }
   finally { chapterSubmitLoading.value = false }
 }
 const handleChapterCancel = () => { chapterDialogVisible.value = false }

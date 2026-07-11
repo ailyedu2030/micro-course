@@ -269,7 +269,7 @@ const handleSubmit = async () => {
     dialogVisible.value = false
     fetchData()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || (isEdit.value ? '编辑失败' : '创建失败'))
+    ElMessage.error(e?.response?.data?.message || e?.message || (isEdit.value ? '编辑失败' : '创建失败'))
   } finally {
     submitLoading.value = false
   }

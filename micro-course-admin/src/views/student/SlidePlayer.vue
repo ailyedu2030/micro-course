@@ -115,24 +115,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
         </div>
       </section>
 
-      <!-- Narration Panel -->
-      <aside class="narration-panel" :class="{ collapsed: !showNarration }">
-        <button
-class="narration-handle" @click="showNarration = !showNarration"
-          :aria-label="showNarration ? '收起讲述稿' : '展开讲述稿'"
->
-          <el-icon :size="14"><ArrowRight v-if="!showNarration" /><ArrowLeft v-else /></el-icon>
-        </button>
-        <div v-if="showNarration" class="narration-body">
-          <div class="narration-label">
-            <el-icon :size="14"><Notebook /></el-icon>
-            <span>讲述稿</span>
-          </div>
-          <div class="narration-scroll" ref="narrationRef">
-            <p class="narration-text">{{ currentPage?.narrationScript || '暂无讲述稿' }}</p>
-          </div>
-        </div>
-      </aside>
+      <!-- No narration panel (removed per UX feedback - irrelevant for students) -->
     </main>
 
     <!-- Bottom Controls -->
@@ -195,7 +178,7 @@ import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import { getLearningProgress, createLearningProgress, updateLearningProgress } from '@/api/learning-progress'
-import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Notebook, Loading, RefreshRight, PictureFilled, Download } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const courseId = computed(() => route.params.courseId)
@@ -205,7 +188,7 @@ const pages = ref([])
 const current = ref(0)
 const pageLoading = ref(true)
 const pageError = ref(false)
-const showNarration = ref(true)
+// 讲述稿已移除（对学生无意义）
 const autoMode = ref(true)
 const playing = ref(false)
 const speed = ref(1.0)
@@ -606,16 +589,23 @@ onUnmounted(() => {
 .player-main { flex: 1; display: flex; overflow: hidden; }
 
 /* --- Slide Stage --- */
-.slide-stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; }
-.slide-frame { position: relative; max-width: 100%; max-height: 100%; display: flex; align-items: center; justify-content: center; }
-.slide-wrapper { position: relative; }
+.slide-stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; padding: 12px 0; }
+.slide-container { position: relative; display: flex; align-items: center; justify-content: center; }
+.slide-wrapper { line-height: 0; position: relative; }
 .slide-image {
-  max-width: 92vw; max-height: calc(100dvh - 120px); object-fit: contain;
-  border-radius: 4px; box-shadow: 0 8px 40px rgba(0,0,0,.5);
+  max-width: min(92vw, 1400px); max-height: min(82vh, 900px); width: auto; height: auto;
+  object-fit: contain; border-radius: 4px; box-shadow: 0 8px 40px rgba(0,0,0,.5);
 }
 .slide-iframe {
-  width: 92vw; height: calc(100dvh - 120px); border: none; border-radius: 4px;
+  width: min(92vw, 1400px); aspect-ratio: 16 / 9;
+  max-height: min(82vh, 900px); border: none; border-radius: 4px;
   box-shadow: 0 8px 40px rgba(0,0,0,.5); background: #fff;
+}
+
+/* 全屏模式：去掉 max-height 限制，填充可用空间 */
+:fullscreen .slide-image,
+:fullscreen .slide-iframe {
+  max-height: calc(100vh - 120px); max-width: 98vw;
 }
 /* HTML 课时工具栏：下载按钮（sandbox 阻止右键保存时的替代方案） */
 .html-toolbar { text-align: center; margin-top: 8px; }
@@ -686,32 +676,7 @@ onUnmounted(() => {
 .slide-prev-enter-from { opacity: 0; transform: translateX(-40px); }
 .slide-prev-leave-to { opacity: 0; transform: translateX(40px); }
 
-/* ========= NARRATION PANEL ========= */
-.narration-panel {
-  width: 340px; background: var(--player-surface); border-left: 1px solid var(--player-border);
-  display: flex; position: relative; transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-}
-.narration-panel.collapsed { width: 32px; }
-.narration-handle {
-  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-  width: 24px; height: 56px; display: flex; align-items: center; justify-content: center;
-  background: var(--player-surface); border: 1px solid var(--player-border); border-left: none;
-  border-radius: 0 6px 6px 0; cursor: pointer; color: var(--player-text-secondary);
-  transition: all 200ms ease;
-}
-.narration-handle:hover { background: rgba(255,255,255,.05); color: var(--player-text); }
-.narration-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding-left: 32px; }
-.narration-label {
-  display: flex; align-items: center; gap: 6px; padding: 14px 16px 8px;
-  font-size: 12px; font-weight: var(--weight-semibold); color: var(--player-text-secondary);
-  text-transform: uppercase; letter-spacing: 1px;
-}
-.narration-scroll { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
-.narration-text {
-  font-size: 14px; line-height: 2; color: var(--player-text);
-  white-space: pre-wrap; margin: 0;
-}
+/* No narration panel (removed per UX feedback) */
 
 /* ========= FOOTER ========= */
 .player-footer {
