@@ -660,6 +660,7 @@ const handleQuestionPickerClose = () => {
 
 onMounted(() => {
   fetchCourseOptions()
+  if (searchForm.courseId) fetchChapterOptions(searchForm.courseId)
 })
 </script>
 
