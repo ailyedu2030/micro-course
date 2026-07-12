@@ -460,12 +460,11 @@ const handlePageChange = () => {
   fetchData()
 }
 
-const handleCreate = () => {
+const handleCreate = async () => {
   dialogTitle.value = '新增练习'
   isEdit.value = false
   currentId.value = null
   formData.courseId = searchForm.courseId
-  formData.chapterIds = searchForm.chapterId ? [searchForm.chapterId] : []
   formData.title = ''
   formData.passScore = 60
   formData.description = ''
@@ -473,7 +472,10 @@ const handleCreate = () => {
   formData.maxAttempts = null
   formData.shuffleQuestions = false
   formData.shuffleOptions = false
-  if (formData.courseId) handleFormCourseChange(formData.courseId)
+  if (formData.courseId) {
+    await handleFormCourseChange(formData.courseId)
+    formData.chapterIds = searchForm.chapterId ? [searchForm.chapterId] : []
+  }
   dialogVisible.value = true
 }
 
