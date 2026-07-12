@@ -266,9 +266,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="章节" prop="chapterId">
-          <el-select v-model="offlineForm.chapterId" placeholder="选择章节" class="full-width" :disabled="!offlineForm.courseId">
+          <el-select v-model="offlineForm.chapterId" placeholder="选择章节" class="full-width" :disabled="!offlineForm.courseId || offlineChapterOptions.length === 0">
             <el-option v-for="ch in offlineChapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
+          <div v-if="offlineForm.courseId && offlineChapterOptions.length === 0" class="form-tip" style="color:var(--el-color-danger);margin-top:4px">该课程暂无线下章节，请先在课程详情页添加 OFFLINE 类型的章节</div>
         </el-form-item>
         <el-form-item label="日期" prop="sessionDate">
           <el-date-picker v-model="offlineForm.sessionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" class="full-width" />
@@ -742,11 +743,10 @@ const offlineSubmitting = ref(false)
 const offlineFormRef = ref(null)
 const offlineChapterOptions = ref([])
 const courseOptions = ref([])  // 线下课课程选择器
-watch(showOfflineDialog, async (v) => {
+    watch(showOfflineDialog, async (v) => {
   if (v) {
     try {
-      // 加载所有课程(不按courseType过滤,因为OFFLINE课程可能已下架,且VIDEO课程下也有OFFLINE章节)
-      const { data } = await getCourses({ size: 200 })
+      const { data } = await getCourses({ courseType: 'OFFLINE', size: 200 })
       courseOptions.value = data?.items || []
     } catch { courseOptions.value = [] }
   }
@@ -786,13 +786,12 @@ async function submitOffline() {
       startTime: offlineForm.startTime,
       endTime: offlineForm.endTime,
       location: offlineForm.location,
-      teacherNotes: offlineForm.teacherNotes || undefined,
-      sortOrder: 1
+      teacherNotes: offlineForm.teacherNotes || undefined
     })
     ElMessage.success('线下安排已创建')
     showOfflineDialog.value = false
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '创建失败')
+    ElMessage.error(e?.response?.data?.message || e?.message || '创建失败')
   } finally {
     offlineSubmitting.value = false
   }

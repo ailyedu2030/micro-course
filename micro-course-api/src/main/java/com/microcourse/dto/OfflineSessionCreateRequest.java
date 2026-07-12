@@ -17,6 +17,7 @@ public class OfflineSessionCreateRequest {
     @NotNull(message = "结束时间不能为空")
     private LocalTime endTime;
 
+    @NotNull(message = "上课地点不能为空")
     @Size(max = 200, message = "上课地点不能超过200字")
     private String location;
 

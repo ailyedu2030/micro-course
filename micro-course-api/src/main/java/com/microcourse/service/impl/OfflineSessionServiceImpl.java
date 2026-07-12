@@ -135,7 +135,17 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         if (chapter == null) {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
+        if (!"OFFLINE".equals(chapter.getChapterType())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该章节不是线下课程，无法创建线下安排");
+        }
         assertCourseOwnerByCourseId(chapter.getCourseId());
+
+        if (request.getSessionDate().isBefore(LocalDate.now())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上课日期不能早于今天");
+        }
+        if (!request.getEndTime().isAfter(request.getStartTime())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "结束时间必须晚于开始时间");
+        }
 
         ChapterOfflineSession session = new ChapterOfflineSession();
         session.setChapterId(chapterId);
@@ -144,7 +154,16 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         session.setEndTime(request.getEndTime());
         session.setLocation(request.getLocation());
         session.setTeacherNotes(request.getTeacherNotes());
-        session.setSortOrder(request.getSortOrder());
+
+        ChapterOfflineSession lastSession = sessionRepository.selectOne(
+                new LambdaQueryWrapper<ChapterOfflineSession>()
+                        .eq(ChapterOfflineSession::getChapterId, chapterId)
+                        .orderByDesc(ChapterOfflineSession::getSortOrder)
+                        .last("LIMIT 1"));
+        int nextSort = (lastSession != null && lastSession.getSortOrder() != null)
+                ? lastSession.getSortOrder() + 1 : 1;
+        session.setSortOrder(nextSort);
+
         session.setCreatedAt(LocalDateTime.now());
         session.setUpdatedAt(LocalDateTime.now());
         session.setVersion(0);
@@ -252,8 +271,8 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
 
             // P2-009: 签到后清除考勤缓存
             try {
-                redisUtil.delete("attendance:count:" + sessionId);
-                redisUtil.delete("attendance:total:" + chapter.getCourseId());
+                redisUtil.delete("offline:attendance:count:" + sessionId);
+                redisUtil.delete("offline:attendance:total:" + chapter.getCourseId());
             } catch (Exception e) {
                 log.warn("[Attendance] 清除缓存失败 sessionId={}", sessionId, e);
             }
@@ -314,7 +333,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         attendanceRepository.updateById(record);
         // P2-009: 考勤状态变更后清除该场次的缓存
         try {
-            redisUtil.delete("attendance:count:" + record.getSessionId());
+            redisUtil.delete("offline:attendance:count:" + record.getSessionId());
         } catch (Exception e) {
             log.warn("[Attendance] 清除缓存失败 sessionId={}", record.getSessionId(), e);
         }
@@ -337,7 +356,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         if (chapter != null) {
             Long courseId = chapter.getCourseId();
             // P2-009: Redis 缓存考勤总人数，30 秒过期
-            String cacheKey = "attendance:total:" + courseId;
+            String cacheKey = "offline:attendance:total:" + courseId;
             Object cached = redisUtil.get(cacheKey);
             if (cached instanceof Number n) {
                 totalCount = n.intValue();
@@ -473,9 +492,9 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         }
         // P2-009: 签到后清除考勤缓存
         try {
-            redisUtil.delete("attendance:count:" + sessionId);
+            redisUtil.delete("offline:attendance:count:" + sessionId);
             if (chapter.getCourseId() != null) {
-                redisUtil.delete("attendance:total:" + chapter.getCourseId());
+                redisUtil.delete("offline:attendance:total:" + chapter.getCourseId());
             }
         } catch (Exception e) {
             log.warn("[Attendance] 清除缓存失败 sessionId={}", sessionId, e);
