@@ -9,12 +9,13 @@ import { useRoute, useRouter } from 'vue-router'
  * 使用:
  *   const { page, size, bindToQuery } = useUrlPagination()
  *   bindToQuery(page, size, searchForm)
+ *   bindToQuery(page, size, searchForm, null, ['courseId', 'chapterId']) // 指定数字字段
  */
 export function useUrlPagination() {
   const route = useRoute()
   const router = useRouter()
 
-  function bindToQuery(pageRef, sizeRef, formRef, formKeys = null) {
+  function bindToQuery(pageRef, sizeRef, formRef, formKeys = null, numberKeys = []) {
     const keys = formKeys || Object.keys(formRef)
 
     // 1. mount 时从 query 初始化
@@ -25,7 +26,11 @@ export function useUrlPagination() {
       if (formRef) {
         for (const k of keys) {
           if (q[k] !== undefined) {
-            formRef[k] = ['categoryId', 'status'].includes(k) && q[k] === '' ? formRef[k] : q[k]
+            if (numberKeys.includes(k)) {
+              formRef[k] = q[k] === '' ? formRef[k] : Number(q[k])
+            } else {
+              formRef[k] = ['categoryId', 'status'].includes(k) && q[k] === '' ? formRef[k] : q[k]
+            }
           }
         }
       }

@@ -22,7 +22,7 @@
         </el-form-item>
         <el-form-item label="章节">
           <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable class="filter-input-w200" :disabled="!searchForm.courseId">
-            <el-option v-for="item in chapterOptions" :key="item.id" :label="item.title" :value="item.id" />
+            <el-option v-for="item in chapterOptions" :key="item.id" :label="`${item.title}（${chapterTypeLabel(item.chapterType)}）`" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -93,7 +93,7 @@
         </el-form-item>
         <el-form-item label="章节" prop="chapterIds">
           <el-select v-model="formData.chapterIds" placeholder="请选择章节（可多选）" multiple collapse-tags class="full-width" :disabled="!formData.courseId">
-            <el-option v-for="item in formChapterOptions" :key="item.id" :label="item.title" :value="item.id" />
+            <el-option v-for="item in formChapterOptions" :key="item.id" :label="`${item.title}（${chapterTypeLabel(item.chapterType)}）`" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="标题" prop="title">
@@ -274,7 +274,7 @@ const searchForm = reactive({
 
 // P2-14: URL 分页同步
 const { bindToQuery } = useUrlPagination()
-bindToQuery(page, size, searchForm, ['courseId', 'chapterId'])
+bindToQuery(page, size, searchForm, ['courseId', 'chapterId'], ['courseId', 'chapterId'])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增练习')
@@ -438,6 +438,11 @@ const handleSearch = () => {
   fetchData()
 }
 
+const chapterTypeLabel = (type) => {
+  const map = { VIDEO: '视频', INTERACTIVE: '互动', EXERCISE: '练习', OFFLINE: '线下' }
+  return map[type] || type
+}
+
 const handleReset = () => {
   searchForm.courseId = null
   searchForm.chapterId = null
@@ -460,7 +465,7 @@ const handleCreate = () => {
   isEdit.value = false
   currentId.value = null
   formData.courseId = searchForm.courseId
-  formData.chapterIds = []
+  formData.chapterIds = searchForm.chapterId ? [searchForm.chapterId] : []
   formData.title = ''
   formData.passScore = 60
   formData.description = ''

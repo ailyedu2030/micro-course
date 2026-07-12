@@ -88,7 +88,11 @@ public class ExerciseServiceImpl implements ExerciseService {
         }
         Exercise exercise = new Exercise();
         exercise.setCourseId(request.getCourseId());
-        exercise.setChapterId(request.getChapterId());
+        Long chId = request.getChapterId();
+        if (chId == null && request.getChapterIds() != null && !request.getChapterIds().isEmpty()) {
+            chId = request.getChapterIds().get(0);
+        }
+        exercise.setChapterId(chId);
         exercise.setTitle(request.getTitle());
         exercise.setDescription(request.getDescription());
         exercise.setPassScore(request.getPassScore() != null ? request.getPassScore() : 60);
