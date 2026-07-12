@@ -196,13 +196,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         }
         if (request.getTitle() != null) chapter.setTitle(request.getTitle());
         if (request.getDescription() != null) chapter.setDescription(request.getDescription());
-        // P1C-042: 章节创建后禁止修改 chapterType
-        // 但前端编辑时始终发送 chapterType，必须放行「值与现存一致」的场景
-        // 使用 equalsIgnoreCase + trim 防止 Hermes 同步写入的小写/带空格值导致误拒绝
-        if (request.getChapterType() != null
-                && !request.getChapterType().trim().equalsIgnoreCase(
-                    chapter.getChapterType() != null ? chapter.getChapterType().trim() : "")) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "章节类型创建后不可修改");
+        // 章节类型允许修改
+        if (request.getChapterType() != null) {
+            chapter.setChapterType(request.getChapterType().trim().toUpperCase());
         }
         if (request.getDuration() != null) chapter.setDuration(request.getDuration());
 

@@ -345,7 +345,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
           <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 环境搭建" />
         </el-form-item>
         <el-form-item label="内容形式" prop="chapterType">
-          <el-select v-model="chapterFormData.chapterType" :disabled="isChapterEdit" placeholder="选择本章节的内容形式" class="full-width">
+          <el-select v-model="chapterFormData.chapterType" placeholder="选择本章节的内容形式" class="full-width">
             <el-option label="📹 视频讲解" value="VIDEO" />
             <el-option label="🎯 互动课件" value="INTERACTIVE" />
             <el-option label="📝 随堂练习" value="EXERCISE" />
