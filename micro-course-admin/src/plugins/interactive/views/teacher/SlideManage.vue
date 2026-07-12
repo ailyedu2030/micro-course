@@ -225,18 +225,18 @@ v-if="page.hasAnimation || page.hasEmbeddedMedia"
                 AI 生成
               </el-button>
               <el-button
-v-if="selectedPage.narrationScript" size="small" type="success"
+ v-if="selectedPage.narrationScript" size="small" type="success"
                 :loading="ttsLoading" @click="handleGenerateTTS" :icon="Headset"
 >
                 生成音频
               </el-button>
+              <el-button size="small" @click="showScriptDialog = true" :icon="Edit">编辑</el-button>
             </div>
           </div>
-          <el-input
-v-model="editingScript" type="textarea" :rows="4" :autosize="{ minRows: 4, maxRows: 16 }"
-            placeholder="点击「AI 生成」自动生成讲述稿，或手动输入..."
-            @blur="handleSaveScript" resize="vertical"
-/>
+          <div class="script-preview" @click="showScriptDialog = true">
+            <p v-if="editingScript" class="script-text">{{ editingScript }}</p>
+            <p v-else class="script-placeholder">点击「AI 生成」自动生成讲述稿，或点击编辑手动输入...</p>
+          </div>
           <div v-if="audioInfo" class="audio-meta">
             <el-icon :size="14"><Headset /></el-icon>
             <span>{{ audioInfo }}</span>
@@ -254,6 +254,33 @@ v-model="editingScript" type="textarea" :rows="4" :autosize="{ minRows: 4, maxRo
     <el-dialog v-model="showPreview" title="学生视角预览" fullscreen :destroy-on-close="true">
       <SlidePreview :course-id="courseId" v-if="showPreview" @close="showPreview = false" />
     </el-dialog>
+
+    <!-- Narration Script Dialog -->
+    <el-dialog v-model="showScriptDialog" title="编辑讲述稿" width="70%" :close-on-click-modal="false" destroy-on-close>
+      <div class="script-dialog-body">
+        <div v-if="selectedPage?.extractedText" class="extracted-ref">
+          <span class="ref-label">页面提取文本参考</span>
+          <p class="ref-text">{{ selectedPage.extractedText }}</p>
+        </div>
+        <el-input
+          v-model="editingScript" type="textarea" :rows="16"
+          placeholder="点击「AI 生成」自动生成讲述稿，或手动输入..."
+          resize="vertical"
+        />
+      </div>
+      <template #footer>
+        <div class="script-dialog-footer">
+          <div class="footer-left">
+            <el-button size="small" :loading="aiLoading" @click="handleGenerateAI" :icon="MagicStick">AI 生成</el-button>
+            <el-button v-if="editingScript" size="small" type="success" :loading="ttsLoading" @click="handleGenerateTTS" :icon="Headset">生成音频</el-button>
+          </div>
+          <div class="footer-right">
+            <el-button @click="showScriptDialog = false">取消</el-button>
+            <el-button type="primary" @click="handleSaveScript(); showScriptDialog = false">保存</el-button>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -264,7 +291,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourseById } from '@/api/course'
 import { getChapterById } from '@/api/chapter'
 import { useUserStore } from '@/store/user'
-import { UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete, Download, MoreFilled, Select } from '@element-plus/icons-vue'
+import { UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete, Download, MoreFilled, Select, Edit } from '@element-plus/icons-vue'
 import { uploadSlide, getSlides, getSlidePages, getSlidePage, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio, deleteSlide, deleteSlidePage, reorderSlidePages, downloadOriginalSlide } from '@/plugins/interactive/api/slide'
 import SlidePreview from '@/plugins/interactive/components/SlidePreview.vue'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
@@ -288,6 +315,7 @@ const aiGenerating = ref(false)
 const ttsLoading = ref(false)
 const ttsGenerating = ref(false)
 const showPreview = ref(false)
+const showScriptDialog = ref(false)
 const thumbUrls = ref({})
 const previewUrl = ref('')
 const renderProgress = ref(0)
@@ -857,6 +885,26 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
   background: #409eff; color: #fff; font-size: 10px; font-weight: 700;
   padding: 1px 5px; border-radius: 3px; line-height: 1.4;
 }
+
+.script-preview {
+  background: var(--el-fill-color-lighter);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  min-height: 60px;
+  transition: background .2s;
+}
+.script-preview:hover { background: var(--el-fill-color-light); }
+.script-text { font-size: 13px; line-height: 1.7; color: var(--el-text-color-primary); white-space: pre-wrap; }
+.script-placeholder { font-size: 13px; color: var(--el-text-color-placeholder); }
+.script-dialog-body { padding: 0; }
+.script-dialog-body .el-textarea { width: 100%; }
+.script-dialog-body .el-textarea__inner { font-size: 14px; line-height: 1.8; padding: 14px; }
+.extracted-ref { margin-bottom: 16px; padding: 12px; background: var(--el-color-warning-light-9); border-radius: 6px; }
+.ref-label { font-size: 11px; font-weight: 600; color: var(--el-color-warning); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+.ref-text { font-size: 13px; color: var(--el-text-color-secondary); line-height: 1.6; white-space: pre-wrap; }
+.script-dialog-footer { display: flex; justify-content: space-between; align-items: center; }
+.footer-left, .footer-right { display: flex; gap: 8px; }
 
 @media (max-width: 640px) {
   .manage-header { padding: var(--space-3); flex-wrap: wrap; }
