@@ -165,6 +165,7 @@ const TEACHER = [
       { label: '视频管理', path: '/teacher/videos', icon: 'VideoPlay' },
       { label: '互动课件', path: '/teacher/slides', icon: 'Present' },
       { label: '线下课堂', path: '/teacher/offline-list', icon: 'Calendar' },
+      { label: '练习管理', path: '/teacher/exercises', icon: 'Edit' },
       { label: '课程套餐', path: '/bundles', icon: 'Tickets' },
     ],
   },
