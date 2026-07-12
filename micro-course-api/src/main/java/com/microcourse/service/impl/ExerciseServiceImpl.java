@@ -78,9 +78,6 @@ public class ExerciseServiceImpl implements ExerciseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExerciseVO create(ExerciseCreateRequest request) {
-        if (request.getQuestions() == null || request.getQuestions().isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "练习题目不能为空");
-        }
         // Owner check: only course teacher or ADMIN can create exercise
         Course course = courseRepository.selectById(request.getCourseId());
         if (course == null) {
@@ -104,11 +101,12 @@ public class ExerciseServiceImpl implements ExerciseService {
         exercise.setVersion(1);
         exercise.setCreatedAt(LocalDateTime.now());
         exercise.setUpdatedAt(LocalDateTime.now());
-        int totalScore = request.getQuestions().stream()
+        List<ExerciseCreateRequest.ExerciseQuestionItem> questions = request.getQuestions();
+        int totalScore = questions != null ? questions.stream()
                 .mapToInt(q -> q.getScore() != null ? q.getScore() : 0)
-                .sum();
+                .sum() : 0;
         exercise.setTotalScore(totalScore);
-        exercise.setQuestionCount(request.getQuestions().size());
+        exercise.setQuestionCount(questions != null ? questions.size() : 0);
         exerciseRepository.insert(exercise);
         // Handle chapter associations (multi-chapter support)
         List<Long> chapterIdsToInsert = resolveChapterIds(request.getChapterIds(), request.getChapterId());
@@ -121,13 +119,15 @@ public class ExerciseServiceImpl implements ExerciseService {
             }
         }
         List<ExerciseQuestion> exerciseQuestions = new ArrayList<>();
-        for (ExerciseCreateRequest.ExerciseQuestionItem item : request.getQuestions()) {
-            ExerciseQuestion eq = new ExerciseQuestion();
-            eq.setExerciseId(exercise.getId());
-            eq.setQuestionId(item.getQuestionId());
-            eq.setScore(item.getScore() != null ? item.getScore() : 0);
-            eq.setSortOrder(item.getSortOrder() != null ? item.getSortOrder() : 0);
-            exerciseQuestions.add(eq);
+        if (questions != null) {
+            for (ExerciseCreateRequest.ExerciseQuestionItem item : questions) {
+                ExerciseQuestion eq = new ExerciseQuestion();
+                eq.setExerciseId(exercise.getId());
+                eq.setQuestionId(item.getQuestionId());
+                eq.setScore(item.getScore() != null ? item.getScore() : 0);
+                eq.setSortOrder(item.getSortOrder() != null ? item.getSortOrder() : 0);
+                exerciseQuestions.add(eq);
+            }
         }
         for (ExerciseQuestion eq : exerciseQuestions) {
             exerciseQuestionRepository.insert(eq);
