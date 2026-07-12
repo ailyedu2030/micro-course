@@ -753,7 +753,7 @@ const courseOptions = ref([])  // 线下课课程选择器
     watch(showOfflineDialog, async (v) => {
   if (v) {
     try {
-      const { data } = await getCourses({ courseType: 'OFFLINE', size: 200 })
+      const { data } = await getCourses({ size: 200 })
       courseOptions.value = data?.items || []
     } catch { courseOptions.value = [] }
   }

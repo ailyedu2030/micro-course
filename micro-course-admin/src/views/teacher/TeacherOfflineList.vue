@@ -211,7 +211,7 @@ const currentAttendanceSessionId = ref(null)
 
 const fetchCourses = async () => {
   try {
-    const params = { courseType: 'OFFLINE', size: 200 }
+    const params = { size: 200 }
     if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data?.items || []
