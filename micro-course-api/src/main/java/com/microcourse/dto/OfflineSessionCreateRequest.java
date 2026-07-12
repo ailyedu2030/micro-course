@@ -23,7 +23,6 @@ public class OfflineSessionCreateRequest {
 
     private String teacherNotes;
 
-    @NotNull(message = "排序不能为空")
     private Integer sortOrder;
 
     public OfflineSessionCreateRequest() {}
