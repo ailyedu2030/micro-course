@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue','PingFang SC','Microsoft YaHei',system-ui,sans-serif;background:#f5f3ef;color:#1a1a1a;display:flex;align-items:center;justify-content:center}
+.slide{width:100%;height:100%;padding:5% 6%;display:flex;flex-direction:column;position:relative}
+/* 顶栏 */
+.top{display:flex;align-items:center;gap:10px;margin-bottom:3%;flex-shrink:0}
+.top .num{font-size:clamp(12px,1.1vw,14px);font-weight:500;color:#757575;letter-spacing:0.3px}
+.top .tag{font-size:clamp(12px,1.1vw,14px);font-weight:600;color:#b83f2a;letter-spacing:0.3px}
+.top .divider{width:1px;height:14px;background:#d0cec9}
+/* 标题 */
+h1{font-size:clamp(24px,3.8vw,40px);font-weight:480;letter-spacing:-0.02em;line-height:1.15;color:#1a1a1a;margin-bottom:0.6%}
+.sub{font-size:clamp(14px,1.5vw,17px);font-weight:400;color:#5c5c5c;line-height:1.5;margin-bottom:4%;flex-shrink:0}
+/* 双栏 */
+.content{flex:1;display:flex;gap:4%;min-height:0}
+.left{flex:1;display:flex;flex-direction:column}
+/* 代码卡片 */
+.code-card{flex:1;background:#fff;border:1px solid #dddcd7;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.code-hdr{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:clamp(32px,3.5vh,40px);border-bottom:1px solid #e8e7e3;flex-shrink:0}
+.code-hdr .lbl{font-size:clamp(11px,1vw,13px);font-weight:500;color:#8a8a8a;letter-spacing:0.5px;text-transform:uppercase}
+.code-body{flex:1;padding:3% 4%;overflow-y:auto}
+.code-body pre{font-family:ui-monospace,'SF Mono','JetBrains Mono','Consolas',monospace;font-size:clamp(14px,1.5vw,16px);line-height:1.8;color:#3a3a3a;white-space:pre-wrap}
+.code-body pre .hl{color:#b83f2a;font-weight:600}
+.code-body pre .cm{color:#6e6e6e;font-style:italic}
+/* 右栏 */
+.right{width:clamp(120px,16vw,180px);display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.action{background:#fff;border:1px solid #dddcd7;border-radius:6px;padding:18px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.action .albl{font-size:clamp(12px,1.1vw,14px);color:#6e6e6e;line-height:1.4;margin-bottom:14px}
+.btn-cpy{width:100%;padding:10px 0;border:none;border-radius:4px;background:#b83f2a;color:#fff;font-size:clamp(13px,1.2vw,15px);font-weight:500;font-family:inherit;cursor:pointer;transition:all .1s}
+.btn-cpy:hover{background:#a33522}
+.btn-cpy.done{background:#1a1a1a}
+/* 底栏 */
+.btm{display:flex;justify-content:space-between;align-items:center;margin-top:2.5%;font-size:clamp(12px,1.1vw,14px);color:#707070;flex-shrink:0}
+.btm .nav{display:flex;gap:4px}
+.btm .nav button{background:transparent;border:1px solid #d0cec9;border-radius:4px;color:#6e6e6e;padding:5px 14px;font-size:clamp(12px,1vw,13px);font-family:inherit;cursor:pointer}
+.btm .nav button:hover{border-color:#b83f2a;color:#b83f2a}
+.btm .nav button:disabled{opacity:0.25;cursor:default;pointer-events:none}
+</style></head><body><div class="slide" id="app"></div>
+<script>
+var T=[{n:"数据概况模板",t:"描述统计",s:"拿到新数据，让AI 30秒告诉你整体情况。",p:'你是一个数据分析师。请对以下数据做完整的描述性统计：\n\n<span class="cm">-- 每列的数据类型和缺失值数量</span>\n<span class="cm">-- 数值列的均值、中位数、标准差、四分位数</span>\n<span class="cm">-- 分类列的频数分布</span>\n<span class="cm">-- <span class="hl">初步判断</span>：哪些字段值得进一步分析</span>'},
+{n:"比较分析模板",t:"对比分析",s:"对比两组数据或两个时间段的差异。",p:'你是一个商业分析师。请对以下数据做比较分析：\n\n<span class="cm">-- 按 <span class="hl">[分组字段]</span> 将数据分为两组</span>\n<span class="cm">-- 对比两组的均值、中位数、标准差</span>\n<span class="cm">-- 做统计检验，输出p值</span>\n<span class="cm">-- 用一句话概括核心差异</span>'},
+{n:"趋势分析模板",t:"时间序列",s:"看某个指标随时间的变化趋势。",p:'你是一个数据分析师。请对以下数据做趋势分析：\n\n<span class="cm">-- 按时间维度（日/周/月）聚合数据</span>\n<span class="cm">-- 计算环比和同比增长率</span>\n<span class="cm">-- 识别显著的峰值和谷值</span>\n<span class="cm">-- 用一句话概括核心趋势</span>'},
+{n:"占比分析模板",t:"构成分析",s:"看各个部分在整体中的占比。",p:'你是一个数据分析师。请对以下数据做占比分析：\n\n<span class="cm">-- 按分类字段分组，计算数量与占比</span>\n<span class="cm">-- 从高到低排序，计算累计占比</span>\n<span class="cm">-- 识别贡献80%的核心类别（<span class="hl">帕累托分析</span>）</span>\n<span class="cm">-- 输出可视化方案</span>'},
+{n:"相关性分析模板",t:"关联挖掘",s:"看两个变量之间有没有关系。",p:'你是一个数据分析师。请对以下数据做相关性分析：\n\n<span class="cm">-- 计算所有数值列的相关系数矩阵</span>\n<span class="cm">-- 标记 |r| >= 0.5 的强相关对</span>\n<span class="cm">-- 对最强相关对做散点图描述</span>\n<span class="cm">-- <span class="hl">警示</span>：相关性不等于因果</span>'},
+{n:"异常检测模板",t:"离群识别",s:"找数据中的异常值和离群点。",p:'你是一个数据分析师。请对以下数据做异常检测：\n\n<span class="cm">-- 用 <span class="hl">IQR</span> 方法标记异常值</span>\n<span class="cm">-- 用 <span class="hl">3sigma</span> 方法标记异常值</span>\n<span class="cm">-- 输出两种方法都标记的数据点</span>\n<span class="cm">-- 对每个异常点给出业务解释</span>'},
+{n:"预测模板",t:"趋势预测",s:"根据历史数据预测未来的趋势。",p:'你是一个数据分析师。请对以下数据做预测：\n\n<span class="cm">-- 分析历史趋势和季节性模式</span>\n<span class="cm">-- 选择适合的预测方法</span>\n<span class="cm">-- 预测未来3个周期</span>\n<span class="cm">-- 输出预测值和置信区间</span>\n<span class="cm">-- 评估 <span class="hl">可信度(1-10分)</span></span>'},
+{n:"报告生成模板",t:"报告输出",s:"把分析结果写成一份完整的报告。",p:'你是一个商业分析师。请生成一份完整的分析报告：\n\n<span class="cm">-- 执行摘要（3句话以内）</span>\n<span class="cm">-- 分析背景与目的</span>\n<span class="cm">-- 数据来源与处理方法</span>\n<span class="cm">-- <span class="hl">核心发现</span>（3-5条，每条配数据证据）</span>\n<span class="cm">-- 结论与行动建议</span>\n<span class="cm">-- 附录：技术细节</span>'}];
+var ci=0;
+function r(i){
+  ci=i=Math.max(0,Math.min(T.length-1,i));
+  var t=T[ci];
+  document.getElementById('app').innerHTML=
+    '<div class="top"><span class="tag">'+t.t+'</span><span class="divider"></span><span class="num">'+(i+1)+' / '+T.length+'</span></div>'+
+    '<h1><strong>'+t.n.replace('模板','')+'</strong>模板</h1><p class="sub">'+t.s+'</p>'+
+    '<div class="content"><div class="left"><div class="code-card"><div class="code-hdr"><span class="lbl">粘贴到 OpenCode</span></div><div class="code-body"><pre>'+t.p+'</pre></div></div></div>'+
+    '<div class="right"><div class="action"><div class="albl">一键复制<br>到剪贴板</div><button class="btn-cpy" id="cpy">复制</button></div></div></div>'+
+    '<div class="btm"><div class="nav"><button onclick="r('+(i-1)+')"'+((i<=0)?' disabled':'')+'><kbd>←</kbd> 上一页</button><button onclick="r('+(i+1)+')"'+((i>=T.length-1)?' disabled':'')+'>下一页 <kbd>→</kbd></button></div><span>'+(i+1)+' / '+T.length+'</span></div>';
+  document.getElementById('cpy').onclick=cp;
+}
+function cp(){
+  var t=T[ci].p.replace(/<[^>]*>/g,'');
+  var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.left='-9999px';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');var b=document.getElementById('cpy');b.textContent='已复制';b.classList.add('done');setTimeout(function(){b.textContent='复制';b.classList.remove('done')},2000)}catch(e){}
+  document.body.removeChild(ta);
+}
+r(0);
+</script></body></html>

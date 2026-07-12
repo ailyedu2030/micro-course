@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;background:#fff;color:#171717;display:flex;align-items:center;justify-content:center}
+.slide{width:100%;height:100%;padding:5% 6%;display:flex;flex-direction:column;position:relative}
+/* 顶栏 */
+.top{display:flex;align-items:center;gap:0.5%;margin-bottom:3.5%;flex-shrink:0}
+.top .dot{width:5px;height:5px;border-radius:10px;background:#0070f3;flex-shrink:0}
+.top .path{font-size:clamp(10px,1.3vw,14px);font-weight:500;color:#808080;letter-spacing:-0.2px}
+.top .path .hl{color:#171717}
+/* 标题 */
+h1{font-size:clamp(18px,3vw,32px);font-weight:600;letter-spacing:-0.02em;line-height:1.2;margin-bottom:1.2%;flex-shrink:0}
+.sub{font-size:clamp(12px,1.5vw,16px);font-weight:400;color:#666;line-height:1.5;margin-bottom:4%;flex-shrink:0}
+/* 代码卡 */
+.code-card{flex:1;display:flex;flex-direction:column;border-radius:clamp(6px,0.8vw,10px);border:1px solid rgba(0,0,0,0.06);overflow:hidden;background:#fff}
+.code-head{display:flex;align-items:center;justify-content:space-between;padding:0 1.5%;height:clamp(32px,4vh,42px);border-bottom:1px solid rgba(0,0,0,0.06);flex-shrink:0}
+.code-head .lbl{font-size:clamp(9px,1.1vw,12px);font-weight:500;color:#808080;letter-spacing:0.3px;text-transform:uppercase}
+.code-head .lbl span{color:#0070f3}
+.btn-cpy{display:inline-flex;align-items:center;gap:4px;height:clamp(20px,2.5vh,26px);padding:0 clamp(5px,0.8vw,8px);border:1px solid rgba(0,0,0,0.08);border-radius:5px;background:#fff;color:#666;font-size:clamp(9px,1.1vw,12px);font-weight:500;font-family:inherit;cursor:pointer}
+.btn-cpy:hover{background:#f5f5f5;border-color:rgba(0,0,0,0.12)}
+.btn-cpy.done{background:#171717;color:#fff;border-color:#171717}
+.btn-cpy svg{width:clamp(10px,1.2vw,13px);height:clamp(10px,1.2vw,13px)}
+.code-body{flex:1;padding:3% 3.5%;background:#f7f7f7;overflow-y:auto}
+.code-body pre{font-family:ui-monospace,'SF Mono','Cascadia Code','Consolas',monospace;font-size:clamp(11px,1.4vw,14px);line-height:1.85;color:#171717;white-space:pre-wrap}
+.code-body pre .hl{color:#0070f3;font-weight:600}
+.code-body pre .dim{color:#999}
+/* 底栏 */
+.btm{display:flex;justify-content:space-between;align-items:center;margin-top:2%;font-size:clamp(9px,1.2vw,13px);color:#999;flex-shrink:0}
+.btm kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:clamp(14px,1.8vh,18px);padding:0 3px;border-radius:3px;background:#f5f5f5;border:1px solid rgba(0,0,0,0.06);font-size:clamp(7px,0.9vw,10px);font-family:inherit;color:#808080}
+.btm .nav-btn{display:inline-flex;align-items:center;gap:4px;cursor:pointer;color:#999;transition:color 0.15s;user-select:none}
+.btm .nav-btn:hover{color:#0070f3}
+.btm .nav-btn.disabled{opacity:0.3;cursor:default;pointer-events:none}
+</style>
+</head>
+<body><div class="slide" id="app">[template content loaded by JS]</div>
+<script>
+var T=[{n:"数据概况模板",s:"拿到新数据，先让 AI 快速告诉你整体情况。",p:"你是一个数据分析师。请对以下数据做完整的描述性统计：\n① 每列的数据类型和缺失值数量\n② 数值列的均值、中位数、标准差、四分位数\n③ 分类列的频数分布\n④ <span class=\"hl\">初步判断</span>：哪些字段值得进一步分析"},
+{n:"比较分析模板",s:"想对比两组数据或两个时间段的差异。",p:"你是一个商业分析师。请对以下数据做比较分析：\n① 按<span class=\"hl\">[分组字段]</span>将数据分为两组\n② 对比两组的均值、中位数、标准差\n③ 做统计检验（t检验/卡方检验），输出p值\n④ 用一句话概括核心差异"},
+{n:"趋势分析模板",s:"想看某个指标随时间的变化趋势。",p:"你是一个数据分析师。请对以下数据做趋势分析：\n① 按时间维度（日/周/月/季）聚合数据\n② 计算环比增长率和同比增长率\n③ 识别显著的峰值和谷值并解释可能原因\n④ 用一句话概括核心趋势"},
+{n:"占比分析模板",s:"想看各个部分在整体中的占比。",p:"你是一个数据分析师。请对以下数据做占比分析：\n① 按[分类字段]分组，计算每组的数量和占比\n② 从高到低排序，计算累计占比\n③ 识别出贡献80%的核心类别（<span class=\"hl\">帕累托分析</span>）\n④ 输出一个直观的可视化方案"},
+{n:"相关性分析模板",s:"想看看两个变量之间有没有关系。",p:"你是一个数据分析师。请对以下数据做相关性分析：\n① 计算所有数值列之间的相关系数矩阵\n② 标记出|r| >= 0.5的强相关对\n③ 对最强相关对分别做散点图描述\n④ <span class=\"hl\">警示</span>：相关性不等于因果，给出可能的混淆变量"},
+{n:"异常检测模板",s:"想找数据中的异常值和离群点。",p:"你是一个数据分析师。请对以下数据做异常检测：\n① 对每个数值列用<span class=\"hl\">IQR</span>方法标记异常值\n② 对每个数值列用<span class=\"hl\">3sigma</span>方法标记异常值\n③ 输出两种方法都标记为异常的数据点\n④ 对每个异常点给出可能的业务解释"},
+{n:"预测模板",s:"想根据历史数据预测未来的趋势。",p:"你是一个数据分析师。请对以下数据做时间序列预测：\n① 先分析数据的历史趋势和季节性模式\n② 选择适合的预测方法\n③ 预测未来3个周期\n④ 输出预测值和置信区间\n⑤ 评估预测的<span class=\"hl\">可信度(1-10分)</span>"},
+{n:"报告生成模板",s:"要把分析结果写成一份完整的报告。",p:"你是一个商业分析师。请根据分析结果生成一份报告：\n① 执行摘要（3句话以内）\n② 分析背景与目的\n③ 数据来源与处理方法\n④ 核心发现（3-5条，每条配数据证据）\n⑤ 结论与行动建议\n⑥ 附录：技术细节"}];
+var ci=0;
+function r(i){
+  ci=i=Math.max(0,Math.min(T.length-1,i));
+  var t=T[i];
+  document.getElementById('app').innerHTML=
+    '<div class="top"><div class="dot"></div><div class="path"><span class="hl">Prompt 模板</span> / '+(i+1)+'. '+t.n+'</div></div>'+
+    '<h1>'+t.n+'</h1><p class="sub">'+t.s+'</p>'+
+    '<div class="code-card"><div class="code-head"><div class="lbl">粘贴到 <span>OpenCode</span> / Trae</div><button class="btn-cpy" onclick="cp()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制</button></div><div class="code-body"><pre>'+t.p+'</pre></div></div>'+
+    '<div class="btm"><div><span class="nav-btn'+(i<=0?' disabled':'')+'" onclick="r('+(i-1)+')"><kbd>←</kbd> 上一页</span> <span class="nav-btn'+(i>=T.length-1?' disabled':'')+'" onclick="r('+(i+1)+')"><kbd>→</kbd> 下一页</span></div><div>'+(i+1)+' / '+T.length+'</div></div>';
+}
+function cp(){
+  var t=T[ci].p.replace(/<[^>]*>/g,'');
+  var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.left='-9999px';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');var b=document.querySelector('.btn-cpy');b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 已复制';b.classList.add('done');setTimeout(function(){b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制';b.classList.remove('done')},2000)}catch(e){}
+  document.body.removeChild(ta);
+}
+r(0);
+window.addEventListener('message',function(e){if(e.data&&e.data.type==='slide-audio-state'&&e.data.state==='ended'){}});
+</script></body></html>
