@@ -164,7 +164,7 @@ const TEACHER = [
       { label: '章节管理', path: '/chapters', icon: 'List' },
       { label: '视频管理', path: '/teacher/videos', icon: 'VideoPlay' },
       { label: '互动课件', path: '/teacher/slides', icon: 'Present' },
-      { label: '线下课堂', path: '/teacher/courses?courseType=OFFLINE', icon: 'Calendar' },
+      { label: '线下课堂', path: '/teacher/offline-list', icon: 'Calendar' },
       { label: '课程套餐', path: '/bundles', icon: 'Tickets' },
     ],
   },

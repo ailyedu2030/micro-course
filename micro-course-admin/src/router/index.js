@@ -99,6 +99,7 @@ const routes = [
   { path: '/teacher/courses/:courseId/slides/manage', name: 'TeacherSlideManage', component: () => import('../plugins/interactive/views/teacher/SlideManage.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/slides', name: 'TeacherSlideOverview', component: () => import('../views/teacher/TeacherSlideOverview.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '互动课件管理' } },
   { path: '/teacher/exams', name: 'TeacherExamList', component: () => import('../views/teacher/ExamList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '试卷管理' } },
+  { path: '/teacher/offline-list', name: 'TeacherOfflineList', component: () => import('../views/teacher/TeacherOfflineList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '线下课管理' } },
   { path: '/teacher/chapters/:chapterId/offline-sessions', name: 'TeacherOfflineSessions', component: () => import('../views/teacher/TeacherOfflineSessions.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   // 章节级资源管理路由 (4 个) — 复用现有页面,不建新文件
   { path: '/teacher/courses/:courseId/chapters/:chapterId/manage-videos',
