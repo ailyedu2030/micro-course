@@ -66,9 +66,9 @@
             >
               <el-icon><Download /></el-icon>导出
             </el-button>
-            <el-button type="primary" v-if="(userRole === 'TEACHER' || userRole === 'ADMIN') && !route.query.courseType" @click="handleCreate">新增课程</el-button>
+            <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">新增课程</el-button>
             <el-button type="primary" v-if="route.query.courseType === 'OFFLINE'" @click="showOfflineDialog = true" :icon="Plus">新增安排</el-button>
-            <el-button v-if="route.query.courseType" @click="router.push('/teacher/courses')">返回课程列表</el-button>
+            <el-button v-if="route.query.courseType" @click="handleBackToFullList">返回课程列表</el-button>
           </div>
         </div>
       </template>
@@ -120,7 +120,7 @@
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click.stop="handleEdit(row)">编辑</el-button>
             <el-button v-if="row.courseType === 'INTERACTIVE'" type="success" link size="small" @click.stop="goSlides(row)">课件</el-button>
-            <el-button v-if="row.courseType === 'OFFLINE'" type="info" link size="small" @click.stop="handleView(row)">安排</el-button>
+            <el-button v-if="row.courseType === 'OFFLINE'" type="info" link size="small" @click.stop="handleManageOffline(row)">安排</el-button>
             <el-button v-if="row.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">审核通过</el-button>
             <el-button v-if="row.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleReject(row)">驳回</el-button>
             <el-button v-if="[2, 5].includes(row.status) && userRole === 'ADMIN'" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">{{ row.status === 5 ? '重新上架' : '发布' }}</el-button>
@@ -684,6 +684,13 @@ function getStatusLabel(status) {
 const goSlides = (row) => {
   router.push(`/teacher/courses/${row.id}/slides/manage`)
 }
+const handleManageOffline = (row) => {
+  router.push(`/teacher/courses/${row.id}`)
+}
+const handleBackToFullList = () => {
+  handleReset()
+  router.push('/teacher/courses')
+}
 const handleSubmit = async () => {
   if (submitLoading.value) return
   if (!formRef.value) return
@@ -800,10 +807,6 @@ async function submitOffline() {
 onMounted(() => {
   fetchCategories()
   fetchData()
-  // courseType=OFFLINE 時直接打開新增安排 dialog，減少點擊
-  if (route.query.courseType === 'OFFLINE') {
-    showOfflineDialog.value = true
-  }
 })
 </script>
 
