@@ -8,6 +8,8 @@ import com.microcourse.dto.ChapterVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.CourseChapterService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +23,8 @@ import java.util.List;
 @RequestMapping("/api/chapters")
 @Tag(name = "CourseChapterController", description = "CourseChapterController 自动生成 OpenAPI 文档")
 public class CourseChapterController {
+
+    private static final Logger log = LoggerFactory.getLogger(CourseChapterController.class);
 
     private final CourseChapterService chapterService;
 
@@ -61,6 +65,8 @@ public class CourseChapterController {
     @AuditedLog("更新章节")
     public R<ChapterVO> update(@PathVariable Long id,
                                @Valid @RequestBody ChapterUpdateRequest request) {
+        log.info("[ChapterUpdate] id={} chapterType='{}' title='{}'", id,
+                request.getChapterType(), request.getTitle());
         ChapterVO vo = chapterService.update(id, request);
         return R.ok(vo);
     }
