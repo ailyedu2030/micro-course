@@ -464,40 +464,56 @@ public class HermesWebhookController {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "scriptContent 不能为空");
         }
 
+        Number sectionIdNum = (Number) body.get("sectionId");
+
         try {
             UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                     caller.getId(), null,
                     java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
             SecurityContextHolder.getContext().setAuthentication(auth);
 
+            Long targetSectionId = sectionIdNum != null ? sectionIdNum.longValue() : null;
             java.util.List<com.microcourse.plugin.interactive.dto.SlidePageVO> pages =
-                    slideService.getPages(courseId, null);
+                    slideService.getPages(courseId, targetSectionId);
             if (pages == null || pages.isEmpty()) {
+                if (targetSectionId != null) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课时无课件页面");
+                }
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先上传课件");
             }
             int pageCount = pages.size();
-            int chunkSize = Math.max(1, fullScript.length() / pageCount);
             int updated = 0;
 
-            for (int i = 0; i < pageCount; i++) {
-                int start = i * chunkSize;
-                int end = (i == pageCount - 1) ? fullScript.length() : (i + 1) * chunkSize;
-                String pageScript = fullScript.substring(start, end).trim();
+            if (targetSectionId != null) {
+                for (com.microcourse.plugin.interactive.dto.SlidePageVO p : pages) {
+                    java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
+                    pageBody.put("narrationScript", fullScript);
+                    if (p.getSectionId() != null) { pageBody.put("_lessonId", p.getSectionId()); }
+                    slideService.updatePage(courseId, p.getPageNumber(), pageBody);
+                    updated++;
+                }
+            } else {
+                int chunkSize = Math.max(1, fullScript.length() / pageCount);
+                for (int i = 0; i < pageCount; i++) {
+                    int start = i * chunkSize;
+                    int end = (i == pageCount - 1) ? fullScript.length() : (i + 1) * chunkSize;
+                    String pageScript = fullScript.substring(start, end).trim();
 
-                com.microcourse.plugin.interactive.dto.SlidePageVO p = pages.get(i);
-                java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
-                pageBody.put("narrationScript", pageScript);
-                if (p.getSectionId() != null) { pageBody.put("_lessonId", p.getSectionId()); }
-                else if (p.getChapterId() != null) { pageBody.put("_chapterId", p.getChapterId()); }
-                slideService.updatePage(courseId, p.getPageNumber(), pageBody);
-                updated++;
+                    com.microcourse.plugin.interactive.dto.SlidePageVO p = pages.get(i);
+                    java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
+                    pageBody.put("narrationScript", pageScript);
+                    if (p.getSectionId() != null) { pageBody.put("_lessonId", p.getSectionId()); }
+                    else if (p.getChapterId() != null) { pageBody.put("_chapterId", p.getChapterId()); }
+                    slideService.updatePage(courseId, p.getPageNumber(), pageBody);
+                    updated++;
+                }
             }
 
             java.util.Map<String, Object> result = new java.util.HashMap<>();
             result.put("updated", updated);
             result.put("totalPages", pageCount);
-            log.info("[HermesWebhook] Scripts pushed: courseId={}, pages={}, chars={}",
-                    courseId, pageCount, fullScript.length());
+            log.info("[HermesWebhook] Scripts pushed: courseId={}, pages={}, sectionId={}, chars={}",
+                    courseId, pageCount, targetSectionId, fullScript.length());
             return R.ok(result);
         } catch (BusinessException e) {
             throw e;
