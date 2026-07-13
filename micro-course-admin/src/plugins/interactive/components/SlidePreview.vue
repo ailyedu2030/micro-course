@@ -3,7 +3,7 @@
     <el-button class="close-btn" @click="$emit('close')" circle aria-label="关闭预览">
       <el-icon><Close /></el-icon>
     </el-button>
-    <SlidePlayerCore :course-id="courseId" />
+    <SlidePlayerCore :course-id="courseId" :section-id="sectionId" />
   </div>
 </template>
 
@@ -11,7 +11,10 @@
 import { Close } from '@element-plus/icons-vue'
 import SlidePlayerCore from '@/views/student/SlidePlayer.vue'
 
-defineProps({ courseId: { type: [String, Number], required: true } })
+defineProps({ 
+  courseId: { type: [String, Number], required: true },
+  sectionId: { type: [String, Number], default: null }
+})
 defineEmits(['close'])
 </script>
 

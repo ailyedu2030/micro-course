@@ -216,7 +216,7 @@ async function loadPages() {
   pageLoading.value = true
   pageError.value = false
   try {
-    const res = await getSlidePages(courseId.value, chapterId.value)
+    const res = await getSlidePages(courseId.value, chapterId.value, sectionId.value)
     pages.value = res.data || []
     // P1I-015: 仅预加载前 3 页和相邻页，其余按需触发（preloadAdjacentImages 懒加载）
     const initialIndices = [0, 1, 2].filter(i => i < pages.value.length)

@@ -252,7 +252,7 @@ v-if="page.hasAnimation || page.hasEmbeddedMedia"
 
     <!-- Preview Dialog -->
     <el-dialog v-model="showPreview" title="学生视角预览" fullscreen :destroy-on-close="true">
-      <SlidePreview :course-id="courseId" v-if="showPreview" @close="showPreview = false" />
+      <SlidePreview :course-id="courseId" :section-id="sectionId" v-if="showPreview" @close="showPreview = false" />
     </el-dialog>
 
     <!-- Narration Script Dialog -->
