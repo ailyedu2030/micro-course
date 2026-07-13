@@ -24,25 +24,6 @@ public interface BadgeService {
 
     void checkAndAwardStreak(Long userId, int consecutiveDays);
 
-    // P1I-027: 以下为待实现的徽章检查方法（占位，后续补充）
-    default void checkAndAwardVideoCount(Long userId, long totalVideos) {
-        // TODO: 实现「观影达人」徽章 logic
-    }
-
-    default void checkAndAwardExerciseCount(Long userId, long totalExercises) {
-        // TODO: 实现「刷题达人」徽章 logic
-    }
-
-    default void checkAndAwardReviewCount(Long userId, long reviewCount) {
-        // TODO: 实现「复习达人」徽章 logic
-    }
-
-    default void checkAndAwardDiscussionCount(Long userId, long discussionCount) {
-        // TODO: 实现「讨论达人」徽章 logic
-    }
-
-    // P1I-028: 新增 3 种徽章的颁发逻辑（对应 DB 中 6 种 badge_definitions 的剩余 3 种）
-
     /**
      * 检查并颁发「坚持不懈」徽章（THIRTY_DAY_STREAK）— 连续学习打卡 30 天。
      * 由学习打卡定时任务或打卡回调触发。
