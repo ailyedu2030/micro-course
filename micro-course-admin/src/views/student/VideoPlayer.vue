@@ -917,6 +917,7 @@ const loadChapters = async () => {
   } catch (e) {
     console.warn('[VideoPlayer] loadChapters 加载章节失败', e)
     chapters.value = []
+    ElMessage.warning('章节列表加载失败，部分功能不可用')
   }
 }
 
@@ -949,6 +950,7 @@ const loadProgress = async () => {
     }
   } catch (e) {
     console.warn('[VideoPlayer] loadProgress 加载学习进度失败', e)
+    ElMessage.warning('学习进度加载失败，进度记忆不可用')
   }
 }
 

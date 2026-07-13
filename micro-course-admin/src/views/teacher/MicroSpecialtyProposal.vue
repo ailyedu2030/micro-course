@@ -104,18 +104,18 @@
           <!-- 模块2为主表字段，无可重置的子表，隐藏重置按钮 -->
         </div>
       </template>
-      <el-form :model="form" label-width="100px" class="proposal-form">
+      <el-form :model="form" :rules="rules2" ref="formRef2" label-width="100px" class="proposal-form">
         <!-- 第一行 -->
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="类型">
+            <el-form-item label="类型" prop="type">
               <el-select v-model="form.type" class="full-width">
                 <el-option v-for="t in typeOptions" :key="t" :label="t" :value="t" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="16">
-            <el-form-item label="面向对象">
+            <el-form-item label="面向对象" prop="targetAudience">
               <el-checkbox-group v-model="form.targetAudience">
                 <el-checkbox v-for="a in audienceOptions" :key="a" :label="a" :value="a" />
               </el-checkbox-group>
@@ -125,7 +125,7 @@
         <!-- 第二行 -->
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="面向学科">
+            <el-form-item label="面向学科" prop="targetDisciplines">
               <el-input v-model="form.targetDisciplines" placeholder="如：管理学、教育学" maxlength="200" />
             </el-form-item>
           </el-col>
@@ -518,6 +518,7 @@ const saveStatus = ref('')
 const dirty = ref(false)
 const pendingSave = ref(false)  // RT-3: 标记正在执行的自动保存（防止标签页关闭数据丢失）
 const formRef1 = ref(null)
+const formRef2 = ref(null)
 const loadError = ref(false)  // P1-C-13: 全局加载错误标志
 const initialLoadComplete = ref(false)
 const autoSaveEnabled = ref(false)
@@ -693,6 +694,13 @@ const rules3 = {
   leadPhone: [
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
   ]
+}
+
+// ==================== 模块2 表单校验 (P1-C) ====================
+const rules2 = {
+  type: [{ required: true, message: '请选择微专业类型', trigger: 'change' }],
+  targetAudience: [{ type: 'array', required: true, min: 1, message: '请至少选择一个面向对象', trigger: 'change' }],
+  targetDisciplines: [{ required: true, message: '请填写面向学科', trigger: 'blur' }]
 }
 
 // ==================== 计算属性 ====================
@@ -1011,6 +1019,28 @@ async function handleSubmit() {
     }
     ElMessage.warning('请补全必填项后再提交')
     return
+  }
+  // 模块2 校验（P1-C）: type / targetAudience / targetDisciplines 必填
+  if (step.value !== 1) {
+    step.value = 1
+    await nextTick()
+  }
+  if (formRef2.value) {
+    try {
+      await formRef2.value.validate()
+    } catch (errors) {
+      const firstErrorField = Object.keys(errors || {})[0]
+      if (firstErrorField) {
+        const el = document.querySelector(`[prop="${firstErrorField}"]`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          const input = el.querySelector('input, textarea, select')
+          if (input) input.focus()
+        }
+      }
+      ElMessage.warning('请补全"微专业基本情况"必填项后再提交')
+      return
+    }
   }
   try {
     await ElMessageBox.confirm('提交后将无法修改，确定提交审核？', '确认提交', {

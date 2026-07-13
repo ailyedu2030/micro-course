@@ -168,8 +168,10 @@ async function fetchChapter() {
       chapterTitle.value = data.title || ''
       courseName.value = data.courseName || data.courseTitle || ''
     }
-  } catch {
+  } catch (e) {
     chapterTitle.value = '线下课程'
+    console.warn('[StudentOffline] 课程信息加载失败', e)
+    ElMessage.warning('课程信息加载失败')
   }
 }
 
@@ -177,8 +179,10 @@ async function fetchSessions() {
   try {
     const { data } = await getOfflineSessions(chapterId.value, { page: 0, size: 100 })
     sessions.value = (data?.items || data || [])
-  } catch {
+  } catch (e) {
     sessions.value = []
+    console.warn('[StudentOffline] 线下课信息加载失败', e)
+    ElMessage.warning('线下课信息加载失败')
   }
 }
 
@@ -192,8 +196,10 @@ async function fetchAttendance() {
       data.items.forEach(r => { map[r.sessionId] = r })
     }
     attendanceMap.value = map
-  } catch {
+  } catch (e) {
     attendanceMap.value = {}
+    console.warn('[StudentOffline] 签到信息加载失败', e)
+    ElMessage.warning('签到信息加载失败')
   }
 }
 

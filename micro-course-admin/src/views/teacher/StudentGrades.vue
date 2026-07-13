@@ -196,14 +196,14 @@
       destroy-on-close
      :close-on-press-escape="true"
 >
-      <el-form :model="gradeForm" label-width="80px">
+      <el-form :model="gradeForm" :rules="gradeRules" ref="gradeFormRef" label-width="80px">
         <el-form-item label="学生">
           <el-input :model-value="currentStudent?.realName || ''" disabled />
         </el-form-item>
         <el-form-item label="课程">
           <el-input :model-value="currentStudent?.courseName || ''" disabled />
         </el-form-item>
-        <el-form-item label="分数" required>
+        <el-form-item label="分数" prop="score" required>
           <el-input-number
             v-model="gradeForm.score"
             :min="0"
@@ -295,10 +295,18 @@ let chartInstance = null
 const gradeVisible = ref(false)
 const currentStudent = ref(null)
 const savingGrade = ref(false)
+const gradeFormRef = ref(null)
 const gradeForm = reactive({
   score: null,
   comment: ''
 })
+
+const gradeRules = {
+  score: [
+    { required: true, message: '请输入分数', trigger: 'blur' },
+    { type: 'number', min: 0, max: 100, message: '分数应在 0-100 之间', trigger: 'blur' }
+  ]
+}
 
 // 是否已批改
 const isGraded = computed(() => currentStudent.value?.score != null)
@@ -526,9 +534,12 @@ function handleGrade(row) {
 
 // 确认提交成绩
 async function confirmGrade() {
-  if (gradeForm.score == null) {
-    ElMessage.warning('请输入分数')
-    return
+  if (gradeFormRef.value) {
+    try {
+      await gradeFormRef.value.validate()
+    } catch {
+      return // 校验失败时 el-form-item 已显示错误消息
+    }
   }
   savingGrade.value = true
   try {
