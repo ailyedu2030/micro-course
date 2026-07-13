@@ -251,9 +251,8 @@ file=@课件.pptx
 
 - `lessonId` = `course_sections.id`
 - 支持 `.pptx`（≤50MB）、`.html` / `.htm`（≤5MB）
-- **幂等**：同一课时重复上传，slide_id 不变，旧内容替换
+- **UPSERT 匹配**：按 `(courseId, chapterId, sectionId)` 三字段匹配。**每课时独立一个 slide**，同一章节下的不同课时不互相覆盖
 - **上传后自动**：
-  - `course_slides.section_id` → `lessonId`
   - `course_sections.content_url` → `/api/courses/{cid}/slides/pages`
   - `SectionDTO.hasSlide` → `true`
   - `SectionDTO.slideCount` → 更新统计
@@ -390,3 +389,4 @@ curl -X DELETE "$BASE/courses/by-id/42" -H "X-API-Key: $KEY"
 | 2026-07-13 | v1 | 初始版本 |
 | 2026-07-13 | v2 | 新增课时 CRUD、DELETE 级联、UPSERT 幂等、contentUrl/hasSlide |
 | 2026-07-13 | v3 | 新增 API Key 刷新、slide 列表（API Key 鉴权）、@Transactional/所有权校验 |
+| 2026-07-13 | v4 | upload(slide) 改为按 (courseId, chapterId, sectionId) UPSERT，每课时独立 slide |
