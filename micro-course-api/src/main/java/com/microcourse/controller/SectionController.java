@@ -31,9 +31,10 @@ public class SectionController {
 
     @PostMapping
     public R<SectionDTO> create(
+            @PathVariable Long courseId,
             @PathVariable Long chapterId,
             @Valid @RequestBody SectionCreateRequest request) {
-        return R.ok(sectionService.create(chapterId, request));
+        return R.ok(sectionService.create(courseId, chapterId, request));
     }
 
     @PutMapping("/{id}")

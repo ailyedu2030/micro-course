@@ -48,14 +48,11 @@ public class SectionServiceImpl implements SectionService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public SectionDTO create(Long chapterId, SectionCreateRequest req) {
-        CourseChapter chapter = chapterRepo.selectById(chapterId);
-        if (chapter == null) throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
-        assertOwner(chapter.getCourseId());
-
+    public SectionDTO create(Long courseId, Long chapterId, SectionCreateRequest req) {
+        assertOwner(courseId);
         CourseSection section = new CourseSection();
         section.setChapterId(chapterId);
-        section.setCourseId(chapter.getCourseId());
+        section.setCourseId(courseId);
         section.setTitle(req.getTitle());
         section.setSectionType(req.getSectionType());
         section.setSortOrder(req.getSortOrder() != null ? req.getSortOrder() : 0);

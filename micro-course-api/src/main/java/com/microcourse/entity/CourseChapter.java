@@ -24,7 +24,9 @@ public class CourseChapter {
     @TableField("sort_order")
     private Integer sortOrder;
 
-    @TableField("chapter_type")
+    /** @deprecated column removed in V186, type now at section level */
+    @Deprecated
+    @TableField(exist = false)
     private String chapterType;
 
     private Integer duration;
