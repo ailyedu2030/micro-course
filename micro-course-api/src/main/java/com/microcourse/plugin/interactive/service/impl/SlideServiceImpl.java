@@ -396,12 +396,19 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteSlide(Long courseId) {
+    public void deleteSlide(Long courseId, Long chapterId) {
         verifyOwner(courseId);
-        CourseSlide s = courseSlideMapper.selectOne(new LambdaQueryWrapper<CourseSlide>().eq(CourseSlide::getCourseId, courseId));
-        if (s == null) throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND);
-        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, s.getId()));
-        courseSlideMapper.deleteById(s.getId());
+        LambdaQueryWrapper<CourseSlide> wrapper = new LambdaQueryWrapper<CourseSlide>()
+                .eq(CourseSlide::getCourseId, courseId);
+        if (chapterId != null) {
+            wrapper.eq(CourseSlide::getChapterId, chapterId);
+        }
+        List<CourseSlide> slides = courseSlideMapper.selectList(wrapper);
+        if (slides.isEmpty()) throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND);
+        for (CourseSlide s : slides) {
+            slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, s.getId()));
+            courseSlideMapper.deleteById(s.getId());
+        }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() { cleanupSlideFiles(courseId); }

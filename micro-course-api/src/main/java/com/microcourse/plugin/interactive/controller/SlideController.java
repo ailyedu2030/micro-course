@@ -155,8 +155,9 @@ public class SlideController {
 
     @DeleteMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<Void> deleteSlide(@PathVariable Long courseId) {
-        slideService.deleteSlide(courseId);
+    public R<Void> deleteSlide(@PathVariable Long courseId,
+                               @RequestParam(required = false) Long chapterId) {
+        slideService.deleteSlide(courseId, chapterId);
         return R.ok();
     }
 

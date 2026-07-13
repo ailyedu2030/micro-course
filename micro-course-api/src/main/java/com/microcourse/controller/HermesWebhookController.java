@@ -140,8 +140,8 @@ public class HermesWebhookController {
 
             Object resp;
             if (isHtml) {
-                // Delete existing slides first, then upload fresh
-                try { slideService.deleteSlide(courseId); } catch (Exception ignored) {}
+                // Delete existing slide for this chapter only, then upload fresh
+                try { slideService.deleteSlide(courseId, chapterId); } catch (Exception ignored) {}
                 resp = slideService.uploadHtmlFile(courseId, file, chapterId);
             } else {
                 resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);

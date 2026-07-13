@@ -26,7 +26,7 @@ public interface SlideService {
 
     byte[] getPageThumbnail(Long courseId, Integer pageNumber);
 
-    void deleteSlide(Long courseId);
+    void deleteSlide(Long courseId, Long chapterId);
 
     void deletePage(Long courseId, Integer pageNumber);
 
