@@ -16,6 +16,7 @@ public class CourseSection {
     private Boolean visible;
     private String description;
     @TableField("script_content") private String scriptContent;
+    @TableField("content_url") private String contentUrl;
     @Version private Integer version;
     @TableField("created_at") private LocalDateTime createdAt;
     @TableField("updated_at") private LocalDateTime updatedAt;
@@ -42,6 +43,8 @@ public class CourseSection {
     public void setDescription(String description) { this.description = description; }
     public String getScriptContent() { return scriptContent; }
     public void setScriptContent(String scriptContent) { this.scriptContent = scriptContent; }
+    public String getContentUrl() { return contentUrl; }
+    public void setContentUrl(String contentUrl) { this.contentUrl = contentUrl; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getCreatedAt() { return createdAt; }

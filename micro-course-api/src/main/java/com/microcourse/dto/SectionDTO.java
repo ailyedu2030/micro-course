@@ -13,7 +13,9 @@ public class SectionDTO {
     private Boolean visible;
     private String description;
     private String scriptContent;
+    private String contentUrl;
     private Integer slideCount;
+    private Boolean hasSlide;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -37,8 +39,12 @@ public class SectionDTO {
     public void setDescription(String description) { this.description = description; }
     public String getScriptContent() { return scriptContent; }
     public void setScriptContent(String scriptContent) { this.scriptContent = scriptContent; }
+    public String getContentUrl() { return contentUrl; }
+    public void setContentUrl(String contentUrl) { this.contentUrl = contentUrl; }
     public Integer getSlideCount() { return slideCount; }
     public void setSlideCount(Integer slideCount) { this.slideCount = slideCount; }
+    public Boolean getHasSlide() { return hasSlide; }
+    public void setHasSlide(Boolean hasSlide) { this.hasSlide = hasSlide; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

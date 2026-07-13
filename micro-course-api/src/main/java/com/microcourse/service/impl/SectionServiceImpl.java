@@ -136,7 +136,10 @@ public class SectionServiceImpl implements SectionService {
         dto.setVisible(s.getVisible());
         dto.setDescription(s.getDescription());
         dto.setScriptContent(s.getScriptContent());
-        dto.setSlideCount(slideCount(s.getId()));
+        dto.setContentUrl(s.getContentUrl());
+        int sc = slideCount(s.getId());
+        dto.setSlideCount(sc);
+        dto.setHasSlide(sc > 0);
         dto.setCreatedAt(s.getCreatedAt());
         dto.setUpdatedAt(s.getUpdatedAt());
         return dto;

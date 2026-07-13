@@ -267,6 +267,13 @@ public class HermesWebhookController {
                     cs.setUpdatedAt(java.time.LocalDateTime.now());
                     courseSlideMapper.updateById(cs);
                 }
+                // 回写 section.content_url — 前端/API 通过此字段判断有课件
+                CourseSection sectionForUrl = sectionRepository.selectById(lessonId);
+                if (sectionForUrl != null) {
+                    sectionForUrl.setContentUrl("/api/courses/" + courseId + "/slides/pages");
+                    sectionForUrl.setUpdatedAt(java.time.LocalDateTime.now());
+                    sectionRepository.updateById(sectionForUrl);
+                }
             }
             return R.ok(resp);
         } catch (Exception e) {
