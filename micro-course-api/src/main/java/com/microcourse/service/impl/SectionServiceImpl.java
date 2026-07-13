@@ -4,9 +4,11 @@ import com.microcourse.dto.*;
 import com.microcourse.entity.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.repository.*;
 import com.microcourse.service.SectionService;
 import com.microcourse.util.SecurityUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
@@ -17,13 +19,16 @@ public class SectionServiceImpl implements SectionService {
     private final CourseSectionRepository sectionRepo;
     private final CourseChapterRepository chapterRepo;
     private final CourseRepository courseRepo;
+    private final CourseSlideMapper courseSlideMapper;
 
     public SectionServiceImpl(CourseSectionRepository sectionRepo,
                               CourseChapterRepository chapterRepo,
-                              CourseRepository courseRepo) {
+                              CourseRepository courseRepo,
+                              CourseSlideMapper courseSlideMapper) {
         this.sectionRepo = sectionRepo;
         this.chapterRepo = chapterRepo;
         this.courseRepo = courseRepo;
+        this.courseSlideMapper = courseSlideMapper;
     }
 
     @Override
@@ -113,7 +118,10 @@ public class SectionServiceImpl implements SectionService {
     }
 
     private Integer slideCount(Long sectionId) {
-        return 0; // placeholder — will be wired when CourseSlideRepository links to section_id
+        Long cnt = courseSlideMapper.selectCount(
+            new LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
+                .eq(com.microcourse.plugin.interactive.entity.CourseSlide::getSectionId, sectionId));
+        return cnt != null ? cnt.intValue() : 0;
     }
 
     private SectionDTO toDTO(CourseSection s) {
