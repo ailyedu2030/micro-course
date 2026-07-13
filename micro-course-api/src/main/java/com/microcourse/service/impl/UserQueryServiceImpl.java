@@ -188,7 +188,24 @@ public class UserQueryServiceImpl implements UserQueryService {
         if (user == null || user.getDeletedAt() != null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        UserVO vo = convertToVO(user);
+        // P1-C 优化: 复用批量预加载的 convertToVO(user, map, map, map)，
+        // 即使单次调用也能保留统一的数据访问路径（避免 3 次单点查询）
+        Map<Long, Department> deptMap = new HashMap<>();
+        Map<Long, Major> majorMap = new HashMap<>();
+        Map<Long, Classes> classMap = new HashMap<>();
+        if (user.getDepartmentId() != null) {
+            Department d = departmentRepository.selectById(user.getDepartmentId());
+            if (d != null) deptMap.put(d.getId(), d);
+        }
+        if (user.getMajorId() != null) {
+            Major m = majorRepository.selectById(user.getMajorId());
+            if (m != null) majorMap.put(m.getId(), m);
+        }
+        if (user.getClassId() != null) {
+            Classes c = classesRepository.selectById(user.getClassId());
+            if (c != null) classMap.put(c.getId(), c);
+        }
+        UserVO vo = convertToVO(user, deptMap, majorMap, classMap);
         // P1-C: TEACHER 仅能查看自己课程中的学生，否则抛 NO_PERMISSION
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()
                 && !SecurityUtil.isOwnerOrAdmin(id)) {
@@ -223,34 +240,6 @@ public class UserQueryServiceImpl implements UserQueryService {
             vo.setTeacherNo(null);
         }
         return vo;
-    }
-
-    private UserVO convertToVO(User user) {
-        // N+1 修复：收集单用户的关联 ID 后批量查询，委托给 Map 版 convertToVO
-        Map<Long, Department> deptMap = new HashMap<>();
-        Map<Long, Major> majorMap = new HashMap<>();
-        Map<Long, Classes> classMap = new HashMap<>();
-
-        if (user.getDepartmentId() != null) {
-            Department dept = departmentRepository.selectById(user.getDepartmentId());
-            if (dept != null) {
-                deptMap.put(dept.getId(), dept);
-            }
-        }
-        if (user.getMajorId() != null) {
-            Major major = majorRepository.selectById(user.getMajorId());
-            if (major != null) {
-                majorMap.put(major.getId(), major);
-            }
-        }
-        if (user.getClassId() != null) {
-            Classes cls = classesRepository.selectById(user.getClassId());
-            if (cls != null) {
-                classMap.put(cls.getId(), cls);
-            }
-        }
-
-        return convertToVO(user, deptMap, majorMap, classMap);
     }
 
     private UserVO convertToVO(User user, Map<Long, Department> deptMap,
