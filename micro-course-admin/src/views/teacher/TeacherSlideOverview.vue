@@ -138,6 +138,7 @@ import { useUserStore } from '@/store/user'
 
 const router = useRouter()
 const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 const loading = ref(false)
 const slides = ref([])
 const courses = ref([])
