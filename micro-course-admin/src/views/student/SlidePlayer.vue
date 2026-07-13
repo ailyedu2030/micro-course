@@ -369,7 +369,8 @@ function preloadAdjacentImages(currentIdx) {
 async function loadAudio(index) {
   const page = pages.value[index]
   if (!page?.narrationAudioUrl || !audioRef.value) return
-  const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/audio`
+  const secParam = page.sectionId ? `?sectionId=${page.sectionId}` : ''
+  const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/audio${secParam}`
   if (audioBlobUrls.value[relUrl]) { audioRef.value.src = audioBlobUrls.value[relUrl]; audioRef.value.load() }
   else {
     try {

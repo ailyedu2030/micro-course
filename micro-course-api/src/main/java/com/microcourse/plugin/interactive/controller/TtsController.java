@@ -26,7 +26,8 @@ public class TtsController {
     @PostMapping("/pages/{pageNumber}/audio/generate")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<SlidePageVO> generate(@PathVariable Long courseId,
-                                    @PathVariable Integer pageNumber) {
+                                    @PathVariable Integer pageNumber,
+                                    @RequestParam(required = false) Long sectionId) {
         return R.ok(ttsService.generate(courseId, pageNumber));
     }
 
@@ -40,9 +41,10 @@ public class TtsController {
     @GetMapping("/pages/{pageNumber}/audio")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> getAudio(@PathVariable Long courseId,
-                                            @PathVariable Integer pageNumber) {
+                                            @PathVariable Integer pageNumber,
+                                            @RequestParam(required = false) Long sectionId) {
         ttsService.verifyAccess(courseId);
-        byte[] audioBytes = ttsService.getAudio(courseId, pageNumber);
+        byte[] audioBytes = ttsService.getAudio(courseId, pageNumber, sectionId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, "audio/mpeg")
                 .header(HttpHeaders.CACHE_CONTROL,

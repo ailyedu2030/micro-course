@@ -156,7 +156,10 @@ public class TtsServiceImpl implements TtsService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "讲述稿为空，请先生成讲述稿");
         }
 
-        String audioFileName = "page_" + pageNumber + ".mp3";
+        Long sectionId = page.getSectionId();
+        String audioFileName = sectionId != null
+                ? "page_" + sectionId + ".mp3"
+                : "page_" + pageNumber + ".mp3";
 
         try {
             Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
@@ -195,10 +198,14 @@ public class TtsServiceImpl implements TtsService {
             }
 
             final int finalDuration = audioDuration;
+            final Long sid = sectionId;
             transactionTemplate.execute(tx -> {
                 SlidePage fresh = slidePageMapper.selectById(page.getId());
                 if (fresh == null) return null;
-                fresh.setNarrationAudioUrl("/api/courses/" + courseId + "/slides/pages/" + pageNumber + "/audio");
+                String audioUrl = sid != null
+                        ? "/api/courses/" + courseId + "/slides/pages/" + pageNumber + "/audio?sectionId=" + sid
+                        : "/api/courses/" + courseId + "/slides/pages/" + pageNumber + "/audio";
+                fresh.setNarrationAudioUrl(audioUrl);
                 fresh.setAudioDuration(finalDuration);
                 fresh.setNarrationStatus("AUDIO_READY");
                 fresh.setUpdatedAt(LocalDateTime.now());
@@ -206,8 +213,8 @@ public class TtsServiceImpl implements TtsService {
                 return null;
             });
 
-            log.info("TTS complete: courseId={}, page={}, duration={}s, backend={}",
-                    courseId, pageNumber, finalDuration,
+            log.info("TTS complete: courseId={}, page={}, sectionId={}, duration={}s, backend={}",
+                    courseId, pageNumber, sectionId, finalDuration,
                     ttsLocalAvailable ? "qwen3-local" : "mmx");
 
         } catch (BusinessException e) {
@@ -312,6 +319,9 @@ public class TtsServiceImpl implements TtsService {
 
         var voiceSetting = new java.util.LinkedHashMap<String, Object>();
         voiceSetting.put("voice_id", ttsVoice);
+        voiceSetting.put("speed", 1.0);
+        voiceSetting.put("vol", 1.0);
+        voiceSetting.put("pitch", 0);
         bodyMap.put("voice_setting", voiceSetting);
 
         var audioSetting = new java.util.LinkedHashMap<String, Object>();
@@ -322,6 +332,9 @@ public class TtsServiceImpl implements TtsService {
         bodyMap.put("audio_setting", audioSetting);
 
         bodyMap.put("output_format", "hex");
+
+        bodyMap.put("subtitle_enable", true);
+        bodyMap.put("subtitle_type", "word");
 
         String requestBody = objectMapper.writeValueAsString(bodyMap);
         log.debug("[TTS] MiniMax request: model={}, voice={}, textLen={}",
@@ -399,18 +412,22 @@ public class TtsServiceImpl implements TtsService {
     }
 
     @Override
-    public byte[] getAudio(Long courseId, Integer pageNumber) {
+    public byte[] getAudio(Long courseId, Integer pageNumber, Long sectionId) {
         try {
             Path basePath = Paths.get(storagePath, String.valueOf(courseId), "audio").toRealPath();
-            Path audioPath = basePath.resolve("page_" + pageNumber + ".mp3").normalize();
+            // sectionId 优先：page_{sectionId}.mp3；向后兼容：page_{pageNumber}.mp3
+            String fileName = sectionId != null
+                    ? "page_" + sectionId + ".mp3"
+                    : "page_" + pageNumber + ".mp3";
+            Path audioPath = basePath.resolve(fileName).normalize();
             if (!audioPath.startsWith(basePath)) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法的音频路径");
             }
             return Files.readAllBytes(audioPath);
         } catch (NoSuchFileException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件不存在: " + pageNumber);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件不存在");
         } catch (IOException e) {
-            log.error("[Tts] 读取音频文件失败 courseId={} page={}", courseId, pageNumber, e);
+            log.error("[Tts] 读取音频文件失败 courseId={} page={} sectionId={}", courseId, pageNumber, sectionId, e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件读取失败");
         }
     }
