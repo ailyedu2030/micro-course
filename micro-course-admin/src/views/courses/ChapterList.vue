@@ -16,9 +16,12 @@
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w240" @change="handleSearch">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w240" :disabled="courseOptions.length <= 1" @change="handleSearch">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item v-if="currentCourse">
+          <el-button @click="goBackToCourse">返回课程详情</el-button>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -31,12 +34,16 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">章节列表</span>
-          <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">新增章节</el-button>
+          <span class="card-title">
+            <span v-if="currentCourse">{{ currentCourse.title }} - 章节列表</span>
+            <span v-else>章节列表</span>
+          </span>
+          <el-button type="primary" :disabled="!searchForm.courseId" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">新增章节</el-button>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" :description="searchForm.courseId ? '暂无章节数据' : '请先选择课程'" />
+      <el-empty v-else-if="!searchForm.courseId" description="请先选择课程" />
+      <el-empty v-else-if="tableData.length === 0" description="暂无章节数据" />
       <el-table v-else :data="tableData" stripe border class="data-table">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
@@ -115,6 +122,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getChapters, createChapter, updateChapter, deleteChapter } from '@/api/chapter'
@@ -140,6 +148,8 @@ const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
 const courseOptions = ref([])
+const currentCourse = computed(() => courseOptions.value.find(c => c.id === searchForm.courseId) || null)
+const router = useRouter()
 
 const formData = reactive({
   courseId: null,
@@ -180,12 +190,16 @@ const fetchData = async () => {
   }
 }
 
-const fetchCourseOptions = async () => {
+ const fetchCourseOptions = async () => {
   try {
     const params = { page: 0, size: 1000 }
     if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
+    if (!searchForm.courseId && courseOptions.value.length === 1) {
+      searchForm.courseId = courseOptions.value[0].id
+      handleSearch()
+    }
   } catch {
     ElMessage.error('获取课程列表失败')
   }
@@ -212,6 +226,9 @@ const handlePageChange = () => {
   fetchData()
 }
 
+const goBackToCourse = () => {
+  if (searchForm.courseId) router.push(`/teacher/courses/${searchForm.courseId}`)
+}
 const handleCreate = () => {
   dialogTitle.value = '新增章节'
   isEdit.value = false
