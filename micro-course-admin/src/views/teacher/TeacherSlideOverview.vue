@@ -49,7 +49,7 @@
           <el-button @click="handleReset">查看全部课程</el-button>
         </el-empty>
       </div>
-      <el-table v-else :data="filteredSlides" stripe v-loading="loading" @row-click="goEdit">
+      <el-table v-else :data="filteredSlides" stripe v-loading="loading">
         <el-table-column prop="courseTitle" label="所属课程" min-width="160" show-overflow-tooltip />
         <el-table-column prop="chapterTitle" label="所属章节" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.chapterTitle || '-' }}</template>
@@ -89,7 +89,7 @@
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="primary" @click.stop="goEdit(row)">编辑</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="primary" @click.stop="goEdit(row)">查看</el-button>
             <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" @click.stop="startRename(row)">重命名</el-button>
             <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :disabled="deleting === row.id" @click.stop="handleDelete(row)">{{ deleting === row.id ? '删除中…' : '删除' }}</el-button>
           </template>
