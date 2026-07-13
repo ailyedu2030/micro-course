@@ -144,65 +144,28 @@ v-if="userRole === 'ACADEMIC'"
         </template>
         <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe row-key="id">
           <template #empty><el-empty description="暂无章节，点击上方「新增章节」添加内容" /></template>
+          <el-table-column type="expand" width="40">
+            <template #default="{ row }">
+              <div style="padding:12px 24px 12px 48px;background:var(--el-fill-color-lighter)">
+                <div v-loading="sectionLoading[row.id]">
+                  <SectionList
+                    :sections="sectionsByChapterId[row.id] || []"
+                    @edit="(s) => handleEditSection(row, s)"
+                    @delete="(s) => handleDeleteSection(row, s)"
+                  />
+                  <div style="margin-top:8px">
+                    <el-button size="small" type="primary" plain @click.stop="handleAddSection(row)">+ 新增课时</el-button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column type="index" label="#" width="60" align="center" />
-          <el-table-column prop="title" label="章节标题" min-width="180" show-overflow-tooltip />
-          <el-table-column label="内容形式" width="120" align="center">
-            <template #default="{ row }">
-              <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">📹 视频课</el-tag>
-              <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">🎯 互动课</el-tag>
-              <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="warning" size="small">📝 练习</el-tag>
-              <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">🏫 线下课 (需线下授课)</el-tag>
-              <el-tag v-else type="info" size="small">—</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="内容状态" width="120" align="center">
-            <template #default="{ row }">
-              <template v-if="row.chapterType === 'VIDEO'">
-                <el-tag v-if="(row.videoCount || 0) > 0" type="success" size="small">● {{ row.videoCount }} 个视频</el-tag>
-                <el-tag v-else type="info" size="small">○ 待添加</el-tag>
-              </template>
-              <template v-else-if="row.chapterType === 'INTERACTIVE'">
-                <el-tag v-if="(row.slideCount || 0) > 0" type="success" size="small">● {{ row.slideCount }} 页课件</el-tag>
-                <el-tag v-else type="info" size="small">○ 待上传</el-tag>
-              </template>
-              <template v-else-if="row.chapterType === 'OFFLINE'">
-                <el-tag v-if="(row.sessionCount || 0) > 0" type="success" size="small">● {{ row.sessionCount }} 场次</el-tag>
-                <el-tag v-else type="info" size="small">○ 待配置</el-tag>
-              </template>
-              <template v-else-if="row.chapterType === 'EXERCISE'">
-                <el-tag v-if="(row.exerciseCount || 0) > 0" type="success" size="small">● {{ row.exerciseCount }} 题</el-tag>
-                <el-tag v-else type="info" size="small">○ 待组卷</el-tag>
-              </template>
-            </template>
-          </el-table-column>
-          <el-table-column prop="duration" label="时长" width="80" align="center">
-            <template #default="{ row }">{{ row.duration || '-' }}</template>
+          <el-table-column prop="title" label="章节标题" min-width="200" show-overflow-tooltip />
+          <el-table-column label="课时" width="70" align="center">
+            <template #default="{ row }">{{ (sectionsByChapterId[row.id] || []).length }}</template>
           </el-table-column>
           <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
-          <el-table-column label="内容管理" width="260" fixed="right">
-            <template #default="{ row }">
-              <template v-if="row.chapterType === 'VIDEO' && (userRole === 'TEACHER' || userRole === 'ADMIN')">
-                <el-button link type="primary" @click.stop="gotoChapterContent(row.id, 'manage-videos')">
-                  📹 管理视频
-                </el-button>
-              </template>
-              <template v-else-if="row.chapterType === 'INTERACTIVE' && (userRole === 'TEACHER' || userRole === 'ADMIN')">
-                <el-button link type="success" @click.stop="gotoChapterContent(row.id, 'manage-slides')">
-                  📊 管理课件
-                </el-button>
-              </template>
-              <template v-else-if="row.chapterType === 'OFFLINE' && (userRole === 'TEACHER' || userRole === 'ADMIN')">
-                <el-button link type="info" @click.stop="gotoChapterContent(row.id, 'manage-offline')">
-                  📍 配置场次
-                </el-button>
-              </template>
-              <template v-else-if="row.chapterType === 'EXERCISE' && (userRole === 'TEACHER' || userRole === 'ADMIN')">
-                <el-button link type="warning" @click.stop="gotoChapterContent(row.id, 'manage-exam')">
-                  📝 智能组卷
-                </el-button>
-              </template>
-            </template>
-          </el-table-column>
           <el-table-column v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
@@ -344,19 +307,9 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
         <el-form-item label="章节标题" prop="title">
           <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 环境搭建" />
         </el-form-item>
-        <el-form-item label="内容形式" prop="chapterType">
-          <el-select v-model="chapterFormData.chapterType" placeholder="选择本章节的内容形式" class="full-width">
-            <el-option label="📹 视频讲解" value="VIDEO" />
-            <el-option label="🎯 互动课件" value="INTERACTIVE" />
-            <el-option label="📝 随堂练习" value="EXERCISE" />
-            <el-option label="🏫 线下课" value="OFFLINE" />
-          </el-select>
-          <div class="form-tip" style="margin-top:4px">
-            <template v-if="chapterFormData.chapterType === 'VIDEO'">学生点击后进入视频播放器，教师需上传教学视频</template>
-            <template v-else-if="chapterFormData.chapterType === 'INTERACTIVE'">学生点击后进入互动课件，教师需导入 PPT 并编辑</template>
-            <template v-else-if="chapterFormData.chapterType === 'EXERCISE'">学生点击后开始答题，教师需提前创建练习题</template>
-          </div>
-        </el-form-item>
+        <div class="form-tip" style="margin-bottom:12px;color:var(--el-color-info);font-size:12px">
+          章节类型已迁移到「课时」管理。创建章节后，可在章节下添加不同类型的课时。
+        </div>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="排序号">
@@ -375,6 +328,14 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
         <el-button type="primary" :loading="chapterSubmitLoading" :disabled="chapterSubmitLoading" @click="handleChapterSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <SectionEditDialog
+      v-model="showSectionDialog"
+      :section="editingSection"
+      :is-edit="isEditSection"
+      :loading="sectionSubmitLoading"
+      @submit="handleSubmitSection"
+    />
   </div>
 </template>
 
@@ -391,6 +352,9 @@ import { View } from '@element-plus/icons-vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { sanitizeHtml } from '@/utils/xss'
+import { listSections, createSection, updateSection, deleteSection } from '@/api/section'
+import SectionList from '@/components/course/SectionList.vue'
+import SectionEditDialog from '@/components/course/SectionEditDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -436,6 +400,13 @@ const chapterLoading = ref(false)
 const chapterSubmitLoading = ref(false)
 const saveSortLoading = ref(false)
 const chapters = ref([])
+const sectionsByChapterId = ref({})
+const sectionLoading = ref({})
+const showSectionDialog = ref(false)
+const editingSection = ref(null)
+const isEditSection = ref(false)
+const currentChapterForSection = ref(null)
+const sectionSubmitLoading = ref(false)
 const chapterDialogVisible = ref(false)
 const chapterDialogTitle = ref('新增章节')
 const isChapterEdit = ref(false)
@@ -443,11 +414,7 @@ const currentChapterId = ref(null)
 const chapterFormRef = ref(null)
 const chapterTableRef = ref(null)
 
-const chapterFormData = reactive({ title: '', sortOrder: 0, chapterType: 'VIDEO', duration: 0 })
-const chapterFormRules = {
-  title: [{ required: true, message: '请输入章节标题', trigger: 'blur' }],
-  chapterType: [{ required: true, message: '请选择内容类型', trigger: 'change' }]
-}
+const chapterFormData = reactive({ title: '', sortOrder: 0, duration: 0 })
 const onChapterTypeChange = () => {}
 
 let sortableInstance = null
@@ -488,8 +455,14 @@ const fetchCourse = async () => {
 const fetchChapters = async () => {
   if (!courseId.value) return
   chapterLoading.value = true
-  try { const { data } = await getChapters({ courseId: courseId.value, size: 999 }); chapters.value = data?.items || data || [] }
-  catch {
+  try {
+    const { data } = await getChapters({ courseId: courseId.value, size: 999 })
+    chapters.value = data?.items || data || []
+    // 加载每个章节的课时
+    for (const ch of chapters.value) {
+      await loadSections(ch.id)
+    }
+  } catch {
     chapters.value = []
     ElMessage.warning('章节列表加载失败')
   }
@@ -624,19 +597,74 @@ const handleSubmit = async () => {
 // ===== 章节操作 =====
 const handleCreateChapter = () => {
   chapterDialogTitle.value = '新增章节'; isChapterEdit.value = false
-  chapterFormData.title = ''; chapterFormData.sortOrder = 0
-  chapterFormData.chapterType = 'VIDEO'; chapterFormData.duration = 0
+  chapterFormData.title = ''; chapterFormData.sortOrder = 0; chapterFormData.duration = 0
   chapterDialogVisible.value = true
 }
 const handleEditChapter = (row) => {
   chapterDialogTitle.value = '编辑章节'; isChapterEdit.value = true; currentChapterId.value = row.id
   chapterFormData.title = row.title || ''; chapterFormData.sortOrder = row.sortOrder ?? 0
-  chapterFormData.chapterType = row.chapterType || 'VIDEO'; chapterFormData.duration = row.duration ?? 0
+  chapterFormData.duration = row.duration ?? 0
   chapterDialogVisible.value = true
 }
 const gotoChapterContent = (chapterId, type) => {
   router.push(`/teacher/courses/${courseId.value}/chapters/${chapterId}/${type}`)
 }
+const loadSections = async (chapterId) => {
+  try {
+    sectionLoading.value[chapterId] = true
+    const { data } = await listSections(courseId.value, chapterId, { page: 0, size: 100 })
+    sectionsByChapterId.value[chapterId] = data?.items || []
+  } catch {
+    sectionsByChapterId.value[chapterId] = []
+  } finally {
+    sectionLoading.value[chapterId] = false
+  }
+}
+
+const handleAddSection = (chapter) => {
+  currentChapterForSection.value = chapter
+  editingSection.value = null
+  isEditSection.value = false
+  showSectionDialog.value = true
+}
+
+const handleEditSection = (chapter, section) => {
+  currentChapterForSection.value = chapter
+  editingSection.value = section
+  isEditSection.value = true
+  showSectionDialog.value = true
+}
+
+const handleDeleteSection = async (chapter, section) => {
+  try {
+    await ElMessageBox.confirm(`确定删除课时「${section.title}」？`, '确认删除', { type: 'warning' })
+    await deleteSection(courseId.value, chapter.id, section.id, true)
+    ElMessage.success('删除成功')
+    await loadSections(chapter.id)
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || '删除失败')
+  }
+}
+
+const handleSubmitSection = async (form) => {
+  sectionSubmitLoading.value = true
+  try {
+    if (isEditSection.value) {
+      await updateSection(courseId.value, currentChapterForSection.value.id, editingSection.value.id, form)
+      ElMessage.success('更新成功')
+    } else {
+      await createSection(courseId.value, currentChapterForSection.value.id, form)
+      ElMessage.success('创建成功')
+    }
+    showSectionDialog.value = false
+    await loadSections(currentChapterForSection.value.id)
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '操作失败')
+  } finally {
+    sectionSubmitLoading.value = false
+  }
+}
+
 const handleDeleteChapter = async (row) => {
   const videoCount = row.videoCount ?? 0
   const contentHint = videoCount > 0 ? `（含 ${videoCount} 个视频内容）` : ''
