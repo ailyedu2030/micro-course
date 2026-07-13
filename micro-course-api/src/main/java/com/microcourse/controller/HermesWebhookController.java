@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -135,6 +136,7 @@ public class HermesWebhookController {
     /**
      * 课时独立 CRUD：创建课时
      */
+    @Transactional(rollbackFor = Exception.class)
     @PostMapping("/courses/{hermesCourseId}/sections")
     public R<CourseSection> createSection(@RequestHeader("X-API-Key") String apiKey,
                                           @PathVariable String hermesCourseId,
@@ -309,6 +311,7 @@ public class HermesWebhookController {
         courseRepository.deleteById(courseId);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @DeleteMapping("/courses/{hermesCourseId}")
     public R<Void> deleteCourse(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                                 @PathVariable String hermesCourseId) {
@@ -330,6 +333,7 @@ public class HermesWebhookController {
     /**
      * 按内部 ID 删除课程（不依赖 Hermes 映射，用于管理后台创建的课程）
      */
+    @Transactional(rollbackFor = Exception.class)
     @DeleteMapping("/courses/by-id/{courseId}")
     public R<Void> deleteCourseById(@RequestHeader(value = "X-API-Key") String apiKey,
                                     @PathVariable Long courseId) {
@@ -388,6 +392,7 @@ public class HermesWebhookController {
      * 轮换 API Key（仅当前调用方自己）
      * POST /api-key/refresh
      */
+    @Transactional(rollbackFor = Exception.class)
     @PostMapping("/api-key/refresh")
     public R<String> refreshApiKey(@RequestHeader("X-API-Key") String apiKey) {
         User caller = authenticate(apiKey);
