@@ -253,7 +253,7 @@ file=@课件.pptx
 - 支持 `.pptx`（≤50MB）、`.html` / `.htm`（≤5MB）
 - **UPSERT 匹配**：按 `(courseId, chapterId, sectionId)` 三字段匹配。**每课时独立一个 slide**，同一章节下的不同课时不互相覆盖
 - **上传后自动**：
-  - `course_sections.content_url` → `/api/courses/{cid}/slides/pages`
+  - `course_sections.content_url` → `/api/courses/{cid}/sections/{sectionId}/slide`（课时级独有端点）
   - `SectionDTO.hasSlide` → `true`
   - `SectionDTO.slideCount` → 更新统计
 
@@ -296,6 +296,14 @@ Content-Type: application/json
   "scriptContent": "完整讲述稿全文，系统自动按页面数切分后写入每页 narrationScript"
 }
 ```
+
+### 查看课时课件
+
+```http
+GET /api/courses/{courseId}/sections/{sectionId}/slide
+```
+
+返回该课时的独立课件页面列表（含 HTML 内容、图片 URL 等）。需要 JWT 认证（非 Hermes 接口，Hermes 可通过 `GET /courses/{hermesId}/slides` 获取 slide 元数据）。
 
 ---
 
@@ -391,3 +399,4 @@ curl -X DELETE "$BASE/courses/by-id/42" -H "X-API-Key: $KEY"
 | 2026-07-13 | v3 | 新增 API Key 刷新、slide 列表（API Key 鉴权）、@Transactional/所有权校验 |
 | 2026-07-13 | v4 | upload(slide) 改为按 (courseId, chapterId, sectionId) UPSERT，每课时独立 slide |
 | 2026-07-13 | v4.1 | content_url 回写移至 SlideServiceImpl 内（与上传同事务，@Version 不冲突） |
+| 2026-07-13 | v4.2 | content_url 改为课时级 `/sections/{id}/slide`；新增 `GET /sections/{id}/slide` 端点 |
