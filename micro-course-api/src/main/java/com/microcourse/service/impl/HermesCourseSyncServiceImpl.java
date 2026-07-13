@@ -6,7 +6,7 @@ import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.HermesCourseMapping;
-import com.microcourse.entity.Lesson;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -14,7 +14,7 @@ import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.HermesCourseMappingRepository;
-import com.microcourse.repository.LessonRepository;
+import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.HermesCourseSyncService;
 import com.microcourse.dto.hermes.HermesCourseDetailVO;
@@ -48,7 +48,7 @@ private final HermesCourseMappingRepository mappingRepository;
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
     private final CourseChapterRepository chapterRepository;
-    private final LessonRepository lessonRepository;
+    private final CourseSectionRepository sectionRepository;
     private final UserRepository userRepository;
     private final RedisUtil redisUtil;
 
@@ -56,14 +56,14 @@ private final HermesCourseMappingRepository mappingRepository;
                                       CourseRepository courseRepository,
                                       CourseCategoryRepository categoryRepository,
                                       CourseChapterRepository chapterRepository,
-                                      LessonRepository lessonRepository,
+                                      CourseSectionRepository sectionRepository,
                                       UserRepository userRepository,
                                       RedisUtil redisUtil) {
         this.mappingRepository = mappingRepository;
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
-        this.lessonRepository = lessonRepository;
+        this.sectionRepository = sectionRepository;
         this.userRepository = userRepository;
         this.redisUtil = redisUtil;
     }
@@ -309,18 +309,18 @@ private final HermesCourseMappingRepository mappingRepository;
             cv.setTitle(ch.getTitle());
             cv.setSortOrder(ch.getSortOrder());
 
-            List<Lesson> lessons = lessonRepository.selectList(
-                    new LambdaQueryWrapper<Lesson>()
-                            .eq(Lesson::getChapterId, ch.getId())
-                            .orderByAsc(Lesson::getSortOrder));
-            List<LessonVo> lessonVos = lessons.stream().map(l -> {
+            List<CourseSection> sections = sectionRepository.selectList(
+                    new LambdaQueryWrapper<CourseSection>()
+                            .eq(CourseSection::getChapterId, ch.getId())
+                            .orderByAsc(CourseSection::getSortOrder));
+            List<LessonVo> lessonVos = sections.stream().map(s -> {
                 LessonVo lv = new LessonVo();
-                lv.setId(l.getId());
-                lv.setTitle(l.getTitle());
-                lv.setLessonType(l.getLessonType());
-                lv.setDurationMinutes(l.getDuration());
-                lv.setSortOrder(l.getSortOrder());
-                lv.setScriptContent(l.getScriptContent());
+                lv.setId(s.getId());
+                lv.setTitle(s.getTitle());
+                lv.setLessonType(s.getSectionType());
+                lv.setDurationMinutes(s.getDuration());
+                lv.setSortOrder(s.getSortOrder());
+                lv.setScriptContent(s.getScriptContent());
                 return lv;
             }).toList();
             cv.setLessons(lessonVos);
@@ -360,27 +360,42 @@ private final HermesCourseMappingRepository mappingRepository;
 
             List<LessonDto> lessons = chapterDto.getLessons();
             if (lessons == null || lessons.isEmpty()) {
+                // 无课时时创建一个默认 section 保留章节类型
+                CourseSection defaultSection = new CourseSection();
+                defaultSection.setChapterId(chapter.getId());
+                defaultSection.setCourseId(courseId);
+                defaultSection.setTitle(chapterDto.getTitle());
+                defaultSection.setSectionType(chapterType);
+                defaultSection.setSortOrder(1);
+                defaultSection.setVisible(true);
+                var now = LocalDateTime.now();
+                defaultSection.setCreatedAt(now);
+                defaultSection.setUpdatedAt(now);
+                defaultSection.setVersion(1);
+                sectionRepository.insert(defaultSection);
                 continue;
             }
 
             int lessonIndex = 0;
             for (LessonDto lessonDto : lessons) {
-                Lesson lesson = new Lesson();
-                lesson.setChapterId(chapter.getId());
-                lesson.setCourseId(courseId);
-                lesson.setTitle(lessonDto.getTitle());
-                lesson.setLessonType(lessonDto.getType() != null ? lessonDto.getType() : "VIDEO");
-                lesson.setSortOrder(lessonDto.getSortOrder() != null ? lessonDto.getSortOrder() : lessonIndex + 1);
-                lesson.setDuration(lessonDto.getDurationMinutes());
-                lesson.setVisible(true);
-                lesson.setScriptContent(lessonDto.getScriptContent());
-                lesson.setCreatedAt(LocalDateTime.now());
-                lesson.setUpdatedAt(LocalDateTime.now());
-                lessonRepository.insert(lesson);
+                CourseSection section = new CourseSection();
+                section.setChapterId(chapter.getId());
+                section.setCourseId(courseId);
+                section.setTitle(lessonDto.getTitle());
+                section.setSectionType(lessonDto.getType() != null ? lessonDto.getType() : "VIDEO");
+                section.setSortOrder(lessonDto.getSortOrder() != null ? lessonDto.getSortOrder() : lessonIndex + 1);
+                section.setDuration(lessonDto.getDurationMinutes());
+                section.setVisible(true);
+                section.setScriptContent(lessonDto.getScriptContent());
+                var now = LocalDateTime.now();
+                section.setCreatedAt(now);
+                section.setUpdatedAt(now);
+                section.setVersion(1);
+                sectionRepository.insert(section);
                 lessonIndex++;
 
-                log.debug("[HermesSync] Inserted lesson: chapterId={}, lessonId={}, title={}",
-                        chapter.getId(), lesson.getId(), lessonDto.getTitle());
+                log.debug("[HermesSync] Inserted section: chapterId={}, sectionId={}, title={}",
+                        chapter.getId(), section.getId(), lessonDto.getTitle());
             }
         }
     }
