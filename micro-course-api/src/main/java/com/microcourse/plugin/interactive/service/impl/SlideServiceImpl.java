@@ -311,10 +311,10 @@ public class SlideServiceImpl implements SlideService {
     }
 
     @Override
-    public List<SlidePageVO> getPages(Long courseId, Long lessonId) {
+    public List<SlidePageVO> getPages(Long courseId, Long sectionId) {
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
         qw.eq(SlidePage::getCourseId, courseId);
-        if (lessonId != null) { qw.eq(SlidePage::getLessonId, lessonId); }
+        if (sectionId != null) { qw.eq(SlidePage::getSectionId, sectionId); }
         qw.orderByAsc(SlidePage::getSlideId).orderByAsc(SlidePage::getPageNumber);
         return slidePageMapper.selectList(qw).stream().map(this::toPageVO).collect(Collectors.toList());
     }
@@ -378,7 +378,7 @@ public class SlideServiceImpl implements SlideService {
         vo.setErrorMessage(s.getErrorMessage());
         vo.setCreatedAt(s.getCreatedAt()); vo.setUpdatedAt(s.getUpdatedAt());
         vo.setChapterId(s.getChapterId());
-        vo.setLessonId(s.getSectionId());
+        vo.setSectionId(s.getSectionId());
         if (s.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(s.getChapterId());
             if (chapter != null) vo.setChapterTitle(chapter.getTitle());
@@ -393,7 +393,7 @@ public class SlideServiceImpl implements SlideService {
     private SlidePageVO toPageVO(SlidePage p) {
         SlidePageVO vo = new SlidePageVO();
         vo.setId(p.getId()); vo.setSlideId(p.getSlideId()); vo.setChapterId(p.getChapterId());
-        vo.setLessonId(p.getSectionId());
+        vo.setSectionId(p.getSectionId());
         vo.setCourseId(p.getCourseId()); vo.setPageNumber(p.getPageNumber());
         vo.setFileUuid(p.getFileUuid()); vo.setContentType(p.getContentType());
         vo.setHtmlContent(p.getHtmlContent());
@@ -470,7 +470,7 @@ public class SlideServiceImpl implements SlideService {
                 .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber);
         Object lIdObj = body != null ? body.get("_lessonId") : null;
         if (lIdObj instanceof Number) {
-            qw.eq(SlidePage::getLessonId, ((Number) lIdObj).longValue());
+            qw.eq(SlidePage::getSectionId, ((Number) lIdObj).longValue());
         } else {
             Object chIdObj = body != null ? body.get("_chapterId") : null;
             if (chIdObj instanceof Number) {
