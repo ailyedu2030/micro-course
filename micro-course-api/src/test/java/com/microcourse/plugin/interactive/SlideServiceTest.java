@@ -64,7 +64,7 @@ class SlideServiceTest {
             slide.setFileName("test.pptx");
             slide.setTotalPages(10);
             slide.setStatus(2);
-            when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(slide);
+            when(courseSlideMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(slide));
 
             SlideVO vo = slideService.getByCourseId(1L);
             assertNotNull(vo);
@@ -76,7 +76,7 @@ class SlideServiceTest {
         @Test
         @DisplayName("不存在时返回 null")
         void getByCourseId_NotFound() {
-            when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+            when(courseSlideMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
             assertNull(slideService.getByCourseId(999L));
         }
     }
@@ -122,7 +122,7 @@ class SlideServiceTest {
             SlidePage page = new SlidePage();
             page.setId(1L); page.setCourseId(1L); page.setPageNumber(1);
             page.setNarrationScript("测试讲述稿"); page.setNarrationStatus("AI_GENERATED");
-            when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(page);
+            when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(page));
 
             SlidePageVO vo = slideService.getPage(1L, 1);
             assertNotNull(vo);
@@ -132,7 +132,7 @@ class SlideServiceTest {
         @Test
         @DisplayName("不存在时抛 SLIDE_PAGE_NOT_FOUND")
         void getPage_NotFound() {
-            when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+            when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
             BusinessException e = assertThrows(BusinessException.class,
                     () -> slideService.getPage(1L, 999));
             assertEquals(ErrorCode.SLIDE_PAGE_NOT_FOUND.getCode(), e.getCode());
@@ -182,7 +182,7 @@ class SlideServiceTest {
 
                 SlidePage page = new SlidePage();
                 page.setId(1L); page.setCourseId(1L); page.setPageNumber(1);
-                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(page);
+                when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(page));
 
                 slideService.reorderPages(1L, List.of(Map.of("pageNumber", 1, "newPageNumber", 2)));
                 verify(slidePageMapper, times(2)).updateById(any());
