@@ -266,24 +266,14 @@ public class HermesWebhookController {
 
             Long effectiveId = lessonId != null ? lessonId : chapterId;
             Object resp;
-            Long slideId;
             if (isHtml) {
-                // uploadHtmlFile 内部已做 UPSERT（按 courseId+chapterId 复用 slide_id），不需预删
-                resp = slideService.uploadHtmlFile(courseId, file, chapterId);
-                slideId = ((com.microcourse.plugin.interactive.dto.SlideUploadResponse) resp).getSlideId();
+                // UPSERT 按 (courseId, chapterId, sectionId) 匹配，不同 section 有独立 slide
+                resp = slideService.uploadHtmlFile(courseId, file, chapterId, lessonId);
             } else {
-                resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);
-                slideId = ((com.microcourse.plugin.interactive.dto.SlideUploadResponse) resp).getSlideId();
+                resp = slideService.upload(courseId, filename, file.getBytes(), chapterId, lessonId);
             }
-            // 将 slide 关联到 section（upload 方法只设了 chapterId，没设 sectionId）
-            if (lessonId != null && slideId != null) {
-                CourseSlide cs = courseSlideMapper.selectById(slideId);
-                if (cs != null) {
-                    cs.setSectionId(lessonId);
-                    cs.setUpdatedAt(java.time.LocalDateTime.now());
-                    courseSlideMapper.updateById(cs);
-                }
-                // 回写 section.content_url — 前端/API 通过此字段判断有课件
+            // 回写 section.content_url — 前端/API 通过此字段判断有课件
+            if (lessonId != null) {
                 CourseSection sectionForUrl = sectionRepository.selectById(lessonId);
                 if (sectionForUrl != null) {
                     sectionForUrl.setContentUrl("/api/courses/" + courseId + "/slides/pages");

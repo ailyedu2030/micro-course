@@ -91,7 +91,7 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public SlideUploadResponse upload(Long courseId, String originalFilename, byte[] fileBytes, Long chapterId) {
+    public SlideUploadResponse upload(Long courseId, String originalFilename, byte[] fileBytes, Long chapterId, Long sectionId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) { throw new BusinessException(ErrorCode.COURSE_NOT_FOUND); }
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
@@ -101,13 +101,18 @@ public class SlideServiceImpl implements SlideService {
         if (!validateZipBomb(fileBytes)) { throw new BusinessException(ErrorCode.PPT_PARSE_FAILED); }
 
         String fileHash = sha256(fileBytes);
-        // UPSERT：按 (courseId, chapterId) 查询现有 slide，命中则更新内容，不丢历史
+        // UPSERT：按 (courseId, chapterId, sectionId) 查询现有 slide，命中则更新内容
         LambdaQueryWrapper<CourseSlide> qw = new LambdaQueryWrapper<>();
         qw.eq(CourseSlide::getCourseId, courseId);
         if (chapterId != null) {
             qw.eq(CourseSlide::getChapterId, chapterId);
         } else {
             qw.isNull(CourseSlide::getChapterId);
+        }
+        if (sectionId != null) {
+            qw.eq(CourseSlide::getSectionId, sectionId);
+        } else {
+            qw.isNull(CourseSlide::getSectionId);
         }
         CourseSlide old = courseSlideMapper.selectOne(qw);
         Long sid;
@@ -131,10 +136,12 @@ public class SlideServiceImpl implements SlideService {
             slide.setCourseId(courseId); slide.setFileName(originalFilename); slide.setFileUrl("pending");
             slide.setStatus(0); slide.setFileHash(fileHash);
             if (chapterId != null) { slide.setChapterId(chapterId); }
+            if (sectionId != null) { slide.setSectionId(sectionId); }
             slide.setCreatedAt(LocalDateTime.now()); slide.setUpdatedAt(LocalDateTime.now());
             courseSlideMapper.insert(slide);
             sid = slide.getId();
-            log.info("[SlideUpload] NEW slide: id={}, courseId={}, chapterId={}", sid, courseId, chapterId);
+            log.info("[SlideUpload] NEW slide: id={}, courseId={}, chapterId={}, sectionId={}",
+                    sid, courseId, chapterId, sectionId);
         }
 
         Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
@@ -167,7 +174,7 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public SlideUploadResponse uploadHtmlFile(Long courseId, MultipartFile file, Long chapterId) {
+    public SlideUploadResponse uploadHtmlFile(Long courseId, MultipartFile file, Long chapterId, Long sectionId) {
         Course course = courseRepository.selectById(courseId);
         if (course == null) { throw new BusinessException(ErrorCode.COURSE_NOT_FOUND); }
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
@@ -181,13 +188,18 @@ public class SlideServiceImpl implements SlideService {
         String safeHtml = HtmlSanitizer.sanitizeForCourseware(rawHtml);
         if (safeHtml.isEmpty() && !rawHtml.isEmpty()) { throw new BusinessException(ErrorCode.HTML_SANITIZE_REMOVED_ALL); }
 
-        // UPSERT：按 (courseId, chapterId) 复用 slide_id
+        // UPSERT：按 (courseId, chapterId, sectionId) 复用 slide_id
         LambdaQueryWrapper<CourseSlide> qw = new LambdaQueryWrapper<>();
         qw.eq(CourseSlide::getCourseId, courseId);
         if (chapterId != null) {
             qw.eq(CourseSlide::getChapterId, chapterId);
         } else {
             qw.isNull(CourseSlide::getChapterId);
+        }
+        if (sectionId != null) {
+            qw.eq(CourseSlide::getSectionId, sectionId);
+        } else {
+            qw.isNull(CourseSlide::getSectionId);
         }
         CourseSlide existing = courseSlideMapper.selectOne(qw);
         Long sid;
@@ -211,11 +223,13 @@ public class SlideServiceImpl implements SlideService {
             try { slide.setFileHash(sha256(file.getBytes())); }
             catch (IOException e) { slide.setFileHash(""); }
             if (chapterId != null) { slide.setChapterId(chapterId); }
+            if (sectionId != null) { slide.setSectionId(sectionId); }
             slide.setCreatedAt(LocalDateTime.now());
             slide.setUpdatedAt(LocalDateTime.now());
             courseSlideMapper.insert(slide);
             sid = slide.getId();
-            log.info("[SlideUpload-HtmlFile] NEW: slideId={}, courseId={}, chapterId={}", sid, courseId, chapterId);
+            log.info("[SlideUpload-HtmlFile] NEW: slideId={}, courseId={}, chapterId={}, sectionId={}",
+                    sid, courseId, chapterId, sectionId);
         }
         // 删除该 slide 旧的 pages（一对一覆盖）
         slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, sid));

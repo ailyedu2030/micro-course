@@ -86,12 +86,12 @@ public class SlideController {
                     throw new BusinessException(ErrorCode.NO_PERMISSION,
                             "HTML 课件上传功能灰度中，仅白名单教师可使用");
                 }
-                SlideUploadResponse resp = slideService.uploadHtmlFile(courseId, file, chapterId);
+                SlideUploadResponse resp = slideService.uploadHtmlFile(courseId, file, chapterId, null);
                 return R.ok(resp);
             }
             // PPTX 文件魔数校验（ZIP PK 0x03 0x04）
             validateSlideFileMagic(file);
-            SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);
+            SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes(), chapterId, null);
             return R.ok(resp);
         } catch (IOException e) {
             log.error("[SlideUpload] 文件读取IO异常 courseId={}", courseId, e);

@@ -236,7 +236,7 @@ class SlideServiceTest {
                 MockMultipartFile file = new MockMultipartFile(
                         "file", "lesson.html", "text/html", "<p>File Upload Test</p>".getBytes());
 
-                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, file, null);
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, file, null, null);
 
                 assertNotNull(resp);
                 assertEquals(1, resp.getTotalPages());
@@ -263,7 +263,7 @@ class SlideServiceTest {
                         "file", "big.html", "text/html", new byte[5 * 1024 * 1024 + 1]);
 
                 BusinessException e = assertThrows(BusinessException.class,
-                        () -> slideService.uploadHtmlFile(1L, bigFile, null));
+                        () -> slideService.uploadHtmlFile(1L, bigFile, null, null));
                 assertEquals(ErrorCode.HTML_TOO_LARGE.getCode(), e.getCode());
             } finally {
                 SecurityContextHolder.clearContext();
@@ -295,7 +295,7 @@ class SlideServiceTest {
                 MockMultipartFile newFile = new MockMultipartFile(
                         "file", "new.html", "text/html", "<p>New content</p>".getBytes());
 
-                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, newFile, 10L);
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, newFile, 10L, 10L);
 
                 // 1. 复用 slide_id=43（不重新 insert）
                 assertEquals(43L, resp.getSlideId().longValue());
