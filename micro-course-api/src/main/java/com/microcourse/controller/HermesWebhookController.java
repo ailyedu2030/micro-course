@@ -146,6 +146,12 @@ public class HermesWebhookController {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
                         .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
         if (mapping == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (body.getChapterId() != null) {
+            CourseChapter ch = chapterRepository.selectById(body.getChapterId());
+            if (ch == null || !ch.getCourseId().equals(mapping.getCourseId())) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "章节 ID 不属于该课程");
+            }
+        }
         body.setId(null);
         body.setCourseId(mapping.getCourseId());
         var now = java.time.LocalDateTime.now();
@@ -172,6 +178,9 @@ public class HermesWebhookController {
         if (mapping == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         CourseSection existing = sectionRepository.selectById(sectionId);
         if (existing == null) throw new BusinessException(ErrorCode.SECTION_NOT_FOUND);
+        if (!existing.getCourseId().equals(mapping.getCourseId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "课时不属于该课程");
+        }
         existing.setTitle(body.getTitle());
         existing.setSectionType(body.getSectionType());
         existing.setSortOrder(body.getSortOrder());
@@ -195,6 +204,11 @@ public class HermesWebhookController {
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
                         .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
         if (mapping == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        CourseSection existingDelete = sectionRepository.selectById(sectionId);
+        if (existingDelete == null) throw new BusinessException(ErrorCode.SECTION_NOT_FOUND);
+        if (!existingDelete.getCourseId().equals(mapping.getCourseId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "课时不属于该课程");
+        }
         sectionRepository.deleteById(sectionId);
         return R.ok();
     }
