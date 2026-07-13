@@ -31,8 +31,8 @@ export function listSlides(courseId) {
   return request({ method: 'GET', url: `/courses/${courseId}/slides/list` })
 }
 
-export function getSlidePages(courseId, chapterId) {
-  const params = chapterId ? { chapterId } : {}
+export function getSlidePages(courseId, chapterId, sectionId) {
+  const params = sectionId ? { sectionId } : (chapterId ? { chapterId } : {})
   return request({ method: 'GET', url: `/courses/${courseId}/slides/pages`, params })
 }
 

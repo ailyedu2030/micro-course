@@ -221,7 +221,8 @@ function handleReset() {
   loadData()
 }
 function goEdit(row) {
-  router.push(`/teacher/courses/${row.courseId}/slides/manage`)
+  const query = row.sectionId ? { sectionId: row.sectionId } : {}
+  router.push({ path: `/teacher/courses/${row.courseId}/slides/manage`, query })
 }
 
 async function handleDelete(row) {

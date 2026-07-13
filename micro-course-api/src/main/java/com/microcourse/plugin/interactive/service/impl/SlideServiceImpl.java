@@ -176,11 +176,12 @@ public class SlideServiceImpl implements SlideService {
             }
         }
         Long fc = chapterId;
+        Long fs = sectionId;
         byte[] fb = fileBytes;
         Long finalSid = sid;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
-            public void afterCommit() { slideRenderService.renderAsync(finalSid, fc, fb); }
+            public void afterCommit() { slideRenderService.renderAsync(finalSid, fc, fs, fb); }
         });
         SlideUploadResponse r = new SlideUploadResponse();
         r.setSlideId(sid); r.setTotalPages(0); r.setStatus(0); r.setMessage("上传成功，正在后台渲染...");
@@ -252,6 +253,7 @@ public class SlideServiceImpl implements SlideService {
         page.setSlideId(sid);
         page.setCourseId(courseId);
         page.setChapterId(chapterId);
+        if (sectionId != null) { page.setSectionId(sectionId); }
         page.setPageNumber(1);
         page.setContentType("HTML_DIRECT");
         page.setHtmlContent(safeHtml);

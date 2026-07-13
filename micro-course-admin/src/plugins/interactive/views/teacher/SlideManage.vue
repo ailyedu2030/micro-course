@@ -302,6 +302,7 @@ const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 const courseId = computed(() => route.params.courseId)
 const chapterId = computed(() => route.params.chapterId || null)
+const sectionId = computed(() => route.query.sectionId || null)
 const courseTitle = ref('')
 const chapterTitle = ref('')
 const slide = ref(null)
@@ -527,7 +528,7 @@ async function loadData() {
     const s = await getSlides(courseId.value, chapterId.value)
     slide.value = s.data
     if (s.data?.status === 2) {
-      const p = await getSlidePages(courseId.value, chapterId.value)
+      const p = await getSlidePages(courseId.value, chapterId.value, sectionId.value)
       pages.value = p.data || []
       await loadThumbnails()
     }
