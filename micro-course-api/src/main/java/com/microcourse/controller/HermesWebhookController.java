@@ -384,6 +384,30 @@ public class HermesWebhookController {
         return R.ok(result);
     }
 
+    /**
+     * 轮换 API Key（仅当前调用方自己）
+     * POST /api-key/refresh
+     */
+    @PostMapping("/api-key/refresh")
+    public R<String> refreshApiKey(@RequestHeader("X-API-Key") String apiKey) {
+        User caller = authenticate(apiKey);
+        // 128 字符 URL-safe base64（足够熵）
+        String newKey = java.util.UUID.randomUUID().toString().replace("-", "")
+                + java.util.UUID.randomUUID().toString().replace("-", "")
+                + java.util.UUID.randomUUID().toString().replace("-", "");
+        caller.setApiKey(newKey);
+        caller.setUpdatedAt(java.time.LocalDateTime.now());
+        int rows = userRepository.updateById(caller);
+        if (rows == 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "API Key 轮换失败（乐观锁或无记录），请重试");
+        }
+        log.info("[HermesWebhook] API Key rotated: caller={}, oldPrefix={}..., newPrefix={}...",
+                caller.getUsername(),
+                apiKey != null && apiKey.length() >= 8 ? apiKey.substring(0, 8) : "(short)",
+                newKey.substring(0, 8));
+        return R.ok(newKey);
+    }
+
     @PostMapping("/courses/{hermesCourseId}/scripts")
     public R<?> batchPushScripts(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                                  @PathVariable String hermesCourseId,
