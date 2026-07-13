@@ -15,6 +15,7 @@ import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.SlideService;
+import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseSectionRepository;
@@ -44,6 +45,7 @@ public class HermesWebhookController {
     private final UserRepository userRepository;
     private final HermesCourseMappingRepository mappingRepository;
     private final CourseRepository courseRepository;
+    private final CourseCategoryRepository categoryRepository;
     private final CourseChapterRepository chapterRepository;
     private final CourseSectionRepository sectionRepository;
     private final CourseSlideMapper courseSlideMapper;
@@ -54,6 +56,7 @@ public class HermesWebhookController {
                                    UserRepository userRepository,
                                    HermesCourseMappingRepository mappingRepository,
                                    CourseRepository courseRepository,
+                                   CourseCategoryRepository categoryRepository,
                                    CourseChapterRepository chapterRepository,
                                    CourseSectionRepository sectionRepository,
                                    CourseSlideMapper courseSlideMapper,
@@ -63,6 +66,7 @@ public class HermesWebhookController {
         this.userRepository = userRepository;
         this.mappingRepository = mappingRepository;
         this.courseRepository = courseRepository;
+        this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
         this.sectionRepository = sectionRepository;
         this.courseSlideMapper = courseSlideMapper;
@@ -274,24 +278,15 @@ public class HermesWebhookController {
         }
     }
 
-    @DeleteMapping("/courses/{hermesCourseId}")
-    public R<Void> deleteCourse(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
-                                @PathVariable String hermesCourseId) {
-        User caller = authenticate(apiKey);
-
-        HermesCourseMapping mapping = mappingRepository.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
-                        .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
-        if (mapping == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        }
-        Long courseId = mapping.getCourseId();
-
-        // 级联删除：slide_pages → course_slides → course_sections → course_chapters → courses → mapping
+    /**
+     * 级联删除课程数据（内部方法，不依赖映射表）
+     */
+    private void cascadeDeleteCourse(Long courseId) {
         var sectionQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
                 .eq(CourseSection::getCourseId, courseId);
         List<CourseSection> sections = sectionRepository.selectList(sectionQw);
         for (CourseSection sec : sections) {
+            // 先查再删 slide_pages + course_slides（需逐 section 匹配 section_id）
             var slideQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSlide>()
                     .eq(CourseSlide::getSectionId, sec.getId());
             List<CourseSlide> slides = courseSlideMapper.selectList(slideQw);
@@ -305,11 +300,81 @@ public class HermesWebhookController {
         chapterRepository.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseChapter>()
                 .eq(CourseChapter::getCourseId, courseId));
         courseRepository.deleteById(courseId);
-        mappingRepository.deleteById(mapping.getId());
+    }
 
+    @DeleteMapping("/courses/{hermesCourseId}")
+    public R<Void> deleteCourse(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
+                                @PathVariable String hermesCourseId) {
+        User caller = authenticate(apiKey);
+        HermesCourseMapping mapping = mappingRepository.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
+        if (mapping == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        Long courseId = mapping.getCourseId();
+        cascadeDeleteCourse(courseId);
+        mappingRepository.deleteById(mapping.getId());
         log.info("[HermesWebhook] Course cascade deleted: hermesCourseId={}, courseId={}, caller={}",
                 hermesCourseId, courseId, caller.getUsername());
         return R.ok();
+    }
+
+    /**
+     * 按内部 ID 删除课程（不依赖 Hermes 映射，用于管理后台创建的课程）
+     */
+    @DeleteMapping("/courses/by-id/{courseId}")
+    public R<Void> deleteCourseById(@RequestHeader(value = "X-API-Key") String apiKey,
+                                    @PathVariable Long courseId) {
+        User caller = authenticate(apiKey);
+        com.microcourse.entity.Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        // 只允许课主或管理员删除
+        if (!caller.getId().equals(course.getTeacherId()) && !"ADMIN".equals(caller.getRole())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        cascadeDeleteCourse(courseId);
+        // 清理映射（如果有的话）
+        mappingRepository.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
+                .eq(HermesCourseMapping::getCourseId, courseId));
+        log.info("[HermesWebhook] Course by-id deleted: courseId={}, caller={}", courseId, caller.getUsername());
+        return R.ok();
+    }
+
+    /**
+     * 列出平台所有课程（含非 Hermes 创建的）
+     */
+    @GetMapping("/courses/all")
+    public R<List<com.microcourse.dto.hermes.HermesCourseListVO>> listAllCourses(
+            @RequestHeader("X-API-Key") String apiKey) {
+        User caller = authenticate(apiKey);
+        List<com.microcourse.entity.Course> courses = courseRepository.selectList(null);
+        java.util.Map<Long, com.microcourse.entity.CourseCategory> categoryCache = new java.util.HashMap<>();
+        java.util.Map<Long, HermesCourseMapping> mappingCache = new java.util.HashMap<>();
+        for (com.microcourse.entity.Course c : courses) {
+            if (c.getCategoryId() != null && !categoryCache.containsKey(c.getCategoryId())) {
+                com.microcourse.entity.CourseCategory cat = categoryRepository.selectById(c.getCategoryId());
+                if (cat != null) categoryCache.put(c.getCategoryId(), cat);
+            }
+        }
+        // 一次性加载所有映射
+        mappingRepository.selectList(null).forEach(m -> mappingCache.put(m.getCourseId(), m));
+        List<com.microcourse.dto.hermes.HermesCourseListVO> result = courses.stream()
+                .filter(c -> "ADMIN".equals(caller.getRole()) || caller.getId().equals(c.getTeacherId()))
+                .map(c -> {
+                    String hermesId = mappingCache.containsKey(c.getId()) ? mappingCache.get(c.getId()).getHermesCourseId() : null;
+                    String catName = c.getCategoryId() != null && categoryCache.containsKey(c.getCategoryId())
+                            ? categoryCache.get(c.getCategoryId()).getName() : null;
+                    return new com.microcourse.dto.hermes.HermesCourseListVO(
+                            hermesId, c.getId(), c.getTitle(),
+                            c.getStatus(), com.microcourse.enums.CourseStatus.fromCode(c.getStatus()).name(),
+                            c.getCategoryId(), catName, c.getCourseType(),
+                            c.getUpdatedAt(), c.getCreatedAt());
+                })
+                .toList();
+        return R.ok(result);
     }
 
     @PostMapping("/courses/{hermesCourseId}/scripts")
