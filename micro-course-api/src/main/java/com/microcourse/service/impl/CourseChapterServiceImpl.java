@@ -10,6 +10,7 @@ import com.microcourse.dto.ChapterSortRequest;
 import com.microcourse.dto.PageResult;
 import com.microcourse.entity.ChapterOfflineSession;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
@@ -17,6 +18,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ChapterOfflineSessionRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.ExerciseChapterRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.entity.LearningProgress;
@@ -53,6 +55,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private final CourseNoteRepository courseNoteRepository;
     private final QuestionChapterRepository questionChapterRepository;
     private final ExerciseChapterRepository exerciseChapterRepository;
+    private final CourseSectionRepository courseSectionRepository;
     private final SqlSessionFactory sqlSessionFactory;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
@@ -64,6 +67,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
                                      CourseNoteRepository courseNoteRepository,
                                      QuestionChapterRepository questionChapterRepository,
                                      ExerciseChapterRepository exerciseChapterRepository,
+                                     CourseSectionRepository courseSectionRepository,
                                      SqlSessionFactory sqlSessionFactory) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
@@ -74,6 +78,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         this.courseNoteRepository = courseNoteRepository;
         this.questionChapterRepository = questionChapterRepository;
         this.exerciseChapterRepository = exerciseChapterRepository;
+        this.courseSectionRepository = courseSectionRepository;
         this.sqlSessionFactory = sqlSessionFactory;
     }
 
@@ -307,12 +312,15 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         vo.setTitle(chapter.getTitle());
         vo.setDescription(chapter.getDescription());
         vo.setSortOrder(chapter.getSortOrder());
-        vo.setChapterType(chapter.getChapterType());
         vo.setDuration(chapter.getDuration());
         vo.setLearningObjectives(chapter.getLearningObjectives());
         vo.setCreatedAt(chapter.getCreatedAt());
         vo.setUpdatedAt(chapter.getUpdatedAt());
         vo.setVersion(chapter.getVersion());
+        Long sc = courseSectionRepository.selectCount(
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
+                .eq(CourseSection::getChapterId, chapter.getId()));
+        vo.setSectionCount(sc != null ? sc.intValue() : 0);
         return vo;
     }
 

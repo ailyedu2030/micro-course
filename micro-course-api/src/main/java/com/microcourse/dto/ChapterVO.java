@@ -10,7 +10,9 @@ public class ChapterVO {
     private String title;
     private String description;
     private Integer sortOrder;
+    @Deprecated
     private String chapterType;
+    private Integer sectionCount;
     private Integer duration;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -32,8 +34,10 @@ public class ChapterVO {
     public void setDescription(String description) { this.description = description; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
-    public String getChapterType() { return chapterType; }
-    public void setChapterType(String chapterType) { this.chapterType = chapterType; }
+    @Deprecated public String getChapterType() { return null; }
+    @Deprecated public void setChapterType(String chapterType) { /* no-op */ }
+    public Integer getSectionCount() { return sectionCount; }
+    public void setSectionCount(Integer sectionCount) { this.sectionCount = sectionCount; }
     public Integer getDuration() { return duration; }
     public void setDuration(Integer duration) { this.duration = duration; }
     public LocalDateTime getCreatedAt() { return createdAt; }
