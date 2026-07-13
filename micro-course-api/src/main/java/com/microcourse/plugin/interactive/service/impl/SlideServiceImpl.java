@@ -388,7 +388,9 @@ public class SlideServiceImpl implements SlideService {
     @Override
     public List<SlideVO> listByCourseId(Long courseId) {
         return courseSlideMapper.selectList(
-                new LambdaQueryWrapper<CourseSlide>().eq(CourseSlide::getCourseId, courseId))
+                new LambdaQueryWrapper<CourseSlide>()
+                        .eq(CourseSlide::getCourseId, courseId)
+                        .orderByAsc(CourseSlide::getSectionId))
                 .stream().map(this::toVO).collect(Collectors.toList());
     }
 
