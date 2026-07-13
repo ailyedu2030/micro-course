@@ -50,7 +50,10 @@
         </el-empty>
       </div>
       <el-table v-else :data="filteredSlides" stripe v-loading="loading" @row-click="goEdit">
-        <el-table-column prop="courseTitle" label="所属课程" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="courseTitle" label="所属课程" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="chapterTitle" label="所属章节" min-width="160" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.chapterTitle || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="fileName" label="课件文件" min-width="180" show-overflow-tooltip />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">

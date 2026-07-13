@@ -13,6 +13,8 @@ import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
+import com.microcourse.entity.CourseChapter;
+import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.util.SecurityUtil;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
@@ -61,6 +63,7 @@ public class SlideServiceImpl implements SlideService {
     private final CourseSlideMapper courseSlideMapper;
     private final SlidePageMapper slidePageMapper;
     private final CourseRepository courseRepository;
+    private final CourseChapterRepository courseChapterRepository;
     private final SlideRenderService slideRenderService;
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
@@ -72,10 +75,12 @@ public class SlideServiceImpl implements SlideService {
     public SlideServiceImpl(CourseSlideMapper courseSlideMapper,
                             SlidePageMapper slidePageMapper,
                             CourseRepository courseRepository,
+                            CourseChapterRepository courseChapterRepository,
                             SlideRenderService slideRenderService) {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
+        this.courseChapterRepository = courseChapterRepository;
         this.slideRenderService = slideRenderService;
     }
 
@@ -367,6 +372,11 @@ public class SlideServiceImpl implements SlideService {
         vo.setStatusText(SlideVO.statusText(s.getStatus()));
         vo.setErrorMessage(s.getErrorMessage());
         vo.setCreatedAt(s.getCreatedAt()); vo.setUpdatedAt(s.getUpdatedAt());
+        vo.setChapterId(s.getChapterId());
+        if (s.getChapterId() != null) {
+            CourseChapter chapter = courseChapterRepository.selectById(s.getChapterId());
+            if (chapter != null) vo.setChapterTitle(chapter.getTitle());
+        }
         return vo;
     }
 

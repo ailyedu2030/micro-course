@@ -6,6 +6,8 @@ public class SlideVO {
 
     private Long id;
     private Long courseId;
+    private Long chapterId;
+    private String chapterTitle;
     private String fileName;
     private Integer totalPages;
     private Integer status;
@@ -20,6 +22,10 @@ public class SlideVO {
     public void setId(Long id) { this.id = id; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
+    public Long getChapterId() { return chapterId; }
+    public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
+    public String getChapterTitle() { return chapterTitle; }
+    public void setChapterTitle(String chapterTitle) { this.chapterTitle = chapterTitle; }
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
     public Integer getTotalPages() { return totalPages; }
