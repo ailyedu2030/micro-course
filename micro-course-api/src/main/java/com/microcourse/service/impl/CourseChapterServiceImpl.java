@@ -171,9 +171,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
             sortOrder = maxSort + 1;
         }
         chapter.setSortOrder(sortOrder);
-        String chapterType = request.getChapterType() != null ? request.getChapterType() : "VIDEO";
-        validateChapterType(chapterType);
-        chapter.setChapterType(chapterType);
         chapter.setDuration(request.getDuration());
         chapter.setCreatedAt(LocalDateTime.now());
         chapter.setUpdatedAt(LocalDateTime.now());
@@ -201,10 +198,6 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         }
         if (request.getTitle() != null) chapter.setTitle(request.getTitle());
         if (request.getDescription() != null) chapter.setDescription(request.getDescription());
-        // 章节类型允许修改
-        if (request.getChapterType() != null) {
-            chapter.setChapterType(request.getChapterType().trim().toUpperCase());
-        }
         if (request.getDuration() != null) chapter.setDuration(request.getDuration());
 
         chapter.setUpdatedAt(LocalDateTime.now());
@@ -344,18 +337,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         }
     }
 
-    private static final java.util.Set<String> VALID_CHAPTER_TYPES = java.util.Set.of(
-        "VIDEO", "INTERACTIVE", "EXERCISE", "OFFLINE"
-    );
-
     private boolean isCoursePublished(Long courseId) {
         Course course = courseRepository.selectById(courseId);
         return course != null && course.getStatus() == CourseStatus.PUBLISHED.getCode();
-    }
-
-    private void validateChapterType(String chapterType) {
-        if (chapterType != null && !VALID_CHAPTER_TYPES.contains(chapterType)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无效的章节类型: " + chapterType);
-        }
     }
 }

@@ -391,7 +391,6 @@ public class CourseAdminServiceImpl implements CourseAdminService {
             copyCh.setTitle(ch.getTitle());
             copyCh.setDescription(ch.getDescription());
             copyCh.setSortOrder(ch.getSortOrder());
-            copyCh.setChapterType(ch.getChapterType());
             copyCh.setDuration(ch.getDuration());
             copyCh.setLearningObjectives(ch.getLearningObjectives());
             chapterRepository.insert(copyCh);

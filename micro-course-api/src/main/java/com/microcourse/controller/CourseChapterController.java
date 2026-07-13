@@ -65,8 +65,7 @@ public class CourseChapterController {
     @AuditedLog("更新章节")
     public R<ChapterVO> update(@PathVariable Long id,
                                @Valid @RequestBody ChapterUpdateRequest request) {
-        log.info("[ChapterUpdate] id={} chapterType='{}' title='{}'", id,
-                request.getChapterType(), request.getTitle());
+        log.info("[ChapterUpdate] id={} title='{}'", id, request.getTitle());
         ChapterVO vo = chapterService.update(id, request);
         return R.ok(vo);
     }

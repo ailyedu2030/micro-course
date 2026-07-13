@@ -197,10 +197,6 @@ private final HermesCourseMappingRepository mappingRepository;
                 chapter.setCourseId(courseId);
                 chapter.setTitle(dto.getTitle());
                 chapter.setSortOrder(sortOrder);
-                String chapterType = dto.getLessons() != null && !dto.getLessons().isEmpty()
-                        && dto.getLessons().get(0).getType() != null
-                        ? dto.getLessons().get(0).getType().trim().toUpperCase() : "VIDEO";
-                chapter.setChapterType(chapterType);
                 chapter.setDuration(0);
                 var now = LocalDateTime.now();
                 chapter.setCreatedAt(now);
