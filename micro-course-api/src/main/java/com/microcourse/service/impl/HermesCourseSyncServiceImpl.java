@@ -211,33 +211,40 @@ private final HermesCourseMappingRepository mappingRepository;
             }
 
             // upsert sections under this chapter
-            upsertSections(courseId, chapter.getId(), dto.getLessons(), dto.getTitle());
+            upsertSections(courseId, chapter.getId(), dto.getLessons());
 
             if (dto.getLessons() == null || dto.getLessons().isEmpty()) {
-                CourseSection defaultSection = new CourseSection();
-                defaultSection.setChapterId(chapter.getId());
-                defaultSection.setCourseId(courseId);
-                defaultSection.setTitle(dto.getTitle());
-                defaultSection.setSectionType("VIDEO");
-                defaultSection.setSortOrder(1);
-                defaultSection.setVisible(true);
-                var now = LocalDateTime.now();
-                defaultSection.setCreatedAt(now);
-                defaultSection.setUpdatedAt(now);
-                defaultSection.setVersion(1);
-                sectionRepository.insert(defaultSection);
+                long existingCount = sectionRepository.selectCount(
+                        new LambdaQueryWrapper<CourseSection>()
+                                .eq(CourseSection::getChapterId, chapter.getId()));
+                if (existingCount == 0) {
+                    CourseSection defaultSection = new CourseSection();
+                    defaultSection.setChapterId(chapter.getId());
+                    defaultSection.setCourseId(courseId);
+                    defaultSection.setTitle(dto.getTitle());
+                    defaultSection.setSectionType("VIDEO");
+                    defaultSection.setSortOrder(1);
+                    defaultSection.setVisible(true);
+                    var now = LocalDateTime.now();
+                    defaultSection.setCreatedAt(now);
+                    defaultSection.setUpdatedAt(now);
+                    defaultSection.setVersion(1);
+                    sectionRepository.insert(defaultSection);
+                }
             }
         }
 
-        // delete chapters that no longer exist in Hermes data
+        // delete chapters that no longer exist in Hermes data (cascade sections)
         for (CourseChapter ch : existingChapters) {
             if (!matchedChapterIds.contains(ch.getId())) {
+                sectionRepository.delete(new LambdaQueryWrapper<CourseSection>()
+                        .eq(CourseSection::getChapterId, ch.getId()));
                 chapterRepository.deleteById(ch.getId());
             }
         }
     }
 
-    private void upsertSections(Long courseId, Long chapterId, List<LessonDto> lessons, String chapterTitle) {
+    private void upsertSections(Long courseId, Long chapterId, List<LessonDto> lessons) {
         if (lessons == null || lessons.isEmpty()) return;
 
         List<CourseSection> existingSections = sectionRepository.selectList(
