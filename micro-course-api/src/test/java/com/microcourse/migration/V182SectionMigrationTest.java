@@ -22,6 +22,22 @@ class V182SectionMigrationTest {
     }
 
     @Test
+    void should_drop_lessons_table() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        Integer tableCount = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'lessons'", Integer.class);
+        assertThat(tableCount).isZero();
+    }
+
+    @Test
+    void should_drop_chapter_type_column() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        Integer colCount = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM information_schema.columns WHERE table_name='course_chapters' AND column_name='chapter_type'", Integer.class);
+        assertThat(colCount).isZero();
+    }
+
+    @Test
     void should_migrate_slides_section_id() throws Exception {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         Integer total = jdbc.queryForObject(
@@ -37,11 +53,9 @@ class V182SectionMigrationTest {
     @Test
     void should_migrate_lessons_to_sections() throws Exception {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        Integer originalLessons = jdbc.queryForObject(
-            "SELECT COUNT(*) FROM lessons WHERE deleted_at IS NULL", Integer.class);
         Integer migrated = jdbc.queryForObject(
             "SELECT COUNT(*) FROM course_sections WHERE sort_order >= 10000", Integer.class);
-        assertThat(migrated).isGreaterThanOrEqualTo(originalLessons != null ? originalLessons : 0);
+        assertThat(migrated).isGreaterThan(0);
     }
 
     @Test
