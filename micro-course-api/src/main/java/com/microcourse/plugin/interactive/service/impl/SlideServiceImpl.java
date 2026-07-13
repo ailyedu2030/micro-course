@@ -165,9 +165,10 @@ public class SlideServiceImpl implements SlideService {
             CourseSection sec = sectionRepo.selectById(sectionId);
             if (sec != null) {
                 log.info("[SlideUpload] Writing content_url for section={}, course={}", sectionId, courseId);
-                sec.setContentUrl("/api/courses/" + courseId + "/slides/pages");
+                sec.setContentUrl("/api/courses/" + courseId + "/sections/" + sectionId + "/slide");
                 sec.setUpdatedAt(LocalDateTime.now());
                 int affected = sectionRepo.updateById(sec);
+                log.info("[SlideUpload] Writing content_url for section={}, course={}", sectionId, courseId);
                 log.info("[SlideUpload] content_url affectedRows={}, section={}, version={}",
                         affected, sectionId, sec.getVersion());
             } else {
@@ -264,9 +265,10 @@ public class SlideServiceImpl implements SlideService {
             CourseSection sec = sectionRepo.selectById(sectionId);
             if (sec != null) {
                 log.info("[SlideUpload-HtmlFile] Writing content_url for section={}, course={}", sectionId, courseId);
-                sec.setContentUrl("/api/courses/" + courseId + "/slides/pages");
+                sec.setContentUrl("/api/courses/" + courseId + "/sections/" + sectionId + "/slide");
                 sec.setUpdatedAt(LocalDateTime.now());
                 int affected = sectionRepo.updateById(sec);
+                log.info("[SlideUpload-HtmlFile] Writing content_url for section={}, course={}", sectionId, courseId);
                 log.info("[SlideUpload-HtmlFile] content_url affectedRows={}, section={}",
                         affected, sectionId);
             } else {
