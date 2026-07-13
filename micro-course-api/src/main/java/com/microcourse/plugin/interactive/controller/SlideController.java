@@ -119,9 +119,10 @@ public class SlideController {
     @GetMapping("/pages")
     @PreAuthorize("isAuthenticated()")
     public R<List<SlidePageVO>> getPages(@PathVariable Long courseId,
+                                        @RequestParam(required = false) Long lessonId,
                                         @RequestParam(required = false) Long chapterId) {
         verifyAccess(courseId);
-        return R.ok(slideService.getPages(courseId, chapterId));
+        return R.ok(slideService.getPages(courseId, lessonId != null ? lessonId : chapterId));
     }
 
     @GetMapping("/pages/{pageNumber}")
@@ -163,8 +164,9 @@ public class SlideController {
     @DeleteMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> deleteSlide(@PathVariable Long courseId,
+                               @RequestParam(required = false) Long lessonId,
                                @RequestParam(required = false) Long chapterId) {
-        slideService.deleteSlide(courseId, chapterId);
+        slideService.deleteSlide(courseId, lessonId != null ? lessonId : chapterId);
         return R.ok();
     }
 

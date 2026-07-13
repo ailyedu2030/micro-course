@@ -19,7 +19,7 @@ public interface SlideService {
     SlideVO getByCourseId(Long courseId);
     List<SlideVO> listByCourseId(Long courseId);
 
-    List<SlidePageVO> getPages(Long courseId, Long chapterId);
+    List<SlidePageVO> getPages(Long courseId, Long lessonId);
 
     SlidePageVO getPage(Long courseId, Integer pageNumber);
 
@@ -27,7 +27,7 @@ public interface SlideService {
 
     byte[] getPageThumbnail(Long courseId, Integer pageNumber);
 
-    void deleteSlide(Long courseId, Long chapterId);
+    void deleteSlide(Long courseId, Long lessonId);
 
     void deletePage(Long courseId, Integer pageNumber);
 

@@ -138,10 +138,10 @@ public class HermesWebhookController {
                     java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
             SecurityContextHolder.getContext().setAuthentication(auth);
 
+            Long effectiveId = lessonId != null ? lessonId : chapterId;
             Object resp;
             if (isHtml) {
-                // Delete existing slide for this chapter only, then upload fresh
-                try { slideService.deleteSlide(courseId, chapterId); } catch (Exception ignored) {}
+                try { slideService.deleteSlide(courseId, effectiveId); } catch (Exception ignored) {}
                 resp = slideService.uploadHtmlFile(courseId, file, chapterId);
             } else {
                 resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);
@@ -198,7 +198,8 @@ public class HermesWebhookController {
                 com.microcourse.plugin.interactive.dto.SlidePageVO p = pages.get(i);
                 java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
                 pageBody.put("narrationScript", pageScript);
-                if (p.getChapterId() != null) { pageBody.put("_chapterId", p.getChapterId()); }
+                if (p.getLessonId() != null) { pageBody.put("_lessonId", p.getLessonId()); }
+                else if (p.getChapterId() != null) { pageBody.put("_chapterId", p.getChapterId()); }
                 slideService.updatePage(courseId, p.getPageNumber(), pageBody);
                 updated++;
             }

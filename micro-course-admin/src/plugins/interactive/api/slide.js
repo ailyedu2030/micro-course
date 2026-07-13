@@ -80,8 +80,8 @@ export function updateNarrationSettings(courseId, data) {
   return request({ method: 'PUT', url: `/courses/${courseId}/narration-settings`, data })
 }
 
-export function deleteSlide(courseId, chapterId) {
-  const params = chapterId ? { chapterId } : {}
+export function deleteSlide(courseId, lessonId) {
+  const params = lessonId ? { chapterId: lessonId } : {}
   return request({ method: 'DELETE', url: `/courses/${courseId}/slides`, params })
 }
 

@@ -14,8 +14,10 @@ import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
 import com.microcourse.entity.CourseChapter;
+import com.microcourse.entity.Lesson;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.LessonRepository;
 import com.microcourse.util.SecurityUtil;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
@@ -64,6 +66,7 @@ public class SlideServiceImpl implements SlideService {
     private final SlidePageMapper slidePageMapper;
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
+    private final LessonRepository lessonRepository;
     private final SlideRenderService slideRenderService;
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
@@ -76,11 +79,13 @@ public class SlideServiceImpl implements SlideService {
                             SlidePageMapper slidePageMapper,
                             CourseRepository courseRepository,
                             CourseChapterRepository courseChapterRepository,
+                            LessonRepository lessonRepository,
                             SlideRenderService slideRenderService) {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
+        this.lessonRepository = lessonRepository;
         this.slideRenderService = slideRenderService;
     }
 
@@ -306,10 +311,10 @@ public class SlideServiceImpl implements SlideService {
     }
 
     @Override
-    public List<SlidePageVO> getPages(Long courseId, Long chapterId) {
+    public List<SlidePageVO> getPages(Long courseId, Long lessonId) {
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
         qw.eq(SlidePage::getCourseId, courseId);
-        if (chapterId != null) { qw.eq(SlidePage::getChapterId, chapterId); }
+        if (lessonId != null) { qw.eq(SlidePage::getLessonId, lessonId); }
         qw.orderByAsc(SlidePage::getSlideId).orderByAsc(SlidePage::getPageNumber);
         return slidePageMapper.selectList(qw).stream().map(this::toPageVO).collect(Collectors.toList());
     }
@@ -373,9 +378,14 @@ public class SlideServiceImpl implements SlideService {
         vo.setErrorMessage(s.getErrorMessage());
         vo.setCreatedAt(s.getCreatedAt()); vo.setUpdatedAt(s.getUpdatedAt());
         vo.setChapterId(s.getChapterId());
+        vo.setLessonId(s.getLessonId());
         if (s.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(s.getChapterId());
             if (chapter != null) vo.setChapterTitle(chapter.getTitle());
+        }
+        if (s.getLessonId() != null) {
+            Lesson lesson = lessonRepository.selectById(s.getLessonId());
+            if (lesson != null) vo.setLessonTitle(lesson.getTitle());
         }
         return vo;
     }
@@ -415,12 +425,12 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteSlide(Long courseId, Long chapterId) {
+    public void deleteSlide(Long courseId, Long lessonId) {
         verifyOwner(courseId);
         LambdaQueryWrapper<CourseSlide> wrapper = new LambdaQueryWrapper<CourseSlide>()
                 .eq(CourseSlide::getCourseId, courseId);
-        if (chapterId != null) {
-            wrapper.eq(CourseSlide::getChapterId, chapterId);
+        if (lessonId != null) {
+            wrapper.eq(CourseSlide::getLessonId, lessonId);
         }
         List<CourseSlide> slides = courseSlideMapper.selectList(wrapper);
         if (slides.isEmpty()) throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND);
@@ -456,9 +466,14 @@ public class SlideServiceImpl implements SlideService {
     public SlidePageVO updatePage(Long courseId, Integer pageNumber, Map<String, Object> body) {
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
                 .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber);
-        Object chIdObj = body != null ? body.get("_chapterId") : null;
-        if (chIdObj instanceof Number) {
-            qw.eq(SlidePage::getChapterId, ((Number) chIdObj).longValue());
+        Object lIdObj = body != null ? body.get("_lessonId") : null;
+        if (lIdObj instanceof Number) {
+            qw.eq(SlidePage::getLessonId, ((Number) lIdObj).longValue());
+        } else {
+            Object chIdObj = body != null ? body.get("_chapterId") : null;
+            if (chIdObj instanceof Number) {
+                qw.eq(SlidePage::getChapterId, ((Number) chIdObj).longValue());
+            }
         }
         SlidePage p = slidePageMapper.selectOne(qw);
         if (p == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
