@@ -174,10 +174,10 @@
                     <template #title>
                       <span class="outline-idx">{{ idx + 1 }}</span>
                       <span class="outline-title">{{ ch.title }}</span>
-                      <el-tag v-if="ch.chapterType === 'VIDEO'" size="small" type="primary" effect="plain">📹 视频课</el-tag>
-                      <el-tag v-else-if="ch.chapterType === 'INTERACTIVE'" size="small" type="success" effect="plain">🎯 互动课</el-tag>
-                      <el-tag v-else-if="ch.chapterType === 'EXERCISE'" size="small" type="warning" effect="plain">📝 练习</el-tag>
-                      <el-tag v-else-if="ch.chapterType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课 (需线下授课)</el-tag>
+                      <el-tag v-if="ch.sectionType === 'VIDEO'" size="small" type="primary" effect="plain">📹 视频课</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'INTERACTIVE'" size="small" type="success" effect="plain">🎯 互动课</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'EXERCISE'" size="small" type="warning" effect="plain">📝 练习</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课 (需线下授课)</el-tag>
                       <el-tag v-else size="small" type="info" effect="plain">—</el-tag>
                       <span class="outline-duration">{{ formatDuration(ch.duration) }}</span>
                     </template>
@@ -556,11 +556,12 @@ async function handleAddCart() {
 }
 
 const handleChapterClick = (row) => {
-  if (row.chapterType === 'EXERCISE') {
+  const type = row.sectionType
+  if (type === 'EXERCISE') {
     router.push(`/student/chapters/${row.id}/exercises`)
-  } else if (row.chapterType === 'INTERACTIVE') {
+  } else if (type === 'INTERACTIVE') {
     router.push(`/student/courses/${courseId.value}/slides/player?chapterId=${row.id}`)
-  } else if (row.chapterType === 'OFFLINE') {
+  } else if (type === 'OFFLINE') {
     router.push(`/student/chapters/${row.id}/offline`)
   } else {
     router.push(`/student/learning?courseId=${courseId.value}&chapterId=${row.id}`)

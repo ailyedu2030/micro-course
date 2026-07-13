@@ -22,7 +22,7 @@
         </el-form-item>
         <el-form-item label="章节">
           <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable class="filter-input-w200" :disabled="!searchForm.courseId">
-            <el-option v-for="item in chapterOptions" :key="item.id" :label="`${item.title}（${chapterTypeLabel(item.chapterType)}）`" :value="item.id" />
+            <el-option v-for="item in chapterOptions" :key="item.id" :label="`${item.title}（${chapterTypeLabel(item.sectionType)}）`" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -93,7 +93,7 @@
         </el-form-item>
         <el-form-item label="章节" prop="chapterIds">
           <el-select v-model="formData.chapterIds" placeholder="请选择章节（可多选）" multiple collapse-tags class="full-width" :disabled="!formData.courseId">
-            <el-option v-for="item in formChapterOptions" :key="item.id" :label="`${item.title}（${chapterTypeLabel(item.chapterType)}）`" :value="item.id" />
+            <el-option v-for="item in formChapterOptions" :key="item.id" :label="`${item.title}（${chapterTypeLabel(item.sectionType)}）`" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="标题" prop="title">

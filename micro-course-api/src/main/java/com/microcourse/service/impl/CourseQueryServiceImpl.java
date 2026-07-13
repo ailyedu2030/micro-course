@@ -10,6 +10,7 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
 import com.microcourse.entity.CourseChapter;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.User;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
@@ -18,6 +19,7 @@ import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseReviewRepository;
+import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseQueryService;
@@ -47,6 +49,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
     private final CourseCategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final CourseChapterRepository chapterRepository;
+    private final CourseSectionRepository sectionRepository;
     private final CourseReviewRepository reviewRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final RedisUtil redisUtil;
@@ -55,6 +58,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
                                   CourseCategoryRepository categoryRepository,
                                   UserRepository userRepository,
                                   CourseChapterRepository chapterRepository,
+                                  CourseSectionRepository sectionRepository,
                                   CourseReviewRepository reviewRepository,
                                   EnrollmentRepository enrollmentRepository,
                                   RedisUtil redisUtil) {
@@ -62,6 +66,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.chapterRepository = chapterRepository;
+        this.sectionRepository = sectionRepository;
         this.reviewRepository = reviewRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.redisUtil = redisUtil;
@@ -254,7 +259,19 @@ public class CourseQueryServiceImpl implements CourseQueryService {
                 .orderByAsc(CourseChapter::getSortOrder)
                 .last("LIMIT 200");
         List<CourseChapter> chapters = chapterRepository.selectList(chapterWrapper);
-        vo.setChapters(chapters.stream().map(this::convertChapterToVO).collect(Collectors.toList()));
+        // 批量查询所有章节的课时类型，用于推导 ChapterVO.sectionType
+        Map<Long, String> sectionTypeMap = new java.util.HashMap<>();
+        if (!chapters.isEmpty()) {
+            List<Long> chapterIds = chapters.stream().map(CourseChapter::getId).collect(Collectors.toList());
+            List<CourseSection> allSections = sectionRepository.selectList(
+                    new LambdaQueryWrapper<CourseSection>().in(CourseSection::getChapterId, chapterIds)
+                            .orderByAsc(CourseSection::getSortOrder));
+            for (CourseSection s : allSections) {
+                sectionTypeMap.putIfAbsent(s.getChapterId(), s.getSectionType());
+            }
+        }
+        Map<Long, String> finalMap = sectionTypeMap;
+        vo.setChapters(chapters.stream().map(ch -> convertChapterToVO(ch, finalMap.get(ch.getId()))).collect(Collectors.toList()));
 
         // 3) 写缓存（含章节的完整 VO；Redis 故障不影响主流程，硬约束 #2）
         try {
@@ -484,7 +501,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         return vo;
     }
 
-    private ChapterVO convertChapterToVO(CourseChapter chapter) {
+    private ChapterVO convertChapterToVO(CourseChapter chapter, String sectionType) {
         ChapterVO vo = new ChapterVO();
         vo.setId(chapter.getId());
         vo.setCourseId(chapter.getCourseId());
@@ -492,19 +509,18 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         vo.setDescription(chapter.getDescription());
         vo.setSortOrder(chapter.getSortOrder());
         vo.setChapterType(chapter.getChapterType());
+        vo.setSectionType(sectionType);
         vo.setDuration(chapter.getDuration());
         vo.setCreatedAt(chapter.getCreatedAt());
         vo.setUpdatedAt(chapter.getUpdatedAt());
         vo.setVersion(chapter.getVersion());
         vo.setLearningObjectives(chapter.getLearningObjectives());
-        // 从 learningObjectives 提取 keyConcepts（按换行/逗号/分号分割）
         if (chapter.getLearningObjectives() != null && !chapter.getLearningObjectives().isEmpty()) {
             vo.setKeyConcepts(Arrays.stream(chapter.getLearningObjectives().split("[\\n,;]"))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
                     .collect(Collectors.toList()));
         }
-        // exercises 留空,等待 Phase 6 练习模块实现
         return vo;
     }
 

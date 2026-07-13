@@ -45,7 +45,7 @@
       <main class="content-main">
         <!-- 视频播放器 — 仅 VIDEO 章节显示 -->
         <VideoSection
-          v-if="currentChapter?.chapterType === 'VIDEO'"
+          v-if="currentChapter?.sectionType === 'VIDEO'"
           :current-video="currentVideo"
           :initial-position="initialPosition"
           :prev-lesson="prevLesson"
@@ -57,17 +57,17 @@
         />
 
         <!-- 非 VIDEO 章节:显示类型对应的操作按钮 -->
-        <div v-else-if="currentChapter?.chapterType === 'INTERACTIVE'" class="chapter-content-placeholder">
+        <div v-else-if="currentChapter?.sectionType === 'INTERACTIVE'" class="chapter-content-placeholder">
           <el-empty description="此章节为互动课件">
             <el-button type="primary" @click="goChapterContent(currentChapter, 'INTERACTIVE')">进入课件</el-button>
           </el-empty>
         </div>
-        <div v-else-if="currentChapter?.chapterType === 'OFFLINE'" class="chapter-content-placeholder">
+        <div v-else-if="currentChapter?.sectionType === 'OFFLINE'" class="chapter-content-placeholder">
           <el-empty description="此章节为线下课程">
             <el-button type="primary" @click="goChapterContent(currentChapter, 'OFFLINE')">查看场次</el-button>
           </el-empty>
         </div>
-        <div v-else-if="currentChapter?.chapterType === 'EXERCISE'" class="chapter-content-placeholder">
+        <div v-else-if="currentChapter?.sectionType === 'EXERCISE'" class="chapter-content-placeholder">
           <el-empty description="此章节为练习">
             <el-button type="primary" @click="goChapterContent(currentChapter, 'EXERCISE')">开始练习</el-button>
           </el-empty>
@@ -277,7 +277,7 @@ async function loadCourse(cid) {
     const rawChapters = courseRes.data.chapters || []
     chapters.value = rawChapters.map(ch => {
       let lessons = []
-      if (ch.chapterType === 'VIDEO') {
+      if (ch.sectionType === 'VIDEO') {
         const videos = videosByChapter[ch.id] || []
         if (videos.length === 0) {
           lessons = [{
@@ -302,7 +302,7 @@ async function loadCourse(cid) {
             }
           })
         }
-      } else if (ch.chapterType === 'INTERACTIVE') {
+      } else if (ch.sectionType === 'INTERACTIVE') {
         lessons = [{
           id: `slide-${ch.id}`,
           title: '互动课件',
@@ -311,7 +311,7 @@ async function loadCourse(cid) {
           status: 'NOT_STARTED',
           duration: ch.duration || 0
         }]
-      } else if (ch.chapterType === 'OFFLINE') {
+      } else if (ch.sectionType === 'OFFLINE') {
         lessons = [{
           id: `offline-${ch.id}`,
           title: '线下课签到',
@@ -320,7 +320,7 @@ async function loadCourse(cid) {
           status: 'NOT_STARTED',
           duration: 0
         }]
-      } else if (ch.chapterType === 'EXERCISE') {
+      } else if (ch.sectionType === 'EXERCISE') {
         // 练习:生成一个可点击的"开始练习"条目
         lessons = [{
           id: `exercise-${ch.id}`,
@@ -366,7 +366,7 @@ async function loadProgress() {
       chapters.value.forEach(ch => {
         if (ch.lessons) {
           ch.lessons.forEach(l => {
-            if (ch.chapterType === 'VIDEO') {
+            if (ch.sectionType === 'VIDEO') {
               // VIDEO 章节: 按 lessonId 查找进度
               const prog = progressMap.value[l.id]
               l.status = prog?.completed ? 'COMPLETED' : 'NOT_STARTED'

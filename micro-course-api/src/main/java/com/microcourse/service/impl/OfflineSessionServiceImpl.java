@@ -15,6 +15,7 @@ import com.microcourse.entity.AttendanceRecord;
 import com.microcourse.entity.ChapterOfflineSession;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
@@ -25,6 +26,7 @@ import com.microcourse.repository.ChapterOfflineSessionRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.OfflineSessionService;
@@ -61,6 +63,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
     private final LearningProgressRepository learningProgressRepository;
     private static final Logger log = LoggerFactory.getLogger(OfflineSessionServiceImpl.class);
 
+    private final CourseSectionRepository sectionRepository;
     private final UserRepository userRepository;
     private final RedisUtil redisUtil;
 
@@ -80,6 +83,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
                                       CourseRepository courseRepository,
                                       EnrollmentRepository enrollmentRepository,
                                       LearningProgressRepository learningProgressRepository,
+                                      CourseSectionRepository sectionRepository,
                                       UserRepository userRepository,
                                       RedisUtil redisUtil) {
         this.sessionRepository = sessionRepository;
@@ -88,6 +92,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.learningProgressRepository = learningProgressRepository;
+        this.sectionRepository = sectionRepository;
         this.userRepository = userRepository;
         this.redisUtil = redisUtil;
     }
@@ -135,8 +140,12 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
         if (chapter == null) {
             throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
         }
-        if (!"OFFLINE".equals(chapter.getChapterType())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该章节不是线下课程，无法创建线下安排");
+        long offlineSectionCount = sectionRepository.selectCount(
+                new LambdaQueryWrapper<CourseSection>()
+                        .eq(CourseSection::getChapterId, chapterId)
+                        .eq(CourseSection::getSectionType, "OFFLINE"));
+        if (offlineSectionCount == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该章节没有线下课时，无法创建线下安排");
         }
         assertCourseOwnerByCourseId(chapter.getCourseId());
 

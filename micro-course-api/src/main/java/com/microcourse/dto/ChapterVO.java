@@ -12,6 +12,8 @@ public class ChapterVO {
     private Integer sortOrder;
     @Deprecated
     private String chapterType;
+    /** 从 course_sections.section_type 推导的章节类型（取第一个课时的类型） */
+    private String sectionType;
     private Integer sectionCount;
     private Integer duration;
     private LocalDateTime createdAt;
@@ -36,6 +38,8 @@ public class ChapterVO {
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
     @Deprecated public String getChapterType() { return null; }
     @Deprecated public void setChapterType(String chapterType) { /* no-op */ }
+    public String getSectionType() { return sectionType; }
+    public void setSectionType(String sectionType) { this.sectionType = sectionType; }
     public Integer getSectionCount() { return sectionCount; }
     public void setSectionCount(Integer sectionCount) { this.sectionCount = sectionCount; }
     public Integer getDuration() { return duration; }

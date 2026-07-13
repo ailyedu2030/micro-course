@@ -317,10 +317,16 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         vo.setCreatedAt(chapter.getCreatedAt());
         vo.setUpdatedAt(chapter.getUpdatedAt());
         vo.setVersion(chapter.getVersion());
-        Long sc = courseSectionRepository.selectCount(
-            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
-                .eq(CourseSection::getChapterId, chapter.getId()));
+        var qw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
+                .eq(CourseSection::getChapterId, chapter.getId());
+        Long sc = courseSectionRepository.selectCount(qw);
         vo.setSectionCount(sc != null ? sc.intValue() : 0);
+        // 取第一个课时的类型作为 sectionType
+        CourseSection firstSection = courseSectionRepository.selectOne(
+                qw.orderByAsc(CourseSection::getSortOrder).last("LIMIT 1"));
+        if (firstSection != null) {
+            vo.setSectionType(firstSection.getSectionType());
+        }
         return vo;
     }
 

@@ -909,7 +909,7 @@ const loadChapters = async () => {
     chapters.value = list.map((c, i) => ({
       ...c,
       isCompleted: false
-    })).filter(ch => ch.chapterType === 'VIDEO')
+    })).filter(ch => ch.sectionType === 'VIDEO')
     // Mark current chapter
     const idx = chapters.value.findIndex(c => Number(c.id) === Number(chapterId.value))
     if (idx >= 0) currentChapterIndex.value = idx
