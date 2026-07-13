@@ -122,7 +122,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus, UploadFilled } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
-import { getSlides, getSlidePages, deleteSlide, uploadSlide } from '@/plugins/interactive/api/slide'
+import { getSlides, listSlides, getSlidePages, deleteSlide, uploadSlide } from '@/plugins/interactive/api/slide'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -190,21 +190,23 @@ async function loadData() {
       .filter(c => !searchForm.value.courseId || String(c.id) === String(searchForm.value.courseId))
       .map(async c => {
         try {
-          const s = await getSlides(c.id)
-          if (!s.data) return null
-          let narrationReady = 0
-          let audioReady = 0
-          try {
-            const p = await getSlidePages(c.id)
-            const pages = p.data || []
-            narrationReady = pages.filter(pg => pg.narrationStatus && pg.narrationStatus !== 'PENDING').length
-            audioReady = pages.filter(pg => pg.narrationStatus === 'AUDIO_READY').length
-          } catch { /* skip */ }
-          return { ...s.data, courseTitle: c.title, narrationReadyCount: narrationReady, audioReadyCount: audioReady }
+          const res = await listSlides(c.id)
+          const slideList = res.data || []
+          if (slideList.length === 0) return null
+          const p = await getSlidePages(c.id)
+          const allPages = p.data || []
+          return slideList.map(s => {
+            const slidePages = allPages.filter(pg => pg.slideId === s.id)
+            return {
+              ...s, courseTitle: c.title,
+              narrationReadyCount: slidePages.filter(pg => pg.narrationStatus && pg.narrationStatus !== 'PENDING').length,
+              audioReadyCount: slidePages.filter(pg => pg.narrationStatus === 'AUDIO_READY').length
+            }
+          })
         } catch { return null }
       })
     const results = await Promise.all(slidePromises)
-    slides.value = results.filter(Boolean)
+    slides.value = results.filter(Boolean).flat()
   } catch (e) {
     console.warn('[SlideOverview] load error', e)
   } finally {
@@ -234,7 +236,7 @@ async function handleDelete(row) {
   }
   deleting.value = row.courseId
   try {
-    await deleteSlide(row.courseId)
+    await deleteSlide(row.courseId, row.chapterId)
     ElMessage.success('课件已删除')
     slides.value = slides.value.filter(s => s.courseId !== row.courseId)
   } catch (e) {

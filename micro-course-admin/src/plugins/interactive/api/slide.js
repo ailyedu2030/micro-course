@@ -27,6 +27,10 @@ export function getSlides(courseId, chapterId) {
   return request({ method: 'GET', url: `/courses/${courseId}/slides`, params })
 }
 
+export function listSlides(courseId) {
+  return request({ method: 'GET', url: `/courses/${courseId}/slides/list` })
+}
+
 export function getSlidePages(courseId, chapterId) {
   const params = chapterId ? { chapterId } : {}
   return request({ method: 'GET', url: `/courses/${courseId}/slides/pages`, params })
@@ -76,8 +80,9 @@ export function updateNarrationSettings(courseId, data) {
   return request({ method: 'PUT', url: `/courses/${courseId}/narration-settings`, data })
 }
 
-export function deleteSlide(courseId) {
-  return request({ method: 'DELETE', url: `/courses/${courseId}/slides` })
+export function deleteSlide(courseId, chapterId) {
+  const params = chapterId ? { chapterId } : {}
+  return request({ method: 'DELETE', url: `/courses/${courseId}/slides`, params })
 }
 
 export function deleteSlidePage(courseId, pageNumber) {

@@ -635,7 +635,7 @@ async function handleGenerateAllTTS() {
 async function handleDeleteSlide() {
   try {
     await ElMessageBox.confirm('确定删除整个课件？此操作不可恢复。', '确认删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
-    await deleteSlide(courseId.value)
+    await deleteSlide(courseId.value, chapterId.value)
     ElMessage.success('课件已删除')
     slide.value = null
     pages.value = []

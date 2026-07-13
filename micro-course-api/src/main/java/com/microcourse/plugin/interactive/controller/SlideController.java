@@ -109,6 +109,13 @@ public class SlideController {
         return R.ok(slideService.getByCourseId(courseId));
     }
 
+    @GetMapping("/list")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<SlideVO>> listSlides(@PathVariable Long courseId) {
+        verifyAccess(courseId);
+        return R.ok(slideService.listByCourseId(courseId));
+    }
+
     @GetMapping("/pages")
     @PreAuthorize("isAuthenticated()")
     public R<List<SlidePageVO>> getPages(@PathVariable Long courseId,
