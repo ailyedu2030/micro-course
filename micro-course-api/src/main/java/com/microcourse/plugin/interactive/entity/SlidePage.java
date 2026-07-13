@@ -26,6 +26,9 @@ public class SlidePage {
     @TableField("chapter_id")
     private Long chapterId;
 
+    @TableField("lesson_id")
+    private Long lessonId;
+
     @TableField("course_id")
     private Long courseId;
 
@@ -87,6 +90,8 @@ public class SlidePage {
     public void setSlideId(Long slideId) { this.slideId = slideId; }
     public Long getChapterId() { return chapterId; }
     public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
+    public Long getLessonId() { return lessonId; }
+    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Integer getPageNumber() { return pageNumber; }

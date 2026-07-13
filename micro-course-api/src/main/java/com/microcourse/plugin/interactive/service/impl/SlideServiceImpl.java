@@ -323,9 +323,9 @@ public class SlideServiceImpl implements SlideService {
     public SlidePageVO getPage(Long courseId, Integer pageNumber) {
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
         qw.eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber);
-        SlidePage p = slidePageMapper.selectOne(qw);
-        if (p == null) { throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND); }
-        return toPageVO(p);
+        List<SlidePage> list = slidePageMapper.selectList(qw);
+        if (list.isEmpty()) { throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND); }
+        return toPageVO(list.get(0));
     }
 
     @Override
@@ -393,6 +393,7 @@ public class SlideServiceImpl implements SlideService {
     private SlidePageVO toPageVO(SlidePage p) {
         SlidePageVO vo = new SlidePageVO();
         vo.setId(p.getId()); vo.setSlideId(p.getSlideId()); vo.setChapterId(p.getChapterId());
+        vo.setLessonId(p.getLessonId());
         vo.setCourseId(p.getCourseId()); vo.setPageNumber(p.getPageNumber());
         vo.setFileUuid(p.getFileUuid()); vo.setContentType(p.getContentType());
         vo.setHtmlContent(p.getHtmlContent());
@@ -447,9 +448,10 @@ public class SlideServiceImpl implements SlideService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deletePage(Long courseId, Integer pageNumber) {
-        SlidePage p = slidePageMapper.selectOne(new LambdaQueryWrapper<SlidePage>()
+        List<SlidePage> list = slidePageMapper.selectList(new LambdaQueryWrapper<SlidePage>()
                 .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber));
-        if (p == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+        if (list.isEmpty()) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+        SlidePage p = list.get(0);
         verifyOwner(courseId);
         if (p.getFileUuid() != null) {
             try {
@@ -495,16 +497,16 @@ public class SlideServiceImpl implements SlideService {
         for (Map<String, Integer> item : order) {
             Integer old = item.get("pageNumber"); Integer nw = item.get("newPageNumber");
             if (old == null || nw == null || old.equals(nw)) continue;
-            SlidePage p = slidePageMapper.selectOne(new LambdaQueryWrapper<SlidePage>()
+            List<SlidePage> list = slidePageMapper.selectList(new LambdaQueryWrapper<SlidePage>()
                     .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, old));
-            if (p != null) { p.setPageNumber(-old); slidePageMapper.updateById(p); }
+            if (!list.isEmpty()) { SlidePage p = list.get(0); p.setPageNumber(-old); slidePageMapper.updateById(p); }
         }
         for (Map<String, Integer> item : order) {
             Integer old = item.get("pageNumber"); Integer nw = item.get("newPageNumber");
             if (old == null || nw == null || old.equals(nw)) continue;
-            SlidePage p = slidePageMapper.selectOne(new LambdaQueryWrapper<SlidePage>()
+            List<SlidePage> list = slidePageMapper.selectList(new LambdaQueryWrapper<SlidePage>()
                     .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, -old));
-            if (p != null) { p.setPageNumber(nw); slidePageMapper.updateById(p); }
+            if (!list.isEmpty()) { SlidePage p = list.get(0); p.setPageNumber(nw); slidePageMapper.updateById(p); }
         }
     }
 

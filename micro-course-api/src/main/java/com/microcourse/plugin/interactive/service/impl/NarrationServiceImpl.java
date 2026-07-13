@@ -346,11 +346,11 @@ public class NarrationServiceImpl implements NarrationService {
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getCourseId, courseId)
                 .eq(SlidePage::getPageNumber, pageNumber);
-        SlidePage page = slidePageMapper.selectOne(wrapper);
-        if (page == null) {
+        java.util.List<SlidePage> list = slidePageMapper.selectList(wrapper);
+        if (list.isEmpty()) {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         }
-        return page;
+        return list.get(0);
     }
 
     /**
