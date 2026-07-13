@@ -391,15 +391,16 @@ public class HermesWebhookController {
     @PostMapping("/api-key/refresh")
     public R<String> refreshApiKey(@RequestHeader("X-API-Key") String apiKey) {
         User caller = authenticate(apiKey);
-        // 128 字符 URL-safe base64（足够熵）
+        // 192 字符 hex 熵（约 96 字节 ≈ 768 bit），通过 UUID 拼接生成
         String newKey = java.util.UUID.randomUUID().toString().replace("-", "")
                 + java.util.UUID.randomUUID().toString().replace("-", "")
                 + java.util.UUID.randomUUID().toString().replace("-", "");
         caller.setApiKey(newKey);
         caller.setUpdatedAt(java.time.LocalDateTime.now());
+        // 用乐观锁（@Version）防止并发轮换覆盖
         int rows = userRepository.updateById(caller);
         if (rows == 0) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "API Key 轮换失败（乐观锁或无记录），请重试");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "API Key 轮换失败（乐观锁冲突），请重试");
         }
         log.info("[HermesWebhook] API Key rotated: caller={}, oldPrefix={}..., newPrefix={}...",
                 caller.getUsername(),

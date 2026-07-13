@@ -112,7 +112,7 @@ public class SlideServiceImpl implements SlideService {
         CourseSlide old = courseSlideMapper.selectOne(qw);
         Long sid;
         if (old != null) {
-            // 已有同 chapter 的 slide：复用 ID，保留 slide_pages 历史，仅替换文件
+            // 已有同 chapter 的 slide：复用 ID，UPSERT 内容
             sid = old.getId();
             old.setFileName(originalFilename);
             old.setFileUrl("pending");
@@ -121,7 +121,11 @@ public class SlideServiceImpl implements SlideService {
             old.setFileHash(fileHash);
             old.setUpdatedAt(LocalDateTime.now());
             courseSlideMapper.updateById(old);
-            log.info("[SlideUpload] UPSERT existing slide: id={}, courseId={}, chapterId={}", sid, courseId, chapterId);
+            // 清掉旧 slide_pages — 防止重新上传 PPTX 时新旧页面混在一起
+            int oldPageCount = slidePageMapper.delete(
+                new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, sid));
+            log.info("[SlideUpload] UPSERT existing slide: id={}, courseId={}, chapterId={}, oldPagesDeleted={}",
+                    sid, courseId, chapterId, oldPageCount);
         } else {
             CourseSlide slide = new CourseSlide();
             slide.setCourseId(courseId); slide.setFileName(originalFilename); slide.setFileUrl("pending");
