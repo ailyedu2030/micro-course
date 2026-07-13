@@ -269,5 +269,46 @@ class SlideServiceTest {
                 SecurityContextHolder.clearContext();
             }
         }
+
+        @Test
+        @DisplayName("HTML UPSERT — 同一 chapterId 重复上传，复用 slide_id 并删旧页")
+        void uploadHtmlFile_Upsert() {
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(1L)).thenReturn(course);
+
+                CourseSlide existing = new CourseSlide();
+                existing.setId(43L);
+                existing.setCourseId(1L);
+                existing.setChapterId(10L);
+                existing.setFileName("old.html");
+                existing.setFileUrl("html:inline");
+                existing.setStatus(2);
+                // UPSERT 查询应返回 existing
+                when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+                when(courseSlideMapper.updateById(any(CourseSlide.class))).thenReturn(1);
+                when(slidePageMapper.delete(any(LambdaQueryWrapper.class))).thenReturn(3);
+
+                MockMultipartFile newFile = new MockMultipartFile(
+                        "file", "new.html", "text/html", "<p>New content</p>".getBytes());
+
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, newFile, 10L);
+
+                // 1. 复用 slide_id=43（不重新 insert）
+                assertEquals(43L, resp.getSlideId().longValue());
+                // 2. 旧 slide_pages 被删（UPSERT 的关键）
+                verify(slidePageMapper).delete(any(LambdaQueryWrapper.class));
+                // 3. 新的 slide 走 update 而非 insert
+                verify(courseSlideMapper, never()).insert(any(CourseSlide.class));
+                verify(courseSlideMapper).updateById(any(CourseSlide.class));
+                // 4. 新 page 插入
+                verify(slidePageMapper).insert(any(SlidePage.class));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
     }
 }
