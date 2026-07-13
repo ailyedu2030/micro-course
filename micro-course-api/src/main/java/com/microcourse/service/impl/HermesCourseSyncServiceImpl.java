@@ -266,7 +266,11 @@ private final HermesCourseMappingRepository mappingRepository;
         vo.setTitle(course.getTitle());
         vo.setSubtitle(course.getSubtitle());
         vo.setSummary(course.getSummary());
-        vo.setCoverUrl(course.getCoverUrl());
+        String cover = course.getCoverUrl();
+        if (cover != null && !cover.startsWith("http") && !cover.startsWith("/api/files/")) {
+            cover = "/api/files/" + cover;
+        }
+        vo.setCoverUrl(cover);
         vo.setCategoryId(course.getCategoryId());
         vo.setTeacherId(course.getTeacherId());
         vo.setTeacherName(teacher.getRealName() != null ? teacher.getRealName() : teacher.getUsername());

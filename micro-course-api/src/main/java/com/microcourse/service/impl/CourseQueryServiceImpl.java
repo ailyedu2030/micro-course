@@ -351,6 +351,13 @@ public class CourseQueryServiceImpl implements CourseQueryService {
      * 从预加载的 Map 中装配 CourseVO（仅用于 page() 分页场景），
      * 避免每行独立查询 category/teacher 造成的 N+1。
      */
+    private String fullCoverUrl(String coverUrl) {
+        if (coverUrl != null && !coverUrl.startsWith("http") && !coverUrl.startsWith("/api/files/")) {
+            return "/api/files/" + coverUrl;
+        }
+        return coverUrl;
+    }
+
     private CourseVO convertToVOFromMaps(Course course, Map<Long, CourseCategory> categoryMap,
                                          Map<Long, User> teacherMap,
                                          Map<Long, Long> ratingCountMap) {
@@ -359,7 +366,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         vo.setTitle(course.getTitle());
         vo.setSubtitle(course.getSubtitle());
         vo.setSummary(course.getSummary());
-        vo.setCoverUrl(course.getCoverUrl());
+        vo.setCoverUrl(fullCoverUrl(course.getCoverUrl()));
         vo.setCategoryId(course.getCategoryId());
         vo.setTeacherId(course.getTeacherId());
         vo.setOfferDepartmentId(course.getOfferDepartmentId());
@@ -422,7 +429,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         vo.setTitle(course.getTitle());
         vo.setSubtitle(course.getSubtitle());
         vo.setSummary(course.getSummary());
-        vo.setCoverUrl(course.getCoverUrl());
+        vo.setCoverUrl(fullCoverUrl(course.getCoverUrl()));
         vo.setCategoryId(course.getCategoryId());
         vo.setTeacherId(course.getTeacherId());
         vo.setOfferDepartmentId(course.getOfferDepartmentId());

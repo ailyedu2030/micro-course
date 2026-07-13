@@ -475,13 +475,20 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         return course;
     }
 
+    private String fullCoverUrl(String coverUrl) {
+        if (coverUrl != null && !coverUrl.startsWith("http") && !coverUrl.startsWith("/api/files/")) {
+            return "/api/files/" + coverUrl;
+        }
+        return coverUrl;
+    }
+
     private CourseVO convertToVO(Course course) {
         CourseVO vo = new CourseVO();
         vo.setId(course.getId());
         vo.setTitle(course.getTitle());
         vo.setSubtitle(course.getSubtitle());
         vo.setSummary(course.getSummary());
-        vo.setCoverUrl(course.getCoverUrl());
+        vo.setCoverUrl(fullCoverUrl(course.getCoverUrl()));
         vo.setCategoryId(course.getCategoryId());
         vo.setTeacherId(course.getTeacherId());
         vo.setOfferDepartmentId(course.getOfferDepartmentId());
