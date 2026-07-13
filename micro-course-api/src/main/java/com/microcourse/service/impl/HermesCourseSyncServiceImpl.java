@@ -438,6 +438,7 @@ private final HermesCourseMappingRepository mappingRepository;
                 lv.setDurationMinutes(s.getDuration());
                 lv.setSortOrder(s.getSortOrder());
                 lv.setScriptContent(s.getScriptContent());
+                lv.setContentUrl(s.getContentUrl());
                 return lv;
             }).toList();
             cv.setLessons(lessonVos);
