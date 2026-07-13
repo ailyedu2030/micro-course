@@ -38,7 +38,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { WarningFilled, InfoFilled } from '@element-plus/icons-vue'
 import { reportError } from '@/utils/errorReport'
@@ -59,12 +59,25 @@ const errorDesc = ref(props.description)
 const showStack = ref(false)
 
 // P2-11: 堆栈脱敏 — 隐藏绝对路径
-const basePath = computed(() => {
-  // 运行时获取项目根路径（从错误堆栈中推断）
-  return '/Users/jackie/微课平台'
-})
+// 从错误堆栈中提取项目根路径并脱敏
+function detectBasePath() {
+  try {
+    throw new Error('__detect__')
+  } catch (e) {
+    if (!e.stack) return ''
+    const match = e.stack.match(/(?:at |@)?(file:\/\/\/?|https?:\/\/[^/]+)?([^(\s]+\/src\/)/)
+    if (match) {
+      // 取从根到 src 之前的路径
+      const path = match[2]
+      return path.replace(/\/src\/.*$/, '')
+    }
+    return ''
+  }
+}
+const basePath = ref(detectBasePath())
 function sanitizeStack(stack) {
   if (!stack) return ''
+  if (!basePath.value) return stack
   const escaped = basePath.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return stack.replace(new RegExp(escaped, 'g'), '...')
 }

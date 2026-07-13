@@ -445,7 +445,7 @@ const fetchDetail = async () => {
     const detailRes = await getMicroSpecialtyDetail(msId.value)
     ms.value = detailRes.data
     if (isLoggedIn.value) {
-      getStats(msId.value).then(r => { stats.value = r.data }).catch(() => {})
+      getStats(msId.value).then(r => { stats.value = r.data }).catch(err => console.warn('[MS] stats load failed', err))
     }
   } catch (e) {
     console.error('[MSDetail] 加载详情失败:', e)

@@ -13,7 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class CartServiceImpl implements CartService {
@@ -29,10 +33,17 @@ public class CartServiceImpl implements CartService {
     @Override
     public List<CartItem> getCart(Long userId) {
         List<CartItem> items = cartItemRepository.findActiveByUserId(userId);
-        // P1C-017: 联表检查课程状态，已下架/不可购买的商品标记 INACTIVE
+        if (items.isEmpty()) return items;
+        // P1C-017 优化: 批量查询课程状态，消除 N+1
+        Set<Long> courseIds = items.stream()
+                .map(CartItem::getCourseId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        Map<Long, Course> courseMap = courseRepository.selectBatchIds(courseIds).stream()
+                .collect(Collectors.toMap(Course::getId, c -> c));
         for (CartItem item : items) {
             if (item.getCourseId() != null) {
-                Course course = courseRepository.selectById(item.getCourseId());
+                Course course = courseMap.get(item.getCourseId());
                 if (course == null || course.getDeletedAt() != null
                         || course.getStatus() == null
                         || !CourseStatus.fromCode(course.getStatus()).isSelectable()) {
