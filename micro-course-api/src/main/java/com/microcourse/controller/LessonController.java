@@ -1,63 +1,55 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.R;
-import com.microcourse.dto.lesson.LessonCreateRequest;
-import com.microcourse.dto.lesson.LessonUpdateRequest;
-import com.microcourse.dto.lesson.LessonVO;
-import com.microcourse.service.LessonService;
-import jakarta.validation.Valid;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
-import java.util.List;
-
+/**
+ * @deprecated lessons 表已删除（V186），课时数据迁移到 course_sections。
+ * 请使用 SectionController: /api/courses/{courseId}/chapters/{chapterId}/sections
+ */
+@Deprecated
 @RestController
 @RequestMapping("/api/lessons")
-@Tag(name = "LessonController", description = "LessonController 自动生成 OpenAPI 文档")
+@Tag(name = "LessonController (已废弃)")
 public class LessonController {
-
-    private final LessonService lessonService;
-
-    public LessonController(LessonService lessonService) {
-        this.lessonService = lessonService;
-    }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<LessonVO> create(@Valid @RequestBody LessonCreateRequest req) {
-        return R.ok(lessonService.create(req.getChapterId(), req.getCourseId(), req.getTitle(), req.getLessonType()));
+    public R<Void> create() {
+        throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<LessonVO> update(@PathVariable Long id, @Valid @RequestBody LessonUpdateRequest req) {
-        return R.ok(lessonService.update(id, req.getTitle(), req.getDuration(), req.getVisible()));
+    public R<Void> update() {
+        throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<Void> delete(@PathVariable Long id) {
-        lessonService.delete(id);
-        return R.ok();
+    public R<Void> delete() {
+        throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @PutMapping("/sort")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<Void> sort(@RequestBody @Valid List<LessonVO.SortItem> items) {
-        lessonService.sort(items);
-        return R.ok();
+    public R<Void> sort() {
+        throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @GetMapping("/chapter/{chapterId}")
     @PreAuthorize("isAuthenticated()")
-    public R<List<LessonVO>> getByChapter(@PathVariable Long chapterId) {
-        return R.ok(lessonService.getByChapter(chapterId));
+    public R<Void> getByChapter() {
+        throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public R<LessonVO> getById(@PathVariable Long id) {
-        return R.ok(lessonService.getById(id));
+    public R<Void> getById() {
+        throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 }
