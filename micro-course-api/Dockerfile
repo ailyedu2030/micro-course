@@ -1,12 +1,12 @@
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+FROM --platform=linux/amd64 maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn package -DskipTests -B
 
-FROM eclipse-temurin:17-jre-alpine
-RUN apk add --no-cache ffmpeg tini wqy-zenhei fontconfig
+FROM --platform=linux/amd64 eclipse-temurin:17-jre
+RUN apt-get update && apt-get install -y ffmpeg tini fonts-wqy-zenhei fontconfig && rm -rf /var/lib/apt/lists/*
 RUN addgroup -S microcourse && adduser -S microcourse -G microcourse
 WORKDIR /app
 COPY --from=build /app/target/micro-course-api-1.0.0.jar app.jar
