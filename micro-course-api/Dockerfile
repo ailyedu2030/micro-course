@@ -5,8 +5,8 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn package -DskipTests -B
 
-FROM --platform=linux/amd64 eclipse-temurin:17-jre
-RUN apt-get update && apt-get install -y ffmpeg tini fonts-wqy-zenhei fontconfig && rm -rf /var/lib/apt/lists/*
+FROM --platform=linux/amd64 eclipse-temurin:17-jre-alpine
+RUN apk add --no-cache ffmpeg tini wqy-zenhei fontconfig
 RUN addgroup -S microcourse && adduser -S microcourse -G microcourse
 WORKDIR /app
 COPY --from=build /app/target/micro-course-api-1.0.0.jar app.jar

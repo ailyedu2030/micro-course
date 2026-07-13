@@ -59,10 +59,17 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 5) 章节：id=1 → 课程1（LearningProgress createTestProgress(1,1)）
 --          id=5 → 课程2（LearningProgress createTestProgress(2,5)）
-INSERT INTO course_chapters (id, course_id, title, sort_order, chapter_type, version, created_at, updated_at)
+INSERT INTO course_chapters (id, course_id, title, sort_order, version, created_at, updated_at)
 VALUES
-  (1, 1, 'P0测试章节1', 1, 'VIDEO', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (5, 2, 'P0测试章节5', 1, 'VIDEO', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  (1, 1, 'P0测试章节1', 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (5, 2, 'P0测试章节5', 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+-- 5b) 章节对应的课时（course_sections），替代被删除的 chapter_type/lessons
+INSERT INTO course_sections (id, chapter_id, course_id, title, section_type, sort_order, version, created_at, updated_at)
+VALUES
+  (1, 1, 1, 'P0测试课时1', 'VIDEO', 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (5, 5, 2, 'P0测试课时5', 'VIDEO', 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 -- 6) 推进序列至显式 ID 之上，避免后续 API 自增插入（createVideo/createCourse 等）主键碰撞
@@ -74,6 +81,8 @@ SELECT setval(pg_get_serial_sequence('courses', 'id'),
               GREATEST((SELECT COALESCE(MAX(id), 4) FROM courses), 4));
 SELECT setval(pg_get_serial_sequence('course_chapters', 'id'),
               GREATEST((SELECT COALESCE(MAX(id), 5) FROM course_chapters), 5));
+SELECT setval(pg_get_serial_sequence('course_sections', 'id'),
+              GREATEST((SELECT COALESCE(MAX(id), 5) FROM course_sections), 5));
 
 -- =============================================================================
 -- 7) 微专业种子数据（供 MicroSpecialtyEnrollmentFlowTest / InviteFlowTest）

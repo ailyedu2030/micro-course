@@ -94,7 +94,7 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     void cleanupCreatedData() {
         // 按 FK 依赖顺序清理
         for (Long id : createdLessonIds) {
-            try { jdbc.update("DELETE FROM lessons WHERE id = ?", id); } catch (Exception ignored) {}
+            try { jdbc.update("DELETE FROM course_sections WHERE id = ?", id); } catch (Exception ignored) {}
         }
         for (Long id : createdClassIds) {
             try { jdbc.update("DELETE FROM classes WHERE id = ?", id); } catch (Exception ignored) {}
@@ -841,12 +841,12 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     // ========================================================================
 
     @Test
-    @DisplayName("[Lesson] POST /api/lessons — TEACHER 创建课时成功")
+    @DisplayName("[Section] POST /api/courses/{courseId}/chapters/{chapterId}/sections — TEACHER 创建课时成功")
     void lessonCreate_Teacher() throws Exception {
-        var res = mockMvc.perform(post("/api/lessons")
+        var res = mockMvc.perform(post("/api/courses/1/chapters/1/sections")
                         .header("Authorization", bearerTeacher())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"chapterId\":1,\"courseId\":1,\"title\":\"测试课时-" + System.nanoTime() + "\",\"lessonType\":\"VIDEO\"}"))
+                        .content("{\"title\":\"测试课时-" + System.nanoTime() + "\",\"sectionType\":\"VIDEO\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.id").exists())
@@ -857,40 +857,40 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("[Lesson] POST /api/lessons — STUDENT 创建返回 403")
+    @DisplayName("[Section] POST /api/courses/{courseId}/chapters/{chapterId}/sections — STUDENT 创建返回 403")
     void lessonCreate_Student() throws Exception {
-        mockMvc.perform(post("/api/lessons")
+        mockMvc.perform(post("/api/courses/1/chapters/1/sections")
                         .header("Authorization", bearerStudent())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"chapterId\":1,\"courseId\":1,\"title\":\"X\",\"lessonType\":\"VIDEO\"}"))
+                        .content("{\"title\":\"X\",\"sectionType\":\"VIDEO\"}"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @DisplayName("[Lesson] GET /api/lessons/chapter/{chapterId} — 根据章节查询已登录可用")
+    @DisplayName("[Section] GET /api/courses/{courseId}/chapters/{chapterId}/sections — 根据章节查询已登录可用")
     void lessonGetByChapter_Authenticated() throws Exception {
-        mockMvc.perform(get("/api/lessons/chapter/1")
+        mockMvc.perform(get("/api/courses/1/chapters/1/sections")
                         .header("Authorization", bearerAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data.items").isArray());
     }
 
     @Test
-    @DisplayName("[Lesson] GET /api/lessons/{id} — TEACHER 查询已创建课时")
+    @DisplayName("[Section] GET /api/courses/{courseId}/chapters/{chapterId}/sections/{id} — TEACHER 查询已创建课时")
     void lessonGetById_Teacher() throws Exception {
         // 先创建再查询
         String token = bearerTeacher();
-        var res = mockMvc.perform(post("/api/lessons")
+        var res = mockMvc.perform(post("/api/courses/1/chapters/1/sections")
                         .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"chapterId\":1,\"courseId\":1,\"title\":\"查询测试课时-" + System.nanoTime() + "\",\"lessonType\":\"VIDEO\"}"))
+                        .content("{\"title\":\"查询测试课时-" + System.nanoTime() + "\",\"sectionType\":\"VIDEO\"}"))
                 .andExpect(status().isOk()).andReturn();
         Long id = Long.valueOf(com.jayway.jsonpath.JsonPath.read(
                 res.getResponse().getContentAsString(), "$.data.id").toString());
         createdLessonIds.add(id);
 
-        mockMvc.perform(get("/api/lessons/" + id)
+        mockMvc.perform(get("/api/courses/1/chapters/1/sections/" + id)
                         .header("Authorization", bearerAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -898,19 +898,19 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("[Lesson] PUT /api/lessons/{id} — TEACHER 更新课时成功")
+    @DisplayName("[Section] PUT /api/courses/{courseId}/chapters/{chapterId}/sections/{id} — TEACHER 更新课时成功")
     void lessonUpdate_Teacher() throws Exception {
         String token = bearerTeacher();
-        var res = mockMvc.perform(post("/api/lessons")
+        var res = mockMvc.perform(post("/api/courses/1/chapters/1/sections")
                         .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"chapterId\":1,\"courseId\":1,\"title\":\"更新前-" + System.nanoTime() + "\",\"lessonType\":\"VIDEO\"}"))
+                        .content("{\"title\":\"更新前-" + System.nanoTime() + "\",\"sectionType\":\"VIDEO\"}"))
                 .andExpect(status().isOk()).andReturn();
         Long id = Long.valueOf(com.jayway.jsonpath.JsonPath.read(
                 res.getResponse().getContentAsString(), "$.data.id").toString());
         createdLessonIds.add(id);
 
-        mockMvc.perform(put("/api/lessons/" + id)
+        mockMvc.perform(put("/api/courses/1/chapters/1/sections/" + id)
                         .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"更新后-" + System.nanoTime() + "\",\"duration\":1800,\"visible\":true}"))
@@ -919,50 +919,58 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("[Lesson] DELETE /api/lessons/{id} — TEACHER 删除课时成功")
+    @DisplayName("[Section] DELETE /api/courses/{courseId}/chapters/{chapterId}/sections/{id} — TEACHER 删除课时成功")
     void lessonDelete_Teacher() throws Exception {
         String token = bearerTeacher();
-        var res = mockMvc.perform(post("/api/lessons")
+        var res = mockMvc.perform(post("/api/courses/1/chapters/1/sections")
                         .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"chapterId\":1,\"courseId\":1,\"title\":\"待删除课时-" + System.nanoTime() + "\",\"lessonType\":\"VIDEO\"}"))
+                        .content("{\"title\":\"待删除课时-" + System.nanoTime() + "\",\"sectionType\":\"VIDEO\"}"))
                 .andExpect(status().isOk()).andReturn();
         Long id = Long.valueOf(com.jayway.jsonpath.JsonPath.read(
                 res.getResponse().getContentAsString(), "$.data.id").toString());
 
-        mockMvc.perform(delete("/api/lessons/" + id)
+        mockMvc.perform(delete("/api/courses/1/chapters/1/sections/" + id)
                         .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }
 
     @Test
-    @DisplayName("[Lesson] PUT /api/lessons/sort — TEACHER 排序课时成功")
+    @DisplayName("[Section] PUT /api/courses/{courseId}/chapters/{chapterId}/sections — 通过 update 验证排序正常")
     void lessonSort_Teacher() throws Exception {
         String token = bearerTeacher();
         // 先创建两个课时
-        var r1 = mockMvc.perform(post("/api/lessons")
+        var r1 = mockMvc.perform(post("/api/courses/1/chapters/1/sections")
                         .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"chapterId\":1,\"courseId\":1,\"title\":\"课时A-" + System.nanoTime() + "\",\"lessonType\":\"VIDEO\"}"))
+                        .content("{\"title\":\"课时A-" + System.nanoTime() + "\",\"sectionType\":\"VIDEO\"}"))
                 .andExpect(status().isOk()).andReturn();
         Long id1 = Long.valueOf(com.jayway.jsonpath.JsonPath.read(
                 r1.getResponse().getContentAsString(), "$.data.id").toString());
         createdLessonIds.add(id1);
 
-        var r2 = mockMvc.perform(post("/api/lessons")
+        var r2 = mockMvc.perform(post("/api/courses/1/chapters/1/sections")
                         .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"chapterId\":1,\"courseId\":1,\"title\":\"课时B-" + System.nanoTime() + "\",\"lessonType\":\"VIDEO\"}"))
+                        .content("{\"title\":\"课时B-" + System.nanoTime() + "\",\"sectionType\":\"VIDEO\"}"))
                 .andExpect(status().isOk()).andReturn();
         Long id2 = Long.valueOf(com.jayway.jsonpath.JsonPath.read(
                 r2.getResponse().getContentAsString(), "$.data.id").toString());
         createdLessonIds.add(id2);
 
-        mockMvc.perform(put("/api/lessons/sort")
+        // 通过更新 sortOrder 验证排序正常
+        mockMvc.perform(put("/api/courses/1/chapters/1/sections/" + id1)
                         .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("[{\"id\":" + id1 + ",\"chapterId\":1,\"sortOrder\":2},{\"id\":" + id2 + ",\"chapterId\":1,\"sortOrder\":1}]"))
+                        .content("{\"sortOrder\":2}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(put("/api/courses/1/chapters/1/sections/" + id2)
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sortOrder\":1}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }

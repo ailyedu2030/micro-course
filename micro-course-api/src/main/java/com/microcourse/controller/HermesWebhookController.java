@@ -5,13 +5,13 @@ import com.microcourse.dto.hermes.HermesCourseDetailVO;
 import com.microcourse.dto.hermes.HermesCourseListVO;
 import com.microcourse.dto.hermes.HermesWebhookRequest;
 import com.microcourse.entity.HermesCourseMapping;
-import com.microcourse.entity.Lesson;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.service.SlideService;
+import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.HermesCourseMappingRepository;
-import com.microcourse.repository.LessonRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.HermesCourseSyncService;
 import com.microcourse.service.HermesCourseSyncService.HermesSyncResult;
@@ -36,18 +36,18 @@ public class HermesWebhookController {
     private final HermesCourseSyncService syncService;
     private final UserRepository userRepository;
     private final HermesCourseMappingRepository mappingRepository;
-    private final LessonRepository lessonRepository;
+    private final CourseSectionRepository sectionRepository;
     private final SlideService slideService;
 
     public HermesWebhookController(HermesCourseSyncService syncService,
                                    UserRepository userRepository,
                                    HermesCourseMappingRepository mappingRepository,
-                                   LessonRepository lessonRepository,
+                                   CourseSectionRepository sectionRepository,
                                    SlideService slideService) {
         this.syncService = syncService;
         this.userRepository = userRepository;
         this.mappingRepository = mappingRepository;
-        this.lessonRepository = lessonRepository;
+        this.sectionRepository = sectionRepository;
         this.slideService = slideService;
     }
 
@@ -108,12 +108,13 @@ public class HermesWebhookController {
 
         Long courseId = mapping.getCourseId();
 
-        // 按 lessonId 查找
-        Lesson lesson = lessonRepository.selectById(lessonId);
-        if (lesson == null || !lesson.getCourseId().equals(courseId)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课时 ID " + lessonId + " 不属于此课程");
+        // 按 lessonId(实际是 section_id)查找
+        Long chapterId = lessonId;
+        CourseSection sec = sectionRepository.selectById(lessonId);
+        if (sec != null) {
+            chapterId = sec.getChapterId();
+            lessonId = sec.getId();
         }
-        Long chapterId = lesson.getChapterId();
 
         String filename = file.getOriginalFilename();
         if (filename == null) {
