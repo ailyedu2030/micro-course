@@ -328,16 +328,18 @@ private final HermesCourseMappingRepository mappingRepository;
 
     @Override
     public List<HermesCourseListVO> listCoursesByTeacher(Long teacherId) {
-        List<HermesCourseMapping> mappings = mappingRepository.selectList(
-                new LambdaQueryWrapper<HermesCourseMapping>()
-                        .eq(HermesCourseMapping::getHermesTeacherId, String.valueOf(teacherId)));
-        if (mappings.isEmpty()) return List.of();
+        // 返回该教师的所有课程（不依赖 Hermes 映射，hermesCourseId 字段标记是否已同步）
+        List<Course> courses = courseRepository.selectList(
+                new LambdaQueryWrapper<Course>().eq(Course::getTeacherId, teacherId));
+        if (courses == null || courses.isEmpty()) return List.of();
 
-        List<Long> courseIds = mappings.stream().map(HermesCourseMapping::getCourseId).toList();
-        List<Course> courses = courseRepository.selectBatchIds(courseIds);
-        if (courses == null) return List.of();
-        java.util.Map<Long, Course> courseMap = courses.stream()
-                .collect(java.util.stream.Collectors.toMap(Course::getId, c -> c));
+        // 一次性加载该教师的所有映射
+        java.util.Map<Long, HermesCourseMapping> mappingMap = new java.util.HashMap<>();
+        for (HermesCourseMapping m : mappingRepository.selectList(
+                new LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesTeacherId, String.valueOf(teacherId)))) {
+            mappingMap.put(m.getCourseId(), m);
+        }
 
         java.util.Map<Long, String> categoryNames = new java.util.HashMap<>();
         courses.stream().map(Course::getCategoryId).filter(java.util.Objects::nonNull).distinct().forEach(cid -> {
@@ -345,15 +347,14 @@ private final HermesCourseMappingRepository mappingRepository;
             if (cat != null) categoryNames.put(cid, cat.getName());
         });
 
-        return mappings.stream().map(m -> {
-            Course c = courseMap.get(m.getCourseId());
-            if (c == null) return null;
+        return courses.stream().map(c -> {
+            HermesCourseMapping m = mappingMap.get(c.getId());
             return new HermesCourseListVO(
-                    m.getHermesCourseId(), c.getId(), c.getTitle(),
+                    m != null ? m.getHermesCourseId() : null, c.getId(), c.getTitle(),
                     c.getStatus(), c.getStatus() != null ? CourseStatus.fromCode(c.getStatus()).name() : "UNKNOWN",
                     c.getCategoryId(), categoryNames.get(c.getCategoryId()), c.getCourseType(),
-                    m.getLastSyncAt(), c.getCreatedAt());
-        }).filter(java.util.Objects::nonNull).toList();
+                    m != null ? m.getLastSyncAt() : null, c.getCreatedAt());
+        }).toList();
     }
 
     @Override
