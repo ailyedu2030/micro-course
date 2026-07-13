@@ -390,3 +390,4 @@ curl -X DELETE "$BASE/courses/by-id/42" -H "X-API-Key: $KEY"
 | 2026-07-13 | v2 | 新增课时 CRUD、DELETE 级联、UPSERT 幂等、contentUrl/hasSlide |
 | 2026-07-13 | v3 | 新增 API Key 刷新、slide 列表（API Key 鉴权）、@Transactional/所有权校验 |
 | 2026-07-13 | v4 | upload(slide) 改为按 (courseId, chapterId, sectionId) UPSERT，每课时独立 slide |
+| 2026-07-13 | v4.1 | content_url 回写移至 SlideServiceImpl 内（与上传同事务，@Version 不冲突） |
