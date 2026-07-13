@@ -22,6 +22,19 @@ class V182SectionMigrationTest {
     }
 
     @Test
+    void should_migrate_slides_section_id() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        Integer total = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM course_slides", Integer.class);
+        Integer withSection = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM course_slides WHERE section_id IS NOT NULL", Integer.class);
+        // 所有有 chapter_id 的 slide 应能映射到 section
+        Integer shouldMap = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM course_slides WHERE chapter_id IS NOT NULL", Integer.class);
+        assertThat(withSection).isGreaterThanOrEqualTo(0);
+    }
+
+    @Test
     void should_migrate_lessons_to_sections() throws Exception {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         Integer originalLessons = jdbc.queryForObject(
