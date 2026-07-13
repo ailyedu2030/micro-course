@@ -195,10 +195,11 @@ public class HermesWebhookController {
                 int end = (i == pageCount - 1) ? fullScript.length() : (i + 1) * chunkSize;
                 String pageScript = fullScript.substring(start, end).trim();
 
-                int pageNumber = pages.get(i).getPageNumber();
+                com.microcourse.plugin.interactive.dto.SlidePageVO p = pages.get(i);
                 java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
                 pageBody.put("narrationScript", pageScript);
-                slideService.updatePage(courseId, pageNumber, pageBody);
+                if (p.getChapterId() != null) { pageBody.put("_chapterId", p.getChapterId()); }
+                slideService.updatePage(courseId, p.getPageNumber(), pageBody);
                 updated++;
             }
 

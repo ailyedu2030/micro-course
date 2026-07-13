@@ -444,8 +444,13 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     public SlidePageVO updatePage(Long courseId, Integer pageNumber, Map<String, Object> body) {
-        SlidePage p = slidePageMapper.selectOne(new LambdaQueryWrapper<SlidePage>()
-                .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber));
+        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber);
+        Object chIdObj = body != null ? body.get("_chapterId") : null;
+        if (chIdObj instanceof Number) {
+            qw.eq(SlidePage::getChapterId, ((Number) chIdObj).longValue());
+        }
+        SlidePage p = slidePageMapper.selectOne(qw);
         if (p == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         verifyOwner(courseId);
         if (body.containsKey("narrationScript") && body.get("narrationScript") instanceof String) {
