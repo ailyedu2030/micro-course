@@ -9,6 +9,8 @@ import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.entity.CourseSlide;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.HermesCourseMappingRepository;
@@ -37,17 +39,20 @@ public class HermesWebhookController {
     private final UserRepository userRepository;
     private final HermesCourseMappingRepository mappingRepository;
     private final CourseSectionRepository sectionRepository;
+    private final CourseSlideMapper courseSlideMapper;
     private final SlideService slideService;
 
     public HermesWebhookController(HermesCourseSyncService syncService,
                                    UserRepository userRepository,
                                    HermesCourseMappingRepository mappingRepository,
                                    CourseSectionRepository sectionRepository,
+                                   CourseSlideMapper courseSlideMapper,
                                    SlideService slideService) {
         this.syncService = syncService;
         this.userRepository = userRepository;
         this.mappingRepository = mappingRepository;
         this.sectionRepository = sectionRepository;
+        this.courseSlideMapper = courseSlideMapper;
         this.slideService = slideService;
     }
 
@@ -227,11 +232,23 @@ public class HermesWebhookController {
 
             Long effectiveId = lessonId != null ? lessonId : chapterId;
             Object resp;
+            Long slideId;
             if (isHtml) {
                 try { slideService.deleteSlide(courseId, effectiveId); } catch (Exception ignored) {}
                 resp = slideService.uploadHtmlFile(courseId, file, chapterId);
+                slideId = ((com.microcourse.plugin.interactive.dto.SlideUploadResponse) resp).getSlideId();
             } else {
                 resp = slideService.upload(courseId, filename, file.getBytes(), chapterId);
+                slideId = ((com.microcourse.plugin.interactive.dto.SlideUploadResponse) resp).getSlideId();
+            }
+            // 将 slide 关联到 section（upload 方法只设了 chapterId，没设 sectionId）
+            if (lessonId != null && slideId != null) {
+                CourseSlide cs = courseSlideMapper.selectById(slideId);
+                if (cs != null) {
+                    cs.setSectionId(lessonId);
+                    cs.setUpdatedAt(java.time.LocalDateTime.now());
+                    courseSlideMapper.updateById(cs);
+                }
             }
             return R.ok(resp);
         } catch (Exception e) {

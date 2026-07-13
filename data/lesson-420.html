@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>2.1 Prompt的黄金结构</title>
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#f5f3ef;color:#1a1a1a;font-family:-apple-system,'Helvetica Neue','PingFang SC','Microsoft YaHei','Noto Sans SC',system-ui,sans-serif}
+.slides-container{width:100%;height:100%;display:flex;flex-direction:column}
+.slide{display:none;width:100%;flex:1;overflow-y:auto;background:#f5f3ef}.slide.active{display:flex;flex-direction:column}
+.slide-inner{flex:1;padding:5% 8% 12%;max-width:1100px;margin:0 auto;width:100%}
+.meta{font-size:clamp(11px,1vw,16px);color:#6e6e6e;margin-bottom:6px}
+h1{font-size:clamp(26px,4vw,56px);font-weight:700;line-height:1.2;margin-bottom:8px}
+h2{font-size:clamp(20px,2.8vw,40px);font-weight:600;line-height:1.25;margin-bottom:8px}
+p{font-size:clamp(14px,1.5vw,24px);line-height:1.7;color:#5c5c5c;margin-bottom:10px}
+p strong{color:#1a1a1a}
+pre{background:#1a1a1a;color:#e8e7e3;padding:12px 14px;border-radius:4px;font-size:clamp(12px,1.1vw,16px);line-height:1.5;overflow-x:auto;font-family:monospace;margin-bottom:10px;white-space:pre-wrap}
+.slide-title{background:#fff;position:relative}.slide-title::before{content:'';position:absolute;top:0;left:0;right:0;height:clamp(5px,.6vh,10px);background:#b83f2a;z-index:3}
+.slide-title .slide-inner{justify-content:center;padding-top:clamp(6%,8vh,10%)}.slide-title h1{font-size:clamp(30px,4.5vw,60px)}
+.slide-title .sub{font-size:clamp(15px,1.6vw,26px);color:#5c5c5c;max-width:80%}
+.slide-title .tags{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}.slide-title .tag{padding:4px 8px;border-radius:12px;font-size:clamp(11px,1vw,16px)}
+.slide-title .tag.gray{background:#f0eeeb;color:#5c5c5c}.slide-title .tag.accent{background:rgba(184,63,42,.1);color:#b83f2a}
+.slide-title .accent-bar{width:3px;height:clamp(40px,4vh,70px);background:#b83f2a;border-radius:2px;margin-bottom:12px}
+.slide-summary{background:#f0eeeb}
+.cg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:10px 0}
+.c{background:#fff;border:1px solid #dddcd7;border-radius:4px;padding:16px}.c h4{font-size:clamp(13px,1.3vw,18px);font-weight:600;margin-bottom:6px}.c p{font-size:clamp(12px,1.1vw,16px);margin-bottom:0}
+.co{padding:12px 14px;border-radius:4px;margin:10px 0;border-left:3px solid;font-size:clamp(13px,1.2vw,18px);line-height:1.5}
+.co-t{background:#f0eeeb;border-color:#b83f2a}.co strong{color:#b83f2a}
+.compare-split{display:grid;grid-template-columns:45fr 55fr;gap:12px;margin:12px 0}
+.compare-side{border-radius:4px;padding:14px}.compare-side.o{background:#f7f5f2;border:1px solid #e8e7e3}.compare-side.n{background:#fff;border:1.5px solid #b83f2a;box-shadow:0 2px 10px rgba(184,63,42,.08)}
+.compare-side .b{display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;margin-bottom:10px}
+.compare-side.o .b{background:#e8e7e3;color:#5c5c5c}.compare-side.n .b{background:#b83f2a;color:#fff}
+.compare-side .r{padding:6px 0;border-bottom:1px solid #f0eeeb;font-size:clamp(12px,1.1vw,16px);color:#5c5c5c}
+.flip{background:#fff;border:1px solid #dddcd7;border-radius:4px;padding:16px;cursor:pointer;margin:10px 0}
+.flip .h{font-size:12px;color:#a39e98;text-align:right}.flip .a{display:none;margin-top:10px;padding:10px;background:rgba(184,63,42,.06);border-left:3px solid #b83f2a;border-radius:4px;font-size:clamp(12px,1.1vw,16px);color:#5c5c5c;line-height:1.5}
+.flip.s .a{display:block}.flip.s .h{display:none}
+.schk{margin:14px 0;padding:16px;background:#fff;border:1.5px solid #dddcd7;border-radius:4px}
+.schk .q{font-size:clamp(14px,1.3vw,20px);font-weight:550;margin-bottom:12px}.schk .os{display:flex;flex-direction:column;gap:6px}
+.schk .o{padding:10px 14px;border:1.5px solid #dddcd7;border-radius:4px;cursor:pointer;font-size:clamp(13px,1.2vw,18px);color:#5c5c5c}
+.schk .o:hover{border-color:#b83f2a}
+.schk .o.c{background:rgba(34,197,94,.08);border-color:#22c55e;color:#15803d}.schk .o.w{background:rgba(239,68,68,.06);border-color:#ef4444;color:#b91c1c}
+.schk .o .r{display:none;font-size:clamp(11px,1vw,15px);margin-top:6px}.schk .o.c .r,.schk .o.w .r{display:block}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:clamp(12px,1.1vw,16px)}th{background:#e8e7e3;font-weight:600;padding:10px;text-align:left}td{padding:10px;border-bottom:1px solid #e8e7e3;color:#5c5c5c}tr:nth-child(even) td{background:#faf8f6}
+.ck{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #dddcd7;font-size:clamp(13px,1.3vw,18px);color:#5c5c5c}.ck-i{color:#b83f2a;font-weight:700;flex-shrink:0}
+.ac{background:#fff;border:1.5px solid #b83f2a;border-radius:4px;padding:16px;margin-top:14px}.ac h4{font-size:clamp(14px,1.3vw,20px);font-weight:600;margin-bottom:6px}.ac p{font-size:clamp(12px,1.1vw,16px);margin-bottom:0}
+.steps{counter-reset:step;margin:12px 0}
+.step{counter-increment:step;padding:12px 0 12px 40px;position:relative;border-left:2px solid #e8e7e3;margin-left:12px}
+.step:last-child{border-left-color:transparent}.step::before{content:counter(step);position:absolute;left:-12px;top:12px;width:24px;height:24px;border-radius:50%;background:#b83f2a;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.step .st{font-size:clamp(14px,1.3vw,20px);font-weight:550;margin-bottom:4px}.step .sd{font-size:clamp(12px,1.1vw,16px);color:#5c5c5c;line-height:1.5}
+.hd{display:flex;flex-direction:column;margin:14px 0;padding-left:28px}
+.hl{position:relative;padding:12px 16px;border-left:3px solid;min-height:60px;display:flex;flex-direction:column;justify-content:center}
+.hl:first-child{border-left-color:#b83f2a;background:#faf8f6}.hl:nth-child(2){border-left-color:#9a8a80;background:#f8f7f5}.hl:nth-child(3){border-left-color:#6e6e6e;background:#f5f4f2}
+.hl:not(:last-child)::after{content:'';position:absolute;bottom:-10px;left:-5px;width:9px;height:9px;border-right:2px solid #b83f2a;border-bottom:2px solid #b83f2a;transform:rotate(45deg)}
+.hl .hn{font-size:clamp(14px,1.4vw,22px);font-weight:600}.hl .hd{font-size:clamp(12px,1.1vw,16px);color:#5c5c5c;line-height:1.5;margin-top:3px}
+.tc{position:fixed;top:0;left:0;right:0;height:clamp(30px,3vh,44px);background:#f5f3ef;border-bottom:1px solid #dddcd7;display:flex;align-items:center;justify-content:center;z-index:100;gap:5px}
+.tc .pd{display:inline-block;width:clamp(6px,.5vw,10px);height:clamp(6px,.5vw,10px);border-radius:50%;background:#dddcd7;cursor:pointer}.tc .pd.a{background:#b83f2a;width:clamp(16px,1.5vw,26px);border-radius:4px}
+.bn{position:fixed;bottom:0;left:0;right:0;height:clamp(44px,4.5vh,60px);background:#fff;border-top:1px solid #dddcd7;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(12px,1.2vw,24px);z-index:100}
+.bn .pn{font-size:clamp(12px,1.1vw,16px);color:#6e6e6e}.nb{display:inline-flex;gap:4px;padding:clamp(6px,.6vh,10px) clamp(12px,1.2vw,22px);border:1px solid #dddcd7;border-radius:4px;background:#fff;color:#5c5c5c;font-size:clamp(12px,1.1vw,18px);cursor:pointer;font-family:inherit}
+.nb:disabled{opacity:.3}.nb.pr{background:#b83f2a;color:#fff;border-color:#b83f2a}
+@media(max-width:600px){.slide-inner{padding:8% 6% 18%}.compare-split,.cg{grid-template-columns:1fr}}
+</style></head><body>
+<div class="tc" id="tc"></div><div class="slides-container" id="app"></div>
+<div class="bn"><button class="nb" id="pb">&larr;上一页</button><div class="pn"><strong id="pn">1</strong>/<strong id="tp">10</strong></div><button class="nb pr" id="nx">下一页&rarr;</button></div>
+<script>
+(function(){var T=10,cur=0,pt='lllllpllpl';
+var s=['<div class="slide-inner"><div class="accent-bar"></div><p class="meta">第2章 Prompt工程</p><h1>Prompt的黄金结构</h1><p class="sub">5要素：角色任务数据格式约束</p><div class="tags"><span class="tag gray">⏱15min</span><span class="tag accent">5要素</span></div></div>',
+'<div class="slide-inner"><p class="meta">学习目标</p><h2>学完你将能</h2><div class="ck"><span class="ck-i">✓</span>说出好Prompt的5个黄金要素</div><div class="ck"><span class="ck-i">✓</span>对比好Prompt和坏Prompt的差距</div><div class="ck"><span class="ck-i">✓</span>写出包含5要素的结构化Prompt</div></div>',
+'<div class="slide-inner"><p class="meta">为什么重要</p><h2>同样问题不同结果</h2><div class="compare-split"><div class="compare-side o"><div class="b">随便问</div><p style="font-size:clamp(12px,1.1vw,16px)">帮我分析销售数据</p><p style="font-size:clamp(11px,1vw,14px);color:#c5c0b8">AI给泛泛之谈不知道从哪看起</p></div><div class="compare-side n"><div class="b">结构化问</div><p style="font-size:clamp(12px,1.1vw,16px)">你是分析师。分析Q3销售额找出下滑最大的3个品类按下滑率排序输出表格。</p><p style="font-size:clamp(11px,1vw,14px);color:#b83f2a">AI直接给表格和结论30秒可用</p></div></div><div class="co co-t">不是AI变聪明了是你的提问方式变了。5要素缺一不可。</div></div>',
+'<div class="slide-inner"><p class="meta">黄金结构</p><h2>5要素详解</h2><div class="cg"><div class="c"><h4>角色</h4><p>告诉AI扮演什么。分析师财务主管运营经理，角色不同输出完全不同。</p></div><div class="c"><h4>任务</h4><p>明确让AI做什么。找原因做对比出预测，越具体越好。</p></div><div class="c"><h4>数据</h4><p>告诉AI基于什么。提供样本描述字段或上传文件。</p></div><div class="c"><h4>格式</h4><p>指定输出形式。表格列表报告图表。</p></div><div class="c"><h4>约束</h4><p>告诉AI不要做什么。不要编数据用中文降序排列。</p></div></div></div>',
+'<div class="slide-inner"><p class="meta">互动 <span style="color:#b83f2a">点卡片</span></p><h2>缺了什么要素</h2><div class="flip" id="f1"><pre style="margin-bottom:0;font-size:clamp(11px,1vw,14px)">你是财务主管。分析2026年各部门预算执行情况哪些部门超支了？输出为表格。</pre><div class="h">点我</div><div class="a"><strong>缺了约束</strong>。没告诉AI超支标准是什么（超过预算多少算超支？5%还是10%？）。任务可以更具体：按超支幅度排序标出最严重的3个。</div></div></div>',
+'<div class="slide-inner"><p class="meta">测验</p><h2>5要素中哪个最重要</h2><div class="schk"><div class="q">好Prompt的5要素中哪个最重要？</div><div class="os"><div class="o" id="q1a"><strong>A.</strong> 格式<div class="r"><span style="color:#ef4444">✗</span>格式重要但不是最重要的。没有清晰角色和任务格式再好也没用。</div></div><div class="o" id="q1b"><strong>B.</strong> 角色<div class="r"><span style="color:#ef4444">✗</span>角色重要但缺任务数据约束AI还是不知道怎么做。</div></div><div class="o" id="q1c"><strong>C.</strong> 没有最重要的5要素缺一不可<div class="r"><span style="color:#22c55e">✓</span>正确！5要素不是选配是标配。缺任何一个输出质量都会下降。</div></div></div></div></div>',
+'<div class="slide-inner"><p class="meta">完整示例</p><h2>一个完整Prompt</h2><pre>你是一个数据分析师。（角色）<br>请分析附件中的Q3销售数据。（任务）<br>数据包含：日期、产品、区域、销量、金额。（数据）<br>找出销量下滑最大的3个品类按下滑率排序。（约束）<br>输出为表格附200字分析说明。（格式）</pre><div class="co co-t">写完后朗读一遍看有没有歧义。</div></div>',
+'<div class="slide-inner"><p class="meta">常见错误</p><h2>新手常犯3个错误</h2><div class="cg"><div class="c"><h4>1.任务模糊</h4><p>帮我分析一下vs找出Q3销售额下滑最大的3个品类。前者AI不知道你要什么后者一目了然。</p></div><div class="c"><h4>2.忘了约束</h4><p>不加约束AI可能编数据。总是加上不要编造数字。</p></div><div class="c"><h4>3.一次问太多</h4><p>一个Prompt只做一件事。多的拆成链。</p></div></div></div>',
+'<div class="slide-inner"><p class="meta">练习</p><h2>自己写一个</h2><pre>你是______（角色）。<br>请______（任务）。<br>数据是______（数据）。<br>注意______（约束）。<br>输出为______（格式）。</pre><p>填空后发给AI试试。</p></div>',
+'<div class="slide-inner"><p class="meta">小结</p><h2>核心要点</h2><div class="ck"><span class="ck-i">✓</span>5要素：角色任务数据格式约束</div><div class="ck"><span class="ck-i">✓</span>结构化问vs随便问差10倍</div><div class="ck"><span class="ck-i">✓</span>5要素缺一不可不是选配</div><div class="ac"><h4>课后行动</h4><p>用填空模板写一个完整Prompt发给AI截图保存。</p></div></div>'];
+function r(){document.getElementById('app').innerHTML=s.map(function(sl,i){return '<div class="slide'+(i===0?' active':'')+(i===0?' slide-title':i===9?' slide-summary':'')+'">'+sl+'</div>';}).join('');u();b();}
+function u(){document.getElementById('pn').textContent=cur+1;document.getElementById('tp').textContent=T;
+  var c=document.getElementById('tc');c.innerHTML='';for(var i=0;i<T;i++){var x=document.createElement('span');x.className='pd'+(i===cur?' a':'');x.onclick=(function(idx){return function(){g(idx);};})(i);c.appendChild(x);}
+  document.getElementById('pb').disabled=cur===0;document.getElementById('nx').disabled=cur===T-1;}
+function b(){document.getElementById('pb').onclick=function(){n(-1);};document.getElementById('nx').onclick=function(){n(1);};
+  var qs=[['q1a',false],['q1b',true],['q1c',false]];for(var i=0;i<qs.length;i++){var el=document.getElementById(qs[i][0]);if(el)el.onclick=(function(idx){return function(){cq(this,qs[idx][1]);};})(i);}
+  var fc=['f1'];for(var i=0;i<fc.length;i++){var el=document.getElementById(fc[i]);if(el)el.onclick=function(){this.classList.toggle('s');};}}
+function n(d){var t=cur+d;if(t>=0&&t<T)g(t);}
+function g(t){if(t===cur)return;var a=document.querySelectorAll('.slide');for(var i=0;i<a.length;i++)a[i].classList.remove('active');a[t].classList.add('active');cur=t;u();if(pt.charAt(t)=='l'){try{window.parent.postMessage({type:'slide-audio',action:'play'},'*');}catch(e){}}else{try{window.parent.postMessage({type:'slide-audio',action:'pause'},'*');}catch(e){}}}
+function cq(el,c){var p=el.parentNode;var o=p.querySelectorAll('.o');for(var i=0;i<o.length;i++)o[i].style.pointerEvents='none';el.classList.add(c?'c':'w');}
+window.addEventListener('message',function(e){var m=e.data;if(m&&m.type==='slide-audio-state'&&m.state==='ended'&&pt.charAt(cur)=='l')n(1);});
+document.addEventListener('keydown',function(e){if(e.key==='ArrowRight'||e.key===' ' ){e.preventDefault();n(1);}else if(e.key==='ArrowLeft'){e.preventDefault();n(-1);}});
+r();})();
+</script></body></html>
