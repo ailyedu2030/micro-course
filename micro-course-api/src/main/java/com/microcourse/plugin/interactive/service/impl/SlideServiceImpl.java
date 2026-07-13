@@ -164,9 +164,14 @@ public class SlideServiceImpl implements SlideService {
         if (sectionId != null && sectionRepo != null) {
             CourseSection sec = sectionRepo.selectById(sectionId);
             if (sec != null) {
+                log.info("[SlideUpload] Writing content_url for section={}, course={}", sectionId, courseId);
                 sec.setContentUrl("/api/courses/" + courseId + "/slides/pages");
                 sec.setUpdatedAt(LocalDateTime.now());
-                sectionRepo.updateById(sec);
+                int affected = sectionRepo.updateById(sec);
+                log.info("[SlideUpload] content_url affectedRows={}, section={}, version={}",
+                        affected, sectionId, sec.getVersion());
+            } else {
+                log.warn("[SlideUpload] Section not found for content_url: sectionId={}", sectionId);
             }
         }
         Long fc = chapterId;
@@ -258,9 +263,14 @@ public class SlideServiceImpl implements SlideService {
         if (sectionId != null && sectionRepo != null) {
             CourseSection sec = sectionRepo.selectById(sectionId);
             if (sec != null) {
+                log.info("[SlideUpload-HtmlFile] Writing content_url for section={}, course={}", sectionId, courseId);
                 sec.setContentUrl("/api/courses/" + courseId + "/slides/pages");
                 sec.setUpdatedAt(LocalDateTime.now());
-                sectionRepo.updateById(sec);
+                int affected = sectionRepo.updateById(sec);
+                log.info("[SlideUpload-HtmlFile] content_url affectedRows={}, section={}",
+                        affected, sectionId);
+            } else {
+                log.warn("[SlideUpload-HtmlFile] Section not found for content_url: sectionId={}", sectionId);
             }
         }
         SlideUploadResponse resp = new SlideUploadResponse();
