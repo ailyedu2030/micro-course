@@ -273,7 +273,7 @@ async function loadCourse(cid) {
       videosByChapter[chId].push(v)
     })
 
-    // 构建章节-课时树（根据 chapterType 构建不同的 lessons）
+    // 构建章节-课时树（根据 sectionType 构建不同的 lessons）
     const rawChapters = courseRes.data.chapters || []
     chapters.value = rawChapters.map(ch => {
       let lessons = []

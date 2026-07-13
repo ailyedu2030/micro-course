@@ -508,7 +508,6 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         vo.setTitle(chapter.getTitle());
         vo.setDescription(chapter.getDescription());
         vo.setSortOrder(chapter.getSortOrder());
-        vo.setChapterType(chapter.getChapterType());
         vo.setSectionType(sectionType);
         vo.setDuration(chapter.getDuration());
         vo.setCreatedAt(chapter.getCreatedAt());
