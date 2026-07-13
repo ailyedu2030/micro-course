@@ -47,7 +47,7 @@ class SlideServiceTest {
         slidePageMapper = mock(SlidePageMapper.class);
         courseRepository = mock(CourseRepository.class);
         slideRenderService = mock(SlideRenderService.class);
-        slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository, slideRenderService);
+        slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository, null, null, slideRenderService);
         ReflectionTestUtils.setField(slideService, "storagePath", "/tmp/slides-test");
         ReflectionTestUtils.setField(slideService, "maxHtmlSize", 5L * 1024 * 1024);
     }

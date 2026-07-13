@@ -4,8 +4,8 @@
 -- 原约束：slide_pages  UNIQUE(course_id, chapter_id, page_number)
 -- 新约束：slide_pages  UNIQUE(course_id, lesson_id, page_number)
 
-ALTER TABLE course_slides ADD COLUMN lesson_id BIGINT;
-ALTER TABLE slide_pages  ADD COLUMN lesson_id BIGINT;
+ALTER TABLE course_slides ADD COLUMN IF NOT EXISTS lesson_id BIGINT;
+ALTER TABLE slide_pages  ADD COLUMN IF NOT EXISTS lesson_id BIGINT;
 
 DROP INDEX IF EXISTS uk_slides_course_chapter;
 DROP INDEX IF EXISTS uk_sp_course_chapter_page;
