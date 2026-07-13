@@ -49,7 +49,7 @@
           <el-button @click="handleReset">查看全部课程</el-button>
         </el-empty>
       </div>
-      <el-table v-else :data="filteredSlides" stripe v-loading="loading">
+      <el-table v-else :data="displaySlides" stripe v-loading="loading">
         <el-table-column prop="courseTitle" label="所属课程" min-width="160" show-overflow-tooltip />
         <el-table-column prop="chapterTitle" label="所属章节" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.chapterTitle || '-' }}</template>
@@ -95,6 +95,16 @@
           </template>
         </el-table-column>
       </el-table>
+      <div v-show="filteredSlides.length > 0" style="margin-top:16px;display:flex;justify-content:center">
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          :total="filteredSlides.length"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total,sizes,prev,pager,next"
+          @size-change="page = 1"
+        />
+      </div>
     </section>
 
     <!-- 上传课件对话框 -->
@@ -143,6 +153,8 @@ const loading = ref(false)
 const slides = ref([])
 const courses = ref([])
 const initialized = ref(false)
+const page = ref(1)
+const pageSize = ref(20)
 const deleting = ref(null)
 const renaming = ref(null)
 const renameValue = ref('')
@@ -185,6 +197,10 @@ function formatTime(t) {
 const filteredSlides = computed(() => {
   if (searchForm.value.status === '' || searchForm.value.status === null) return slides.value
   return slides.value.filter(s => String(s.status) === String(searchForm.value.status))
+})
+const displaySlides = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return filteredSlides.value.slice(start, start + pageSize.value)
 })
 
 async function loadData() {
