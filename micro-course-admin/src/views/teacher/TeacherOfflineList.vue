@@ -233,7 +233,7 @@ const handleCourseChange = (courseId) => {
 const fetchChapters = async (courseId) => {
   try {
     const { data } = await getChapters({ courseId, size: 100 })
-    chapterOptions.value = (data?.items || []).filter(ch => ch.chapterType === 'OFFLINE')
+    chapterOptions.value = data?.items || []
   } catch {
     chapterOptions.value = []
   }

@@ -773,7 +773,7 @@ async function onOfflineCourseChange(courseId) {
   if (!courseId) { offlineChapterOptions.value = []; return }
   try {
     const { data } = await getChapters({ courseId, size: 100 })
-    offlineChapterOptions.value = (data?.items || []).filter(ch => ch.chapterType === 'OFFLINE')
+    offlineChapterOptions.value = data?.items || []
   } catch { offlineChapterOptions.value = [] }
 }
 function resetOfflineForm() {

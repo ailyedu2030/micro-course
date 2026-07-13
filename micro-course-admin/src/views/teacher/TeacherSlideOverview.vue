@@ -262,8 +262,7 @@ async function onCourseChange(courseId) {
   if (!courseId) { chapterOptions.value = []; return }
   try {
     const { data } = await getChapters({ courseId, size: 100 })
-    // 前端过滤:只显示 INTERACTIVE 类型的章节
-    chapterOptions.value = (data?.items || []).filter(ch => ch.chapterType === 'INTERACTIVE')
+    chapterOptions.value = data?.items || []
   } catch { chapterOptions.value = [] }
 }
 

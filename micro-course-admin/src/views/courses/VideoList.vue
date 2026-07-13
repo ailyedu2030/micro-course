@@ -378,8 +378,8 @@ const handleDialogCourseChange = async (courseId) => {
   if (!courseId) { chapterOptions.value = []; return }
   try {
     const { data } = await getChapters({ courseId, size: 1000 })
-    // 只显示VIDEO类型的章节(INTERACTIVE/EXERCISE/OFFLINE不可添加视频)
-    chapterOptions.value = (data.items || []).filter(ch => ch.chapterType === 'VIDEO')
+    // chapterType列已删除,显示所有章节
+    chapterOptions.value = data.items || []
   } catch { chapterOptions.value = [] }
 }
 
