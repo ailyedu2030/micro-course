@@ -8,7 +8,7 @@
           </el-tag>
         </el-col>
         <el-col :span="7">
-          <span class="section-title">{{ section.sortOrder }}. {{ section.title }}</span>
+          <span class="section-title">{{ (section.sortOrder % 10000) || section.sortOrder }}. {{ section.title }}</span>
         </el-col>
         <el-col :span="2">
           <span class="muted">{{ section.duration ? `${section.duration}分钟` : '-' }}</span>

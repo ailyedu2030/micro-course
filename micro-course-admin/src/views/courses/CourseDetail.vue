@@ -473,7 +473,22 @@ const initSortable = () => {
   if (sortableInstance) sortableInstance.destroy()
   const el = chapterTableRef.value?.$el?.querySelector('.el-table__body-wrapper tbody')
   if (!el) return
-  sortableInstance = Sortable.create(el, { handle: '.el-table__row', animation: 150, onEnd: () => {} })
+  sortableInstance = Sortable.create(el, {
+    filter: '.el-table__row--expanded',
+    animation: 150,
+    onEnd: () => {
+      const rows = el.querySelectorAll('.el-table__row:not(.el-table__row--expanded)')
+      const newOrder = []
+      rows.forEach(row => {
+        const idx = row.getAttribute('data-row-key')
+        if (idx) {
+          const ch = chapters.value.find(c => String(c.id) === idx)
+          if (ch) newOrder.push(ch)
+        }
+      })
+      if (newOrder.length === chapters.value.length) chapters.value = newOrder
+    }
+  })
 }
 
 // ===== 页面操作 =====
