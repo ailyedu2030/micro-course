@@ -252,7 +252,7 @@ public class HermesWebhookController {
             Object resp;
             Long slideId;
             if (isHtml) {
-                try { slideService.deleteSlide(courseId, effectiveId); } catch (Exception ignored) {}
+                // uploadHtmlFile 内部已做 UPSERT（按 courseId+chapterId 复用 slide_id），不需预删
                 resp = slideService.uploadHtmlFile(courseId, file, chapterId);
                 slideId = ((com.microcourse.plugin.interactive.dto.SlideUploadResponse) resp).getSlideId();
             } else {

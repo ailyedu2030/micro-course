@@ -101,42 +101,60 @@ public class SlideServiceImpl implements SlideService {
         if (!validateZipBomb(fileBytes)) { throw new BusinessException(ErrorCode.PPT_PARSE_FAILED); }
 
         String fileHash = sha256(fileBytes);
+        // UPSERT：按 (courseId, chapterId) 查询现有 slide，命中则更新内容，不丢历史
         LambdaQueryWrapper<CourseSlide> qw = new LambdaQueryWrapper<>();
         qw.eq(CourseSlide::getCourseId, courseId);
-        CourseSlide old = courseSlideMapper.selectOne(qw);
-        if (old != null) {
-            backupSlideFiles(courseId);
-            cleanupSlideFiles(courseId);
-            courseSlideMapper.deleteById(old.getId());
-            slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, old.getId()));
+        if (chapterId != null) {
+            qw.eq(CourseSlide::getChapterId, chapterId);
+        } else {
+            qw.isNull(CourseSlide::getChapterId);
         }
-        CourseSlide slide = new CourseSlide();
-        slide.setCourseId(courseId); slide.setFileName(originalFilename); slide.setFileUrl("pending");
-        slide.setStatus(0); slide.setFileHash(fileHash);
-        if (chapterId != null) { slide.setChapterId(chapterId); }
-        slide.setCreatedAt(LocalDateTime.now()); slide.setUpdatedAt(LocalDateTime.now());
-        courseSlideMapper.insert(slide);
+        CourseSlide old = courseSlideMapper.selectOne(qw);
+        Long sid;
+        if (old != null) {
+            // 已有同 chapter 的 slide：复用 ID，保留 slide_pages 历史，仅替换文件
+            sid = old.getId();
+            old.setFileName(originalFilename);
+            old.setFileUrl("pending");
+            old.setStatus(0);
+            old.setErrorMessage(null);
+            old.setFileHash(fileHash);
+            old.setUpdatedAt(LocalDateTime.now());
+            courseSlideMapper.updateById(old);
+            log.info("[SlideUpload] UPSERT existing slide: id={}, courseId={}, chapterId={}", sid, courseId, chapterId);
+        } else {
+            CourseSlide slide = new CourseSlide();
+            slide.setCourseId(courseId); slide.setFileName(originalFilename); slide.setFileUrl("pending");
+            slide.setStatus(0); slide.setFileHash(fileHash);
+            if (chapterId != null) { slide.setChapterId(chapterId); }
+            slide.setCreatedAt(LocalDateTime.now()); slide.setUpdatedAt(LocalDateTime.now());
+            courseSlideMapper.insert(slide);
+            sid = slide.getId();
+            log.info("[SlideUpload] NEW slide: id={}, courseId={}, chapterId={}", sid, courseId, chapterId);
+        }
 
         Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
         try {
             Files.createDirectories(courseDir);
             Path pptxPath = courseDir.resolve("original.pptx");
             Files.write(pptxPath, fileBytes);
-            slide.setFileUrl(pptxPath.toString());
-            courseSlideMapper.updateById(slide);
+            CourseSlide toUpdate = courseSlideMapper.selectById(sid);
+            toUpdate.setFileUrl(pptxPath.toString());
+            courseSlideMapper.updateById(toUpdate);
         } catch (IOException e) {
-            slide.setStatus(3); slide.setErrorMessage("文件保存失败");
+            CourseSlide toUpdate = courseSlideMapper.selectById(sid);
+            toUpdate.setStatus(3); toUpdate.setErrorMessage("文件保存失败");
             log.error("[SlideUpload] IO异常 courseId={}", courseId, e);
-            slide.setUpdatedAt(LocalDateTime.now());
-            courseSlideMapper.updateById(slide);
+            toUpdate.setUpdatedAt(LocalDateTime.now());
+            courseSlideMapper.updateById(toUpdate);
             throw new BusinessException(ErrorCode.PPT_PARSE_FAILED);
         }
-        Long sid = slide.getId();
         Long fc = chapterId;
         byte[] fb = fileBytes;
+        Long finalSid = sid;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
-            public void afterCommit() { slideRenderService.renderAsync(sid, fc, fb); }
+            public void afterCommit() { slideRenderService.renderAsync(finalSid, fc, fb); }
         });
         SlideUploadResponse r = new SlideUploadResponse();
         r.setSlideId(sid); r.setTotalPages(0); r.setStatus(0); r.setMessage("上传成功，正在后台渲染...");
@@ -158,34 +176,59 @@ public class SlideServiceImpl implements SlideService {
         }
         String safeHtml = HtmlSanitizer.sanitizeForCourseware(rawHtml);
         if (safeHtml.isEmpty() && !rawHtml.isEmpty()) { throw new BusinessException(ErrorCode.HTML_SANITIZE_REMOVED_ALL); }
-        CourseSlide slide = new CourseSlide();
-        slide.setCourseId(courseId);
-        slide.setFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");
-        slide.setFileUrl("html:inline");  // file_url NOT NULL, HTML 内容在 slide_pages.html_content 中
-        slide.setTotalPages(1);
-        slide.setStatus(2);
-        try { slide.setFileHash(sha256(file.getBytes())); }
-        catch (IOException e) { slide.setFileHash(""); }
-        if (chapterId != null) { slide.setChapterId(chapterId); }
-        slide.setCreatedAt(LocalDateTime.now());
-        slide.setUpdatedAt(LocalDateTime.now());
-        courseSlideMapper.insert(slide);
+
+        // UPSERT：按 (courseId, chapterId) 复用 slide_id
+        LambdaQueryWrapper<CourseSlide> qw = new LambdaQueryWrapper<>();
+        qw.eq(CourseSlide::getCourseId, courseId);
+        if (chapterId != null) {
+            qw.eq(CourseSlide::getChapterId, chapterId);
+        } else {
+            qw.isNull(CourseSlide::getChapterId);
+        }
+        CourseSlide existing = courseSlideMapper.selectOne(qw);
+        Long sid;
+        if (existing != null) {
+            sid = existing.getId();
+            existing.setFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");
+            existing.setFileUrl("html:inline");
+            existing.setStatus(2);
+            try { existing.setFileHash(sha256(file.getBytes())); }
+            catch (IOException e) { existing.setFileHash(""); }
+            existing.setUpdatedAt(LocalDateTime.now());
+            courseSlideMapper.updateById(existing);
+            log.info("[SlideUpload-HtmlFile] UPSERT: slideId={}, courseId={}, chapterId={}", sid, courseId, chapterId);
+        } else {
+            CourseSlide slide = new CourseSlide();
+            slide.setCourseId(courseId);
+            slide.setFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");
+            slide.setFileUrl("html:inline");
+            slide.setTotalPages(1);
+            slide.setStatus(2);
+            try { slide.setFileHash(sha256(file.getBytes())); }
+            catch (IOException e) { slide.setFileHash(""); }
+            if (chapterId != null) { slide.setChapterId(chapterId); }
+            slide.setCreatedAt(LocalDateTime.now());
+            slide.setUpdatedAt(LocalDateTime.now());
+            courseSlideMapper.insert(slide);
+            sid = slide.getId();
+            log.info("[SlideUpload-HtmlFile] NEW: slideId={}, courseId={}, chapterId={}", sid, courseId, chapterId);
+        }
+        // 删除该 slide 旧的 pages（一对一覆盖）
+        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, sid));
         SlidePage page = new SlidePage();
-        page.setSlideId(slide.getId());
+        page.setSlideId(sid);
         page.setCourseId(courseId);
         page.setChapterId(chapterId);
         page.setPageNumber(1);
         page.setContentType("HTML_DIRECT");
         page.setHtmlContent(safeHtml);
-        // slide_pages.image_url NOT NULL — HTML 没有渲染图片，设置空占位
         page.setImageUrl("html:no-image");
         page.setNarrationStatus("PENDING");
         page.setCreatedAt(LocalDateTime.now());
         page.setUpdatedAt(LocalDateTime.now());
         slidePageMapper.insert(page);
-        log.info("[SlideUpload-HtmlFile] courseId={}, slideId={}, size={}", courseId, slide.getId(), safeHtml.length());
         SlideUploadResponse resp = new SlideUploadResponse();
-        resp.setSlideId(slide.getId());
+        resp.setSlideId(sid);
         resp.setTotalPages(1);
         resp.setStatus(2);
         resp.setMessage("HTML file upload success");
