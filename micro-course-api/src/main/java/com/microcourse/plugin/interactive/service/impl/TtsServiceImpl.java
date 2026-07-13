@@ -146,7 +146,7 @@ public class TtsServiceImpl implements TtsService {
     @Override
     public SlidePageVO generate(Long courseId, Integer pageNumber) {
         checkOwner(courseId);
-        SlidePage page = getPage(courseId, pageNumber);
+        SlidePage page = getSinglePage(courseId, pageNumber);
         return doGenerate(courseId, pageNumber, page);
     }
 
@@ -163,7 +163,7 @@ public class TtsServiceImpl implements TtsService {
             Files.createDirectories(audioDir);
             Path audioPath = audioDir.resolve(audioFileName);
 
-            markPageStatus(courseId, pageNumber, "AUDIO_GENERATING");
+            txSetPageStatus(page.getId(), "AUDIO_GENERATING");
 
             boolean success = false;
             int audioDuration = 0;
@@ -185,7 +185,7 @@ public class TtsServiceImpl implements TtsService {
             }
 
             if (!success) {
-                markPageStatus(courseId, pageNumber, "TEACHER_EDITED");
+                txSetPageStatus(page.getId(), "TEACHER_EDITED");
                 throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED);
             }
 
@@ -214,16 +214,17 @@ public class TtsServiceImpl implements TtsService {
             throw e;
         } catch (Exception e) {
             log.error("TTS failed for courseId={} page={}", courseId, pageNumber, e);
-            try { markPageStatus(courseId, pageNumber, "TEACHER_EDITED"); } catch (Exception ignored) {}
+            try { txSetPageStatus(page.getId(), "TEACHER_EDITED"); } catch (Exception ignored) {}
             throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED);
         }
 
         return toPageVO(page);
     }
 
-    private void markPageStatus(Long courseId, Integer pageNumber, String status) {
+    private void txSetPageStatus(Long pageId, String status) {
         transactionTemplate.execute(tx -> {
-            SlidePage p = getPage(courseId, pageNumber);
+            SlidePage p = slidePageMapper.selectById(pageId);
+            if (p == null) return null;
             p.setNarrationStatus(status);
             p.setUpdatedAt(LocalDateTime.now());
             slidePageMapper.updateById(p);
@@ -420,10 +421,11 @@ public class TtsServiceImpl implements TtsService {
         return Math.max(1, estimatedSeconds);
     }
 
-    private SlidePage getPage(Long courseId, Integer pageNumber) {
+    private SlidePage getSinglePage(Long courseId, Integer pageNumber) {
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getCourseId, courseId)
-                .eq(SlidePage::getPageNumber, pageNumber);
+                .eq(SlidePage::getPageNumber, pageNumber)
+                .last("LIMIT 1");
         SlidePage page = slidePageMapper.selectOne(wrapper);
         if (page == null) {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
