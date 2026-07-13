@@ -687,8 +687,8 @@ const handleChapterSubmit = async () => {
   chapterSubmitLoading.value = true
   try {
     if (isChapterEdit.value) {
-      const { title, sortOrder, chapterType, duration } = chapterFormData
-      await updateChapter(currentChapterId.value, { title, sortOrder, chapterType, duration: duration || 0 })
+      const { title, sortOrder, duration } = chapterFormData
+      await updateChapter(currentChapterId.value, { title, sortOrder, duration: duration || 0 })
     } else {
       await createChapter({ ...chapterFormData, courseId: Number(courseId.value) })
     }

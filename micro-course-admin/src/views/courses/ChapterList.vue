@@ -48,14 +48,8 @@
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
         <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="chapterType" label="类型" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.chapterType === 'VIDEO'" type="primary" size="small">视频</el-tag>
-            <el-tag v-else-if="row.chapterType === 'EXERCISE'" type="warning" size="small">📝 练习</el-tag>
-            <el-tag v-else-if="row.chapterType === 'INTERACTIVE'" type="success" size="small">互动课件</el-tag>
-            <el-tag v-else-if="row.chapterType === 'OFFLINE'" type="info" size="small">线下课</el-tag>
-            <el-tag v-else type="info" size="small">{{ row.chapterType || '-' }}</el-tag>
-          </template>
+        <el-table-column label="课时" width="80" align="center">
+          <template #default="{ row }">{{ row.sectionCount || row.sections?.length || '-' }}</template>
         </el-table-column>
         <el-table-column prop="duration" label="时长" width="100" align="center">
           <template #default="{ row }">
@@ -94,14 +88,9 @@
         <el-form-item label="标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入章节标题" />
         </el-form-item>
-        <el-form-item label="类型" prop="chapterType">
-          <el-select v-model="formData.chapterType" placeholder="请选择类型" class="full-width">
-            <el-option label="视频" value="VIDEO" />
-            <el-option label="互动课件" value="INTERACTIVE" />
-            <el-option label="练习" value="EXERCISE" />
-            <el-option label="线下课" value="OFFLINE" />
-          </el-select>
-        </el-form-item>
+        <div class="form-tip" style="margin-bottom:12px;color:var(--el-color-info);font-size:12px">
+          章节类型已迁移到「课时」管理。创建章节后，可在课程详情页添加不同类型的课时。
+        </div>
         <el-form-item label="排序" prop="sortOrder">
           <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
@@ -154,16 +143,13 @@ const router = useRouter()
 const formData = reactive({
   courseId: null,
   title: '',
-  chapterType: 'VIDEO',
   sortOrder: 0,
   duration: 0,
   description: ''
 })
-
 const formRules = {
   courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
   title: [{ required: true, message: '请输入章节标题', trigger: 'blur' }],
-  chapterType: [{ required: true, message: '请选择类型', trigger: 'change' }],
   sortOrder: [{ required: true, message: '请输入排序号', trigger: 'blur' }, { type: 'number', min: 0, message: '最小为0', trigger: 'blur' }]
 }
 
@@ -235,7 +221,6 @@ const handleCreate = () => {
   currentId.value = null
   formData.courseId = searchForm.courseId
   formData.title = ''
-  formData.chapterType = 'VIDEO'
   formData.sortOrder = 0
   formData.duration = 0
   formData.description = ''
@@ -248,7 +233,6 @@ const handleEdit = (row) => {
   currentId.value = row.id
   formData.courseId = row.courseId
   formData.title = row.title
-  formData.chapterType = row.chapterType
   formData.sortOrder = row.sortOrder
   formData.duration = row.duration || 0
   formData.description = row.description || ''
