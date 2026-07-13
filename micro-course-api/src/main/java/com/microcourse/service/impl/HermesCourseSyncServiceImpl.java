@@ -130,7 +130,7 @@ private final HermesCourseMappingRepository mappingRepository;
         mapping.setUpdatedAt(LocalDateTime.now());
         mappingRepository.insert(mapping);
 
-        syncChapters(courseId, request.getChapters());
+        upsertChapters(courseId, request.getChapters());
 
         // 清除缓存，确保前端看到最新数据
         evictCourseCache(courseId);
@@ -164,9 +164,7 @@ private final HermesCourseMappingRepository mappingRepository;
             mappingRepository.updateById(mapping);
         }
 
-        chapterRepository.delete(new LambdaQueryWrapper<CourseChapter>()
-                .eq(CourseChapter::getCourseId, courseId));
-        syncChapters(courseId, request.getChapters());
+        upsertChapters(courseId, request.getChapters());
 
         // 清除缓存，确保前端看到更新后的章节和课时数据
         evictCourseCache(courseId);
@@ -174,6 +172,121 @@ private final HermesCourseMappingRepository mappingRepository;
         log.info("[HermesSync] Updated course: hermesId={}, courseId={}, title={}",
                 request.getHermesCourseId(), courseId, request.getTitle());
         return new HermesSyncResult(courseId, CourseStatus.fromCode(existing.getStatus()).name(), "updated");
+    }
+
+    private void upsertChapters(Long courseId, List<ChapterDto> chapters) {
+        if (chapters == null) return;
+
+        List<CourseChapter> existingChapters = chapterRepository.selectList(
+                new LambdaQueryWrapper<CourseChapter>()
+                        .eq(CourseChapter::getCourseId, courseId));
+
+        java.util.Set<Long> matchedChapterIds = new java.util.HashSet<>();
+
+        for (int ci = 0; ci < chapters.size(); ci++) {
+            ChapterDto dto = chapters.get(ci);
+            int sortOrder = dto.getSortOrder() != null ? dto.getSortOrder() : ci + 1;
+
+            CourseChapter chapter = existingChapters.stream()
+                    .filter(ch -> ch.getTitle() != null && ch.getTitle().equals(dto.getTitle())
+                            && ch.getSortOrder() != null && ch.getSortOrder().equals(sortOrder))
+                    .findFirst().orElse(null);
+
+            if (chapter == null) {
+                chapter = new CourseChapter();
+                chapter.setCourseId(courseId);
+                chapter.setTitle(dto.getTitle());
+                chapter.setSortOrder(sortOrder);
+                String chapterType = dto.getLessons() != null && !dto.getLessons().isEmpty()
+                        && dto.getLessons().get(0).getType() != null
+                        ? dto.getLessons().get(0).getType().trim().toUpperCase() : "VIDEO";
+                chapter.setChapterType(chapterType);
+                chapter.setDuration(0);
+                var now = LocalDateTime.now();
+                chapter.setCreatedAt(now);
+                chapter.setUpdatedAt(now);
+                chapterRepository.insert(chapter);
+            } else {
+                matchedChapterIds.add(chapter.getId());
+            }
+
+            // upsert sections under this chapter
+            upsertSections(courseId, chapter.getId(), dto.getLessons(), dto.getTitle());
+
+            if (dto.getLessons() == null || dto.getLessons().isEmpty()) {
+                CourseSection defaultSection = new CourseSection();
+                defaultSection.setChapterId(chapter.getId());
+                defaultSection.setCourseId(courseId);
+                defaultSection.setTitle(dto.getTitle());
+                defaultSection.setSectionType("VIDEO");
+                defaultSection.setSortOrder(1);
+                defaultSection.setVisible(true);
+                var now = LocalDateTime.now();
+                defaultSection.setCreatedAt(now);
+                defaultSection.setUpdatedAt(now);
+                defaultSection.setVersion(1);
+                sectionRepository.insert(defaultSection);
+            }
+        }
+
+        // delete chapters that no longer exist in Hermes data
+        for (CourseChapter ch : existingChapters) {
+            if (!matchedChapterIds.contains(ch.getId())) {
+                chapterRepository.deleteById(ch.getId());
+            }
+        }
+    }
+
+    private void upsertSections(Long courseId, Long chapterId, List<LessonDto> lessons, String chapterTitle) {
+        if (lessons == null || lessons.isEmpty()) return;
+
+        List<CourseSection> existingSections = sectionRepository.selectList(
+                new LambdaQueryWrapper<CourseSection>()
+                        .eq(CourseSection::getChapterId, chapterId));
+
+        java.util.Set<Long> matchedSectionIds = new java.util.HashSet<>();
+
+        for (int si = 0; si < lessons.size(); si++) {
+            LessonDto dto = lessons.get(si);
+            int sortOrder = dto.getSortOrder() != null ? dto.getSortOrder() : si + 1;
+
+            CourseSection section = existingSections.stream()
+                    .filter(s -> s.getTitle() != null && s.getTitle().equals(dto.getTitle())
+                            && s.getSortOrder() != null && s.getSortOrder().equals(sortOrder))
+                    .findFirst().orElse(null);
+
+            if (section == null) {
+                section = new CourseSection();
+                section.setChapterId(chapterId);
+                section.setCourseId(courseId);
+                section.setTitle(dto.getTitle());
+                section.setSectionType(dto.getType() != null ? dto.getType() : "VIDEO");
+                section.setSortOrder(sortOrder);
+                section.setDuration(dto.getDurationMinutes());
+                section.setVisible(true);
+                section.setScriptContent(dto.getScriptContent());
+                var now = LocalDateTime.now();
+                section.setCreatedAt(now);
+                section.setUpdatedAt(now);
+                section.setVersion(1);
+                sectionRepository.insert(section);
+            } else {
+                matchedSectionIds.add(section.getId());
+                // update existing section fields
+                section.setSectionType(dto.getType() != null ? dto.getType() : "VIDEO");
+                section.setDuration(dto.getDurationMinutes());
+                section.setScriptContent(dto.getScriptContent());
+                section.setUpdatedAt(LocalDateTime.now());
+                sectionRepository.updateById(section);
+            }
+        }
+
+        // delete sections that no longer exist in Hermes data
+        for (CourseSection s : existingSections) {
+            if (!matchedSectionIds.contains(s.getId())) {
+                sectionRepository.deleteById(s.getId());
+            }
+        }
     }
 
     private Course buildCourse(HermesWebhookRequest request, User callerTeacher) {
@@ -331,72 +444,5 @@ private final HermesCourseMappingRepository mappingRepository;
         return vo;
     }
 
-    private void syncChapters(Long courseId, List<ChapterDto> chapters) {
-        if (chapters == null || chapters.isEmpty()) {
-            return;
-        }
 
-        int chapterIndex = 0;
-        for (ChapterDto chapterDto : chapters) {
-            CourseChapter chapter = new CourseChapter();
-            chapter.setCourseId(courseId);
-            chapter.setTitle(chapterDto.getTitle());
-            chapter.setSortOrder(chapterDto.getSortOrder() != null ? chapterDto.getSortOrder() : chapterIndex + 1);
-
-            // 章节类型根据第一个课时的类型推断；无课时时默认 VIDEO（保守兜底）
-            String chapterType = "VIDEO";
-            if (chapterDto.getLessons() != null && !chapterDto.getLessons().isEmpty()) {
-                String firstType = chapterDto.getLessons().get(0).getType();
-                if (firstType != null) {
-                    chapterType = firstType.trim().toUpperCase();
-                }
-            }
-            chapter.setChapterType(chapterType);
-            chapter.setDuration(0);
-            chapter.setCreatedAt(LocalDateTime.now());
-            chapter.setUpdatedAt(LocalDateTime.now());
-            chapterRepository.insert(chapter);
-            chapterIndex++;
-
-            List<LessonDto> lessons = chapterDto.getLessons();
-            if (lessons == null || lessons.isEmpty()) {
-                // 无课时时创建一个默认 section 保留章节类型
-                CourseSection defaultSection = new CourseSection();
-                defaultSection.setChapterId(chapter.getId());
-                defaultSection.setCourseId(courseId);
-                defaultSection.setTitle(chapterDto.getTitle());
-                defaultSection.setSectionType(chapterType);
-                defaultSection.setSortOrder(1);
-                defaultSection.setVisible(true);
-                var now = LocalDateTime.now();
-                defaultSection.setCreatedAt(now);
-                defaultSection.setUpdatedAt(now);
-                defaultSection.setVersion(1);
-                sectionRepository.insert(defaultSection);
-                continue;
-            }
-
-            int lessonIndex = 0;
-            for (LessonDto lessonDto : lessons) {
-                CourseSection section = new CourseSection();
-                section.setChapterId(chapter.getId());
-                section.setCourseId(courseId);
-                section.setTitle(lessonDto.getTitle());
-                section.setSectionType(lessonDto.getType() != null ? lessonDto.getType() : "VIDEO");
-                section.setSortOrder(lessonDto.getSortOrder() != null ? lessonDto.getSortOrder() : lessonIndex + 1);
-                section.setDuration(lessonDto.getDurationMinutes());
-                section.setVisible(true);
-                section.setScriptContent(lessonDto.getScriptContent());
-                var now = LocalDateTime.now();
-                section.setCreatedAt(now);
-                section.setUpdatedAt(now);
-                section.setVersion(1);
-                sectionRepository.insert(section);
-                lessonIndex++;
-
-                log.debug("[HermesSync] Inserted section: chapterId={}, sectionId={}, title={}",
-                        chapter.getId(), section.getId(), lessonDto.getTitle());
-            }
-        }
-    }
 }
