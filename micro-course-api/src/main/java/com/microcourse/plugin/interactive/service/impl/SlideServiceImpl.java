@@ -14,10 +14,10 @@ import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
 import com.microcourse.entity.CourseChapter;
-import com.microcourse.entity.Lesson;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
-import com.microcourse.repository.LessonRepository;
+import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.util.SecurityUtil;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
@@ -66,7 +66,7 @@ public class SlideServiceImpl implements SlideService {
     private final SlidePageMapper slidePageMapper;
     private final CourseRepository courseRepository;
     private final CourseChapterRepository courseChapterRepository;
-    private final LessonRepository lessonRepository;
+    private final CourseSectionRepository sectionRepo;
     private final SlideRenderService slideRenderService;
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
@@ -79,13 +79,13 @@ public class SlideServiceImpl implements SlideService {
                             SlidePageMapper slidePageMapper,
                             CourseRepository courseRepository,
                             CourseChapterRepository courseChapterRepository,
-                            LessonRepository lessonRepository,
+                            CourseSectionRepository sectionRepo,
                             SlideRenderService slideRenderService) {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
-        this.lessonRepository = lessonRepository;
+        this.sectionRepo = sectionRepo;
         this.slideRenderService = slideRenderService;
     }
 
@@ -378,14 +378,14 @@ public class SlideServiceImpl implements SlideService {
         vo.setErrorMessage(s.getErrorMessage());
         vo.setCreatedAt(s.getCreatedAt()); vo.setUpdatedAt(s.getUpdatedAt());
         vo.setChapterId(s.getChapterId());
-        vo.setLessonId(s.getLessonId());
+        vo.setLessonId(s.getSectionId());
         if (s.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(s.getChapterId());
             if (chapter != null) vo.setChapterTitle(chapter.getTitle());
         }
-        if (s.getLessonId() != null) {
-            Lesson lesson = lessonRepository.selectById(s.getLessonId());
-            if (lesson != null) vo.setLessonTitle(lesson.getTitle());
+        if (s.getSectionId() != null) {
+            CourseSection sec = sectionRepo.selectById(s.getSectionId());
+            if (sec != null) vo.setLessonTitle(sec.getTitle());
         }
         return vo;
     }
@@ -393,7 +393,7 @@ public class SlideServiceImpl implements SlideService {
     private SlidePageVO toPageVO(SlidePage p) {
         SlidePageVO vo = new SlidePageVO();
         vo.setId(p.getId()); vo.setSlideId(p.getSlideId()); vo.setChapterId(p.getChapterId());
-        vo.setLessonId(p.getLessonId());
+        vo.setLessonId(p.getSectionId());
         vo.setCourseId(p.getCourseId()); vo.setPageNumber(p.getPageNumber());
         vo.setFileUuid(p.getFileUuid()); vo.setContentType(p.getContentType());
         vo.setHtmlContent(p.getHtmlContent());
@@ -431,7 +431,7 @@ public class SlideServiceImpl implements SlideService {
         LambdaQueryWrapper<CourseSlide> wrapper = new LambdaQueryWrapper<CourseSlide>()
                 .eq(CourseSlide::getCourseId, courseId);
         if (lessonId != null) {
-            wrapper.eq(CourseSlide::getLessonId, lessonId);
+            wrapper.eq(CourseSlide::getSectionId, lessonId);
         }
         List<CourseSlide> slides = courseSlideMapper.selectList(wrapper);
         if (slides.isEmpty()) throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND);
