@@ -22,6 +22,16 @@ class V182SectionMigrationTest {
     }
 
     @Test
+    void should_migrate_lessons_to_sections() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        Integer originalLessons = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM lessons WHERE deleted_at IS NULL", Integer.class);
+        Integer migrated = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM course_sections WHERE sort_order >= 10000", Integer.class);
+        assertThat(migrated).isGreaterThanOrEqualTo(originalLessons != null ? originalLessons : 0);
+    }
+
+    @Test
     void should_migrate_chapters_to_sections() throws Exception {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         Integer chapters = jdbc.queryForObject(
