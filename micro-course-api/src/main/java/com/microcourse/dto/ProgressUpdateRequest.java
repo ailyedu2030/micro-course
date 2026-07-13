@@ -28,7 +28,7 @@ public class ProgressUpdateRequest {
 
     private Boolean completed;
 
-    private Long lessonId;
+    private Long sectionId;
 
     public ProgressUpdateRequest() {}
 
@@ -54,6 +54,6 @@ public class ProgressUpdateRequest {
     public void setConfidence(Integer confidence) { this.confidence = confidence; }
     public Boolean getCompleted() { return completed; }
     public void setCompleted(Boolean completed) { this.completed = completed; }
-    public Long getLessonId() { return lessonId; }
-    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
+    public Long getSectionId() { return sectionId; }
+    public void setSectionId(Long sectionId) { this.sectionId = sectionId; }
 }

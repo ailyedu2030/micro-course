@@ -90,7 +90,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         int totalEx = 0;
         int completedVideos = 0;
         for (LearningProgress p : list) {
-            if (p.getLessonId() != null) { // 仅统计课时级记录
+            if (p.getSectionId() != null) { // 仅统计课时级记录
                 totalEx++;
                 if (Boolean.TRUE.equals(p.getExerciseCompleted())) {
                     completedEx++;
@@ -124,7 +124,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         // 按 courseId 聚合已完成视频数
         java.util.Map<Long, Integer> completedVideosByCourse = new java.util.HashMap<>();
         for (LearningProgress p : list) {
-            if (p.getCourseId() != null && p.getLessonId() != null && Boolean.TRUE.equals(p.getCompleted())) {
+            if (p.getCourseId() != null && p.getSectionId() != null && Boolean.TRUE.equals(p.getCompleted())) {
                 completedVideosByCourse.merge(p.getCourseId(), 1, Integer::sum);
             }
         }
@@ -231,8 +231,8 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         if (request.getExercisePassed() != null) {
             wrapper.set(LearningProgress::getExercisePassed, request.getExercisePassed());
         }
-        if (request.getLessonId() != null) {
-            wrapper.set(LearningProgress::getLessonId, request.getLessonId());
+        if (request.getSectionId() != null) {
+            wrapper.set(LearningProgress::getSectionId, request.getSectionId());
         }
         // 总观看时间:任何客户端上报都走原子累加,避免多设备并发覆盖丢失(CON-003 修复)
         if (request.getWatchDelta() != null && request.getWatchDelta() > 0) {
@@ -304,8 +304,8 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         }
 
         // ★ Round 8-4 修复(P0)：多设备/并发重复上报防护。
-        // learning_progress 仅对 lesson_id IS NOT NULL 有 DB 唯一约束(uk_lp_user_lesson)，
-        // 章节级（lesson_id 为 null）记录此前无任何约束，并发 create 会产生重复记录、完成度翻倍。
+        // learning_progress 仅对 section_id IS NOT NULL 有 DB 唯一约束(uk_lp_user_lesson)，
+        // 章节级（section_id 为 null）记录此前无任何约束，并发 create 会产生重复记录、完成度翻倍。
         // 这里先按业务粒度查重：命中则幂等更新已有记录（合法用户体验零退化）；
         // 未命中再插入，极端并发命中 V66 部分唯一索引时兜底转 400 提示，绝不抛 500。
         // 这里先按业务粒度查重：命中则幂等更新已有记录（合法用户体验零退化）；
@@ -316,7 +316,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
             if (request.getVideoProgress() != null) existing.setVideoProgress(request.getVideoProgress());
             if (request.getVideoPosition() != null) existing.setVideoPosition(request.getVideoPosition());
             if (request.getTotalWatchTime() != null) existing.setTotalWatchTime(request.getTotalWatchTime());
-            if (request.getLessonId() != null) existing.setLessonId(request.getLessonId());
+            if (request.getSectionId() != null) existing.setSectionId(request.getSectionId());
             if (request.getExerciseCompleted() != null) existing.setExerciseCompleted(request.getExerciseCompleted());
             if (request.getExercisePassed() != null) existing.setExercisePassed(request.getExercisePassed());
             if (request.getDeviceId() != null) existing.setDeviceId(request.getDeviceId());
@@ -344,7 +344,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         progress.setUserId(request.getUserId());
         progress.setCourseId(request.getCourseId());
         progress.setChapterId(request.getChapterId());
-        progress.setLessonId(request.getLessonId());
+        progress.setSectionId(request.getSectionId());
         progress.setVideoProgress(request.getVideoProgress());
         progress.setVideoPosition(request.getVideoPosition());
         progress.setExerciseCompleted(request.getExerciseCompleted());
@@ -516,10 +516,10 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         } else {
             w.isNull(LearningProgress::getChapterId);
         }
-        if (request.getLessonId() != null) {
-            w.eq(LearningProgress::getLessonId, request.getLessonId());
+        if (request.getSectionId() != null) {
+            w.eq(LearningProgress::getSectionId, request.getSectionId());
         } else {
-            w.isNull(LearningProgress::getLessonId);
+            w.isNull(LearningProgress::getSectionId);
         }
         w.orderByDesc(LearningProgress::getId).last("LIMIT 1");
         return w;
@@ -531,7 +531,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         vo.setUserId(progress.getUserId());
         vo.setCourseId(progress.getCourseId());
         vo.setChapterId(progress.getChapterId());
-        vo.setLessonId(progress.getLessonId());
+        vo.setSectionId(progress.getSectionId());
         vo.setVideoProgress(progress.getVideoProgress());
         vo.setVideoPosition(progress.getVideoPosition());
         vo.setExerciseCompleted(progress.getExerciseCompleted());
@@ -569,7 +569,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         vo.setUserId(progress.getUserId());
         vo.setCourseId(progress.getCourseId());
         vo.setChapterId(progress.getChapterId());
-        vo.setLessonId(progress.getLessonId());
+        vo.setSectionId(progress.getSectionId());
         vo.setVideoProgress(progress.getVideoProgress());
         vo.setVideoPosition(progress.getVideoPosition());
         vo.setExerciseCompleted(progress.getExerciseCompleted());

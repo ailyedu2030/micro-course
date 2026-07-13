@@ -22,7 +22,7 @@ import { uploadVideo } from '@/api/video'
 import { UploadFilled } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
-const props = defineProps({ lessonId: { type: [Number, String], required: true }, courseId: { type: [Number, String], required: true } })
+const props = defineProps({ sectionId: { type: [Number, String], required: true }, courseId: { type: [Number, String], required: true } })
 const videoFile = ref('')
 const previewUrl = ref('')
 const uploading = ref(false)
@@ -34,7 +34,7 @@ async function handleUpload(file) {
   const fd = new FormData()
   fd.append('file', file)
   fd.append('courseId', String(props.courseId))
-  fd.append('chapterId', String(props.lessonId))
+  fd.append('chapterId', String(props.sectionId))
   try {
     const res = await request({
       method: 'POST',

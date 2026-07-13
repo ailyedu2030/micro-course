@@ -24,8 +24,8 @@ public class LearningProgress {
     @TableField("chapter_id")
     private Long chapterId;
 
-    @TableField("lesson_id")
-    private Long lessonId;
+    @TableField("section_id")
+    private Long sectionId;
 
     @TableField("video_progress")
     private Integer videoProgress;
@@ -89,8 +89,8 @@ public class LearningProgress {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Long getChapterId() { return chapterId; }
     public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
-    public Long getLessonId() { return lessonId; }
-    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
+    public Long getSectionId() { return sectionId; }
+    public void setSectionId(Long sectionId) { this.sectionId = sectionId; }
     public Integer getVideoProgress() { return videoProgress; }
     public void setVideoProgress(Integer videoProgress) { this.videoProgress = videoProgress; }
     public Integer getVideoPosition() { return videoPosition; }

@@ -55,7 +55,7 @@ class VideoLearningFlowIntegrationTest extends BaseIntegrationTest {
 
     @AfterEach
     void cleanupVideo() {
-        // learning_progress.lesson_id → videos(ON DELETE CASCADE)，但显式先清进度更稳妥
+        // learning_progress.section_id → videos(ON DELETE CASCADE)，但显式先清进度更稳妥
         List<Long> users = new ArrayList<>(createdUserIds);
         users.add(7L);
         for (Long u : users) {

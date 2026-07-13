@@ -24,7 +24,7 @@ vi.mock('@/api/learning-progress', () => ({
 vi.mock('vue-router', () => ({
   useRoute: () => ({
     params: { courseId: '100' },
-    query: { chapterId: '42', lessonId: '5' },
+    query: { chapterId: '42', sectionId: '5' },
   }),
 }))
 

@@ -10,7 +10,7 @@ public class LearningProgressVO {
     private String courseTitle;
     private Long chapterId;
     private String chapterTitle;
-    private Long lessonId;
+    private Long sectionId;
     private Integer videoProgress;
     private Integer videoPosition;
     private Boolean exerciseCompleted;
@@ -32,7 +32,7 @@ public class LearningProgressVO {
     private Integer completedExercises;
     private Integer totalExercises;
 
-    // 课程级已完成视频数：count(completed=true AND lesson_id IS NOT NULL)
+    // 课程级已完成视频数：count(completed=true AND section_id IS NOT NULL)
     private Integer completedVideos;
 
     public LearningProgressVO() {}
@@ -49,8 +49,8 @@ public class LearningProgressVO {
     public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public String getChapterTitle() { return chapterTitle; }
     public void setChapterTitle(String chapterTitle) { this.chapterTitle = chapterTitle; }
-    public Long getLessonId() { return lessonId; }
-    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
+    public Long getSectionId() { return sectionId; }
+    public void setSectionId(Long sectionId) { this.sectionId = sectionId; }
     public Integer getVideoProgress() { return videoProgress; }
     public void setVideoProgress(Integer videoProgress) { this.videoProgress = videoProgress; }
     public Integer getVideoPosition() { return videoPosition; }

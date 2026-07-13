@@ -159,7 +159,7 @@ const activeTab = ref('course')
 // ==================== 课程数据 ====================
 const course = ref({})
 const chapters = ref([])
-const progressMap = ref({}) // lessonId -> progress
+const progressMap = ref({}) // sectionId -> progress
 const progressRawList = ref([]) // 原始进度列表，用于 chapterId 维度查询（非 VIDEO 章节）
 const loading = ref(true)
 const drawerOpen = ref(false)
@@ -237,7 +237,7 @@ function formatTotalTime(data) {
 
 function buildProgressMap(progressList) {
   const map = {}
-  ;(progressList || []).forEach(p => { map[p.lessonId] = p })
+  ;(progressList || []).forEach(p => { map[p.sectionId] = p })
   return map
 }
 
@@ -259,7 +259,7 @@ async function loadCourse(cid) {
       document.title = course.value.title + ' - 微课平台'
     }
 
-    // ✅ 构建 progressMap（key=lessonId）+ 保存原始列表供 chapterId 查询
+    // ✅ 构建 progressMap（key=sectionId）+ 保存原始列表供 chapterId 查询
     const rawProgress = progressRes.data || []
     progressMap.value = buildProgressMap(rawProgress)
     progressRawList.value = rawProgress
@@ -367,7 +367,7 @@ async function loadProgress() {
         if (ch.lessons) {
           ch.lessons.forEach(l => {
             if (ch.sectionType === 'VIDEO') {
-              // VIDEO 章节: 按 lessonId 查找进度
+              // VIDEO 章节: 按 sectionId 查找进度
               const prog = progressMap.value[l.id]
               l.status = prog?.completed ? 'COMPLETED' : 'NOT_STARTED'
             } else {
@@ -431,8 +431,8 @@ async function toggleFavorite() {
 }
 
 // ==================== 课时选择 ====================
-function selectLesson(lessonId) {
-  currentLessonId.value = lessonId
+function selectLesson(sectionId) {
+  currentLessonId.value = sectionId
   // 视频状态（loading/error/buffer 等）重置由 VideoSection 监听 currentVideo 变化处理
   // 此处仅同步进度镜像，避免切换瞬间 saveVideoProgress 误判
   isPlaying.value = false
@@ -456,23 +456,23 @@ async function saveVideoProgress(force = false) {
   // P1-10: 只在播放中保存进度（force=true 时跳过此检查，用于卸载前最终上报）
   if (!force && !isPlaying.value) return
   if (!currentLessonId.value) return
-  // 跳过非数字lessonId(如offline-76,slide-42等合成ID,由子页面自行管理进度)
+  // 跳过非数字sectionId(如offline-76,slide-42等合成ID,由子页面自行管理进度)
   if (!/^\d+$/.test(String(currentLessonId.value))) return
 
-  // P2-003: sessionStorage dedup — 5 秒内同 lessonId 不上报，防 LearningView+VideoPlayer 双倍请求
+  // P2-003: sessionStorage dedup — 5 秒内同 sectionId 不上报，防 LearningView+VideoPlayer 双倍请求
   const dedupKey = `progress_dedup_lesson_${currentLessonId.value}`
   const lastReport = sessionStorage.getItem(dedupKey)
   if (lastReport && (Date.now() - parseInt(lastReport, 10)) < 5000) return
   sessionStorage.setItem(dedupKey, String(Date.now()))
 
   try {
-    const lessonId = currentLessonId.value
+    const sectionId = currentLessonId.value
     // P0-3: 计算 watchDelta（距上次保存的秒数）
     const now = Date.now()
     const watchDelta = Math.floor((now - lastSaveTime) / 1000)
     lastSaveTime = now
 
-    const lessonProgress = progressMap.value[lessonId]
+    const lessonProgress = progressMap.value[sectionId]
     if (lessonProgress?.id) {
       // P0-1: 只上传 videoPosition，不传 completed
       await updateLearningProgress(lessonProgress.id, {
@@ -485,21 +485,21 @@ async function saveVideoProgress(force = false) {
         const res = await createLearningProgress({
           courseId: courseId.value,
           chapterId: currentChapter.value?.id,
-          lessonId: lessonId,
+          sectionId: sectionId,
           videoPosition: Math.floor(currentTime.value),
           watchDelta
         })
         const newId = res.data?.id || (res.data || res).id
         if (newId) {
-          progressMap.value[lessonId] = { id: newId, lessonId }
+          progressMap.value[sectionId] = { id: newId, sectionId }
         }
       } catch (createErr) {
         // UNIQUE 冲突：查询已有记录后重试 update
         console.warn('[LearningView] create 冲突，尝试查询已有记录', createErr)
-        const existing = await getLearningProgress({ courseId: courseId.value, lessonId })
-        const record = (existing.data || []).find(p => p.lessonId === lessonId)
+        const existing = await getLearningProgress({ courseId: courseId.value, sectionId })
+        const record = (existing.data || []).find(p => p.sectionId === sectionId)
         if (record?.id) {
-          progressMap.value[lessonId] = record
+          progressMap.value[sectionId] = record
           await updateLearningProgress(record.id, {
             videoPosition: Math.floor(currentTime.value),
             watchDelta
@@ -524,8 +524,8 @@ async function markLessonComplete() {
   clearInterval(progressSaveTimer)
   let marked = false
   try {
-    const lessonId = currentLessonId.value
-    const lessonProgress = progressMap.value[lessonId]
+    const sectionId = currentLessonId.value
+    const lessonProgress = progressMap.value[sectionId]
     if (lessonProgress?.id) {
       await updateLearningProgress(lessonProgress.id, { completed: true })
     } else {
@@ -534,20 +534,20 @@ async function markLessonComplete() {
         const res = await createLearningProgress({
           courseId: courseId.value,
           chapterId: currentChapter.value?.id,
-          lessonId: lessonId,
+          sectionId: sectionId,
           completed: true
         })
         const newId = res.data?.id || (res.data || res).id
         if (newId) {
-          progressMap.value[lessonId] = { id: newId, lessonId }
+          progressMap.value[sectionId] = { id: newId, sectionId }
         }
       } catch (createErr) {
         // UNIQUE 冲突：查询已有记录后重试 update
         console.warn('[LearningView] create 冲突，尝试查询已有记录', createErr)
-        const existing = await getLearningProgress({ courseId: courseId.value, lessonId })
-        const record = (existing.data || []).find(p => p.lessonId === lessonId)
+        const existing = await getLearningProgress({ courseId: courseId.value, sectionId })
+        const record = (existing.data || []).find(p => p.sectionId === sectionId)
         if (record?.id) {
-          progressMap.value[lessonId] = record
+          progressMap.value[sectionId] = record
           await updateLearningProgress(record.id, { completed: true })
         }
       }

@@ -469,8 +469,8 @@ function formatTime(s) {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 }
 
-// P1I-016: 在进度上报时增加 lessonId 参数（从 route.query 获取）
-const lessonId = computed(() => route.query.lessonId)
+// P1I-016: 在进度上报时增加 sectionId 参数（从 route.query 获取）
+const sectionId = computed(() => route.query.sectionId)
 
 // P0-2: 创建/获取进度记录
 async function ensureProgress() {
@@ -483,7 +483,7 @@ async function ensureProgress() {
       await createLearningProgress({
         courseId: courseId.value,
         chapterId: chapterId.value ? Number(chapterId.value) : undefined,
-        lessonId: lessonId.value ? Number(lessonId.value) : undefined,
+        sectionId: sectionId.value ? Number(sectionId.value) : undefined,
       })
     }
   } catch (e) { if (courseId.value) console.warn('[SlidePlayer] ensureProgress failed', e.message) }
@@ -502,7 +502,7 @@ async function markSlideComplete() {
       await createLearningProgress({
         courseId: courseId.value,
         chapterId: chapterId.value ? Number(chapterId.value) : undefined,
-        lessonId: lessonId.value ? Number(lessonId.value) : undefined,
+        sectionId: sectionId.value ? Number(sectionId.value) : undefined,
         completed: true,
       })
     }

@@ -12,7 +12,7 @@ public class ProgressCreateRequest {
 
     private Long chapterId;
 
-    private Long lessonId;
+    private Long sectionId;
 
     // ★ Round 9-3 修复：进度/位置/时长不能为负数（null 时跳过，合法用户零退化）
     @PositiveOrZero(message = "视频进度不能为负数")
@@ -46,8 +46,8 @@ public class ProgressCreateRequest {
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public Long getChapterId() { return chapterId; }
     public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
-    public Long getLessonId() { return lessonId; }
-    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
+    public Long getSectionId() { return sectionId; }
+    public void setSectionId(Long sectionId) { this.sectionId = sectionId; }
     public Integer getVideoProgress() { return videoProgress; }
     public void setVideoProgress(Integer videoProgress) { this.videoProgress = videoProgress; }
     public Integer getVideoPosition() { return videoPosition; }

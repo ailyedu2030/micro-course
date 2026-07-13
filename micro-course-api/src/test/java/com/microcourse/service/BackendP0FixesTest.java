@@ -378,7 +378,7 @@ class BackendP0FixesTest extends BaseIntegrationTest {
     private long activeProgressCount(long userId, long courseId, long chapterId) {
         return queryLong("SELECT count(*) FROM learning_progress WHERE user_id = " + userId
                 + " AND course_id = " + courseId + " AND chapter_id = " + chapterId
-                + " AND lesson_id IS NULL AND deleted_at IS NULL");
+                + " AND section_id IS NULL AND deleted_at IS NULL");
     }
 
     private long gradeCount(long userId, long exerciseId, int attemptNo) {

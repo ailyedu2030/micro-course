@@ -52,7 +52,7 @@ class ExerciseFlowIntegrationTest extends BaseIntegrationTest {
         try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7 AND course_id = 1"); } catch (Exception ignored) {}
         jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, source_channel, enrolled_at, updated_at) " +
                 "VALUES (7, 1, 'APPROVED', 'WEB', now(), now())");
-        // P1C-024: 视频进度阈值检查 — 创建一条课程级学习进度（无 lesson_id FK 依赖）
+        // P1C-024: 视频进度阈值检查 — 创建一条课程级学习进度（无 section_id FK 依赖）
         jdbc.update("INSERT INTO learning_progress (user_id, course_id, video_progress, completed, total_watch_time, created_at, updated_at) " +
                 "VALUES (7, 1, 100.0, true, 300, now(), now()) ON CONFLICT DO NOTHING");
     }
