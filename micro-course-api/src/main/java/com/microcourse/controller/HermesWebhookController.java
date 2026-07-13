@@ -369,6 +369,41 @@ public class HermesWebhookController {
     }
 
     /**
+     * 列出该课程的所有 slide（Hermes 用 API Key，不依赖 JWT）
+     */
+    @GetMapping("/courses/{hermesCourseId}/slides")
+    public R<List<com.microcourse.plugin.interactive.dto.SlideVO>> listSlides(
+            @RequestHeader("X-API-Key") String apiKey,
+            @PathVariable String hermesCourseId) {
+        authenticate(apiKey);
+        HermesCourseMapping mapping = mappingRepository.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
+        if (mapping == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        List<com.microcourse.plugin.interactive.entity.CourseSlide> slides = courseSlideMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
+                        .eq(com.microcourse.plugin.interactive.entity.CourseSlide::getCourseId, mapping.getCourseId()));
+        List<com.microcourse.plugin.interactive.dto.SlideVO> vos = slides.stream()
+                .map(s -> {
+                    com.microcourse.plugin.interactive.dto.SlideVO vo = new com.microcourse.plugin.interactive.dto.SlideVO();
+                    vo.setId(s.getId());
+                    vo.setCourseId(s.getCourseId());
+                    vo.setChapterId(s.getChapterId());
+                    vo.setSectionId(s.getSectionId());
+                    vo.setLessonTitle(s.getFileName());
+                    vo.setFileName(s.getFileName());
+                    vo.setTotalPages(s.getTotalPages());
+                    vo.setStatus(s.getStatus());
+                    vo.setErrorMessage(s.getErrorMessage());
+                    vo.setCreatedAt(s.getCreatedAt());
+                    vo.setUpdatedAt(s.getUpdatedAt());
+                    return vo;
+                })
+                .toList();
+        return R.ok(vos);
+    }
+
+    /**
      * 列出平台所有课程（含非 Hermes 创建的）
      */
     @GetMapping("/courses/all")
