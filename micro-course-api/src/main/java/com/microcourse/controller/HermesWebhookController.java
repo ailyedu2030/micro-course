@@ -93,6 +93,88 @@ public class HermesWebhookController {
     }
 
     /**
+     * 课时独立 CRUD：列出章节下的所有课时
+     */
+    @GetMapping("/courses/{hermesCourseId}/sections")
+    public R<List<CourseSection>> listSections(@RequestHeader("X-API-Key") String apiKey,
+                                                @PathVariable String hermesCourseId) {
+        authenticate(apiKey);
+        HermesCourseMapping mapping = mappingRepository.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
+        if (mapping == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        List<CourseSection> sections = sectionRepository.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
+                        .eq(CourseSection::getCourseId, mapping.getCourseId()));
+        return R.ok(sections);
+    }
+
+    /**
+     * 课时独立 CRUD：创建课时
+     */
+    @PostMapping("/courses/{hermesCourseId}/sections")
+    public R<CourseSection> createSection(@RequestHeader("X-API-Key") String apiKey,
+                                          @PathVariable String hermesCourseId,
+                                          @RequestBody CourseSection body) {
+        authenticate(apiKey);
+        HermesCourseMapping mapping = mappingRepository.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
+        if (mapping == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        body.setId(null);
+        body.setCourseId(mapping.getCourseId());
+        var now = java.time.LocalDateTime.now();
+        body.setCreatedAt(now);
+        body.setUpdatedAt(now);
+        if (body.getVersion() == null) body.setVersion(1);
+        if (body.getVisible() == null) body.setVisible(true);
+        sectionRepository.insert(body);
+        return R.ok(body);
+    }
+
+    /**
+     * 课时独立 CRUD：更新课时
+     */
+    @PutMapping("/courses/{hermesCourseId}/sections/{sectionId}")
+    public R<CourseSection> updateSection(@RequestHeader("X-API-Key") String apiKey,
+                                          @PathVariable String hermesCourseId,
+                                          @PathVariable Long sectionId,
+                                          @RequestBody CourseSection body) {
+        authenticate(apiKey);
+        HermesCourseMapping mapping = mappingRepository.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
+        if (mapping == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        CourseSection existing = sectionRepository.selectById(sectionId);
+        if (existing == null) throw new BusinessException(ErrorCode.SECTION_NOT_FOUND);
+        existing.setTitle(body.getTitle());
+        existing.setSectionType(body.getSectionType());
+        existing.setSortOrder(body.getSortOrder());
+        existing.setDuration(body.getDuration());
+        existing.setVisible(body.getVisible());
+        existing.setScriptContent(body.getScriptContent());
+        existing.setUpdatedAt(java.time.LocalDateTime.now());
+        sectionRepository.updateById(existing);
+        return R.ok(existing);
+    }
+
+    /**
+     * 课时独立 CRUD：删除课时
+     */
+    @DeleteMapping("/courses/{hermesCourseId}/sections/{sectionId}")
+    public R<Void> deleteSection(@RequestHeader("X-API-Key") String apiKey,
+                                 @PathVariable String hermesCourseId,
+                                 @PathVariable Long sectionId) {
+        authenticate(apiKey);
+        HermesCourseMapping mapping = mappingRepository.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
+        if (mapping == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        sectionRepository.deleteById(sectionId);
+        return R.ok();
+    }
+
+    /**
      * Hermes 上传课件。
      * URL 中的 {lessonId} 对应 course_sections.id（lessons 表已迁移到 course_sections）。
      * 保持 /lessons/ 路径前缀是为兼容 Hermes 外部 API 协议，不涉及数据库 lessons 表。
@@ -159,6 +241,23 @@ public class HermesWebhookController {
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    @DeleteMapping("/courses/{hermesCourseId}")
+    public R<Void> deleteCourse(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
+                                @PathVariable String hermesCourseId) {
+        User caller = authenticate(apiKey);
+
+        HermesCourseMapping mapping = mappingRepository.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
+                        .eq(HermesCourseMapping::getHermesCourseId, hermesCourseId));
+        if (mapping == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        mappingRepository.deleteById(mapping.getId());
+        log.info("[HermesWebhook] Mapping deleted: hermesCourseId={}, courseId={}, caller={}",
+                hermesCourseId, mapping.getCourseId(), caller.getUsername());
+        return R.ok();
     }
 
     @PostMapping("/courses/{hermesCourseId}/scripts")

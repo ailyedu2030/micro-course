@@ -15,7 +15,7 @@ public interface LearningProgressRepository extends BaseMapper<LearningProgress>
      * 故 PG 事务不会进入 aborted 状态，调用方可安全回查已存在记录并返回 200。
      * 用于消除多设备/并发上报产生的重复进度记录（完成度翻倍）。
      */
-    @Insert("INSERT INTO learning_progress (user_id, course_id, chapter_id, section_id, video_progress, "
+    @Insert("INSERT INTO learning_progress (user_id, course_id, chapter_id, lesson_id, video_progress, "
             + "video_position, exercise_completed, exercise_passed, total_watch_time, device_id, platform, "
             + "playback_speed, confidence, offline_attended, completed, last_watch_at, created_at, updated_at, version) "
             + "VALUES (#{userId}, #{courseId}, #{chapterId}, #{sectionId}, #{videoProgress}, #{videoPosition}, "

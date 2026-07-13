@@ -24,7 +24,7 @@ public class LearningProgress {
     @TableField("chapter_id")
     private Long chapterId;
 
-    @TableField("section_id")
+    @TableField("lesson_id")
     private Long sectionId;
 
     @TableField("video_progress")
