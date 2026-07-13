@@ -85,6 +85,14 @@ export function deleteSlide(courseId, lessonId) {
   return request({ method: 'DELETE', url: `/courses/${courseId}/slides`, params })
 }
 
+export function deleteSlideById(courseId, slideId) {
+  return request({ method: 'DELETE', url: `/courses/${courseId}/slides/${slideId}` })
+}
+
+export function updateSlideName(courseId, slideId, fileName) {
+  return request({ method: 'PUT', url: `/courses/${courseId}/slides/${slideId}`, data: { fileName } })
+}
+
 export function deleteSlidePage(courseId, pageNumber) {
   return request({ method: 'DELETE', url: `/courses/${courseId}/slides/pages/${pageNumber}` })
 }

@@ -54,7 +54,6 @@
         <el-table-column prop="chapterTitle" label="所属章节" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.chapterTitle || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="fileName" label="课件文件" min-width="180" show-overflow-tooltip />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
@@ -78,10 +77,21 @@
         <el-table-column prop="updatedAt" label="最后更新" width="170">
           <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="文件名" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">
+            <template v-if="renaming === row.id">
+              <el-input v-model="renameValue" size="small" style="width:140px" @keyup.enter="confirmRename(row)" @keyup.esc="cancelRename" />
+              <el-button link size="small" type="primary" @click="confirmRename(row)">确定</el-button>
+              <el-button link size="small" @click="cancelRename">取消</el-button>
+            </template>
+            <span v-else>{{ row.fileName }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="primary" @click.stop="goEdit(row)">编辑</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :disabled="deleting === row.courseId" @click.stop="handleDelete(row)">{{ deleting === row.courseId ? '删除中…' : '删除' }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" @click.stop="startRename(row)">重命名</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :disabled="deleting === row.id" @click.stop="handleDelete(row)">{{ deleting === row.id ? '删除中…' : '删除' }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -122,7 +132,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus, UploadFilled } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
-import { getSlides, listSlides, getSlidePages, deleteSlide, uploadSlide } from '@/plugins/interactive/api/slide'
+import { getSlides, listSlides, getSlidePages, deleteSlide, deleteSlideById, updateSlideName, uploadSlide } from '@/plugins/interactive/api/slide'
+import { ElInput } from 'element-plus'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -132,6 +143,8 @@ const slides = ref([])
 const courses = ref([])
 const initialized = ref(false)
 const deleting = ref(null)
+const renaming = ref(null)
+const renameValue = ref('')
 const uploadDialogVisible = ref(false)
 const uploading = ref(false)
 const uploadForm = ref({ courseId: null, chapterId: null, file: null })
@@ -228,23 +241,44 @@ function goEdit(row) {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm(
-      `确定删除课程「${row.courseTitle}」的课件「${row.fileName}」？此操作不可恢复。`,
+      `确定删除课件「${row.fileName}」？此操作不可恢复。`,
       '确认删除',
       { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
     )
   } catch {
     return
   }
-  deleting.value = row.courseId
+  deleting.value = row.id
   try {
-    await deleteSlide(row.courseId, row.chapterId)
+    await deleteSlideById(row.courseId, row.id)
     ElMessage.success('课件已删除')
-    slides.value = slides.value.filter(s => s.courseId !== row.courseId)
+    slides.value = slides.value.filter(s => s.id !== row.id)
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '删除失败')
   } finally {
     deleting.value = null
   }
+}
+
+function startRename(row) {
+  renaming.value = row.id
+  renameValue.value = row.fileName || ''
+}
+
+async function confirmRename(row) {
+  if (!renameValue.value.trim()) { ElMessage.warning('文件名不能为空'); return }
+  try {
+    await updateSlideName(row.courseId, row.id, renameValue.value.trim())
+    ElMessage.success('重命名成功')
+    row.fileName = renameValue.value.trim()
+    renaming.value = null
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '重命名失败')
+  }
+}
+
+function cancelRename() {
+  renaming.value = null
 }
 
 // 上传课件对话框

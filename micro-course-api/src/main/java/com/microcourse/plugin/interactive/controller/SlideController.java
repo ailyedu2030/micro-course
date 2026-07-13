@@ -37,6 +37,8 @@ public class SlideController {
     private final SlideService slideService;
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final com.microcourse.plugin.interactive.mapper.CourseSlideMapper courseSlideMapper;
+    private final com.microcourse.plugin.interactive.mapper.SlidePageMapper slidePageMapper;
 
     /**
      * HTML 课件白名单：V177 灰度发布。
@@ -48,10 +50,14 @@ public class SlideController {
 
     public SlideController(SlideService slideService,
                            CourseRepository courseRepository,
-                           EnrollmentRepository enrollmentRepository) {
+                           EnrollmentRepository enrollmentRepository,
+                           com.microcourse.plugin.interactive.mapper.CourseSlideMapper courseSlideMapper,
+                           com.microcourse.plugin.interactive.mapper.SlidePageMapper slidePageMapper) {
         this.slideService = slideService;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.courseSlideMapper = courseSlideMapper;
+        this.slidePageMapper = slidePageMapper;
     }
 
     @PostMapping("/upload")
@@ -114,6 +120,33 @@ public class SlideController {
     public R<List<SlideVO>> listSlides(@PathVariable Long courseId) {
         verifyAccess(courseId);
         return R.ok(slideService.listByCourseId(courseId));
+    }
+
+    @PutMapping("/{slideId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> updateSlide(@PathVariable Long courseId,
+                               @PathVariable Long slideId,
+                               @RequestBody java.util.Map<String, Object> body) {
+        verifyAccess(courseId);
+        com.microcourse.plugin.interactive.entity.CourseSlide slide = courseSlideMapper.selectById(slideId);
+        if (slide == null) throw new BusinessException(com.microcourse.exception.ErrorCode.COURSE_NOT_FOUND);
+        if (body.containsKey("fileName") && body.get("fileName") instanceof String) {
+            slide.setFileName((String) body.get("fileName"));
+        }
+        slide.setUpdatedAt(java.time.LocalDateTime.now());
+        courseSlideMapper.updateById(slide);
+        return R.ok();
+    }
+
+    @DeleteMapping("/{slideId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> deleteSlideById(@PathVariable Long courseId,
+                                    @PathVariable Long slideId) {
+        verifyAccess(courseId);
+        courseSlideMapper.deleteById(slideId);
+        slidePageMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.SlidePage>()
+                .eq(com.microcourse.plugin.interactive.entity.SlidePage::getSlideId, slideId));
+        return R.ok();
     }
 
     @GetMapping("/pages")
