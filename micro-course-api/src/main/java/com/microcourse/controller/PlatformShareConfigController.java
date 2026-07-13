@@ -2,6 +2,7 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.PlatformShareConfigDTO;
 import com.microcourse.dto.R;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.PlatformShareConfigService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
@@ -44,7 +45,9 @@ public class PlatformShareConfigController {
      */
     @GetMapping("/{key}")
     public R<PlatformShareConfigDTO> getByKey(@PathVariable String key) {
-        return R.ok(service.findByKey(key).orElse(null));
+        return service.findByKey(key)
+                .<R<PlatformShareConfigDTO>>map(R::ok)
+                .orElse(R.fail(ErrorCode.RESOURCE_NOT_FOUND.getCode(), "平台分享配置不存在: " + key));
     }
 
     /**

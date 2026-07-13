@@ -301,8 +301,8 @@ public class CourseController {
      * 权限：ADMIN（依据 权限矩阵 v2.0 §2.3 READ_PENDING_REVIEW_COURSES = 仅 ADMIN）
      */
     @GetMapping("/pending-review")
+    @Operation(summary = "待审核课程列表 (仅 ADMIN/ACADEMIC)")
     @PreAuthorize("hasRole('ADMIN')")
-        @Operation(summary = "待审核课程列表 (仅 ADMIN/ACADEMIC)")
     public R<PageResult<CourseVO>> pendingReview(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
@@ -321,8 +321,8 @@ public class CourseController {
      * - ADMIN / ACADEMIC 无限制
      */
     @GetMapping("/{id}/students")
+    @Operation(summary = "获取课程选课学生列表 (TEACHER owner 校验)")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
-        @Operation(summary = "获取课程选课学生列表 (TEACHER owner 校验)")
     public R<List<EnrollmentVO>> getCourseStudents(@PathVariable Long id) {
         // 【V3 修复】TEACHER Owner 校验下沉到 Service 层
         List<EnrollmentVO> students = enrollmentService.getCourseEnrollmentsWithOwnerCheck(id);
@@ -338,9 +338,9 @@ public class CourseController {
      * 非已发布课程将得到 400（COURSE_STATUS_TRANSITION_NOT_ALLOWED），不会 5xx。</p>
      */
     @PostMapping("/{id}/unpublish")
+    @Operation(summary = "下架课程 (PUBLISHED→CLOSED, 通知在学学生)")
     @PreAuthorize("hasRole('ADMIN')")
     @AuditedLog("课程下架")
-        @Operation(summary = "下架课程 (PUBLISHED→CLOSED, 通知在学学生)")
     public R<Void> unpublish(@PathVariable Long id) {
         courseService.unpublish(id);
         return R.ok();

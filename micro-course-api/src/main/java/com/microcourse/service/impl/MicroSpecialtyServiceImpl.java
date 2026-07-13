@@ -335,11 +335,6 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reopen(Long id) {
-        /* ---- 【C-17修复】重新开课端点 ---- */
-        /* 【根因】前端渲染"重新开课"按钮调用 POST /micro-specialties/{id}/reopen，
-         *        后端仅留有 TODO 注释但从未实现此端点
-         * 【修复】实现 reopen 方法：仅 COMPLETED/CANCELLED → APPROVED
-         * 【防止再发】spec 阶段必须同步完成前后端契约关联端点的实现 */
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
         String status = ms.getStatus();

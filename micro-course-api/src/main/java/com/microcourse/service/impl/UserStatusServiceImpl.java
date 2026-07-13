@@ -292,7 +292,7 @@ if (currentStatus == UserStatus.INACTIVE && newStatus == UserStatus.ACTIVE) {
             }
         } catch (Exception e) {
             log.error("[P0-009] 用户禁用级联 enrollment 失败 userId={}，触发事务回滚", userId, e);
-            throw new RuntimeException("级联禁用选课失败", e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "级联禁用选课失败", e);
         }
     }
 

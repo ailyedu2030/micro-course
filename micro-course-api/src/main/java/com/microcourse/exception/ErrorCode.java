@@ -157,6 +157,8 @@ public enum ErrorCode {
     SA_EXPORT_TEMPLATE_MISSING(19006, "导出模板缺失", 500),
     SA_AUTO_SAVE_CONFLICT(19007, "自动保存冲突，请刷新后重试", 409),
     SA_MODULE_NOT_FOUND(19008, "模块标识不存在", 400),
+    SA_WORD_GENERATE_FAILED(19009, "Word 生成失败", 500),
+    SA_PDF_GENERATE_FAILED(19010, "PDF 生成失败", 500),
 
     // 举报处理 20xxx
     REPORT_NOT_FOUND(20001, "举报记录不存在", 404),

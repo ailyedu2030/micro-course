@@ -3,10 +3,11 @@ package com.microcourse.service.impl;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
 import com.microcourse.dto.storage.*;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 
@@ -190,7 +191,7 @@ public class StorageApplicationWordGenerator {
             return out.toByteArray();
 
         } catch (Exception e) {
-            throw new RuntimeException("Word 生成失败", e);
+            throw new BusinessException(ErrorCode.SA_WORD_GENERATE_FAILED, "Word 生成失败", e);
         }
     }
 

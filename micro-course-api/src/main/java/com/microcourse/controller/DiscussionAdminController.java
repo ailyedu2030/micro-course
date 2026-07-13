@@ -34,7 +34,7 @@ public class DiscussionAdminController {
      * 管理后台讨论列表（支持 keyword/courseId/status 分页）
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC','TEACHER')")
     public R<PageResult<DiscussionPostVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "10") @Range(min = 1, max = 100) int size,
@@ -56,7 +56,7 @@ public class DiscussionAdminController {
      * 讨论详情（管理端）
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC','TEACHER')")
     public R<DiscussionPostVO> getById(@PathVariable Long id) {
         DiscussionPostVO vo = postService.getById(id);
         return R.ok(vo);
@@ -96,7 +96,7 @@ public class DiscussionAdminController {
      * 删除讨论（管理端）
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC','TEACHER')")
     public R<Void> delete(@PathVariable Long id) {
         // DISC-NEW-1 修复:传入真实 userId,避免 Service 层 userId=null 导致权限校验失败
         postService.delete(id, SecurityUtil.getCurrentUserId());
@@ -110,7 +110,7 @@ public class DiscussionAdminController {
      * 评论列表（管理端，支持 keyword/postId 筛选）
      */
     @GetMapping("/comments")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC','TEACHER')")
     public R<PageResult<DiscussionCommentVO>> commentPage(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "10") @Range(min = 1, max = 100) int size,
@@ -124,7 +124,7 @@ public class DiscussionAdminController {
      * 删除评论（管理端）
      */
     @DeleteMapping("/comments/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC','TEACHER')")
     public R<Void> deleteComment(@PathVariable Long id) {
         commentService.deleteByAdmin(id);
         return R.ok();

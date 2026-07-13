@@ -3,6 +3,8 @@ package com.microcourse.service.impl;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
 import com.microcourse.dto.storage.*;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -363,7 +365,7 @@ public class StorageApplicationPdfGenerator {
             }
 
         } catch (Exception e) {
-            throw new RuntimeException("PDF 生成失败", e);
+            throw new BusinessException(ErrorCode.SA_PDF_GENERATE_FAILED, "PDF 生成失败", e);
         } finally {
             doc.close();
         }

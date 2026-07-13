@@ -411,15 +411,29 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     public void delete(Long id, Long userId) {
         DiscussionPost post = postRepository.selectById(id);
         checkPostStatus(post);
-        // 检查是否是作者或管理员
+        // 检查是否是作者、管理员、教务处或本课程教师
         User user = userRepository.selectById(userId);
-        boolean isAdmin = user != null && user.getRole() == UserRole.ADMIN;
-        if (!post.getUserId().equals(userId) && !isAdmin) {
+        boolean isAuthor = post.getUserId().equals(userId);
+        boolean isManager = SecurityUtil.isAdmin()
+                || SecurityUtil.hasRole("ACADEMIC")
+                || (SecurityUtil.hasRole("TEACHER") && post.getCourseId() != null
+                    && isCurrentUserCourseTeacher(userId, post.getCourseId()));
+        if (!isAuthor && !isManager) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
         // 软删：使用 @TableLogic 的 deleteById 触发 deletedAt 填充,而非手动设 status=0
         postRepository.deleteById(id);
+    }
+
+    /**
+     * 检查当前用户是否是该课程的授课教师
+     */
+    private boolean isCurrentUserCourseTeacher(Long userId, Long courseId) {
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Course> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        wrapper.eq(Course::getId, courseId).eq(Course::getTeacherId, userId);
+        return courseRepository.selectCount(wrapper) > 0;
     }
 
     @Override

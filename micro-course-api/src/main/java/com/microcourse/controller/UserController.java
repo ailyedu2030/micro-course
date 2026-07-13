@@ -213,7 +213,7 @@ public class UserController {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         if (user.getApiKey() == null) {
-            return R.ok(null);
+            return R.fail(ErrorCode.RESOURCE_NOT_FOUND.getCode(), "未配置 API Key");
         }
         return R.ok(UserApiKeyResponse.maskedOnly(
                 UserApiKeyResponse.mask(user.getApiKey()),
