@@ -4,7 +4,6 @@ import { fileURLToPath, URL } from 'node:url'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
-import VueDevTools from 'vite-plugin-vue-devtools'
 
 /// <reference types="vitest/config" />
 export default defineConfig({
@@ -20,7 +19,6 @@ export default defineConfig({
     },
   },
   plugins: [
-    VueDevTools(),
     vue(),
     // RES-001 修复: element-plus 按需引入, 减少 vendor-el chunk 从 ~1.1MB 到 ~300KB
     AutoImport({
