@@ -3,6 +3,7 @@ package com.microcourse.migration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -18,6 +19,16 @@ class V182SectionMigrationTest {
             ResultSet rs = conn.getMetaData().getTables(null, "public", "course_sections", null);
             assertThat(rs.next()).isTrue();
         }
+    }
+
+    @Test
+    void should_migrate_chapters_to_sections() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        Integer chapters = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM course_chapters WHERE deleted_at IS NULL", Integer.class);
+        Integer sections = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM course_sections WHERE deleted_at IS NULL", Integer.class);
+        assertThat(sections).isGreaterThanOrEqualTo(chapters);
     }
 
     @Test
