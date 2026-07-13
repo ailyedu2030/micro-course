@@ -9,9 +9,14 @@ import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.entity.CourseChapter;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
+import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.SlideService;
+import com.microcourse.repository.CourseChapterRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.HermesCourseMappingRepository;
 import com.microcourse.repository.UserRepository;
@@ -38,21 +43,30 @@ public class HermesWebhookController {
     private final HermesCourseSyncService syncService;
     private final UserRepository userRepository;
     private final HermesCourseMappingRepository mappingRepository;
+    private final CourseRepository courseRepository;
+    private final CourseChapterRepository chapterRepository;
     private final CourseSectionRepository sectionRepository;
     private final CourseSlideMapper courseSlideMapper;
+    private final SlidePageMapper slidePageMapper;
     private final SlideService slideService;
 
     public HermesWebhookController(HermesCourseSyncService syncService,
                                    UserRepository userRepository,
                                    HermesCourseMappingRepository mappingRepository,
+                                   CourseRepository courseRepository,
+                                   CourseChapterRepository chapterRepository,
                                    CourseSectionRepository sectionRepository,
                                    CourseSlideMapper courseSlideMapper,
+                                   SlidePageMapper slidePageMapper,
                                    SlideService slideService) {
         this.syncService = syncService;
         this.userRepository = userRepository;
         this.mappingRepository = mappingRepository;
+        this.courseRepository = courseRepository;
+        this.chapterRepository = chapterRepository;
         this.sectionRepository = sectionRepository;
         this.courseSlideMapper = courseSlideMapper;
+        this.slidePageMapper = slidePageMapper;
         this.slideService = slideService;
     }
 
@@ -271,9 +285,30 @@ public class HermesWebhookController {
         if (mapping == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
+        Long courseId = mapping.getCourseId();
+
+        // 级联删除：slide_pages → course_slides → course_sections → course_chapters → courses → mapping
+        var sectionQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
+                .eq(CourseSection::getCourseId, courseId);
+        List<CourseSection> sections = sectionRepository.selectList(sectionQw);
+        for (CourseSection sec : sections) {
+            var slideQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSlide>()
+                    .eq(CourseSlide::getSectionId, sec.getId());
+            List<CourseSlide> slides = courseSlideMapper.selectList(slideQw);
+            for (CourseSlide slide : slides) {
+                slidePageMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SlidePage>()
+                        .eq(SlidePage::getSlideId, slide.getId()));
+                courseSlideMapper.deleteById(slide.getId());
+            }
+        }
+        sectionRepository.delete(sectionQw);
+        chapterRepository.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseChapter>()
+                .eq(CourseChapter::getCourseId, courseId));
+        courseRepository.deleteById(courseId);
         mappingRepository.deleteById(mapping.getId());
-        log.info("[HermesWebhook] Mapping deleted: hermesCourseId={}, courseId={}, caller={}",
-                hermesCourseId, mapping.getCourseId(), caller.getUsername());
+
+        log.info("[HermesWebhook] Course cascade deleted: hermesCourseId={}, courseId={}, caller={}",
+                hermesCourseId, courseId, caller.getUsername());
         return R.ok();
     }
 
