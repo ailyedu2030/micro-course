@@ -44,12 +44,28 @@
       <el-skeleton v-if="loading" :rows="6" animated />
       <el-empty v-else-if="!searchForm.courseId" description="请先选择课程" />
       <el-empty v-else-if="tableData.length === 0" description="暂无章节数据" />
-      <el-table v-else :data="tableData" stripe border class="data-table">
+      <el-table v-else :data="tableData" stripe border class="data-table" row-key="id">
+        <el-table-column type="expand" width="40">
+          <template #default="{ row }">
+            <div style="padding:12px 24px 12px 48px;background:var(--el-fill-color-lighter)">
+              <div v-loading="sectionLoading[row.id]">
+                <SectionList
+                  :sections="sectionsByChapterId[row.id] || []"
+                  @edit="(s) => handleEditSection(row, s)"
+                  @delete="(s) => handleDeleteSection(row, s)"
+                />
+                <div style="margin-top:8px">
+                  <el-button size="small" type="primary" plain @click.stop="handleAddSection(row)">+ 新增课时</el-button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
         <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
         <el-table-column label="课时" width="80" align="center">
-          <template #default="{ row }">{{ row.sectionCount || row.sections?.length || '-' }}</template>
+          <template #default="{ row }">{{ (sectionsByChapterId[row.id] || []).length }}</template>
         </el-table-column>
         <el-table-column prop="duration" label="时长" width="100" align="center">
           <template #default="{ row }">
@@ -76,6 +92,14 @@
 />
       </div>
     </el-card>
+
+    <SectionEditDialog
+      v-model="showSectionDialog"
+      :section="editingSection"
+      :is-edit="isEditSection"
+      :loading="sectionSubmitLoading"
+      @submit="handleSubmitSection"
+    />
 
     <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
@@ -116,6 +140,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getChapters, createChapter, updateChapter, deleteChapter } from '@/api/chapter'
 import { getCourses } from '@/api/course'
+import { listSections, createSection, updateSection, deleteSection } from '@/api/section'
+import SectionList from '@/components/course/SectionList.vue'
+import SectionEditDialog from '@/components/course/SectionEditDialog.vue'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
@@ -139,6 +166,77 @@ const formRef = ref(null)
 const courseOptions = ref([])
 const currentCourse = computed(() => courseOptions.value.find(c => c.id === searchForm.courseId) || null)
 const router = useRouter()
+
+const sectionsByChapterId = reactive({})
+const sectionLoading = reactive({})
+const showSectionDialog = ref(false)
+const editingSection = ref(null)
+const isEditSection = ref(false)
+const sectionSubmitLoading = ref(false)
+const currentChapterForSection = ref(null)
+
+const fetchSections = async (chapterId) => {
+  if (!searchForm.courseId || !chapterId) return
+  sectionLoading[chapterId] = true
+  try {
+    const { data } = await listSections(searchForm.courseId, chapterId, { page: 0, size: 999 })
+    sectionsByChapterId[chapterId] = data.items || []
+  } catch {
+    sectionsByChapterId[chapterId] = []
+  } finally {
+    sectionLoading[chapterId] = false
+  }
+}
+
+const fetchAllSections = () => {
+  tableData.value.forEach(ch => fetchSections(ch.id))
+}
+
+const handleAddSection = (chapter) => {
+  currentChapterForSection.value = chapter
+  editingSection.value = null
+  isEditSection.value = false
+  showSectionDialog.value = true
+}
+
+const handleEditSection = (chapter, section) => {
+  currentChapterForSection.value = chapter
+  editingSection.value = { ...section }
+  isEditSection.value = true
+  showSectionDialog.value = true
+}
+
+const handleDeleteSection = async (chapter, section) => {
+  try {
+    await ElMessageBox.confirm(`确定删除课时「${section.title}」?`, '提示', { type: 'warning' })
+    await deleteSection(searchForm.courseId, chapter.id, section.id)
+    ElMessage.success('删除成功')
+    fetchSections(chapter.id)
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+const handleSubmitSection = async (formData) => {
+  if (!currentChapterForSection.value) return
+  sectionSubmitLoading.value = true
+  try {
+    const ch = currentChapterForSection.value
+    if (isEditSection.value) {
+      await updateSection(searchForm.courseId, ch.id, editingSection.value.id, formData)
+      ElMessage.success('更新成功')
+    } else {
+      await createSection(searchForm.courseId, ch.id, formData)
+      ElMessage.success('创建成功')
+    }
+    showSectionDialog.value = false
+    fetchSections(ch.id)
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
+  } finally {
+    sectionSubmitLoading.value = false
+  }
+}
 
 const formData = reactive({
   courseId: null,
@@ -169,6 +267,7 @@ const fetchData = async () => {
     const { data } = await getChapters(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
+    fetchAllSections()
   } catch {
     ElMessage.error('获取章节列表失败')
   } finally {

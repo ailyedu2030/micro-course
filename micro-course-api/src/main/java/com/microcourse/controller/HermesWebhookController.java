@@ -92,6 +92,11 @@ public class HermesWebhookController {
         return R.ok(course);
     }
 
+    /**
+     * Hermes 上传课件。
+     * URL 中的 {lessonId} 对应 course_sections.id（lessons 表已迁移到 course_sections）。
+     * 保持 /lessons/ 路径前缀是为兼容 Hermes 外部 API 协议，不涉及数据库 lessons 表。
+     */
     @PostMapping("/courses/{hermesCourseId}/lessons/{lessonId}/slide")
     public R<?> uploadSlide(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                             @PathVariable String hermesCourseId,
@@ -108,12 +113,11 @@ public class HermesWebhookController {
 
         Long courseId = mapping.getCourseId();
 
-        // 按 lessonId(实际是 section_id)查找
+        // 按 lessonId(实际是 section_id)查找所属的 chapterId
         Long chapterId = lessonId;
         CourseSection sec = sectionRepository.selectById(lessonId);
         if (sec != null) {
             chapterId = sec.getChapterId();
-            lessonId = sec.getId();
         }
 
         String filename = file.getOriginalFilename();
@@ -199,7 +203,7 @@ public class HermesWebhookController {
                 com.microcourse.plugin.interactive.dto.SlidePageVO p = pages.get(i);
                 java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
                 pageBody.put("narrationScript", pageScript);
-                if (p.getLessonId() != null) { pageBody.put("_lessonId", p.getLessonId()); }
+                if (p.getSectionId() != null) { pageBody.put("_lessonId", p.getSectionId()); }
                 else if (p.getChapterId() != null) { pageBody.put("_chapterId", p.getChapterId()); }
                 slideService.updatePage(courseId, p.getPageNumber(), pageBody);
                 updated++;

@@ -601,7 +601,7 @@ public class ExerciseServiceImpl implements ExerciseService {
     /**
      * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
      * <p>通用模式：CourseChapterServiceImpl / VideoServiceImpl / OfflineSessionServiceImpl /
-     * LessonServiceImpl / QuestionServiceImpl 中也包含语义相同的实现。
+     * QuestionServiceImpl 中也包含语义相同的实现。
      * 若需统一重构，可抽取到公共工具类。</p>
      *
      * @param courseId 课程 ID

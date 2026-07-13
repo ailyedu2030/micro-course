@@ -504,7 +504,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
     /**
      * 校验当前用户是否为课程 owner（课程创建教师）或 ADMIN。
      * <p>通用模式：实现逻辑与 ExerciseServiceImpl / VideoServiceImpl / CourseChapterServiceImpl /
-     * LessonServiceImpl / QuestionServiceImpl 中的同名方法一致。若需统一重构，可抽取到公共工具类。</p>
+     * QuestionServiceImpl 中的同名方法一致。若需统一重构，可抽取到公共工具类。</p>
      */
     private void assertCourseOwnerByCourseId(Long courseId) {
         Course course = courseRepository.selectById(courseId);

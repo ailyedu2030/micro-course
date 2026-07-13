@@ -8,7 +8,7 @@ public class SlideVO {
     private Long courseId;
     private Long chapterId;
     private String chapterTitle;
-    private Long lessonId;
+    private Long sectionId;
     private String lessonTitle;
     private String fileName;
     private Integer totalPages;
@@ -28,8 +28,8 @@ public class SlideVO {
     public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
     public String getChapterTitle() { return chapterTitle; }
     public void setChapterTitle(String chapterTitle) { this.chapterTitle = chapterTitle; }
-    public Long getLessonId() { return lessonId; }
-    public void setLessonId(Long lessonId) { this.lessonId = lessonId; }
+    public Long getSectionId() { return sectionId; }
+    public void setSectionId(Long sectionId) { this.sectionId = sectionId; }
     public String getLessonTitle() { return lessonTitle; }
     public void setLessonTitle(String lessonTitle) { this.lessonTitle = lessonTitle; }
     public String getFileName() { return fileName; }
