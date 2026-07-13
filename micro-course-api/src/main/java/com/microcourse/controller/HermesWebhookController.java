@@ -272,15 +272,7 @@ public class HermesWebhookController {
             } else {
                 resp = slideService.upload(courseId, filename, file.getBytes(), chapterId, lessonId);
             }
-            // 回写 section.content_url — 前端/API 通过此字段判断有课件
-            if (lessonId != null) {
-                CourseSection sectionForUrl = sectionRepository.selectById(lessonId);
-                if (sectionForUrl != null) {
-                    sectionForUrl.setContentUrl("/api/courses/" + courseId + "/slides/pages");
-                    sectionForUrl.setUpdatedAt(java.time.LocalDateTime.now());
-                    sectionRepository.updateById(sectionForUrl);
-                }
-            }
+            // content_url 已在 upload()/uploadHtmlFile() 内与上传同事务写入
             return R.ok(resp);
         } catch (Exception e) {
             log.error("[HermesWebhook] Slide upload failed: hermesCourseId={}, lessonId={}",

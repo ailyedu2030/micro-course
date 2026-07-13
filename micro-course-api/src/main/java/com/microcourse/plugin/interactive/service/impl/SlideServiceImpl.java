@@ -160,6 +160,15 @@ public class SlideServiceImpl implements SlideService {
             courseSlideMapper.updateById(toUpdate);
             throw new BusinessException(ErrorCode.PPT_PARSE_FAILED);
         }
+        // 回写 section.content_url — 与上传同事务，避免 @Version 冲突
+        if (sectionId != null && sectionRepo != null) {
+            CourseSection sec = sectionRepo.selectById(sectionId);
+            if (sec != null) {
+                sec.setContentUrl("/api/courses/" + courseId + "/slides/pages");
+                sec.setUpdatedAt(LocalDateTime.now());
+                sectionRepo.updateById(sec);
+            }
+        }
         Long fc = chapterId;
         byte[] fb = fileBytes;
         Long finalSid = sid;
@@ -245,6 +254,15 @@ public class SlideServiceImpl implements SlideService {
         page.setCreatedAt(LocalDateTime.now());
         page.setUpdatedAt(LocalDateTime.now());
         slidePageMapper.insert(page);
+        // 回写 section.content_url — 与上传同事务
+        if (sectionId != null && sectionRepo != null) {
+            CourseSection sec = sectionRepo.selectById(sectionId);
+            if (sec != null) {
+                sec.setContentUrl("/api/courses/" + courseId + "/slides/pages");
+                sec.setUpdatedAt(LocalDateTime.now());
+                sectionRepo.updateById(sec);
+            }
+        }
         SlideUploadResponse resp = new SlideUploadResponse();
         resp.setSlideId(sid);
         resp.setTotalPages(1);
