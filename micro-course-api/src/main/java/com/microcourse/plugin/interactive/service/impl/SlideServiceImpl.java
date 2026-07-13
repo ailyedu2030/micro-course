@@ -283,20 +283,29 @@ public class SlideServiceImpl implements SlideService {
 
 
     @Override
+    public List<SlideVO> listByCourseId(Long courseId) {
+        return courseSlideMapper.selectList(
+                new LambdaQueryWrapper<CourseSlide>().eq(CourseSlide::getCourseId, courseId))
+                .stream().map(this::toVO).collect(Collectors.toList());
+    }
+
+    @Override
     public SlideVO getByCourseId(Long courseId) {
         LambdaQueryWrapper<CourseSlide> qw = new LambdaQueryWrapper<>();
         qw.eq(CourseSlide::getCourseId, courseId);
-        CourseSlide s = courseSlideMapper.selectOne(qw);
-        return s == null ? null : toVO(s);
+        List<CourseSlide> slides = courseSlideMapper.selectList(qw);
+        if (slides.isEmpty()) return null;
+        if (slides.size() == 1) return toVO(slides.get(0));
+        // 多 slide 场景：返回第一个（兼容旧逻辑），scripts 等业务应使用 listByCourseId
+        return toVO(slides.get(0));
     }
 
     @Override
     public List<SlidePageVO> getPages(Long courseId, Long chapterId) {
-        SlideVO sv = getByCourseId(courseId);
-        if (sv == null) { return java.util.Collections.emptyList(); }
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
-        qw.eq(SlidePage::getSlideId, sv.getId()).orderByAsc(SlidePage::getPageNumber);
+        qw.eq(SlidePage::getCourseId, courseId);
         if (chapterId != null) { qw.eq(SlidePage::getChapterId, chapterId); }
+        qw.orderByAsc(SlidePage::getSlideId).orderByAsc(SlidePage::getPageNumber);
         return slidePageMapper.selectList(qw).stream().map(this::toPageVO).collect(Collectors.toList());
     }
 

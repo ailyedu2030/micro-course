@@ -181,20 +181,11 @@ public class HermesWebhookController {
                     java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
             SecurityContextHolder.getContext().setAuthentication(auth);
 
-            com.microcourse.plugin.interactive.dto.SlideVO slide = slideService.getByCourseId(courseId);
-            if (slide == null) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先上传 PPT");
-            }
-            if (slide.getTotalPages() == null || slide.getTotalPages() == 0) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "PPT 尚未渲染完成，请稍后再试");
-            }
-
             java.util.List<com.microcourse.plugin.interactive.dto.SlidePageVO> pages =
                     slideService.getPages(courseId, null);
             if (pages == null || pages.isEmpty()) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "PPT 尚未渲染完成，请稍后再试");
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先上传课件");
             }
-
             int pageCount = pages.size();
             int chunkSize = Math.max(1, fullScript.length() / pageCount);
             int updated = 0;

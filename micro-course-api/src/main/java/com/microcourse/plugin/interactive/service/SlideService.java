@@ -17,6 +17,7 @@ public interface SlideService {
     void tryConvertPptxToHtml(Long slideId, byte[] pptxBytes);
 
     SlideVO getByCourseId(Long courseId);
+    List<SlideVO> listByCourseId(Long courseId);
 
     List<SlidePageVO> getPages(Long courseId, Long chapterId);
 
