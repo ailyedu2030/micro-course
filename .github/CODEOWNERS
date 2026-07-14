@@ -1,0 +1,11 @@
+# Default owner for all files
+*       @ailyedu2030
+
+# Backend
+/micro-course-api/ @ailyedu2030
+
+# Frontend
+/micro-course-admin/ @ailyedu2030
+
+# CI/CD
+/.github/workflows/ @ailyedu2030

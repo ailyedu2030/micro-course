@@ -23,17 +23,19 @@ public class NarrationController {
     @PostMapping("/pages/{pageNumber}/narration/generate")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<SlidePageVO> generate(@PathVariable Long courseId,
-                                    @PathVariable Integer pageNumber) {
-        return R.ok(narrationService.generate(courseId, pageNumber));
+                                    @PathVariable Integer pageNumber,
+                                    @RequestParam(required = false) Long sectionId) {
+        return R.ok(narrationService.generate(courseId, pageNumber, sectionId));
     }
 
     @PutMapping("/pages/{pageNumber}/narration")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<SlidePageVO> updateScript(@PathVariable Long courseId,
                                         @PathVariable Integer pageNumber,
+                                        @RequestParam(required = false) Long sectionId,
                                         @RequestBody Map<String, String> body) {
         String script = body.getOrDefault("narrationScript", "");
-        return R.ok(narrationService.updateScript(courseId, pageNumber, script));
+        return R.ok(narrationService.updateScript(courseId, pageNumber, sectionId, script));
     }
 
     @PostMapping("/narrations/generate")

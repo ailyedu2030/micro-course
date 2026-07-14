@@ -376,7 +376,7 @@ async function handleBatchAI() {
   for (const page of selectedBatch.value) {
     if (page.narrationStatus !== 'AI_GENERATED' && page.narrationStatus !== 'AUDIO_READY') {
       try {
-        await generateNarration(courseId.value, page.pageNumber)
+        await generateNarration(courseId.value, page.pageNumber, page.sectionId || null)
         page.narrationStatus = 'AI_GENERATED'
         successCount++
       } catch (e) {
@@ -438,7 +438,7 @@ function statusDotClass(s) {
 async function handleSaveScript() {
   if (!selectedPage.value) return
   try {
-    await updateNarration(courseId.value, selectedPage.value.pageNumber, editingScript.value)
+    await updateNarration(courseId.value, selectedPage.value.pageNumber, editingScript.value, selectedPage.value.sectionId || null)
     selectedPage.value.narrationScript = editingScript.value
     selectedPage.value.narrationStatus = 'TEACHER_EDITED'
     ElMessage.success('讲述稿已保存')
@@ -451,7 +451,7 @@ async function handleGenerateAI() {
   if (!selectedPage.value) return
   aiLoading.value = true
   try {
-    await generateNarration(courseId.value, selectedPage.value.pageNumber)
+    await generateNarration(courseId.value, selectedPage.value.pageNumber, selectedPage.value.sectionId || null)
     ElMessage.success('AI 生成完成')
     await loadData()
     selectPage(pages.value.find(p => p.pageNumber === selectedPage.value.pageNumber) || selectedPage.value)

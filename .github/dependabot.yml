@@ -4,11 +4,24 @@ updates:
     directory: /micro-course-api
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    labels: dependencies
   - package-ecosystem: npm
     directory: /micro-course-admin
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    labels: dependencies
+    versioning-strategy: increase-if-necessary
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    labels: dependencies
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    labels: github-actions

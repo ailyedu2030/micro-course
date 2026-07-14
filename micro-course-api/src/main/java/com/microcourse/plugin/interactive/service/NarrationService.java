@@ -4,9 +4,9 @@ import com.microcourse.plugin.interactive.dto.SlidePageVO;
 
 public interface NarrationService {
 
-    SlidePageVO generate(Long courseId, Integer pageNumber);
+    SlidePageVO generate(Long courseId, Integer pageNumber, Long sectionId);
 
-    SlidePageVO updateScript(Long courseId, Integer pageNumber, String narrationScript);
+    SlidePageVO updateScript(Long courseId, Integer pageNumber, Long sectionId, String narrationScript);
 
     void generateAll(Long courseId);
 }

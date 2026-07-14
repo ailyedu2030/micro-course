@@ -365,15 +365,18 @@ X-API-Key: <your-key>
 Content-Type: application/json
 
 {
-  "scriptContent": "完整讲述稿全文，系统自动按页面数切分后写入每页 narrationScript"
+  "scriptContent": "完整讲述稿全文，系统自动按页面数切分后写入每页 narrationScript",
+  "sectionId": 582   // 可选：指定课时，则仅更新该课时页面
 }
 ```
 
 **业务规则**：
-- 系统按 `pageCount` 均分脚本，写入各页 `narrationScript` 字段
+- `sectionId` 可选：若提供，仅更新该课时（`course_sections.id = sectionId`）下的所有页面
+- 若不提供 `sectionId`，则**必须提供 `chapterId`**（`chapterId` 必须属于该课程），系统按 `pageCount` 均分脚本，写入该 chapter 下所有页面
 - `scriptContent` 必须是 String 类型；非字符串返回 `400`
 - 脚本字数 < 页面数时返回 `400`（防止数据丢失）
 - **验证归属**：调用者必须是该课程 owner（`HermesCourseMapping` 校验）
+- **安全规则**：既无 `sectionId` 也无 `chapterId` 时返回 `400`（防止跨章节数据串写）
 
 ### 查看课时课件
 

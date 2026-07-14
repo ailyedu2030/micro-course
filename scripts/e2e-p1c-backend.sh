@@ -6,26 +6,31 @@
 #
 # Usage: bash scripts/e2e-p1c-backend.sh
 
-set -e
-BASE="http://localhost:8080"
+BASE="${BASE_URL:-http://localhost:8080}"
 PASS=0; FAIL=0
 
 ok() { PASS=$((PASS+1)); echo "  ✅ $1"; }
 fail() { FAIL=$((FAIL+1)); echo "  ❌ $1"; echo "     详情: $2"; }
 
+curl_code() {
+  curl -s -o /dev/null -w "%{http_code}" "$@" 2>/dev/null || echo "000"
+}
+
 echo "========================================="
 echo " Round 5 P1-C 后端 E2E 回归测试"
-echo " 修复时间: 2026-06-25"
+echo " BASE=$BASE"
 echo "========================================="
 
 # Get admin token
 echo ""
 echo "[准备] 获取 admin token..."
-TOKEN=$(curl -s -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"admin123"}' | python3 -c 'import sys,json;print(json.load(sys.stdin).get("data",{}).get("accessToken",""))')
+LOGIN_RESP=$(curl -s -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}' 2>/dev/null || echo '{"data":{}}')
+TOKEN=$(echo "$LOGIN_RESP" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("data",{}).get("accessToken",""))' 2>/dev/null || echo "")
 
 if [ -z "$TOKEN" ]; then
   echo "  ❌ 无法获取 admin token，请确认后端运行正常"
+  echo "  login resp: $LOGIN_RESP"
   exit 1
 fi
 ok "admin token 获取成功"
@@ -46,7 +51,7 @@ LONG_SUMMARY=$(python3 -c "print('x'*301)")
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/courses" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d "{\"title\":\"${TITLE_PREFIX}summary-301\",\"summary\":\"$LONG_SUMMARY\",\"categoryId\":$CAT_ID,\"teacherId\":$TEACHER_ID,\"price\":0,\"isFree\":true,\"description\":\"P1C test\"}")
+  -d "{\"title\":\"${TITLE_PREFIX}summary-301\",\"summary\":\"$LONG_SUMMARY\",\"categoryId\":$CAT_ID,\"teacherId\":$TEACHER_ID,\"price\":0,\"isFree\":true,\"description\":\"P1C test\"}" 2>/dev/null || echo "")
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 BODY=$(echo "$RESPONSE" | head -1 | head -c 300)
 
@@ -69,7 +74,7 @@ EXACT_SUMMARY=$(python3 -c "print('y'*300)")
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/courses" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d "{\"title\":\"${TITLE_PREFIX}summary-300\",\"summary\":\"$EXACT_SUMMARY\",\"categoryId\":$CAT_ID,\"teacherId\":$TEACHER_ID,\"price\":0,\"isFree\":true,\"description\":\"boundary test\"}")
+  -d "{\"title\":\"${TITLE_PREFIX}summary-300\",\"summary\":\"$EXACT_SUMMARY\",\"categoryId\":$CAT_ID,\"teacherId\":$TEACHER_ID,\"price\":0,\"isFree\":true,\"description\":\"boundary test\"}" 2>/dev/null || echo "")
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 BODY=$(echo "$RESPONSE" | head -1 | head -c 200)
 
@@ -91,7 +96,7 @@ SHORT_SUMMARY=$(python3 -c "print('z'*299)")
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/courses" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d "{\"title\":\"${TITLE_PREFIX}summary-299\",\"summary\":\"$SHORT_SUMMARY\",\"categoryId\":$CAT_ID,\"teacherId\":$TEACHER_ID,\"price\":0,\"isFree\":true,\"description\":\"under boundary\"}")
+  -d "{\"title\":\"${TITLE_PREFIX}summary-299\",\"summary\":\"$SHORT_SUMMARY\",\"categoryId\":$CAT_ID,\"teacherId\":$TEACHER_ID,\"price\":0,\"isFree\":true,\"description\":\"under boundary\"}" 2>/dev/null || echo "")
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
@@ -105,7 +110,7 @@ echo "========================================="
 echo "[E2E-4] P0-3: GET /api/banners 公开访问 (修复前未公开)"
 echo "========================================="
 # 必须不带 token 才能验证是公开 API
-HTTP_CODE=$(curl -s -o /tmp/banners.json -w "%{http_code}" "$BASE/api/banners")
+HTTP_CODE=$(curl -s -o /tmp/banners.json -w "%{http_code}" "$BASE/api/banners" 2>/dev/null || echo "000")
 if [ "$HTTP_CODE" = "200" ]; then
   BODY=$(cat /tmp/banners.json | head -c 300)
   ok "/api/banners 公开访问成功 (200)"
@@ -124,7 +129,7 @@ echo ""
 echo "========================================="
 echo "[E2E-5] P0-3: GET /api/admin/banners 仍需 ADMIN 权限 (验证未误放)"
 echo "========================================="
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/admin/banners")
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/admin/banners" 2>/dev/null || echo "000")
 if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
   ok "/api/admin/banners 未授权时返回 $HTTP_CODE (正确)"
 else

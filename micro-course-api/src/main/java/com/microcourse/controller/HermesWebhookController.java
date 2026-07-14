@@ -726,6 +726,12 @@ public class HermesWebhookController {
                     updated++;
                 }
             } else {
+                Number chapterIdNum = (Number) body.get("chapterId");
+                if (chapterIdNum == null) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                            "批量推送讲述稿时必须指定 chapterId 参数，以避免跨章节数据串写");
+                }
+                long targetChapterId = chapterIdNum.longValue();
                 if (fullScript.length() < pageCount) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
                             "讲述稿长度(" + fullScript.length() + ")少于课件页数(" + pageCount + ")，无法自动分配");
@@ -739,8 +745,7 @@ public class HermesWebhookController {
                     com.microcourse.plugin.interactive.dto.SlidePageVO p = pages.get(i);
                     java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
                     pageBody.put("narrationScript", pageScript);
-                    if (p.getSectionId() != null) { pageBody.put("_lessonId", p.getSectionId()); }
-                    else if (p.getChapterId() != null) { pageBody.put("_chapterId", p.getChapterId()); }
+                    pageBody.put("_chapterId", targetChapterId);
                     slideService.updatePage(courseId, p.getPageNumber(), pageBody);
                     updated++;
                 }

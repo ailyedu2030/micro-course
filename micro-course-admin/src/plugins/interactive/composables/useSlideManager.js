@@ -50,7 +50,7 @@ export function useSlideManager(courseId, chapterId) {
     if (!selectedPage.value) return
     aiLoading.value = true
     try {
-      const res = await generateNarration(courseId.value, selectedPage.value.pageNumber)
+      const res = await generateNarration(courseId.value, selectedPage.value.pageNumber, selectedPage.value.sectionId || null)
       const u = res.data
       selectedPage.value.narrationScript = u.narrationScript
       selectedPage.value.narrationStatus = u.narrationStatus
@@ -75,7 +75,7 @@ export function useSlideManager(courseId, chapterId) {
   async function handleSaveScript() {
     if (!selectedPage.value || editingScript.value === selectedPage.value.narrationScript) return
     try {
-      await updateNarration(courseId.value, selectedPage.value.pageNumber, editingScript.value)
+      await updateNarration(courseId.value, selectedPage.value.pageNumber, editingScript.value, selectedPage.value.sectionId || null)
       selectedPage.value.narrationStatus = 'TEACHER_EDITED'
       selectedPage.value.narrationStatusText = '教师已编辑'
     } catch (e) {

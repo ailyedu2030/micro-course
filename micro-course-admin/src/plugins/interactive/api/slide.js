@@ -40,14 +40,17 @@ export function getSlidePage(courseId, pageNumber) {
   return request({ method: 'GET', url: `/courses/${courseId}/slides/pages/${pageNumber}` })
 }
 
-export function generateNarration(courseId, pageNumber) {
-  return request({ method: 'POST', url: `/courses/${courseId}/slides/pages/${pageNumber}/narration/generate` })
+export function generateNarration(courseId, pageNumber, sectionId) {
+  const params = sectionId ? { sectionId } : {}
+  return request({ method: 'POST', url: `/courses/${courseId}/slides/pages/${pageNumber}/narration/generate`, params })
 }
 
-export function updateNarration(courseId, pageNumber, narrationScript) {
+export function updateNarration(courseId, pageNumber, narrationScript, sectionId) {
+  const params = sectionId ? { sectionId } : {}
   return request({
     method: 'PUT',
     url: `/courses/${courseId}/slides/pages/${pageNumber}/narration`,
+    params,
     data: { narrationScript }
   })
 }
