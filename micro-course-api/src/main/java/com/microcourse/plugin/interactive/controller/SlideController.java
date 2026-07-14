@@ -66,6 +66,7 @@ public class SlideController {
                                            @RequestParam("file") MultipartFile file,
                                            @RequestParam(required = false) Long chapterId) {
         try {
+            verifyAccess(courseId);
             if (file == null || file.isEmpty()) {
                 log.warn("[SlideUpload] 上传文件为空 courseId={}", courseId);
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
@@ -130,11 +131,17 @@ public class SlideController {
         verifyAccess(courseId);
         com.microcourse.plugin.interactive.entity.CourseSlide slide = courseSlideMapper.selectById(slideId);
         if (slide == null) throw new BusinessException(com.microcourse.exception.ErrorCode.COURSE_NOT_FOUND);
+        if (!slide.getCourseId().equals(courseId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "该课件不属于本课程");
+        }
         if (body.containsKey("fileName") && body.get("fileName") instanceof String) {
             slide.setFileName((String) body.get("fileName"));
         }
         slide.setUpdatedAt(java.time.LocalDateTime.now());
-        courseSlideMapper.updateById(slide);
+        int affected = courseSlideMapper.updateById(slide);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "课件已被其他人修改，请刷新后重试");
+        }
         return R.ok();
     }
 
@@ -143,9 +150,7 @@ public class SlideController {
     public R<Void> deleteSlideById(@PathVariable Long courseId,
                                     @PathVariable Long slideId) {
         verifyAccess(courseId);
-        courseSlideMapper.deleteById(slideId);
-        slidePageMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.SlidePage>()
-                .eq(com.microcourse.plugin.interactive.entity.SlidePage::getSlideId, slideId));
+        slideService.deleteSlide(courseId, slideId);
         return R.ok();
     }
 
@@ -201,6 +206,7 @@ public class SlideController {
     public R<Void> deleteSlide(@PathVariable Long courseId,
                                @RequestParam(required = false) Long lessonId,
                                @RequestParam(required = false) Long chapterId) {
+        verifyAccess(courseId);
         slideService.deleteSlide(courseId, lessonId != null ? lessonId : chapterId);
         return R.ok();
     }
@@ -209,7 +215,8 @@ public class SlideController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> deletePage(@PathVariable Long courseId,
                                @PathVariable Integer pageNumber) {
-        slideService.deletePage(courseId, pageNumber);
+        verifyAccess(courseId);
+        slideService.deletePage(courseId, pageNumber, null);
         return R.ok();
     }
 
@@ -217,6 +224,7 @@ public class SlideController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> reorderPages(@PathVariable Long courseId,
                                  @RequestBody List<Map<String, Integer>> order) {
+        verifyAccess(courseId);
         slideService.reorderPages(courseId, order);
         return R.ok();
     }
@@ -226,13 +234,18 @@ public class SlideController {
     public R<SlidePageVO> updatePage(@PathVariable Long courseId,
                                       @PathVariable Integer pageNumber,
                                       @RequestBody Map<String, Object> body) {
+        verifyAccess(courseId);
         return R.ok(slideService.updatePage(courseId, pageNumber, body));
     }
 
     @GetMapping("/download")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ResponseEntity<byte[]> downloadOriginal(@PathVariable Long courseId) {
+        verifyAccess(courseId);
         SlideVO slide = slideService.getByCourseId(courseId);
+        if (slide == null) {
+            throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND, "该课程暂无课件");
+        }
         byte[] fileBytes = slideService.getOriginalFile(courseId);
         String filename = slide.getFileName() != null ? slide.getFileName() : "slide.pptx";
         return ResponseEntity.ok()
@@ -254,10 +267,19 @@ public class SlideController {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        // P1-I-07: 学生必须已选课才能查看课件内容
-        if (SecurityUtil.hasRole("STUDENT") && !SecurityUtil.isAdmin()) {
+        if (SecurityUtil.isAdmin()) {
+            return;
+        }
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (SecurityUtil.hasRole("TEACHER")) {
+            if (!currentUserId.equals(course.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权操作该课程");
+            }
+            return;
+        }
+        if (SecurityUtil.hasRole("STUDENT")) {
             LambdaQueryWrapper<Enrollment> check = new LambdaQueryWrapper<>();
-            check.eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
+            check.eq(Enrollment::getUserId, currentUserId)
                  .eq(Enrollment::getCourseId, courseId)
                  .in(Enrollment::getEnrollmentStatus, "APPROVED", "COMPLETED")
                  .isNull(Enrollment::getDeletedAt);

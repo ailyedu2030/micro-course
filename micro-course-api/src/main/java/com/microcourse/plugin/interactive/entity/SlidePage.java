@@ -107,7 +107,7 @@ public class SlidePage {
     public String getExtractedText() { return extractedText; }
     public void setExtractedText(String extractedText) { this.extractedText = extractedText; }
     public Boolean getHasAnimation() { return hasAnimation; }
-    public void setHasAnimation(Boolean hasAnimation) { this.hasAnimation = this.hasAnimation; }
+    public void setHasAnimation(Boolean hasAnimation) { this.hasAnimation = hasAnimation; }
     public Boolean getHasEmbeddedMedia() { return hasEmbeddedMedia; }
     public void setHasEmbeddedMedia(Boolean hasEmbeddedMedia) { this.hasEmbeddedMedia = hasEmbeddedMedia; }
     public String getContentType() { return contentType; }

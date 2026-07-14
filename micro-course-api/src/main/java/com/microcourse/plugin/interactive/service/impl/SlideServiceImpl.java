@@ -19,6 +19,7 @@ import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.util.SecurityUtil;
+import com.microcourse.util.XssSanitizer;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
@@ -95,6 +96,20 @@ public class SlideServiceImpl implements SlideService {
         Course course = courseRepository.selectById(courseId);
         if (course == null) { throw new BusinessException(ErrorCode.COURSE_NOT_FOUND); }
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
+        if (chapterId != null) {
+            CourseChapter ch = courseChapterRepository.selectById(chapterId);
+            if (ch == null || !ch.getCourseId().equals(courseId)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "章节 ID 不属于该课程");
+            }
+        }
+        if (sectionId != null) {
+            CourseSection sec = sectionRepo.selectById(sectionId);
+            if (sec == null || !sec.getCourseId().equals(courseId)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课时 ID 不属于该课程");
+            }
+        }
+        originalFilename = XssSanitizer.sanitizePlainText(originalFilename);
+        if (originalFilename == null || originalFilename.isBlank()) { throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件名不能为空"); }
         if (!originalFilename.toLowerCase().endsWith(".pptx")) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
         if (!isZipHeader(fileBytes)) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
         if (fileBytes.length > maxHtmlSize * 10) { throw new BusinessException(ErrorCode.PPT_FORMAT_INVALID); }
@@ -125,7 +140,10 @@ public class SlideServiceImpl implements SlideService {
             old.setErrorMessage(null);
             old.setFileHash(fileHash);
             old.setUpdatedAt(LocalDateTime.now());
-            courseSlideMapper.updateById(old);
+            int affectedSlide = courseSlideMapper.updateById(old);
+            if (affectedSlide == 0) {
+                throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "课件已被修改，请刷新后重试");
+            }
             // 清掉旧 slide_pages — 防止重新上传 PPTX 时新旧页面混在一起
             int oldPageCount = slidePageMapper.delete(
                 new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, sid));
@@ -151,7 +169,10 @@ public class SlideServiceImpl implements SlideService {
             Files.write(pptxPath, fileBytes);
             CourseSlide toUpdate = courseSlideMapper.selectById(sid);
             toUpdate.setFileUrl(pptxPath.toString());
-            courseSlideMapper.updateById(toUpdate);
+            int affectedFileUrl = courseSlideMapper.updateById(toUpdate);
+            if (affectedFileUrl == 0) {
+                throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "课件文件路径更新失败，请刷新后重试");
+            }
         } catch (IOException e) {
             CourseSlide toUpdate = courseSlideMapper.selectById(sid);
             toUpdate.setStatus(3); toUpdate.setErrorMessage("文件保存失败");
@@ -168,7 +189,10 @@ public class SlideServiceImpl implements SlideService {
                 sec.setContentUrl("/api/courses/" + courseId + "/sections/" + sectionId + "/slide");
                 sec.setUpdatedAt(LocalDateTime.now());
                 int affected = sectionRepo.updateById(sec);
-                log.info("[SlideUpload] Writing content_url for section={}, course={}", sectionId, courseId);
+                if (affected == 0) {
+                    throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION,
+                            "content_url 写入失败（版本冲突）: sectionId=" + sectionId);
+                }
                 log.info("[SlideUpload] content_url affectedRows={}, section={}, version={}",
                         affected, sectionId, sec.getVersion());
             } else {
@@ -194,6 +218,18 @@ public class SlideServiceImpl implements SlideService {
         Course course = courseRepository.selectById(courseId);
         if (course == null) { throw new BusinessException(ErrorCode.COURSE_NOT_FOUND); }
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) { throw new BusinessException(ErrorCode.NO_PERMISSION); }
+        if (chapterId != null) {
+            CourseChapter ch = courseChapterRepository.selectById(chapterId);
+            if (ch == null || !ch.getCourseId().equals(courseId)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "章节 ID 不属于该课程");
+            }
+        }
+        if (sectionId != null) {
+            CourseSection sec = sectionRepo.selectById(sectionId);
+            if (sec == null || !sec.getCourseId().equals(courseId)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课时 ID 不属于该课程");
+            }
+        }
         if (file.getSize() > maxHtmlSize) { throw new BusinessException(ErrorCode.HTML_TOO_LARGE); }
         String rawHtml;
         try {
@@ -203,6 +239,10 @@ public class SlideServiceImpl implements SlideService {
         }
         String safeHtml = HtmlSanitizer.sanitizeForCourseware(rawHtml);
         if (safeHtml.isEmpty() && !rawHtml.isEmpty()) { throw new BusinessException(ErrorCode.HTML_SANITIZE_REMOVED_ALL); }
+
+        String safeFilename = XssSanitizer.sanitizePlainText(
+                file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");
+        if (safeFilename == null || safeFilename.isBlank()) { safeFilename = "slide.html"; }
 
         // UPSERT：按 (courseId, chapterId, sectionId) 复用 slide_id
         LambdaQueryWrapper<CourseSlide> qw = new LambdaQueryWrapper<>();
@@ -221,18 +261,21 @@ public class SlideServiceImpl implements SlideService {
         Long sid;
         if (existing != null) {
             sid = existing.getId();
-            existing.setFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");
+            existing.setFileName(safeFilename);
             existing.setFileUrl("html:inline");
             existing.setStatus(2);
             try { existing.setFileHash(sha256(file.getBytes())); }
             catch (IOException e) { existing.setFileHash(""); }
             existing.setUpdatedAt(LocalDateTime.now());
-            courseSlideMapper.updateById(existing);
+            int affectedHtml = courseSlideMapper.updateById(existing);
+            if (affectedHtml == 0) {
+                throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "HTML 课件已被修改，请刷新后重试");
+            }
             log.info("[SlideUpload-HtmlFile] UPSERT: slideId={}, courseId={}, chapterId={}", sid, courseId, chapterId);
         } else {
             CourseSlide slide = new CourseSlide();
             slide.setCourseId(courseId);
-            slide.setFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");
+            slide.setFileName(safeFilename);
             slide.setFileUrl("html:inline");
             slide.setTotalPages(1);
             slide.setStatus(2);
@@ -270,7 +313,10 @@ public class SlideServiceImpl implements SlideService {
                 sec.setContentUrl("/api/courses/" + courseId + "/sections/" + sectionId + "/slide");
                 sec.setUpdatedAt(LocalDateTime.now());
                 int affected = sectionRepo.updateById(sec);
-                log.info("[SlideUpload-HtmlFile] Writing content_url for section={}, course={}", sectionId, courseId);
+                if (affected == 0) {
+                    throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION,
+                            "content_url 写入失败（版本冲突）: sectionId=" + sectionId);
+                }
                 log.info("[SlideUpload-HtmlFile] content_url affectedRows={}, section={}",
                         affected, sectionId);
             } else {
@@ -302,9 +348,13 @@ public class SlideServiceImpl implements SlideService {
             if (firstPage != null) {
                 firstPage.setContentType("HTML_DIRECT");
                 firstPage.setHtmlContent(safeHtml);
-                slidePageMapper.updateById(firstPage);
-                log.info("[PPTtoHTML] convert success slideId={}, firstPageId={}, htmlSize={}",
-                        slideId, firstPage.getId(), safeHtml.length());
+                int affected = slidePageMapper.updateById(firstPage);
+                if (affected > 0) {
+                    log.info("[PPTtoHTML] convert success slideId={}, firstPageId={}, htmlSize={}",
+                            slideId, firstPage.getId(), safeHtml.length());
+                } else {
+                    log.warn("[PPTtoHTML] update 0 rows for slideId={}", slideId);
+                }
             } else {
                 log.warn("[PPTtoHTML] no pages found for slideId={}", slideId);
             }
@@ -326,7 +376,6 @@ public class SlideServiceImpl implements SlideService {
             if (slides.isEmpty()) { return ""; }
             StringBuilder html = new StringBuilder();
             html.append("<div class=\"pptx-html-converted\">\n");
-            char slideLetter = 'A';
             for (int i = 0; i < slides.size(); i++) {
                 XSLFSlide slide = slides.get(i);
                 html.append("  <div class=\"slide page-").append(i + 1).append("\">\n");
@@ -387,11 +436,28 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     public List<SlideVO> listByCourseId(Long courseId) {
-        return courseSlideMapper.selectList(
+        List<CourseSlide> slides = courseSlideMapper.selectList(
                 new LambdaQueryWrapper<CourseSlide>()
                         .eq(CourseSlide::getCourseId, courseId)
-                        .orderByAsc(CourseSlide::getSectionId))
-                .stream().map(this::toVO).collect(Collectors.toList());
+                        .orderByAsc(CourseSlide::getSectionId));
+        if (slides.isEmpty()) return java.util.Collections.emptyList();
+        java.util.Set<Long> chapterIds = slides.stream()
+                .map(CourseSlide::getChapterId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> sectionIds = slides.stream()
+                .map(CourseSlide::getSectionId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, CourseChapter> chapterCache = chapterIds.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : courseChapterRepository.selectBatchIds(chapterIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(CourseChapter::getId, c -> c));
+        java.util.Map<Long, CourseSection> sectionCache = sectionIds.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : sectionRepo.selectBatchIds(sectionIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(CourseSection::getId, s -> s));
+        return slides.stream()
+                .map(s -> toVO(s, chapterCache, sectionCache))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -416,8 +482,9 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     public SlidePageVO getPage(Long courseId, Integer pageNumber) {
-        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
-        qw.eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber);
+        verifyOwner(courseId);
+        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber);
         List<SlidePage> list = slidePageMapper.selectList(qw);
         if (list.isEmpty()) { throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND); }
         return toPageVO(list.get(0));
@@ -466,6 +533,12 @@ public class SlideServiceImpl implements SlideService {
     }
 
     private SlideVO toVO(CourseSlide s) {
+        return toVO(s, null, null);
+    }
+
+    private SlideVO toVO(CourseSlide s,
+                         java.util.Map<Long, CourseChapter> chapterCache,
+                         java.util.Map<Long, CourseSection> sectionCache) {
         SlideVO vo = new SlideVO();
         vo.setId(s.getId()); vo.setCourseId(s.getCourseId()); vo.setFileName(s.getFileName());
         vo.setTotalPages(s.getTotalPages()); vo.setStatus(s.getStatus());
@@ -474,11 +547,17 @@ public class SlideServiceImpl implements SlideService {
         vo.setCreatedAt(s.getCreatedAt()); vo.setUpdatedAt(s.getUpdatedAt());
         vo.setChapterId(s.getChapterId());
         vo.setSectionId(s.getSectionId());
-        if (s.getChapterId() != null) {
+        if (chapterCache != null && s.getChapterId() != null) {
+            CourseChapter chapter = chapterCache.get(s.getChapterId());
+            if (chapter != null) vo.setChapterTitle(chapter.getTitle());
+        } else if (s.getChapterId() != null) {
             CourseChapter chapter = courseChapterRepository.selectById(s.getChapterId());
             if (chapter != null) vo.setChapterTitle(chapter.getTitle());
         }
-        if (s.getSectionId() != null) {
+        if (sectionCache != null && s.getSectionId() != null) {
+            CourseSection sec = sectionCache.get(s.getSectionId());
+            if (sec != null) vo.setLessonTitle(sec.getTitle());
+        } else if (s.getSectionId() != null) {
             CourseSection sec = sectionRepo.selectById(s.getSectionId());
             if (sec != null) vo.setLessonTitle(sec.getTitle());
         }
@@ -523,31 +602,36 @@ public class SlideServiceImpl implements SlideService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteSlide(Long courseId, Long lessonId) {
         verifyOwner(courseId);
-        LambdaQueryWrapper<CourseSlide> wrapper = new LambdaQueryWrapper<CourseSlide>()
-                .eq(CourseSlide::getCourseId, courseId);
-        if (lessonId != null) {
-            wrapper.eq(CourseSlide::getSectionId, lessonId);
+        if (lessonId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "lessonId 不能为空");
         }
+        LambdaQueryWrapper<CourseSlide> wrapper = new LambdaQueryWrapper<CourseSlide>()
+                .eq(CourseSlide::getCourseId, courseId)
+                .eq(CourseSlide::getSectionId, lessonId);
         List<CourseSlide> slides = courseSlideMapper.selectList(wrapper);
-        if (slides.isEmpty()) throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND);
+        if (slides.isEmpty()) {
+            throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND, "未找到该课时的课件");
+        }
         for (CourseSlide s : slides) {
             slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, s.getId()));
             courseSlideMapper.deleteById(s.getId());
+            registerSlideCleanup(courseId, s.getId());
         }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() { cleanupSlideFiles(courseId); }
-        });
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deletePage(Long courseId, Integer pageNumber) {
-        List<SlidePage> list = slidePageMapper.selectList(new LambdaQueryWrapper<SlidePage>()
-                .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber));
+    public void deletePage(Long courseId, Integer pageNumber, Long sectionId) {
+        verifyOwner(courseId);
+        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, courseId)
+                .eq(SlidePage::getPageNumber, pageNumber);
+        if (sectionId != null) {
+            qw.eq(SlidePage::getSectionId, sectionId);
+        }
+        List<SlidePage> list = slidePageMapper.selectList(qw);
         if (list.isEmpty()) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         SlidePage p = list.get(0);
-        verifyOwner(courseId);
         if (p.getFileUuid() != null) {
             try {
                 Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
@@ -560,7 +644,9 @@ public class SlideServiceImpl implements SlideService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public SlidePageVO updatePage(Long courseId, Integer pageNumber, Map<String, Object> body) {
+        verifyOwner(courseId);
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
                 .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber);
         Object lIdObj = body != null ? body.get("_lessonId") : null;
@@ -574,14 +660,16 @@ public class SlideServiceImpl implements SlideService {
         }
         SlidePage p = slidePageMapper.selectOne(qw);
         if (p == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
-        verifyOwner(courseId);
         if (body.containsKey("narrationScript") && body.get("narrationScript") instanceof String) {
             if ("AUDIO_READY".equals(p.getNarrationStatus())) { p.setNarrationAudioUrl(null); p.setAudioDuration(null); }
             p.setNarrationScript((String) body.get("narrationScript"));
             p.setNarrationStatus("TEACHER_EDITED");
         }
         p.setUpdatedAt(LocalDateTime.now());
-        slidePageMapper.updateById(p);
+        int affected = slidePageMapper.updateById(p);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "页面已被其他人修改，请刷新后重试");
+        }
         return toPageVO(p);
     }
 
@@ -589,18 +677,19 @@ public class SlideServiceImpl implements SlideService {
     @Transactional(rollbackFor = Exception.class)
     public void reorderPages(Long courseId, List<Map<String, Integer>> order) {
         verifyOwner(courseId);
+        int TEMP_OFFSET = 50000;
         for (Map<String, Integer> item : order) {
             Integer old = item.get("pageNumber"); Integer nw = item.get("newPageNumber");
             if (old == null || nw == null || old.equals(nw)) continue;
             List<SlidePage> list = slidePageMapper.selectList(new LambdaQueryWrapper<SlidePage>()
                     .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, old));
-            if (!list.isEmpty()) { SlidePage p = list.get(0); p.setPageNumber(-old); slidePageMapper.updateById(p); }
+            if (!list.isEmpty()) { SlidePage p = list.get(0); p.setPageNumber(TEMP_OFFSET + old); slidePageMapper.updateById(p); }
         }
         for (Map<String, Integer> item : order) {
             Integer old = item.get("pageNumber"); Integer nw = item.get("newPageNumber");
             if (old == null || nw == null || old.equals(nw)) continue;
             List<SlidePage> list = slidePageMapper.selectList(new LambdaQueryWrapper<SlidePage>()
-                    .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, -old));
+                    .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, TEMP_OFFSET + old));
             if (!list.isEmpty()) { SlidePage p = list.get(0); p.setPageNumber(nw); slidePageMapper.updateById(p); }
         }
     }
@@ -623,6 +712,19 @@ public class SlideServiceImpl implements SlideService {
         catch (NoSuchAlgorithmException e) { log.error("SHA-256 not available", e); return ""; }
     }
 
+    private void registerSlideCleanup(Long courseId, Long slideId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cleanupSlideFiles(courseId, slideId);
+                }
+            });
+        } else {
+            cleanupSlideFiles(courseId, slideId);
+        }
+    }
+
     private void cleanupSlideFiles(Long courseId) {
         Path dir = Paths.get(storagePath, String.valueOf(courseId));
         if (Files.exists(dir)) {
@@ -631,6 +733,22 @@ public class SlideServiceImpl implements SlideService {
                     try { Files.deleteIfExists(p); } catch (IOException ignored) {}
                 });
             } catch (IOException e) { log.warn("[Slide] 清理文件失败 courseId={}", courseId, e); }
+        }
+    }
+
+    @Override
+    public void cleanupSlideFiles(Long courseId, Long slideId) {
+        if (slideId != null) {
+            Path slideDir = Paths.get(storagePath, String.valueOf(courseId), String.valueOf(slideId));
+            if (Files.exists(slideDir)) {
+                try {
+                    Files.walk(slideDir).sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
+                        try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                    });
+                } catch (IOException e) { log.warn("[Slide] 清理幻灯片文件失败 courseId={}, slideId={}", courseId, slideId, e); }
+            }
+        } else {
+            cleanupSlideFiles(courseId);
         }
     }
 

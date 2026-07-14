@@ -29,11 +29,13 @@ public interface SlideService {
 
     void deleteSlide(Long courseId, Long sectionId);
 
-    void deletePage(Long courseId, Integer pageNumber);
+    void deletePage(Long courseId, Integer pageNumber, Long sectionId);
 
     SlidePageVO updatePage(Long courseId, Integer pageNumber, java.util.Map<String, Object> body);
 
     void reorderPages(Long courseId, java.util.List<java.util.Map<String, Integer>> order);
 
     byte[] getOriginalFile(Long courseId);
+
+    void cleanupSlideFiles(Long courseId, Long slideId);
 }

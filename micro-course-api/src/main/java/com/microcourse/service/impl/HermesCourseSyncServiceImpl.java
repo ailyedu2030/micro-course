@@ -10,6 +10,11 @@ import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.entity.CourseSlide;
+import com.microcourse.plugin.interactive.entity.SlidePage;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
+import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
@@ -32,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.microcourse.util.CourseCacheConstants;
 import com.microcourse.util.RedisUtil;
@@ -44,13 +51,16 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(HermesCourseSyncServiceImpl.class);
 
-private final HermesCourseMappingRepository mappingRepository;
+    private final HermesCourseMappingRepository mappingRepository;
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
     private final CourseChapterRepository chapterRepository;
     private final CourseSectionRepository sectionRepository;
     private final UserRepository userRepository;
     private final RedisUtil redisUtil;
+    private final SlidePageMapper slidePageMapper;
+    private final CourseSlideMapper courseSlideMapper;
+    private final SlideService slideService;
 
     public HermesCourseSyncServiceImpl(HermesCourseMappingRepository mappingRepository,
                                       CourseRepository courseRepository,
@@ -58,7 +68,10 @@ private final HermesCourseMappingRepository mappingRepository;
                                       CourseChapterRepository chapterRepository,
                                       CourseSectionRepository sectionRepository,
                                       UserRepository userRepository,
-                                      RedisUtil redisUtil) {
+                                      RedisUtil redisUtil,
+                                      SlidePageMapper slidePageMapper,
+                                      CourseSlideMapper courseSlideMapper,
+                                      SlideService slideService) {
         this.mappingRepository = mappingRepository;
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
@@ -66,6 +79,31 @@ private final HermesCourseMappingRepository mappingRepository;
         this.sectionRepository = sectionRepository;
         this.userRepository = userRepository;
         this.redisUtil = redisUtil;
+        this.slidePageMapper = slidePageMapper;
+        this.courseSlideMapper = courseSlideMapper;
+        this.slideService = slideService;
+    }
+
+    private java.util.Map<Long, String> batchResolveNarrationScripts(List<Long> sectionIds) {
+        java.util.Map<Long, String> result = new java.util.HashMap<>();
+        if (sectionIds == null || sectionIds.isEmpty()) return result;
+        List<SlidePage> allPages = slidePageMapper.selectList(
+                new LambdaQueryWrapper<SlidePage>()
+                        .in(SlidePage::getSectionId, sectionIds)
+                        .orderByAsc(SlidePage::getPageNumber));
+        for (Long sectionId : sectionIds) {
+            StringBuilder sb = new StringBuilder();
+            for (SlidePage p : allPages) {
+                if (p.getSectionId().equals(sectionId)
+                        && p.getNarrationScript() != null
+                        && !p.getNarrationScript().isBlank()) {
+                    if (sb.length() > 0) sb.append("\n");
+                    sb.append(p.getNarrationScript());
+                }
+            }
+            if (sb.length() > 0) result.put(sectionId, sb.toString());
+        }
+        return result;
     }
 
     private void evictCourseCache(Long courseId) {
@@ -74,8 +112,22 @@ private final HermesCourseMappingRepository mappingRepository;
         log.debug("[HermesSync] Evicted course cache: cacheKey={}", cacheKey);
     }
 
+    private void evictCourseCacheAfterCommit(Long courseId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            evictCourseCache(courseId);
+                        }
+                    });
+        } else {
+            evictCourseCache(courseId);
+        }
+    }
+
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public HermesSyncResult upsertCourse(HermesWebhookRequest request, Long callerTeacherId) {
         String hermesCourseId = request.getHermesCourseId();
 
@@ -107,7 +159,11 @@ private final HermesCourseMappingRepository mappingRepository;
         if (mapping == null) {
             return createCourse(request, callerTeacher);
         } else {
-            return updateCourse(mapping.getCourseId(), request, callerTeacher);
+            Course existingCourse = courseRepository.selectById(mapping.getCourseId());
+            if (existingCourse != null && callerTeacher.getId().equals(existingCourse.getTeacherId())) {
+                return updateCourse(mapping, request, callerTeacher);
+            }
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权更新该课程");
         }
     }
 
@@ -132,15 +188,15 @@ private final HermesCourseMappingRepository mappingRepository;
 
         upsertChapters(courseId, request.getChapters());
 
-        // 清除缓存，确保前端看到最新数据
-        evictCourseCache(courseId);
+        evictCourseCacheAfterCommit(courseId);
 
         log.info("[HermesSync] Created course: hermesId={}, courseId={}, title={}",
                 request.getHermesCourseId(), courseId, request.getTitle());
         return new HermesSyncResult(courseId, "DRAFT", "created");
     }
+    private HermesSyncResult updateCourse(HermesCourseMapping mapping, HermesWebhookRequest request, User callerTeacher) {
+        Long courseId = mapping.getCourseId();
 
-    private HermesSyncResult updateCourse(Long courseId, HermesWebhookRequest request, User callerTeacher) {
         Course existing = courseRepository.selectById(courseId);
         if (existing == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
@@ -148,32 +204,33 @@ private final HermesCourseMappingRepository mappingRepository;
 
         Course updated = buildCourse(request, callerTeacher);
         updated.setId(courseId);
+        updated.setVersion(existing.getVersion());
         updated.setStatus(existing.getStatus());
         updated.setStudentCount(existing.getStudentCount());
         updated.setAvgRating(existing.getAvgRating());
         updated.setCreatedAt(existing.getCreatedAt());
         updated.setUpdatedAt(LocalDateTime.now());
-        courseRepository.updateById(updated);
-
-        LambdaQueryWrapper<HermesCourseMapping> q = new LambdaQueryWrapper<>();
-        q.eq(HermesCourseMapping::getCourseId, courseId);
-        HermesCourseMapping mapping = mappingRepository.selectOne(q);
-        if (mapping != null) {
-            mapping.setLastSyncAt(LocalDateTime.now());
-            mapping.setUpdatedAt(LocalDateTime.now());
-            mappingRepository.updateById(mapping);
+        int affected = courseRepository.updateById(updated);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION,
+                    "课程更新失败（版本冲突）: courseId=" + courseId);
         }
+
+        mapping.setLastSyncAt(LocalDateTime.now());
+        mapping.setUpdatedAt(LocalDateTime.now());
+        mappingRepository.updateById(mapping);
 
         upsertChapters(courseId, request.getChapters());
 
         // 清除缓存，确保前端看到更新后的章节和课时数据
-        evictCourseCache(courseId);
+        evictCourseCacheAfterCommit(courseId);
 
         log.info("[HermesSync] Updated course: hermesId={}, courseId={}, title={}",
                 request.getHermesCourseId(), courseId, request.getTitle());
         return new HermesSyncResult(courseId, CourseStatus.fromCode(existing.getStatus()).name(), "updated");
     }
 
+    @Transactional(rollbackFor = Exception.class)
     private void upsertChapters(Long courseId, List<ChapterDto> chapters) {
         if (chapters == null) return;
 
@@ -233,13 +290,18 @@ private final HermesCourseMappingRepository mappingRepository;
         // delete chapters that no longer exist in Hermes data (cascade sections)
         for (CourseChapter ch : existingChapters) {
             if (!matchedChapterIds.contains(ch.getId())) {
-                sectionRepository.delete(new LambdaQueryWrapper<CourseSection>()
-                        .eq(CourseSection::getChapterId, ch.getId()));
+                List<CourseSection> orphanSections = sectionRepository.selectList(
+                        new LambdaQueryWrapper<CourseSection>()
+                                .eq(CourseSection::getChapterId, ch.getId()));
+                for (CourseSection sec : orphanSections) {
+                    cascadeDeleteSection(courseId, sec.getId());
+                }
                 chapterRepository.deleteById(ch.getId());
             }
         }
     }
 
+    @Transactional(rollbackFor = Exception.class)
     private void upsertSections(Long courseId, Long chapterId, List<LessonDto> lessons) {
         if (lessons == null || lessons.isEmpty()) return;
 
@@ -280,23 +342,54 @@ private final HermesCourseMappingRepository mappingRepository;
                 section.setDuration(dto.getDurationMinutes());
                 section.setScriptContent(dto.getScriptContent());
                 section.setUpdatedAt(LocalDateTime.now());
-                sectionRepository.updateById(section);
+                int affected = sectionRepository.updateById(section);
+                if (affected == 0) {
+                    throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION,
+                            "课时更新失败（版本冲突）: sectionId=" + section.getId());
+                }
             }
         }
 
         // delete sections that no longer exist in Hermes data
         for (CourseSection s : existingSections) {
             if (!matchedSectionIds.contains(s.getId())) {
-                sectionRepository.deleteById(s.getId());
+                cascadeDeleteSection(courseId, s.getId());
             }
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    private void cascadeDeleteSection(Long courseId, Long sectionId) {
+        List<CourseSlide> slides = courseSlideMapper.selectList(
+                new LambdaQueryWrapper<CourseSlide>()
+                        .eq(CourseSlide::getSectionId, sectionId));
+        for (CourseSlide slide : slides) {
+            slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>()
+                    .eq(SlidePage::getSlideId, slide.getId()));
+            courseSlideMapper.deleteById(slide.getId());
+            registerSlideCleanup(courseId, slide.getId());
+        }
+        sectionRepository.deleteById(sectionId);
+    }
+
+    private void registerSlideCleanup(Long courseId, Long slideId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    slideService.cleanupSlideFiles(courseId, slideId);
+                }
+            });
+        } else {
+            slideService.cleanupSlideFiles(courseId, slideId);
         }
     }
 
     private Course buildCourse(HermesWebhookRequest request, User callerTeacher) {
         Course course = new Course();
-        course.setTitle(request.getTitle());
-        course.setSubtitle(request.getSubtitle());
-        course.setSummary(request.getSummary());
+        course.setTitle(XssSanitizer.sanitizePlainText(request.getTitle()));
+        course.setSubtitle(XssSanitizer.sanitizePlainText(request.getSubtitle()));
+        course.setSummary(XssSanitizer.sanitizePlainText(request.getSummary()));
         course.setCoverUrl(request.getCoverUrl());
         course.setCategoryId(request.getCategoryId());
         // teacherId 强制使用 API Key 反查得到的教师身份（不信任 body）
@@ -342,10 +435,13 @@ private final HermesCourseMappingRepository mappingRepository;
         }
 
         java.util.Map<Long, String> categoryNames = new java.util.HashMap<>();
-        courses.stream().map(Course::getCategoryId).filter(java.util.Objects::nonNull).distinct().forEach(cid -> {
-            CourseCategory cat = categoryRepository.selectById(cid);
-            if (cat != null) categoryNames.put(cid, cat.getName());
-        });
+        java.util.Set<Long> distinctCategoryIds = courses.stream()
+                .map(Course::getCategoryId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!distinctCategoryIds.isEmpty()) {
+            categoryRepository.selectBatchIds(distinctCategoryIds)
+                    .forEach(cat -> categoryNames.put(cat.getId(), cat.getName()));
+        }
 
         return courses.stream().map(c -> {
             HermesCourseMapping m = mappingMap.get(c.getId());
@@ -420,16 +516,25 @@ private final HermesCourseMappingRepository mappingRepository;
                 new LambdaQueryWrapper<CourseChapter>()
                         .eq(CourseChapter::getCourseId, course.getId())
                         .orderByAsc(CourseChapter::getSortOrder));
+        List<CourseSection> allSections = sectionRepository.selectList(
+                new LambdaQueryWrapper<CourseSection>()
+                        .eq(CourseSection::getCourseId, course.getId())
+                        .orderByAsc(CourseSection::getSortOrder));
+        List<Long> interactiveSectionIds = allSections.stream()
+                .filter(s -> "INTERACTIVE".equals(s.getSectionType()))
+                .map(CourseSection::getId)
+                .toList();
+        java.util.Map<Long, String> narrationMap = batchResolveNarrationScripts(interactiveSectionIds);
+        java.util.Map<Long, List<CourseSection>> sectionsByChapter = new java.util.HashMap<>();
+        for (CourseSection s : allSections) {
+            sectionsByChapter.computeIfAbsent(s.getChapterId(), k -> new java.util.ArrayList<>()).add(s);
+        }
         List<ChapterVo> chapterVos = chapters.stream().map(ch -> {
             ChapterVo cv = new ChapterVo();
             cv.setId(ch.getId());
             cv.setTitle(ch.getTitle());
             cv.setSortOrder(ch.getSortOrder());
-
-            List<CourseSection> sections = sectionRepository.selectList(
-                    new LambdaQueryWrapper<CourseSection>()
-                            .eq(CourseSection::getChapterId, ch.getId())
-                            .orderByAsc(CourseSection::getSortOrder));
+            List<CourseSection> sections = sectionsByChapter.getOrDefault(ch.getId(), java.util.Collections.emptyList());
             List<LessonVo> lessonVos = sections.stream().map(s -> {
                 LessonVo lv = new LessonVo();
                 lv.setId(s.getId());
@@ -437,7 +542,12 @@ private final HermesCourseMappingRepository mappingRepository;
                 lv.setLessonType(s.getSectionType());
                 lv.setDurationMinutes(s.getDuration());
                 lv.setSortOrder(s.getSortOrder());
-                lv.setScriptContent(s.getScriptContent());
+                String sectionScript = s.getScriptContent();
+                if ((sectionScript == null || sectionScript.isBlank())
+                        && "INTERACTIVE".equals(s.getSectionType())) {
+                    sectionScript = narrationMap.get(s.getId());
+                }
+                lv.setScriptContent(sectionScript);
                 lv.setContentUrl(s.getContentUrl());
                 return lv;
             }).toList();
