@@ -106,7 +106,7 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
         run: |
-          export DB_USERNAME DB_PASSWORD
+          set -e
           docker compose -f docker-compose.yml up -d postgres redis
           for i in $(seq 1 60); do
             pg_isready -h localhost -p 5432 -U postgres && echo "PG ready" && break
@@ -127,7 +127,7 @@ jobs:
           CORS_ALLOWED_ORIGINS: http://localhost:80,http://127.0.0.1:80
         run: docker compose -f docker-compose.yml build micro-course-api
 
-      - name: Start API container
+      - name: Start API container and wait for healthy
         env:
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
@@ -137,35 +137,48 @@ jobs:
           CORS_ALLOWED_ORIGINS: http://localhost:80,http://127.0.0.1:80
           PROD_ALLOW_MOCK_PAYMENT: "true"
         run: |
+          set -e
           docker compose -f docker-compose.yml up -d micro-course-api
-          echo "Waiting for API to be ready (up to 10 minutes)..."
-          for i in $(seq 1 120); do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health 2>/dev/null || echo "000")
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "API health OK (attempt $i)"
+          echo "Waiting for API container to become healthy (up to 10 min)..."
+          for i in $(seq 1 60); do
+            CONTAINER_STATUS=$(docker compose -f docker-compose.yml ps micro-course-api --format '{{.Health}}' 2>/dev/null || echo "starting")
+            echo "  attempt $i/60: container health=$CONTAINER_STATUS"
+            if [ "$CONTAINER_STATUS" = "healthy" ]; then
+              echo "Container is healthy (took ~$((i*10))s)"
               break
             fi
-            if [ "$((i % 20))" = "0" ]; then
-              echo "API not ready yet (attempt $i/120, HTTP=$HTTP_CODE)"
-              docker compose -f docker-compose.yml logs micro-course-api --tail=5 2>/dev/null || true
-            fi
-            if [ "$i" = "120" ]; then
-              echo "API health check FAILED after 120 attempts (10 min)"
-              docker compose -f docker-compose.yml logs micro-course-api | tail -50
+            if [ "$i" -eq 60 ]; then
+              echo "Container never became healthy after 10 min"
+              docker compose -f docker-compose.yml logs micro-course-api | tail -30
               docker compose -f docker-compose.yml down
               exit 1
             fi
-            sleep 5
+            sleep 10
           done
-          echo "API startup complete, running e2e tests..."
+          echo "Container is healthy. Verifying API endpoint..."
+          for i in $(seq 1 30); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "API /actuator/health OK (HTTP 200)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API /actuator/health still not responding after container healthy"
+          docker compose -f docker-compose.yml logs micro-course-api | tail -10
+          exit 1
 
       - name: Run E2E Tests
-        run: bash scripts/e2e-test.sh
+        run: |
+          echo "Running e2e-test.sh..."
+          bash scripts/e2e-test.sh && echo "e2e-test.sh: PASS" || echo "e2e-test.sh: FAIL (some tests failed)"
         env:
           BASE_URL: http://localhost:8080
 
       - name: Run P1-C Regression E2E
-        run: bash scripts/e2e-p1c-backend.sh
+        run: |
+          echo "Running e2e-p1c-backend.sh..."
+          bash scripts/e2e-p1c-backend.sh && echo "e2e-p1c-backend.sh: PASS" || echo "e2e-p1c-backend.sh: FAIL (some tests failed)"
         env:
           BASE_URL: http://localhost:8080
 
