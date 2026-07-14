@@ -74,7 +74,7 @@ public class NarrationServiceImpl implements NarrationService {
     }
 
     @Override
-    public SlidePageVO generate(Long courseId, Integer pageNumber) {
+    public SlidePageVO generate(Long courseId, Integer pageNumber, Long sectionId) {
         checkOwner(courseId);
 
         if (deepseekApiKey == null || deepseekApiKey.isBlank()) {
@@ -82,7 +82,7 @@ public class NarrationServiceImpl implements NarrationService {
                     "需要配置 DEEPSEEK_API_KEY 环境变量");
         }
 
-        SlidePage page = getPage(courseId, pageNumber);
+        SlidePage page = getPage(courseId, pageNumber, sectionId);
         String currentText = page.getExtractedText();
         if (currentText == null || currentText.isBlank()) {
             currentText = "（本页无可提取文本）";
@@ -91,7 +91,7 @@ public class NarrationServiceImpl implements NarrationService {
         String prevContext = "";
         if (pageNumber > 1) {
             try {
-                SlidePage prevPage = getPage(courseId, pageNumber - 1);
+                SlidePage prevPage = getPage(courseId, pageNumber - 1, sectionId);
                 String prevText = prevPage.getExtractedText();
                 if (prevText != null && !prevText.isBlank()) {
                     prevContext = "上一页内容：\n" + prevText + "\n\n";
@@ -112,7 +112,7 @@ public class NarrationServiceImpl implements NarrationService {
         try {
             narrationScript = callDeepSeek(systemPrompt, userPrompt);
         } catch (Exception e) {
-            log.error("[Narration] DeepSeek API failed for courseId={} pageNumber={}", courseId, pageNumber, e);
+            log.error("[Narration] DeepSeek API failed for courseId={} pageNumber={} sectionId={}", courseId, pageNumber, sectionId, e);
             throw e;
         }
 
@@ -136,10 +136,10 @@ public class NarrationServiceImpl implements NarrationService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public SlidePageVO updateScript(Long courseId, Integer pageNumber, String narrationScript) {
+    public SlidePageVO updateScript(Long courseId, Integer pageNumber, Long sectionId, String narrationScript) {
         checkOwner(courseId);
 
-        SlidePage page = getPage(courseId, pageNumber);
+        SlidePage page = getPage(courseId, pageNumber, sectionId);
         deleteOldAudioFile(courseId, pageNumber);
         page.setNarrationScript(narrationScript);
         page.setNarrationStatus("TEACHER_EDITED");
@@ -156,18 +156,25 @@ public class NarrationServiceImpl implements NarrationService {
     public void generateAll(Long courseId) {
         if (deepseekApiKey == null || deepseekApiKey.isBlank()) {
             log.warn("[Narration] DEEPSEEK_API_KEY 未配置，跳过 AI 讲述稿批量生成 courseId={}", courseId);
-            // P1-I-01: 批量失败时更新 DB 状态，让前端轮询可见
             markAllPagesError(courseId, "AI 讲述稿生成失败：DeepSeek API Key 未配置");
             return;
         }
 
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getCourseId, courseId)
-                .orderByAsc(SlidePage::getPageNumber);
+                .orderByAsc(SlidePage::getChapterId, SlidePage::getPageNumber);
         List<SlidePage> allPages = slidePageMapper.selectList(wrapper);
         if (allPages.isEmpty()) {
             log.warn("[Narration] 课程 {} 无幻灯片页面", courseId);
             return;
+        }
+
+        long distinctPageNumbers = allPages.stream().map(SlidePage::getPageNumber).distinct().count();
+        if (distinctPageNumbers != allPages.size()) {
+            String msg = "AI 批量讲述稿生成被拒绝：课程存在重复 pageNumber（多个 section 使用相同页码），请先联系管理员解决课程结构问题";
+            log.error("[Narration] courseId={} 存在重复 pageNumber，共 {} 页但只有 {} 个不同页码", courseId, allPages.size(), distinctPageNumbers);
+            markAllPagesError(courseId, msg);
+            throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED, msg);
         }
 
         StringBuilder pagesContent = new StringBuilder();
@@ -176,7 +183,7 @@ public class NarrationServiceImpl implements NarrationService {
             if (text == null || text.isBlank()) {
                 text = "（本页无可提取文本）";
             }
-            pagesContent.append("===== 第 ").append(p.getPageNumber()).append(" 页 =====\n")
+            pagesContent.append("===== 第 ").append(p.getPageNumber()).append(" 页（chapterId=").append(p.getChapterId()).append("） =====\n")
                     .append(text).append("\n\n");
         }
 
@@ -191,16 +198,17 @@ public class NarrationServiceImpl implements NarrationService {
                 + "② 不要重复介绍相同概念，后面提到前面讲过的内容时用「刚才提到的」「前面我们说了」来衔接\n"
                 + "③ 总时长约 " + totalMinutes + " 分钟\n"
                 + "④ 纯文本，不包含 Markdown 标记\n"
-                + "⑤ 请在每页讲述稿前用 【第N页】 标记开头，方便我按页拆分。示例格式：\n\n"
+                + "⑤ 请严格按以下格式返回每页讲述稿（必须包含页面标识）：\n\n"
                 + "【第1页】\n（第1页的讲述内容）\n\n"
-                + "【第2页】\n（第2页的讲述内容，包含与第1页的自然过渡）";
+                + "【第2页】\n（第2页的讲述内容，包含与第1页的自然过渡）\n\n"
+                + "【第3页】\n（第3页的讲述内容）\n\n"
+                + "注意：必须为每一页生成讲述稿，不要遗漏任何一页。";
 
         String fullScript;
         try {
             fullScript = callDeepSeek(systemPrompt, userPrompt);
         } catch (Exception e) {
             log.error("[Narration] 批量生成连贯讲述稿失败 courseId={}", courseId, e);
-            // P1-I-01: 批量失败时更新 DB 状态，让前端轮询可见
             markAllPagesError(courseId, "AI 讲述稿生成失败：" + e.getMessage());
             return;
         }
@@ -342,13 +350,22 @@ public class NarrationServiceImpl implements NarrationService {
                 "AI 讲述稿生成服务暂时不可用，请稍后重试", lastException);
     }
 
-    private SlidePage getPage(Long courseId, Integer pageNumber) {
+    private SlidePage getPage(Long courseId, Integer pageNumber, Long sectionId) {
         LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SlidePage::getCourseId, courseId)
                 .eq(SlidePage::getPageNumber, pageNumber);
+        if (sectionId != null) {
+            wrapper.eq(SlidePage::getSectionId, sectionId);
+        }
         java.util.List<SlidePage> list = slidePageMapper.selectList(wrapper);
         if (list.isEmpty()) {
-            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
+            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND,
+                    "未找到对应幻灯片页面（courseId=" + courseId + ", pageNumber=" + pageNumber +
+                    (sectionId != null ? ", sectionId=" + sectionId : "") + "），请确认页面所属章节");
+        }
+        if (sectionId != null && list.size() > 1) {
+            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND,
+                    "找到多条匹配的幻灯片页面（courseId=" + courseId + ", pageNumber=" + pageNumber + ", sectionId=" + sectionId + "），请联系管理员");
         }
         return list.get(0);
     }
