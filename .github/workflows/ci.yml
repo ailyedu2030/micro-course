@@ -139,34 +139,18 @@ jobs:
         run: |
           set -e
           docker compose -f docker-compose.yml up -d micro-course-api
-          echo "Waiting for API container to become healthy (up to 10 min)..."
-          for i in $(seq 1 60); do
-            CONTAINER_STATUS=$(docker compose -f docker-compose.yml ps micro-course-api --format '{{.Health}}' 2>/dev/null || echo "starting")
-            echo "  attempt $i/60: container health=$CONTAINER_STATUS"
-            if [ "$CONTAINER_STATUS" = "healthy" ]; then
-              echo "Container is healthy (took ~$((i*10))s)"
-              break
-            fi
-            if [ "$i" -eq 60 ]; then
-              echo "Container never became healthy after 10 min"
-              docker compose -f docker-compose.yml logs micro-course-api | tail -30
-              docker compose -f docker-compose.yml down
-              exit 1
-            fi
-            sleep 10
-          done
-          echo "Container is healthy. Verifying API endpoint..."
-          for i in $(seq 1 30); do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health 2>/dev/null || echo "000")
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "API /actuator/health OK (HTTP 200)"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "API /actuator/health still not responding after container healthy"
-          docker compose -f docker-compose.yml logs micro-course-api | tail -10
-          exit 1
+          echo "Giving API 5 minutes to start (JVM + Flyway + Tomcat)..."
+          sleep 300
+          echo "Checking API health..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "API is healthy (HTTP 200)"
+          else
+            echo "API not ready (HTTP=$HTTP_CODE), checking logs..."
+            docker compose -f docker-compose.yml logs micro-course-api | tail -30
+            docker compose -f docker-compose.yml down
+            exit 1
+          fi
 
       - name: Run E2E Tests
         run: |
