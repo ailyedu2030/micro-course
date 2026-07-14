@@ -135,24 +135,32 @@ jobs:
           JWT_EXPIRATION: 7200000
           JWT_REFRESH_EXPIRATION: 604800000
           CORS_ALLOWED_ORIGINS: http://localhost:80,http://127.0.0.1:80
+          PROD_ALLOW_MOCK_PAYMENT: "true"
         run: |
           docker compose -f docker-compose.yml up -d micro-course-api
+          echo "Waiting for API health..."
           for i in $(seq 1 60); do
-            curl -sf http://localhost:8080/actuator/health && echo "actuator ready" && break
-            sleep 3
-          done
-          echo "Pre-warm: waiting for API to accept login..."
-          for i in $(seq 1 30); do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/api/auth/login \
-              -H 'Content-Type: application/json' \
-              -d '{"username":"admin","password":"admin123"}' 2>/dev/null || echo "000")
-            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "400" ]; then
-              echo "API pre-warmed (HTTP $HTTP_CODE)"
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "API ready (HTTP $HTTP_CODE)"
               break
             fi
-            if [ "$i" = "30" ]; then
-              echo "API pre-warm FAILED after 30 attempts (last HTTP: $HTTP_CODE)"
-              docker compose -f docker-compose.yml logs micro-course-api | tail -20
+            if [ "$i" = "60" ]; then
+              echo "API health check FAILED after 60 attempts"
+              docker compose -f docker-compose.yml logs micro-course-api | tail -30
+              docker compose -f docker-compose.yml down
+              exit 1
+            fi
+            sleep 3
+          done
+          echo "Pre-warm: trying login..."
+          for i in $(seq 1 20); do
+            LOGIN_RESP=$(curl -s -X POST http://localhost:8080/api/auth/login \
+              -H 'Content-Type: application/json' \
+              -d '{"username":"admin","password":"admin123"}' 2>/dev/null || echo "")
+            if echo "$LOGIN_RESP" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("data",{}).get("accessToken",""))' 2>/dev/null | grep -q .; then
+              echo "Login pre-warm OK"
+              break
             fi
             sleep 2
           done
