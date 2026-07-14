@@ -1,6 +1,9 @@
 package com.microcourse.service.impl;
 
 import com.alibaba.excel.EasyExcel;
+import cn.hutool.poi.excel.ExcelReader;
+import cn.hutool.poi.excel.ExcelUtil;
+import cn.hutool.poi.excel.ExcelWriter;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -10,6 +13,7 @@ import com.microcourse.dto.QuestionCreateRequest;
 import com.microcourse.dto.QuestionUpdateRequest;
 import com.microcourse.dto.QuestionVO;
 import com.microcourse.entity.Course;
+import jakarta.servlet.http.HttpServletResponse;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.Question;
 import com.microcourse.entity.QuestionChapter;
@@ -30,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -563,6 +568,98 @@ public class QuestionServiceImpl implements QuestionService {
         vo.setChapterTitles(chapterTitles);
 
         return vo;
+    }
+
+    @Override
+    public void export(Long courseId, String questionType, Integer difficulty, String keyword,
+                       HttpServletResponse response) {
+        // 权限校验：如果是按课程导出，检查权限
+        if (courseId != null) {
+            Course course = courseRepository.selectById(courseId);
+            if (course == null) {
+                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+            }
+            if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+        }
+
+        // 构建查询条件
+        LambdaQueryWrapper<Question> wrapper = new LambdaQueryWrapper<>();
+        if (courseId != null) {
+            wrapper.eq(Question::getCourseId, courseId);
+        }
+        if (questionType != null && !questionType.isEmpty()) {
+            wrapper.eq(Question::getQuestionType, questionType);
+        }
+        if (difficulty != null) {
+            wrapper.eq(Question::getDifficulty, difficulty);
+        }
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            wrapper.like(Question::getContent, keyword.trim());
+        }
+        wrapper.orderByDesc(Question::getCreatedAt);
+
+        List<Question> questions = questionRepository.selectList(wrapper);
+
+        // 预加载关联数据
+        Map<Long, Course> courseMap = new HashMap<>();
+        Map<Long, User> teacherMap = new HashMap<>();
+        Set<Long> courseIds = questions.stream().map(Question::getCourseId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> teacherIds = questions.stream().map(Question::getTeacherId).filter(Objects::nonNull).collect(Collectors.toSet());
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
+        }
+        if (!teacherIds.isEmpty()) {
+            userRepository.selectBatchIds(teacherIds).forEach(u -> teacherMap.put(u.getId(), u));
+        }
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=questions_export.xlsx");
+
+        ExcelWriter writer = ExcelUtil.getWriter(true);
+        try {
+            writer.addHeaderAlias("id", "题目ID");
+            writer.addHeaderAlias("courseId", "课程ID");
+            writer.addHeaderAlias("courseTitle", "课程名称");
+            writer.addHeaderAlias("teacherName", "出题教师");
+            writer.addHeaderAlias("questionType", "题目类型");
+            writer.addHeaderAlias("content", "题目内容");
+            writer.addHeaderAlias("options", "选项");
+            writer.addHeaderAlias("answer", "答案");
+            writer.addHeaderAlias("partialScore", "分值");
+            writer.addHeaderAlias("explanation", "解析");
+            writer.addHeaderAlias("difficulty", "难度");
+            writer.addHeaderAlias("status", "状态");
+            writer.addHeaderAlias("createdAt", "创建时间");
+
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (Question q : questions) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("id", q.getId());
+                row.put("courseId", q.getCourseId());
+                row.put("courseTitle", courseMap.get(q.getCourseId()) != null ? courseMap.get(q.getCourseId()).getTitle() : "");
+                row.put("teacherName", teacherMap.get(q.getTeacherId()) != null ? teacherMap.get(q.getTeacherId()).getRealName() : "");
+                row.put("questionType", q.getQuestionType());
+                row.put("content", q.getContent());
+                row.put("options", q.getOptions());
+                row.put("answer", q.getAnswer());
+                row.put("partialScore", q.getPartialScore());
+                row.put("explanation", q.getExplanation());
+                row.put("difficulty", q.getDifficulty());
+                row.put("status", q.getStatus());
+                row.put("createdAt", q.getCreatedAt());
+                rows.add(row);
+            }
+
+            writer.write(rows, true);
+            writer.flush(response.getOutputStream());
+        } catch (IOException e) {
+            log.error("[Question] 导出失败", e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "导出失败");
+        } finally {
+            writer.close();
+        }
     }
 
     /**

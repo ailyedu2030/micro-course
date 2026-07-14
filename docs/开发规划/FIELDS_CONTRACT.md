@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 275 | Vue 视图数: 60 | Controller 数: 61 | API 文件数: 45
+> 实体数: 279 | Vue 视图数: 60 | Controller 数: 62 | API 文件数: 45
 
 ---
 
@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2543
+- 后端实体字段总数: 2563
 
 - 前端引用字段总数: 434
 
@@ -732,32 +732,34 @@
 
 | 341 | VideoProgressReportRequest | `deviceId` () | ? | ❌ UNMANAGED | No controller or list page for Device | **需修复** |
 
-| 342 | VideoUpdateRequest | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
+| 342 | VideoStatusVO | `videoId` () | ? | ❌ UNMANAGED | No controller or list page for Video | **需修复** |
 
-| 343 | VideoVO | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
+| 343 | VideoUpdateRequest | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
 
-| 344 | VideoVO | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
+| 344 | VideoVO | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
 
-| 345 | WrongQuestion | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
+| 345 | VideoVO | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
 
-| 346 | WrongQuestion | `questionId` () | ? | ❌ UNMANAGED | No controller or list page for Question | **需修复** |
+| 346 | WrongQuestion | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
 
-| 347 | WrongQuestion | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
+| 347 | WrongQuestion | `questionId` () | ? | ❌ UNMANAGED | No controller or list page for Question | **需修复** |
 
-| 348 | WrongQuestionVO | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
+| 348 | WrongQuestion | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
 
-| 349 | WrongQuestionVO | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
+| 349 | WrongQuestionVO | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
 
-| 350 | WrongQuestionVO | `questionId` () | ? | ❌ UNMANAGED | No controller or list page for Question | **需修复** |
+| 350 | WrongQuestionVO | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
 
-| 351 | WrongQuestionVO | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
+| 351 | WrongQuestionVO | `questionId` () | ? | ❌ UNMANAGED | No controller or list page for Question | **需修复** |
+
+| 352 | WrongQuestionVO | `userId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
 
 
 
 ### FK 管理缺口汇总
 
 
-- ❌ 完全无管理: 351 个
+- ❌ 完全无管理: 352 个
 
 - ⚠️ 有 API 无前端: 0 个
 
@@ -829,6 +831,8 @@
 
 | CourseReviewLog | /api/course-review-logs | 1 | - |
 
+| Dashboard | /api/dashboard | 4 | - |
+
 | Department | /api/departments | 7 | - |
 
 | DiscussionAdmin | /api/admin/discussions | 8 | - |
@@ -883,7 +887,7 @@
 
 | PlatformShareConfig | /api/admin/platform-share-config | 3 | - |
 
-| Question | /api/questions | 6 | - |
+| Question | /api/questions | 7 | - |
 
 | Report | /api/reports | 3 | - |
 
@@ -907,7 +911,7 @@
 
 | User | /api/users | 9 | - |
 
-| Video | /api/videos | 14 | - |
+| Video | /api/videos | 15 | - |
 
 | VideoBookmark | /api/videos/{videoId}/bookmarks | 3 | - |
 
@@ -1092,7 +1096,13 @@
 
 | DailyActivityVO | 2 | 0 |
 
+| DashboardActivityVO | 4 | 0 |
+
 | DashboardOverviewVO | 10 | 0 |
+
+| DashboardProgressVO | 6 | 0 |
+
+| DashboardRevenueVO | 5 | 0 |
 
 | Department | 8 | 0 |
 
@@ -1465,6 +1475,8 @@
 | VideoCreateRequest | 7 | 0 |
 
 | VideoProgressReportRequest | 7 | 0 |
+
+| VideoStatusVO | 5 | 0 |
 
 | VideoUpdateRequest | 4 | 0 |
 

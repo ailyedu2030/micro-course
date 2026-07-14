@@ -7,6 +7,8 @@ import com.microcourse.dto.R;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.service.QuestionService;
+
+import jakarta.servlet.http.HttpServletResponse;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import jakarta.validation.Valid;
@@ -95,5 +97,24 @@ public class QuestionController {
         com.microcourse.util.FileUploadUtil.assertSafeFilename(file.getOriginalFilename());
         BatchImportResultVO result = questionService.batchImport(file, courseId);
         return R.ok(result);
+    }
+
+    /**
+     * GET /api/questions/export
+     * 导出题目为 Excel
+     * @param courseId 课程ID（可选）
+     * @param questionType 题目类型筛选（可选）
+     * @param difficulty 难度筛选（可选）
+     * @param keyword 关键字筛选（可选）
+     */
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public void export(
+            @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) String questionType,
+            @RequestParam(required = false) Integer difficulty,
+            @RequestParam(required = false) String keyword,
+            HttpServletResponse response) {
+        questionService.export(courseId, questionType, difficulty, keyword, response);
     }
 }

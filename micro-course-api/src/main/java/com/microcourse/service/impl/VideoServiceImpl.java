@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.VideoCreateRequest;
+import com.microcourse.dto.VideoStatusVO;
 import com.microcourse.dto.VideoUpdateRequest;
 import com.microcourse.dto.VideoVO;
 import com.microcourse.dto.PageResult;
@@ -626,6 +627,15 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
         return video.getCourseId();
+    }
+
+    @Override
+    public VideoStatusVO getStatus(Long id) {
+        Video video = videoRepository.selectById(id);
+        if (video == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+        return new VideoStatusVO(video.getId(), video.getStatus(), video.getProgress(), video.getErrorMessage());
     }
 
     /* ================================================================

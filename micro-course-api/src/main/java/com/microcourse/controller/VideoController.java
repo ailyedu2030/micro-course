@@ -7,6 +7,7 @@ import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.dto.R;
 import com.microcourse.dto.VideoCreateRequest;
 import com.microcourse.dto.VideoProgressReportRequest;
+import com.microcourse.dto.VideoStatusVO;
 import com.microcourse.dto.VideoUpdateRequest;
 import com.microcourse.dto.VideoVO;
 import com.microcourse.exception.BusinessException;
@@ -73,6 +74,17 @@ public class VideoController {
     public R<VideoVO> getById(@PathVariable Long id) {
         videoAccessService.checkStudentAccess(id);
         return R.ok(videoService.getById(id));
+    }
+
+    /**
+     * GET /api/videos/{id}/status
+     * 获取视频转码状态（轻量级轮询接口）
+     * 权限：TEACHER（课程创建者）/ ADMIN
+     */
+    @GetMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<VideoStatusVO> getStatus(@PathVariable Long id) {
+        return R.ok(videoService.getStatus(id));
     }
 
     @PostMapping
