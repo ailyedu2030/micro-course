@@ -13,6 +13,7 @@ import com.microcourse.plugin.interactive.service.TtsService;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.util.SecurityUtil;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -60,7 +61,9 @@ public class TtsServiceImpl implements TtsService {
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+
+    private static final int MAX_STRING_LENGTH = 100 * 1024 * 1024; // 100MB
 
     @Value("${plugin.interactive.minimax.tts-model:speech-2.8-hd}")
     private String ttsModel;
@@ -98,11 +101,26 @@ public class TtsServiceImpl implements TtsService {
     public TtsServiceImpl(SlidePageMapper slidePageMapper,
                           CourseRepository courseRepository,
                           EnrollmentRepository enrollmentRepository,
-                          TransactionTemplate transactionTemplate) {
+                          TransactionTemplate transactionTemplate,
+                          ObjectMapper objectMapper) {
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.transactionTemplate = transactionTemplate;
+        this.objectMapper = configureObjectMapper(objectMapper);
+    }
+
+    private ObjectMapper configureObjectMapper(ObjectMapper mapper) {
+        try {
+            ObjectMapper copy = mapper.copy();
+            copy.getFactory().setStreamReadConstraints(
+                    StreamReadConstraints.builder().maxStringLength(MAX_STRING_LENGTH).build());
+            log.info("[TTS] ObjectMapper 已配置 maxStringLength={}", MAX_STRING_LENGTH);
+            return copy;
+        } catch (Exception e) {
+            log.warn("[TTS] ObjectMapper 复制失败，使用原始实例: {}", e.getMessage());
+            return mapper;
+        }
     }
 
     /**
