@@ -1,8 +1,7 @@
 #!/bin/bash
 # 端到端测试 — 验证4条学生核心流程
 # Usage: bash scripts/e2e-test.sh
-set -e
-BASE="http://localhost:8080"
+BASE="${BASE_URL:-http://localhost:8080}"
 PASS=0; FAIL=0
 
 ok() { PASS=$((PASS+1)); echo "  ✅ $1"; }
@@ -16,7 +15,7 @@ echo "========================================="
 echo ""
 echo "--- Flow A: 课程发现 → 购买 ---"
 LOGIN_RESP=$(curl -s -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"admin123"}' 2>/dev/null)
+  -d '{"username":"admin","password":"admin123"}' 2>/dev/null || echo '{"data":{}}')
 TOKEN=$(echo "$LOGIN_RESP" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("data",{}).get("accessToken",""))' 2>/dev/null || echo "")
 [ -n "$TOKEN" ] && ok "Admin login" || { echo "  login resp: $LOGIN_RESP"; fail "Admin login"; }
 
