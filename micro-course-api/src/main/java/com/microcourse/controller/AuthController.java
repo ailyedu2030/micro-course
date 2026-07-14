@@ -10,11 +10,18 @@ import com.microcourse.dto.R;
 import com.microcourse.dto.RefreshRequest;
 import com.microcourse.dto.RegisterRequest;
 import com.microcourse.dto.UpdateProfileRequest;
+import com.microcourse.dto.UserApiKeyResponse;
 import com.microcourse.dto.UserVO;
+import com.microcourse.entity.User;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AdminSettingService;
 import com.microcourse.service.AuthService;
+import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,10 +41,13 @@ public class AuthController {
 
     private final AuthService authService;
     private final AdminSettingService adminSettingService;
+    private final UserRepository userRepository;
 
-    public AuthController(AuthService authService, AdminSettingService adminSettingService) {
+    public AuthController(AuthService authService, AdminSettingService adminSettingService,
+                           UserRepository userRepository) {
         this.authService = authService;
         this.adminSettingService = adminSettingService;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -124,5 +134,66 @@ public class AuthController {
     public R<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
         String avatarUrl = authService.uploadAvatar(file);
         return R.ok(avatarUrl);
+    }
+
+    /**
+     * GET /api/auth/me/api-key
+     * 查看当前用户的 Hermes API Key（脱敏）。未生成时返回 null。
+     */
+    @GetMapping("/me/api-key")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    public R<UserApiKeyResponse> getMyApiKey() {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User user = userRepository.selectById(currentUserId);
+        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        if (user.getApiKey() == null) {
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "未配置 API Key");
+        }
+        return R.ok(UserApiKeyResponse.maskedOnly(
+                UserApiKeyResponse.mask(user.getApiKey()),
+                user.getUpdatedAt() != null ? user.getUpdatedAt().toString() : null));
+    }
+
+    /**
+     * POST /api/auth/me/api-key
+     * 生成 / 重新生成当前用户的 Hermes API Key。返回明文（仅此一次）。
+     */
+    @PostMapping("/me/api-key")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    public R<UserApiKeyResponse> generateMyApiKey() {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User user = userRepository.selectById(currentUserId);
+        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        String newKey = java.util.UUID.randomUUID().toString().replace("-", "")
+                + java.util.UUID.randomUUID().toString().replace("-", "");
+        user.setApiKey(newKey);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        int rows = userRepository.updateById(user);
+        if (rows == 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成 API Key 失败（乐观锁或无记录），请重试");
+        }
+        return R.ok(UserApiKeyResponse.full(
+                newKey,
+                UserApiKeyResponse.mask(newKey),
+                user.getUpdatedAt().toString()));
+    }
+
+    /**
+     * DELETE /api/auth/me/api-key
+     * 撤销当前用户的 Hermes API Key。
+     */
+    @DeleteMapping("/me/api-key")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    public R<Void> revokeMyApiKey() {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User user = userRepository.selectById(currentUserId);
+        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        user.setApiKey(null);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        int rows = userRepository.updateById(user);
+        if (rows == 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "撤销 API Key 失败（乐观锁或无记录）");
+        }
+        return R.ok();
     }
 }
