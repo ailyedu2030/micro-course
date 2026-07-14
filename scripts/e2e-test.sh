@@ -15,9 +15,10 @@ echo "========================================="
 # 1. Login
 echo ""
 echo "--- Flow A: 课程发现 → 购买 ---"
-TOKEN=$(curl -s -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"admin123"}' | python3 -c 'import sys,json;print(json.load(sys.stdin).get("data",{}).get("accessToken",""))')
-[ -n "$TOKEN" ] && ok "Admin login" || fail "Admin login"
+LOGIN_RESP=$(curl -s -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}' 2>/dev/null)
+TOKEN=$(echo "$LOGIN_RESP" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("data",{}).get("accessToken",""))' 2>/dev/null || echo "")
+[ -n "$TOKEN" ] && ok "Admin login" || { echo "  login resp: $LOGIN_RESP"; fail "Admin login"; }
 
 # 2. Browse courses
 CCODE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/courses?page=0&size=5" -H "Authorization: Bearer $TOKEN")

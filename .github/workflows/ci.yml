@@ -138,8 +138,19 @@ jobs:
         run: |
           docker compose -f docker-compose.yml up -d micro-course-api
           for i in $(seq 1 60); do
-            curl -sf http://localhost:8080/actuator/health && echo "API ready" && break
+            curl -sf http://localhost:8080/actuator/health && echo "actuator ready" && break
             sleep 3
+          done
+          echo "Pre-warm: waiting for API to accept login..."
+          for i in $(seq 1 30); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/api/auth/login \
+              -H 'Content-Type: application/json' \
+              -d '{"username":"admin","password":"admin123"}' 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" != "000" ] && [ "$HTTP_CODE" != "503" ]; then
+              echo "API pre-warmed (HTTP $HTTP_CODE)"
+              break
+            fi
+            sleep 2
           done
 
       - name: Run E2E Tests
