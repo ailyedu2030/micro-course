@@ -37,24 +37,24 @@ export function uploadAvatar(userId, file) {
 
 /**
  * 查看当前用户的 API Key（脱敏）
- * GET /users/me/api-key
+ * GET /api/auth/me/api-key
  */
 export function getMyApiKey() {
-  return request({ method: 'GET', url: '/users/me/api-key' })
+  return request({ method: 'GET', url: '/auth/me/api-key' })
 }
 
 /**
  * 生成 / 重新生成当前用户的 API Key（返回明文，仅此一次）
- * POST /users/me/api-key
+ * POST /api/auth/me/api-key
  */
 export function generateMyApiKey() {
-  return request({ method: 'POST', url: '/users/me/api-key' })
+  return request({ method: 'POST', url: '/auth/me/api-key' })
 }
 
 /**
  * 撤销当前用户的 API Key
- * DELETE /users/me/api-key
+ * DELETE /api/auth/me/api-key
  */
 export function revokeMyApiKey() {
-  return request({ method: 'DELETE', url: '/users/me/api-key' })
+  return request({ method: 'DELETE', url: '/auth/me/api-key' })
 }
