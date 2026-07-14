@@ -59,6 +59,7 @@ services:
       VIDEO_SIGN_SECRET: ${VIDEO_SIGN_SECRET}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:80,http://127.0.0.1:80}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY}
       PROD_ALLOW_MOCK_PAYMENT: ${PROD_ALLOW_MOCK_PAYMENT:-false}
     volumes:
       - uploads_data:/app/uploads
