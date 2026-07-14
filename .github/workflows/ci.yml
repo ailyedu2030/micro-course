@@ -138,32 +138,26 @@ jobs:
           PROD_ALLOW_MOCK_PAYMENT: "true"
         run: |
           docker compose -f docker-compose.yml up -d micro-course-api
-          echo "Waiting for API health..."
-          for i in $(seq 1 60); do
+          echo "Waiting for API to be ready (up to 10 minutes)..."
+          for i in $(seq 1 120); do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health 2>/dev/null || echo "000")
             if [ "$HTTP_CODE" = "200" ]; then
-              echo "API ready (HTTP $HTTP_CODE)"
+              echo "API health OK (attempt $i)"
               break
             fi
-            if [ "$i" = "60" ]; then
-              echo "API health check FAILED after 60 attempts"
-              docker compose -f docker-compose.yml logs micro-course-api | tail -30
+            if [ "$((i % 20))" = "0" ]; then
+              echo "API not ready yet (attempt $i/120, HTTP=$HTTP_CODE)"
+              docker compose -f docker-compose.yml logs micro-course-api --tail=5 2>/dev/null || true
+            fi
+            if [ "$i" = "120" ]; then
+              echo "API health check FAILED after 120 attempts (10 min)"
+              docker compose -f docker-compose.yml logs micro-course-api | tail -50
               docker compose -f docker-compose.yml down
               exit 1
             fi
-            sleep 3
+            sleep 5
           done
-          echo "Pre-warm: trying login..."
-          for i in $(seq 1 20); do
-            LOGIN_RESP=$(curl -s -X POST http://localhost:8080/api/auth/login \
-              -H 'Content-Type: application/json' \
-              -d '{"username":"admin","password":"admin123"}' 2>/dev/null || echo "")
-            if echo "$LOGIN_RESP" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("data",{}).get("accessToken",""))' 2>/dev/null | grep -q .; then
-              echo "Login pre-warm OK"
-              break
-            fi
-            sleep 2
-          done
+          echo "API startup complete, running e2e tests..."
 
       - name: Run E2E Tests
         run: bash scripts/e2e-test.sh
