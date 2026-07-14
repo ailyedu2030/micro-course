@@ -2,6 +2,8 @@ package com.microcourse.plugin.interactive;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseChapter;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
@@ -13,7 +15,9 @@ import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.impl.SlideRenderService;
 import com.microcourse.plugin.interactive.service.impl.SlideServiceImpl;
+import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.CourseSectionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +42,8 @@ class SlideServiceTest {
     private CourseSlideMapper courseSlideMapper;
     private SlidePageMapper slidePageMapper;
     private CourseRepository courseRepository;
+    private CourseChapterRepository courseChapterRepository;
+    private CourseSectionRepository courseSectionRepository;
     private SlideRenderService slideRenderService;
     private SlideServiceImpl slideService;
 
@@ -46,8 +52,10 @@ class SlideServiceTest {
         courseSlideMapper = mock(CourseSlideMapper.class);
         slidePageMapper = mock(SlidePageMapper.class);
         courseRepository = mock(CourseRepository.class);
+        courseChapterRepository = mock(CourseChapterRepository.class);
+        courseSectionRepository = mock(CourseSectionRepository.class);
         slideRenderService = mock(SlideRenderService.class);
-        slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository, null, null, slideRenderService);
+        slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository, courseChapterRepository, courseSectionRepository, slideRenderService);
         ReflectionTestUtils.setField(slideService, "storagePath", "/tmp/slides-test");
         ReflectionTestUtils.setField(slideService, "maxHtmlSize", 5L * 1024 * 1024);
     }
@@ -119,23 +127,47 @@ class SlideServiceTest {
         @Test
         @DisplayName("存在时返回 SlidePageVO")
         void getPage_Found() {
-            SlidePage page = new SlidePage();
-            page.setId(1L); page.setCourseId(1L); page.setPageNumber(1);
-            page.setNarrationScript("测试讲述稿"); page.setNarrationStatus("AI_GENERATED");
-            when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(page));
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(1L)).thenReturn(course);
+                SlidePage page = new SlidePage();
+                page.setId(1L); page.setCourseId(1L); page.setPageNumber(1);
+                page.setNarrationScript("测试讲述稿"); page.setNarrationStatus("AI_GENERATED");
+                when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(page));
 
-            SlidePageVO vo = slideService.getPage(1L, 1);
-            assertNotNull(vo);
-            assertEquals("测试讲述稿", vo.getNarrationScript());
+                SlidePageVO vo = slideService.getPage(1L, 1);
+                assertNotNull(vo);
+                assertEquals("测试讲述稿", vo.getNarrationScript());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
         }
 
         @Test
         @DisplayName("不存在时抛 SLIDE_PAGE_NOT_FOUND")
         void getPage_NotFound() {
-            when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
-            BusinessException e = assertThrows(BusinessException.class,
-                    () -> slideService.getPage(1L, 999));
-            assertEquals(ErrorCode.SLIDE_PAGE_NOT_FOUND.getCode(), e.getCode());
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(1L)).thenReturn(course);
+                when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+                BusinessException e = assertThrows(BusinessException.class,
+                        () -> slideService.getPage(1L, 999));
+                assertEquals(ErrorCode.SLIDE_PAGE_NOT_FOUND.getCode(), e.getCode());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        private void setupAdminContext() {
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                    1L, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+            SecurityContextHolder.getContext().setAuthentication(auth);
         }
     }
 
@@ -157,11 +189,21 @@ class SlideServiceTest {
         @Test
         @DisplayName("页面不存在抛异常")
         void updatePage_NotFound() {
-            when(courseRepository.selectById(1L)).thenReturn(new Course());
-            when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
-            BusinessException e = assertThrows(BusinessException.class,
-                    () -> slideService.updatePage(1L, 999, Map.of("narrationScript", "test")));
-            assertEquals(ErrorCode.SLIDE_PAGE_NOT_FOUND.getCode(), e.getCode());
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                    1L, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+            SecurityContextHolder.getContext().setAuthentication(auth);
+            try {
+                Course c = new Course();
+                c.setId(888L);
+                c.setTeacherId(888L);
+                when(courseRepository.selectById(888L)).thenReturn(c);
+                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                BusinessException e = assertThrows(BusinessException.class,
+                        () -> slideService.updatePage(888L, 999, Map.of("narrationScript", "test")));
+                assertEquals(ErrorCode.SLIDE_PAGE_NOT_FOUND.getCode(), e.getCode());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
         }
     }
 
@@ -280,6 +322,18 @@ class SlideServiceTest {
                 course.setTeacherId(1L);
                 when(courseRepository.selectById(1L)).thenReturn(course);
 
+                CourseChapter chapter = new CourseChapter();
+                chapter.setId(10L);
+                chapter.setCourseId(1L);
+                when(courseChapterRepository.selectById(10L)).thenReturn(chapter);
+
+                CourseSection section = new CourseSection();
+                section.setId(10L);
+                section.setCourseId(1L);
+                section.setVersion(1);
+                when(courseSectionRepository.selectById(10L)).thenReturn(section);
+                when(courseSectionRepository.updateById(any(CourseSection.class))).thenReturn(1);
+
                 CourseSlide existing = new CourseSlide();
                 existing.setId(43L);
                 existing.setCourseId(1L);
@@ -287,7 +341,6 @@ class SlideServiceTest {
                 existing.setFileName("old.html");
                 existing.setFileUrl("html:inline");
                 existing.setStatus(2);
-                // UPSERT 查询应返回 existing
                 when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
                 when(courseSlideMapper.updateById(any(CourseSlide.class))).thenReturn(1);
                 when(slidePageMapper.delete(any(LambdaQueryWrapper.class))).thenReturn(3);
@@ -297,14 +350,10 @@ class SlideServiceTest {
 
                 SlideUploadResponse resp = slideService.uploadHtmlFile(1L, newFile, 10L, 10L);
 
-                // 1. 复用 slide_id=43（不重新 insert）
                 assertEquals(43L, resp.getSlideId().longValue());
-                // 2. 旧 slide_pages 被删（UPSERT 的关键）
                 verify(slidePageMapper).delete(any(LambdaQueryWrapper.class));
-                // 3. 新的 slide 走 update 而非 insert
                 verify(courseSlideMapper, never()).insert(any(CourseSlide.class));
                 verify(courseSlideMapper).updateById(any(CourseSlide.class));
-                // 4. 新 page 插入
                 verify(slidePageMapper).insert(any(SlidePage.class));
             } finally {
                 SecurityContextHolder.clearContext();
