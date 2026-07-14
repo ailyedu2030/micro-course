@@ -333,8 +333,9 @@ public class TtsServiceImpl implements TtsService {
 
         bodyMap.put("output_format", "hex");
 
-        bodyMap.put("subtitle_enable", true);
-        bodyMap.put("subtitle_type", "word");
+        // subtitle_enable=true 会导致响应 JSON 嵌入 20MB+ 字幕数据，暂不启用
+        // bodyMap.put("subtitle_enable", true);
+        // bodyMap.put("subtitle_type", "word");
 
         String requestBody = objectMapper.writeValueAsString(bodyMap);
         log.debug("[TTS] MiniMax request: model={}, voice={}, textLen={}",
