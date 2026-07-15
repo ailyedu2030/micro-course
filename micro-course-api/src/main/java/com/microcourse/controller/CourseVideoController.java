@@ -7,6 +7,8 @@ import com.microcourse.dto.VideoCreateRequest;
 import com.microcourse.dto.VideoStatusVO;
 import com.microcourse.dto.VideoUpdateRequest;
 import com.microcourse.dto.VideoVO;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.VideoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -87,5 +89,20 @@ public class CourseVideoController {
     public R<VideoStatusVO> getStatus(@PathVariable Long courseId, @PathVariable Long id) {
         videoService.assertCourseOwnership(courseId);
         return R.ok(videoService.getStatus(id));
+    }
+
+    @PostMapping("/upload")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("上传视频")
+    @Operation(summary = "上传视频文件到课程")
+    public R<VideoVO> upload(@PathVariable Long courseId,
+                            @RequestParam("file") MultipartFile file,
+                            @RequestParam(value = "chapterId", required = false) Long chapterId) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
+        }
+        videoService.assertCourseOwnership(courseId);
+        VideoVO vo = videoService.uploadVideo(file, courseId, chapterId);
+        return R.ok(vo);
     }
 }
