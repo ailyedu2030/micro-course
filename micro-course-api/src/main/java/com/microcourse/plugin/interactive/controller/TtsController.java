@@ -2,7 +2,10 @@ package com.microcourse.plugin.interactive.controller;
 
 import com.microcourse.dto.R;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
+import com.microcourse.plugin.interactive.dto.TtsGenerateRequest;
+import com.microcourse.plugin.interactive.dto.TtsStatusResponse;
 import com.microcourse.plugin.interactive.service.TtsService;
+import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -50,5 +53,23 @@ public class TtsController {
                 .header(HttpHeaders.CACHE_CONTROL,
                         CacheControl.maxAge(1, TimeUnit.HOURS).getHeaderValue())
                 .body(audioBytes);
+    }
+
+    @PostMapping("/sections/{sectionId}/tts/generate")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<TtsStatusResponse> generateSection(@PathVariable Long courseId,
+                                                 @PathVariable Long sectionId,
+                                                 @Valid @RequestBody TtsGenerateRequest request) {
+        return R.ok(ttsService.generateSection(courseId, sectionId,
+                request.getVoice(), request.getModel(),
+                request.getSpeed(), request.getSplitByPage()).join());
+    }
+
+    @GetMapping("/sections/{sectionId}/tts/status")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<TtsStatusResponse> getSectionTtsStatus(@PathVariable Long courseId,
+                                                     @PathVariable Long sectionId,
+                                                     @RequestParam String taskId) {
+        return R.ok(ttsService.getSectionTtsStatus(courseId, sectionId, taskId));
     }
 }

@@ -23,6 +23,10 @@ public class SlidePageVO {
     private Integer audioDuration;
     private String narrationStatus;
     private String narrationStatusText;
+    private Integer segmentCount;
+    private String voice;
+    private String ttsModel;
+    private LocalDateTime generatedAt;
     private String contentType;
     private String htmlContent;
     private LocalDateTime createdAt;
@@ -68,6 +72,14 @@ public class SlidePageVO {
     public void setNarrationStatus(String narrationStatus) { this.narrationStatus = narrationStatus; }
     public String getNarrationStatusText() { return narrationStatusText; }
     public void setNarrationStatusText(String narrationStatusText) { this.narrationStatusText = narrationStatusText; }
+    public Integer getSegmentCount() { return segmentCount; }
+    public void setSegmentCount(Integer segmentCount) { this.segmentCount = segmentCount; }
+    public String getVoice() { return voice; }
+    public void setVoice(String voice) { this.voice = voice; }
+    public String getTtsModel() { return ttsModel; }
+    public void setTtsModel(String ttsModel) { this.ttsModel = ttsModel; }
+    public LocalDateTime getGeneratedAt() { return generatedAt; }
+    public void setGeneratedAt(LocalDateTime generatedAt) { this.generatedAt = generatedAt; }
     public String getContentType() { return contentType; }
     public void setContentType(String contentType) { this.contentType = contentType; }
     public String getHtmlContent() { return htmlContent; }

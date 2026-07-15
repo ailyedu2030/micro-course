@@ -120,11 +120,38 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
 
     <!-- Bottom Controls -->
     <footer class="player-footer">
+      <!-- Interactive Page Completion Mask -->
+      <div v-if="interactiveWaiting" class="interactive-mask">
+        <div class="interactive-content">
+          <Clock :size="28" class="interactive-icon" />
+          <p>请点击「完成」按钮继续</p>
+          <button class="interactive-btn" @click="handleInteractiveComplete">完成</button>
+        </div>
+      </div>
+
+      <!-- Audio Status Indicator -->
+      <div class="audio-status-bar" v-if="currentPage?.contentType === 'HTML_DIRECT'">
+        <div class="audio-status" :class="audioStatus">
+          <span v-if="audioStatus === 'loading'" class="status-loading">
+            <el-icon class="is-loading" :size="14"><Loading /></el-icon> 音频加载中...
+          </span>
+          <span v-else-if="audioStatus === 'ready'" class="status-ready" @click="togglePlay">
+            <el-icon :size="14"><VideoPlay /></el-icon> ▶ 点击开始
+          </span>
+          <span v-else-if="audioStatus === 'pending'" class="status-pending">
+            <el-icon :size="14"><Clock /></el-icon> 等待音频生成{{ pendingTimeoutWarning }}
+          </span>
+          <span v-else-if="audioStatus === 'error'" class="status-error">
+            <el-icon :size="14"><Warning /></el-icon> 音频加载失败
+          </span>
+        </div>
+      </div>
+
       <div class="control-bar">
         <button class="ctrl-btn" @click="goTo(Math.max(0, current - 1))" :disabled="current === 0" aria-label="上一页">
           <el-icon :size="20"><ArrowLeft /></el-icon>
         </button>
-        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" aria-label="播放/暂停">
+        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" :disabled="audioStatus === 'pending' || audioStatus === 'none'" aria-label="播放/暂停">
           <el-icon :size="24"><VideoPause v-if="playing" /><VideoPlay v-else /></el-icon>
         </button>
         <button class="ctrl-btn" @click="goTo(Math.min(pages.length - 1, current + 1))" :disabled="current >= pages.length - 1" aria-label="下一页">
@@ -133,10 +160,11 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
 
         <div class="progress-area">
           <span class="time-label">{{ formatTime(audioTime) }}</span>
-          <div class="progress-track" @click="seekAudioByClick">
+          <div class="progress-track" @click="seekAudioByClick" v-if="audioStatus !== 'pending' && audioStatus !== 'none'">
             <div class="progress-fill" :style="{ width: audioProgress + '%' }" />
             <div class="progress-thumb" :style="{ left: audioProgress + '%' }" />
           </div>
+          <div class="progress-track progress-track--empty" v-else />
           <span class="time-label">{{ formatTime(audioDuration) }}</span>
         </div>
 
@@ -178,7 +206,7 @@ import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import { getLearningProgress, createLearningProgress, updateLearningProgress } from '@/api/learning-progress'
-import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download, Clock, Warning } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const courseId = computed(() => route.params.courseId)
@@ -207,6 +235,15 @@ const imageErrors = reactive({})       // { [pageIndex]: true } 标记哪些图�
 const imageRetrying = reactive({})     // { [pageIndex]: true } 正在重试中
 const lastDirection = ref(1)
 let countdownTimer = null
+let pendingTimer = null
+let autoAdvanceTimer = null
+let loadingTimer = null
+const currentAudioSrcGen = ref(0)
+
+const audioStatus = ref('none') // 'loading' | 'ready' | 'pending' | 'none' | 'error'
+const pendingStartTime = ref(null)
+const pendingTimeoutWarning = ref('')
+const interactiveWaiting = ref(false)  // 当前页是否等待用户点"完成"
 
 const currentPage = computed(() => pages.value[current.value] || null)
 
@@ -294,7 +331,14 @@ function onSlideAudioMessage(event) {
   // 安全校验：srcdoc iframe 的 origin 为 null（唯一约制，非伪造消息不可达）
   if (event.origin !== null) return
   const msg = event.data
-  if (!msg || typeof msg !== 'object' || msg.type !== 'slide-audio') return
+  if (!msg || typeof msg !== 'object') return
+
+  if (msg.type === 'slide-interactive-complete') {
+    handleInteractiveComplete()
+    return
+  }
+
+  if (msg.type !== 'slide-audio') return
 
   switch (msg.action) {
     case 'play':
@@ -323,6 +367,14 @@ function onSlideAudioMessage(event) {
         time: audioTime.value, duration: audioDuration.value
       })
       break
+  }
+}
+
+function handleInteractiveComplete() {
+  if (!interactiveWaiting.value) return
+  interactiveWaiting.value = false
+  if (autoMode.value && current.value < pages.value.length - 1) {
+    goTo(current.value + 1)
   }
 }
 
@@ -368,24 +420,107 @@ function preloadAdjacentImages(currentIdx) {
 
 async function loadAudio(index) {
   const page = pages.value[index]
-  if (!page?.narrationAudioUrl || !audioRef.value) return
+  if (!audioRef.value) return
+
+  cleanAudioBlobCache(index)
+  clearTimeout(autoAdvanceTimer)
+  interactiveWaiting.value = false
+
+  const gen = ++currentAudioSrcGen.value
+
+  if (!page?.narrationAudioUrl) {
+    audioStatus.value = 'none'
+    audioDuration.value = 0
+    audioRef.value.src = ''
+    return
+  }
+
+  if (page.narrationStatus === 'PENDING') {
+    audioStatus.value = 'pending'
+    pendingStartTime.value = Date.now()
+    pendingTimeoutWarning.value = ''
+    audioDuration.value = 0
+    audioRef.value.src = ''
+    startPendingTimer()
+    checkHtmlInteractive(page)
+    return
+  }
+
+  if (page.narrationStatus !== 'AUDIO_READY') {
+    audioStatus.value = 'none'
+    audioDuration.value = 0
+    audioRef.value.src = ''
+    return
+  }
+
+  clearPendingTimer()
+  clearTimeout(loadingTimer)
+  audioStatus.value = 'loading'
+  loadingTimer = setTimeout(() => {
+    if (audioStatus.value === 'loading' && gen === currentAudioSrcGen.value) {
+      audioStatus.value = 'error'
+    }
+  }, 10000)
+
   const secParam = page.sectionId ? `?sectionId=${page.sectionId}` : ''
   const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/audio${secParam}`
-  if (audioBlobUrls.value[relUrl]) { audioRef.value.src = audioBlobUrls.value[relUrl]; audioRef.value.load() }
-  else {
+
+  if (audioBlobUrls.value[relUrl]) {
+    audioRef.value.src = audioBlobUrls.value[relUrl]
+    audioRef.value.load()
+  } else {
     try {
       const blobUrl = await loadAuthResource(relUrl)
-      if (blobUrl) { audioBlobUrls.value[relUrl] = blobUrl; audioRef.value.src = blobUrl; audioRef.value.load() }
-    } catch { ElMessage.warning('音频加载失败') }
+      if (gen !== currentAudioSrcGen.value) return
+      if (blobUrl) {
+        audioBlobUrls.value[relUrl] = blobUrl
+        audioRef.value.src = blobUrl
+        audioRef.value.load()
+      } else {
+        audioStatus.value = 'error'
+      }
+    } catch {
+      if (gen !== currentAudioSrcGen.value) return
+      audioStatus.value = 'error'
+    }
   }
+
   audioDuration.value = page.audioDuration || 0
-  cleanAudioBlobCache(index)
+  checkHtmlInteractive(page)
+}
+
+function checkHtmlInteractive(page) {
+  if (page?.contentType !== 'HTML_DIRECT' || !page?.htmlContent) {
+    interactiveWaiting.value = false
+    return
+  }
+  const match = page.htmlContent.match(/data-interactive=["']true["']/)
+  interactiveWaiting.value = !!match
+}
+
+function startPendingTimer() {
+  clearPendingTimer()
+  pendingTimer = setInterval(() => {
+    if (!pendingStartTime.value) return
+    const elapsed = Math.floor((Date.now() - pendingStartTime.value) / 1000)
+    if (elapsed >= 300) {
+      pendingTimeoutWarning.value = '（已超过5分钟，请联系教师）'
+      clearPendingTimer()
+    } else if (elapsed >= 240) {
+      pendingTimeoutWarning.value = '（即将超时，请联系教师）'
+    }
+  }, 5000)
+}
+
+function clearPendingTimer() {
+  if (pendingTimer) { clearInterval(pendingTimer); pendingTimer = null }
 }
 
 function cleanAudioBlobCache(currentIdx) {
   const keepRange = new Set([currentIdx - 1, currentIdx, currentIdx + 1, currentIdx + 2].filter(i => i >= 0))
   for (const url of Object.keys(audioBlobUrls.value)) {
-    const pageMatch = url.match(/\/pages\/(\d+)\/audio$/)
+    const pathPart = url.split('?')[0]
+    const pageMatch = pathPart.match(/\/pages\/(\d+)\/audio$/)
     if (pageMatch) {
       const pageNum = parseInt(pageMatch[1])
       const zeroIdx = pageNum - 1
@@ -399,6 +534,7 @@ function cleanAudioBlobCache(currentIdx) {
 
 function playAudio() {
   if (!audioRef.value) return
+  if (audioStatus.value === 'pending' || audioStatus.value === 'none') return
   audioRef.value.play().then(() => {
     playing.value = true
     sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'playing', time: audioTime.value, duration: audioDuration.value })
@@ -431,16 +567,27 @@ function onTimeUpdate() {
   sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'time-update', time: audioTime.value, duration: audioDuration.value })
 }
 function onAudioLoaded() {
+  const expectedGen = currentAudioSrcGen.value
+  clearTimeout(loadingTimer)
   if (audioRef.value) {
+    if (expectedGen !== currentAudioSrcGen.value) return
     audioDuration.value = audioRef.value.duration || audioDuration.value
     audioRef.value.playbackRate = speed.value
+    audioStatus.value = 'ready'
     sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'loaded', duration: audioDuration.value })
   }
 }
 function onAudioEnded() {
+  const expectedGen = currentAudioSrcGen.value
   playing.value = false; autoCountdown.value = 0
   sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'ended' })
-  if (autoMode.value && current.value < pages.value.length - 1) goTo(current.value + 1)
+  if (interactiveWaiting.value) return
+  if (expectedGen !== currentAudioSrcGen.value) return
+  if (autoMode.value && current.value < pages.value.length - 1) {
+    autoAdvanceTimer = setTimeout(() => {
+      goTo(current.value + 1)
+    }, 1500)
+  }
 }
 
 function seekAudioByClick(e) {
@@ -727,6 +874,35 @@ onUnmounted(() => {
 }
 .speed-chip.active { background: var(--player-accent); color: #fff; }
 .speed-chip:hover:not(.active) { color: var(--player-text); }
+
+/* Audio Status Bar */
+.audio-status-bar { padding: 2px 0 4px; display: flex; align-items: center; }
+.audio-status {
+  font-size: 12px; display: flex; align-items: center; gap: 4px;
+  border-radius: 20px; padding: 2px 10px;
+}
+.audio-status.loading { color: var(--player-text-secondary); }
+.audio-status.ready { color: var(--player-accent); cursor: pointer; }
+.audio-status.pending { color: #f59e0b; }
+.audio-status.error { color: var(--player-danger); }
+.audio-status.none { display: none; }
+.status-ready:hover { opacity: 0.8; }
+.progress-track--empty { cursor: default; background: rgba(255,255,255,.05); }
+
+/* Interactive Page Mask */
+.interactive-mask {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center;
+  z-index: 200; border-radius: 12px;
+}
+.interactive-content { text-align: center; color: #fff; }
+.interactive-icon { margin-bottom: 8px; opacity: .8; }
+.interactive-content p { margin: 0 0 12px; font-size: 14px; opacity: .9; }
+.interactive-btn {
+  background: var(--player-accent); color: #fff; border: none;
+  border-radius: 20px; padding: 8px 24px; font-size: 14px; cursor: pointer;
+}
+.interactive-btn:hover { opacity: .9; }
 
 /* ========= KEYBOARD HINT ========= */
 .keyboard-hint {

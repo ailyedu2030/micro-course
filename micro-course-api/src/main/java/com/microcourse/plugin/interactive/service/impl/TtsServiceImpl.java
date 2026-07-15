@@ -2,11 +2,14 @@ package com.microcourse.plugin.interactive.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
+import com.microcourse.plugin.interactive.dto.TtsStatusResponse;
+import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.TtsService;
@@ -40,12 +43,22 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
@@ -57,6 +70,7 @@ public class TtsServiceImpl implements TtsService {
     private final SlidePageMapper slidePageMapper;
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final CourseSectionRepository sectionRepository;
     private final TransactionTemplate transactionTemplate;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -80,6 +94,8 @@ public class TtsServiceImpl implements TtsService {
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
 
+    private ExecutorService slideRenderExecutor;
+
     /** Qwen3-TTS 本地服务地址 */
     @Value("${plugin.interactive.tts.local-url:http://127.0.0.1:8000}")
     private String ttsLocalUrl;
@@ -98,16 +114,22 @@ public class TtsServiceImpl implements TtsService {
     private volatile boolean ttsLocalAvailable = false;
     private volatile String ttsLocalCheckMessage = "未检测";
 
+    private final ConcurrentHashMap<String, TtsTaskState> taskStates = new ConcurrentHashMap<>();
+
     public TtsServiceImpl(SlidePageMapper slidePageMapper,
                           CourseRepository courseRepository,
                           EnrollmentRepository enrollmentRepository,
+                          CourseSectionRepository sectionRepository,
                           TransactionTemplate transactionTemplate,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper,
+                          ExecutorService slideRenderExecutor) {
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.sectionRepository = sectionRepository;
         this.transactionTemplate = transactionTemplate;
         this.objectMapper = configureObjectMapper(objectMapper);
+        this.slideRenderExecutor = slideRenderExecutor;
     }
 
     private ObjectMapper configureObjectMapper(ObjectMapper mapper) {
@@ -431,14 +453,342 @@ public class TtsServiceImpl implements TtsService {
     }
 
     @Override
+    public CompletableFuture<TtsStatusResponse> generateSection(Long courseId, Long sectionId,
+                                                               String voice, String model,
+                                                               Double speed, boolean splitByPage) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        CourseSection section = sectionRepository.selectById(sectionId);
+        if (section == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "小节不存在");
+        if (!courseId.equals(section.getCourseId())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "小节不属于该课程");
+        }
+
+        String scriptContent = section.getScriptContent();
+        if (scriptContent == null || scriptContent.isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "讲述稿为空，请先为该小节生成讲述稿");
+        }
+
+        String taskId = "tts-" + UUID.randomUUID();
+        int estimatedSeconds = Math.max(30, scriptContent.length() / 50);
+
+        TtsTaskState state = new TtsTaskState(taskId, courseId, sectionId, estimatedSeconds);
+        taskStates.put(taskId, state);
+
+        doGenerateSectionAsync(taskId, courseId, sectionId, scriptContent, voice, model, speed, splitByPage);
+
+        return CompletableFuture.completedFuture(TtsStatusResponse.queued(taskId, estimatedSeconds));
+    }
+
+    private void doGenerateSectionAsync(String taskId, Long courseId, Long sectionId,
+                                        String scriptContent, String voice,
+                                        String model, Double speed, boolean splitByPage) {
+        slideRenderExecutor.submit(() -> {
+            try {
+                List<SlidePage> pages = transactionTemplate.execute(tx -> {
+                    LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
+                    wrapper.eq(SlidePage::getCourseId, courseId)
+                            .eq(SlidePage::getSectionId, sectionId)
+                            .orderByAsc(SlidePage::getPageNumber);
+                    return slidePageMapper.selectList(wrapper);
+                });
+
+                if (pages == null || pages.isEmpty()) {
+                    markTaskFailed(taskId, "该小节没有 SlidePage 记录");
+                    return;
+                }
+
+                String[] segments;
+                if (splitByPage) {
+                    segments = scriptContent.split("\\n\\n");
+                } else {
+                    segments = new String[]{scriptContent};
+                }
+
+                if (segments.length != pages.size()) {
+                    log.warn("[TTS] segment count {} != page count {}, truncating", segments.length, pages.size());
+                    pages = pages.subList(0, Math.min(segments.length, pages.size()));
+                }
+
+                Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
+                Files.createDirectories(audioDir);
+
+                long totalDuration = 0;
+                List<TtsStatusResponse.AudioSegment> resultSegments = new ArrayList<>();
+
+                for (int i = 0; i < pages.size(); i++) {
+                    SlidePage page = pages.get(i);
+                    String segText = segments[i].trim();
+                    if (segText.isEmpty()) continue;
+
+                    page.setNarrationScript(segText);
+                    page.setNarrationStatus("AUDIO_GENERATING");
+                    page.setUpdatedAt(LocalDateTime.now());
+                    slidePageMapper.updateById(page);
+
+                    String segFileName = "section_" + sectionId + "_page_" + page.getPageNumber() + ".mp3";
+                    Path segPath = audioDir.resolve(segFileName);
+
+                    int segDuration = 0;
+                    boolean success = false;
+                    int retries = 3;
+                    while (retries-- > 0 && !success) {
+                        try {
+                            segDuration = callMmxCliWithVoice(segText, segPath, voice != null ? voice : ttsVoice, model, speed);
+                            success = true;
+                        } catch (Exception e) {
+                            log.warn("[TTS] segment {} retry, error: {}", page.getPageNumber(), e.getMessage());
+                            if (retries == 0) throw e;
+                            Thread.sleep(2000);
+                        }
+                    }
+
+                    long segSize = Files.size(segPath);
+                    totalDuration += segDuration;
+
+                    String segUrl = "/api/courses/" + courseId + "/slides/pages/" + page.getPageNumber()
+                            + "/audio?sectionId=" + sectionId + "&v=2";
+
+                    TtsStatusResponse.AudioSegment seg = new TtsStatusResponse.AudioSegment(
+                            page.getPageNumber(), segUrl, (long) segDuration, segSize);
+                    resultSegments.add(seg);
+
+                    page.setNarrationAudioUrl(segUrl);
+                    page.setAudioDuration(segDuration);
+                    page.setNarrationStatus("AUDIO_READY");
+                    page.setSegmentCount(segments.length);
+                    page.setVoice(voice != null ? voice : ttsVoice);
+                    page.setTtsModel(model != null ? model : ttsModel);
+                    page.setGeneratedAt(LocalDateTime.now());
+                    page.setUpdatedAt(LocalDateTime.now());
+                    slidePageMapper.updateById(page);
+
+                    stateAppendSegment(taskId, seg);
+                    Thread.sleep(1000);
+                }
+
+                String mergedUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId="
+                        + sectionId + "&v=2&merged=true";
+                markTaskCompleted(taskId, mergedUrl, totalDuration, resultSegments);
+
+            } catch (Exception e) {
+                log.error("[TTS] section async task failed: taskId={}, error={}", taskId, e.getMessage());
+                markTaskFailed(taskId, e.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public TtsStatusResponse getSectionTtsStatus(Long courseId, Long sectionId, String taskId) {
+        TtsTaskState state = taskStates.get(taskId);
+        if (state == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "任务不存在或已过期");
+        }
+        if (!courseId.equals(state.courseId) || !sectionId.equals(state.sectionId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "任务与课程/小节不匹配");
+        }
+        return state.toResponse();
+    }
+
+    @Override
+    public List<TtsStatusResponse> generateSectionsBatch(Long courseId, List<Long> sectionIds,
+                                                         String voice, String model, Double speed,
+                                                         boolean splitByPage) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId()) && !SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+
+        List<TtsStatusResponse> results = new ArrayList<>();
+        for (Long sectionId : sectionIds) {
+            try {
+                TtsStatusResponse r = generateSection(courseId, sectionId, voice, model, speed, splitByPage).join();
+                results.add(r);
+            } catch (Exception e) {
+                log.warn("[BatchTTS] section {} failed: {}", sectionId, e.getMessage());
+            }
+        }
+        return results;
+    }
+
+    private int callMmxCliWithVoice(String script, Path audioPath, String voiceId, String model, Double speed) throws Exception {
+        if (minimaxApiKey == null || minimaxApiKey.isBlank()) {
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax API key 未配置");
+        }
+
+        var bodyMap = new java.util.LinkedHashMap<String, Object>();
+        bodyMap.put("model", model != null ? model : ttsModel);
+        bodyMap.put("text", script);
+
+        var voiceSetting = new java.util.LinkedHashMap<String, Object>();
+        voiceSetting.put("voice_id", voiceId);
+        voiceSetting.put("speed", speed != null ? speed : 1.0);
+        voiceSetting.put("vol", 1.0);
+        voiceSetting.put("pitch", 0);
+        bodyMap.put("voice_setting", voiceSetting);
+
+        var audioSetting = new java.util.LinkedHashMap<String, Object>();
+        audioSetting.put("sample_rate", 32000);
+        audioSetting.put("format", "mp3");
+        audioSetting.put("bitrate", 128000);
+        audioSetting.put("channel", 1);
+        bodyMap.put("audio_setting", audioSetting);
+        bodyMap.put("output_format", "hex");
+
+        String requestBody = objectMapper.writeValueAsString(bodyMap);
+
+        var request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(MINIMAX_TTS_URL))
+                .header("Authorization", "Bearer " + minimaxApiKey)
+                .header("Content-Type", "application/json")
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(requestBody))
+                .timeout(Duration.ofSeconds(ttsTimeoutSeconds))
+                .build();
+
+        var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+        byte[] respBody = response.body();
+        String respStr = new String(respBody, StandardCharsets.UTF_8);
+
+        if (respStr.contains("\"base_resp\"")) {
+            var parsed = objectMapper.readTree(respBody);
+            int code = parsed.path("base_resp").path("status_code").asInt(0);
+            if (code != 0) {
+                String msg = parsed.path("base_resp").path("status_msg").asText("unknown");
+                if (code == 2049) {
+                    throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax API Key 无效，请检查 backend 配置");
+                }
+                if (code == 1008) {
+                    throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "账户余额不足");
+                }
+                if (code == 1002) {
+                    throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "TTS 限流，请 5 分钟后重试");
+                }
+                throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax 错误: " + msg);
+            }
+        }
+
+        var root = objectMapper.readTree(respBody);
+        String audioHex = root.path("data").path("audio").asText(null);
+        if (audioHex == null || audioHex.isEmpty()) {
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax 响应缺少音频数据");
+        }
+
+        int len = audioHex.length();
+        byte[] audioBytes = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            audioBytes[i / 2] = (byte) ((Character.digit(audioHex.charAt(i), 16) << 4)
+                    + Character.digit(audioHex.charAt(i + 1), 16));
+        }
+
+        Files.write(audioPath, audioBytes);
+        int estimatedSec = Math.max(1, (int) (audioBytes.length / 16000));
+        log.info("[TTS] MiniMax segment generated: {} bytes, ~{}s", audioBytes.length, estimatedSec);
+        return estimatedSec;
+    }
+
+    private synchronized void stateAppendSegment(String taskId, TtsStatusResponse.AudioSegment seg) {
+        TtsTaskState state = taskStates.get(taskId);
+        if (state != null) {
+            state.segments.add(seg);
+        }
+    }
+
+    private synchronized void markTaskCompleted(String taskId, String mergedUrl, long totalDuration,
+                                               List<TtsStatusResponse.AudioSegment> segments) {
+        TtsTaskState state = taskStates.get(taskId);
+        if (state != null) {
+            state.status = "completed";
+            state.mergedAudioUrl = mergedUrl;
+            state.totalDuration = totalDuration;
+            state.segments = new ArrayList<>(segments);
+            state.completedAt = System.currentTimeMillis();
+        }
+    }
+
+    private synchronized void markTaskFailed(String taskId, String errorMsg) {
+        TtsTaskState state = taskStates.get(taskId);
+        if (state != null) {
+            state.status = "failed";
+            state.errorMessage = errorMsg;
+            state.completedAt = System.currentTimeMillis();
+        }
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 300000)
+    public void cleanupExpiredTaskStates() {
+        long expireThreshold = System.currentTimeMillis() - 30 * 60 * 1000L;
+        taskStates.entrySet().removeIf(entry -> {
+            if (entry.getValue().completedAt > 0 && entry.getValue().completedAt < expireThreshold) {
+                log.debug("[Tts] cleanup expired task state: {}", entry.getKey());
+                return true;
+            }
+            return false;
+        });
+    }
+
+    private static class TtsTaskState {
+        final String taskId;
+        final Long courseId;
+        final Long sectionId;
+        final int estimatedSeconds;
+        volatile String status = "queued";
+        volatile String errorMessage;
+        volatile String mergedAudioUrl;
+        volatile long totalDuration = 0;
+        volatile List<TtsStatusResponse.AudioSegment> segments = new ArrayList<>();
+        volatile long completedAt = 0;
+
+        TtsTaskState(String taskId, Long courseId, Long sectionId, int estimatedSeconds) {
+            this.taskId = taskId;
+            this.courseId = courseId;
+            this.sectionId = sectionId;
+            this.estimatedSeconds = estimatedSeconds;
+        }
+
+        TtsStatusResponse toResponse() {
+            if ("queued".equals(status)) {
+                return TtsStatusResponse.queued(taskId, estimatedSeconds);
+            }
+            if ("failed".equals(status)) {
+                return TtsStatusResponse.failed(taskId, errorMessage);
+            }
+            return TtsStatusResponse.completed(taskId, segments, mergedAudioUrl, totalDuration);
+        }
+    }
+
+    @Override
     public byte[] getAudio(Long courseId, Integer pageNumber, Long sectionId) {
         try {
             Path basePath = Paths.get(storagePath, String.valueOf(courseId), "audio").toRealPath();
-            // sectionId 优先：page_{sectionId}.mp3；向后兼容：page_{pageNumber}.mp3
-            String fileName = sectionId != null
-                    ? "page_" + sectionId + ".mp3"
-                    : "page_" + pageNumber + ".mp3";
-            Path audioPath = basePath.resolve(fileName).normalize();
+            Path audioPath;
+            if (sectionId != null && pageNumber != null) {
+                Path newPath = basePath.resolve("section_" + sectionId + "_page_" + pageNumber + ".mp3").normalize();
+                if (newPath.startsWith(basePath) && Files.exists(newPath)) {
+                    audioPath = newPath;
+                } else {
+                    Path compatPath = basePath.resolve("page_" + sectionId + ".mp3").normalize();
+                    if (compatPath.startsWith(basePath) && Files.exists(compatPath)) {
+                        audioPath = compatPath;
+                    } else {
+                        Path mergedPath = basePath.resolve("section_" + sectionId + "_merged.mp3").normalize();
+                        audioPath = mergedPath;
+                    }
+                }
+            } else if (sectionId != null) {
+                Path newPath = basePath.resolve("section_" + sectionId + "_merged.mp3").normalize();
+                if (newPath.startsWith(basePath) && Files.exists(newPath)) {
+                    audioPath = newPath;
+                } else {
+                    audioPath = basePath.resolve("page_" + sectionId + ".mp3").normalize();
+                }
+            } else {
+                audioPath = basePath.resolve("page_" + pageNumber + ".mp3").normalize();
+            }
             if (!audioPath.startsWith(basePath)) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法的音频路径");
             }
@@ -504,6 +854,7 @@ public class TtsServiceImpl implements TtsService {
 
     /**
      * P1-I-01: 批量失败时将课程所有页面标记为原始状态，让前端轮询可见。
+     * 注意：只重置 AUDIO_GENERATING（生成中）的页面，保留 AUDIO_READY（已完成）的已有音频。
      */
     private void markAllPagesError(Long courseId, String errorMessage) {
         try {
@@ -511,15 +862,16 @@ public class TtsServiceImpl implements TtsService {
                 LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
                 wrapper.eq(SlidePage::getCourseId, courseId);
                 List<SlidePage> pages = slidePageMapper.selectList(wrapper);
+                int resetCount = 0;
                 for (SlidePage page : pages) {
-                    if ("AUDIO_GENERATING".equals(page.getNarrationStatus())
-                            || "AUDIO_READY".equals(page.getNarrationStatus())) {
+                    if ("AUDIO_GENERATING".equals(page.getNarrationStatus())) {
                         page.setNarrationStatus("TEACHER_EDITED");
                         page.setUpdatedAt(LocalDateTime.now());
                         slidePageMapper.updateById(page);
+                        resetCount++;
                     }
                 }
-                log.warn("[Tts] 批量音频生成失败已标记 courseId={}, pages={}, error={}", courseId, pages.size(), errorMessage);
+                log.warn("[Tts] 批量音频生成失败已标记 courseId={}, reset={}/{} total, error={}", courseId, resetCount, pages.size(), errorMessage);
                 return null;
             });
         } catch (Exception e) {
@@ -537,6 +889,10 @@ public class TtsServiceImpl implements TtsService {
         vo.setAudioDuration(page.getAudioDuration());
         vo.setNarrationStatus(page.getNarrationStatus());
         vo.setNarrationStatusText(SlidePageVO.narrationStatusText(page.getNarrationStatus()));
+        vo.setSegmentCount(page.getSegmentCount());
+        vo.setVoice(page.getVoice());
+        vo.setTtsModel(page.getTtsModel());
+        vo.setGeneratedAt(page.getGeneratedAt());
         vo.setUpdatedAt(page.getUpdatedAt());
         return vo;
     }
