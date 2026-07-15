@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 279 | Vue 视图数: 60 | Controller 数: 68 | API 文件数: 45
+> 实体数: 279 | Vue 视图数: 60 | Controller 数: 69 | API 文件数: 45
 
 ---
 
@@ -817,7 +817,7 @@
 
 | Class | /api/classes | 6 | - |
 
-| Course | /api/courses | 15 | - |
+| Course | /api/courses | 13 | - |
 
 | CourseBundle | /api/course-bundles | 8 | - |
 
@@ -829,6 +829,8 @@
 
 | CourseFavorite | /api | 7 | - |
 
+| CourseOfflineSession | /api/courses/{courseId}/offline-sessions | 6 | - |
+
 | CoursePublish | /api/courses | 13 | - |
 
 | CourseReview | /api/courses/{id}/reviews | 5 | - |
@@ -837,7 +839,7 @@
 
 | CourseStudent | /api/courses | 2 | - |
 
-| CourseVideo | /api/courses/{courseId}/videos | 2 | - |
+| CourseVideo | /api/courses/{courseId}/videos | 6 | - |
 
 | Dashboard | /api/dashboard | 4 | - |
 

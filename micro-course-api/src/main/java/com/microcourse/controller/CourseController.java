@@ -10,7 +10,6 @@ import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
 import com.microcourse.dto.EnrollmentVO;
-import com.microcourse.dto.OfflineSessionVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.enums.CourseStatus;
@@ -18,7 +17,6 @@ import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
-import com.microcourse.service.OfflineSessionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,18 +41,15 @@ public class CourseController {
     private final CourseQueryService courseQueryService;
     private final EnrollmentService enrollmentService;
     private final CourseAdminService courseAdminService;
-    private final OfflineSessionService offlineSessionService;
 
     public CourseController(CourseService courseService,
                             CourseQueryService courseQueryService,
                             EnrollmentService enrollmentService,
-                            CourseAdminService courseAdminService,
-                            OfflineSessionService offlineSessionService) {
+                            CourseAdminService courseAdminService) {
         this.courseService = courseService;
         this.courseQueryService = courseQueryService;
         this.enrollmentService = enrollmentService;
         this.courseAdminService = courseAdminService;
-        this.offlineSessionService = offlineSessionService;
     }
 
     private static final int MAX_PAGE_SIZE = 200;
@@ -256,29 +251,6 @@ public class CourseController {
     @Operation(summary = "导出课程数据为 Excel")
     public void exportCourses(HttpServletResponse response) throws IOException {
         courseService.exportCourses(response);
-    }
-
-    /**
-     * GET /api/courses/{courseId}/offline-sessions
-     * P2: 获取课程下所有线下课堂（统一路径风格：/api/courses/{courseId}/子资源）
-     * 权限：TEACHER（课程创建者）/ ADMIN
-     */
-    @GetMapping("/{courseId}/offline-sessions")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    @Operation(summary = "获取课程下所有线下课堂")
-    public R<List<OfflineSessionVO>> listOfflineSessions(@PathVariable Long courseId) {
-        return R.ok(offlineSessionService.listByCourse(courseId));
-    }
-
-    /**
-     * GET /api/courses/{courseId}/offline-sessions/attendance-stats
-     * P2: 获取课程下线下课堂考勤统计
-     */
-    @GetMapping("/{courseId}/offline-sessions/attendance-stats")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    @Operation(summary = "获取课程下线下课堂考勤统计")
-    public R<java.util.Map<String, Object>> getOfflineSessionStats(@PathVariable Long courseId) {
-        return R.ok(offlineSessionService.getCourseAttendanceStats(courseId));
     }
 
     }
