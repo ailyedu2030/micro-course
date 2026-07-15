@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -44,8 +45,11 @@ public class AudioUploadServiceImpl implements AudioUploadService {
     private final CourseRepository courseRepository;
     private final TransactionTemplate transactionTemplate;
 
-    @Value("${plugin.interactive.slides.storage-path:/data/slides}")
+    @Value("${plugin.interactive.slides.storage-path:uploads/slides}")
     private String storagePath;
+
+    @Value("${upload.base-dir:uploads}")
+    private String uploadBaseDir;
 
     public AudioUploadServiceImpl(SlidePageMapper slidePageMapper,
                                   CourseSectionRepository sectionRepository,
@@ -57,6 +61,14 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         this.transactionTemplate = transactionTemplate;
     }
 
+    private Path resolveAudioDir(String courseId) {
+        String base = uploadBaseDir;
+        if (!base.startsWith("/") && !base.matches("^[a-zA-Z]:.*")) {
+            base = System.getProperty("user.dir", "/app") + "/" + base;
+        }
+        return Paths.get(base, storagePath, courseId, "audio");
+    }
+
     @Override
     public AudioUploadResponse uploadSingle(Long courseId, Long sectionId, MultipartFile file) {
         verifyOwnership(courseId, sectionId);
@@ -66,7 +78,7 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         String ext = originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase();
         String audioFormat = ext;
 
-        Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
+        Path audioDir = resolveAudioDir(String.valueOf(courseId));
         String mergedFileName = "section_" + sectionId + "_merged.mp3";
         Path destPath = audioDir.resolve(mergedFileName);
         String audioUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId=" + sectionId + "&v=2";
@@ -75,12 +87,16 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         int duration;
         try {
             Files.createDirectories(audioDir);
-            file.transferTo(destPath.toFile());
+            Path tmpPath = audioDir.resolve("." + mergedFileName + ".tmp");
+            file.transferTo(tmpPath.toFile());
+            Files.move(tmpPath, destPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             fileSize = Files.size(destPath);
             duration = estimateDuration(originalFilename, fileSize);
         } catch (IOException e) {
-            log.error("[AudioUpload] file save failed: courseId={}, sectionId={}", courseId, sectionId, e);
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件保存失败");
+            log.error("[AudioUpload] file save failed: courseId={}, sectionId={}, path={}, error={}",
+                    courseId, sectionId, destPath, e.getMessage(), e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "音频文件保存失败: " + e.getMessage());
         }
 
         try {
@@ -123,7 +139,7 @@ public class AudioUploadServiceImpl implements AudioUploadService {
             validateFile(file);
         }
 
-        Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
+        Path audioDir = resolveAudioDir(String.valueOf(courseId));
         long totalSize = 0;
         int totalDuration = 0;
 
@@ -144,7 +160,9 @@ public class AudioUploadServiceImpl implements AudioUploadService {
                 MultipartFile file = files.get(i);
                 String segFileName = "section_" + sectionId + "_page_" + page.getPageNumber() + ".mp3";
                 Path segPath = audioDir.resolve(segFileName);
-                file.transferTo(segPath.toFile());
+                Path tmpPath = audioDir.resolve("." + segFileName + ".tmp");
+                file.transferTo(tmpPath.toFile());
+                Files.move(tmpPath, segPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                 savedPaths.add(segPath);
                 long segSize = Files.size(segPath);
                 int segDuration = estimateDuration(file.getOriginalFilename(), segSize);
@@ -159,8 +177,10 @@ public class AudioUploadServiceImpl implements AudioUploadService {
                     log.warn("[AudioUpload] cleanup failed to delete partial file: {} — {}", p, cleanupEx.getMessage());
                 }
             }
-            log.error("[AudioUpload] batch file save failed: courseId={}, sectionId={}", courseId, sectionId, e);
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "分段音频文件保存失败");
+            log.error("[AudioUpload] batch file save failed: courseId={}, sectionId={}, path={}, error={}",
+                    courseId, sectionId, audioDir, e.getMessage(), e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "分段音频文件保存失败: " + e.getMessage());
         }
 
         final long finalTotalSize = totalSize;
