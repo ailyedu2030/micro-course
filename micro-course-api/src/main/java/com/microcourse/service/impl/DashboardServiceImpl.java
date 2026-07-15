@@ -10,6 +10,8 @@ import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.*;
 import com.microcourse.service.DashboardService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class DashboardServiceImpl implements DashboardService {
+
+    private static final Logger log = LoggerFactory.getLogger(DashboardServiceImpl.class);
 
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
@@ -63,46 +67,87 @@ public class DashboardServiceImpl implements DashboardService {
     public DashboardOverviewVO getOverview() {
         DashboardOverviewVO vo = new DashboardOverviewVO();
 
-        long totalUsers = userRepository.selectCount(null);
-        vo.setTotalUsers(totalUsers);
+        try {
+            vo.setTotalUsers(userRepository.selectCount(null));
+        } catch (Exception e) {
+            log.error("getOverview: userRepository.selectCount failed", e);
+            vo.setTotalUsers(-1L);
+        }
 
-        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-        LambdaQueryWrapper<User> activeUsersWrapper = new LambdaQueryWrapper<>();
-        activeUsersWrapper.gt(User::getUpdatedAt, sevenDaysAgo);
-        long activeUsers7d = userRepository.selectCount(activeUsersWrapper);
-        vo.setActiveUsers7d(activeUsers7d);
+        try {
+            LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+            LambdaQueryWrapper<User> activeUsersWrapper = new LambdaQueryWrapper<>();
+            activeUsersWrapper.gt(User::getUpdatedAt, sevenDaysAgo);
+            vo.setActiveUsers7d(userRepository.selectCount(activeUsersWrapper));
+        } catch (Exception e) {
+            log.error("getOverview: activeUsers7d query failed", e);
+            vo.setActiveUsers7d(-1L);
+        }
 
-        long totalCourses = courseRepository.selectCount(null);
-        vo.setTotalCourses(totalCourses);
+        try {
+            vo.setTotalCourses(courseRepository.selectCount(null));
+        } catch (Exception e) {
+            log.error("getOverview: totalCourses query failed", e);
+            vo.setTotalCourses(-1L);
+        }
 
-        LambdaQueryWrapper<Course> publishedWrapper = new LambdaQueryWrapper<>();
-        publishedWrapper.eq(Course::getStatus, CourseStatus.PUBLISHED.getCode());
-        long publishedCourses = courseRepository.selectCount(publishedWrapper);
-        vo.setPublishedCourses(publishedCourses);
+        try {
+            LambdaQueryWrapper<Course> publishedWrapper = new LambdaQueryWrapper<>();
+            publishedWrapper.eq(Course::getStatus, CourseStatus.PUBLISHED.getCode());
+            vo.setPublishedCourses(courseRepository.selectCount(publishedWrapper));
+        } catch (Exception e) {
+            log.error("getOverview: publishedCourses query failed", e);
+            vo.setPublishedCourses(-1L);
+        }
 
-        long totalEnrollments = enrollmentRepository.selectCount(null);
-        vo.setTotalEnrollments(totalEnrollments);
+        try {
+            vo.setTotalEnrollments(enrollmentRepository.selectCount(null));
+        } catch (Exception e) {
+            log.error("getOverview: totalEnrollments query failed", e);
+            vo.setTotalEnrollments(-1L);
+        }
 
-        long totalVideos = videoRepository.selectCount(null);
-        vo.setTotalVideos(totalVideos);
+        try {
+            vo.setTotalVideos(videoRepository.selectCount(null));
+        } catch (Exception e) {
+            log.error("getOverview: totalVideos query failed", e);
+            vo.setTotalVideos(-1L);
+        }
 
-        long totalExercises = exerciseRepository.selectCount(null);
-        vo.setTotalExercises(totalExercises);
+        try {
+            vo.setTotalExercises(exerciseRepository.selectCount(null));
+        } catch (Exception e) {
+            log.error("getOverview: totalExercises query failed", e);
+            vo.setTotalExercises(-1L);
+        }
 
-        long totalDiscussions = discussionPostRepository.selectCount(null);
-        vo.setTotalDiscussions(totalDiscussions);
+        try {
+            vo.setTotalDiscussions(discussionPostRepository.selectCount(null));
+        } catch (Exception e) {
+            log.error("getOverview: totalDiscussions query failed", e);
+            vo.setTotalDiscussions(-1L);
+        }
 
-        LambdaQueryWrapper<LearningProgress> progressWrapper = new LambdaQueryWrapper<>();
-        progressWrapper.select(com.microcourse.entity.LearningProgress::getTotalWatchTime);
-        List<LearningProgress> progressList = learningProgressRepository.selectList(progressWrapper);
-        long totalWatchTimeMinutes = progressList.stream()
-                .filter(p -> p.getTotalWatchTime() != null)
-                .mapToLong(p -> p.getTotalWatchTime() / 60)
-                .sum();
-        vo.setTotalWatchTimeMinutes(totalWatchTimeMinutes);
+        try {
+            LambdaQueryWrapper<LearningProgress> progressWrapper = new LambdaQueryWrapper<>();
+            progressWrapper.select(com.microcourse.entity.LearningProgress::getTotalWatchTime);
+            List<LearningProgress> progressList = learningProgressRepository.selectList(progressWrapper);
+            long totalWatchTimeMinutes = progressList.stream()
+                    .filter(p -> p != null && p.getTotalWatchTime() != null)
+                    .mapToLong(p -> p.getTotalWatchTime() / 60)
+                    .sum();
+            vo.setTotalWatchTimeMinutes(totalWatchTimeMinutes);
+        } catch (Exception e) {
+            log.error("getOverview: totalWatchTimeMinutes query failed", e);
+            vo.setTotalWatchTimeMinutes(-1L);
+        }
 
-        long certificatesIssued = certificateRepository.selectCount(null);
-        vo.setCertificatesIssued(certificatesIssued);
+        try {
+            vo.setCertificatesIssued(certificateRepository.selectCount(null));
+        } catch (Exception e) {
+            log.error("getOverview: certificatesIssued query failed — certificates table may not exist in DB", e);
+            vo.setCertificatesIssued(-1L);
+        }
 
         return vo;
     }
@@ -111,56 +156,88 @@ public class DashboardServiceImpl implements DashboardService {
     public DashboardProgressVO getProgress() {
         DashboardProgressVO vo = new DashboardProgressVO();
 
-        LambdaQueryWrapper<Enrollment> enrollmentWrapper = new LambdaQueryWrapper<>();
-        enrollmentWrapper.in(Enrollment::getEnrollmentStatus,
-                EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue());
-        long totalStudents = enrollmentRepository.selectCount(enrollmentWrapper);
-        vo.setTotalStudents(totalStudents);
+        long totalStudents = 0L;
+        try {
+            LambdaQueryWrapper<Enrollment> enrollmentWrapper = new LambdaQueryWrapper<>();
+            enrollmentWrapper.in(Enrollment::getEnrollmentStatus,
+                    EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue());
+            totalStudents = enrollmentRepository.selectCount(enrollmentWrapper);
+            vo.setTotalStudents(totalStudents);
+        } catch (Exception e) {
+            log.error("getProgress: totalStudents query failed", e);
+            vo.setTotalStudents(-1L);
+        }
 
-        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-        LambdaQueryWrapper<LearningProgress> activeWrapper = new LambdaQueryWrapper<>();
-        activeWrapper.gt(LearningProgress::getLastWatchAt, sevenDaysAgo);
-        activeWrapper.select(LearningProgress::getUserId);
-        List<LearningProgress> activeList = learningProgressRepository.selectList(activeWrapper);
-        long activeStudents = activeList.stream()
-                .filter(p -> p.getUserId() != null)
-                .map(LearningProgress::getUserId)
-                .distinct()
-                .count();
-        vo.setActiveStudents(activeStudents);
+        try {
+            LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+            LambdaQueryWrapper<LearningProgress> activeWrapper = new LambdaQueryWrapper<>();
+            activeWrapper.gt(LearningProgress::getLastWatchAt, sevenDaysAgo);
+            activeWrapper.select(LearningProgress::getUserId);
+            List<LearningProgress> activeList = learningProgressRepository.selectList(activeWrapper);
+            long activeStudents = activeList.stream()
+                    .filter(p -> p != null && p.getUserId() != null)
+                    .map(LearningProgress::getUserId)
+                    .distinct()
+                    .count();
+            vo.setActiveStudents(activeStudents);
+        } catch (Exception e) {
+            log.error("getProgress: activeStudents query failed", e);
+            vo.setActiveStudents(-1L);
+        }
 
-        LambdaQueryWrapper<Enrollment> completedWrapper = new LambdaQueryWrapper<>();
-        completedWrapper.eq(Enrollment::getCompleted, true);
-        long completedStudents = enrollmentRepository.selectCount(completedWrapper);
-        vo.setCompletedStudents(completedStudents);
+        long completedStudents = 0L;
+        try {
+            LambdaQueryWrapper<Enrollment> completedWrapper = new LambdaQueryWrapper<>();
+            completedWrapper.eq(Enrollment::getCompleted, true);
+            completedStudents = enrollmentRepository.selectCount(completedWrapper);
+            vo.setCompletedStudents(completedStudents);
+        } catch (Exception e) {
+            log.error("getProgress: completedStudents query failed", e);
+            vo.setCompletedStudents(-1L);
+        }
 
-        if (totalStudents > 0) {
-            BigDecimal completionRate = BigDecimal.valueOf(completedStudents)
-                    .divide(BigDecimal.valueOf(totalStudents), 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
-            vo.setCompletionRate(completionRate);
-        } else {
+        try {
+            if (totalStudents > 0) {
+                BigDecimal completionRate = BigDecimal.valueOf(completedStudents)
+                        .divide(BigDecimal.valueOf(totalStudents), 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100));
+                vo.setCompletionRate(completionRate);
+            } else {
+                vo.setCompletionRate(BigDecimal.ZERO);
+            }
+        } catch (Exception e) {
+            log.error("getProgress: completionRate calculation failed", e);
             vo.setCompletionRate(BigDecimal.ZERO);
         }
 
-        LambdaQueryWrapper<Enrollment> progressWrapper = new LambdaQueryWrapper<>();
-        progressWrapper.select(Enrollment::getProgress);
-        List<Enrollment> enrollments = enrollmentRepository.selectList(progressWrapper);
-        double avgProgress = enrollments.stream()
-                .filter(e -> e.getProgress() != null)
-                .mapToDouble(Enrollment::getProgress)
-                .average()
-                .orElse(0.0);
-        vo.setAvgProgress(BigDecimal.valueOf(avgProgress).setScale(2, RoundingMode.HALF_UP));
+        try {
+            LambdaQueryWrapper<Enrollment> progressWrapper = new LambdaQueryWrapper<>();
+            progressWrapper.select(Enrollment::getProgress);
+            List<Enrollment> enrollments = enrollmentRepository.selectList(progressWrapper);
+            double avgProgress = enrollments.stream()
+                    .filter(e -> e != null && e.getProgress() != null)
+                    .mapToDouble(Enrollment::getProgress)
+                    .average()
+                    .orElse(0.0);
+            vo.setAvgProgress(BigDecimal.valueOf(avgProgress).setScale(2, RoundingMode.HALF_UP));
+        } catch (Exception e) {
+            log.error("getProgress: avgProgress query failed", e);
+            vo.setAvgProgress(BigDecimal.ZERO);
+        }
 
-        LambdaQueryWrapper<LearningProgress> timeWrapper = new LambdaQueryWrapper<>();
-        timeWrapper.select(com.microcourse.entity.LearningProgress::getTotalWatchTime);
-        List<LearningProgress> timeList = learningProgressRepository.selectList(timeWrapper);
-        long totalLearningMinutes = timeList.stream()
-                .filter(p -> p.getTotalWatchTime() != null)
-                .mapToLong(p -> p.getTotalWatchTime() / 60)
-                .sum();
-        vo.setTotalLearningMinutes(totalLearningMinutes);
+        try {
+            LambdaQueryWrapper<LearningProgress> timeWrapper = new LambdaQueryWrapper<>();
+            timeWrapper.select(com.microcourse.entity.LearningProgress::getTotalWatchTime);
+            List<LearningProgress> timeList = learningProgressRepository.selectList(timeWrapper);
+            long totalLearningMinutes = timeList.stream()
+                    .filter(p -> p != null && p.getTotalWatchTime() != null)
+                    .mapToLong(p -> p.getTotalWatchTime() / 60)
+                    .sum();
+            vo.setTotalLearningMinutes(totalLearningMinutes);
+        } catch (Exception e) {
+            log.error("getProgress: totalLearningMinutes query failed", e);
+            vo.setTotalLearningMinutes(-1L);
+        }
 
         return vo;
     }
@@ -234,7 +311,7 @@ public class DashboardServiceImpl implements DashboardService {
         List<OperationLog> allLogs = operationLogRepository.selectList(allLogsWrapper);
 
         Map<Long, Long> userLoginCount = allLogs.stream()
-                .filter(l -> l.getUserId() != null)
+                .filter(l -> l != null && l.getUserId() != null)
                 .collect(Collectors.groupingBy(OperationLog::getUserId, Collectors.counting()));
 
         List<Map<String, Object>> topStudents = new ArrayList<>();
@@ -309,7 +386,7 @@ public class DashboardServiceImpl implements DashboardService {
             dayWrapper.select(Payment::getAmount);
             List<Payment> dayPayments = paymentRepository.selectList(dayWrapper);
             BigDecimal dayRevenue = dayPayments.stream()
-                    .filter(p -> p.getAmount() != null)
+                    .filter(p -> p != null && p.getAmount() != null)
                     .map(Payment::getAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -327,7 +404,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         Map<Long, BigDecimal> courseRevenueMap = new HashMap<>();
         for (Order order : recentOrders) {
-            if (order.getCourseId() != null && order.getAmount() != null) {
+            if (order != null && order.getCourseId() != null && order.getAmount() != null) {
                 courseRevenueMap.merge(order.getCourseId(), order.getAmount(), BigDecimal::add);
             }
         }
@@ -337,7 +414,9 @@ public class DashboardServiceImpl implements DashboardService {
             Set<Long> courseIds = courseRevenueMap.keySet();
             Map<Long, Course> courseMap = new HashMap<>();
             if (!courseIds.isEmpty()) {
-                courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
+                courseRepository.selectBatchIds(courseIds)
+                        .stream().filter(Objects::nonNull)
+                        .forEach(c -> courseMap.put(c.getId(), c));
             }
 
             courseRevenueMap.entrySet().stream()
