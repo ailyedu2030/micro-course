@@ -47,6 +47,12 @@ public interface CourseService {
     void reject(Long id, String reason);
 
     /**
+     * P1: 驳回后退回草稿（REJECTED → DRAFT）
+     * @param id 课程ID
+     */
+    void rejectToDraft(Long id);
+
+    /**
      * 发布课程（已通过 → 已发布）
      * @param id 课程ID
      */

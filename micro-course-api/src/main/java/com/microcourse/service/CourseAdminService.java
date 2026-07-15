@@ -24,6 +24,8 @@ public interface CourseAdminService {
 
     void reject(Long id, String reason);
 
+    void rejectToDraft(Long id);
+
     void publish(Long id);
 
     void unpublish(Long id);

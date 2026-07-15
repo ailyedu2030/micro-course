@@ -194,6 +194,13 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void rejectToDraft(Long id) {
+        adminService.rejectToDraft(id);
+        evictCourseCacheAfterCommit(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         adminService.publish(id);
         evictCourseCacheAfterCommit(id);

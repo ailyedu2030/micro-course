@@ -273,6 +273,20 @@ public class CourseController {
     }
 
     /**
+     * POST /api/courses/{id}/reject-to-draft
+     * P1: 驳回后退回草稿（REJECTED → DRAFT）
+     * 权限：TEACHER（课程创建者）/ ADMIN
+     */
+    @PostMapping("/{id}/reject-to-draft")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @AuditedLog("课程退回草稿")
+    @Operation(summary = "驳回后退回草稿 (REJECTED→DRAFT)")
+    public R<Void> rejectToDraft(@PathVariable Long id) {
+        courseService.rejectToDraft(id);
+        return R.ok();
+    }
+
+    /**
      * POST /api/courses/{id}/publish
      * 发布课程（已通过 → 已发布）
      * 权限：TEACHER（课程创建者）/ ADMIN
