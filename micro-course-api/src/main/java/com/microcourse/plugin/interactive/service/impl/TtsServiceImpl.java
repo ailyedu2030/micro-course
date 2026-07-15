@@ -525,25 +525,19 @@ public class TtsServiceImpl implements TtsService {
                     String segText = segments[i].trim();
                     if (segText.isEmpty()) continue;
 
-                    page.setNarrationScript(segText);
-                    page.setNarrationStatus("AUDIO_GENERATING");
-                    page.setUpdatedAt(LocalDateTime.now());
-                    slidePageMapper.updateById(page);
-
                     String segFileName = "section_" + sectionId + "_page_" + page.getPageNumber() + ".mp3";
                     Path segPath = audioDir.resolve(segFileName);
 
                     int segDuration = 0;
-                    boolean success = false;
                     int retries = 3;
-                    while (retries-- > 0 && !success) {
+                    while (retries-- > 0) {
                         try {
                             segDuration = callMmxCliWithVoice(segText, segPath, voice != null ? voice : ttsVoice, model, speed);
-                            success = true;
+                            break;
                         } catch (Exception e) {
                             log.warn("[TTS] segment {} retry, error: {}", page.getPageNumber(), e.getMessage());
                             if (retries == 0) throw e;
-                            Thread.sleep(2000);
+                            try { Thread.sleep(2000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw new RuntimeException(ie); }
                         }
                     }
 
@@ -557,18 +551,33 @@ public class TtsServiceImpl implements TtsService {
                             page.getPageNumber(), segUrl, (long) segDuration, segSize);
                     resultSegments.add(seg);
 
-                    page.setNarrationAudioUrl(segUrl);
-                    page.setAudioDuration(segDuration);
-                    page.setNarrationStatus("AUDIO_READY");
-                    page.setSegmentCount(segments.length);
-                    page.setVoice(voice != null ? voice : ttsVoice);
-                    page.setTtsModel(model != null ? model : ttsModel);
-                    page.setGeneratedAt(LocalDateTime.now());
-                    page.setUpdatedAt(LocalDateTime.now());
-                    slidePageMapper.updateById(page);
+                    final int fsegDuration = segDuration;
+                    final long fsegSize = segSize;
+                    final String fsegUrl = segUrl;
+                    final String fsegText = segText;
+                    final int fsegCount = segments.length;
+                    final String fvoice = voice != null ? voice : ttsVoice;
+                    final String fmodel = model != null ? model : ttsModel;
+                    final LocalDateTime fnow = LocalDateTime.now();
+                    final String ftaskId = taskId;
+                    final List<TtsStatusResponse.AudioSegment> fResultSegs = resultSegments;
 
-                    stateAppendSegment(taskId, seg);
-                    Thread.sleep(1000);
+                    transactionTemplate.execute(tx -> {
+                        page.setNarrationScript(fsegText);
+                        page.setNarrationAudioUrl(fsegUrl);
+                        page.setAudioDuration(fsegDuration);
+                        page.setNarrationStatus("AUDIO_READY");
+                        page.setSegmentCount(fsegCount);
+                        page.setVoice(fvoice);
+                        page.setTtsModel(fmodel);
+                        page.setGeneratedAt(fnow);
+                        page.setUpdatedAt(fnow);
+                        slidePageMapper.updateById(page);
+                        return null;
+                    });
+
+                    stateAppendSegment(ftaskId, seg);
+                    try { Thread.sleep(1000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
                 }
 
                 String mergedUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId="

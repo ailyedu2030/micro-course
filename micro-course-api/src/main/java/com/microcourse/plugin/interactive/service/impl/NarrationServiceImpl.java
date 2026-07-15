@@ -128,10 +128,8 @@ public class NarrationServiceImpl implements NarrationService {
             return null;
         });
 
-        page.setNarrationScript(narrationScript);
-        page.setNarrationStatus("AI_GENERATED");
-
-        return toPageVO(page);
+        SlidePage updated = slidePageMapper.selectById(pageId);
+        return toPageVO(updated);
     }
 
     @Override
