@@ -121,8 +121,12 @@ public class DashboardServiceImpl implements DashboardService {
         LambdaQueryWrapper<LearningProgress> activeWrapper = new LambdaQueryWrapper<>();
         activeWrapper.gt(LearningProgress::getLastWatchAt, sevenDaysAgo);
         activeWrapper.select(LearningProgress::getUserId);
-        activeWrapper.last("GROUP BY user_id");
-        long activeStudents = learningProgressRepository.selectCount(activeWrapper);
+        List<LearningProgress> activeList = learningProgressRepository.selectList(activeWrapper);
+        long activeStudents = activeList.stream()
+                .filter(p -> p.getUserId() != null)
+                .map(LearningProgress::getUserId)
+                .distinct()
+                .count();
         vo.setActiveStudents(activeStudents);
 
         LambdaQueryWrapper<Enrollment> completedWrapper = new LambdaQueryWrapper<>();
@@ -179,16 +183,24 @@ public class DashboardServiceImpl implements DashboardService {
         weeklyWrapper.gt(OperationLog::getCreatedAt, weekStart);
         weeklyWrapper.likeRight(OperationLog::getAction, "LOGIN");
         weeklyWrapper.select(OperationLog::getUserId);
-        weeklyWrapper.last("GROUP BY user_id");
-        long weeklyActive = operationLogRepository.selectCount(weeklyWrapper);
+        List<OperationLog> weeklyLogs = operationLogRepository.selectList(weeklyWrapper);
+        long weeklyActive = weeklyLogs.stream()
+                .filter(l -> l.getUserId() != null)
+                .map(OperationLog::getUserId)
+                .distinct()
+                .count();
         vo.setWeeklyActiveUsers(weeklyActive);
 
         LambdaQueryWrapper<OperationLog> monthlyWrapper = new LambdaQueryWrapper<>();
         monthlyWrapper.gt(OperationLog::getCreatedAt, monthStart);
         monthlyWrapper.likeRight(OperationLog::getAction, "LOGIN");
         monthlyWrapper.select(OperationLog::getUserId);
-        monthlyWrapper.last("GROUP BY user_id");
-        long monthlyActive = operationLogRepository.selectCount(monthlyWrapper);
+        List<OperationLog> monthlyLogs = operationLogRepository.selectList(monthlyWrapper);
+        long monthlyActive = monthlyLogs.stream()
+                .filter(l -> l.getUserId() != null)
+                .map(OperationLog::getUserId)
+                .distinct()
+                .count();
         vo.setMonthlyActiveUsers(monthlyActive);
 
         LambdaQueryWrapper<OperationLog> loginWrapper = new LambdaQueryWrapper<>();
@@ -215,33 +227,27 @@ public class DashboardServiceImpl implements DashboardService {
         }
         vo.setDailyTrend(dailyTrend);
 
-        LambdaQueryWrapper<OperationLog> topWrapper = new LambdaQueryWrapper<>();
-        topWrapper.gt(OperationLog::getCreatedAt, weekStart);
-        topWrapper.likeRight(OperationLog::getAction, "LOGIN");
-        topWrapper.select(OperationLog::getUserId);
-        topWrapper.last("GROUP BY user_id ORDER BY COUNT(*) DESC LIMIT 10");
-        List<OperationLog> topLogs = operationLogRepository.selectList(topWrapper);
+        LambdaQueryWrapper<OperationLog> allLogsWrapper = new LambdaQueryWrapper<>();
+        allLogsWrapper.gt(OperationLog::getCreatedAt, weekStart);
+        allLogsWrapper.likeRight(OperationLog::getAction, "LOGIN");
+        allLogsWrapper.select(OperationLog::getUserId);
+        List<OperationLog> allLogs = operationLogRepository.selectList(allLogsWrapper);
+
+        Map<Long, Long> userLoginCount = allLogs.stream()
+                .filter(l -> l.getUserId() != null)
+                .collect(Collectors.groupingBy(OperationLog::getUserId, Collectors.counting()));
 
         List<Map<String, Object>> topStudents = new ArrayList<>();
-        if (!topLogs.isEmpty()) {
-            Set<Long> topUserIds = topLogs.stream()
-                    .map(OperationLog::getUserId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            Map<Long, User> userMap = new HashMap<>();
-            if (!topUserIds.isEmpty()) {
-                userRepository.selectBatchIds(topUserIds).forEach(u -> userMap.put(u.getId(), u));
-            }
-            for (OperationLog log : topLogs) {
-                if (log.getUserId() != null) {
+        userLoginCount.entrySet().stream()
+                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
+                .limit(10)
+                .forEach(entry -> {
                     Map<String, Object> studentData = new HashMap<>();
-                    User user = userMap.get(log.getUserId());
-                    studentData.put("userId", log.getUserId());
+                    studentData.put("userId", entry.getKey());
+                    User user = userRepository.selectById(entry.getKey());
                     studentData.put("userName", user != null ? user.getRealName() : "未知");
                     topStudents.add(studentData);
-                }
-            }
-        }
+                });
         vo.setTopActiveStudents(topStudents);
 
         return vo;
