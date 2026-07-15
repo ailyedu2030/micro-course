@@ -38,7 +38,6 @@ import java.util.Map;
 
 @Service
 @ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
-@Transactional(rollbackFor = Exception.class)
 public class NarrationServiceImpl implements NarrationService {
 
     private static final Logger log = LoggerFactory.getLogger(NarrationServiceImpl.class);
@@ -74,6 +73,7 @@ public class NarrationServiceImpl implements NarrationService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public SlidePageVO generate(Long courseId, Integer pageNumber, Long sectionId) {
         checkOwner(courseId);
 
