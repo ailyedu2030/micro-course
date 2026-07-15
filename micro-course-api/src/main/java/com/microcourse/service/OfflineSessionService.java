@@ -38,4 +38,14 @@ public interface OfflineSessionService {
      * @param operatorId 操作者ID（TEACHER/ADMIN）
      */
     void manualCheckin(Long sessionId, Long studentId, Long operatorId);
+
+    /**
+     * P1: 获取课程下所有线下课堂（按课程聚合）
+     */
+    List<OfflineSessionVO> listByCourse(Long courseId);
+
+    /**
+     * P1: 获取课程下线下课堂考勤统计
+     */
+    java.util.Map<String, Object> getCourseAttendanceStats(Long courseId);
 }

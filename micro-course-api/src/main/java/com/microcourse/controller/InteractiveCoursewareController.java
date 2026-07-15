@@ -17,7 +17,6 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,7 +27,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/courses/{courseId}/interactive")
 @Tag(name = "互动课件管理", description = "互动课件 CRUD")
-@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 public class InteractiveCoursewareController {
 
     private final SlideService slideService;

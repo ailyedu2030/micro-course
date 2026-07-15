@@ -275,10 +275,11 @@ public class CourseController {
     /**
      * POST /api/courses/{id}/publish
      * 发布课程（已通过 → 已发布）
-     * 权限：ADMIN（Phase A-4 P0-9 修复：矩阵 §2.3 PUBLISH_COURSE 仅 ADMIN，移除 TEACHER/ACADEMIC 越权）
+     * 权限：TEACHER（课程创建者）/ ADMIN
+     * TEACHER 仅能发布自己创建的 APPROVED/CLOSED 状态课程（Service层 owner 校验）
      */
     @PostMapping("/{id}/publish")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("课程上架")
         @Operation(summary = "发布课程 (APPROVED/CLOSED→PUBLISHED, 定价/课件/插件守卫, 通知在学学生)")
     public R<Void> publish(@PathVariable Long id) {

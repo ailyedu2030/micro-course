@@ -124,4 +124,26 @@ public class OfflineSessionController {
         List<AttendanceRecordVO> list = offlineSessionService.getMyAttendance(chapterId, userId);
         return R.ok(list);
     }
+
+    /**
+     * P1: 获取课程下所有线下课堂（按课程聚合）
+     * GET /api/courses/{courseId}/offline-sessions
+     */
+    @GetMapping("/course/{courseId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<List<OfflineSessionVO>> listByCourse(@PathVariable Long courseId) {
+        List<OfflineSessionVO> result = offlineSessionService.listByCourse(courseId);
+        return R.ok(result);
+    }
+
+    /**
+     * P1: 获取课程下线下课堂考勤统计
+     * GET /api/courses/{courseId}/offline-sessions/attendance-stats
+     */
+    @GetMapping("/course/{courseId}/attendance-stats")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<java.util.Map<String, Object>> getCourseAttendanceStats(@PathVariable Long courseId) {
+        java.util.Map<String, Object> stats = offlineSessionService.getCourseAttendanceStats(courseId);
+        return R.ok(stats);
+    }
 }

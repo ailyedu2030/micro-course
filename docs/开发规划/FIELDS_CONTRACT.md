@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 279 | Vue 视图数: 60 | Controller 数: 63 | API 文件数: 45
+> 实体数: 279 | Vue 视图数: 60 | Controller 数: 64 | API 文件数: 45
 
 ---
 
@@ -881,7 +881,7 @@
 
 | NotificationPreference | /api/notification-preferences | 2 | - |
 
-| OfflineSession | /api/offline-sessions | 9 | - |
+| OfflineSession | /api/offline-sessions | 11 | - |
 
 | OperationLog | /api/operation-logs | 2 | - |
 
@@ -900,6 +900,8 @@
 | ServerTime | /api | 1 | - |
 
 | StorageApplication | /api/storage-applications | 14 | - |
+
+| Student | /api/students | 2 | - |
 
 | SystemConfig | /api/system-configs | 1 | - |
 
