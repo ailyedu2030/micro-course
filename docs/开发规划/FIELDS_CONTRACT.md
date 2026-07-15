@@ -817,7 +817,7 @@
 
 | Class | /api/classes | 6 | - |
 
-| Course | /api/courses | 28 | - |
+| Course | /api/courses | 30 | - |
 
 | CourseBundle | /api/course-bundles | 8 | - |
 

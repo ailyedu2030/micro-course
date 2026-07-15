@@ -16,6 +16,7 @@ import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
 import com.microcourse.dto.EnrollmentVO;
+import com.microcourse.dto.OfflineSessionVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.exception.BusinessException;
@@ -27,6 +28,7 @@ import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.CourseStudentService;
 import com.microcourse.service.EnrollmentService;
+import com.microcourse.service.OfflineSessionService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -51,17 +53,20 @@ public class CourseController {
     private final EnrollmentService enrollmentService;
     private final CourseStudentService courseStudentService;
     private final CourseAdminService courseAdminService;
+    private final OfflineSessionService offlineSessionService;
 
     public CourseController(CourseService courseService,
                             CourseQueryService courseQueryService,
                             EnrollmentService enrollmentService,
                             CourseStudentService courseStudentService,
-                            CourseAdminService courseAdminService) {
+                            CourseAdminService courseAdminService,
+                            OfflineSessionService offlineSessionService) {
         this.courseService = courseService;
         this.courseQueryService = courseQueryService;
         this.enrollmentService = enrollmentService;
         this.courseStudentService = courseStudentService;
         this.courseAdminService = courseAdminService;
+        this.offlineSessionService = offlineSessionService;
     }
 
     private static final int MAX_PAGE_SIZE = 200;
@@ -462,6 +467,29 @@ public class CourseController {
     public R<Void> removeStudent(@PathVariable Long courseId, @PathVariable Long userId) {
         courseStudentService.removeStudentFromCourse(courseId, userId);
         return R.ok();
+    }
+
+    /**
+     * GET /api/courses/{courseId}/offline-sessions
+     * P2: 获取课程下所有线下课堂（统一路径风格：/api/courses/{courseId}/子资源）
+     * 权限：TEACHER（课程创建者）/ ADMIN
+     */
+    @GetMapping("/{courseId}/offline-sessions")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @Operation(summary = "获取课程下所有线下课堂")
+    public R<List<OfflineSessionVO>> listOfflineSessions(@PathVariable Long courseId) {
+        return R.ok(offlineSessionService.listByCourse(courseId));
+    }
+
+    /**
+     * GET /api/courses/{courseId}/offline-sessions/attendance-stats
+     * P2: 获取课程下线下课堂考勤统计
+     */
+    @GetMapping("/{courseId}/offline-sessions/attendance-stats")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @Operation(summary = "获取课程下线下课堂考勤统计")
+    public R<java.util.Map<String, Object>> getOfflineSessionStats(@PathVariable Long courseId) {
+        return R.ok(offlineSessionService.getCourseAttendanceStats(courseId));
     }
 
     }

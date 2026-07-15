@@ -81,7 +81,7 @@ public class VideoStreamController {
             if (course == null) {
                 throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
             }
-            if (!course.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
+            if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
                 throw new BusinessException(ErrorCode.NO_PERMISSION, "只能访问自己课程的视频");
             }
         }
