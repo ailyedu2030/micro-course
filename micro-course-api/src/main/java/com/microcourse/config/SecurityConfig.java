@@ -42,15 +42,18 @@ import org.springframework.beans.factory.annotation.Value;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
     private final UserStatusCheckFilter userStatusCheckFilter;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final String[] corsAllowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          ApiKeyAuthenticationFilter apiKeyAuthenticationFilter,
                           UserStatusCheckFilter userStatusCheckFilter,
                           RestAuthenticationEntryPoint restAuthenticationEntryPoint,
                           @Value("${cors.allowed-origins}") String corsOrigins) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
         this.userStatusCheckFilter = userStatusCheckFilter;
         this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
         this.corsAllowedOrigins = corsOrigins.split(",");
@@ -160,6 +163,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(apiKeyAuthenticationFilter, JwtAuthenticationFilter.class)
                 // Round 8-2：在 JWT 认证之后插入用户状态校验，拦截「已禁用/删除但 token 仍有效」的访问
                 .addFilterAfter(userStatusCheckFilter, JwtAuthenticationFilter.class)
                 .exceptionHandling(eh -> eh.authenticationEntryPoint(restAuthenticationEntryPoint));

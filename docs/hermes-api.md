@@ -1,10 +1,15 @@
 # Hermes API 使用说明书
 
-> 版本: v4.3 | 最后更新: 2026-07-14
+> 版本: v4.4 | 最后更新: 2026-07-15
 > Base URL: `https://microcourse.ailyedu.cn/api/hermes/webhook`
-> 鉴权: 所有请求携带 `X-API-Key: <your-key>` 请求头
+> 鉴权: 所有请求携带 `X-API-Key: <your-key>` 请求头（**仅限本目录下的端点**）
 > 响应格式: `{"code":200,"message":"ok","data":...}`
 > **安全**: 所有写操作均验证调用者与课程的归属关系（API Key 持有者 = 课程创建教师）
+
+> **重要区分**：
+> - `/api/hermes/webhook/...` 端点 → 使用 `X-API-Key` 鉴权（Hermes/Trae 专用）
+> - `/api/courses/...` 通用业务端点 → 使用 `Authorization: Bearer <JWT>`（前端用户端）
+> - `SectionSlideController` 的 `/api/courses/{courseId}/sections/{sectionId}/slide` 需要 JWT，**不支持 X-API-Key**
 
 ---
 
@@ -217,7 +222,7 @@ Content-Type: application/json
 ### 更新课时
 
 ```http
-PUT /courses/{hermesCourseId}/sections/{sectionId}
+PATCH /courses/{hermesCourseId}/sections/{sectionId}
 X-API-Key: <your-key>
 Content-Type: application/json
 
@@ -382,9 +387,12 @@ Content-Type: application/json
 
 ```http
 GET /api/courses/{courseId}/sections/{sectionId}/slide
+Authorization: Bearer <JWT>
 ```
 
-返回该课时的独立课件页面列表（含 HTML 内容、图片 URL 等）。需要 JWT 认证（非 Hermes 接口，Hermes 可通过 `GET /courses/{hermesId}/slides` 获取 slide 元数据）。
+返回该课时的独立课件页面列表（含 HTML 内容、图片 URL 等）。**此端点属于通用业务端点，需要 JWT 认证，不支持 X-API-Key。**
+
+Hermes 如需通过 API Key 获取 slide 页面，应使用 `GET /courses/{hermesCourseId}/slides`（返回元数据）或 `GET /courses/{hermesCourseId}/lessons/{lessonId}/slides/pages`（返回页面内容），这两个端点均支持 X-API-Key。
 
 ---
 
@@ -487,3 +495,4 @@ curl -X DELETE "$BASE/courses/by-id/42" -H "X-API-Key: $KEY"
 | 2026-07-13 | v4.1 | content_url 回写移至 SlideServiceImpl 内（与上传同事务，@Version 不冲突） |
 | 2026-07-13 | v4.2 | content_url 改为课时级 `/sections/{id}/slide`；新增 `GET /sections/{id}/slide` 端点 |
 | 2026-07-14 | v4.3 | batchPushScripts 归属校验 + instanceof String 校验 + 脚本字数 < pageCount 校验；getCourseDetail 批量加载讲述稿（无 N+1）；章节/课时 CRUD 全量归属校验；deletePage 支持 sectionId 参数；slide 存储文件清理（afterCommit）；N+1 category 批量加载 |
+| 2026-07-15 | v4.4 | 澄清 `GET /api/courses/{courseId}/sections/{sectionId}/slide` 属于通用业务端点，需 JWT 不支持 X-API-Key；新增 X-API-Key 与 JWT 端点区分说明 |
