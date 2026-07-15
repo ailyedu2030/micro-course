@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 279 | Vue 视图数: 60 | Controller 数: 62 | API 文件数: 45
+> 实体数: 279 | Vue 视图数: 60 | Controller 数: 63 | API 文件数: 45
 
 ---
 
@@ -856,6 +856,8 @@
 | Grade | /api/grades | 10 | - |
 
 | HermesWebhook | /api/hermes/webhook | 16 | - |
+
+| InteractiveCourseware | /api/courses/{courseId}/interactive | 4 | - |
 
 | LearningProgress | /api/learning-progress | 9 | - |
 
