@@ -1,12 +1,11 @@
 package com.microcourse.plugin.interactive.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 public class TtsGenerateRequest {
 
     @NotBlank(message = "voice 不能为空")
-    private String voice;
+    private String voice = "female-qn-qingse";
 
     private String model = "speech-2.8-hd";
 

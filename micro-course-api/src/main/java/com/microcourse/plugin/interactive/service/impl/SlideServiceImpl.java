@@ -617,6 +617,7 @@ public class SlideServiceImpl implements SlideService {
             courseSlideMapper.deleteById(s.getId());
             registerSlideCleanup(courseId, s.getId());
         }
+        cleanupAudioFiles(courseId, lessonId);
     }
 
     @Override
@@ -640,6 +641,9 @@ public class SlideServiceImpl implements SlideService {
                 Files.deleteIfExists(slideDir.resolve("thumbnails").resolve(p.getFileUuid() + "_thumbnail.png"));
             } catch (Exception ignored) {}
         }
+        if (p.getSectionId() != null) {
+            cleanupPageAudioFile(courseId, p.getSectionId(), p.getPageNumber());
+        }
         slidePageMapper.deleteById(p.getId());
     }
 
@@ -661,7 +665,11 @@ public class SlideServiceImpl implements SlideService {
         SlidePage p = slidePageMapper.selectOne(qw);
         if (p == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         if (body.containsKey("narrationScript") && body.get("narrationScript") instanceof String) {
-            if ("AUDIO_READY".equals(p.getNarrationStatus())) { p.setNarrationAudioUrl(null); p.setAudioDuration(null); }
+            if ("AUDIO_READY".equals(p.getNarrationStatus())) {
+                p.setNarrationAudioUrl(null);
+                p.setAudioDuration(null);
+                cleanupPageAudioFile(courseId, p.getSectionId(), p.getPageNumber());
+            }
             p.setNarrationScript((String) body.get("narrationScript"));
             p.setNarrationStatus("TEACHER_EDITED");
         }
@@ -749,6 +757,34 @@ public class SlideServiceImpl implements SlideService {
             }
         } else {
             cleanupSlideFiles(courseId);
+        }
+    }
+
+    private void cleanupAudioFiles(Long courseId, Long sectionId) {
+        try {
+            Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
+            if (!Files.exists(audioDir)) return;
+            Files.deleteIfExists(audioDir.resolve("section_" + sectionId + "_merged.mp3"));
+            try (var stream = Files.list(audioDir)) {
+                stream.filter(p -> p.getFileName().toString().startsWith("section_" + sectionId + "_page_"))
+                        .forEach(p -> {
+                            try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                        });
+            }
+            log.info("[Slide] 已清理音频文件 courseId={}, sectionId={}", courseId, sectionId);
+        } catch (IOException e) {
+            log.warn("[Slide] 清理音频文件失败 courseId={}, sectionId={}: {}", courseId, sectionId, e.getMessage());
+        }
+    }
+
+    private void cleanupPageAudioFile(Long courseId, Long sectionId, Integer pageNumber) {
+        try {
+            Path audioFile = Paths.get(storagePath, String.valueOf(courseId), "audio",
+                    "section_" + sectionId + "_page_" + pageNumber + ".mp3");
+            Files.deleteIfExists(audioFile);
+            log.info("[Slide] 已清理页面音频文件 courseId={}, sectionId={}, page={}", courseId, sectionId, pageNumber);
+        } catch (IOException e) {
+            log.warn("[Slide] 清理页面音频文件失败 courseId={}, sectionId={}, page={}: {}", courseId, sectionId, pageNumber, e.getMessage());
         }
     }
 

@@ -11,7 +11,7 @@ public class BatchTtsRequest {
     @NotEmpty(message = "sections 不能为空")
     private java.util.List<Long> sections;
 
-    private String voice = "male-qn-qingse";
+    private String voice = "female-qn-qingse";
     private String model = "speech-2.8-hd";
     private Double speed = 0.95;
     private Boolean splitByPage = true;
