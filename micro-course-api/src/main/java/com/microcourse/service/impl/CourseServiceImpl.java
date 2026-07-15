@@ -372,7 +372,8 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public void exportCourses(HttpServletResponse response) throws IOException {
-        List<Course> courses = courseRepository.selectList(new LambdaQueryWrapper<>());
+        List<Course> courses = courseRepository.selectList(
+                new LambdaQueryWrapper<Course>().orderByDesc(Course::getCreatedAt).last("LIMIT 10000"));
 
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=courses_export.xlsx");

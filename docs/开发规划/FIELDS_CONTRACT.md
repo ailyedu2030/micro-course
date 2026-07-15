@@ -841,7 +841,7 @@
 
 | DiscussionPost | /api/discussions/posts | 8 | - |
 
-| Enrollment | /api/enrollments | 10 | - |
+| Enrollment | /api/enrollments | 11 | - |
 
 | EnumExport | /api/enums | 1 | - |
 

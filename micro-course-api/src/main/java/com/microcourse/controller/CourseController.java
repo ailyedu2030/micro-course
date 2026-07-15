@@ -428,6 +428,7 @@ public class CourseController {
      */
     @PostMapping("/{courseId}/students/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @AuditedLog("添加学生到课程")
     @Operation(summary = "添加学生到课程")
     public R<Void> addStudent(@PathVariable Long courseId, @PathVariable Long userId) {
         courseStudentService.addStudentToCourse(courseId, userId);
@@ -441,6 +442,7 @@ public class CourseController {
      */
     @DeleteMapping("/{courseId}/students/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @AuditedLog("从课程移除学生")
     @Operation(summary = "从课程移除学生")
     public R<Void> removeStudent(@PathVariable Long courseId, @PathVariable Long userId) {
         courseStudentService.removeStudentFromCourse(courseId, userId);

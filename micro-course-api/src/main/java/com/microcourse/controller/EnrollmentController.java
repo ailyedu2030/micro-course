@@ -105,6 +105,21 @@ public class EnrollmentController {
         return R.ok(detail);
     }
 
+    /**
+     * P1: 获取学员学习进度（所有课程的选课进度）
+     * @param userId 学员ID
+     * @return 选课列表（含 progress、completed 等学习进度）
+     */
+    @GetMapping("/student/{userId}/progress")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    public R<List<EnrollmentVO>> getStudentProgress(@PathVariable Long userId) {
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            enrollmentService.assertStudentInTeachersCourses(SecurityUtil.getCurrentUserId(), userId);
+        }
+        List<EnrollmentVO> progress = enrollmentService.getStudentProgress(userId);
+        return R.ok(progress);
+    }
+
     @GetMapping("/course/{courseId}/ranking")
     @PreAuthorize("isAuthenticated()")
     public R<List<EnrollmentRankingVO>> getCourseRanking(

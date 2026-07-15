@@ -572,7 +572,7 @@ public class QuestionServiceImpl implements QuestionService {
 
     @Override
     public void export(Long courseId, String questionType, Integer difficulty, String keyword,
-                       HttpServletResponse response) {
+                       Long categoryId, Long chapterId, HttpServletResponse response) {
         // 权限校验：如果是按课程导出，检查权限
         if (courseId != null) {
             Course course = courseRepository.selectById(courseId);
@@ -597,6 +597,34 @@ public class QuestionServiceImpl implements QuestionService {
         }
         if (keyword != null && !keyword.trim().isEmpty()) {
             wrapper.like(Question::getContent, keyword.trim());
+        }
+        // chapterId: 通过 question_chapters 关联表筛选
+        if (chapterId != null) {
+            List<Long> qIds = questionChapterRepository.selectList(
+                    new LambdaQueryWrapper<QuestionChapter>()
+                            .eq(QuestionChapter::getChapterId, chapterId)
+                            .select(QuestionChapter::getQuestionId)
+            ).stream().map(QuestionChapter::getQuestionId).collect(Collectors.toList());
+            if (qIds.isEmpty()) {
+                return;
+            }
+            wrapper.in(Question::getId, qIds);
+        }
+        // categoryId: 按课程分类筛选（通过 courses.category_id 间接筛选）
+        if (categoryId != null) {
+            List<Long> courseIdsInCategory = courseRepository.selectList(
+                    new LambdaQueryWrapper<Course>()
+                            .eq(Course::getCategoryId, categoryId)
+                            .select(Course::getId)
+            ).stream().map(Course::getId).collect(Collectors.toList());
+            if (courseIdsInCategory.isEmpty()) {
+                return;
+            }
+            if (courseId == null) {
+                wrapper.in(Question::getCourseId, courseIdsInCategory);
+            } else if (!courseIdsInCategory.contains(courseId)) {
+                return;
+            }
         }
         wrapper.orderByDesc(Question::getCreatedAt);
 

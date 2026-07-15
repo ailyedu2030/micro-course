@@ -34,8 +34,10 @@ public interface QuestionService {
      * @param questionType 题目类型筛选（可选）
      * @param difficulty 难度筛选（可选）
      * @param keyword 关键字筛选（可选）
+     * @param categoryId 课程分类筛选（可选）
+     * @param chapterId 章节筛选（可选）
      * @param response HTTP 响应
      */
     void export(Long courseId, String questionType, Integer difficulty, String keyword,
-                HttpServletResponse response);
+                Long categoryId, Long chapterId, HttpServletResponse response);
 }

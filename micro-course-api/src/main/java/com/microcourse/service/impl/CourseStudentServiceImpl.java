@@ -13,6 +13,7 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseStudentService;
 import com.microcourse.service.EnrollmentService;
+import com.microcourse.util.SecurityUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +55,9 @@ public class CourseStudentServiceImpl implements CourseStudentService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         User student = userRepository.selectById(studentId);
         if (student == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
@@ -84,6 +88,13 @@ public class CourseStudentServiceImpl implements CourseStudentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void removeStudentFromCourse(Long courseId, Long studentId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         Enrollment enrollment = enrollmentRepository.selectOne(
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, courseId)

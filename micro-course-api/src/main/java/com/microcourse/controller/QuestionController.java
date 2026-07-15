@@ -106,6 +106,8 @@ public class QuestionController {
      * @param questionType 题目类型筛选（可选）
      * @param difficulty 难度筛选（可选）
      * @param keyword 关键字筛选（可选）
+     * @param categoryId 课程分类筛选（可选）
+     * @param chapterId 章节筛选（可选）
      */
     @GetMapping("/export")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -114,7 +116,9 @@ public class QuestionController {
             @RequestParam(required = false) String questionType,
             @RequestParam(required = false) Integer difficulty,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long chapterId,
             HttpServletResponse response) {
-        questionService.export(courseId, questionType, difficulty, keyword, response);
+        questionService.export(courseId, questionType, difficulty, keyword, categoryId, chapterId, response);
     }
 }
