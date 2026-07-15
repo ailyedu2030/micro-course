@@ -6,12 +6,6 @@ import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.dto.BatchRejectRequest;
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
-import com.microcourse.dto.CoursePricingInfoVO;
-import com.microcourse.dto.CoursePricingRequest;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import com.microcourse.dto.PricingForAdopterVO;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
@@ -19,22 +13,19 @@ import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.OfflineSessionVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
-import com.microcourse.exception.BusinessException;
-import com.microcourse.exception.ErrorCode;
 import com.microcourse.enums.CourseStatus;
-import com.microcourse.security.RequireRole;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
-import com.microcourse.service.CourseStudentService;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.OfflineSessionService;
-import com.microcourse.util.SecurityUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
-import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -51,20 +42,17 @@ public class CourseController {
     private final CourseService courseService;
     private final CourseQueryService courseQueryService;
     private final EnrollmentService enrollmentService;
-    private final CourseStudentService courseStudentService;
     private final CourseAdminService courseAdminService;
     private final OfflineSessionService offlineSessionService;
 
     public CourseController(CourseService courseService,
                             CourseQueryService courseQueryService,
                             EnrollmentService enrollmentService,
-                            CourseStudentService courseStudentService,
                             CourseAdminService courseAdminService,
                             OfflineSessionService offlineSessionService) {
         this.courseService = courseService;
         this.courseQueryService = courseQueryService;
         this.enrollmentService = enrollmentService;
-        this.courseStudentService = courseStudentService;
         this.courseAdminService = courseAdminService;
         this.offlineSessionService = offlineSessionService;
     }
@@ -158,73 +146,6 @@ public class CourseController {
         return R.ok(vo);
     }
 
-    /** Phase 4: 更新课程定价 */
-    @PutMapping("/{id}/pricing")
-    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
-    @AuditedLog("更新课程定价")
-        @Operation(summary = "更新课程定价 (含审批流: DRAFT→PENDING→APPROVED/REJECTED)")
-    public R<Void> updatePricing(@PathVariable Long id, @Valid @RequestBody CoursePricingRequest request) {
-        courseService.updatePricing(id, request);
-        return R.ok();
-    }
-
-    /** Phase 4: 查询课程对某教师的费用 */
-    @GetMapping("/{id}/pricing-for-adopter")
-    @PreAuthorize("hasRole('TEACHER')")
-        @Operation(summary = "教师查询自身课程对学生的预期定价 (含院系匹配)")
-    public R<PricingForAdopterVO> getPricingForAdopter(@PathVariable Long id) {
-        return R.ok(courseService.getPricingForAdopter(id));
-    }
-
-    /** Round 1: 查询课程对当前登录用户的价格（学生端可见，公开端点） */
-    @GetMapping("/{id}/my-price")
-    @PreAuthorize("isAuthenticated()")
-        @Operation(summary = "学生查询本课程个性化定价 (基于部门/学院/学校)")
-    public R<CoursePricingInfoVO> getMyPricing(@PathVariable Long id) {
-        return R.ok(courseService.getMyPricing(id));
-    }
-
-    /** P0 修复: 提交定价审核 (DRAFT → PENDING) */
-    @PostMapping("/{id}/pricing/submit-review")
-    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'ACADEMIC')")
-    @AuditedLog("提交定价审核")
-        @Operation(summary = "提交定价审核 (DRAFT→PENDING)")
-    public R<Void> submitPricingForReview(@PathVariable Long id) {
-        courseService.submitPricingForReview(id);
-        return R.ok();
-    }
-
-    /** P0 修复: 审核定价 (PENDING → APPROVED / REJECTED) */
-    @PostMapping("/{id}/pricing/review")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC')")
-    @AuditedLog("审核课程定价")
-        @Operation(summary = "审批定价 (ADMIN/ACADEMIC, approved 决定 APPROVED 或 REJECTED)")
-    public R<Void> reviewPricing(@PathVariable Long id,
-                                  @RequestParam boolean approved,
-                                  @RequestParam(required = false) String reason) {
-        courseService.reviewPricing(id, approved, reason);
-        return R.ok();
-    }
-
-    /**
-     * PUT /api/courses/{id}/status — 课程状态变更
-     *
-     * <p>Phase D-1 P3-6 演示：{@code @RequireRole} 与 {@code @PreAuthorize} <b>叠加</b>使用，
-     * 角色集合完全一致（ADMIN / ACADEMIC），逻辑等价。{@code @PreAuthorize} 在过滤器层
-     * 先行决断，故本端点行为与权限语义零变化；{@code @RequireRole} 仅作为常量化注解的
-     * 落地示例，建立渐进迁移路径，不强制全量替换。</p>
-     */
-    @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
-    @RequireRole({"TEACHER", "ADMIN", "ACADEMIC"})
-    @AuditedLog("变更课程状态")
-        @Operation(summary = "通用状态变更 (仅支持 CLOSED/ARCHIVED, PENDING_REVIEW/PUBLISHED 须用专用端点)")
-    public R<Void> updateStatus(@PathVariable Long id,
-                                @RequestParam Integer status) {
-        courseService.updateStatus(id, status);
-        return R.ok();
-    }
-
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("删除课程")
@@ -232,93 +153,6 @@ public class CourseController {
     public R<Void> delete(@PathVariable Long id) {
         courseService.delete(id);
         return R.ok();
-    }
-
-    /**
-     * POST /api/courses/{id}/submit
-     * 提交课程审核（草稿 → 待审核）
-     * 权限：TEACHER（创建者本人） — Service 层 isOwnerOrAdmin 校验
-     * 【权限矩阵 v4.0】仅 TEACHER，ADMIN 不能越权提交
-     */
-    @PostMapping("/{id}/submit")
-    @PreAuthorize("hasRole('TEACHER')")
-    @AuditedLog("提交课程审核")
-        @Operation(summary = "提交课程审核 (DRAFT→PENDING_REVIEW, 守卫检查标题/分类/封面/章节/视频练习课件)")
-    public R<Void> submitForReview(@PathVariable Long id) {
-        courseService.submitForReview(id);
-        return R.ok();
-    }
-
-    /**
-     * POST /api/courses/{id}/approve
-     * 审核通过（待审核 → 已通过）
-     * 权限：ADMIN, ACADEMIC
-     */
-    @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
-    @AuditedLog("课程审核通过")
-        @Operation(summary = "审核通过 (PENDING_REVIEW→APPROVED, 自审批阻断, 通知教师)")
-    public R<Void> approve(@PathVariable Long id) {
-        courseService.approve(id);
-        return R.ok();
-    }
-
-    /**
-     * POST /api/courses/{id}/reject
-     * 审核拒绝（待审核 → 已驳回）
-     * 权限：ADMIN, ACADEMIC
-     */
-    @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
-    @AuditedLog("课程审核驳回")
-        @Operation(summary = "审核驳回 (PENDING_REVIEW→REJECTED, reason ≥ 10 字符)")
-    public R<Void> reject(@PathVariable Long id, @Valid @RequestBody com.microcourse.dto.RejectRequest request) {
-        courseService.reject(id, request.getReason());
-        return R.ok();
-    }
-
-    /**
-     * POST /api/courses/{id}/reject-to-draft
-     * P1: 驳回后退回草稿（REJECTED → DRAFT）
-     * 权限：TEACHER（课程创建者）/ ADMIN
-     */
-    @PostMapping("/{id}/reject-to-draft")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    @AuditedLog("课程退回草稿")
-    @Operation(summary = "驳回后退回草稿 (REJECTED→DRAFT)")
-    public R<Void> rejectToDraft(@PathVariable Long id) {
-        courseService.rejectToDraft(id);
-        return R.ok();
-    }
-
-    /**
-     * POST /api/courses/{id}/publish
-     * 发布课程（已通过 → 已发布）
-     * 权限：TEACHER（课程创建者）/ ADMIN
-     * TEACHER 仅能发布自己创建的 APPROVED/CLOSED 状态课程（Service层 owner 校验）
-     */
-    @PostMapping("/{id}/publish")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    @AuditedLog("课程上架")
-        @Operation(summary = "发布课程 (APPROVED/CLOSED→PUBLISHED, 定价/课件/插件守卫, 通知在学学生)")
-    public R<Void> publish(@PathVariable Long id) {
-        courseService.publish(id);
-        return R.ok();
-    }
-
-    /**
-     * POST /api/courses/{id}/copy
-     * 复制课程（模板复制：复制课程基本信息 + 章节结构，不含视频文件）
-     * 权限：TEACHER（课程创建者）, ADMIN
-     * @return 新课程VO
-     */
-    @PostMapping("/{id}/copy")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    @AuditedLog("复制课程")
-        @Operation(summary = "复制课程 (含章节/视频元数据, 复制后状态 DRAFT)")
-    public R<CourseVO> copy(@PathVariable Long id) {
-        CourseVO vo = courseService.copy(id);
-        return R.ok(vo);
     }
 
     /**
@@ -353,23 +187,6 @@ public class CourseController {
         // 【V3 修复】TEACHER Owner 校验下沉到 Service 层
         List<EnrollmentVO> students = enrollmentService.getCourseEnrollmentsWithOwnerCheck(id);
         return R.ok(students);
-    }
-
-    /**
-     * POST /api/courses/{id}/unpublish
-     * 下架课程（已发布 → 下架）（Round 5-3 P1-10 新增）
-     * 权限：ADMIN（依据 权限矩阵 v2.0 §2.3 UNPUBLISH_COURSE = 仅 ADMIN）
-     *
-     * <p>复用既有 {@link CourseService#updateStatus} 的状态机白名单：PUBLISHED → CLOSED 为合法转换，
-     * 非已发布课程将得到 400（COURSE_STATUS_TRANSITION_NOT_ALLOWED），不会 5xx。</p>
-     */
-    @PostMapping("/{id}/unpublish")
-    @Operation(summary = "下架课程 (PUBLISHED→CLOSED, 通知在学学生)")
-    @PreAuthorize("hasRole('ADMIN')")
-    @AuditedLog("课程下架")
-    public R<Void> unpublish(@PathVariable Long id) {
-        courseService.unpublish(id);
-        return R.ok();
     }
 
     /**
@@ -439,34 +256,6 @@ public class CourseController {
     @Operation(summary = "导出课程数据为 Excel")
     public void exportCourses(HttpServletResponse response) throws IOException {
         courseService.exportCourses(response);
-    }
-
-    /**
-     * POST /api/courses/{courseId}/students/{userId}
-     * 添加学生到课程
-     * 权限: TEACHER(课程创建者) / ADMIN / ACADEMIC
-     */
-    @PostMapping("/{courseId}/students/{userId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
-    @AuditedLog("添加学生到课程")
-    @Operation(summary = "添加学生到课程")
-    public R<Void> addStudent(@PathVariable Long courseId, @PathVariable Long userId) {
-        courseStudentService.addStudentToCourse(courseId, userId);
-        return R.ok();
-    }
-
-    /**
-     * DELETE /api/courses/{courseId}/students/{userId}
-     * 从课程移除学生
-     * 权限: TEACHER(课程创建者) / ADMIN / ACADEMIC
-     */
-    @DeleteMapping("/{courseId}/students/{userId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
-    @AuditedLog("从课程移除学生")
-    @Operation(summary = "从课程移除学生")
-    public R<Void> removeStudent(@PathVariable Long courseId, @PathVariable Long userId) {
-        courseStudentService.removeStudentFromCourse(courseId, userId);
-        return R.ok();
     }
 
     /**
