@@ -762,6 +762,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     "选课被阻止，以下先修条件未满足：\n" + String.join("\n", unmetPrereqs));
         }
     }
+
     private static String describeCourseStatus(Integer status) {
         if (status == null) return "未知";
         CourseStatus cs = CourseStatus.fromCode(status);

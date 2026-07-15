@@ -25,8 +25,10 @@ import com.microcourse.security.RequireRole;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
+import com.microcourse.service.CourseStudentService;
 import com.microcourse.service.EnrollmentService;
 import com.microcourse.util.SecurityUtil;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.hibernate.validator.constraints.Range;
@@ -36,6 +38,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -46,15 +49,18 @@ public class CourseController {
     private final CourseService courseService;
     private final CourseQueryService courseQueryService;
     private final EnrollmentService enrollmentService;
+    private final CourseStudentService courseStudentService;
     private final CourseAdminService courseAdminService;
 
     public CourseController(CourseService courseService,
                             CourseQueryService courseQueryService,
                             EnrollmentService enrollmentService,
+                            CourseStudentService courseStudentService,
                             CourseAdminService courseAdminService) {
         this.courseService = courseService;
         this.courseQueryService = courseQueryService;
         this.enrollmentService = enrollmentService;
+        this.courseStudentService = courseStudentService;
         this.courseAdminService = courseAdminService;
     }
 
@@ -401,6 +407,44 @@ public class CourseController {
         @Operation(summary = "获取课程统计 (选课人数/完成率/平均分, 含 Redis 缓存)")
     public R<CourseStatsVO> getCourseStats(@PathVariable Long id) {
         return R.ok(courseService.computeStats(id));
+    }
+
+    /**
+     * GET /api/courses/export
+     * 导出课程数据为 Excel
+     * 权限: ADMIN / ACADEMIC
+     */
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @Operation(summary = "导出课程数据为 Excel")
+    public void exportCourses(HttpServletResponse response) throws IOException {
+        courseService.exportCourses(response);
+    }
+
+    /**
+     * POST /api/courses/{courseId}/students/{userId}
+     * 添加学生到课程
+     * 权限: TEACHER(课程创建者) / ADMIN / ACADEMIC
+     */
+    @PostMapping("/{courseId}/students/{userId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @Operation(summary = "添加学生到课程")
+    public R<Void> addStudent(@PathVariable Long courseId, @PathVariable Long userId) {
+        courseStudentService.addStudentToCourse(courseId, userId);
+        return R.ok();
+    }
+
+    /**
+     * DELETE /api/courses/{courseId}/students/{userId}
+     * 从课程移除学生
+     * 权限: TEACHER(课程创建者) / ADMIN / ACADEMIC
+     */
+    @DeleteMapping("/{courseId}/students/{userId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @Operation(summary = "从课程移除学生")
+    public R<Void> removeStudent(@PathVariable Long courseId, @PathVariable Long userId) {
+        courseStudentService.removeStudentFromCourse(courseId, userId);
+        return R.ok();
     }
 
     }
