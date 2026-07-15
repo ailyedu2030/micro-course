@@ -1,6 +1,7 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.VideoCreateRequest;
+import com.microcourse.dto.VideoStatusVO;
 import com.microcourse.dto.VideoUpdateRequest;
 import com.microcourse.dto.VideoVO;
 import com.microcourse.dto.PageResult;
@@ -54,6 +55,14 @@ public interface VideoService {
      * @throws BusinessException VIDEO_NOT_FOUND 当视频不存在时
      */
     Long getCourseIdByVideoId(Long videoId);
+
+    /**
+     * 获取视频转码状态（轻量级轮询接口）
+     *
+     * @param id 视频ID
+     * @return VideoStatusVO (videoId, status, statusLabel, progress, errorMessage)
+     */
+    VideoStatusVO getStatus(Long id);
 
     /**
      * 更新视频状态(0=UPLOADING,1=TRANSCODING,2=COMPLETED,3=FAILED)。

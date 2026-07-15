@@ -524,4 +524,64 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
     }
+
+    @Override
+    public List<OfflineSessionVO> listByCourse(Long courseId) {
+        assertCourseOwnerByCourseId(courseId);
+        List<Long> chapterIds = chapterRepository.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseChapter>()
+                        .eq(CourseChapter::getCourseId, courseId)
+                        .select(CourseChapter::getId)
+        ).stream().map(CourseChapter::getId).collect(java.util.stream.Collectors.toList());
+
+        if (chapterIds.isEmpty()) {
+            return java.util.List.of();
+        }
+
+        List<ChapterOfflineSession> sessions = sessionRepository.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ChapterOfflineSession>()
+                        .in(ChapterOfflineSession::getChapterId, chapterIds)
+                        .orderByDesc(ChapterOfflineSession::getSessionDate)
+        );
+        return sessions.stream().map(this::convertToVO).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public java.util.Map<String, Object> getCourseAttendanceStats(Long courseId) {
+        assertCourseOwnerByCourseId(courseId);
+        List<Long> chapterIds = chapterRepository.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseChapter>()
+                        .eq(CourseChapter::getCourseId, courseId)
+                        .select(CourseChapter::getId)
+        ).stream().map(CourseChapter::getId).collect(java.util.stream.Collectors.toList());
+
+        if (chapterIds.isEmpty()) {
+            java.util.Map<String, Object> emptyStats = new java.util.HashMap<>();
+            emptyStats.put("totalSessions", 0);
+            emptyStats.put("totalStudents", 0);
+            emptyStats.put("attendanceRate", 0.0);
+            return emptyStats;
+        }
+
+        List<ChapterOfflineSession> sessions = sessionRepository.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ChapterOfflineSession>()
+                        .in(ChapterOfflineSession::getChapterId, chapterIds)
+        );
+
+        List<AttendanceRecord> allRecords = attendanceRepository.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AttendanceRecord>()
+                        .in(AttendanceRecord::getSessionId, sessions.stream().map(ChapterOfflineSession::getId).collect(java.util.stream.Collectors.toList()))
+        );
+
+        long presentCount = allRecords.stream().filter(r -> "PRESENT".equals(r.getStatus())).count();
+        long totalExpected = sessions.size() * allRecords.stream().map(AttendanceRecord::getUserId).distinct().count();
+
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("totalSessions", sessions.size());
+        stats.put("totalStudents", allRecords.stream().map(AttendanceRecord::getUserId).distinct().count());
+        stats.put("presentCount", presentCount);
+        stats.put("absentCount", allRecords.size() - presentCount);
+        stats.put("attendanceRate", totalExpected > 0 ? (double) presentCount / totalExpected * 100 : 0.0);
+        return stats;
+    }
 }

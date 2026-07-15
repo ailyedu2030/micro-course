@@ -21,7 +21,9 @@ import com.microcourse.repository.UserRepository;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
+import java.io.IOException;
 import java.time.LocalDateTime;
+import jakarta.servlet.http.HttpServletResponse;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CoursePricingService;
 import com.microcourse.service.CourseQueryService;
@@ -187,6 +189,13 @@ public class CourseServiceImpl implements CourseService {
     @Transactional(rollbackFor = Exception.class)
     public void reject(Long id, String reason) {
         adminService.reject(id, reason);
+        evictCourseCacheAfterCommit(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void rejectToDraft(Long id) {
+        adminService.rejectToDraft(id);
         evictCourseCacheAfterCommit(id);
     }
 
@@ -362,5 +371,55 @@ public class CourseServiceImpl implements CourseService {
     @Override
     public CoursePricingInfoVO getMyPricing(Long courseId) {
         return pricingService.getMyPricing(courseId);
+    }
+
+    /* ================================================================
+     *  Export
+     * ================================================================ */
+
+    @Override
+    public void exportCourses(HttpServletResponse response) throws IOException {
+        List<Course> courses = courseRepository.selectList(
+                new LambdaQueryWrapper<Course>().orderByDesc(Course::getCreatedAt).last("LIMIT 10000"));
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=courses_export.xlsx");
+
+        cn.hutool.poi.excel.ExcelWriter writer = cn.hutool.poi.excel.ExcelUtil.getWriter(true);
+        try {
+            writer.addHeaderAlias("id", "课程ID");
+            writer.addHeaderAlias("title", "课程标题");
+            writer.addHeaderAlias("description", "课程描述");
+            writer.addHeaderAlias("difficulty", "难度");
+            writer.addHeaderAlias("price", "价格");
+            writer.addHeaderAlias("status", "状态");
+            writer.addHeaderAlias("avgRating", "平均评分");
+            writer.addHeaderAlias("studentCount", "选课人数");
+            writer.addHeaderAlias("createdAt", "创建时间");
+            writer.addHeaderAlias("updatedAt", "更新时间");
+            writer.addHeaderAlias("publishedAt", "发布时间");
+
+            java.util.ArrayList<CourseVO> rows = new java.util.ArrayList<>();
+            for (Course course : courses) {
+                CourseVO vo = new CourseVO();
+                vo.setId(course.getId());
+                vo.setTitle(course.getTitle());
+                vo.setDescription(course.getDescription());
+                vo.setDifficulty(course.getDifficulty());
+                vo.setPrice(course.getPrice());
+                vo.setStatus(course.getStatus());
+                vo.setAvgRating(course.getAvgRating());
+                vo.setStudentCount(course.getStudentCount());
+                vo.setCreatedAt(course.getCreatedAt());
+                vo.setUpdatedAt(course.getUpdatedAt());
+                vo.setPublishedAt(course.getPublishedAt());
+                rows.add(vo);
+            }
+
+            writer.write(rows, true);
+            writer.flush(response.getOutputStream());
+        } finally {
+            writer.close();
+        }
     }
 }

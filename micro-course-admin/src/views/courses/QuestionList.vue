@@ -243,7 +243,7 @@ import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
-import { getQuestions, createQuestion, updateQuestion, deleteQuestion, batchImportQuestion } from '@/api/question'
+import { getQuestions, createQuestion, updateQuestion, deleteQuestion, batchImportQuestion, exportQuestions } from '@/api/question'
 import { getCategories } from '@/api/course-category'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
@@ -398,11 +398,34 @@ const handleExportExcel = async () => {
     ElMessage.warning('暂无题目数据可导出')
     return
   }
+  // 优先使用后端导出接口（支持服务端全量导出）
+  const params = {
+    courseId: selectedCourseId.value || undefined,
+    questionType: searchForm.questionType || undefined,
+    difficulty: resolveDifficulty(searchForm.difficulty),
+    categoryId: searchForm.categoryId || undefined,
+    keyword: searchForm.keyword || undefined
+  }
+  try {
+    const res = await exportQuestions(params)
+    const blob = res instanceof Blob ? res : new Blob([res])
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const date = new Date().toISOString().split('T')[0]
+    link.download = `questions-${date}.xlsx`
+    link.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+    return
+  } catch (err) {
+    console.warn('[QuestionList] 后端导出失败，回退到客户端导出', err)
+    // 后端导出失败时回退到客户端 XLSX 导出
+  }
+  // 客户端 XLSX 兜底导出
   try {
     ElMessage.info('正在获取全部题目数据，请稍候…')
-    // P2-16: 导出使用 size: 10000 全量请求，若数据量极大可能内存紧张，可考虑分批导出
-    // Fetch ALL filtered data (remove pagination limits by using a large size)
-    const params = {
+    const allParams = {
       size: 10000,
       courseId: selectedCourseId.value || undefined,
       questionType: searchForm.questionType || undefined,
@@ -410,7 +433,7 @@ const handleExportExcel = async () => {
       categoryId: searchForm.categoryId || undefined,
       keyword: searchForm.keyword || undefined
     }
-    const { data } = await getQuestions(params)
+    const { data } = await getQuestions(allParams)
     const allData = data.items || []
     if (allData.length === 0) {
       ElMessage.warning('没有找到可导出的题目数据')

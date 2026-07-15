@@ -535,6 +535,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     public StudentDetailVO getStudentDetail(Long userId) {
         return queryService.getStudentDetail(userId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EnrollmentVO> getStudentProgress(Long userId) {
+        return queryService.getMyEnrollments(userId, null);
+    }
+
     private EnrollmentVO convertToVO(Enrollment enrollment) {
         return com.microcourse.util.EnrollmentConverter.convertToVO(
                 enrollment, courseRepository, userRepository, classesRepository, majorRepository);
@@ -762,6 +769,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                     "选课被阻止，以下先修条件未满足：\n" + String.join("\n", unmetPrereqs));
         }
     }
+
     private static String describeCourseStatus(Integer status) {
         if (status == null) return "未知";
         CourseStatus cs = CourseStatus.fromCode(status);

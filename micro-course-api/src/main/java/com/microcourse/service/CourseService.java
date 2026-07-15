@@ -10,6 +10,8 @@ import com.microcourse.dto.CourseVO;
 import com.microcourse.dto.PageResult;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -43,6 +45,12 @@ public interface CourseService {
      * @param reason 拒绝原因
      */
     void reject(Long id, String reason);
+
+    /**
+     * P1: 驳回后退回草稿（REJECTED → DRAFT）
+     * @param id 课程ID
+     */
+    void rejectToDraft(Long id);
 
     /**
      * 发布课程（已通过 → 已发布）
@@ -103,4 +111,10 @@ public interface CourseService {
      * 可由定时任务定期调用，通知教师提醒教务处处理。
      */
     void checkReviewTimeout();
+
+    /**
+     * 导出课程数据为 Excel
+     * @param response HttpServletResponse
+     */
+    void exportCourses(HttpServletResponse response) throws IOException;
 }

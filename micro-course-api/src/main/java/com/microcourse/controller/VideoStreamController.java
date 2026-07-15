@@ -1,11 +1,10 @@
 package com.microcourse.controller;
 
+import com.microcourse.entity.Course;
 import com.microcourse.exception.BusinessException;
-
+import com.microcourse.repository.CourseRepository;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.exception.ErrorCode;
-
-import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.service.VideoAccessService;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.VideoSignUtil;
@@ -20,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -42,11 +43,14 @@ public class VideoStreamController {
 
     private final VideoAccessService videoAccessService;
     private final VideoSignUtil videoSignUtil;
+    private final CourseRepository courseRepository;
 
     public VideoStreamController(VideoAccessService videoAccessService,
-                                  VideoSignUtil videoSignUtil) {
+                                  VideoSignUtil videoSignUtil,
+                                  CourseRepository courseRepository) {
         this.videoAccessService = videoAccessService;
         this.videoSignUtil = videoSignUtil;
+        this.courseRepository = courseRepository;
     }
 
     /**
@@ -71,16 +75,28 @@ public class VideoStreamController {
             if (!access.allowed) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
             }
+        } else if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            // TEACHER: 校验是否为课程所有者，防止访问他人课程视频
+            Course course = courseRepository.selectById(courseId);
+            if (course == null) {
+                throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+            }
+            if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "只能访问自己课程的视频");
+            }
         }
         // 所有角色都需要验证视频签名，防止直接访问绕过
         if (sign == null || !videoSignUtil.verifySign(videoId, sign)) {
             throw new BusinessException(ErrorCode.VIDEO_SIGN_INVALID, "视频签名无效或已过期");
         }
 
-        // 安全校验：文件名不能包含路径穿越字符
-        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+        // 安全校验：文件名不能包含路径穿越字符（先URL decode防止双编码绕过）
+        String decodedFilename = URLDecoder.decode(filename, StandardCharsets.UTF_8);
+        if (decodedFilename.contains("..") || decodedFilename.contains("/") || decodedFilename.contains("\\")) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法文件名");
         }
+        // 使用解码后的文件名进行后续路径构造
+        filename = decodedFilename;
 
         // 限制文件扩展名
         String lower = filename.toLowerCase();

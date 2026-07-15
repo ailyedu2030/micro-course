@@ -92,4 +92,11 @@ public interface EnrollmentService {
      * @param courseId 课程ID
      */
     void promoteFirstWaitlistToEnrolled(Long courseId);
+
+    /**
+     * P1: 获取学员学习进度（所有课程的选课进度）
+     * @param userId 学员ID
+     * @return 选课列表（含 progress、completed 等学习进度）
+     */
+    List<EnrollmentVO> getStudentProgress(Long userId);
 }

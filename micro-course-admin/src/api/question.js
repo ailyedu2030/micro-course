@@ -26,3 +26,7 @@ export function batchImportQuestion(file, courseId) {
   formData.append('courseId', courseId)
   return request({ method: 'POST', url: '/questions/batch/import', data: formData })
 }
+
+export function exportQuestions(params) {
+  return request({ method: 'GET', url: '/questions/export', params, responseType: 'blob' })
+}

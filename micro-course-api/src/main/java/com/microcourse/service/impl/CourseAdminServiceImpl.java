@@ -567,6 +567,19 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     }
 
     @Override
+    public void rejectToDraft(Long id) {
+        Course course = getCourseOrThrow(id);
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+        CourseStatus current = CourseStatus.fromCode(course.getStatus());
+        if (current != CourseStatus.REJECTED) {
+            throw new BusinessException(ErrorCode.COURSE_INVALID_STATUS, "只有已驳回的课程才能退回草稿");
+        }
+        courseStateMachine.transition(id, CourseStatus.DRAFT, SecurityUtil.getCurrentUser(), TransitionContext.empty());
+    }
+
+    @Override
     public void publish(Long id) {
         auditService.publish(id);
     }
