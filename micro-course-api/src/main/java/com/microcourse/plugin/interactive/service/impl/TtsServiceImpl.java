@@ -428,8 +428,9 @@ public class TtsServiceImpl implements TtsService {
         }
 
         Files.write(audioPath, audioBytes);
-        log.info("[TTS] MiniMax 音频生成成功: path={}, size={} bytes", audioPath, audioBytes.length);
-        return 0;
+        int estimatedSec = Math.max(1, (int) (audioBytes.length / 16000));
+        log.info("[TTS] MiniMax 音频生成成功: path={}, size={} bytes, estimated={}s", audioPath, audioBytes.length, estimatedSec);
+        return estimatedSec;
     }
 
     @Override
@@ -805,7 +806,14 @@ public class TtsServiceImpl implements TtsService {
                         audioPath = compatPath;
                     } else {
                         Path mergedPath = basePath.resolve("section_" + sectionId + "_merged.mp3").normalize();
-                        audioPath = mergedPath;
+                        if (mergedPath.startsWith(basePath) && Files.exists(mergedPath)) {
+                            audioPath = mergedPath;
+                        } else {
+                            throw new NoSuchFileException(
+                                "音频文件不存在: sectionId=" + sectionId + ", pageNumber=" + pageNumber +
+                                " (尝试过 section_" + sectionId + "_page_" + pageNumber + ".mp3, " +
+                                "page_" + sectionId + ".mp3, section_" + sectionId + "_merged.mp3)");
+                        }
                     }
                 }
             } else if (sectionId != null) {
@@ -813,10 +821,24 @@ public class TtsServiceImpl implements TtsService {
                 if (newPath.startsWith(basePath) && Files.exists(newPath)) {
                     audioPath = newPath;
                 } else {
-                    audioPath = basePath.resolve("page_" + sectionId + ".mp3").normalize();
+                    Path compatPath = basePath.resolve("page_" + sectionId + ".mp3").normalize();
+                    if (compatPath.startsWith(basePath) && Files.exists(compatPath)) {
+                        audioPath = compatPath;
+                    } else {
+                        throw new NoSuchFileException(
+                            "音频文件不存在: sectionId=" + sectionId +
+                            " (尝试过 section_" + sectionId + "_merged.mp3, page_" + sectionId + ".mp3)");
+                    }
                 }
             } else {
-                audioPath = basePath.resolve("page_" + pageNumber + ".mp3").normalize();
+                Path pagePath = basePath.resolve("page_" + pageNumber + ".mp3").normalize();
+                if (!pagePath.startsWith(basePath)) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法的音频路径");
+                }
+                if (!Files.exists(pagePath)) {
+                    throw new NoSuchFileException("音频文件不存在: courseId=" + courseId + ", pageNumber=" + pageNumber);
+                }
+                audioPath = pagePath;
             }
             if (!audioPath.startsWith(basePath)) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法的音频路径");
