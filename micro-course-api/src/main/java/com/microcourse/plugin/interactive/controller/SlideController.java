@@ -165,6 +165,15 @@ public class SlideController {
         return R.ok(slideService.getPages(courseId, effectiveId));
     }
 
+    @GetMapping("/sections/{sectionId}/segment-audios")
+    @PreAuthorize("isAuthenticated()")
+    public R<List<com.microcourse.plugin.interactive.dto.SegmentAudioVO>> getSegmentAudios(
+            @PathVariable Long courseId,
+            @PathVariable Long sectionId) {
+        verifyAccess(courseId);
+        return R.ok(slideService.getSegmentAudios(courseId, sectionId));
+    }
+
     @GetMapping("/pages/{pageNumber}")
     @PreAuthorize("isAuthenticated()")
     public R<SlidePageVO> getPage(@PathVariable Long courseId,

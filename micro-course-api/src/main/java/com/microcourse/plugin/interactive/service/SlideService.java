@@ -1,5 +1,6 @@
 package com.microcourse.plugin.interactive.service;
 
+import com.microcourse.plugin.interactive.dto.SegmentAudioVO;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.dto.SlideVO;
@@ -20,6 +21,8 @@ public interface SlideService {
     List<SlideVO> listByCourseId(Long courseId);
 
     List<SlidePageVO> getPages(Long courseId, Long sectionId);
+
+    List<SegmentAudioVO> getSegmentAudios(Long courseId, Long sectionId);
 
     SlidePageVO getPage(Long courseId, Integer pageNumber);
 

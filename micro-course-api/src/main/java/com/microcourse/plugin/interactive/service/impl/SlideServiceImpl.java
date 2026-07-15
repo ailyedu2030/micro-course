@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.Course;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.dto.SegmentAudioVO;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.dto.SlideVO;
@@ -481,6 +482,15 @@ public class SlideServiceImpl implements SlideService {
     }
 
     @Override
+    public List<SegmentAudioVO> getSegmentAudios(Long courseId, Long sectionId) {
+        List<SlidePageVO> pages = getPages(courseId, sectionId);
+        return pages.stream()
+                .filter(p -> p.getSegmentAudio() != null)
+                .map(p -> p.getSegmentAudio())
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public SlidePageVO getPage(Long courseId, Integer pageNumber) {
         verifyOwner(courseId);
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
@@ -578,6 +588,15 @@ public class SlideServiceImpl implements SlideService {
         vo.setNarrationScript(p.getNarrationScript()); vo.setNarrationAudioUrl(p.getNarrationAudioUrl());
         vo.setAudioDuration(p.getAudioDuration()); vo.setNarrationStatus(p.getNarrationStatus());
         vo.setNarrationStatusText(SlidePageVO.narrationStatusText(p.getNarrationStatus()));
+        vo.setSegmentCount(p.getSegmentCount()); vo.setVoice(p.getVoice()); vo.setTtsModel(p.getTtsModel());
+        vo.setGeneratedAt(p.getGeneratedAt());
+        if (p.getNarrationAudioUrl() != null && !p.getNarrationAudioUrl().isBlank()) {
+            SegmentAudioVO seg = new SegmentAudioVO();
+            seg.setPageNumber(p.getPageNumber());
+            seg.setUrl(p.getNarrationAudioUrl());
+            seg.setDuration(p.getAudioDuration());
+            vo.setSegmentAudio(seg);
+        }
         vo.setCreatedAt(p.getCreatedAt()); vo.setUpdatedAt(p.getUpdatedAt());
         return vo;
     }
