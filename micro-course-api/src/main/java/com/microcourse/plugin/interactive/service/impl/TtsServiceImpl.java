@@ -264,7 +264,8 @@ public class TtsServiceImpl implements TtsService {
             throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED);
         }
 
-        return toPageVO(page);
+        SlidePage fresh = slidePageMapper.selectById(page.getId());
+        return toPageVO(fresh);
     }
 
     private void txSetPageStatus(Long pageId, String status) {

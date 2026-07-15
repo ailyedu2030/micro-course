@@ -77,25 +77,32 @@ public class AudioUploadServiceImpl implements AudioUploadService {
             Files.createDirectories(audioDir);
             file.transferTo(destPath.toFile());
             fileSize = Files.size(destPath);
-            duration = estimateDuration(fileSize);
+            duration = estimateDuration(originalFilename, fileSize);
         } catch (IOException e) {
             log.error("[AudioUpload] file save failed: courseId={}, sectionId={}", courseId, sectionId, e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件保存失败");
         }
 
-        transactionTemplate.executeWithoutResult(tx -> {
-            List<SlidePage> pages = getOrderedPages(courseId, sectionId);
-            LocalDateTime now = LocalDateTime.now();
-            for (SlidePage page : pages) {
-                page.setNarrationAudioUrl(audioUrl);
-                page.setAudioDuration(duration);
-                page.setNarrationStatus("AUDIO_READY");
-                page.setSegmentCount(pages.size());
-                page.setGeneratedAt(now);
-                page.setUpdatedAt(now);
-                slidePageMapper.updateById(page);
+        try {
+            transactionTemplate.executeWithoutResult(tx -> {
+                List<SlidePage> pages = getOrderedPages(courseId, sectionId);
+                LocalDateTime now = LocalDateTime.now();
+                for (SlidePage page : pages) {
+                    page.setNarrationAudioUrl(audioUrl);
+                    page.setAudioDuration(duration);
+                    page.setNarrationStatus("AUDIO_READY");
+                    page.setSegmentCount(pages.size());
+                    page.setGeneratedAt(now);
+                    page.setUpdatedAt(now);
+                    slidePageMapper.updateById(page);
+                }
+            });
+        } catch (Exception e) {
+            try { Files.deleteIfExists(destPath); } catch (IOException ex) {
+                log.warn("[AudioUpload] compensation failed to delete file: {} — {}", destPath, ex.getMessage());
             }
-        });
+            throw e;
+        }
 
         log.info("[AudioUpload] single uploaded: courseId={}, sectionId={}, size={}, duration={}s",
                 courseId, sectionId, fileSize, duration);
@@ -117,7 +124,6 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         }
 
         Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
-        List<Path> savedPaths = new ArrayList<>();
         long totalSize = 0;
         int totalDuration = 0;
 
@@ -130,6 +136,7 @@ public class AudioUploadServiceImpl implements AudioUploadService {
             pageMetas.put(page.getId(), new PageAudioMeta(segUrl, 0, null));
         }
 
+        List<Path> savedPaths = new ArrayList<>();
         try {
             Files.createDirectories(audioDir);
             for (int i = 0; i < pages.size(); i++) {
@@ -140,7 +147,7 @@ public class AudioUploadServiceImpl implements AudioUploadService {
                 file.transferTo(segPath.toFile());
                 savedPaths.add(segPath);
                 long segSize = Files.size(segPath);
-                int segDuration = estimateDuration(segSize);
+                int segDuration = estimateDuration(file.getOriginalFilename(), segSize);
                 totalSize += segSize;
                 totalDuration += segDuration;
                 pageMetas.get(page.getId()).duration = segDuration;
@@ -161,19 +168,28 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         final int segCount = files.size();
         final Map<Long, PageAudioMeta> finalPageMetas = new LinkedHashMap<>(pageMetas);
 
-        transactionTemplate.executeWithoutResult(tx -> {
-            LocalDateTime now = LocalDateTime.now();
-            for (SlidePage page : pages) {
-                PageAudioMeta meta = finalPageMetas.get(page.getId());
-                page.setNarrationAudioUrl(meta.audioUrl);
-                page.setAudioDuration(meta.duration);
-                page.setNarrationStatus("AUDIO_READY");
-                page.setSegmentCount(segCount);
-                page.setGeneratedAt(meta.generatedAt);
-                page.setUpdatedAt(now);
-                slidePageMapper.updateById(page);
+        try {
+            transactionTemplate.executeWithoutResult(tx -> {
+                LocalDateTime now = LocalDateTime.now();
+                for (SlidePage page : pages) {
+                    PageAudioMeta meta = finalPageMetas.get(page.getId());
+                    page.setNarrationAudioUrl(meta.audioUrl);
+                    page.setAudioDuration(meta.duration);
+                    page.setNarrationStatus("AUDIO_READY");
+                    page.setSegmentCount(segCount);
+                    page.setGeneratedAt(meta.generatedAt);
+                    page.setUpdatedAt(now);
+                    slidePageMapper.updateById(page);
+                }
+            });
+        } catch (Exception e) {
+            for (Path p : savedPaths) {
+                try { Files.deleteIfExists(p); } catch (IOException ex) {
+                    log.warn("[AudioUpload] compensation failed to delete file: {} — {}", p, ex.getMessage());
+                }
             }
-        });
+            throw e;
+        }
 
         String mergedUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId="
                 + sectionId + "&v=2&merged=true";
@@ -234,8 +250,15 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         }
     }
 
-    private int estimateDuration(long fileSizeBytes) {
-        return Math.max(1, (int) (fileSizeBytes / 16000));
+    private int estimateDuration(String filename, long fileSizeBytes) {
+        String ext = filename != null && filename.contains(".")
+                ? filename.substring(filename.lastIndexOf('.') + 1).toLowerCase() : "mp3";
+        long bytesPerSec = switch (ext) {
+            case "wav" -> 176400L;
+            case "m4a", "aac" -> 32000L;
+            default -> 16000L;
+        };
+        return Math.max(1, (int) (fileSizeBytes / bytesPerSec));
     }
 
     private static class PageAudioMeta {
