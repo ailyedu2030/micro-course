@@ -200,6 +200,9 @@ public class TtsServiceImpl implements TtsService {
                 ? "page_" + sectionId + ".mp3"
                 : "page_" + pageNumber + ".mp3";
 
+        int audioDuration = 0;
+        boolean audioGenerated = false;
+
         try {
             Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
             Files.createDirectories(audioDir);
@@ -207,26 +210,23 @@ public class TtsServiceImpl implements TtsService {
 
             txSetPageStatus(page.getId(), "AUDIO_GENERATING");
 
-            boolean success = false;
-            int audioDuration = 0;
-
             if (ttsLocalAvailable) {
                 try {
                     audioDuration = callQwen3TtsService(script, audioPath);
-                    success = true;
+                    audioGenerated = true;
                 } catch (Exception e) {
                     log.warn("[TTS] Qwen3-TTS 调用失败: {}，降级到 mmx", e.getMessage());
                     if (mmxAvailable) {
                         audioDuration = callMmxCli(script, audioPath);
-                        success = true;
+                        audioGenerated = true;
                     }
                 }
             } else if (mmxAvailable) {
                 audioDuration = callMmxCli(script, audioPath);
-                success = true;
+                audioGenerated = true;
             }
 
-            if (!success) {
+            if (!audioGenerated) {
                 txSetPageStatus(page.getId(), "TEACHER_EDITED");
                 throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED);
             }
@@ -236,26 +236,6 @@ public class TtsServiceImpl implements TtsService {
                 audioDuration = estimateDuration(fileSize);
             }
 
-            final int finalDuration = audioDuration;
-            final Long sid = sectionId;
-            transactionTemplate.execute(tx -> {
-                SlidePage fresh = slidePageMapper.selectById(page.getId());
-                if (fresh == null) return null;
-                String audioUrl = sid != null
-                        ? "/api/courses/" + courseId + "/slides/pages/" + pageNumber + "/audio?sectionId=" + sid
-                        : "/api/courses/" + courseId + "/slides/pages/" + pageNumber + "/audio";
-                fresh.setNarrationAudioUrl(audioUrl);
-                fresh.setAudioDuration(finalDuration);
-                fresh.setNarrationStatus("AUDIO_READY");
-                fresh.setUpdatedAt(LocalDateTime.now());
-                slidePageMapper.updateById(fresh);
-                return null;
-            });
-
-            log.info("TTS complete: courseId={}, page={}, sectionId={}, duration={}s, backend={}",
-                    courseId, pageNumber, sectionId, finalDuration,
-                    ttsLocalAvailable ? "qwen3-local" : "mmx");
-
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
@@ -264,8 +244,27 @@ public class TtsServiceImpl implements TtsService {
             throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED);
         }
 
-        SlidePage fresh = slidePageMapper.selectById(page.getId());
-        return toPageVO(fresh);
+        final int finalDuration = audioDuration;
+        final Long sid = sectionId;
+        transactionTemplate.executeWithoutResult(tx -> {
+            SlidePage p = slidePageMapper.selectById(page.getId());
+            if (p == null) return;
+            String audioUrl = sid != null
+                    ? "/api/courses/" + courseId + "/slides/pages/" + pageNumber + "/audio?sectionId=" + sid
+                    : "/api/courses/" + courseId + "/slides/pages/" + pageNumber + "/audio";
+            p.setNarrationAudioUrl(audioUrl);
+            p.setAudioDuration(finalDuration);
+            p.setNarrationStatus("AUDIO_READY");
+            p.setUpdatedAt(LocalDateTime.now());
+            slidePageMapper.updateById(p);
+        });
+
+        log.info("TTS complete: courseId={}, page={}, sectionId={}, duration={}s, backend={}",
+                courseId, pageNumber, sectionId, finalDuration,
+                ttsLocalAvailable ? "qwen3-local" : "mmx");
+
+        SlidePage updated = slidePageMapper.selectById(page.getId());
+        return toPageVO(updated);
     }
 
     private void txSetPageStatus(Long pageId, String status) {
@@ -413,10 +412,19 @@ public class TtsServiceImpl implements TtsService {
         }
 
         int len = audioHex.length();
+        if (len % 2 != 0) {
+            log.error("[TTS] MiniMax audio_hex 长度为 {} (奇数)，数据损坏: {}", len, audioHex.substring(0, Math.min(64, audioHex.length())));
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax 响应 audio_hex 长度为奇数，数据损坏");
+        }
         byte[] audioBytes = new byte[len / 2];
         for (int i = 0; i < len; i += 2) {
-            audioBytes[i / 2] = (byte) ((Character.digit(audioHex.charAt(i), 16) << 4)
-                    + Character.digit(audioHex.charAt(i + 1), 16));
+            int hi = Character.digit(audioHex.charAt(i), 16);
+            int lo = Character.digit(audioHex.charAt(i + 1), 16);
+            if (hi < 0 || lo < 0) {
+                log.error("[TTS] MiniMax audio_hex 包含非十六进制字符 at pos {}: '{}'", i, audioHex.charAt(i));
+                throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax 响应 audio_hex 包含无效字符，数据损坏");
+            }
+            audioBytes[i / 2] = (byte) ((hi << 4) | lo);
         }
 
         Files.write(audioPath, audioBytes);
@@ -691,10 +699,19 @@ public class TtsServiceImpl implements TtsService {
         }
 
         int len = audioHex.length();
+        if (len % 2 != 0) {
+            log.error("[TTS] audio_hex 长度为 {} (奇数)，数据损坏", len);
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax 响应 audio_hex 长度为奇数，数据损坏");
+        }
         byte[] audioBytes = new byte[len / 2];
         for (int i = 0; i < len; i += 2) {
-            audioBytes[i / 2] = (byte) ((Character.digit(audioHex.charAt(i), 16) << 4)
-                    + Character.digit(audioHex.charAt(i + 1), 16));
+            int hi = Character.digit(audioHex.charAt(i), 16);
+            int lo = Character.digit(audioHex.charAt(i + 1), 16);
+            if (hi < 0 || lo < 0) {
+                log.error("[TTS] audio_hex 包含非十六进制字符 at pos {}: '{}'", i, audioHex.charAt(i));
+                throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax 响应 audio_hex 包含无效字符，数据损坏");
+            }
+            audioBytes[i / 2] = (byte) ((hi << 4) | lo);
         }
 
         Files.write(audioPath, audioBytes);

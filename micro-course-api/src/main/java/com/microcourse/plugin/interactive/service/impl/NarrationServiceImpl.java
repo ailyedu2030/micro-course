@@ -139,14 +139,18 @@ public class NarrationServiceImpl implements NarrationService {
 
         SlidePage page = getPage(courseId, pageNumber, sectionId);
         deleteOldAudioFile(courseId, pageNumber);
-        page.setNarrationScript(narrationScript);
-        page.setNarrationStatus("TEACHER_EDITED");
-        page.setNarrationAudioUrl(null);
-        page.setAudioDuration(null);
-        page.setUpdatedAt(LocalDateTime.now());
-        slidePageMapper.updateById(page);
 
-        return toPageVO(page);
+        transactionTemplate.executeWithoutResult(tx -> {
+            page.setNarrationScript(narrationScript);
+            page.setNarrationStatus("TEACHER_EDITED");
+            page.setNarrationAudioUrl(null);
+            page.setAudioDuration(null);
+            page.setUpdatedAt(LocalDateTime.now());
+            slidePageMapper.updateById(page);
+        });
+
+        SlidePage updated = slidePageMapper.selectById(page.getId());
+        return toPageVO(updated);
     }
 
     @Override
