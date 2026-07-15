@@ -118,7 +118,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void writeErrorResponse(HttpServletResponse response, ErrorCode errorCode, String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setStatus(errorCode.getHttpStatus());
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write(objectMapper.writeValueAsString(R.fail(errorCode.getCode(), message)));
     }
