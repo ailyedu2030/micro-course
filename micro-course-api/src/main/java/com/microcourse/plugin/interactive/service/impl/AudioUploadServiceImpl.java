@@ -148,7 +148,9 @@ public class AudioUploadServiceImpl implements AudioUploadService {
             }
         } catch (IOException e) {
             for (Path p : savedPaths) {
-                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                try { Files.deleteIfExists(p); } catch (IOException cleanupEx) {
+                    log.warn("[AudioUpload] cleanup failed to delete partial file: {} — {}", p, cleanupEx.getMessage());
+                }
             }
             log.error("[AudioUpload] batch file save failed: courseId={}, sectionId={}", courseId, sectionId, e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "分段音频文件保存失败");

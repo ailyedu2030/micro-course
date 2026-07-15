@@ -62,7 +62,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
-@Transactional(rollbackFor = Exception.class)
 public class TtsServiceImpl implements TtsService {
 
     private static final Logger log = LoggerFactory.getLogger(TtsServiceImpl.class);
@@ -453,6 +452,7 @@ public class TtsServiceImpl implements TtsService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CompletableFuture<TtsStatusResponse> generateSection(Long courseId, Long sectionId,
                                                                String voice, String model,
                                                                Double speed, boolean splitByPage) {
@@ -583,6 +583,7 @@ public class TtsServiceImpl implements TtsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public TtsStatusResponse getSectionTtsStatus(Long courseId, Long sectionId, String taskId) {
         TtsTaskState state = taskStates.get(taskId);
         if (state == null) {
@@ -595,6 +596,7 @@ public class TtsServiceImpl implements TtsService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public List<TtsStatusResponse> generateSectionsBatch(Long courseId, List<Long> sectionIds,
                                                          String voice, String model, Double speed,
                                                          boolean splitByPage) {

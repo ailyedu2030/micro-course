@@ -405,6 +405,8 @@ function goTo(index) {
   audioProgress.value = 0
   autoCountdown.value = 0
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+  clearPendingTimer()
+  pendingStartTime.value = null
   nextTick(async () => {
     await loadAudio(index)
     preloadAdjacentImages(index)
@@ -424,6 +426,7 @@ async function loadAudio(index) {
 
   cleanAudioBlobCache(index)
   clearTimeout(autoAdvanceTimer)
+  clearPendingTimer()
   interactiveWaiting.value = false
 
   const gen = ++currentAudioSrcGen.value
