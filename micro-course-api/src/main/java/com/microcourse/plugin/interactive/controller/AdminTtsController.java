@@ -6,15 +6,15 @@ import com.microcourse.plugin.interactive.dto.BatchTtsResponse;
 import com.microcourse.plugin.interactive.dto.TtsStatusResponse;
 import com.microcourse.plugin.interactive.service.TtsService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ExecutorService;
 
 @RestController
@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 @ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
 public class AdminTtsController {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminTtsController.class);
     private final TtsService ttsService;
     private final ExecutorService slideRenderExecutor;
 
@@ -68,26 +69,22 @@ public class AdminTtsController {
     private void doBatchAsync(String batchTaskId, Long courseId, List<Long> sectionIds,
                             String voice, String model, Double speed, boolean splitByPage) {
         slideRenderExecutor.submit(() -> {
-            AtomicInteger completed = new AtomicInteger(0);
-            int total = sectionIds.size();
-
             for (Long sectionId : sectionIds) {
                 try {
-                    CompletableFuture<TtsStatusResponse> future = ttsService.generateSection(
-                            courseId, sectionId, voice, model, speed, splitByPage);
-                    TtsStatusResponse result = future.join();
+                    TtsStatusResponse result = ttsService.generateSection(
+                            courseId, sectionId, voice, model, speed, splitByPage).join();
 
                     BatchTaskState state = batchTasks.get(batchTaskId);
                     if (state != null) {
                         state.updateSection(sectionId, result.getTaskId(), result.getStatus());
                     }
                 } catch (Exception e) {
+                    log.warn("[BatchTTS] section {} failed: {}", sectionId, e.getMessage());
                     BatchTaskState state = batchTasks.get(batchTaskId);
                     if (state != null) {
                         state.updateSection(sectionId, null, "failed");
                     }
                 }
-                completed.incrementAndGet();
             }
 
             BatchTaskState state = batchTasks.get(batchTaskId);

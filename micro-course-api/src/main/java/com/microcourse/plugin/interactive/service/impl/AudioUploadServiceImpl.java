@@ -69,16 +69,26 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
         String mergedFileName = "section_" + sectionId + "_merged.mp3";
         Path destPath = audioDir.resolve(mergedFileName);
+        String audioUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId=" + sectionId + "&v=2";
+
         long fileSize;
         int duration;
-        String audioUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId=" + sectionId + "&v=2";
+        try {
+            Files.createDirectories(audioDir);
+            file.transferTo(destPath.toFile());
+            fileSize = Files.size(destPath);
+            duration = estimateDuration(fileSize);
+        } catch (IOException e) {
+            log.error("[AudioUpload] file save failed: courseId={}, sectionId={}", courseId, sectionId, e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件保存失败");
+        }
 
         transactionTemplate.executeWithoutResult(tx -> {
             List<SlidePage> pages = getOrderedPages(courseId, sectionId);
             LocalDateTime now = LocalDateTime.now();
             for (SlidePage page : pages) {
                 page.setNarrationAudioUrl(audioUrl);
-                page.setAudioDuration(0);
+                page.setAudioDuration(duration);
                 page.setNarrationStatus("AUDIO_READY");
                 page.setSegmentCount(pages.size());
                 page.setGeneratedAt(now);
@@ -86,23 +96,6 @@ public class AudioUploadServiceImpl implements AudioUploadService {
                 slidePageMapper.updateById(page);
             }
         });
-
-        try {
-            Files.createDirectories(audioDir);
-            file.transferTo(destPath.toFile());
-            fileSize = Files.size(destPath);
-            duration = estimateDuration(fileSize);
-            transactionTemplate.executeWithoutResult(tx -> {
-                List<SlidePage> pages = getOrderedPages(courseId, sectionId);
-                for (SlidePage page : pages) {
-                    page.setAudioDuration(duration);
-                    slidePageMapper.updateById(page);
-                }
-            });
-        } catch (IOException e) {
-            log.error("[AudioUpload] file save failed: courseId={}, sectionId={}", courseId, sectionId, e);
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件保存失败");
-        }
 
         log.info("[AudioUpload] single uploaded: courseId={}, sectionId={}, size={}, duration={}s",
                 courseId, sectionId, fileSize, duration);
@@ -137,20 +130,6 @@ public class AudioUploadServiceImpl implements AudioUploadService {
             pageMetas.put(page.getId(), new PageAudioMeta(segUrl, 0, null));
         }
 
-        transactionTemplate.executeWithoutResult(tx -> {
-            LocalDateTime now = LocalDateTime.now();
-            for (SlidePage page : pages) {
-                PageAudioMeta meta = pageMetas.get(page.getId());
-                page.setNarrationAudioUrl(meta.audioUrl);
-                page.setAudioDuration(0);
-                page.setNarrationStatus("AUDIO_READY");
-                page.setSegmentCount(files.size());
-                page.setGeneratedAt(now);
-                page.setUpdatedAt(now);
-                slidePageMapper.updateById(page);
-            }
-        });
-
         try {
             Files.createDirectories(audioDir);
             for (int i = 0; i < pages.size(); i++) {
@@ -181,6 +160,7 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         final Map<Long, PageAudioMeta> finalPageMetas = new LinkedHashMap<>(pageMetas);
 
         transactionTemplate.executeWithoutResult(tx -> {
+            LocalDateTime now = LocalDateTime.now();
             for (SlidePage page : pages) {
                 PageAudioMeta meta = finalPageMetas.get(page.getId());
                 page.setNarrationAudioUrl(meta.audioUrl);
@@ -188,7 +168,7 @@ public class AudioUploadServiceImpl implements AudioUploadService {
                 page.setNarrationStatus("AUDIO_READY");
                 page.setSegmentCount(segCount);
                 page.setGeneratedAt(meta.generatedAt);
-                page.setUpdatedAt(LocalDateTime.now());
+                page.setUpdatedAt(now);
                 slidePageMapper.updateById(page);
             }
         });
