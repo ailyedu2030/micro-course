@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 279 | Vue 视图数: 60 | Controller 数: 70 | API 文件数: 45
+> 实体数: 279 | Vue 视图数: 60 | Controller 数: 71 | API 文件数: 45
 
 ---
 
@@ -110,7 +110,7 @@
 
 | 30 | ChapterAssignmentItem | `teacherId` () | ? | ❌ UNMANAGED | No controller or list page for User | **需修复** |
 
-| 31 | ChapterCreateRequest | `courseId` () | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
+| 31 | ChapterCreateRequest | `courseId` (服务层 validateCourseId() 兜底处理 null。) | ? | ❌ UNMANAGED | No controller or list page for Course | **需修复** |
 
 | 32 | ChapterOfflineSession | `chapterId` () | ? | ❌ UNMANAGED | No controller or list page for CourseChapter | **需修复** |
 
@@ -803,6 +803,8 @@
 
 | AdminStats | /api/admin/stats | 8 | - |
 
+| Alias | /api/courses/{courseId} | 3 | - |
+
 | Auth | /api/auth | 13 | - |
 
 | Badge | /api/badges | 3 | - |
@@ -1018,7 +1020,7 @@
 
 | ChapterAssignmentItem | 8 | 0 |
 
-| ChapterCreateRequest | 9 | 0 |
+| ChapterCreateRequest | 9 | 1 |
 
 | ChapterOfflineSession | 12 | 0 |
 

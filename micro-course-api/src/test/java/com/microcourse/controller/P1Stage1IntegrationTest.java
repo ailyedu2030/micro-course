@@ -402,6 +402,47 @@ public class P1Stage1IntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // ===== P1 Stage 4: 路径别名 =====
+
+    @Test
+    @DisplayName("POST /api/courses/{cid}/chapters alias 创建章成功")
+    void alias_ChapterCreate_Success() throws Exception {
+        Long courseId = createCourse();
+        String body = """
+                {"title": "别名测试章", "sortOrder": 1}
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/chapters")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("别名测试章"))
+                .andExpect(jsonPath("$.data.courseId").value(courseId));
+    }
+
+    @Test
+    @DisplayName("POST /api/courses/{cid}/sections/{sid}/html alias 接受文件上传")
+    void alias_HtmlUpload_AcceptsFile() throws Exception {
+        Long courseId = createCourse();
+        Long chId = createChapter(courseId);
+        Long sectionId = createSection(courseId, chId);
+        byte[] htmlBytes = "<html><body>test</body></html>".getBytes();
+
+        mockMvc.perform(multipart("/api/courses/" + courseId + "/sections/" + sectionId + "/html")
+                        .file("file", htmlBytes)
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("POST /api/courses/{cid}/sections/{sid}/ppt alias 学生无权限")
+    void alias_PptUpload_StudentForbidden() throws Exception {
+        mockMvc.perform(multipart("/api/courses/1/sections/1/ppt")
+                        .file("file", "dummy".getBytes())
+                        .header("Authorization", "Bearer " + loginAs("student", "student123")))
+                .andExpect(status().isForbidden());
+    }
+
     // helpers
     private Long createCourse() throws Exception {
         String resp = mockMvc.perform(post("/api/courses")

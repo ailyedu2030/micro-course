@@ -8,7 +8,9 @@ public class ChapterCreateRequest {
     @NotBlank(message = "章节标题不能为空")
     private String title;
 
-    @NotNull(message = "课程ID不能为空")
+    // Stage 4: 移除了 @NotNull,因为 AliasController 从 path 注入 courseId。
+    // @Valid 校验在方法体之前,path 参数设置 courseId 前已校验失败。
+    // 服务层 validateCourseId() 兜底处理 null。
     private Long courseId;
 
     private String description;
