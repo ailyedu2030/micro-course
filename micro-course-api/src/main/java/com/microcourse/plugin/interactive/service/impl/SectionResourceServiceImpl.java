@@ -59,6 +59,11 @@ public class SectionResourceServiceImpl implements SectionResourceService {
     @Override
     public QuizVO createQuiz(Long courseId, Long sectionId, CreateQuizRequest request) {
         verifyOwnership(courseId, sectionId);
+        // 交叉审查: correctIndex 必须在 options 范围内
+        if (request.getCorrectIndex() < 0 || request.getCorrectIndex() >= request.getOptions().size()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                "correctIndex(" + request.getCorrectIndex() + ") 超出 options 范围[0, " + request.getOptions().size() + ")");
+        }
         try {
             SectionQuiz quiz = new SectionQuiz();
             quiz.setSectionId(sectionId);
