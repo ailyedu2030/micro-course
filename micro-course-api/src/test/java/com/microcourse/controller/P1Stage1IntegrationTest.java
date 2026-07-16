@@ -306,6 +306,62 @@ public class P1Stage1IntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // ===== P1 Stage 3: training + final-project =====
+
+    @Test
+    @DisplayName("POST /courses/{cid}/trainings 创建实训成功")
+    void training_Create_Success() throws Exception {
+        Long courseId = createCourse();
+        String body = """
+                {"no": 1, "chapter": "第 3 章后", "title": "数据清洗实战", "hours": 2, "submissionForm": "清洗报告+截图"}
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/trainings")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.no").value(1))
+                .andExpect(jsonPath("$.data.hours").value(2));
+    }
+
+    @Test
+    @DisplayName("POST /courses/{cid}/final-project 创建期末项目成功")
+    void finalProject_Create_Success() throws Exception {
+        Long courseId = createCourse();
+        String body = """
+                {"title": "AI 工具综合应用", "phases": ["选题","中期","终期"], "finalSubmissionForm": "完整报告+PPT"}
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/final-project")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("AI 工具综合应用"));
+    }
+
+    @Test
+    @DisplayName("POST /courses/{cid}/trainings 学生无权限")
+    void training_StudentForbidden() throws Exception {
+        String body = """
+                {"no": 1, "title": "x", "hours": 2}
+                """;
+        mockMvc.perform(post("/api/courses/1/trainings")
+                        .header("Authorization", "Bearer " + loginAs("student", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("POST /courses/{cid}/trainings 缺必填字段返回400")
+    void training_MissingFields_Rejected() throws Exception {
+        mockMvc.perform(post("/api/courses/1/trainings")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"no\":1}"))
+                .andExpect(status().isBadRequest());
+    }
+
     // helpers
     private Long createCourse() throws Exception {
         String resp = mockMvc.perform(post("/api/courses")

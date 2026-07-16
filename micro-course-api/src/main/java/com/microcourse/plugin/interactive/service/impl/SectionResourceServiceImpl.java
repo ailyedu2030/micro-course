@@ -28,6 +28,8 @@ public class SectionResourceServiceImpl implements SectionResourceService {
     private final SectionQuizMapper quizMapper;
     private final SectionTaskMapper taskMapper;
     private final SectionReflectionMapper reflectionMapper;
+    private final CourseTrainingMapper trainingMapper;
+    private final CourseFinalProjectMapper finalProjectMapper;
     private final CourseRepository courseRepository;
     private final CourseSectionRepository sectionRepository;
     private final ObjectMapper objectMapper;
@@ -35,12 +37,16 @@ public class SectionResourceServiceImpl implements SectionResourceService {
     public SectionResourceServiceImpl(SectionQuizMapper quizMapper,
                                        SectionTaskMapper taskMapper,
                                        SectionReflectionMapper reflectionMapper,
+                                       CourseTrainingMapper trainingMapper,
+                                       CourseFinalProjectMapper finalProjectMapper,
                                        CourseRepository courseRepository,
                                        CourseSectionRepository sectionRepository,
                                        ObjectMapper objectMapper) {
         this.quizMapper = quizMapper;
         this.taskMapper = taskMapper;
         this.reflectionMapper = reflectionMapper;
+        this.trainingMapper = trainingMapper;
+        this.finalProjectMapper = finalProjectMapper;
         this.courseRepository = courseRepository;
         this.sectionRepository = sectionRepository;
         this.objectMapper = objectMapper;
@@ -79,6 +85,51 @@ public class SectionResourceServiceImpl implements SectionResourceService {
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "自测题创建失败: " + e.getMessage());
         }
+    }
+
+    private void verifyCourseOwnership(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId()))
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+    }
+
+    @Override
+    public CourseTraining createTraining(Long courseId, CreateTrainingRequest request) {
+        verifyCourseOwnership(courseId);
+        CourseTraining t = new CourseTraining();
+        t.setCourseId(courseId);
+        t.setNo(request.getNo());
+        t.setChapter(request.getChapter());
+        t.setTitle(request.getTitle());
+        t.setHours(request.getHours());
+        t.setSubmissionForm(request.getSubmissionForm());
+        t.setCreatedAt(LocalDateTime.now());
+        trainingMapper.insert(t);
+        log.info("[SectionResource] training created: courseId={}, no={}", courseId, request.getNo());
+        return t;
+    }
+
+    @Override
+    public CourseFinalProject createFinalProject(Long courseId, CreateFinalProjectRequest request) {
+        verifyCourseOwnership(courseId);
+        CourseFinalProject fp = new CourseFinalProject();
+        fp.setCourseId(courseId);
+        fp.setTitle(request.getTitle());
+        try {
+            if (request.getPhases() != null && !request.getPhases().isEmpty()) {
+                fp.setPhases(objectMapper.writeValueAsString(request.getPhases()));
+            } else {
+                fp.setPhases("[\"选题\",\"中期\",\"终期\"]");  // 默认值
+            }
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "phases 序列化失败: " + e.getMessage());
+        }
+        fp.setFinalSubmissionForm(request.getFinalSubmissionForm());
+        fp.setCreatedAt(LocalDateTime.now());
+        finalProjectMapper.insert(fp);
+        log.info("[SectionResource] final project created: courseId={}", courseId);
+        return fp;
     }
 
     private QuizVO toQuizVO(SectionQuiz quiz) {
