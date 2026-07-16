@@ -443,6 +443,87 @@ public class P1Stage1IntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    // ===== P1 Stage 5: 幂等性 + 批量化 =====
+
+    @Test
+    @DisplayName("GET /api/courses?hid=xxx 幂等性查询成功")
+    void idempotent_GetByHid_Success() throws Exception {
+        Long courseId = createCourse();
+        // 先创建课程,设 hid
+        String updateBody = "{\"hid\":\"p1-idempotent-test-hid\"}";
+        mockMvc.perform(put("/api/courses/" + courseId)
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/courses?hid=p1-idempotent-test-hid")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hid").value("p1-idempotent-test-hid"));
+    }
+
+    @Test
+    @DisplayName("GET /api/courses?hid=xxx 不存在的 hid 返回404")
+    void idempotent_GetByHid_NotFound() throws Exception {
+        mockMvc.perform(get("/api/courses?hid=non-existent-hid")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /api/courses/{cid}/chapters/batch 批量创建章成功")
+    void batch_Chapters_Create_Success() throws Exception {
+        Long courseId = createCourse();
+        String body = """
+                [
+                  {"title":"批量章1","sortOrder":1},
+                  {"title":"批量章2","sortOrder":2}
+                ]
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/chapters/batch")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].title").value("批量章1"))
+                .andExpect(jsonPath("$.data[1].title").value("批量章2"));
+    }
+
+    @Test
+    @DisplayName("POST /api/courses/{cid}/chapters/{chId}/sections/batch 批量创建节成功")
+    void batch_Sections_Create_Success() throws Exception {
+        Long courseId = createCourse();
+        Long chId = createChapter(courseId);
+        String body = """
+                [
+                  {"title":"批量节1","sectionType":"VIDEO"},
+                  {"title":"批量节2","sectionType":"VIDEO"}
+                ]
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/chapters/" + chId + "/sections/batch")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].title").value("批量节1"))
+                .andExpect(jsonPath("$.data[1].title").value("批量节2"));
+    }
+
+    @Test
+    @DisplayName("POST /api/courses/{cid}/chapters/batch 空数组返回空列表")
+    void batch_Chapters_Empty_ReturnsEmpty() throws Exception {
+        Long courseId = createCourse();
+        mockMvc.perform(post("/api/courses/" + courseId + "/chapters/batch")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
     // helpers
     private Long createCourse() throws Exception {
         String resp = mockMvc.perform(post("/api/courses")
