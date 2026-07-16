@@ -25,7 +25,7 @@ public class CourseSection {
 
     // ===== P1 Stage 1: 小节级元信息(Trae SKILL.md 模块 3.3) =====
     @TableField("no") private String no;
-    @TableField("learning_objectives") private String learningObjectivesJson;
+    @TableField("learning_objectives") private String learningObjectives;
     @TableField("anchor_scenario_step") private String anchorScenarioStep;
     @TableField("core_competency") private String coreCompetency;
     @TableField("courseware_type") private String coursewareType;
@@ -65,8 +65,8 @@ public class CourseSection {
     // ===== P1 Stage 1 getters/setters =====
     public String getNo() { return no; }
     public void setNo(String no) { this.no = no; }
-    public String getLearningObjectivesJson() { return learningObjectivesJson; }
-    public void setLearningObjectivesJson(String learningObjectivesJson) { this.learningObjectivesJson = learningObjectivesJson; }
+    public String getLearningObjectives() { return learningObjectives; }
+    public void setLearningObjectives(String learningObjectives) { this.learningObjectives = learningObjectives; }
     public String getAnchorScenarioStep() { return anchorScenarioStep; }
     public void setAnchorScenarioStep(String anchorScenarioStep) { this.anchorScenarioStep = anchorScenarioStep; }
     public String getCoreCompetency() { return coreCompetency; }

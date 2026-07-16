@@ -78,13 +78,13 @@ public class SectionServiceImpl implements SectionService {
         if (req.getAudioStrategy() != null) section.setAudioStrategy(req.getAudioStrategy());
         if (req.getLearningObjectives() != null && !req.getLearningObjectives().isEmpty()) {
             try {
-                section.setLearningObjectivesJson(new com.fasterxml.jackson.databind.ObjectMapper()
+                section.setLearningObjectives(new com.fasterxml.jackson.databind.ObjectMapper()
                     .writeValueAsString(req.getLearningObjectives()));
             } catch (Exception e) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "learningObjectives 序列化失败: " + e.getMessage());
             }
         } else {
-            section.setLearningObjectivesJson("[]");
+            section.setLearningObjectives("[]");
         }
 
         sectionRepo.insert(section);
@@ -115,7 +115,7 @@ public class SectionServiceImpl implements SectionService {
         if (req.getAudioStrategy() != null) section.setAudioStrategy(req.getAudioStrategy());
         if (req.getLearningObjectives() != null && !req.getLearningObjectives().isEmpty()) {
             try {
-                section.setLearningObjectivesJson(new com.fasterxml.jackson.databind.ObjectMapper()
+                section.setLearningObjectives(new com.fasterxml.jackson.databind.ObjectMapper()
                     .writeValueAsString(req.getLearningObjectives()));
             } catch (Exception e) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "learningObjectives 序列化失败: " + e.getMessage());
@@ -184,10 +184,10 @@ public class SectionServiceImpl implements SectionService {
         dto.setCoreCompetency(s.getCoreCompetency());
         dto.setCoursewareType(s.getCoursewareType());
         dto.setAudioStrategy(s.getAudioStrategy());
-        if (s.getLearningObjectivesJson() != null && !s.getLearningObjectivesJson().isBlank()) {
+        if (s.getLearningObjectives() != null && !s.getLearningObjectives().isBlank()) {
             try {
                 dto.setLearningObjectives(new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readValue(s.getLearningObjectivesJson(), java.util.List.class));
+                    .readValue(s.getLearningObjectives(), java.util.List.class));
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(SectionServiceImpl.class)
                     .warn("[SectionDTO] learningObjectives 反序列化失败: {}", e.getMessage());
