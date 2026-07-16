@@ -1921,6 +1921,7 @@
 
 | 版本 | 日期 | 说明 | 作者 |
 |------|------|------|------|
+| v1.3 | 2026-07-17 | 增量 Phase 11.6（R4 修复）：新增 POST /api/courses/{courseId}/sections/{sectionId}/audio/batch 批量上传端点（15 段）、GET /api/courses/{courseId}/slides/pages 响应增加 segmentAudios 数组 + htmlContent 占位符动态替换（`AUDIO_SEG_NN_URL` → 真实 URL）、slide_pages.segment_count 自动设置。修复 multipart 临时目录持久化（V193 migration 更新 section 573 旧版 HTML） | opencode |
 | v1.2 | 2026-07-10 | 增量 Phase 11.5（HTML 互动课件扩展）：新增 /api/courses/{courseId}/slides/upload 端点的 HTML 分支、HTML 错误码 16009-16012、slide_pages.content_type/html_content 字段说明 | 架构师 |
 | v1.1 | 2026-06-11 | 修复分页格式（统一为 items）、完善 JWT Payload 结构、预留讨论区 API | 架构师 |
 | v1.0 | 2026-06-11 | 初始版本，覆盖 Phase 1 共 24 个 API | 架构师 |
@@ -2011,6 +2012,107 @@ HTML 直传响应中 `totalPages=1, status=2`（已就绪，无需渲染）。
 **slide_pages.htmlContent 字段**（V177 新增）：
 - 类型：TEXT（可空）
 - 说明：仅 contentType='HTML_DIRECT' 时有值；已通过 HtmlSanitizer 消毒
+
+---
+
+## Phase 11.6: HTML 单页多段音频架构（R4 修复 - 2026-07-17）
+
+> 本节记录 R3 验收 4/10 FAIL → R4 7/7 PASS 的修复内容。
+> 根因：Spring Boot multipart 临时目录默认走 `${java.io.tmpdir}/tomcat.PORT.<random>/work/...`，
+> 容器重启后 random 后缀变化 + `MultipartFile.transferTo()` 把相对路径目标错位拼到 multipart.location 下，
+> 导致 `FileNotFoundException`，15 段批量上传全部失败。
+> 修复：multipart.location 持久化 + `Files.copy(inputStream, ...)` 替代 `transferTo()` + V193 migration 更新旧 HTML。
+
+### POST /api/courses/{courseId}/sections/{sectionId}/audio/batch — 批量上传分段音频
+
+**功能**：教师上传 15 段 HTML 课件分段音频。后端按文件名 `file_1..file_15` 接收，原子写入磁盘，DB 自动更新 `slide_pages.narration_audio_url/segment_count=15`。
+
+**权限**：TEACHER（课程所有者）或 ADMIN；需 `plugin.interactive.enabled=true`
+
+**请求**：`multipart/form-data`
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| file_1..file_15 | file | ✅ | .mp3/.wav/.m4a（每段 ≤50MB，共 15 段） |
+
+**响应**（200 OK）：
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "audioUrl": null,
+    "duration": 86,
+    "audioSize": 1388724,
+    "audioFormat": "mp3",
+    "sampleRate": 32000,
+    "segmentCount": 15,
+    "mergedAudioUrl": "/api/courses/52/slides/pages/1/audio?sectionId=573&v=2&merged=true&token=418e2d419d7644bda0af3268e3ac574a"
+  }
+}
+```
+
+**关键字段**：
+- `audioUrl`：单文件上传时有值；批量上传时为 null（由 `mergedAudioUrl` 替代）
+- `mergedAudioUrl`：批量上传的总入口 URL，含 `merged=true` 和 token，供前端 fallback
+- `segmentCount`：固定 15，与上传文件数一致
+
+**错误码**：
+
+| code | http | 含义 |
+|------|------|------|
+| 9005 | 400 | 分段音频文件保存失败（磁盘 IO 错误 / multipart 临时目录不存在） |
+| 21001 | 401 | API Key 无效（X-API-Key 头） |
+| 1005 | 401 | 未登录（无 X-API-Key + 无 JWT） |
+
+### GET /api/courses/{courseId}/slides/pages?sectionId=N — 响应增强
+
+**R4 增量**：响应 `data[]` 中每页新增以下字段，且 `htmlContent` 自动占位符替换：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| **segmentAudios** | `SegmentAudioVO[]` | 当 `segmentCount > 1` 时派生 15 条 URL，URL 从 `narrationAudioUrl` 提取 token 后按 `/pages/N/audio` 模板重写 |
+| **segmentAudio** | `SegmentAudioVO` | 单文件上传时使用（URL + duration） |
+| **htmlContent** | string | 当 `contentType='HTML_DIRECT'` 且含 `AUDIO_SEG_NN_URL` 占位符时，**自动替换为真实 URL** |
+
+**SegmentAudioVO 结构**：
+```json
+{
+  "pageNumber": 1,
+  "url": "/api/courses/52/slides/pages/1/audio?sectionId=573&v=2&token=418e2d419d7644bda0af3268e3ac574a",
+  "duration": 86
+}
+```
+
+**占位符替换规则**（服务端 toPageVO 触发）：
+- 模式：`AUDIO_SEG_NN_URL`（NN 为 01-15，左补零）
+- 替换为：`{baseUrlPrefix}/pages/{NN}{baseUrlSuffix}`
+- 例：`AUDIO_SEG_03_URL` → `/api/courses/52/slides/pages/3?sectionId=573&v=2&token=...`
+- 触发条件：`contentType='HTML_DIRECT' && htmlContent.contains("AUDIO_SEG_") && narrationAudioUrl != null`
+
+### 数据结构参考
+
+**slide_pages.segment_count 字段**（V191 新增，R4 自动更新）：
+- 类型：INTEGER（可空）
+- 说明：批量上传成功后由 `AudioUploadServiceImpl.uploadBatch()` line 201 自动设置 `setSegmentCount(segCount)`（=上传文件数）
+- 历史问题：R3 时 DB 存 `segmentCount=1`，导致 `toPageVO()` line 638 `segCount > 1` 不触发，`segmentAudios` 永远 null
+
+### 部署变更（影响生产环境）
+
+| 文件 | 变更 | 原因 |
+|------|------|------|
+| `application.yml` | `spring.servlet.multipart.location: /data/uploads/tmp` | 持久化 multipart 临时目录 |
+| `application.yml` | `spring.flyway.placeholder-replacement: false` | V193 SQL 含 HTML 内嵌的 `${demoIdx + 1}` JS 模板字符串 |
+| `Dockerfile` | `mkdir -p /data/uploads/tmp` | 配合 multipart.location |
+| `docker-compose.yml` | `+slides_data:/data/slides` + `+multipart_tmp:/data/uploads/tmp` volume | 容器重启后音频文件不丢失 |
+| `V193__update_section_573_html.sql` | 新建，UPDATE `slide_pages.html_content` 为完整 50920 字节 | 替换旧的 41613 字节无占位符 HTML |
+| `AudioUploadServiceImpl.java` | `file.transferTo()` → `Files.copy(inputStream, ...)` | 修复 Spring Part.write() 相对路径错位 bug |
+
+### 验收（同一脚本对比）
+
+- **R3 基线**：4/10 FAIL — `99-元数据/baselines/R3/` 留存
+- **R4 实测**：7/7 PASS（本地容器）— `_r3_verify_local.sh` 输出见部署 commit
+- **R4 部署后**：Trae 端 `_r3_verify.sh`（打生产 URL）必须 10/10 PASS 才算修复闭环
 
 ---
 
