@@ -20,15 +20,18 @@ public class SectionServiceImpl implements SectionService {
     private final CourseChapterRepository chapterRepo;
     private final CourseRepository courseRepo;
     private final CourseSlideMapper courseSlideMapper;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     public SectionServiceImpl(CourseSectionRepository sectionRepo,
                               CourseChapterRepository chapterRepo,
                               CourseRepository courseRepo,
-                              CourseSlideMapper courseSlideMapper) {
+                              CourseSlideMapper courseSlideMapper,
+                              com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.sectionRepo = sectionRepo;
         this.chapterRepo = chapterRepo;
         this.courseRepo = courseRepo;
         this.courseSlideMapper = courseSlideMapper;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -78,7 +81,7 @@ public class SectionServiceImpl implements SectionService {
         if (req.getAudioStrategy() != null) section.setAudioStrategy(req.getAudioStrategy());
         if (req.getLearningObjectives() != null && !req.getLearningObjectives().isEmpty()) {
             try {
-                section.setLearningObjectives(new com.fasterxml.jackson.databind.ObjectMapper()
+                section.setLearningObjectives(objectMapper
                     .writeValueAsString(req.getLearningObjectives()));
             } catch (Exception e) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "learningObjectives 序列化失败: " + e.getMessage());
@@ -115,7 +118,7 @@ public class SectionServiceImpl implements SectionService {
         if (req.getAudioStrategy() != null) section.setAudioStrategy(req.getAudioStrategy());
         if (req.getLearningObjectives() != null && !req.getLearningObjectives().isEmpty()) {
             try {
-                section.setLearningObjectives(new com.fasterxml.jackson.databind.ObjectMapper()
+                section.setLearningObjectives(objectMapper
                     .writeValueAsString(req.getLearningObjectives()));
             } catch (Exception e) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "learningObjectives 序列化失败: " + e.getMessage());
@@ -186,7 +189,7 @@ public class SectionServiceImpl implements SectionService {
         dto.setAudioStrategy(s.getAudioStrategy());
         if (s.getLearningObjectives() != null && !s.getLearningObjectives().isBlank()) {
             try {
-                dto.setLearningObjectives(new com.fasterxml.jackson.databind.ObjectMapper()
+                dto.setLearningObjectives(objectMapper
                     .readValue(s.getLearningObjectives(), java.util.List.class));
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(SectionServiceImpl.class)

@@ -67,8 +67,6 @@ import java.util.stream.Collectors;
 public class CourseAdminServiceImpl implements CourseAdminService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CourseAdminServiceImpl.class);
-    private static final com.fasterxml.jackson.databind.ObjectMapper STATIC_MAPPER =
-        new com.fasterxml.jackson.databind.ObjectMapper();
 
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
@@ -88,6 +86,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final SlidePageMapper slidePageMapper;
     private final CourseAuditService auditService;
     private final CourseStateMachine courseStateMachine;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Value("${upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -109,7 +108,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   CourseSlideMapper courseSlideMapper,
                                   SlidePageMapper slidePageMapper,
                                   CourseAuditService auditService,
-                                  CourseStateMachine courseStateMachine) {
+                                  CourseStateMachine courseStateMachine,
+                                  com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -128,6 +128,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.slidePageMapper = slidePageMapper;
         this.auditService = auditService;
         this.courseStateMachine = courseStateMachine;
+        this.objectMapper = objectMapper;
     }
 
     private void checkPluginGrant(Long teacherId, String courseType) {
@@ -533,7 +534,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         vo.setEvaluationScheme(course.getEvaluationScheme());
         if (course.getTeachingPhilosophy() != null && !course.getTeachingPhilosophy().isBlank()) {
             try {
-                vo.setTeachingPhilosophy(STATIC_MAPPER.readValue(course.getTeachingPhilosophy(), java.util.List.class));
+                vo.setTeachingPhilosophy(objectMapper.readValue(course.getTeachingPhilosophy(), java.util.List.class));
             } catch (Exception e) {
                 LOG.warn("[CourseVO] teachingPhilosophy 反序列化失败: {}", e.getMessage());
                 vo.setTeachingPhilosophy(java.util.Collections.emptyList());
@@ -646,7 +647,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (evaluationScheme != null) course.setEvaluationScheme(evaluationScheme);
         if (teachingPhilosophy != null && !teachingPhilosophy.isEmpty()) {
             try {
-                course.setTeachingPhilosophy(STATIC_MAPPER.writeValueAsString(teachingPhilosophy));
+                course.setTeachingPhilosophy(objectMapper.writeValueAsString(teachingPhilosophy));
             } catch (Exception e) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "teachingPhilosophy 序列化失败: " + e.getMessage());
             }

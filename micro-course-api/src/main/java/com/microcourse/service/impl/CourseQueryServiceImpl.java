@@ -53,6 +53,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
     private final CourseReviewRepository reviewRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final RedisUtil redisUtil;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     public CourseQueryServiceImpl(CourseRepository courseRepository,
                                   CourseCategoryRepository categoryRepository,
@@ -61,7 +62,8 @@ public class CourseQueryServiceImpl implements CourseQueryService {
                                   CourseSectionRepository sectionRepository,
                                   CourseReviewRepository reviewRepository,
                                   EnrollmentRepository enrollmentRepository,
-                                  RedisUtil redisUtil) {
+                                  RedisUtil redisUtil,
+                                  com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
@@ -70,6 +72,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         this.reviewRepository = reviewRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.redisUtil = redisUtil;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -475,6 +478,21 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         vo.setDiscountScope(course.getDiscountScope());
         vo.setDiscountPercent(course.getDiscountPercent());
         vo.setPricingStatus(course.getPricingStatus());
+
+        // P1 Stage 1: 课程级元信息(交叉审查 P1-1:VO 必须包含新字段,GET 也走这个 convertToVO)
+        vo.setHid(course.getHid());
+        vo.setTotalHours(course.getTotalHours());
+        vo.setTotalWeeks(course.getTotalWeeks());
+        vo.setLearningMode(course.getLearningMode());
+        vo.setEvaluationScheme(course.getEvaluationScheme());
+        if (course.getTeachingPhilosophy() != null && !course.getTeachingPhilosophy().isBlank()) {
+            try {
+                vo.setTeachingPhilosophy(objectMapper.readValue(course.getTeachingPhilosophy(), java.util.List.class));
+            } catch (Exception e) {
+                LOG.warn("[CourseQueryVO] teachingPhilosophy 反序列化失败: {}", e.getMessage());
+                vo.setTeachingPhilosophy(java.util.Collections.emptyList());
+            }
+        }
 
         if (course.getStatus() != null) {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
