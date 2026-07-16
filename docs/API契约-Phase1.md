@@ -1921,6 +1921,7 @@
 
 | 版本 | 日期 | 说明 | 作者 |
 |------|------|------|------|
+| v1.4 | 2026-07-17 | P1 Stage 1 增量：CourseCreateRequest 新增 hid/totalHours/totalWeeks/teachingPhilosophy/learningMode/evaluationScheme(V194)；ChapterCreateRequest 新增 no/anchorPoint/coreQuestion/chapterHours(V195)；SectionCreateRequest 新增 no/learningObjectives/anchorScenarioStep/coreCompetency/coursewareType/audioStrategy(V196) | opencode |
 | v1.3 | 2026-07-17 | 增量 Phase 11.6（R4 修复）：新增 POST /api/courses/{courseId}/sections/{sectionId}/audio/batch 批量上传端点（15 段）、GET /api/courses/{courseId}/slides/pages 响应增加 segmentAudios 数组 + htmlContent 占位符动态替换（`AUDIO_SEG_NN_URL` → 真实 URL）、slide_pages.segment_count 自动设置。修复 multipart 临时目录持久化（V193 migration 更新 section 573 旧版 HTML） | opencode |
 | v1.2 | 2026-07-10 | 增量 Phase 11.5（HTML 互动课件扩展）：新增 /api/courses/{courseId}/slides/upload 端点的 HTML 分支、HTML 错误码 16009-16012、slide_pages.content_type/html_content 字段说明 | 架构师 |
 | v1.1 | 2026-06-11 | 修复分页格式（统一为 items）、完善 JWT Payload 结构、预留讨论区 API | 架构师 |
