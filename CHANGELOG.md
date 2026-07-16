@@ -553,6 +553,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **签到窗口配置化** — `@Value("${course.offline.checkin-before-minutes:15}")` 替换硬编码常量 `CHECKIN_WINDOW_BEFORE_MINUTES=15`,运维可通过 `application.yml` 调整
 - **前端课程复制功能** — `CourseDetail.vue` 加"复制"按钮 + `handleCopy()`,首次 ElMessageBox 确认视频不会复制,后端返回 `videoCopied=false` 时 ElMessageBox.alert 详细提示,跳新课程详情
 
+#### Phase I (segment-audio — 15段音频注入 + 零信任审查修复)
+##### Added
+- **15段独立音频上传 API** — `AudioUploadController.uploadBatch` 支持 `file_1~file_15` 批量上传，`AudioUploadServiceImpl` UUID 文件名防并发覆盖 + token URL 鉴权
+- **HTML 课件音频 JS 控制器** — `SlideServiceImpl.buildSegmentControllerJs()` 注入 15 段音频 postMessage 通信脚本 (play/pause/seek/speed/get-segments)
+- **token 鉴权通道** — `TtsController.getAudio` 移除 `@PreAuthorize`，新增 token 验证 + session 鉴权双通道；`TtsService.validateAudioToken()` DB 查询验证 token
+
+##### Fixed (10轮零信任审查，20缺陷清零)
+- **P0 ×6**: 占位符只替换1/15、会话缺失401、上传路径≠播放路径、`get-state`被覆盖、单课URL错误替换、15段音频无控制器
+- **P1-C ×9**: 播放按钮禁用、状态同步不通、自动翻页竞态、DB sectionId歧义、glob二义性、单课覆盖批次、quiz不暂停音频、goTo不发页号、测试timer未推进
+- **P1-I ×1**: `replaceAudioSegmentPlaceholders` 逻辑重复
+- **P2 ×4**: time-update未处理、回调无gen校验、token未验证、倍速调节失效
+
+##### Changed
+- `AudioUploadServiceImpl` — `resolveAudioDir`路径与`TtsServiceImpl`一致化；`estimateDuration`移除用户可控文件名参数
+- `TtsServiceImpl.getAudio` — `resolveAudioFromDb` DB查询精确文件路径，`tryGlobResolve` glob回退
+- `SlideServiceImpl.getPages` — 全局15占位符替换；`buildSegmentUrl`单课/批量区分
+- `SlidePlayer.vue` — `segmentAudioMode`隔离；`handleAudioStateUpdate`双通道；quiz暂停/恢复；`playAudio`发seek带页号
+
+##### Security
+- ✅ token 单向验证 (UUID 128-bit，DB持久化)
+- ✅ srcdoc iframe null origin 双向 postMessage
+- ✅ path traversal 防护 (`.startsWith(basePath)` + `toRealPath()`)
+
+##### Tests
+- ✅ Backend: mvn compile 0 ERROR
+- ✅ Frontend: vite build SUCCESS
+- ✅ Unit: 14/14 PASS (含修复的 timer 测试)
+- ✅ Precheck: 22/22 PASS
+
 ### 质量门禁 (本次发布)
 
 - ✅ precheck 21/21 PASS

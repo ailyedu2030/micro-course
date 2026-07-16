@@ -42,11 +42,18 @@ public class TtsController {
     }
 
     @GetMapping("/pages/{pageNumber}/audio")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> getAudio(@PathVariable Long courseId,
                                             @PathVariable Integer pageNumber,
-                                            @RequestParam(required = false) Long sectionId) {
-        ttsService.verifyAccess(courseId);
+                                            @RequestParam(required = false) Long sectionId,
+                                            @RequestParam(required = false) String token) {
+        if (token != null && !token.isBlank()) {
+            if (!ttsService.validateAudioToken(courseId, pageNumber, sectionId, token)) {
+                throw new com.microcourse.exception.BusinessException(
+                        com.microcourse.exception.ErrorCode.NO_PERMISSION, "无效的音频访问令牌");
+            }
+        } else {
+            ttsService.verifyAccess(courseId);
+        }
         byte[] audioBytes = ttsService.getAudio(courseId, pageNumber, sectionId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, "audio/mpeg")

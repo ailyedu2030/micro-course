@@ -36,6 +36,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -792,43 +793,77 @@ public class TtsServiceImpl implements TtsService {
     }
 
     @Override
+    public boolean validateAudioToken(Long courseId, Integer pageNumber, Long sectionId, String token) {
+        if (token == null || token.isBlank()) return false;
+        if (sectionId == null) return false;
+        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, courseId)
+                .eq(SlidePage::getSectionId, sectionId)
+                .eq(SlidePage::getPageNumber, pageNumber);
+        SlidePage page = slidePageMapper.selectOne(qw);
+        if (page == null || page.getNarrationAudioUrl() == null) return false;
+        return page.getNarrationAudioUrl().contains("token=" + token);
+    }
+
+    @Override
     public byte[] getAudio(Long courseId, Integer pageNumber, Long sectionId) {
         try {
             Path basePath = Paths.get(storagePath, String.valueOf(courseId), "audio").toRealPath();
-            Path audioPath;
+            Path audioPath = null;
+
             if (sectionId != null && pageNumber != null) {
-                Path newPath = basePath.resolve("section_" + sectionId + "_page_" + pageNumber + ".mp3").normalize();
-                if (newPath.startsWith(basePath) && Files.exists(newPath)) {
-                    audioPath = newPath;
-                } else {
-                    Path compatPath = basePath.resolve("page_" + sectionId + ".mp3").normalize();
-                    if (compatPath.startsWith(basePath) && Files.exists(compatPath)) {
-                        audioPath = compatPath;
-                    } else {
-                        Path mergedPath = basePath.resolve("section_" + sectionId + "_merged.mp3").normalize();
-                        if (mergedPath.startsWith(basePath) && Files.exists(mergedPath)) {
-                            audioPath = mergedPath;
-                        } else {
-                            throw new NoSuchFileException(
-                                "音频文件不存在: sectionId=" + sectionId + ", pageNumber=" + pageNumber +
-                                " (尝试过 section_" + sectionId + "_page_" + pageNumber + ".mp3, " +
-                                "page_" + sectionId + ".mp3, section_" + sectionId + "_merged.mp3)");
-                        }
+                audioPath = resolveAudioFromDb(courseId, pageNumber, sectionId, basePath);
+                if (audioPath == null) {
+                    audioPath = tryGlobResolve(basePath, "section_" + sectionId + "_*_page_" + pageNumber + ".mp3");
+                }
+                if (audioPath == null) {
+                    Path newPath = basePath.resolve("section_" + sectionId + "_page_" + pageNumber + ".mp3").normalize();
+                    if (newPath.startsWith(basePath) && Files.exists(newPath)) {
+                        audioPath = newPath;
                     }
                 }
-            } else if (sectionId != null) {
-                Path newPath = basePath.resolve("section_" + sectionId + "_merged.mp3").normalize();
-                if (newPath.startsWith(basePath) && Files.exists(newPath)) {
-                    audioPath = newPath;
-                } else {
+                if (audioPath == null) {
                     Path compatPath = basePath.resolve("page_" + sectionId + ".mp3").normalize();
                     if (compatPath.startsWith(basePath) && Files.exists(compatPath)) {
                         audioPath = compatPath;
-                    } else {
-                        throw new NoSuchFileException(
-                            "音频文件不存在: sectionId=" + sectionId +
-                            " (尝试过 section_" + sectionId + "_merged.mp3, page_" + sectionId + ".mp3)");
                     }
+                }
+                if (audioPath == null) {
+                    audioPath = resolveMergedFromDb(courseId, sectionId, basePath);
+                }
+                if (audioPath == null) {
+                    audioPath = tryGlobResolve(basePath, "section_" + sectionId + "_*_merged.mp3");
+                }
+                if (audioPath == null) {
+                    Path mergedPath = basePath.resolve("section_" + sectionId + "_merged.mp3").normalize();
+                    if (mergedPath.startsWith(basePath) && Files.exists(mergedPath)) {
+                        audioPath = mergedPath;
+                    }
+                }
+                if (audioPath == null) {
+                    throw new NoSuchFileException(
+                        "音频文件不存在: sectionId=" + sectionId + ", pageNumber=" + pageNumber);
+                }
+            } else if (sectionId != null) {
+                audioPath = resolveMergedFromDb(courseId, sectionId, basePath);
+                if (audioPath == null) {
+                    audioPath = tryGlobResolve(basePath, "section_" + sectionId + "_*_merged.mp3");
+                }
+                if (audioPath == null) {
+                    Path mergedPath = basePath.resolve("section_" + sectionId + "_merged.mp3").normalize();
+                    if (mergedPath.startsWith(basePath) && Files.exists(mergedPath)) {
+                        audioPath = mergedPath;
+                    }
+                }
+                if (audioPath == null) {
+                    Path compatPath = basePath.resolve("page_" + sectionId + ".mp3").normalize();
+                    if (compatPath.startsWith(basePath) && Files.exists(compatPath)) {
+                        audioPath = compatPath;
+                    }
+                }
+                if (audioPath == null) {
+                    throw new NoSuchFileException(
+                        "音频文件不存在: sectionId=" + sectionId);
                 }
             } else {
                 Path pagePath = basePath.resolve("page_" + pageNumber + ".mp3").normalize();
@@ -850,6 +885,56 @@ public class TtsServiceImpl implements TtsService {
             log.error("[Tts] 读取音频文件失败 courseId={} page={} sectionId={}", courseId, pageNumber, sectionId, e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "音频文件读取失败");
         }
+    }
+
+    private Path resolveAudioFromDb(Long courseId, Integer pageNumber, Long sectionId, Path basePath) throws IOException {
+        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, courseId)
+                .eq(SlidePage::getSectionId, sectionId)
+                .eq(SlidePage::getPageNumber, pageNumber);
+        SlidePage page = slidePageMapper.selectOne(qw);
+        if (page == null || page.getNarrationAudioUrl() == null) return null;
+        String token = extractToken(page.getNarrationAudioUrl());
+        if (token == null) return null;
+        Path p = basePath.resolve("section_" + sectionId + "_" + token + "_page_" + pageNumber + ".mp3").normalize();
+        if (p.startsWith(basePath) && Files.exists(p)) return p;
+        p = basePath.resolve("section_" + sectionId + "_" + token + "_merged.mp3").normalize();
+        if (p.startsWith(basePath) && Files.exists(p)) return p;
+        return null;
+    }
+
+    private Path resolveMergedFromDb(Long courseId, Long sectionId, Path basePath) throws IOException {
+        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, courseId)
+                .eq(SlidePage::getSectionId, sectionId)
+                .last("LIMIT 1");
+        SlidePage page = slidePageMapper.selectOne(qw);
+        if (page == null || page.getNarrationAudioUrl() == null) return null;
+        String token = extractToken(page.getNarrationAudioUrl());
+        if (token == null) return null;
+        Path p = basePath.resolve("section_" + sectionId + "_" + token + "_merged.mp3").normalize();
+        if (p.startsWith(basePath) && Files.exists(p)) return p;
+        return null;
+    }
+
+    private String extractToken(String narrationUrl) {
+        int tokenIdx = narrationUrl.indexOf("token=");
+        if (tokenIdx < 0) return null;
+        String token = narrationUrl.substring(tokenIdx + 6);
+        int ampIdx = token.indexOf('&');
+        if (ampIdx > 0) token = token.substring(0, ampIdx);
+        return token.isBlank() ? null : token;
+    }
+
+    private Path tryGlobResolve(Path baseDir, String glob) throws IOException {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(baseDir, glob)) {
+            java.util.Iterator<Path> it = stream.iterator();
+            if (it.hasNext()) {
+                Path p = it.next();
+                if (p.startsWith(baseDir)) return p;
+            }
+        }
+        return null;
     }
 
     private int estimateDuration(long fileSizeBytes) {

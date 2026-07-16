@@ -45,11 +45,8 @@ public class AudioUploadServiceImpl implements AudioUploadService {
     private final CourseRepository courseRepository;
     private final TransactionTemplate transactionTemplate;
 
-    @Value("${plugin.interactive.slides.storage-path:uploads/slides}")
+    @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
-
-    @Value("${upload.base-dir:uploads}")
-    private String uploadBaseDir;
 
     public AudioUploadServiceImpl(SlidePageMapper slidePageMapper,
                                   CourseSectionRepository sectionRepository,
@@ -62,11 +59,11 @@ public class AudioUploadServiceImpl implements AudioUploadService {
     }
 
     private Path resolveAudioDir(String courseId) {
-        String base = uploadBaseDir;
-        if (!base.startsWith("/") && !base.matches("^[a-zA-Z]:.*")) {
-            base = System.getProperty("user.dir", "/app") + "/" + base;
-        }
-        return Paths.get(base, storagePath, courseId, "audio");
+        return Paths.get(storagePath, courseId, "audio");
+    }
+
+    private String generateAudioToken() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     @Override
@@ -79,9 +76,10 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         String audioFormat = ext;
 
         Path audioDir = resolveAudioDir(String.valueOf(courseId));
-        String mergedFileName = "section_" + sectionId + "_merged.mp3";
+        String audioToken = generateAudioToken();
+        String mergedFileName = "section_" + sectionId + "_" + audioToken + "_merged.mp3";
         Path destPath = audioDir.resolve(mergedFileName);
-        String audioUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId=" + sectionId + "&v=2";
+        String audioUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId=" + sectionId + "&v=2&token=" + audioToken;
 
         long fileSize;
         int duration;
@@ -91,7 +89,7 @@ public class AudioUploadServiceImpl implements AudioUploadService {
             file.transferTo(tmpPath.toFile());
             Files.move(tmpPath, destPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             fileSize = Files.size(destPath);
-            duration = estimateDuration(originalFilename, fileSize);
+            duration = estimateDuration(fileSize);
         } catch (IOException e) {
             log.error("[AudioUpload] file save failed: courseId={}, sectionId={}, path={}, error={}",
                     courseId, sectionId, destPath, e.getMessage(), e);
@@ -143,12 +141,14 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         long totalSize = 0;
         int totalDuration = 0;
 
+        String audioToken = generateAudioToken();
+
         Map<Long, PageAudioMeta> pageMetas = new LinkedHashMap<>();
         for (int i = 0; i < pages.size(); i++) {
             SlidePage page = pages.get(i);
             int pageNum = page.getPageNumber();
             String segUrl = "/api/courses/" + courseId + "/slides/pages/" + pageNum
-                    + "/audio?sectionId=" + sectionId + "&v=2";
+                    + "/audio?sectionId=" + sectionId + "&v=2&token=" + audioToken;
             pageMetas.put(page.getId(), new PageAudioMeta(segUrl, 0, null));
         }
 
@@ -158,14 +158,14 @@ public class AudioUploadServiceImpl implements AudioUploadService {
             for (int i = 0; i < pages.size(); i++) {
                 SlidePage page = pages.get(i);
                 MultipartFile file = files.get(i);
-                String segFileName = "section_" + sectionId + "_page_" + page.getPageNumber() + ".mp3";
+                String segFileName = "section_" + sectionId + "_" + audioToken + "_page_" + page.getPageNumber() + ".mp3";
                 Path segPath = audioDir.resolve(segFileName);
                 Path tmpPath = audioDir.resolve("." + segFileName + ".tmp");
                 file.transferTo(tmpPath.toFile());
                 Files.move(tmpPath, segPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                 savedPaths.add(segPath);
                 long segSize = Files.size(segPath);
-                int segDuration = estimateDuration(file.getOriginalFilename(), segSize);
+                int segDuration = estimateDuration(segSize);
                 totalSize += segSize;
                 totalDuration += segDuration;
                 pageMetas.get(page.getId()).duration = segDuration;
@@ -212,7 +212,7 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         }
 
         String mergedUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId="
-                + sectionId + "&v=2&merged=true";
+                + sectionId + "&v=2&merged=true&token=" + audioToken;
 
         log.info("[AudioUpload] batch uploaded: courseId={}, sectionId={}, segments={}, totalSize={}",
                 courseId, sectionId, files.size(), totalSize);
@@ -270,14 +270,8 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         }
     }
 
-    private int estimateDuration(String filename, long fileSizeBytes) {
-        String ext = filename != null && filename.contains(".")
-                ? filename.substring(filename.lastIndexOf('.') + 1).toLowerCase() : "mp3";
-        long bytesPerSec = switch (ext) {
-            case "wav" -> 176400L;
-            case "m4a", "aac" -> 32000L;
-            default -> 16000L;
-        };
+    private int estimateDuration(long fileSizeBytes) {
+        long bytesPerSec = 16000L;
         return Math.max(1, (int) (fileSizeBytes / bytesPerSec));
     }
 

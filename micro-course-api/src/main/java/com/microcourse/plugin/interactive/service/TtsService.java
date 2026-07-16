@@ -24,5 +24,7 @@ public interface TtsService {
 
     byte[] getAudio(Long courseId, Integer pageNumber, Long sectionId);
 
+    boolean validateAudioToken(Long courseId, Integer pageNumber, Long sectionId, String token);
+
     void verifyAccess(Long courseId);
 }

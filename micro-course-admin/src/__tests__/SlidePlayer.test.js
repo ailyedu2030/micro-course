@@ -145,6 +145,7 @@ describe('SlidePlayer.vue iframe branch', () => {
 
   // 3.5.2: HTML 课时自动播放不受影响
   it('HTML_DIRECT pages still trigger audio ended → goTo(next)', async () => {
+    vi.useFakeTimers()
     const wrapper = mount(SlidePlayer, {
       global: {
         stubs: {
@@ -177,9 +178,10 @@ describe('SlidePlayer.vue iframe branch', () => {
 
     // Simulate audio ended — should trigger goTo(1)
     wrapper.vm.onAudioEnded()
+    vi.advanceTimersByTime(1500)
     await wrapper.vm.$nextTick()
-    await nextTick()
 
     expect(wrapper.vm.current).toBe(1)
+    vi.useRealTimers()
   })
 })

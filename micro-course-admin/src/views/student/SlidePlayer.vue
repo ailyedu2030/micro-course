@@ -151,7 +151,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
         <button class="ctrl-btn" @click="goTo(Math.max(0, current - 1))" :disabled="current === 0" aria-label="上一页">
           <el-icon :size="20"><ArrowLeft /></el-icon>
         </button>
-        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" :disabled="audioStatus === 'pending' || audioStatus === 'none'" aria-label="播放/暂停">
+        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" :disabled="!segmentAudioMode && (audioStatus === 'pending' || audioStatus === 'none')" aria-label="播放/暂停">
           <el-icon :size="24"><VideoPause v-if="playing" /><VideoPlay v-else /></el-icon>
         </button>
         <button class="ctrl-btn" @click="goTo(Math.min(pages.length - 1, current + 1))" :disabled="current >= pages.length - 1" aria-label="下一页">
@@ -246,6 +246,7 @@ const pendingTimeoutWarning = ref('')
 const interactiveWaiting = ref(false)  // 当前页是否等待用户点"完成"
 
 const currentPage = computed(() => pages.value[current.value] || null)
+const segmentAudioMode = ref(false)  // true = 当前页由 HTML iframe 控制音频，容器不加载
 
 let pageNavLock = false
 
@@ -338,9 +339,39 @@ function onSlideAudioMessage(event) {
     return
   }
 
+  if (msg.type === 'slide-audio-state') {
+    handleAudioStateUpdate(msg)
+    return
+  }
+
   if (msg.type !== 'slide-audio') return
 
   switch (msg.action) {
+    case 'get-segments': {
+      const page = currentPage.value
+      if (page?.segmentAudio) {
+        sendMessageToHtmlIframe({
+          type: 'slide-audio-segments',
+          pageNumber: page.pageNumber,
+          url: page.segmentAudio.url,
+          duration: page.segmentAudio.duration,
+          mergedUrl: page.narrationAudioUrl
+        })
+      } else {
+        sendMessageToHtmlIframe({ type: 'slide-audio-segments', pageNumber: null, url: null })
+      }
+      break
+    }
+    case 'container-control': {
+      if (msg.command === 'pause') {
+        if (audioRef.value) audioRef.value.pause()
+        playing.value = false
+      } else if (msg.command === 'resume' && !segmentAudioMode.value) {
+        if (audioRef.value) audioRef.value.play().catch(() => {})
+        playing.value = true
+      }
+      break
+    }
     case 'play':
       playAudio()
       break
@@ -370,11 +401,53 @@ function onSlideAudioMessage(event) {
   }
 }
 
+function handleAudioStateUpdate(msg) {
+  switch (msg.state) {
+    case 'playing':
+      playing.value = true
+      break
+    case 'paused':
+      playing.value = false
+      break
+    case 'ended':
+      playing.value = false
+      autoCountdown.value = 0
+      if (segmentAudioMode.value && autoMode.value && current.value < pages.value.length - 1) {
+        const endedGen = currentAudioSrcGen.value
+        autoAdvanceTimer = setTimeout(() => {
+          if (endedGen !== currentAudioSrcGen.value) return
+          goTo(current.value + 1)
+        }, 1500)
+      }
+      break
+    case 'loaded':
+      if (msg.duration !== undefined) audioDuration.value = msg.duration
+      audioStatus.value = 'ready'
+      break
+    case 'time-update':
+      if (msg.time !== undefined) audioTime.value = msg.time
+      if (msg.duration !== undefined) audioDuration.value = msg.duration
+      if (audioDuration.value > 0) audioProgress.value = (audioTime.value / audioDuration.value) * 100
+      if (autoMode.value && audioDuration.value > 0) {
+        const remaining = Math.ceil(audioDuration.value - audioTime.value)
+        autoCountdown.value = remaining <= 3 && remaining > 0 ? remaining : 0
+      }
+      break
+  }
+}
+
 function handleInteractiveComplete() {
   if (!interactiveWaiting.value) return
   interactiveWaiting.value = false
-  if (autoMode.value && current.value < pages.value.length - 1) {
-    goTo(current.value + 1)
+  if (autoMode.value) {
+    if (current.value < pages.value.length - 1) {
+      goTo(current.value + 1)
+    } else if (segmentAudioMode.value) {
+      sendMessageToHtmlIframe({ type: 'slide-audio', action: 'play' })
+      playing.value = true
+    } else {
+      playAudio()
+    }
   }
 }
 
@@ -430,6 +503,22 @@ async function loadAudio(index) {
   interactiveWaiting.value = false
 
   const gen = ++currentAudioSrcGen.value
+
+  const isHtmlPage = page?.contentType === 'HTML_DIRECT'
+  const hasSegmentAudio = isHtmlPage && !!page?.segmentAudio?.url
+  segmentAudioMode.value = hasSegmentAudio
+
+  if (isHtmlPage && hasSegmentAudio) {
+    audioStatus.value = 'none'
+    audioDuration.value = 0
+    audioTime.value = 0
+    audioProgress.value = 0
+    audioRef.value.src = ''
+    if (audioRef.value) audioRef.value.pause()
+    playing.value = false
+    checkHtmlInteractive(page)
+    return
+  }
 
   if (!page?.narrationAudioUrl) {
     audioStatus.value = 'none'
@@ -499,6 +588,14 @@ function checkHtmlInteractive(page) {
   }
   const match = page.htmlContent.match(/data-interactive=["']true["']/)
   interactiveWaiting.value = !!match
+  if (interactiveWaiting.value) {
+    if (segmentAudioMode.value) {
+      sendMessageToHtmlIframe({ type: 'slide-audio', action: 'pause' })
+    } else if (audioRef.value) {
+      audioRef.value.pause()
+    }
+    playing.value = false
+  }
 }
 
 function startPendingTimer() {
@@ -537,6 +634,12 @@ function cleanAudioBlobCache(currentIdx) {
 
 function playAudio() {
   if (!audioRef.value) return
+  if (segmentAudioMode.value) {
+    const page = currentPage.value
+    if (page) sendMessageToHtmlIframe({ type: 'slide-audio', action: 'seek', page: page.pageNumber })
+    playing.value = true
+    return
+  }
   if (audioStatus.value === 'pending' || audioStatus.value === 'none') return
   audioRef.value.play().then(() => {
     playing.value = true
@@ -545,6 +648,11 @@ function playAudio() {
 }
 function togglePlay() {
   if (playing.value) {
+    if (segmentAudioMode.value) {
+      sendMessageToHtmlIframe({ type: 'slide-audio', action: 'pause' })
+      playing.value = false
+      return
+    }
     audioRef.value?.pause()
     playing.value = false
     sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'paused', time: audioTime.value, duration: audioDuration.value })
@@ -554,7 +662,7 @@ function togglePlay() {
 }
 function setSpeed() {
   if (audioRef.value) audioRef.value.playbackRate = speed.value
-  sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'speed-changed', rate: speed.value })
+  sendMessageToHtmlIframe({ type: 'slide-audio', action: 'speed', rate: speed.value })
 }
 function handleStageClick() { if (autoMode.value) autoMode.value = false }
 
@@ -588,6 +696,7 @@ function onAudioEnded() {
   if (expectedGen !== currentAudioSrcGen.value) return
   if (autoMode.value && current.value < pages.value.length - 1) {
     autoAdvanceTimer = setTimeout(() => {
+      if (expectedGen !== currentAudioSrcGen.value) return
       goTo(current.value + 1)
     }, 1500)
   }
