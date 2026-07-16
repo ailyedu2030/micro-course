@@ -133,6 +133,7 @@ curl -s http://localhost:8080/actuator/health
 
 | 版本 | 部署时间 | 变更 | 回滚命令 |
 |------|----------|------|----------|
+| v1.21.3 | 2026-07-17 | P1 Stage 2: section 资源 (V197-199, quiz/task/reflection 表) | db: `psql ... < db/rollback/V199__rollback_create_reflections.sql; psql ... < db/rollback/V198__rollback_create_tasks.sql; psql ... < db/rollback/V197__rollback_create_quizzes.sql` <br> app: `docker cp /tmp/app.jar.backup.v1.21.2 micro-course-micro-course-api-1:/app/app.jar` |
 | v1.21.2 | 2026-07-17 | P1 Stage 1: courses/chapters/sections 元信息 (V194-196) | db: `psql ... < db/rollback/V196__rollback_add_section_meta.sql` <br> app: `docker cp /tmp/app.jar.backup.v1.21.1 micro-course-micro-course-api-1:/app/app.jar` |
 | v1.21.1 | 2026-07-16 | R4 修复: multipart 持久化 + Files.copy + HTML migration (V193) | `docker cp /tmp/app.jar.backup.v1.21.0 micro-course-micro-course-api-1:/app/app.jar` |
 | v1.21.0 | 2026-07-09 | Hermes webhook 课程同步 (V174 新表) | `docker cp /tmp/app.jar.backup.v1.21.0 micro-course-micro-course-api-1:/app/app.jar` |

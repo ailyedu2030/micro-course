@@ -1921,6 +1921,7 @@
 
 | 版本 | 日期 | 说明 | 作者 |
 |------|------|------|------|
+| v1.5 | 2026-07-17 | P1 Stage 2 增量：新增 3 个 section 资源端点(POST quizzes/tasks/reflections)、V197/198/199 migration(3 张新表) | opencode |
 | v1.4 | 2026-07-17 | P1 Stage 1 增量：CourseCreateRequest 新增 hid/totalHours/totalWeeks/teachingPhilosophy/learningMode/evaluationScheme(V194)；ChapterCreateRequest 新增 no/anchorPoint/coreQuestion/chapterHours(V195)；SectionCreateRequest 新增 no/learningObjectives/anchorScenarioStep/coreCompetency/coursewareType/audioStrategy(V196) | opencode |
 | v1.3 | 2026-07-17 | 增量 Phase 11.6（R4 修复）：新增 POST /api/courses/{courseId}/sections/{sectionId}/audio/batch 批量上传端点（15 段）、GET /api/courses/{courseId}/slides/pages 响应增加 segmentAudios 数组 + htmlContent 占位符动态替换（`AUDIO_SEG_NN_URL` → 真实 URL）、slide_pages.segment_count 自动设置。修复 multipart 临时目录持久化（V193 migration 更新 section 573 旧版 HTML） | opencode |
 | v1.2 | 2026-07-10 | 增量 Phase 11.5（HTML 互动课件扩展）：新增 /api/courses/{courseId}/slides/upload 端点的 HTML 分支、HTML 错误码 16009-16012、slide_pages.content_type/html_content 字段说明 | 架构师 |
@@ -2114,6 +2115,76 @@ HTML 直传响应中 `totalPages=1, status=2`（已就绪，无需渲染）。
 - **R3 基线**：4/10 FAIL — `99-元数据/baselines/R3/` 留存
 - **R4 实测**：7/7 PASS（本地容器）— `_r3_verify_local.sh` 输出见部署 commit
 - **R4 部署后**：Trae 端 `_r3_verify.sh`（打生产 URL）必须 10/10 PASS 才算修复闭环
+
+### Phase 11.7: section 资源 API（P1 Stage 2 - 2026-07-17）
+
+> 新增 3 个 section 级资源创建端点。所有端点使用统一鉴权规则：
+> `@PreAuthorize("hasAnyRole('TEACHER','ADMIN')")`
+
+#### POST /api/courses/{courseId}/sections/{sectionId}/quizzes — 创建自测题
+
+**请求**（application/json）：
+```json
+{
+  "slide": 3,
+  "prompt": "AI 提效的主要来源是什么？",
+  "options": ["A. 算力", "B. 工作流重组", "C. 工具替换", "D. 团队规模"],
+  "correctIndex": 1,
+  "explanation": "正确解析..."
+}
+```
+
+**响应**（200 OK）：
+```json
+{
+  "code": 200,
+  "data": {
+    "id": 1,
+    "sectionId": 573,
+    "slide": 3,
+    "prompt": "...",
+    "correctIndex": 1,
+    "explanation": "...",
+    "createdAt": "..."
+  }
+}
+```
+
+| 字段 | 类型 | 必填 | 校验 | 说明 |
+|---|---|---|---|---|
+| slide | Integer | ✅ | @Min(1) | 关联 slide 序号 |
+| prompt | String | ✅ | @NotBlank ≤2000 | 题目文本 |
+| options | String[] | ✅ | @Size 2-10 | 选项数组，每项 ≤100 |
+| correctIndex | Integer | ✅ | @Min(0) | 正确选项索引 |
+| explanation | String | ❌ | ≤2000 | 答案解析 |
+
+#### POST /api/courses/{courseId}/sections/{sectionId}/tasks — 创建截图任务
+
+**请求**：
+```json
+{
+  "slide": 12,
+  "description": "用 AI 工具跑本周销售数据，截图上传"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| slide | Integer | ✅ | 关联 slide 序号 |
+| description | String | ✅ | 任务描述 ≤2000 字 |
+
+#### POST /api/courses/{courseId}/sections/{sectionId}/reflections — 创建反思日志
+
+**请求**：
+```json
+{
+  "template": "200 字反思：本周 AI 工具如何改变了你的工作？"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| template | String | ✅ | 反思日志模板 ≤2000 字 |
 
 ---
 
