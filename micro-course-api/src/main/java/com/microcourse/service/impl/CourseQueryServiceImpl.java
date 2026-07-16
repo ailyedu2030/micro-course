@@ -416,6 +416,21 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         vo.setDiscountPercent(course.getDiscountPercent());
         vo.setPricingStatus(course.getPricingStatus());
 
+        // P1 Stage 1: 课程级元信息(交叉审查 P1-C 第二轮:listByTeacher 也用 convertToVOFromMaps)
+        vo.setHid(course.getHid());
+        vo.setTotalHours(course.getTotalHours());
+        vo.setTotalWeeks(course.getTotalWeeks());
+        vo.setLearningMode(course.getLearningMode());
+        vo.setEvaluationScheme(course.getEvaluationScheme());
+        if (course.getTeachingPhilosophy() != null && !course.getTeachingPhilosophy().isBlank()) {
+            try {
+                vo.setTeachingPhilosophy(objectMapper.readValue(course.getTeachingPhilosophy(), java.util.List.class));
+            } catch (Exception e) {
+                LOG.warn("[CourseQueryVOFromMaps] teachingPhilosophy 反序列化失败: {}", e.getMessage());
+                vo.setTeachingPhilosophy(java.util.Collections.emptyList());
+            }
+        }
+
         if (course.getStatus() != null) {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
         }

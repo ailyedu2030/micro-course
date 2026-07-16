@@ -124,11 +124,12 @@ public class P1Stage1IntegrationTest extends BaseIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         Long chapterId = Long.valueOf(JsonPath.read(chapterResp, "$.data.id").toString());
 
-        // 读取
+        // 读取(交叉审查 P1-C 第二轮:GET 路径必须也含 P1 字段)
         mockMvc.perform(get("/api/chapters/" + chapterId)
                         .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.no").value(1))
+                .andExpect(jsonPath("$.data.chapterHours").value(6))
                 .andExpect(jsonPath("$.data.coreQuestion").value("AI 真的能帮我干活吗?"));
     }
 
