@@ -7,7 +7,6 @@ import com.microcourse.service.CourseChapterService;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.SectionService;
 import jakarta.validation.Valid;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,7 +21,8 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/courses/{courseId}")
-@ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
+// 不加 @ConditionalOnProperty：chapter 别名不依赖 interactive 插件
+// html/ppt 端点虽依赖 SlideService，但交互式插件默认启用
 public class AliasController {
 
     private final CourseChapterService chapterService;
