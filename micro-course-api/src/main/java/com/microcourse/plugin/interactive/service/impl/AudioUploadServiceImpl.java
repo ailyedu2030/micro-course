@@ -128,7 +128,9 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         verifyOwnership(courseId, sectionId);
 
         List<SlidePage> pages = getOrderedPages(courseId, sectionId);
-        if (files.size() != pages.size()) {
+        boolean isHtmlSinglePage = pages.size() == 1 && pages.get(0).getContentType() != null
+                && pages.get(0).getContentType().startsWith("HTML");
+        if (!isHtmlSinglePage && files.size() != pages.size()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
                     "上传文件数量(" + files.size() + ")与页数(" + pages.size() + ")不匹配");
         }

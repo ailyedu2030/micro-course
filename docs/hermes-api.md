@@ -360,7 +360,139 @@ X-API-Key: <your-key>
 
 ---
 
-## 6. 讲述稿管理
+## 6. 音频管理
+
+### 上传合并音频（单文件，通用容器用）
+
+```http
+POST /api/courses/{courseId}/sections/{sectionId}/audio
+Authorization: Bearer <JWT>
+Content-Type: multipart/form-data
+
+file=@merged.mp3
+```
+
+上传 1 个合并音频文件（支持 mp3/wav/m4a，≤50MB）。将当前课程下的所有页面指向该音频，`segmentCount` = 页面数。
+
+**注意**：此端点属于通用业务端点，需要 JWT，不支持 X-API-Key。
+
+### 批量上传分段音频（15段，HTML 课件用）
+
+```http
+POST /api/courses/{courseId}/sections/{sectionId}/audio/batch
+Authorization: Bearer <JWT>
+Content-Type: multipart/form-data
+
+file_1=@seg_01.mp3&file_2=@seg_02.mp3&...&file_15=@seg_15.mp3
+```
+
+**要求**：上传文件数必须等于对应课时的页面数。每个文件对应一个页面（`file_N` → 第 N 页）。
+
+**返回**：
+
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "mergedAudioUrl": "/api/courses/52/slides/pages/1/audio?sectionId=573&v=2&merged=true&token=xxx",
+    "duration": 1646,
+    "audioSize": 26214400,
+    "audioFormat": "mp3",
+    "sampleRate": 32000,
+    "segmentCount": 15
+  }
+}
+```
+
+### 单页上传替换
+
+```http
+POST /api/courses/{courseId}/sections/{sectionId}/audio
+Authorization: Bearer <JWT>
+Content-Type: multipart/form-data
+
+file=@page_5.mp3
+```
+
+上传后所有页面指向同一个合并文件。如需每页独立音频请使用 `/batch`。
+
+### 分段音频 URL 注入机制（方案 B + A 混合）
+
+**方案 A（模板占位符替换，推荐）**：  
+HTML 课件模板包含 15 个 `<audio>` 占位符：
+```html
+<audio id="segAudio_01" preload="auto" src="AUDIO_SEG_01_URL"></audio>
+<audio id="segAudio_02" preload="auto" src="AUDIO_SEG_02_URL"></audio>
+...
+<audio id="segAudio_15" preload="auto" src="AUDIO_SEG_15_URL"></audio>
+```
+
+后端在返回页面数据时自动替换 `AUDIO_SEG_NN_URL` 为真实音频 URL。  
+同时注入 JavaScript 控制器（支持 postMessage 通信协议），无需 HTML 模板额外修改。
+
+**方案 B（API 字段）**：  
+`GET /courses/{hermesCourseId}/lessons/{lessonId}/slides/pages` 响应中每页新增 `segmentAudio` 字段：
+
+```json
+{
+  "pageNumber": 5,
+  "segmentAudio": {
+    "pageNumber": 5,
+    "url": "/api/courses/52/slides/pages/5/audio?sectionId=573&v=2&token=xxx",
+    "duration": 103
+  },
+  "segmentAudios": [
+    {"pageNumber": 1, "url": "...", "duration": 103},
+    {"pageNumber": 2, "url": "...", "duration": 85}
+  ]
+}
+```
+
+### 音频文件分辨率规则
+
+请求音频时支持两种鉴权方式：
+
+| 方式 | 条件 | 流程 |
+|------|------|------|
+| **Token 鉴权** | URL 含 `?token=xxx` | 后端从 `SlidePage.narrationAudioUrl` 提取 token 验证，跳过 session |
+| **Session 鉴权** | URL 无 token | 调用 `verifyAccess(courseId)` 校验用户是否在学/是课主 |
+
+**文件搜索顺序**（按优先级）：
+
+1. `resolveAudioFromDb` — 从 DB 读取 `narrationAudioUrl`，提取 token，构造精确文件名
+2. glob `section_{sid}_*_page_{n}.mp3` — 搜索含 UUID 的上传文件
+3. 精确匹配 `section_{sid}_page_{n}.mp3` — TTS 生成的文件
+4. 兼容模式 `page_{sid}.mp3` — 旧版本遗留文件
+5. `resolveMergedFromDb` — 搜索合并音频（带 token）
+6. glob `section_{sid}_*_merged.mp3` — 搜索含 UUID 的合并文件
+7. 精确匹配 `section_{sid}_merged.mp3` — TTS 生成的合并文件
+
+### 播放器 postMessage 通信协议
+
+HTML 课件通过 `postMessage` 与平台播放器通信：
+
+**平台 → HTML（指令）**：
+```javascript
+{ type: 'slide-audio', action: 'seek', page: 5 }     // 跳转到第5段并播放
+{ type: 'slide-audio', action: 'pause' }               // 暂停
+{ type: 'slide-audio', action: 'get-state' }           // 获取播放状态
+{ type: 'slide-audio', action: 'get-segments' }        // 获取所有段URL
+{ type: 'slide-audio', action: 'speed', rate: 1.5 }    // 设置倍速
+```
+
+**HTML → 平台（状态上报）**：
+```javascript
+{ type: 'slide-audio-state', state: 'playing' }        // 开始播放
+{ type: 'slide-audio-state', state: 'paused' }         // 暂停
+{ type: 'slide-audio-state', state: 'ended' }          // 播放结束（触发自动翻页）
+{ type: 'slide-audio-state', state: 'loaded', duration: 103 }  // 音频加载完成
+{ type: 'slide-audio-state', state: 'time-update', time: 45.5, duration: 103 }  // 进度更新
+```
+
+---
+
+## 7. 讲述稿管理
 
 ### 推送讲述稿
 
@@ -497,3 +629,4 @@ curl -X DELETE "$BASE/courses/by-id/42" -H "X-API-Key: $KEY"
 | 2026-07-14 | v4.3 | batchPushScripts 归属校验 + instanceof String 校验 + 脚本字数 < pageCount 校验；getCourseDetail 批量加载讲述稿（无 N+1）；章节/课时 CRUD 全量归属校验；deletePage 支持 sectionId 参数；slide 存储文件清理（afterCommit）；N+1 category 批量加载 |
 | 2026-07-15 | v4.4 | 澄清 `GET /api/courses/{courseId}/sections/{sectionId}/slide` 属于通用业务端点，需 JWT 不支持 X-API-Key；新增 X-API-Key 与 JWT 端点区分说明 |
 | 2026-07-15 | v4.5 | `ApiKeyAuthenticationFilter` 修复：STUDENT 角色使用 API Key 时返回正确的 HTTP 403（而非 401）；修正错误码表中 `hasSlide` 字段描述格式 |
+| **2026-07-16** | **v4.6** | **新增音频管理章节**：单文件/批量上传 API、分段音频 URL 注入机制（方案 A+B 混合）、播放器 postMessage 通信协议、音频文件分辨率规则（7 级优先级）。详见 [第 6 节](#6-音频管理) |

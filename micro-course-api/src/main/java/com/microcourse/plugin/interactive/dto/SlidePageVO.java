@@ -1,6 +1,7 @@
 package com.microcourse.plugin.interactive.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class SlidePageVO {
 
@@ -25,6 +26,7 @@ public class SlidePageVO {
     private String narrationStatusText;
     private Integer segmentCount;
     private SegmentAudioVO segmentAudio;
+    private List<SegmentAudioVO> segmentAudios;
     private String voice;
     private String ttsModel;
     private LocalDateTime generatedAt;
@@ -75,6 +77,8 @@ public class SlidePageVO {
     public void setNarrationStatusText(String narrationStatusText) { this.narrationStatusText = narrationStatusText; }
     public SegmentAudioVO getSegmentAudio() { return segmentAudio; }
     public void setSegmentAudio(SegmentAudioVO segmentAudio) { this.segmentAudio = segmentAudio; }
+    public List<SegmentAudioVO> getSegmentAudios() { return segmentAudios; }
+    public void setSegmentAudios(List<SegmentAudioVO> segmentAudios) { this.segmentAudios = segmentAudios; }
     public Integer getSegmentCount() { return segmentCount; }
     public void setSegmentCount(Integer segmentCount) { this.segmentCount = segmentCount; }
     public String getVoice() { return voice; }

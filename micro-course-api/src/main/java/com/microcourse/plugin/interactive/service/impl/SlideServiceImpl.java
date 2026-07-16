@@ -509,10 +509,15 @@ public class SlideServiceImpl implements SlideService {
     @Override
     public List<SegmentAudioVO> getSegmentAudios(Long courseId, Long sectionId) {
         List<SlidePageVO> pages = getPages(courseId, sectionId);
-        return pages.stream()
-                .filter(p -> p.getSegmentAudio() != null)
-                .map(p -> p.getSegmentAudio())
-                .collect(Collectors.toList());
+        List<SegmentAudioVO> result = new java.util.ArrayList<>();
+        for (SlidePageVO p : pages) {
+            if (p.getSegmentAudios() != null) {
+                result.addAll(p.getSegmentAudios());
+            } else if (p.getSegmentAudio() != null) {
+                result.add(p.getSegmentAudio());
+            }
+        }
+        return result;
     }
 
     @Override
@@ -621,6 +626,7 @@ public class SlideServiceImpl implements SlideService {
         }
         vo.setHtmlContent(htmlContent);
 
+        Integer segCount = p.getSegmentCount();
         if (p.getNarrationAudioUrl() != null && !p.getNarrationAudioUrl().isBlank()) {
             String segUrl = buildSegmentUrl(p);
             SegmentAudioVO seg = new SegmentAudioVO();
@@ -628,6 +634,22 @@ public class SlideServiceImpl implements SlideService {
             seg.setUrl(segUrl);
             seg.setDuration(p.getAudioDuration());
             vo.setSegmentAudio(seg);
+        }
+        if ("HTML_DIRECT".equals(p.getContentType()) && segCount != null && segCount > 1
+                && p.getNarrationAudioUrl() != null && !p.getNarrationAudioUrl().isBlank()) {
+            int count = segCount;
+            String token = extractTokenFromUrl(p.getNarrationAudioUrl());
+            if (token != null) {
+                java.util.ArrayList<SegmentAudioVO> segList = new java.util.ArrayList<>(count);
+                for (int i = 1; i <= count; i++) {
+                    SegmentAudioVO s = new SegmentAudioVO();
+                    s.setPageNumber(i);
+                    s.setUrl(replacePageNumberInUrl(p.getNarrationAudioUrl(), i));
+                    s.setDuration(i == p.getPageNumber() ? p.getAudioDuration() : 0);
+                    segList.add(s);
+                }
+                vo.setSegmentAudios(segList);
+            }
         }
         vo.setCreatedAt(p.getCreatedAt()); vo.setUpdatedAt(p.getUpdatedAt());
         return vo;
@@ -656,12 +678,35 @@ public class SlideServiceImpl implements SlideService {
         if (htmlContent == null || !htmlContent.contains("AUDIO_SEG_")) {
             return htmlContent;
         }
-        String segmentUrl = buildSegmentUrl(p);
-        if (segmentUrl == null || segmentUrl.isBlank()) {
-            return htmlContent;
+        String token = extractTokenFromUrl(p.getNarrationAudioUrl());
+        Integer segCount = p.getSegmentCount();
+        if (segCount == null || segCount <= 0) segCount = 15;
+        String baseUrl = p.getNarrationAudioUrl();
+        if (baseUrl == null || baseUrl.isBlank()) return htmlContent;
+        int segIdx = baseUrl.indexOf("/pages/");
+        if (segIdx < 0) return htmlContent;
+        String urlPrefix = baseUrl.substring(0, segIdx + 7);
+        String urlSuffix = baseUrl.substring(baseUrl.indexOf("?", segIdx));
+        for (int i = 1; i <= segCount; i++) {
+            String placeholder = "AUDIO_SEG_" + String.format("%02d", i) + "_URL";
+            String segUrl = urlPrefix + i + urlSuffix;
+            htmlContent = htmlContent.replace(placeholder, segUrl);
         }
-        String placeholder = "AUDIO_SEG_" + String.format("%02d", p.getPageNumber()) + "_URL";
-        return htmlContent.replace(placeholder, segmentUrl);
+        return htmlContent;
+    }
+
+    private String extractTokenFromUrl(String url) {
+        if (url == null) return null;
+        int idx = url.indexOf("token=");
+        if (idx < 0) return null;
+        String t = url.substring(idx + 6);
+        int a = t.indexOf('&');
+        if (a > 0) t = t.substring(0, a);
+        return t.isEmpty() ? null : t;
+    }
+
+    private String replacePageNumberInUrl(String url, int newPageNum) {
+        return url.replaceFirst("/pages/\\d+/audio", "/pages/" + newPageNum + "/audio");
     }
 
     private static String buildSegmentControllerJs() {
