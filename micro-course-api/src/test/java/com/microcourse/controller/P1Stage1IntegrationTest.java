@@ -5,6 +5,7 @@ import com.microcourse.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -218,5 +219,120 @@ public class P1Stage1IntegrationTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ===== P1 Stage 2: quiz/task/reflection =====
+
+    @Test
+    @DisplayName("POST /sections/{sid}/quizzes 创建自测题成功")
+    void quiz_Create_Success() throws Exception {
+        Long courseId = createCourse();
+        Long chId = createChapter(courseId);
+        Long sectionId = createSection(courseId, chId);
+
+        String body = """
+                {
+                  "slide": 3,
+                  "prompt": "AI 提效的主要来源是什么？",
+                  "options": ["A. 算力", "B. 工作流重组"],
+                  "correctIndex": 0,
+                  "explanation": "正确选项是 B"
+                }
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/sections/" + sectionId + "/quizzes")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.slide").value(3))
+                .andExpect(jsonPath("$.data.correctIndex").value(0));
+    }
+
+    @Test
+    @DisplayName("POST /sections/{sid}/tasks 创建截图任务成功")
+    void task_Create_Success() throws Exception {
+        Long courseId = createCourse();
+        Long chId = createChapter(courseId);
+        Long sectionId = createSection(courseId, chId);
+
+        String body = """
+                {"slide": 12, "description": "用 AI 工具跑本周数据，截图上传"}
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/sections/" + sectionId + "/tasks")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.slide").value(12))
+                .andExpect(jsonPath("$.data.description").value("用 AI 工具跑本周数据，截图上传"));
+    }
+
+    @Test
+    @DisplayName("POST /sections/{sid}/reflections 创建反思日志成功")
+    void reflection_Create_Success() throws Exception {
+        Long courseId = createCourse();
+        Long chId = createChapter(courseId);
+        Long sectionId = createSection(courseId, chId);
+
+        String body = """
+                {"template": "200 字反思：本周 AI 如何改变了你的工作？"}
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/sections/" + sectionId + "/reflections")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.template").value("200 字反思：本周 AI 如何改变了你的工作？"));
+    }
+
+    @Test
+    @DisplayName("POST /sections/{sid}/quizzes 学生无权限")
+    void quiz_StudentForbidden() throws Exception {
+        mockMvc.perform(post("/api/courses/1/sections/1/quizzes")
+                        .header("Authorization", "Bearer " + loginAs("student", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slide\":1,\"prompt\":\"p\",\"options\":[\"A\",\"B\"],\"correctIndex\":0}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("POST /sections/{sid}/quizzes 非法选项(小于2)返回400")
+    void quiz_InvalidOptions_Rejected() throws Exception {
+        mockMvc.perform(post("/api/courses/1/sections/1/quizzes")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slide\":1,\"prompt\":\"p\",\"options\":[\"A\"],\"correctIndex\":0}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // helpers
+    private Long createCourse() throws Exception {
+        String resp = mockMvc.perform(post("/api/courses")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"P1测试课程-stage2\",\"categoryId\":1}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return Long.valueOf(JsonPath.read(resp, "$.data.id").toString());
+    }
+
+    private Long createChapter(Long courseId) throws Exception {
+        String resp = mockMvc.perform(post("/api/chapters")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"courseId\":%d,\"title\":\"P1测试章-stage2\",\"sortOrder\":1}".formatted(courseId)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return Long.valueOf(JsonPath.read(resp, "$.data.id").toString());
+    }
+
+    private Long createSection(Long courseId, Long chapterId) throws Exception {
+        String resp = mockMvc.perform(post("/api/courses/" + courseId + "/chapters/" + chapterId + "/sections")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"P1测试节-stage2\",\"sectionType\":\"VIDEO\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return Long.valueOf(JsonPath.read(resp, "$.data.id").toString());
     }
 }

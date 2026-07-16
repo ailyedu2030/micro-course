@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS section_quizzes (
   section_id BIGINT NOT NULL REFERENCES course_sections(id) ON DELETE CASCADE,
   slide INT NOT NULL,
   prompt TEXT NOT NULL,
-  options JSONB NOT NULL,
+  options TEXT NOT NULL,  -- JSON 字符串(P1 Stage 2:同 V196 用 TEXT 而非 JSONB,简化 MyBatis 写入)
   correct_index INT NOT NULL,
   explanation TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
