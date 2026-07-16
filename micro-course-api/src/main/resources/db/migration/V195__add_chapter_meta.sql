@@ -8,9 +8,9 @@ ALTER TABLE course_chapters
   ADD COLUMN IF NOT EXISTS core_question TEXT,
   ADD COLUMN IF NOT EXISTS chapter_hours INT;
 
--- backfill: no 默认等于 sort_order
+-- backfill: no 默认等于 sort_order(交叉审查 P0-1:COALESCE 防止 sort_order NULL 导致 no 仍 NULL)
 UPDATE course_chapters
-   SET no = sort_order
+   SET no = COALESCE(sort_order, 0)
  WHERE no IS NULL;
 
 COMMENT ON COLUMN course_chapters.no IS '章号(1-8)';

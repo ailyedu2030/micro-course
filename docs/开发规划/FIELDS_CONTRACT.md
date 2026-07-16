@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2594
+- 后端实体字段总数: 2610
 
 - 前端引用字段总数: 434
 
@@ -1026,7 +1026,7 @@
 
 | ChapterUpdateRequest | 8 | 0 |
 
-| ChapterVO | 16 | 0 |
+| ChapterVO | 20 | 0 |
 
 | CheckIn | 7 | 0 |
 
@@ -1106,7 +1106,7 @@
 
 | CourseUpdateRequest | 26 | 0 |
 
-| CourseVO | 37 | 0 |
+| CourseVO | 43 | 0 |
 
 | CreateReportRequest | 3 | 0 |
 
@@ -1384,7 +1384,7 @@
 
 | SectionCreateRequest | 2 | 0 |
 
-| SectionDTO | 15 | 0 |
+| SectionDTO | 21 | 0 |
 
 | SectionUpdateRequest | 2 | 0 |
 

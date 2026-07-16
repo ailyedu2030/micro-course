@@ -10,9 +10,9 @@ ALTER TABLE course_sections
   ADD COLUMN IF NOT EXISTS courseware_type VARCHAR(20) DEFAULT 'HTML',
   ADD COLUMN IF NOT EXISTS audio_strategy VARCHAR(20) DEFAULT '15-segment';
 
--- backfill: no 默认等于 sort_order
+-- backfill: no 默认等于 sort_order(交叉审查 P0-2:COALESCE 防止 sort_order NULL)
 UPDATE course_sections
-   SET no = sort_order::VARCHAR
+   SET no = COALESCE(sort_order, 0)::VARCHAR
  WHERE no IS NULL;
 
 -- backfill: learning_objectives 默认空数组 JSON

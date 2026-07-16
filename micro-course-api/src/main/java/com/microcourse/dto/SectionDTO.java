@@ -1,6 +1,7 @@
 package com.microcourse.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class SectionDTO {
     private Long id;
@@ -18,6 +19,14 @@ public class SectionDTO {
     private Boolean hasSlide;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // ===== P1 Stage 1: 小节级元信息(交叉审查 P1-1:VO 必须包含新字段) =====
+    private String no;
+    private List<String> learningObjectives;
+    private String anchorScenarioStep;
+    private String coreCompetency;
+    private String coursewareType;
+    private String audioStrategy;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -49,4 +58,18 @@ public class SectionDTO {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    // ===== P1 Stage 1 getters/setters =====
+    public String getNo() { return no; }
+    public void setNo(String no) { this.no = no; }
+    public List<String> getLearningObjectives() { return learningObjectives; }
+    public void setLearningObjectives(List<String> learningObjectives) { this.learningObjectives = learningObjectives; }
+    public String getAnchorScenarioStep() { return anchorScenarioStep; }
+    public void setAnchorScenarioStep(String anchorScenarioStep) { this.anchorScenarioStep = anchorScenarioStep; }
+    public String getCoreCompetency() { return coreCompetency; }
+    public void setCoreCompetency(String coreCompetency) { this.coreCompetency = coreCompetency; }
+    public String getCoursewareType() { return coursewareType; }
+    public void setCoursewareType(String coursewareType) { this.coursewareType = coursewareType; }
+    public String getAudioStrategy() { return audioStrategy; }
+    public void setAudioStrategy(String audioStrategy) { this.audioStrategy = audioStrategy; }
 }

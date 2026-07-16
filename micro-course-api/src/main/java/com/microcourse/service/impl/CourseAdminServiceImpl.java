@@ -547,6 +547,21 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         vo.setDiscountPercent(course.getDiscountPercent());
         vo.setPricingStatus(course.getPricingStatus());
 
+        // P1 Stage 1: 课程级元信息(交叉审查 P1-1:VO 必须包含新字段,否则 Trae 看不到自己传的字段)
+        vo.setHid(course.getHid());
+        vo.setTotalHours(course.getTotalHours());
+        vo.setTotalWeeks(course.getTotalWeeks());
+        vo.setLearningMode(course.getLearningMode());
+        vo.setEvaluationScheme(course.getEvaluationScheme());
+        if (course.getTeachingPhilosophy() != null && !course.getTeachingPhilosophy().isBlank()) {
+            try {
+                vo.setTeachingPhilosophy(STATIC_MAPPER.readValue(course.getTeachingPhilosophy(), java.util.List.class));
+            } catch (Exception e) {
+                LOG.warn("[CourseVO] teachingPhilosophy 反序列化失败: {}", e.getMessage());
+                vo.setTeachingPhilosophy(java.util.Collections.emptyList());
+            }
+        }
+
         if (course.getStatus() != null) {
             vo.setStatusText(CourseStatus.getDescription(course.getStatus()));
         }

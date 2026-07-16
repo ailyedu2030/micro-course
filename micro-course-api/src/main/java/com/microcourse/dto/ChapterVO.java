@@ -58,4 +58,19 @@ public class ChapterVO {
     public void setExercises(List<Object> exercises) { this.exercises = exercises; }
     public Integer getVideoCount() { return videoCount; }
     public void setVideoCount(Integer videoCount) { this.videoCount = videoCount; }
+
+    // ===== P1 Stage 1: 章节级元信息(交叉审查 P1-1:VO 必须包含新字段) =====
+    private Integer no;
+    private String anchorPoint;
+    private String coreQuestion;
+    private Integer chapterHours;
+
+    public Integer getNo() { return no; }
+    public void setNo(Integer no) { this.no = no; }
+    public String getAnchorPoint() { return anchorPoint; }
+    public void setAnchorPoint(String anchorPoint) { this.anchorPoint = anchorPoint; }
+    public String getCoreQuestion() { return coreQuestion; }
+    public void setCoreQuestion(String coreQuestion) { this.coreQuestion = coreQuestion; }
+    public Integer getChapterHours() { return chapterHours; }
+    public void setChapterHours(Integer chapterHours) { this.chapterHours = chapterHours; }
 }

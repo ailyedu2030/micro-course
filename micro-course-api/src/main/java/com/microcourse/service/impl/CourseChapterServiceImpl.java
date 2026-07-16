@@ -323,6 +323,12 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         vo.setCreatedAt(chapter.getCreatedAt());
         vo.setUpdatedAt(chapter.getUpdatedAt());
         vo.setVersion(chapter.getVersion());
+
+        // P1 Stage 1: 章节级元信息(交叉审查 P1-1:VO 必须包含新字段)
+        vo.setNo(chapter.getNo());
+        vo.setAnchorPoint(chapter.getAnchorPoint());
+        vo.setCoreQuestion(chapter.getCoreQuestion());
+        vo.setChapterHours(chapter.getChapterHours());
         var qw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
                 .eq(CourseSection::getChapterId, chapter.getId());
         Long sc = courseSectionRepository.selectCount(qw);

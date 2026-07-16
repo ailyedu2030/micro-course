@@ -177,6 +177,23 @@ public class SectionServiceImpl implements SectionService {
         dto.setHasSlide(sc > 0);
         dto.setCreatedAt(s.getCreatedAt());
         dto.setUpdatedAt(s.getUpdatedAt());
+
+        // P1 Stage 1: 小节级元信息(交叉审查 P1-1:VO 必须包含新字段)
+        dto.setNo(s.getNo());
+        dto.setAnchorScenarioStep(s.getAnchorScenarioStep());
+        dto.setCoreCompetency(s.getCoreCompetency());
+        dto.setCoursewareType(s.getCoursewareType());
+        dto.setAudioStrategy(s.getAudioStrategy());
+        if (s.getLearningObjectivesJson() != null && !s.getLearningObjectivesJson().isBlank()) {
+            try {
+                dto.setLearningObjectives(new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(s.getLearningObjectivesJson(), java.util.List.class));
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(SectionServiceImpl.class)
+                    .warn("[SectionDTO] learningObjectives 反序列化失败: {}", e.getMessage());
+                dto.setLearningObjectives(java.util.Collections.emptyList());
+            }
+        }
         return dto;
     }
 }

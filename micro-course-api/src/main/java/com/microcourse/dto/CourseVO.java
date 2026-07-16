@@ -129,4 +129,25 @@ public class CourseVO {
     public void setPricingStatus(String pricingStatus) { this.pricingStatus = pricingStatus; }
     public Boolean getVideoCopied() { return videoCopied; }
     public void setVideoCopied(Boolean videoCopied) { this.videoCopied = videoCopied; }
+
+    // ===== P1 Stage 1: 课程级元信息(交叉审查 P1-1:VO 必须包含新字段) =====
+    private String hid;
+    private Integer totalHours;
+    private Integer totalWeeks;
+    private List<String> teachingPhilosophy;
+    private String learningMode;
+    private String evaluationScheme;
+
+    public String getHid() { return hid; }
+    public void setHid(String hid) { this.hid = hid; }
+    public Integer getTotalHours() { return totalHours; }
+    public void setTotalHours(Integer totalHours) { this.totalHours = totalHours; }
+    public Integer getTotalWeeks() { return totalWeeks; }
+    public void setTotalWeeks(Integer totalWeeks) { this.totalWeeks = totalWeeks; }
+    public List<String> getTeachingPhilosophy() { return teachingPhilosophy; }
+    public void setTeachingPhilosophy(List<String> teachingPhilosophy) { this.teachingPhilosophy = teachingPhilosophy; }
+    public String getLearningMode() { return learningMode; }
+    public void setLearningMode(String learningMode) { this.learningMode = learningMode; }
+    public String getEvaluationScheme() { return evaluationScheme; }
+    public void setEvaluationScheme(String evaluationScheme) { this.evaluationScheme = evaluationScheme; }
 }
