@@ -10,7 +10,7 @@ RUN apk add --no-cache ffmpeg tini wqy-zenhei fontconfig
 RUN addgroup -S microcourse && adduser -S microcourse -G microcourse
 WORKDIR /app
 COPY --from=build /app/target/micro-course-api-1.0.0.jar app.jar
-RUN mkdir -p /data/videos /data/slides /app/uploads && chown -R microcourse:microcourse /app /data
+RUN mkdir -p /data/videos /data/slides /app/uploads /data/uploads/tmp && chown -R microcourse:microcourse /app /data
 USER microcourse
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \

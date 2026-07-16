@@ -65,6 +65,8 @@ services:
       PROD_ALLOW_MOCK_PAYMENT: ${PROD_ALLOW_MOCK_PAYMENT:-false}
     volumes:
       - uploads_data:/app/uploads
+      - slides_data:/data/slides
+      - multipart_tmp:/data/uploads/tmp
     ports:
       - "8080:8080"
     depends_on:
@@ -100,3 +102,5 @@ volumes:
   redis_data:
 
   uploads_data:
+  slides_data:
+  multipart_tmp:

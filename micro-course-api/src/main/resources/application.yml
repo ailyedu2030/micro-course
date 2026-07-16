@@ -67,6 +67,11 @@ spring:
       # 视频上传允许最大 500MB (RES-006 修复: 从 2GB 降至 500MB, 限制 DoS 风险)
       max-file-size: 500MB
       max-request-size: 500MB
+      # P0 fix (2026-07-17): 持久化 multipart 临时目录
+      # 修复前: 默认 ${java.io.tmpdir}/tomcat.PORT.<random>/work/Tomcat/localhost/ROOT/
+      #   容器重启后 random 后缀变化,旧路径失效 → FileNotFoundException
+      # 修复后: /data/uploads/tmp (Dockerfile 创建 + docker-compose 挂载 volumes)
+      location: ${MULTIPART_LOCATION:/data/uploads/tmp}
 
   # 静态资源映射 - 头像文件 + 封面文件访问
   # P0-09 修复：移除 file:./uploads/ 避免未授权文件访问
