@@ -101,6 +101,17 @@ public class CourseController {
         return R.ok(courseService.getById(id));
     }
 
+    @GetMapping(params = "hid")
+    @PreAuthorize("isAuthenticated()")
+    public R<CourseVO> getByHid(@RequestParam String hid) {
+        CourseVO vo = courseQueryService.getByHid(hid);
+        if (vo == null) {
+            throw new com.microcourse.exception.BusinessException(
+                com.microcourse.exception.ErrorCode.COURSE_NOT_FOUND);
+        }
+        return R.ok(vo);
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @AuditedLog("创建课程")

@@ -360,4 +360,16 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         Course course = courseRepository.selectById(courseId);
         return course != null && course.getStatus() == CourseStatus.PUBLISHED.getCode();
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<ChapterVO> batchCreate(Long courseId, List<ChapterCreateRequest> requests) {
+        if (requests == null || requests.isEmpty()) return List.of();
+        List<ChapterVO> result = new java.util.ArrayList<>(requests.size());
+        for (ChapterCreateRequest req : requests) {
+            req.setCourseId(courseId);
+            result.add(create(req));
+        }
+        return result;
+    }
 }

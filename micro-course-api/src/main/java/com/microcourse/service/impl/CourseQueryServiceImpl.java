@@ -565,4 +565,21 @@ public class CourseQueryServiceImpl implements CourseQueryService {
             default:                return null;
         }
     }
+
+    @Override
+    public CourseVO getByHid(String hid) {
+        if (hid == null || hid.isBlank()) return null;
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Course> qw =
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Course>()
+                .eq(Course::getHid, hid)
+                .last("LIMIT 1");
+        Course course = courseRepository.selectOne(qw);
+        if (course == null) return null;
+        CourseCategory category = course.getCategoryId() != null
+            ? categoryRepository.selectById(course.getCategoryId()) : null;
+        User teacher = course.getTeacherId() != null
+            ? userRepository.selectById(course.getTeacherId()) : null;
+        CourseVO vo = convertToVO(course, category, teacher, reviewRepository.countByCourseId(course.getId()));
+        return vo;
+    }
 }

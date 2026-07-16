@@ -4,11 +4,15 @@ import com.microcourse.dto.*;
 import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.service.CourseChapterService;
+import com.microcourse.service.CourseQueryService;
+import com.microcourse.service.SectionService;
 import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 /**
  * 路径别名控制器(P1 Stage 4)
@@ -23,10 +27,15 @@ public class AliasController {
 
     private final CourseChapterService chapterService;
     private final SlideService slideService;
+    private final CourseQueryService courseQueryService;
+    private final SectionService sectionService;
 
-    public AliasController(CourseChapterService chapterService, SlideService slideService) {
+    public AliasController(CourseChapterService chapterService, SlideService slideService,
+                           CourseQueryService courseQueryService, SectionService sectionService) {
         this.chapterService = chapterService;
         this.slideService = slideService;
+        this.courseQueryService = courseQueryService;
+        this.sectionService = sectionService;
     }
 
     /**
@@ -72,5 +81,22 @@ public class AliasController {
             throw new com.microcourse.exception.BusinessException(
                 com.microcourse.exception.ErrorCode.BAD_REQUEST_PARAM, "PPT 文件读取失败: " + e.getMessage());
         }
+    }
+
+    // ===== P1 Stage 5: 幂等性 + 批量化 =====
+
+    @PostMapping("/chapters/batch")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<List<ChapterVO>> batchCreateChapters(@PathVariable Long courseId,
+                                                    @Valid @RequestBody List<ChapterCreateRequest> requests) {
+        return R.ok(chapterService.batchCreate(courseId, requests));
+    }
+
+    @PostMapping("/{chapterId}/sections/batch")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<List<SectionDTO>> batchCreateSections(@PathVariable Long courseId,
+                                                     @PathVariable Long chapterId,
+                                                     @Valid @RequestBody List<SectionCreateRequest> requests) {
+        return R.ok(sectionService.batchCreate(courseId, chapterId, requests));
     }
 }

@@ -20,4 +20,7 @@ public interface CourseChapterService {
     void delete(Long id);
 
     void sort(List<ChapterSortRequest> requests);
+
+    /** P1 Stage 5: 批量创建章 */
+    java.util.List<ChapterVO> batchCreate(Long courseId, java.util.List<ChapterCreateRequest> requests);
 }

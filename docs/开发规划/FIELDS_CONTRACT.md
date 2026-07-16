@@ -803,7 +803,7 @@
 
 | AdminStats | /api/admin/stats | 8 | - |
 
-| Alias | /api/courses/{courseId} | 3 | - |
+| Alias | /api/courses/{courseId} | 5 | - |
 
 | Auth | /api/auth | 13 | - |
 
@@ -819,7 +819,7 @@
 
 | Class | /api/classes | 6 | - |
 
-| Course | /api/courses | 13 | - |
+| Course | /api/courses | 14 | - |
 
 | CourseBundle | /api/course-bundles | 8 | - |
 

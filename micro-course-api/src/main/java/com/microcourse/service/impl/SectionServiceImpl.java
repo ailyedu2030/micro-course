@@ -199,4 +199,15 @@ public class SectionServiceImpl implements SectionService {
         }
         return dto;
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<SectionDTO> batchCreate(Long courseId, Long chapterId, List<SectionCreateRequest> requests) {
+        if (requests == null || requests.isEmpty()) return List.of();
+        List<SectionDTO> result = new java.util.ArrayList<>(requests.size());
+        for (SectionCreateRequest req : requests) {
+            result.add(create(courseId, chapterId, req));
+        }
+        return result;
+    }
 }

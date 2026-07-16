@@ -21,4 +21,9 @@ public interface CourseQueryService {
      * 按教师查询课程列表 (含 TEACHER owner 校验)
      */
     java.util.List<CourseVO> listByTeacherIdWithOwnerCheck(Long teacherId, boolean includeDrafts);
+
+    /**
+     * P1 Stage 5: 按 hid 查询课程(幂等性,Trae 用来检测课程是否已创建)
+     */
+    CourseVO getByHid(String hid);
 }
