@@ -37,6 +37,10 @@ spring:
     # Phase 15: V91-V96 是新增 migration，版本号低于已应用的 V99-V103
     # 启用 out-of-order 允许 Flyway 按顺序应用新 migrations
     out-of-order: true
+    # R4 fix (2026-07-17): V193__update_section_573_html.sql 含 HTML 字符串,
+    # 里面有 ${demoIdx + 1} 等 JS 模板字符串,会被 Flyway 当 placeholder 解析失败
+    # 关闭 placeholder 替换(项目未使用 Flyway placeholder 机制)
+    placeholder-replacement: false
 
   # Redis 7（Docker 容器，6379）—— 登录失败计数 + Token 黑名单
   # 依据：业务逻辑 §2.1（login:lock:{username}）+ §2.4（登出黑名单）
