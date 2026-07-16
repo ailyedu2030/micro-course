@@ -85,6 +85,25 @@ public class Course {
     @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 
+    // ===== P1 Stage 1: 课程级元信息(Trae SKILL.md 模块 3.1) =====
+    @TableField("hid")
+    private String hid;
+
+    @TableField("total_hours")
+    private Integer totalHours;
+
+    @TableField("total_weeks")
+    private Integer totalWeeks;
+
+    @TableField("teaching_philosophy")
+    private String teachingPhilosophy;  // JSON 字符串(List<String> 序列化)
+
+    @TableField("learning_mode")
+    private String learningMode;
+
+    @TableField("evaluation_scheme")
+    private String evaluationScheme;
+
     public Course() {}
 
     public Long getId() { return id; }
@@ -161,4 +180,18 @@ public class Course {
     public void setPricingReviewedAt(LocalDateTime pricingReviewedAt) { this.pricingReviewedAt = pricingReviewedAt; }
     public Long getPricingReviewedBy() { return pricingReviewedBy; }
     public void setPricingReviewedBy(Long pricingReviewedBy) { this.pricingReviewedBy = pricingReviewedBy; }
+
+    // ===== P1 Stage 1 getters/setters =====
+    public String getHid() { return hid; }
+    public void setHid(String hid) { this.hid = hid; }
+    public Integer getTotalHours() { return totalHours; }
+    public void setTotalHours(Integer totalHours) { this.totalHours = totalHours; }
+    public Integer getTotalWeeks() { return totalWeeks; }
+    public void setTotalWeeks(Integer totalWeeks) { this.totalWeeks = totalWeeks; }
+    public String getTeachingPhilosophy() { return teachingPhilosophy; }
+    public void setTeachingPhilosophy(String teachingPhilosophy) { this.teachingPhilosophy = teachingPhilosophy; }
+    public String getLearningMode() { return learningMode; }
+    public void setLearningMode(String learningMode) { this.learningMode = learningMode; }
+    public String getEvaluationScheme() { return evaluationScheme; }
+    public void setEvaluationScheme(String evaluationScheme) { this.evaluationScheme = evaluationScheme; }
 }

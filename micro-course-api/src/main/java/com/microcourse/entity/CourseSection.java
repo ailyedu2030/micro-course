@@ -23,6 +23,14 @@ public class CourseSection {
     @TableLogic(value = "NULL", delval = "now()")
     @TableField("deleted_at") private LocalDateTime deletedAt;
 
+    // ===== P1 Stage 1: 小节级元信息(Trae SKILL.md 模块 3.3) =====
+    @TableField("no") private String no;
+    @TableField("learning_objectives") private String learningObjectivesJson;
+    @TableField("anchor_scenario_step") private String anchorScenarioStep;
+    @TableField("core_competency") private String coreCompetency;
+    @TableField("courseware_type") private String coursewareType;
+    @TableField("audio_strategy") private String audioStrategy;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getChapterId() { return chapterId; }
@@ -53,4 +61,18 @@ public class CourseSection {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+
+    // ===== P1 Stage 1 getters/setters =====
+    public String getNo() { return no; }
+    public void setNo(String no) { this.no = no; }
+    public String getLearningObjectivesJson() { return learningObjectivesJson; }
+    public void setLearningObjectivesJson(String learningObjectivesJson) { this.learningObjectivesJson = learningObjectivesJson; }
+    public String getAnchorScenarioStep() { return anchorScenarioStep; }
+    public void setAnchorScenarioStep(String anchorScenarioStep) { this.anchorScenarioStep = anchorScenarioStep; }
+    public String getCoreCompetency() { return coreCompetency; }
+    public void setCoreCompetency(String coreCompetency) { this.coreCompetency = coreCompetency; }
+    public String getCoursewareType() { return coursewareType; }
+    public void setCoursewareType(String coursewareType) { this.coursewareType = coursewareType; }
+    public String getAudioStrategy() { return audioStrategy; }
+    public void setAudioStrategy(String audioStrategy) { this.audioStrategy = audioStrategy; }
 }

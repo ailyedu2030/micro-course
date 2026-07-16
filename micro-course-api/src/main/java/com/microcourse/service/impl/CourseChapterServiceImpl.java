@@ -173,6 +173,13 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         chapter.setSortOrder(sortOrder);
         chapter.setDuration(request.getDuration());
         chapter.setCreatedAt(LocalDateTime.now());
+
+        // P1 Stage 1: 章节级元信息
+        if (request.getNo() != null) chapter.setNo(request.getNo());
+        else chapter.setNo(sortOrder);  // backfill: 默认 = sortOrder
+        if (request.getAnchorPoint() != null) chapter.setAnchorPoint(request.getAnchorPoint());
+        if (request.getCoreQuestion() != null) chapter.setCoreQuestion(request.getCoreQuestion());
+        if (request.getChapterHours() != null) chapter.setChapterHours(request.getChapterHours());
         chapter.setUpdatedAt(LocalDateTime.now());
 
         chapterRepository.insert(chapter);
@@ -199,6 +206,12 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (request.getTitle() != null) chapter.setTitle(request.getTitle());
         if (request.getDescription() != null) chapter.setDescription(request.getDescription());
         if (request.getDuration() != null) chapter.setDuration(request.getDuration());
+
+        // P1 Stage 1: 章节级元信息
+        if (request.getNo() != null) chapter.setNo(request.getNo());
+        if (request.getAnchorPoint() != null) chapter.setAnchorPoint(request.getAnchorPoint());
+        if (request.getCoreQuestion() != null) chapter.setCoreQuestion(request.getCoreQuestion());
+        if (request.getChapterHours() != null) chapter.setChapterHours(request.getChapterHours());
 
         chapter.setUpdatedAt(LocalDateTime.now());
         chapterRepository.updateById(chapter);

@@ -68,6 +68,25 @@ public class SectionServiceImpl implements SectionService {
         var now = java.time.LocalDateTime.now();
         section.setCreatedAt(now);
         section.setUpdatedAt(now);
+
+        // P1 Stage 1: 小节级元信息
+        if (req.getNo() != null) section.setNo(req.getNo());
+        else section.setNo(String.valueOf(req.getSortOrder() != null ? req.getSortOrder() : 0));  // backfill
+        if (req.getAnchorScenarioStep() != null) section.setAnchorScenarioStep(req.getAnchorScenarioStep());
+        if (req.getCoreCompetency() != null) section.setCoreCompetency(req.getCoreCompetency());
+        if (req.getCoursewareType() != null) section.setCoursewareType(req.getCoursewareType());
+        if (req.getAudioStrategy() != null) section.setAudioStrategy(req.getAudioStrategy());
+        if (req.getLearningObjectives() != null && !req.getLearningObjectives().isEmpty()) {
+            try {
+                section.setLearningObjectivesJson(new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(req.getLearningObjectives()));
+            } catch (Exception e) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "learningObjectives 序列化失败: " + e.getMessage());
+            }
+        } else {
+            section.setLearningObjectivesJson("[]");
+        }
+
         sectionRepo.insert(section);
         return toDTO(section);
     }
@@ -87,6 +106,22 @@ public class SectionServiceImpl implements SectionService {
         if (req.getDuration() != null) section.setDuration(req.getDuration());
         if (req.getVisible() != null) section.setVisible(req.getVisible());
         if (req.getDescription() != null) section.setDescription(req.getDescription());
+
+        // P1 Stage 1: 小节级元信息
+        if (req.getNo() != null) section.setNo(req.getNo());
+        if (req.getAnchorScenarioStep() != null) section.setAnchorScenarioStep(req.getAnchorScenarioStep());
+        if (req.getCoreCompetency() != null) section.setCoreCompetency(req.getCoreCompetency());
+        if (req.getCoursewareType() != null) section.setCoursewareType(req.getCoursewareType());
+        if (req.getAudioStrategy() != null) section.setAudioStrategy(req.getAudioStrategy());
+        if (req.getLearningObjectives() != null && !req.getLearningObjectives().isEmpty()) {
+            try {
+                section.setLearningObjectivesJson(new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(req.getLearningObjectives()));
+            } catch (Exception e) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "learningObjectives 序列化失败: " + e.getMessage());
+            }
+        }
+
         section.setUpdatedAt(java.time.LocalDateTime.now());
         sectionRepo.updateById(section);
         return toDTO(section);

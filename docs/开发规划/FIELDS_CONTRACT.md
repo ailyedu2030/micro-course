@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2584
+- 后端实体字段总数: 2594
 
 - 前端引用字段总数: 434
 
@@ -1052,7 +1052,7 @@
 
 | CompletionWarningVO | 6 | 0 |
 
-| Course | 37 | 0 |
+| Course | 43 | 0 |
 
 | CourseBundle | 13 | 0 |
 
@@ -1066,7 +1066,7 @@
 
 | CourseCategoryVO | 7 | 0 |
 
-| CourseChapter | 12 | 0 |
+| CourseChapter | 16 | 0 |
 
 | CourseCreateRequest | 26 | 0 |
 

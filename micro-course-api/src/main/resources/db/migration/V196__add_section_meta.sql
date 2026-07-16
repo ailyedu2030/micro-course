@@ -4,7 +4,7 @@
 
 ALTER TABLE course_sections
   ADD COLUMN IF NOT EXISTS no VARCHAR(20),
-  ADD COLUMN IF NOT EXISTS learning_objectives JSONB,
+  ADD COLUMN IF NOT EXISTS learning_objectives TEXT,  -- JSON 字符串(P1 Stage 1 适配:用 TEXT 而非 JSONB,简化 MyBatis 写入)
   ADD COLUMN IF NOT EXISTS anchor_scenario_step TEXT,
   ADD COLUMN IF NOT EXISTS core_competency VARCHAR(100),
   ADD COLUMN IF NOT EXISTS courseware_type VARCHAR(20) DEFAULT 'HTML',
@@ -15,9 +15,9 @@ UPDATE course_sections
    SET no = sort_order::VARCHAR
  WHERE no IS NULL;
 
--- backfill: learning_objectives 默认空数组
+-- backfill: learning_objectives 默认空数组 JSON
 UPDATE course_sections
-   SET learning_objectives = '[]'::JSONB
+   SET learning_objectives = '[]'
  WHERE learning_objectives IS NULL;
 
 -- CHECK 约束
@@ -34,7 +34,7 @@ BEGIN
 END $$;
 
 COMMENT ON COLUMN course_sections.no IS '节号(如 1.1, 1.2)';
-COMMENT ON COLUMN course_sections.learning_objectives IS '学习目标 JSON 数组';
+COMMENT ON COLUMN course_sections.learning_objectives IS '学习目标 JSON 字符串(P1 Stage 1:改为 TEXT 而非 JSONB,简化 MyBatis 写入)';
 COMMENT ON COLUMN course_sections.anchor_scenario_step IS '该节锚情境节点';
 COMMENT ON COLUMN course_sections.core_competency IS '核心能力';
 COMMENT ON COLUMN course_sections.courseware_type IS '课件类型: HTML / PPT / BOTH';

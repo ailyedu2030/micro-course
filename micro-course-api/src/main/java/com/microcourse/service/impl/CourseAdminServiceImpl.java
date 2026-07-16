@@ -67,6 +67,8 @@ import java.util.stream.Collectors;
 public class CourseAdminServiceImpl implements CourseAdminService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CourseAdminServiceImpl.class);
+    private static final com.fasterxml.jackson.databind.ObjectMapper STATIC_MAPPER =
+        new com.fasterxml.jackson.databind.ObjectMapper();
 
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
@@ -185,6 +187,20 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         course.setStudentCount(0);
         course.setAvgRating(BigDecimal.ZERO);
 
+        // P1 Stage 1: 课程级元信息
+        if (request.getHid() != null) course.setHid(request.getHid());
+        if (request.getTotalHours() != null) course.setTotalHours(request.getTotalHours());
+        if (request.getTotalWeeks() != null) course.setTotalWeeks(request.getTotalWeeks());
+        if (request.getLearningMode() != null) course.setLearningMode(request.getLearningMode());
+        if (request.getEvaluationScheme() != null) course.setEvaluationScheme(request.getEvaluationScheme());
+        if (request.getTeachingPhilosophy() != null && !request.getTeachingPhilosophy().isEmpty()) {
+            try {
+                course.setTeachingPhilosophy(STATIC_MAPPER.writeValueAsString(request.getTeachingPhilosophy()));
+            } catch (Exception e) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "teachingPhilosophy 序列化失败: " + e.getMessage());
+            }
+        }
+
         courseRepository.insert(course);
         LOG.info("课程创建成功, id={}, title={}, operator={}", course.getId(), course.getTitle());
         return convertToVO(course);
@@ -238,6 +254,20 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (request.getFreeDeptIds() != null) course.setFreeDeptIds(request.getFreeDeptIds());
         if (request.getDiscountScope() != null) course.setDiscountScope(request.getDiscountScope());
         if (request.getDiscountPercent() != null) course.setDiscountPercent(request.getDiscountPercent());
+
+        // P1 Stage 1: 课程级元信息
+        if (request.getHid() != null) course.setHid(request.getHid());
+        if (request.getTotalHours() != null) course.setTotalHours(request.getTotalHours());
+        if (request.getTotalWeeks() != null) course.setTotalWeeks(request.getTotalWeeks());
+        if (request.getLearningMode() != null) course.setLearningMode(request.getLearningMode());
+        if (request.getEvaluationScheme() != null) course.setEvaluationScheme(request.getEvaluationScheme());
+        if (request.getTeachingPhilosophy() != null && !request.getTeachingPhilosophy().isEmpty()) {
+            try {
+                course.setTeachingPhilosophy(STATIC_MAPPER.writeValueAsString(request.getTeachingPhilosophy()));
+            } catch (Exception e) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "teachingPhilosophy 序列化失败: " + e.getMessage());
+            }
+        }
 
         courseRepository.updateById(course);
         LOG.info("课程更新成功, id={}, operator={}", id);

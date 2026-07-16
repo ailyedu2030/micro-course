@@ -47,6 +47,19 @@ public class CourseChapter {
     @TableField("learning_objectives")
     private String learningObjectives;
 
+    // ===== P1 Stage 1: 章节级元信息(Trae SKILL.md 模块 3.2) =====
+    @TableField("no")
+    private Integer no;
+
+    @TableField("anchor_point")
+    private String anchorPoint;
+
+    @TableField("core_question")
+    private String coreQuestion;
+
+    @TableField("chapter_hours")
+    private Integer chapterHours;
+
     public CourseChapter() {}
 
     public Long getId() { return id; }
@@ -73,4 +86,14 @@ public class CourseChapter {
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
     public String getLearningObjectives() { return learningObjectives; }
     public void setLearningObjectives(String learningObjectives) { this.learningObjectives = learningObjectives; }
+
+    // ===== P1 Stage 1 getters/setters =====
+    public Integer getNo() { return no; }
+    public void setNo(Integer no) { this.no = no; }
+    public String getAnchorPoint() { return anchorPoint; }
+    public void setAnchorPoint(String anchorPoint) { this.anchorPoint = anchorPoint; }
+    public String getCoreQuestion() { return coreQuestion; }
+    public void setCoreQuestion(String coreQuestion) { this.coreQuestion = coreQuestion; }
+    public Integer getChapterHours() { return chapterHours; }
+    public void setChapterHours(Integer chapterHours) { this.chapterHours = chapterHours; }
 }
