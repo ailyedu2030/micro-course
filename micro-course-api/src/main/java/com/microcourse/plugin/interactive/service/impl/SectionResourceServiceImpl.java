@@ -1,0 +1,103 @@
+package com.microcourse.plugin.interactive.service.impl;
+
+import com.microcourse.dto.R;
+import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseSection;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.dto.*;
+import com.microcourse.plugin.interactive.entity.*;
+import com.microcourse.plugin.interactive.mapper.*;
+import com.microcourse.plugin.interactive.service.SectionResourceService;
+import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.CourseSectionRepository;
+import com.microcourse.util.SecurityUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Service
+@Transactional(rollbackFor = Exception.class)
+public class SectionResourceServiceImpl implements SectionResourceService {
+    private static final Logger log = LoggerFactory.getLogger(SectionResourceServiceImpl.class);
+
+    private final SectionQuizMapper quizMapper;
+    private final SectionTaskMapper taskMapper;
+    private final SectionReflectionMapper reflectionMapper;
+    private final CourseRepository courseRepository;
+    private final CourseSectionRepository sectionRepository;
+    private final ObjectMapper objectMapper;
+
+    public SectionResourceServiceImpl(SectionQuizMapper quizMapper,
+                                       SectionTaskMapper taskMapper,
+                                       SectionReflectionMapper reflectionMapper,
+                                       CourseRepository courseRepository,
+                                       CourseSectionRepository sectionRepository,
+                                       ObjectMapper objectMapper) {
+        this.quizMapper = quizMapper;
+        this.taskMapper = taskMapper;
+        this.reflectionMapper = reflectionMapper;
+        this.courseRepository = courseRepository;
+        this.sectionRepository = sectionRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    private void verifyOwnership(Long courseId, Long sectionId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId()))
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        CourseSection section = sectionRepository.selectById(sectionId);
+        if (section == null || !section.getCourseId().equals(courseId))
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "小节不存在或不属于该课程");
+    }
+
+    @Override
+    public SectionQuiz createQuiz(Long courseId, Long sectionId, CreateQuizRequest request) {
+        verifyOwnership(courseId, sectionId);
+        try {
+            SectionQuiz quiz = new SectionQuiz();
+            quiz.setSectionId(sectionId);
+            quiz.setSlide(request.getSlide());
+            quiz.setPrompt(request.getPrompt());
+            quiz.setOptions(objectMapper.writeValueAsString(request.getOptions()));
+            quiz.setCorrectIndex(request.getCorrectIndex());
+            quiz.setExplanation(request.getExplanation());
+            quiz.setCreatedAt(LocalDateTime.now());
+            quizMapper.insert(quiz);
+            log.info("[SectionResource] quiz created: sectionId={}, slide={}", sectionId, request.getSlide());
+            return quiz;
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "自测题创建失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public SectionTask createTask(Long courseId, Long sectionId, CreateTaskRequest request) {
+        verifyOwnership(courseId, sectionId);
+        SectionTask task = new SectionTask();
+        task.setSectionId(sectionId);
+        task.setSlide(request.getSlide());
+        task.setDescription(request.getDescription());
+        task.setCreatedAt(LocalDateTime.now());
+        taskMapper.insert(task);
+        log.info("[SectionResource] task created: sectionId={}, slide={}", sectionId, request.getSlide());
+        return task;
+    }
+
+    @Override
+    public SectionReflection createReflection(Long courseId, Long sectionId, CreateReflectionRequest request) {
+        verifyOwnership(courseId, sectionId);
+        SectionReflection ref = new SectionReflection();
+        ref.setSectionId(sectionId);
+        ref.setTemplate(request.getTemplate());
+        ref.setCreatedAt(LocalDateTime.now());
+        reflectionMapper.insert(ref);
+        log.info("[SectionResource] reflection created: sectionId={}", sectionId);
+        return ref;
+    }
+}
