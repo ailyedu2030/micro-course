@@ -1921,6 +1921,8 @@
 
 | 版本 | 日期 | 说明 | 作者 |
 |------|------|------|------|
+| v1.7 | 2026-07-17 | P1 Stage 4-5 增量：路径别名(POST /courses/{cid}/chapters、/sections/{sid}/{html|ppt})、幂等性(GET /courses?hid=xxx)、批量化(POST chapters/batch、sections/batch) | opencode |
+| v1.6 | 2026-07-17 | P1 Stage 3 增量：POST /courses/{cid}/trainings、POST /courses/{cid}/final-project、V200/201 migration(2 张新表) | opencode |
 | v1.5 | 2026-07-17 | P1 Stage 2 增量：新增 3 个 section 资源端点(POST quizzes/tasks/reflections)、V197/198/199 migration(3 张新表) | opencode |
 | v1.4 | 2026-07-17 | P1 Stage 1 增量：CourseCreateRequest 新增 hid/totalHours/totalWeeks/teachingPhilosophy/learningMode/evaluationScheme(V194)；ChapterCreateRequest 新增 no/anchorPoint/coreQuestion/chapterHours(V195)；SectionCreateRequest 新增 no/learningObjectives/anchorScenarioStep/coreCompetency/coursewareType/audioStrategy(V196) | opencode |
 | v1.3 | 2026-07-17 | 增量 Phase 11.6（R4 修复）：新增 POST /api/courses/{courseId}/sections/{sectionId}/audio/batch 批量上传端点（15 段）、GET /api/courses/{courseId}/slides/pages 响应增加 segmentAudios 数组 + htmlContent 占位符动态替换（`AUDIO_SEG_NN_URL` → 真实 URL）、slide_pages.segment_count 自动设置。修复 multipart 临时目录持久化（V193 migration 更新 section 573 旧版 HTML） | opencode |
@@ -2185,6 +2187,79 @@ HTML 直传响应中 `totalPages=1, status=2`（已就绪，无需渲染）。
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | template | String | ✅ | 反思日志模板 ≤2000 字 |
+
+### Phase 11.8: course 资源 API（P1 Stage 3 - 2026-07-17）
+
+#### POST /api/courses/{courseId}/trainings — 创建实训
+
+**请求**（application/json）：
+```json
+{
+  "no": 1, "chapter": "第 3 章后", "title": "数据清洗实战",
+  "hours": 2, "submissionForm": "清洗报告+截图"
+}
+```
+
+| 字段 | 类型 | 必填 | 校验 | 说明 |
+|---|---|---|---|---|
+| no | Integer | ✅ | 1-20 | 实训号 |
+| chapter | String | ❌ | ≤100 | 关联章节 |
+| title | String | ✅ | ≤200 | 实训标题 |
+| hours | Integer | ✅ | 1-100 | 实训学时 |
+| submissionForm | String | ❌ | ≤200 | 提交形式 |
+
+#### POST /api/courses/{courseId}/final-project — 创建期末项目
+
+**请求**：
+```json
+{
+  "title": "AI 工具综合应用",
+  "phases": ["选题","中期","终期"],
+  "finalSubmissionForm": "完整报告+PPT"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| title | String | ✅ | 标题 ≤200 字 |
+| phases | String[] | ❌ | 阶段名称数组，默认 ["选题","中期","终期"] |
+| finalSubmissionForm | String | ❌ | 提交形式 ≤200 字 |
+
+### Phase 11.9: 路径别名 + 幂等性 + 批量化（P1 Stage 4-5 - 2026-07-17）
+
+> 本节记录 Trae SKILL.md 期望路径与实际路径不一致时的别名映射，以及批量创建/幂等性查询接口。
+
+#### POST /api/courses/{courseId}/chapters — 创建章（别名）
+
+**说明**：原有 `POST /api/chapters` 的路径别名，从 path 注入 courseId。
+
+**请求**：同 `POST /api/chapters`，但 `courseId` 在 URL 路径中而非请求体。
+
+#### POST /api/courses/{courseId}/sections/{sectionId}/{html|ppt} — 上传课件（别名）
+
+**说明**：原有 `POST /api/courses/{courseId}/slides/upload` 的路径别名。
+后端按文件扩展名自动分支（.html → HTML_DIRECT，.pptx → PPT_RENDERED）。
+HTML 上传受灰度白名单控制。
+
+#### GET /api/courses?hid=xxx — 幂等性查询
+
+**功能**：按全局唯一 hid 查询课程。用于 Trae 检测课程是否已存在。
+
+**响应**（200 OK）：同 GET /api/courses/{id} 的 CourseVO 结构。
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| hid | String | ✅ | 课程全局唯一 ID |
+
+**响应**（404）：hid 不存在时返回 `COURSE_NOT_FOUND`。
+
+#### POST /api/courses/{courseId}/chapters/batch — 批量创建章
+
+**请求**（application/json）：`ChapterCreateRequest[]`
+
+#### POST /api/courses/{courseId}/chapters/{chapterId}/sections/batch — 批量创建节
+
+**请求**（application/json）：`SectionCreateRequest[]`
 
 ---
 
