@@ -2,9 +2,11 @@ package com.microcourse.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public class CourseCreateRequest {
 
@@ -49,6 +51,21 @@ public class CourseCreateRequest {
     private String freeDeptIds;
     private String discountScope;
     private Integer discountPercent;
+
+    // ===== P1 Stage 1: 课程级元信息(Trae SKILL.md 模块 3.1 schema)=====
+    @Size(max = 64, message = "hid 全局唯一 ID 长度不超过 64")
+    private String hid;
+
+    private Integer totalHours;
+
+    private Integer totalWeeks;
+
+    private List<String> teachingPhilosophy;
+
+    @Pattern(regexp = "online-self-study|offline-blended|hybrid", message = "learningMode 必须是 online-self-study / offline-blended / hybrid")
+    private String learningMode;
+
+    private String evaluationScheme;
 
     public CourseCreateRequest() {}
 
@@ -96,4 +113,18 @@ public class CourseCreateRequest {
     public void setDiscountScope(String s) { this.discountScope = s; }
     public Integer getDiscountPercent() { return discountPercent; }
     public void setDiscountPercent(Integer n) { this.discountPercent = n; }
+
+    // ===== P1 getters/setters =====
+    public String getHid() { return hid; }
+    public void setHid(String hid) { this.hid = hid; }
+    public Integer getTotalHours() { return totalHours; }
+    public void setTotalHours(Integer totalHours) { this.totalHours = totalHours; }
+    public Integer getTotalWeeks() { return totalWeeks; }
+    public void setTotalWeeks(Integer totalWeeks) { this.totalWeeks = totalWeeks; }
+    public List<String> getTeachingPhilosophy() { return teachingPhilosophy; }
+    public void setTeachingPhilosophy(List<String> teachingPhilosophy) { this.teachingPhilosophy = teachingPhilosophy; }
+    public String getLearningMode() { return learningMode; }
+    public void setLearningMode(String learningMode) { this.learningMode = learningMode; }
+    public String getEvaluationScheme() { return evaluationScheme; }
+    public void setEvaluationScheme(String evaluationScheme) { this.evaluationScheme = evaluationScheme; }
 }

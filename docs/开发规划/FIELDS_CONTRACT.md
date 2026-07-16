@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2563
+- 后端实体字段总数: 2584
 
 - 前端引用字段总数: 434
 
@@ -1018,13 +1018,13 @@
 
 | ChapterAssignmentItem | 8 | 0 |
 
-| ChapterCreateRequest | 5 | 0 |
+| ChapterCreateRequest | 9 | 0 |
 
 | ChapterOfflineSession | 12 | 0 |
 
 | ChapterSortRequest | 2 | 0 |
 
-| ChapterUpdateRequest | 4 | 0 |
+| ChapterUpdateRequest | 8 | 0 |
 
 | ChapterVO | 16 | 0 |
 
@@ -1068,7 +1068,7 @@
 
 | CourseChapter | 12 | 0 |
 
-| CourseCreateRequest | 20 | 0 |
+| CourseCreateRequest | 26 | 0 |
 
 | CourseFavorite | 5 | 0 |
 
@@ -1104,7 +1104,7 @@
 
 | CourseTrendVO | 3 | 0 |
 
-| CourseUpdateRequest | 21 | 0 |
+| CourseUpdateRequest | 26 | 0 |
 
 | CourseVO | 37 | 0 |
 
@@ -1382,11 +1382,11 @@
 
 | ScoreHistoryVO | 9 | 0 |
 
-| SectionCreateRequest | 1 | 0 |
+| SectionCreateRequest | 2 | 0 |
 
 | SectionDTO | 15 | 0 |
 
-| SectionUpdateRequest | 1 | 0 |
+| SectionUpdateRequest | 2 | 0 |
 
 | SettingUpdateRequest | 3 | 0 |
 

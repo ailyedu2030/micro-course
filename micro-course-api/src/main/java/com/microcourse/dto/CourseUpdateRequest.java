@@ -32,7 +32,28 @@ public class CourseUpdateRequest {
     private String discountScope;     // none | same_college | same_school
     private Integer discountPercent;  // 0-100
 
+    // ===== P1 Stage 1: 课程级元信息 =====
+    private String hid;
+    private Integer totalHours;
+    private Integer totalWeeks;
+    private java.util.List<String> teachingPhilosophy;
+    private String learningMode;
+    private String evaluationScheme;
+
     public CourseUpdateRequest() {}
+
+    public String getHid() { return hid; }
+    public void setHid(String hid) { this.hid = hid; }
+    public Integer getTotalHours() { return totalHours; }
+    public void setTotalHours(Integer totalHours) { this.totalHours = totalHours; }
+    public Integer getTotalWeeks() { return totalWeeks; }
+    public void setTotalWeeks(Integer totalWeeks) { this.totalWeeks = totalWeeks; }
+    public java.util.List<String> getTeachingPhilosophy() { return teachingPhilosophy; }
+    public void setTeachingPhilosophy(java.util.List<String> teachingPhilosophy) { this.teachingPhilosophy = teachingPhilosophy; }
+    public String getLearningMode() { return learningMode; }
+    public void setLearningMode(String learningMode) { this.learningMode = learningMode; }
+    public String getEvaluationScheme() { return evaluationScheme; }
+    public void setEvaluationScheme(String evaluationScheme) { this.evaluationScheme = evaluationScheme; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

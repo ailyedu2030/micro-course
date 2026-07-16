@@ -1,6 +1,7 @@
 package com.microcourse.dto;
 
 import jakarta.validation.constraints.*;
+import java.util.List;
 
 public class SectionUpdateRequest {
     @Size(max = 200) private String title;
@@ -9,6 +10,14 @@ public class SectionUpdateRequest {
     @Min(0) private Integer duration;
     private Boolean visible;
     @Size(max = 2000) private String description;
+
+    // ===== P1 Stage 1 =====
+    @Size(max = 20) private String no;
+    private List<String> learningObjectives;
+    @Size(max = 2000) private String anchorScenarioStep;
+    @Size(max = 100) private String coreCompetency;
+    @Pattern(regexp = "HTML|PPT|BOTH") private String coursewareType;
+    @Pattern(regexp = "15-segment|1-merged") private String audioStrategy;
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
@@ -22,4 +31,18 @@ public class SectionUpdateRequest {
     public void setVisible(Boolean visible) { this.visible = visible; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    // ===== P1 Stage 1 getters/setters =====
+    public String getNo() { return no; }
+    public void setNo(String no) { this.no = no; }
+    public List<String> getLearningObjectives() { return learningObjectives; }
+    public void setLearningObjectives(List<String> learningObjectives) { this.learningObjectives = learningObjectives; }
+    public String getAnchorScenarioStep() { return anchorScenarioStep; }
+    public void setAnchorScenarioStep(String anchorScenarioStep) { this.anchorScenarioStep = anchorScenarioStep; }
+    public String getCoreCompetency() { return coreCompetency; }
+    public void setCoreCompetency(String coreCompetency) { this.coreCompetency = coreCompetency; }
+    public String getCoursewareType() { return coursewareType; }
+    public void setCoursewareType(String coursewareType) { this.coursewareType = coursewareType; }
+    public String getAudioStrategy() { return audioStrategy; }
+    public void setAudioStrategy(String audioStrategy) { this.audioStrategy = audioStrategy; }
 }
