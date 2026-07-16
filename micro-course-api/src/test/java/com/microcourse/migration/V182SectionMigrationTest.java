@@ -4,14 +4,23 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * V182 migration 验证测试
+ *
+ * 交叉审查 P3 修复:加 @DirtiesContext(classMode=BEFORE_CLASS) 让本类跑前
+ * context 重建(seed 数据 fresh),避免被 P1Stage1IntegrationTest 等创建
+ * 的孤儿 chapter 污染 "sections >= chapters" 断言
+ */
 @SpringBootTest
 @ActiveProfiles("test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 class V182SectionMigrationTest {
     @Autowired private DataSource dataSource;
 

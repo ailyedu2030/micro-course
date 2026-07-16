@@ -5,6 +5,7 @@ import com.microcourse.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -18,7 +19,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * - Course 创建/读取(hid, totalHours, teachingPhilosophy, learningMode)
  * - Chapter 创建/读取(no, anchorPoint, coreQuestion, chapterHours)
  * - Section 创建/读取(no, learningObjectives, coursewareType, audioStrategy)
+ *
+ * 交叉审查 P3 修复:加 @Transactional 让所有 test 写入的 DB 数据自动 rollback,
+ * 避免污染其他共享 context 测试(如 V182SectionMigrationTest)的 "sections >= chapters"
+ * 断言。本类创建了 chapters 但未对应 sections,如果不回滚会失败。
+ *
+ * 注: 早期版本用 @DirtiesContext(AFTER_CLASS) + @Sql 清理,但 DirtiesContext
+ * 触发时机晚于 @Sql,且 context 重建不清理 DB 数据,最终改用 @Transactional。
  */
+@Transactional
 public class P1Stage1IntegrationTest extends BaseIntegrationTest {
 
     @Test
