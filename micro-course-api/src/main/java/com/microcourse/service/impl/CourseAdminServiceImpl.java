@@ -545,7 +545,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         vo.setEvaluationScheme(course.getEvaluationScheme());
         if (course.getTeachingPhilosophy() != null && !course.getTeachingPhilosophy().isBlank()) {
             try {
-                vo.setTeachingPhilosophy(objectMapper.readValue(course.getTeachingPhilosophy(), java.util.List.class));
+                vo.setTeachingPhilosophy(objectMapper.readValue(course.getTeachingPhilosophy(), new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {}));
             } catch (Exception e) {
                 LOG.warn("[CourseVO] teachingPhilosophy 反序列化失败: {}", e.getMessage());
                 vo.setTeachingPhilosophy(java.util.Collections.emptyList());

@@ -190,7 +190,7 @@ public class SectionServiceImpl implements SectionService {
         if (s.getLearningObjectives() != null && !s.getLearningObjectives().isBlank()) {
             try {
                 dto.setLearningObjectives(objectMapper
-                    .readValue(s.getLearningObjectives(), java.util.List.class));
+                    .readValue(s.getLearningObjectives(), new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {}));
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(SectionServiceImpl.class)
                     .warn("[SectionDTO] learningObjectives 反序列化失败: {}", e.getMessage());

@@ -553,7 +553,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         if (trimmed.startsWith("[")) {
             // JSON array format: ["A","B","C"]
             try {
-                return objectMapper.readValue(trimmed, List.class);
+                return objectMapper.readValue(trimmed, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {});
             } catch (JsonProcessingException e) {
                 // ERR-006 修复:不再静默吞掉,记录日志便于排查数据异常
                 log.warn("[ExerciseRecord] 答案 JSON 解析失败,降级为空列表 answer={}", answer, e);

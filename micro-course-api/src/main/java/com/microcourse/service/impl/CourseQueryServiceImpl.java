@@ -424,7 +424,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         vo.setEvaluationScheme(course.getEvaluationScheme());
         if (course.getTeachingPhilosophy() != null && !course.getTeachingPhilosophy().isBlank()) {
             try {
-                vo.setTeachingPhilosophy(objectMapper.readValue(course.getTeachingPhilosophy(), java.util.List.class));
+                vo.setTeachingPhilosophy(objectMapper.readValue(course.getTeachingPhilosophy(), new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {}));
             } catch (Exception e) {
                 LOG.warn("[CourseQueryVOFromMaps] teachingPhilosophy 反序列化失败: {}", e.getMessage());
                 vo.setTeachingPhilosophy(java.util.Collections.emptyList());
@@ -502,7 +502,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         vo.setEvaluationScheme(course.getEvaluationScheme());
         if (course.getTeachingPhilosophy() != null && !course.getTeachingPhilosophy().isBlank()) {
             try {
-                vo.setTeachingPhilosophy(objectMapper.readValue(course.getTeachingPhilosophy(), java.util.List.class));
+                vo.setTeachingPhilosophy(objectMapper.readValue(course.getTeachingPhilosophy(), new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {}));
             } catch (Exception e) {
                 LOG.warn("[CourseQueryVO] teachingPhilosophy 反序列化失败: {}", e.getMessage());
                 vo.setTeachingPhilosophy(java.util.Collections.emptyList());
