@@ -9,7 +9,7 @@ public class SectionQuiz {
     @TableField("section_id") private Long sectionId;
     private Integer slide;
     private String prompt;
-    private String options; // JSONB
+    @TableField("options") private String options; // TEXT(存 JSON 字符串)
     @TableField("correct_index") private Integer correctIndex;
     private String explanation;
     @TableField("created_at") private LocalDateTime createdAt;

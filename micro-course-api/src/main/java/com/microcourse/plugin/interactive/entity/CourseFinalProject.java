@@ -8,7 +8,7 @@ public class CourseFinalProject {
     @TableId(type = IdType.AUTO) private Long id;
     @TableField("course_id") private Long courseId;
     private String title;
-    private String phases;
+    @TableField("phases") private String phases;
     @TableField("final_submission_form") private String finalSubmissionForm;
     @TableField("created_at") private LocalDateTime createdAt;
 
