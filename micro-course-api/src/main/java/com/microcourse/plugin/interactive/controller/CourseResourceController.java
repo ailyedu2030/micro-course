@@ -1,8 +1,10 @@
 package com.microcourse.plugin.interactive.controller;
 
 import com.microcourse.dto.R;
-import com.microcourse.plugin.interactive.dto.*;
-import com.microcourse.plugin.interactive.entity.*;
+import com.microcourse.plugin.interactive.dto.CreateFinalProjectRequest;
+import com.microcourse.plugin.interactive.dto.CreateTrainingRequest;
+import com.microcourse.plugin.interactive.dto.FinalProjectVO;
+import com.microcourse.plugin.interactive.entity.CourseTraining;
 import com.microcourse.plugin.interactive.service.SectionResourceService;
 import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,8 +31,8 @@ public class CourseResourceController {
 
     @PostMapping("/{courseId}/final-project")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<CourseFinalProject> createFinalProject(@PathVariable Long courseId,
-                                                    @Valid @RequestBody CreateFinalProjectRequest request) {
+    public R<FinalProjectVO> createFinalProject(@PathVariable Long courseId,
+                                                @Valid @RequestBody CreateFinalProjectRequest request) {
         return R.ok(resourceService.createFinalProject(courseId, request));
     }
 }

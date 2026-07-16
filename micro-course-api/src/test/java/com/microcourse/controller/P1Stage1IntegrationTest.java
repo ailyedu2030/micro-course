@@ -336,7 +336,9 @@ public class P1Stage1IntegrationTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.title").value("AI 工具综合应用"));
+                .andExpect(jsonPath("$.data.title").value("AI 工具综合应用"))
+                .andExpect(jsonPath("$.data.phases[0]").value("选题"))
+                .andExpect(jsonPath("$.data.phases[1]").value("中期"));
     }
 
     @Test
@@ -359,6 +361,44 @@ public class P1Stage1IntegrationTest extends BaseIntegrationTest {
                         .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"no\":1}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /courses/{cid}/trainings 重复序号返回400")
+    void training_DuplicateNo_Rejected() throws Exception {
+        Long courseId = createCourse();
+        String body = """
+                {"no": 1, "title": "实训1", "hours": 2}
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/trainings")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/courses/" + courseId + "/trainings")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /courses/{cid}/final-project 重复创建返回400")
+    void finalProject_Duplicate_Rejected() throws Exception {
+        Long courseId = createCourse();
+        String body = """
+                {"title": "期末项目"}
+                """;
+        mockMvc.perform(post("/api/courses/" + courseId + "/final-project")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/courses/" + courseId + "/final-project")
+                        .header("Authorization", "Bearer " + loginAs("p0_teacher", "student123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
                 .andExpect(status().isBadRequest());
     }
 

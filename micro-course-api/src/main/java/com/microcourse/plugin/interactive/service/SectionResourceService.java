@@ -8,5 +8,5 @@ public interface SectionResourceService {
     SectionTask createTask(Long courseId, Long sectionId, CreateTaskRequest request);
     SectionReflection createReflection(Long courseId, Long sectionId, CreateReflectionRequest request);
     CourseTraining createTraining(Long courseId, CreateTrainingRequest request);
-    CourseFinalProject createFinalProject(Long courseId, CreateFinalProjectRequest request);
+    FinalProjectVO createFinalProject(Long courseId, CreateFinalProjectRequest request);
 }

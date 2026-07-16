@@ -97,6 +97,15 @@ public class SectionResourceServiceImpl implements SectionResourceService {
     @Override
     public CourseTraining createTraining(Long courseId, CreateTrainingRequest request) {
         verifyCourseOwnership(courseId);
+        // 交叉审查: 检查同 course 下 no 不重复
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseTraining> qw =
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseTraining>()
+                .eq(CourseTraining::getCourseId, courseId)
+                .eq(CourseTraining::getNo, request.getNo());
+        if (trainingMapper.selectCount(qw) > 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                "该课程已存在序号为 " + request.getNo() + " 的实训");
+        }
         CourseTraining t = new CourseTraining();
         t.setCourseId(courseId);
         t.setNo(request.getNo());
@@ -111,8 +120,15 @@ public class SectionResourceServiceImpl implements SectionResourceService {
     }
 
     @Override
-    public CourseFinalProject createFinalProject(Long courseId, CreateFinalProjectRequest request) {
+    public FinalProjectVO createFinalProject(Long courseId, CreateFinalProjectRequest request) {
         verifyCourseOwnership(courseId);
+        // 交叉审查: 检查同 course 下是否已有期末项目
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseFinalProject> qw =
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseFinalProject>()
+                .eq(CourseFinalProject::getCourseId, courseId);
+        if (finalProjectMapper.selectCount(qw) > 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课程已存在期末项目，请先删除再创建");
+        }
         CourseFinalProject fp = new CourseFinalProject();
         fp.setCourseId(courseId);
         fp.setTitle(request.getTitle());
@@ -129,7 +145,27 @@ public class SectionResourceServiceImpl implements SectionResourceService {
         fp.setCreatedAt(LocalDateTime.now());
         finalProjectMapper.insert(fp);
         log.info("[SectionResource] final project created: courseId={}", courseId);
-        return fp;
+        return toFinalProjectVO(fp);
+    }
+
+    private FinalProjectVO toFinalProjectVO(CourseFinalProject fp) {
+        FinalProjectVO vo = new FinalProjectVO();
+        vo.setId(fp.getId());
+        vo.setCourseId(fp.getCourseId());
+        vo.setTitle(fp.getTitle());
+        vo.setFinalSubmissionForm(fp.getFinalSubmissionForm());
+        vo.setCreatedAt(fp.getCreatedAt());
+        if (fp.getPhases() != null && !fp.getPhases().isBlank()) {
+            try {
+                @SuppressWarnings("unchecked")
+                java.util.List<String> p = objectMapper.readValue(fp.getPhases(), java.util.List.class);
+                vo.setPhases(p);
+            } catch (Exception e) {
+                log.warn("[FinalProjectVO] phases 反序列化失败: {}", e.getMessage());
+                vo.setPhases(java.util.Collections.emptyList());
+            }
+        }
+        return vo;
     }
 
     private QuizVO toQuizVO(SectionQuiz quiz) {
