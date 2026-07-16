@@ -5,7 +5,6 @@ import com.microcourse.BaseIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -245,7 +244,9 @@ public class P1Stage1IntegrationTest extends BaseIntegrationTest {
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.slide").value(3))
-                .andExpect(jsonPath("$.data.correctIndex").value(0));
+                .andExpect(jsonPath("$.data.correctIndex").value(0))
+                .andExpect(jsonPath("$.data.options[0]").value("A. 算力"))
+                .andExpect(jsonPath("$.data.options[1]").value("B. 工作流重组"));
     }
 
     @Test

@@ -57,7 +57,7 @@ public class SectionResourceServiceImpl implements SectionResourceService {
     }
 
     @Override
-    public SectionQuiz createQuiz(Long courseId, Long sectionId, CreateQuizRequest request) {
+    public QuizVO createQuiz(Long courseId, Long sectionId, CreateQuizRequest request) {
         verifyOwnership(courseId, sectionId);
         try {
             SectionQuiz quiz = new SectionQuiz();
@@ -70,10 +70,32 @@ public class SectionResourceServiceImpl implements SectionResourceService {
             quiz.setCreatedAt(LocalDateTime.now());
             quizMapper.insert(quiz);
             log.info("[SectionResource] quiz created: sectionId={}, slide={}", sectionId, request.getSlide());
-            return quiz;
+            return toQuizVO(quiz);
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "自测题创建失败: " + e.getMessage());
         }
+    }
+
+    private QuizVO toQuizVO(SectionQuiz quiz) {
+        QuizVO vo = new QuizVO();
+        vo.setId(quiz.getId());
+        vo.setSectionId(quiz.getSectionId());
+        vo.setSlide(quiz.getSlide());
+        vo.setPrompt(quiz.getPrompt());
+        vo.setCorrectIndex(quiz.getCorrectIndex());
+        vo.setExplanation(quiz.getExplanation());
+        vo.setCreatedAt(quiz.getCreatedAt());
+        if (quiz.getOptions() != null && !quiz.getOptions().isBlank()) {
+            try {
+                @SuppressWarnings("unchecked")
+                java.util.List<String> opts = objectMapper.readValue(quiz.getOptions(), java.util.List.class);
+                vo.setOptions(opts);
+            } catch (Exception e) {
+                log.warn("[QuizVO] options 反序列化失败: {}", e.getMessage());
+                vo.setOptions(java.util.Collections.emptyList());
+            }
+        }
+        return vo;
     }
 
     @Override

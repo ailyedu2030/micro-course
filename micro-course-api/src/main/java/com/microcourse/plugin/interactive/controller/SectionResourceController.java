@@ -22,9 +22,9 @@ public class SectionResourceController {
 
     @PostMapping("/quizzes")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
-    public R<SectionQuiz> createQuiz(@PathVariable Long courseId,
-                                     @PathVariable Long sectionId,
-                                     @Valid @RequestBody CreateQuizRequest request) {
+    public R<QuizVO> createQuiz(@PathVariable Long courseId,
+                                @PathVariable Long sectionId,
+                                @Valid @RequestBody CreateQuizRequest request) {
         return R.ok(resourceService.createQuiz(courseId, sectionId, request));
     }
 
