@@ -388,6 +388,13 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         course.setStudentCount(0);
         course.setAvgRating(BigDecimal.ZERO);
 
+        // P1 Stage 1: 复制课程级元信息(hid 不复制,需唯一)
+        course.setTotalHours(original.getTotalHours());
+        course.setTotalWeeks(original.getTotalWeeks());
+        course.setLearningMode(original.getLearningMode());
+        course.setEvaluationScheme(original.getEvaluationScheme());
+        course.setTeachingPhilosophy(original.getTeachingPhilosophy());
+
         courseRepository.insert(course);
 
         LambdaQueryWrapper<CourseChapter> wrapper = new LambdaQueryWrapper<>();
@@ -402,6 +409,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
             copyCh.setSortOrder(ch.getSortOrder());
             copyCh.setDuration(ch.getDuration());
             copyCh.setLearningObjectives(ch.getLearningObjectives());
+            // P1 Stage 1: 复制章节级元信息(no 不复制,需重新编号)
+            copyCh.setAnchorPoint(ch.getAnchorPoint());
+            copyCh.setCoreQuestion(ch.getCoreQuestion());
+            copyCh.setChapterHours(ch.getChapterHours());
             chapterRepository.insert(copyCh);
 
             // P1-C-03 修复: 复制章节下的视频（仅元数据，不复制实际视频文件）
