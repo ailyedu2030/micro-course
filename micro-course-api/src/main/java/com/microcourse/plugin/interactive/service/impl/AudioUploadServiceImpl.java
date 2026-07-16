@@ -86,7 +86,13 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         try {
             Files.createDirectories(audioDir);
             Path tmpPath = audioDir.resolve("." + mergedFileName + ".tmp");
-            file.transferTo(tmpPath.toFile());
+            // R4 fix (2026-07-17): 用 Files.copy(inputStream, ...) 替代 file.transferTo()
+            // 原因: MultipartFile.transferTo() 在 multipart.location 配为绝对路径时,
+            //       会把相对路径目标错位拼到 multipart.location 下 (例: /data/uploads/tmp/uploads/slides/...)
+            //       改用直接复制输入流,避免 Spring Part.write() 的相对路径解析
+            try (java.io.InputStream in = file.getInputStream()) {
+                Files.copy(in, tmpPath, StandardCopyOption.REPLACE_EXISTING);
+            }
             Files.move(tmpPath, destPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             fileSize = Files.size(destPath);
             duration = estimateDuration(fileSize);
@@ -163,7 +169,10 @@ public class AudioUploadServiceImpl implements AudioUploadService {
                 String segFileName = "section_" + sectionId + "_" + audioToken + "_page_" + page.getPageNumber() + ".mp3";
                 Path segPath = audioDir.resolve(segFileName);
                 Path tmpPath = audioDir.resolve("." + segFileName + ".tmp");
-                file.transferTo(tmpPath.toFile());
+                // R4 fix (2026-07-17): 同 single upload,改用 Files.copy(inputStream, ...)
+                try (java.io.InputStream in = file.getInputStream()) {
+                    Files.copy(in, tmpPath, StandardCopyOption.REPLACE_EXISTING);
+                }
                 Files.move(tmpPath, segPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                 savedPaths.add(segPath);
                 long segSize = Files.size(segPath);
