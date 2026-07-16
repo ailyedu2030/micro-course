@@ -38,7 +38,6 @@ import java.util.Map;
 
 @Service
 @ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
-@Transactional(rollbackFor = Exception.class)
 public class NarrationServiceImpl implements NarrationService {
 
     private static final Logger log = LoggerFactory.getLogger(NarrationServiceImpl.class);
@@ -74,6 +73,7 @@ public class NarrationServiceImpl implements NarrationService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public SlidePageVO generate(Long courseId, Integer pageNumber, Long sectionId) {
         checkOwner(courseId);
 
@@ -128,10 +128,8 @@ public class NarrationServiceImpl implements NarrationService {
             return null;
         });
 
-        page.setNarrationScript(narrationScript);
-        page.setNarrationStatus("AI_GENERATED");
-
-        return toPageVO(page);
+        SlidePage updated = slidePageMapper.selectById(pageId);
+        return toPageVO(updated);
     }
 
     @Override
@@ -141,14 +139,18 @@ public class NarrationServiceImpl implements NarrationService {
 
         SlidePage page = getPage(courseId, pageNumber, sectionId);
         deleteOldAudioFile(courseId, pageNumber);
-        page.setNarrationScript(narrationScript);
-        page.setNarrationStatus("TEACHER_EDITED");
-        page.setNarrationAudioUrl(null);
-        page.setAudioDuration(null);
-        page.setUpdatedAt(LocalDateTime.now());
-        slidePageMapper.updateById(page);
 
-        return toPageVO(page);
+        transactionTemplate.executeWithoutResult(tx -> {
+            page.setNarrationScript(narrationScript);
+            page.setNarrationStatus("TEACHER_EDITED");
+            page.setNarrationAudioUrl(null);
+            page.setAudioDuration(null);
+            page.setUpdatedAt(LocalDateTime.now());
+            slidePageMapper.updateById(page);
+        });
+
+        SlidePage updated = slidePageMapper.selectById(page.getId());
+        return toPageVO(updated);
     }
 
     @Override

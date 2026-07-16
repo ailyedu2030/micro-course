@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.entity.Course;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.dto.SegmentAudioVO;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.dto.SlideVO;
@@ -50,6 +51,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -477,7 +479,40 @@ public class SlideServiceImpl implements SlideService {
         qw.eq(SlidePage::getCourseId, courseId);
         if (sectionId != null) { qw.eq(SlidePage::getSectionId, sectionId); }
         qw.orderByAsc(SlidePage::getSlideId).orderByAsc(SlidePage::getPageNumber);
-        return slidePageMapper.selectList(qw).stream().map(this::toPageVO).collect(Collectors.toList());
+        List<SlidePage> dbPages = slidePageMapper.selectList(qw);
+        List<SlidePageVO> vos = dbPages.stream().map(this::toPageVO).collect(Collectors.toList());
+
+        Map<Integer, String> segUrls = new HashMap<>();
+        for (SlidePageVO vo : vos) {
+            if (vo.getSegmentAudio() != null) {
+                segUrls.put(vo.getPageNumber(), vo.getSegmentAudio().getUrl());
+            }
+        }
+        if (!segUrls.isEmpty()) {
+            String segmentControllerJs = buildSegmentControllerJs();
+            for (SlidePageVO vo : vos) {
+                String html = vo.getHtmlContent();
+                if ("HTML_DIRECT".equals(vo.getContentType()) && html != null && html.contains("AUDIO_SEG_")) {
+                    for (Map.Entry<Integer, String> entry : segUrls.entrySet()) {
+                        String placeholder = "AUDIO_SEG_" + String.format("%02d", entry.getKey()) + "_URL";
+                        html = html.replace(placeholder, entry.getValue());
+                    }
+                    html = injectBeforeBodyEnd(html, segmentControllerJs);
+                    vo.setHtmlContent(html);
+                }
+            }
+        }
+
+        return vos;
+    }
+
+    @Override
+    public List<SegmentAudioVO> getSegmentAudios(Long courseId, Long sectionId) {
+        List<SlidePageVO> pages = getPages(courseId, sectionId);
+        return pages.stream()
+                .filter(p -> p.getSegmentAudio() != null)
+                .map(p -> p.getSegmentAudio())
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -570,16 +605,91 @@ public class SlideServiceImpl implements SlideService {
         vo.setSectionId(p.getSectionId());
         vo.setCourseId(p.getCourseId()); vo.setPageNumber(p.getPageNumber());
         vo.setFileUuid(p.getFileUuid()); vo.setContentType(p.getContentType());
-        vo.setHtmlContent(p.getHtmlContent());
+        vo.setNarrationScript(p.getNarrationScript()); vo.setNarrationAudioUrl(p.getNarrationAudioUrl());
+        vo.setAudioDuration(p.getAudioDuration()); vo.setNarrationStatus(p.getNarrationStatus());
+        vo.setNarrationStatusText(SlidePageVO.narrationStatusText(p.getNarrationStatus()));
+        vo.setSegmentCount(p.getSegmentCount()); vo.setVoice(p.getVoice()); vo.setTtsModel(p.getTtsModel());
+        vo.setGeneratedAt(p.getGeneratedAt());
         vo.setImageUrl(p.getImageUrl()); vo.setThumbnailUrl(p.getThumbnailUrl());
         vo.setImageWidth(p.getImageWidth()); vo.setImageHeight(p.getImageHeight());
         vo.setExtractedText(p.getExtractedText());
         vo.setHasAnimation(p.getHasAnimation()); vo.setHasEmbeddedMedia(p.getHasEmbeddedMedia());
-        vo.setNarrationScript(p.getNarrationScript()); vo.setNarrationAudioUrl(p.getNarrationAudioUrl());
-        vo.setAudioDuration(p.getAudioDuration()); vo.setNarrationStatus(p.getNarrationStatus());
-        vo.setNarrationStatusText(SlidePageVO.narrationStatusText(p.getNarrationStatus()));
+
+        String htmlContent = p.getHtmlContent();
+        if ("HTML_DIRECT".equals(p.getContentType()) && htmlContent != null && htmlContent.contains("AUDIO_SEG_")) {
+            htmlContent = replaceAudioSegmentPlaceholders(htmlContent, p);
+        }
+        vo.setHtmlContent(htmlContent);
+
+        if (p.getNarrationAudioUrl() != null && !p.getNarrationAudioUrl().isBlank()) {
+            String segUrl = buildSegmentUrl(p);
+            SegmentAudioVO seg = new SegmentAudioVO();
+            seg.setPageNumber(p.getPageNumber());
+            seg.setUrl(segUrl);
+            seg.setDuration(p.getAudioDuration());
+            vo.setSegmentAudio(seg);
+        }
         vo.setCreatedAt(p.getCreatedAt()); vo.setUpdatedAt(p.getUpdatedAt());
         return vo;
+    }
+
+    private String buildSegmentUrl(SlidePage p) {
+        String narrationUrl = p.getNarrationAudioUrl();
+        if (narrationUrl == null || narrationUrl.isBlank()) {
+            return null;
+        }
+        if (narrationUrl.contains("merged=true")) {
+            int pageNum = p.getPageNumber();
+            return narrationUrl.replaceFirst("/pages/\\d+/audio", "/pages/" + pageNum + "/audio");
+        }
+        if (narrationUrl.contains("/pages/1/audio") && narrationUrl.contains("token=")) {
+            return narrationUrl;
+        }
+        if (!narrationUrl.contains("token=")) {
+            return narrationUrl;
+        }
+        int pageNum = p.getPageNumber();
+        return narrationUrl.replaceFirst("/pages/\\d+/audio", "/pages/" + pageNum + "/audio");
+    }
+
+    private String replaceAudioSegmentPlaceholders(String htmlContent, SlidePage p) {
+        if (htmlContent == null || !htmlContent.contains("AUDIO_SEG_")) {
+            return htmlContent;
+        }
+        String segmentUrl = buildSegmentUrl(p);
+        if (segmentUrl == null || segmentUrl.isBlank()) {
+            return htmlContent;
+        }
+        String placeholder = "AUDIO_SEG_" + String.format("%02d", p.getPageNumber()) + "_URL";
+        return htmlContent.replace(placeholder, segmentUrl);
+    }
+
+    private static String buildSegmentControllerJs() {
+        return "<script>" +
+        "(function(){var a={},c=0,d=!1;" +
+        "for(var i=1;i<=15;i++){var e=document.getElementById('segAudio_'+(i<10?'0'+i:i));if(e)a[i]=e}" +
+        "function p(){var e=a[c];if(!e)return;d=!0;e.play().then(function(){parent.postMessage({type:'slide-audio-state',state:'playing'},'*')}).catch(function(){})}" +
+        "function q(){d=!1;for(var k in a)a[k].pause();parent.postMessage({type:'slide-audio-state',state:'paused'},'*')}" +
+        "window.addEventListener('message',function(e){if(!e.data||e.data.type!=='slide-audio')return;" +
+        "switch(e.data.action){" +
+        "case'play':if(!d&&c>0)p();else if(c===0){c=1;p()}break;" +
+        "case'pause':q();break;" +
+        "case'seek':if(e.data.page){c=e.data.page;q();p()}break;" +
+        "case'get-state':parent.postMessage({type:'slide-audio-state',state:d?'playing':'paused'});break;" +
+        "case'get-segments':var r={};for(var i=1;i<=15;i++){var e=a[i];if(e&&e.src)r[i]=e.src}" +
+        "parent.postMessage({type:'slide-audio-segments',segments:r},'*');break;" +
+        "case'speed':if(e.data.rate){for(var k in a)if(a[k])a[k].playbackRate=e.data.rate}break;" +
+        "for(var k in a){!function(el){el.addEventListener('ended',function(){d=!1;" +
+        "parent.postMessage({type:'slide-audio-state',state:'ended'},'*')});" +
+        "el.addEventListener('loadedmetadata',function(){parent.postMessage({type:'slide-audio-state',state:'loaded',duration:el.duration},'*')});" +
+        "el.addEventListener('timeupdate',function(){parent.postMessage({type:'slide-audio-state',state:'time-update',time:el.currentTime,duration:el.duration},'*')})}" +
+        "(a[k])}})();</script>";
+    }
+
+    private static String injectBeforeBodyEnd(String html, String js) {
+        int idx = html.lastIndexOf("</body>");
+        if (idx < 0) return html + js;
+        return html.substring(0, idx) + js + html.substring(idx);
     }
 
     private boolean isZipHeader(byte[] b) {
@@ -617,6 +727,7 @@ public class SlideServiceImpl implements SlideService {
             courseSlideMapper.deleteById(s.getId());
             registerSlideCleanup(courseId, s.getId());
         }
+        cleanupAudioFiles(courseId, lessonId);
     }
 
     @Override
@@ -640,6 +751,9 @@ public class SlideServiceImpl implements SlideService {
                 Files.deleteIfExists(slideDir.resolve("thumbnails").resolve(p.getFileUuid() + "_thumbnail.png"));
             } catch (Exception ignored) {}
         }
+        if (p.getSectionId() != null) {
+            cleanupPageAudioFile(courseId, p.getSectionId(), p.getPageNumber());
+        }
         slidePageMapper.deleteById(p.getId());
     }
 
@@ -661,7 +775,11 @@ public class SlideServiceImpl implements SlideService {
         SlidePage p = slidePageMapper.selectOne(qw);
         if (p == null) throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND);
         if (body.containsKey("narrationScript") && body.get("narrationScript") instanceof String) {
-            if ("AUDIO_READY".equals(p.getNarrationStatus())) { p.setNarrationAudioUrl(null); p.setAudioDuration(null); }
+            if ("AUDIO_READY".equals(p.getNarrationStatus())) {
+                p.setNarrationAudioUrl(null);
+                p.setAudioDuration(null);
+                cleanupPageAudioFile(courseId, p.getSectionId(), p.getPageNumber());
+            }
             p.setNarrationScript((String) body.get("narrationScript"));
             p.setNarrationStatus("TEACHER_EDITED");
         }
@@ -749,6 +867,34 @@ public class SlideServiceImpl implements SlideService {
             }
         } else {
             cleanupSlideFiles(courseId);
+        }
+    }
+
+    private void cleanupAudioFiles(Long courseId, Long sectionId) {
+        try {
+            Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
+            if (!Files.exists(audioDir)) return;
+            Files.deleteIfExists(audioDir.resolve("section_" + sectionId + "_merged.mp3"));
+            try (var stream = Files.list(audioDir)) {
+                stream.filter(p -> p.getFileName().toString().startsWith("section_" + sectionId + "_page_"))
+                        .forEach(p -> {
+                            try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                        });
+            }
+            log.info("[Slide] 已清理音频文件 courseId={}, sectionId={}", courseId, sectionId);
+        } catch (IOException e) {
+            log.warn("[Slide] 清理音频文件失败 courseId={}, sectionId={}: {}", courseId, sectionId, e.getMessage());
+        }
+    }
+
+    private void cleanupPageAudioFile(Long courseId, Long sectionId, Integer pageNumber) {
+        try {
+            Path audioFile = Paths.get(storagePath, String.valueOf(courseId), "audio",
+                    "section_" + sectionId + "_page_" + pageNumber + ".mp3");
+            Files.deleteIfExists(audioFile);
+            log.info("[Slide] 已清理页面音频文件 courseId={}, sectionId={}, page={}", courseId, sectionId, pageNumber);
+        } catch (IOException e) {
+            log.warn("[Slide] 清理页面音频文件失败 courseId={}, sectionId={}, page={}: {}", courseId, sectionId, pageNumber, e.getMessage());
         }
     }
 

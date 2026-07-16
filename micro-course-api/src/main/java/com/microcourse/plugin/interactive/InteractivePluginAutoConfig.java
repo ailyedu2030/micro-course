@@ -13,6 +13,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
@@ -27,7 +28,7 @@ public class InteractivePluginAutoConfig {
     // 此处不要重复 @Bean 注册,否则 BeanDefinitionOverrideException 导致 Spring 启动失败
 
     @Bean(name = "slideRenderExecutor")
-    public Executor slideRenderExecutor() {
+    public ExecutorService slideRenderExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
         executor.setMaxPoolSize(4);
@@ -38,7 +39,7 @@ public class InteractivePluginAutoConfig {
         executor.setAwaitTerminationSeconds(60);
         executor.initialize();
         log.info("[InteractivePlugin] slideRenderExecutor initialized: core=2, max=4, queue=50, callerRunsPolicy");
-        return executor;
+        return executor.getThreadPoolExecutor();
     }
 
     @Bean(name = "interactiveRestTemplate")

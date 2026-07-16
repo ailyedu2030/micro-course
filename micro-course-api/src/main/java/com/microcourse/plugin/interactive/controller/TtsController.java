@@ -2,7 +2,10 @@ package com.microcourse.plugin.interactive.controller;
 
 import com.microcourse.dto.R;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
+import com.microcourse.plugin.interactive.dto.TtsGenerateRequest;
+import com.microcourse.plugin.interactive.dto.TtsStatusResponse;
 import com.microcourse.plugin.interactive.service.TtsService;
+import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -39,16 +42,41 @@ public class TtsController {
     }
 
     @GetMapping("/pages/{pageNumber}/audio")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> getAudio(@PathVariable Long courseId,
                                             @PathVariable Integer pageNumber,
-                                            @RequestParam(required = false) Long sectionId) {
-        ttsService.verifyAccess(courseId);
+                                            @RequestParam(required = false) Long sectionId,
+                                            @RequestParam(required = false) String token) {
+        if (token != null && !token.isBlank()) {
+            if (!ttsService.validateAudioToken(courseId, pageNumber, sectionId, token)) {
+                throw new com.microcourse.exception.BusinessException(
+                        com.microcourse.exception.ErrorCode.NO_PERMISSION, "无效的音频访问令牌");
+            }
+        } else {
+            ttsService.verifyAccess(courseId);
+        }
         byte[] audioBytes = ttsService.getAudio(courseId, pageNumber, sectionId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, "audio/mpeg")
                 .header(HttpHeaders.CACHE_CONTROL,
                         CacheControl.maxAge(1, TimeUnit.HOURS).getHeaderValue())
                 .body(audioBytes);
+    }
+
+    @PostMapping("/sections/{sectionId}/tts/generate")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<TtsStatusResponse> generateSection(@PathVariable Long courseId,
+                                                 @PathVariable Long sectionId,
+                                                 @Valid @RequestBody TtsGenerateRequest request) {
+        return R.ok(ttsService.generateSection(courseId, sectionId,
+                request.getVoice(), request.getModel(),
+                request.getSpeed(), request.getSplitByPage()).join());
+    }
+
+    @GetMapping("/sections/{sectionId}/tts/status")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<TtsStatusResponse> getSectionTtsStatus(@PathVariable Long courseId,
+                                                     @PathVariable Long sectionId,
+                                                     @RequestParam String taskId) {
+        return R.ok(ttsService.getSectionTtsStatus(courseId, sectionId, taskId));
     }
 }

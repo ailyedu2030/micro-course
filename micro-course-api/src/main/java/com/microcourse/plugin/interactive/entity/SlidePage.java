@@ -76,6 +76,14 @@ public class SlidePage {
     @TableField("narration_status")
     private String narrationStatus;
 
+    private Integer segmentCount;
+
+    private String voice;
+
+    private String ttsModel;
+
+    private LocalDateTime generatedAt;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -124,6 +132,14 @@ public class SlidePage {
     public void setAudioDuration(Integer audioDuration) { this.audioDuration = audioDuration; }
     public String getNarrationStatus() { return narrationStatus; }
     public void setNarrationStatus(String narrationStatus) { this.narrationStatus = narrationStatus; }
+    public Integer getSegmentCount() { return segmentCount; }
+    public void setSegmentCount(Integer segmentCount) { this.segmentCount = segmentCount; }
+    public String getVoice() { return voice; }
+    public void setVoice(String voice) { this.voice = voice; }
+    public String getTtsModel() { return ttsModel; }
+    public void setTtsModel(String ttsModel) { this.ttsModel = ttsModel; }
+    public LocalDateTime getGeneratedAt() { return generatedAt; }
+    public void setGeneratedAt(LocalDateTime generatedAt) { this.generatedAt = generatedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
