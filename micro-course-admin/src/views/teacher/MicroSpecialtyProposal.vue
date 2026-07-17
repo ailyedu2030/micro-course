@@ -598,10 +598,18 @@ function isChapterAssigned(member, chapterId) {
 function toggleChapter(member, chapterId, courseId, checked) {
   const memberIndex = member._index
   if (checked) {
+    // V202 P0-2 修复: 不要在 chapterAssignments 里写 teacherId 占位
+    // 后端 StorageApplicationCudServiceImpl V202 现在对 null teacherId 合法
+    // 当教师尚未绑定时,chapter.teacher_id = NULL + acceptStatus='PENDING'
+    // 当教师正式邀请后(走 inviteTeacher 流程),会在 MicroSpecialtyServiceImpl
+    // 的第 554-562 行单独插入新行,绑定真实 teacherId
     chapterAssignments.value.push({
-      courseId, chapterId, 
+      courseId,
+      chapterId,
       teamMemberIndex: memberIndex,
-      teacherId: memberIndex + 1  // 用序号占位(提案阶段,文本名)
+      source: 'TBD',
+      acceptStatus: 'PENDING'
+      // teacherId 故意不设,避免 memberIndex+1 占位污染
     })
   } else {
     chapterAssignments.value = chapterAssignments.value.filter(a =>
@@ -787,11 +795,17 @@ function buildSavePayload() {
     teamMembers: teamMembers.value,
     signatures: signatures.value,
     sharedUnits: sharedUnits.value,
-    chapterAssignments: chapterAssignments.value.map(a => ({
-      courseId: a.courseId,
-      chapterId: a.chapterId,
-      teacherId: a.teacherId
-    }))
+    chapterAssignments: chapterAssignments.value.map(a => {
+      // V202 P0-2 修复: 不传 teacherId 字段,让后端用 NULL 写入
+      // 即使前端 toggleChapter 误设了 teacherId 旧值,这里也强制清掉
+      return {
+        courseId: a.courseId,
+        chapterId: a.chapterId,
+        source: a.source || 'TBD',
+        acceptStatus: a.acceptStatus || 'PENDING'
+        // teacherId 故意不传
+      }
+    })
   }
 }
 
