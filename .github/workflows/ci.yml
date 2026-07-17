@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: E2E tests skipped (temporarily disabled)
-        run: echo 'e2e tests temporarily disabled - see PR #24 #25'
+        run: bash -c "echo e2e-tests-temporarily-disabled"
         env:
           SKIP_E2E: "true"
 
