@@ -135,6 +135,7 @@ curl -s http://localhost:8080/actuator/health
 |------|----------|------|----------|
 | v1.21.3 | 2026-07-17 | P1 Stage 2: section 资源 (V197-199, quiz/task/reflection 表) | db: `psql ... < db/rollback/V199__rollback_create_reflections.sql; psql ... < db/rollback/V198__rollback_create_tasks.sql; psql ... < db/rollback/V197__rollback_create_quizzes.sql` <br> app: `docker cp /tmp/app.jar.backup.v1.21.2 micro-course-micro-course-api-1:/app/app.jar` |
 | v1.21.2 | 2026-07-17 | P1 Stage 1: courses/chapters/sections 元信息 (V194-196) | db: `psql ... < db/rollback/V196__rollback_add_section_meta.sql` <br> app: `docker cp /tmp/app.jar.backup.v1.21.1 micro-course-micro-course-api-1:/app/app.jar` |
+| v1.21.3-frontend | 2026-07-17 | 微专业申报章节保存支持空章节(客户需求) | `docker cp /opt/micro-course/micro-course-admin/dist/. micro-course-micro-course-admin-1:/usr/share/nginx/html/ && docker exec micro-course-micro-course-admin-1 nginx -s reload` |
 | v1.21.1 | 2026-07-16 | R4 修复: multipart 持久化 + Files.copy + HTML migration (V193) | `docker cp /tmp/app.jar.backup.v1.21.0 micro-course-micro-course-api-1:/app/app.jar` |
 | v1.21.0 | 2026-07-09 | Hermes webhook 课程同步 (V174 新表) | `docker cp /tmp/app.jar.backup.v1.21.0 micro-course-micro-course-api-1:/app/app.jar` |
 
