@@ -102,7 +102,7 @@ v-model="row.semester" placeholder="如：第1学期" size="small"
             </el-table-column>
             <el-table-column label="章节名称" min-width="180">
               <template #default="{ row }">
-                <el-input v-model="row.title" placeholder="必填" size="small" />
+                <el-input v-model="row.title" placeholder="选填,不填保存时自动跳过" size="small" />
               </template>
             </el-table-column>
             <el-table-column label="学时" width="100">
