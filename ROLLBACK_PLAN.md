@@ -10,6 +10,7 @@
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v1.22.0 | 2026-07-17 | 全链路审计修复：套餐购买/退款/展示 + 5 处后端状态过滤 + 6 处前端状态过滤（**无 DB schema 变更**，仅应用层回滚即可） |
 | v1.21.1 | 2026-07-09 | 每教师独立 API Key（Hermes webhook 改造） |
 | v1.21.0 | 2026-07-09 | Docker 部署适配（Hermes 共享 API Key） |
 
@@ -133,6 +134,7 @@ curl -s http://localhost:8080/actuator/health
 
 | 版本 | 部署时间 | 变更 | 回滚命令 |
 |------|----------|------|----------|
+| v1.22.0 | 2026-07-17 | PR #30: 全链路审计修复（套餐购买/退款/展示 + 5 处后端状态过滤 + 6 处前端状态过滤）| app: `docker cp /tmp/app.jar.backup.v1.21.3 micro-course-micro-course-api-1:/app/app.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` <br> frontend: `docker cp /opt/micro-course/micro-course-admin/dist/.backup.v1.21.3 micro-course-micro-course-admin-1:/usr/share/nginx/html/ && docker exec micro-course-micro-course-admin-1 nginx -s reload` <br> git: `git revert d34c0e51 --no-edit && git push origin main` |
 | v1.21.3 | 2026-07-17 | P1 Stage 2: section 资源 (V197-199, quiz/task/reflection 表) | db: `psql ... < db/rollback/V199__rollback_create_reflections.sql; psql ... < db/rollback/V198__rollback_create_tasks.sql; psql ... < db/rollback/V197__rollback_create_quizzes.sql` <br> app: `docker cp /tmp/app.jar.backup.v1.21.2 micro-course-micro-course-api-1:/app/app.jar` |
 | v1.21.2 | 2026-07-17 | P1 Stage 1: courses/chapters/sections 元信息 (V194-196) | db: `psql ... < db/rollback/V196__rollback_add_section_meta.sql` <br> app: `docker cp /tmp/app.jar.backup.v1.21.1 micro-course-micro-course-api-1:/app/app.jar` |
 | v1.21.3-frontend | 2026-07-17 | 微专业申报章节保存支持空章节(客户需求) | `docker cp /opt/micro-course/micro-course-admin/dist/. micro-course-micro-course-admin-1:/usr/share/nginx/html/ && docker exec micro-course-micro-course-admin-1 nginx -s reload` |
