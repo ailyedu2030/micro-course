@@ -185,9 +185,12 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
             if (courseEn != null) {
                 electiveStartedCount++; // P2-007: 有选课记录即视为已开始学习
                 if (courseEn.getFinalScore() != null) {
-                    totalElectiveScore += courseEn.getFinalScore().doubleValue();
-                    electivePassedCount++;
-                    creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
+                    BigDecimal minScore = mc.getMinScore() != null ? mc.getMinScore() : BigDecimal.valueOf(60);
+                    if (courseEn.getFinalScore().compareTo(minScore) >= 0) {
+                        totalElectiveScore += courseEn.getFinalScore().doubleValue();
+                        electivePassedCount++;
+                        creditsEarned = creditsEarned.add(mc.getCredits() != null ? mc.getCredits() : BigDecimal.ZERO);
+                    }
                 }
             }
         }
@@ -272,6 +275,7 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
             }
 
             // P0 FIX: APPROVED → IN_PROGRESS 自动转换 (学生首门必修课学习时触发)
+            int currentVersion = oldVersion;
             if (ENROLLMENT_STATUS_APPROVED.equals(en.getStatus()) && coursesCompleted > 0) {
                 int approvedAffected = enrollmentRepository.update(null,
                         new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
@@ -282,6 +286,7 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
                 if (approvedAffected == 0) {
                     log.warn("并发跳过: enrollment.id={} 已被其他操作修改 (APPROVED→IN_PROGRESS)", enrollmentId);
                 } else {
+                    currentVersion++;
                     en.setStatus(ENROLLMENT_STATUS_IN_PROGRESS);
                     log.info("enrollment.id={} APPROVED → IN_PROGRESS", enrollmentId);
                 }
@@ -291,7 +296,7 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
             int progressAffected = enrollmentRepository.update(null,
                     new LambdaUpdateWrapper<MicroSpecialtyEnrollment>()
                             .eq(MicroSpecialtyEnrollment::getId, enrollmentId)
-                            .eq(MicroSpecialtyEnrollment::getVersion, oldVersion)
+                            .eq(MicroSpecialtyEnrollment::getVersion, currentVersion)
                             .set(MicroSpecialtyEnrollment::getProgress, BigDecimal.valueOf(progress))
                             .set(MicroSpecialtyEnrollment::getCreditsEarned, creditsEarned)
                             .set(MicroSpecialtyEnrollment::getCoursesCompleted, coursesCompleted)

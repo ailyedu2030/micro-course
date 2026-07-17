@@ -134,7 +134,7 @@ public class MicroSpecialtyProgressAggregator {
                 Long count = enrollmentRepository.selectCount(
                         new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
                                 .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
-                                .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
+                                .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS", "COMPLETED", "CERTIFIED"));
                 LambdaUpdateWrapper<MicroSpecialty> uw = new LambdaUpdateWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getId, msId)
                         .eq(MicroSpecialty::getVersion, oldVersion)

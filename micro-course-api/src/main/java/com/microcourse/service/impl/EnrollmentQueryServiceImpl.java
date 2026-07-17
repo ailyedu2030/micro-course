@@ -135,6 +135,9 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
             } else {
                 wrapper.eq(Enrollment::getEnrollmentStatus, query.getStatus());
             }
+        } else {
+            // 默认排除已取消，与 getMyEnrollments 口径一致
+            wrapper.ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
         }
         wrapper.orderByDesc(Enrollment::getEnrolledAt);
 
@@ -155,6 +158,11 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
         }
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Enrollment::getCourseId, courseId)
+                .notIn(Enrollment::getEnrollmentStatus,
+                        EnrollmentStatus.CANCELLED.getValue(),
+                        EnrollmentStatus.WAITLIST.getValue(),
+                        EnrollmentStatus.DROPPED.getValue(),
+                        EnrollmentStatus.REJECTED.getValue())
                 .orderByDesc(Enrollment::getEnrolledAt);
         IPage<Enrollment> pageResult = enrollmentRepository.selectPage(new Page<>(page + 1, size), wrapper);
         List<EnrollmentVO> voList = convertToVOList(pageResult.getRecords());
@@ -165,6 +173,11 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
     public List<EnrollmentVO> getCourseEnrollments(Long courseId) {
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Enrollment::getCourseId, courseId)
+                .notIn(Enrollment::getEnrollmentStatus,
+                        EnrollmentStatus.CANCELLED.getValue(),
+                        EnrollmentStatus.WAITLIST.getValue(),
+                        EnrollmentStatus.DROPPED.getValue(),
+                        EnrollmentStatus.REJECTED.getValue())
                 .orderByDesc(Enrollment::getEnrolledAt)
                 .last("LIMIT 200");
         List<Enrollment> enrollments = enrollmentRepository.selectList(wrapper);

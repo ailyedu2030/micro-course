@@ -2,7 +2,9 @@ package com.microcourse.service;
 
 import com.microcourse.dto.microSpecialty.MicroSpecialtyEnrollmentVO;
 import com.microcourse.entity.*;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
+import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
@@ -85,6 +87,7 @@ class MicroSpecialtyEnrollmentServiceTest {
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+            su.when(() -> SecurityUtil.hasRole("STUDENT")).thenReturn(true);
 
             MicroSpecialtyEnrollmentVO vo = service.apply(1L);
 
@@ -124,14 +127,32 @@ class MicroSpecialtyEnrollmentServiceTest {
     }
 
     @Test
+    @DisplayName("apply: 非学生角色抛出 NO_PERMISSION")
+    void apply_nonStudent() {
+        MicroSpecialty ms = specialtyWithStatus("RECRUITING", 100, 10);
+        when(msRepository.selectById(1L)).thenReturn(ms);
+        when(userRepository.selectById(5L)).thenReturn(teacherUser(5L));
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+            su.when(() -> SecurityUtil.hasRole("STUDENT")).thenReturn(false);
+
+            BusinessException ex = assertThrows(BusinessException.class, () -> service.apply(1L));
+            assertEquals(ErrorCode.NO_PERMISSION.getCode(), ex.getCode());
+        }
+    }
+
+    @Test
     @DisplayName("apply: 重复报名抛出 MS_DUPLICATE_ENROLL")
     void apply_duplicate() {
         MicroSpecialty ms = specialtyWithStatus("RECRUITING", 100, 10);
         when(msRepository.selectById(1L)).thenReturn(ms);
         when(enrollmentRepository.selectCount(any())).thenReturn(1L);
+        when(userRepository.selectById(5L)).thenReturn(studentUser(5L));
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+            su.when(() -> SecurityUtil.hasRole("STUDENT")).thenReturn(true);
 
             BusinessException ex = assertThrows(BusinessException.class, () -> service.apply(1L));
             assertEquals(ErrorCode.MS_DUPLICATE_ENROLL.getCode(), ex.getCode());
@@ -238,6 +259,19 @@ class MicroSpecialtyEnrollmentServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("classImport: 剩余名额不足时整班拒绝导入")
+    void classImport_capacityInsufficient() {
+        MicroSpecialty ms = specialtyWithStatus("RECRUITING", 3, 2);
+        when(msRepository.selectForUpdate(1L)).thenReturn(ms);
+        when(enrollmentRepository.selectCount(any())).thenReturn(2L);
+        when(userRepository.selectList(any())).thenReturn(List.of(studentUser(11L), studentUser(12L)));
+        when(enrollmentRepository.selectList(any())).thenReturn(Collections.emptyList());
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.classImport(1L, 9L));
+        assertEquals(ErrorCode.MS_MAX_STUDENTS_REACHED.getCode(), ex.getCode());
+    }
+
     // ==================== reject() ====================
 
     @Test
@@ -281,8 +315,36 @@ class MicroSpecialtyEnrollmentServiceTest {
     // ==================== drop() ====================
 
     @Test
-    @DisplayName("drop: 正常退出 + 级联软删除")
+    @DisplayName("drop: 级联退出走课程退课主链")
     void drop_success() {
+        MicroSpecialtyEnrollment en = approvedEnrollment(1L);
+        when(enrollmentRepository.selectById(1L)).thenReturn(en);
+        MicroSpecialty ms = msWithStatus("RECRUITING");
+        ms.setStudentCount(10);
+        Enrollment courseEn = courseEnrollment(101L, 201L, 5L, "MICRO_SPECIALTY_AUTO", EnrollmentStatus.APPROVED.getValue());
+        when(msRepository.selectById(anyLong())).thenReturn(ms);
+        when(enrollmentRepository.update(any(), any())).thenReturn(1);
+        when(msRepository.update(any(), any())).thenReturn(1);
+        when(msCourseRepository.selectList(any())).thenReturn(List.of(requiredCourse(201L, 1L)));
+        when(courseEnrollmentRepository.selectOne(any())).thenReturn(courseEn);
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+            su.when(SecurityUtil::isAdmin).thenReturn(false);
+
+            service.drop(1L, true, "个人原因");
+
+            verify(enrollmentRepository, atLeastOnce()).update(any(), any());
+            verify(enrollmentService).cancelEnrollment(101L, 5L);
+            verify(notificationService, atLeastOnce())
+                    .notifyAsync(anyLong(), eq(NotificationType.MS_ENROLLMENT_DROPPED),
+                            anyString(), anyString(), anyLong());
+        }
+    }
+
+    @Test
+    @DisplayName("drop: 学生自助退出不级联取消课程")
+    void drop_withoutCascade_keepsCourseEnrollment() {
         MicroSpecialtyEnrollment en = approvedEnrollment(1L);
         when(enrollmentRepository.selectById(1L)).thenReturn(en);
         MicroSpecialty ms = msWithStatus("RECRUITING");
@@ -290,17 +352,14 @@ class MicroSpecialtyEnrollmentServiceTest {
         when(msRepository.selectById(anyLong())).thenReturn(ms);
         when(enrollmentRepository.update(any(), any())).thenReturn(1);
         when(msRepository.update(any(), any())).thenReturn(1);
-        when(msCourseRepository.selectList(any())).thenReturn(Collections.emptyList());
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+            su.when(SecurityUtil::isAdmin).thenReturn(false);
 
-            service.drop(1L, true, "个人原因");
+            service.drop(1L, false, "个人原因");
 
-            verify(enrollmentRepository, atLeastOnce()).update(any(), any());
-            verify(notificationService, atLeastOnce())
-                    .notifyAsync(anyLong(), eq(NotificationType.MS_ENROLLMENT_DROPPED),
-                            anyString(), anyString(), anyLong());
+            verify(enrollmentService, never()).cancelEnrollment(anyLong(), anyLong());
         }
     }
 
@@ -349,12 +408,15 @@ class MicroSpecialtyEnrollmentServiceTest {
         MicroSpecialty ms = msWithStatus("RECRUITING");
         when(msRepository.selectById(anyLong())).thenReturn(ms);
         when(enrollmentRepository.update(any(), any())).thenReturn(1);
+        when(userRepository.selectById(5L)).thenReturn(studentUser(5L));
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+            su.when(() -> SecurityUtil.hasRole("STUDENT")).thenReturn(true);
 
             MicroSpecialtyEnrollmentVO vo = service.reapply(1L);
 
+            assertNotNull(vo);
             assertNotNull(vo);
             verify(enrollmentRepository).update(any(), any());
         }
@@ -369,9 +431,11 @@ class MicroSpecialtyEnrollmentServiceTest {
         MicroSpecialty ms = msWithStatus("RECRUITING");
         when(msRepository.selectById(anyLong())).thenReturn(ms);
         when(enrollmentRepository.update(any(), any())).thenReturn(1);
+        when(userRepository.selectById(5L)).thenReturn(studentUser(5L));
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+            su.when(() -> SecurityUtil.hasRole("STUDENT")).thenReturn(true);
 
             service.reapply(1L);
             verify(enrollmentRepository).update(any(), any());
@@ -387,9 +451,11 @@ class MicroSpecialtyEnrollmentServiceTest {
         MicroSpecialty ms = msWithStatus("RECRUITING");
         when(msRepository.selectById(anyLong())).thenReturn(ms);
         when(enrollmentRepository.update(any(), any())).thenReturn(1);
+        when(userRepository.selectById(5L)).thenReturn(studentUser(5L));
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+            su.when(() -> SecurityUtil.hasRole("STUDENT")).thenReturn(true);
 
             service.reapply(1L);
             verify(enrollmentRepository).update(any(), any());
@@ -402,9 +468,11 @@ class MicroSpecialtyEnrollmentServiceTest {
         MicroSpecialtyEnrollment en = pendingEnrollment(1L);
         en.setStatus("REJECTED");
         when(enrollmentRepository.selectById(1L)).thenReturn(en);
+        when(userRepository.selectById(999L)).thenReturn(studentUser(999L));
 
         try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
             su.when(SecurityUtil::getCurrentUserId).thenReturn(999L);
+            su.when(() -> SecurityUtil.hasRole("STUDENT")).thenReturn(true);
 
             BusinessException ex = assertThrows(BusinessException.class, () -> service.reapply(1L));
             assertEquals(ErrorCode.NO_PERMISSION.getCode(), ex.getCode());
@@ -448,6 +516,25 @@ class MicroSpecialtyEnrollmentServiceTest {
 
             verify(certificateService, never()).issueMicroSpecialtyCertificate(anyLong(), anyLong(), anyLong());
         }
+    }
+
+    @Test
+    @DisplayName("issueCertificate: 无认证上下文时允许内部自动发证")
+    void issueCertificate_internalWithoutAuth() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+
+        MicroSpecialtyEnrollment en = pendingEnrollment(1L);
+        en.setStatus("COMPLETED");
+        when(enrollmentRepository.selectById(1L)).thenReturn(en);
+        when(certificateService.issueMicroSpecialtyCertificate(anyLong(), anyLong(), anyLong()))
+                .thenReturn(null);
+        when(enrollmentRepository.selectById(1L)).thenReturn(en);
+        lenient().when(enrollmentRepository.update(any(), any())).thenReturn(1);
+
+        service.issueCertificate(1L);
+
+        verify(certificateService).issueMicroSpecialtyCertificate(eq(5L), anyLong(), eq(1L));
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
     }
 
     // ==================== aggregateProgress() ====================
@@ -536,8 +623,28 @@ class MicroSpecialtyEnrollmentServiceTest {
     private static User studentUser(Long id) {
         User u = new User();
         u.setId(id);
+        u.setRole(UserRole.STUDENT);
         u.setRealName("学生" + id);
         return u;
+    }
+
+    private static User teacherUser(Long id) {
+        User u = new User();
+        u.setId(id);
+        u.setRole(UserRole.TEACHER);
+        u.setRealName("教师" + id);
+        return u;
+    }
+
+    private static Enrollment courseEnrollment(Long id, Long courseId, Long userId, String sourceChannel, String status) {
+        Enrollment enrollment = new Enrollment();
+        enrollment.setId(id);
+        enrollment.setCourseId(courseId);
+        enrollment.setUserId(userId);
+        enrollment.setSourceChannel(sourceChannel);
+        enrollment.setEnrollmentStatus(status);
+        enrollment.setVersion(0);
+        return enrollment;
     }
 
     private static Course course(Long id, String title) {

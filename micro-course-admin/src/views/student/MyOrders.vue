@@ -24,7 +24,7 @@
       <template v-else>
         <el-table v-loading="loading" :data="orders" class="data-table" stripe border>
         <el-table-column prop="orderNo" label="订单号" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="courseTitle" label="课程" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="courseTitle" label="商品" min-width="200" show-overflow-tooltip />
         <el-table-column prop="amount" label="金额" width="120" align="center">
           <template #default="{ row }">
             <span v-if="row.amount" class="price-paid">¥{{ row.amount }}</span>
@@ -73,7 +73,14 @@
 申请退款
 </el-button>
             <el-button
-              v-if="row.courseId"
+              v-if="row.bundleId"
+              size="small"
+              @click="goBundle(row.bundleId)"
+            >
+查看套餐
+</el-button>
+            <el-button
+              v-else-if="row.courseId"
               size="small"
               @click="goCourse(row.courseId)"
             >
@@ -100,11 +107,10 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMyOrders, payOrder, cancelOrder, refundOrder } from '@/api/order'
 import { useAsyncData } from '@/composables/useAsyncData'
 import { useUrlPagination } from '@/composables/useUrlPagination'
-import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 
 const router = useRouter()
@@ -184,6 +190,7 @@ const handleCancel = async (row) => {
 }
 
 const goCourse = (id) => router.push(`/student/courses/${id}`)
+const goBundle = (id) => router.push(`/student/bundles/${id}`)
 
 // setup 阶段即发起首次加载，execute 同步置 loading=true（保持首屏 loading 行为）
 fetchOrders()

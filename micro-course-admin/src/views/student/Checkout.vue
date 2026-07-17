@@ -107,7 +107,8 @@ const resultSummary = ref({ success: [], failed: [] })
 const showResultDialog = ref(false)
 const retrying = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
+  await store.loadFromServer()
   if (!store.hasItems) {
     loading.value = false
     ElMessage.info('购物车为空')
@@ -148,7 +149,13 @@ async function handleSubmit() {
           successItems.push({ courseTitle: items[idx]?.title || order.courseName, amount: order.amount, status: 'PAID' })
           store.removeItem(items[idx]?.courseId)
         } else {
-          failedOrders.push({ courseTitle: items[idx]?.title || '未知', amount: order?.amount, status: order?.status || 'FAILED' })
+          failedOrders.push({
+            courseId: items[idx]?.courseId,
+            courseTitle: items[idx]?.title || order?.courseName || '未知',
+            amount: order?.amount ?? items[idx]?.price,
+            errorMsg: order?.status === 'PENDING' ? '订单未完成支付' : '支付失败',
+            status: order?.status || 'FAILED'
+          })
         }
       })
       resultSummary.value = { success: successItems, failed: failedOrders }
@@ -202,12 +209,12 @@ async function handleRetryFailed() {
       if (order.status !== 'PAID') {
         await payOrder(order.id, paymentMethod.value)
       }
-      retriedSuccess.push({ courseTitle: item.title, amount: item.amount, status: 'PAID' })
+      retriedSuccess.push({ courseTitle: item.courseTitle, amount: item.amount, status: 'PAID' })
       store.removeItem(item.courseId)
     } catch (e) {
       const msg = e?.response?.data?.message || e?.response?.data?.code || e.message || '支付失败'
-      retriedFailed.push({ courseTitle: item.title, amount: item.amount, errorMsg: msg, status: 'FAILED' })
-      ElMessage.error(`「${item.title}」${msg}`)
+      retriedFailed.push({ courseId: item.courseId, courseTitle: item.courseTitle, amount: item.amount, errorMsg: msg, status: 'FAILED' })
+      ElMessage.error(`「${item.courseTitle}」${msg}`)
     }
   }
   resultSummary.value = {

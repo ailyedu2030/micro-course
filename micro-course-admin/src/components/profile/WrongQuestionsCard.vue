@@ -93,6 +93,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { getMyWrongQuestions } from '@/api/wrong-question'
 import { getMyEnrollments } from '@/api/enrollment'
+import { filterCourseCollectionEnrollments } from '@/utils/enrollmentFilters'
 
 defineProps({
   isMobile: { type: Boolean, default: false }
@@ -111,7 +112,7 @@ const fetchMyEnrollments = async () => {
     const userId = userStore.userInfo?.id
     if (!userId) return
     const res = await getMyEnrollments({ userId })
-    myCourses.value = res.data || []
+    myCourses.value = filterCourseCollectionEnrollments(res.data || [])
   } catch {
     // silent
   }

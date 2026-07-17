@@ -163,7 +163,14 @@
                 </el-button>
               </template>
 
-              <!-- COMPLETED -->
+              <!-- COMPLETED: 已结业，等待发证或查看详情 -->
+              <template v-else-if="item.status === 'COMPLETED'">
+                <el-button size="small" type="success" @click.stop="goDetail(item.microSpecialtyId)">
+                  查看详情
+                </el-button>
+              </template>
+
+              <!-- CERTIFIED: 已发证 -->
               <template v-else-if="item.status === 'CERTIFIED'">
                 <el-button
                   v-if="item.certificateId"

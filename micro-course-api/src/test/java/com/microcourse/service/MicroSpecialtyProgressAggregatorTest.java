@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.*;
@@ -147,6 +148,39 @@ class MicroSpecialtyProgressAggregatorTest {
         when(msRepository.update(any(), any())).thenReturn(0);
 
         assertDoesNotThrow(() -> aggregator.aggregateAll());
+        assertDoesNotThrow(() -> aggregator.aggregateAll());
+    }
+
+    @Test
+    @DisplayName("aggregateAll: student_count 重校准包含 COMPLETED 和 CERTIFIED")
+    void aggregateAll_recalibrateStudentCountIncludesCompletedAndCertified() {
+        MicroSpecialtyEnrollment en = enrollmentWithStatus(1L, "IN_PROGRESS", 1L, 2L);
+        when(enrollmentRepository.selectList(any()))
+                .thenReturn(List.of(en))
+                .thenReturn(Collections.emptyList());
+        doNothing().when(enrollmentService).aggregateProgress(1L);
+        when(enrollmentRepository.selectBatchIds(any())).thenReturn(List.of(enrollmentWithStatus(1L, "CERTIFIED", 1L, 2L)));
+
+        MicroSpecialty ms = new MicroSpecialty();
+        ms.setId(1L);
+        ms.setVersion(0);
+        ms.setStudentCount(1);
+        when(msRepository.selectById(1L)).thenReturn(ms);
+
+        when(enrollmentRepository.selectCount(any())).thenAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MicroSpecialtyEnrollment> wrapper = invocation.getArgument(0);
+            String sqlSegment = wrapper.getSqlSegment();
+            Map<String, Object> params = wrapper.getParamNameValuePairs();
+            org.junit.jupiter.api.Assertions.assertTrue(sqlSegment.contains("status IN"));
+            org.junit.jupiter.api.Assertions.assertTrue(params.values().contains("APPROVED"));
+            org.junit.jupiter.api.Assertions.assertTrue(params.values().contains("IN_PROGRESS"));
+            org.junit.jupiter.api.Assertions.assertTrue(params.values().contains("COMPLETED"));
+            org.junit.jupiter.api.Assertions.assertTrue(params.values().contains("CERTIFIED"));
+            return 1L;
+        });
+        when(msRepository.update(any(), any())).thenReturn(1);
+
         assertDoesNotThrow(() -> aggregator.aggregateAll());
     }
 

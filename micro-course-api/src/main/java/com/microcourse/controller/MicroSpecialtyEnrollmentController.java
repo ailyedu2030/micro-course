@@ -33,7 +33,7 @@ public class MicroSpecialtyEnrollmentController {
 
     /** 学生自主报名 → PENDING */
     @PostMapping("/apply")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<MicroSpecialtyEnrollmentVO> apply(@Valid @RequestBody MicroSpecialtyApplyRequest request) {
         MicroSpecialtyEnrollmentVO vo = enrollmentService.apply(request.getMicroSpecialtyId());
         return R.ok(vo);
@@ -82,7 +82,7 @@ public class MicroSpecialtyEnrollmentController {
 
     /** 重新申请 */
     @PostMapping("/{id}/reapply")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<MicroSpecialtyEnrollmentVO> reapply(@PathVariable Long id) {
         MicroSpecialtyEnrollmentVO vo = enrollmentService.reapply(id);
         return R.ok(vo);

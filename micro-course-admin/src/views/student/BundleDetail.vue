@@ -78,6 +78,7 @@ import { createOrder, payOrder } from '@/api/order'
 import { batchGetLearningProgress } from '@/api/learning-progress'
 import { useUserStore } from '@/store/user'
 import { getMyEnrollments } from '@/api/enrollment'
+import { filterCourseCollectionEnrollments } from '@/utils/enrollmentFilters'
 
 const router = useRouter()
 const route = useRoute()
@@ -95,8 +96,6 @@ const isLoggedIn = computed(() => !!userStore.token)
 const requiredCount = computed(() => items.value.filter(i => i.isRequired).length)
 const electiveCount = computed(() => items.value.filter(i => !i.isRequired).length)
 const enrolledCourseIds = ref(new Set())
-const selectedCount = computed(() => items.value.filter(i => enrolledCourseIds.value.has(i.courseId || i.id)).length)
-const totalCount = computed(() => items.value.length)
 
 const requiredCourses = computed(() => items.value.filter(i => i.isRequired))
 const firstUncompleted = computed(() => {
@@ -121,7 +120,7 @@ onMounted(async () => {
     }
     if (results.length > 2) {
       const enrollData = results[2].data || []
-      const list = Array.isArray(enrollData) ? enrollData : (enrollData.items || [])
+      const list = filterCourseCollectionEnrollments(Array.isArray(enrollData) ? enrollData : (enrollData.items || []))
       enrolledCourseIds.value = new Set(list.map(e => e.courseId))
     }
     if (isEnrolled.value && items.value.length) {
@@ -143,7 +142,6 @@ onMounted(async () => {
 
 const goLogin = () => router.push('/login')
 const goCourse = (id) => router.push(`/student/courses/${id}`)
-const handleContinue = () => { handleBuy() }
 
 const startLearning = () => {
   const target = firstUncompleted.value || requiredCourses.value[0] || items.value[0]
@@ -185,7 +183,7 @@ const handleBuy = async () => {
     await payOrder(order.id, 'BALANCE')
     // P1C-012: 购买成功时重新拉取 enrollment 状态确认所有课程已注册
     const { data: myEnrollments } = await getMyEnrollments({ page: 0, size: 999 })
-    const list = Array.isArray(myEnrollments) ? myEnrollments : (myEnrollments?.items || [])
+    const list = filterCourseCollectionEnrollments(Array.isArray(myEnrollments) ? myEnrollments : (myEnrollments?.items || []))
     enrolledCourseIds.value = new Set(list.map(e => e.courseId))
     // 重新拉取最新状态
     try {

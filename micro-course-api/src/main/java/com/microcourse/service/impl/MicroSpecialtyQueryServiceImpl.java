@@ -403,7 +403,7 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         long completedCount = msEnrollmentRepository.selectCount(
                 new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
                         .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId())
-                        .eq(MicroSpecialtyEnrollment::getStatus, "COMPLETED"));
+                        .in(MicroSpecialtyEnrollment::getStatus, "COMPLETED", "CERTIFIED"));
         long inProgress = msEnrollmentRepository.selectCount(
                 new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
                         .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId())
@@ -416,7 +416,7 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         vo.setCompletedCount((int) completedCount);
         vo.setInProgressCount((int) inProgress);
         vo.setFailedCount((int) failed);
-        long activeTotal = completedCount + inProgress + failed;
+        long activeTotal = completedCount + inProgress;
         if (ms.getMaxStudents() != null && ms.getMaxStudents() > 0) {
             vo.setEnrollmentRate(BigDecimal.valueOf(Math.min(ms.getStudentCount(), ms.getMaxStudents()))
                     .divide(BigDecimal.valueOf(ms.getMaxStudents()), 4, java.math.RoundingMode.HALF_UP));
@@ -428,7 +428,7 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         List<MicroSpecialtyEnrollment> completedEnrollments = msEnrollmentRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
                         .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId())
-                        .eq(MicroSpecialtyEnrollment::getStatus, "COMPLETED")
+                        .in(MicroSpecialtyEnrollment::getStatus, "COMPLETED", "CERTIFIED")
                         .isNotNull(MicroSpecialtyEnrollment::getFinalScore));
         if (!completedEnrollments.isEmpty()) {
             double avg = completedEnrollments.stream()

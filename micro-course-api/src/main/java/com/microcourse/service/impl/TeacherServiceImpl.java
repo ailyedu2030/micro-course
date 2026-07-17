@@ -21,6 +21,7 @@ import com.microcourse.entity.Notification;
 import com.microcourse.entity.Order;
 import com.microcourse.entity.Question;
 import com.microcourse.entity.User;
+import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DiscussionCommentRepository;
 import com.microcourse.repository.DiscussionPostRepository;
@@ -122,7 +123,12 @@ public class TeacherServiceImpl implements TeacherService {
             studentCount = enrollmentRepository.selectCount(
                 new LambdaQueryWrapper<Enrollment>()
                     .in(Enrollment::getCourseId, courseIds)
-                    .isNull(Enrollment::getDeletedAt));
+                    .isNull(Enrollment::getDeletedAt)
+                    .notIn(Enrollment::getEnrollmentStatus,
+                            EnrollmentStatus.CANCELLED.getValue(),
+                            EnrollmentStatus.WAITLIST.getValue(),
+                            EnrollmentStatus.DROPPED.getValue(),
+                            EnrollmentStatus.REJECTED.getValue()));
         }
         stats.setStudentCount((int) studentCount);
 
