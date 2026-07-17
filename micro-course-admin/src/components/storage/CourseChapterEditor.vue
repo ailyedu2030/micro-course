@@ -247,13 +247,26 @@ function removeChapter(index) {
 }
 
 function saveChapters() {
-  // 校验章节名称是否必填
-  const chapters = currentCourse.value?.chapters || []
-  for (let i = 0; i < chapters.length; i++) {
-    if (!chapters[i].title || !chapters[i].title.trim()) {
-      ElMessageBox.alert(`第 ${i + 1} 章名称不能为空`, '校验不通过', { type: 'warning' })
-      return
-    }
+  // 客户需求: 章节可填可不填,不影响提交(P2-fix)
+  // - 完全不填章节: 允许保存(不阻断)
+  // - 填了部分章节: 自动过滤 title 为空的章节(避免阻断)
+  // - 自动重排 sortOrder 保证连续
+  const rawChapters = currentCourse.value?.chapters || []
+  // 过滤掉 title 为空的章节(用户新增了但未填名)
+  const validChapters = rawChapters
+    .map((c, idx) => ({ ...c, _origIdx: idx }))
+    .filter(c => c.title && c.title.trim())
+  if (validChapters.length === 0) {
+    // 没有任何有效章节(全部为空或未填),允许保存,清空 chapters
+    currentCourse.value.chapters = []
+  } else {
+    // 重排 sortOrder
+    validChapters.forEach((c, i) => { c.sortOrder = i })
+    currentCourse.value.chapters = validChapters.map(c => {
+      // 删除临时字段
+      const { _origIdx, ...rest } = c
+      return rest
+    })
   }
   // 同步回 courses 列表
   if (currentCourseIndex.value >= 0 && currentCourseIndex.value < localData.value.length) {
@@ -261,7 +274,11 @@ function saveChapters() {
   }
   emitChange()
   drawerVisible.value = false
-  ElMessageBox.alert('章节已保存', '保存成功', { type: 'success' })
+  const skipCount = rawChapters.length - currentCourse.value.chapters.length
+  const msg = skipCount > 0
+    ? `已保存 ${currentCourse.value.chapters.length} 章(自动跳过 ${skipCount} 个空章节)`
+    : `章节已保存(共 ${currentCourse.value.chapters.length} 章)`
+  ElMessageBox.alert(msg, '保存成功', { type: 'success' })
 }
 </script>
 
