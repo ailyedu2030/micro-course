@@ -143,11 +143,13 @@ import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useNotificationStore } from '@/store/notification'
+import { useUserStore } from '@/store/user'
 
 // ---------------------------------------------------------------------------
 // Store & Router
 // ---------------------------------------------------------------------------
 const notificationStore = useNotificationStore()
+const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -274,58 +276,74 @@ const handleMarkAllRead = async () => {
 // P1 + P1C-033: 通知行点击跳转（根据 type + relatedId，含精确路径参数）
 // 覆盖全部 NotificationType 枚举值：选课/成绩/讨论/审核/系统/微专业
 // ---------------------------------------------------------------------------
-const ROUTE_MAP = {
-  // === 选课通知 → 课程详情 ===
-  ENROLLMENT_SUCCESS:    (id) => `/student/courses/${id}`,
-  ENROLLMENT_WAITLIST:   (id) => `/student/courses/${id}`,
-  ENROLLMENT:            (id) => `/student/courses/${id}`,
-  // === 成绩通知 → 成绩页 ===
-  GRADE_ISSUED:          (id) => `/student/courses/${id}/grades`,
-  GRADE:                 (id) => `/student/courses/${id}/grades`,
-  // === 讨论通知 → 讨论详情 ===
-  DISCUSSION_REPLY:      (id) => `/student/courses/${id}/discussion`,
-  DISCUSSION:            (id) => `/student/courses/${id}/discussion`,
-  DISCUSSION_POST_APPROVED: (id) => `/student/courses/${id}/discussion`,
-  // === 审核通知 → 课程编辑 ===
-  COURSE_APPROVED:       (id) => `/teacher/courses/${id}`,
-  COURSE_REJECTED:       (id) => `/teacher/courses/${id}?tab=review`,
-  COURSE_PUBLISHED:      (id) => `/student/courses/${id}`,
-  COURSE_UNPUBLISHED:    (id) => `/teacher/courses/${id}`,
-  COURSE_REVIEW_REMINDER: (id) => `/teacher/courses/${id}`,
-  COURSE_COMPLETION_WARNING: (id) => `/teacher/courses/${id}/grades`,
-  // === 练习/作业 ===
-  EXERCISE_GRADED:       (id) => `/student/courses/${id}/exercises`,
-  // === 视频 ===
-  VIDEO_TRANSCODED:      (id) => `/teacher/courses/${id}/videos`,
-  // === 微专业 — 教师侧 ===
-  MS_INVITE_LEAD:        (id) => `/teacher/micro-specialties/invitations`,
-  MS_INVITE_TEAM:        (id) => `/teacher/micro-specialties/invitations`,
-  MS_INVITE_ACCEPTED:    (id) => `/teacher/micro-specialties/${id}`,
-  MS_INVITE_EXPIRED:     (id) => `/teacher/micro-specialties/invitations`,
-  MS_INVITE_CROSS_DEPT:  (id) => `/teacher/micro-specialties/invitations`,
-  MS_PROPOSAL_APPROVED:  (id) => `/teacher/micro-specialties/${id}`,
-  MS_PROPOSAL_REJECTED:  (id) => `/teacher/micro-specialties/${id}`,
-  MS_SUBMITTED:          (id) => `/teacher/micro-specialties/${id}`,
-  MS_APPROVED:           (id) => `/teacher/micro-specialties/${id}`,
-  MS_REJECTED:           (id) => `/teacher/micro-specialties/${id}`,
-  MS_FEATURED_APPROVED:  (id) => `/teacher/micro-specialties/${id}`,
-  MS_FEATURED_REJECTED:  (id) => `/teacher/micro-specialties/${id}`,
-  MS_OPENED:             (id) => `/teacher/micro-specialties/${id}`,
-  MS_TEAM_REMOVED:       (id) => `/teacher/micro-specialties/${id}`,
-  MS_TEAM_LEFT:          (id) => `/teacher/micro-specialties/${id}`,
-  MS_CANCELLED:          (id) => `/teacher/micro-specialties/${id}`,
-  MS_LEAD_TRANSFERRED:   (id) => `/teacher/micro-specialties/${id}`,
-  MS_ARCHIVED:           (id) => `/teacher/micro-specialties/${id}`,
-  MS_COMPLETED:          (id) => `/teacher/micro-specialties/${id}`,
-  // === 微专业 — 学生侧 ===
-  MS_CERTIFICATE_ISSUED: (id) => `/student/certificates`,
-  MS_ENROLLMENT_APPROVED:(id) => `/student/micro-specialties/${id}`,
-  MS_ENROLLMENT_REJECTED:(id) => `/student/micro-specialties/${id}`,
-  MS_ENROLLMENT_AUTO_ENROLL: (id) => `/student/micro-specialties`,
-  MS_ENROLLMENT_PENDING: (id) => `/student/micro-specialties`,
-  MS_ENROLLMENT_DROPPED: (id) => `/student/micro-specialties`,
-  MS_ENROLLMENT_REAPPLIED:(id) => `/student/micro-specialties`,
-  MS_ENROLLMENT_FAILED:  (id) => `/student/micro-specialties`,
+function resolveCoursePath(id) {
+  if (!id) return null
+  if (userStore.role === 'STUDENT') return `/student/courses/${id}`
+  if (userStore.role === 'TEACHER') return `/teacher/courses/${id}`
+  return `/courses/${id}`
+}
+
+function resolveNotificationRoute(row) {
+  const id = row.relatedId
+  switch (row.type) {
+    case 'ENROLLMENT_SUCCESS':
+    case 'ENROLLMENT_WAITLIST':
+    case 'ENROLLMENT':
+    case 'ENROLLMENT_DROPPED':
+    case 'GRADE_ISSUED':
+    case 'GRADE':
+    case 'DISCUSSION_REPLY':
+    case 'DISCUSSION':
+    case 'DISCUSSION_POST_APPROVED':
+    case 'COURSE_PUBLISHED':
+      return resolveCoursePath(id)
+    case 'COURSE_APPROVED':
+    case 'COURSE_REJECTED':
+    case 'COURSE_UNPUBLISHED':
+    case 'COURSE_REVIEW_REMINDER':
+      return resolveCoursePath(id)
+    case 'EXERCISE_GRADED':
+      return userStore.role === 'STUDENT' ? resolveCoursePath(id) : '/exercises'
+    case 'VIDEO_TRANSCODED':
+      return id ? `/courses/${id}/videos` : '/videos'
+    case 'MS_INVITE_LEAD':
+    case 'MS_INVITE_TEAM':
+    case 'MS_INVITE_ACCEPTED':
+    case 'MS_INVITE_EXPIRED':
+      return '/teacher/micro-specialties/invites'
+    case 'MS_INVITE_CROSS_DEPT':
+      return ['ACADEMIC', 'ADMIN'].includes(userStore.role) ? '/academic/micro-specialties/cross-dept' : '/teacher/micro-specialties/invites'
+    case 'MS_PROPOSAL_APPROVED':
+    case 'MS_PROPOSAL_REJECTED':
+      return '/teacher/micro-specialties/my-proposals'
+    case 'MS_SUBMITTED':
+      return ['ACADEMIC', 'ADMIN'].includes(userStore.role) ? '/academic/micro-specialties/review' : '/teacher/micro-specialties/my-proposals'
+    case 'MS_APPROVED':
+    case 'MS_REJECTED':
+    case 'MS_FEATURED_APPROVED':
+    case 'MS_FEATURED_REJECTED':
+    case 'MS_OPENED':
+    case 'MS_TEAM_REMOVED':
+    case 'MS_TEAM_LEFT':
+    case 'MS_CANCELLED':
+    case 'MS_LEAD_TRANSFERRED':
+    case 'MS_ARCHIVED':
+      if (userStore.role === 'STUDENT') return '/student/my-micro-specialties'
+      if (['ACADEMIC', 'ADMIN'].includes(userStore.role)) return '/academic/micro-specialties/review'
+      return id ? `/teacher/micro-specialties/${id}/manage` : '/teacher/micro-specialties'
+    case 'MS_CERTIFICATE_ISSUED':
+    case 'MS_ENROLLMENT_APPROVED':
+    case 'MS_ENROLLMENT_REJECTED':
+    case 'MS_ENROLLMENT_AUTO_ENROLL':
+    case 'MS_ENROLLMENT_PENDING':
+    case 'MS_ENROLLMENT_DROPPED':
+    case 'MS_ENROLLMENT_REAPPLIED':
+    case 'MS_ENROLLMENT_FAILED':
+    case 'MS_COMPLETED':
+      return userStore.role === 'STUDENT' ? '/student/my-micro-specialties' : null
+    default:
+      return null
+  }
 }
 
 async function handleRowClick(row) {
@@ -338,9 +356,9 @@ async function handleRowClick(row) {
       console.warn('[Notification] 点击标记已读失败', row.id)
     }
   }
-  // 有关联资源则跳转
-  if (row.relatedId && ROUTE_MAP[row.type]) {
-    router.push(ROUTE_MAP[row.type](row.relatedId))
+  const target = resolveNotificationRoute(row)
+  if (target) {
+    router.push(target)
   }
 }
 

@@ -538,6 +538,7 @@ import { getCourses } from '@/api/course'
 import { getMyCertificates } from '@/api/certificate'
 import { getMyCheckIns, createCheckIn, getCheckInStreak } from '@/api/checkin'
 import { getAccuracyTrend } from '@/api/exercise-record'
+import { filterActiveLearningEnrollments, filterCourseCollectionEnrollments } from '@/utils/enrollmentFilters'
 
 // ---------------------------------------------------------------------------
 // Store & Router
@@ -756,7 +757,7 @@ async function getStats(sharedEnrollments) {
       getMyCertificates().catch(() => ({ data: [] }))
     ])
 
-    const enrollments = Array.isArray(enrollmentData?.data) ? enrollmentData.data : []
+    const enrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData?.data) ? enrollmentData.data : [])
     const completedCourses = enrollments.filter(e => e.completed).length
 
     // 总学习时长（从 total-time API 聚合所有课程）
@@ -784,7 +785,7 @@ async function getStats(sharedEnrollments) {
     }
 
     // 触发数字动画（连续打卡天数）
-    const inProgressCount = enrollments.filter(e => !e.completed).length
+    const inProgressCount = filterActiveLearningEnrollments(enrollments).length
     animateNumber(inProgressCount, (v) => { animatedInProgress.value = v })
     animateNumber(completedCourses, (v) => { animatedCompleted.value = v })
     animateNumber(streakDays, (v) => { animatedDays.value = v })
@@ -808,11 +809,11 @@ async function getRecent(sharedEnrollments) {
     } else {
       const userId = userStore.userInfo?.id
       const { data } = await getMyEnrollments()
-      enrollments = Array.isArray(data) ? data : []
+      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : [])
     }
 
     // 取第一个进行中的课程作为"继续学习"
-    const inProgress = enrollments.find(e => !e.completed && e.progress > 0)
+    const inProgress = filterActiveLearningEnrollments(enrollments).find(e => e.progress > 0)
     if (inProgress) {
       let currentChapter = 1
       try {
@@ -909,12 +910,11 @@ async function getRecommendations(sharedEnrollments) {
     } else {
       const userId = userStore.userInfo?.id
       const { data } = await getMyEnrollments()
-      enrollments = Array.isArray(data) ? data : []
+      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : [])
     }
 
     // 取进行中的课程作为推荐
-    const inProgress = enrollments
-      .filter(e => !e.completed)
+    const inProgress = filterActiveLearningEnrollments(enrollments)
       .slice(0, 3)
       .map(e => ({
         id: e.courseId,
@@ -961,7 +961,7 @@ async function getRecentRecords(sharedEnrollments) {
     } else {
       const userId = userStore.userInfo?.id
       const { data } = await getMyEnrollments()
-      enrollments = Array.isArray(data) ? data : []
+      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : [])
     }
 
     // 按最近学习时间排序，取最近 5 条
@@ -1002,7 +1002,7 @@ async function loadData() {
     let sharedEnrollments = []
     try {
       const { data: enrollmentData } = await getMyEnrollments()
-      sharedEnrollments = Array.isArray(enrollmentData) ? enrollmentData : []
+      sharedEnrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData) ? enrollmentData : [])
     } catch (e) {
       sharedEnrollments = []
     }

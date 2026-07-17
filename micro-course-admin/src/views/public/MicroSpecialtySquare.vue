@@ -35,7 +35,16 @@
       <section v-if="goldFeatured.length" class="section">
         <h2 class="section-title">学校重点推荐</h2>
         <div class="gold-row">
-          <div v-for="item in goldFeatured" :key="'gold-'+item.id" class="gold-card" role="button" tabindex="0" @click="handleClick(item.id)">
+          <div
+            v-for="item in goldFeatured"
+            :key="'gold-'+item.id"
+            class="gold-card"
+            role="button"
+            tabindex="0"
+            @click="handleClick(item.id)"
+            @keydown.enter.prevent="handleClick(item.id)"
+            @keydown.space.prevent="handleClick(item.id)"
+          >
             <span class="gold-badge">🏆 重点推荐</span>
             <div class="gold-cover">
               <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" loading="lazy" class="gold-cover-img" />
@@ -54,7 +63,16 @@
       <section v-if="featured.length" class="section">
         <h2 class="section-title">推荐微专业</h2>
         <div class="card-grid">
-          <div v-for="item in featured" :key="'feat-'+item.id" class="ms-card" role="button" tabindex="0" @click="handleClick(item.id)">
+          <div
+            v-for="item in featured"
+            :key="'feat-'+item.id"
+            class="ms-card"
+            role="button"
+            tabindex="0"
+            @click="handleClick(item.id)"
+            @keydown.enter.prevent="handleClick(item.id)"
+            @keydown.space.prevent="handleClick(item.id)"
+          >
             <div class="ms-cover">
               <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" loading="lazy" class="ms-cover-img" />
               <div v-else class="ms-cover-placeholder"><el-icon :size="28"><Notebook /></el-icon></div>
@@ -72,7 +90,16 @@
       <section v-if="recruiting.length" class="section">
         <h2 class="section-title">招生中</h2>
         <div class="card-grid">
-          <div v-for="item in recruiting" :key="'rec-'+item.id" class="ms-card" role="button" tabindex="0" @click="handleClick(item.id)">
+          <div
+            v-for="item in recruiting"
+            :key="'rec-'+item.id"
+            class="ms-card"
+            role="button"
+            tabindex="0"
+            @click="handleClick(item.id)"
+            @keydown.enter.prevent="handleClick(item.id)"
+            @keydown.space.prevent="handleClick(item.id)"
+          >
             <div class="ms-cover">
               <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" loading="lazy" class="ms-cover-img" />
               <div v-else class="ms-cover-placeholder"><el-icon :size="28"><Notebook /></el-icon></div>
@@ -89,17 +116,18 @@
       <el-empty v-if="!goldFeatured.length && !featured.length && !recruiting.length" description="暂无微专业项目，敬请期待" />
     </template>
 
-    <section class="login-prompt">
+    <section v-if="!isLoggedIn" class="login-prompt">
       <p>已有账号？<router-link to="/login">登录</router-link> 查看完整的课程内容和学习记录</p>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Notebook } from '@element-plus/icons-vue'
 import { getSquareData } from '@/api/microSpecialty'
+import { isAuthenticated } from '@/utils/auth'
 
 const router = useRouter()
 const loading = ref(true)
@@ -107,6 +135,7 @@ const error = ref(false)
 const goldFeatured = ref([])
 const featured = ref([])
 const recruiting = ref([])
+const isLoggedIn = computed(() => isAuthenticated())
 
 const fetchData = async () => {
   loading.value = true
@@ -125,8 +154,7 @@ const fetchData = async () => {
 }
 
 const handleClick = (id) => {
-  const token = localStorage.getItem('accessToken')
-  if (token) {
+  if (isAuthenticated()) {
     router.push(`/student/micro-specialties/${id}`)
   } else {
     router.push(`/login?redirect=/student/micro-specialties/${id}`)

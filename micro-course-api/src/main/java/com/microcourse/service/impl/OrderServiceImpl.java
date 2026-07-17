@@ -9,6 +9,7 @@ import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.order.OrderVO;
 import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseBundle;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Order;
 import com.microcourse.entity.Payment;
@@ -169,8 +170,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         if (isFreeOrder) {
-            // 套餐购买场景：让 enrollBundleCourses 统一处理所有必修课（sourceChannel=BUNDLE）
-            // 单课程购买场景：autoEnroll 处理（sourceChannel=PAYMENT）
+        // 套餐购买场景：让 enrollBundleCourses 统一处理套餐全部课程（sourceChannel=BUNDLE）
+        // 单课程购买场景：autoEnroll 处理（sourceChannel=PAYMENT）
             if (bundleId != null) {
                 enrollBundleCourses(userId, bundleId);
             } else {
@@ -227,14 +228,22 @@ public class OrderServiceImpl implements OrderService {
         Set<Long> courseIds = ipage.getRecords().stream()
                 .map(Order::getCourseId).filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+        Set<Long> bundleIds = ipage.getRecords().stream()
+                .map(Order::getBundleId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         Map<Long, String> courseTitleMap = new HashMap<>();
+        Map<Long, String> bundleTitleMap = new HashMap<>();
         if (!courseIds.isEmpty()) {
             courseRepository.selectBatchIds(courseIds)
                     .forEach(c -> courseTitleMap.put(c.getId(), c.getTitle()));
         }
+        if (!bundleIds.isEmpty()) {
+            bundleRepository.selectBatchIds(bundleIds)
+                    .forEach(b -> bundleTitleMap.put(b.getId(), b.getTitle()));
+        }
 
         List<OrderVO> vos = ipage.getRecords().stream()
-                .map(o -> toVO(o, courseTitleMap)).collect(Collectors.toList());
+                .map(o -> toVO(o, courseTitleMap, bundleTitleMap)).collect(Collectors.toList());
         PageResult<OrderVO> result = new PageResult<>();
         result.setItems(vos);
         result.setPage(page);
@@ -260,7 +269,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // SECURITY: 先选课再标记支付——防止支付成功但选课失败导致钱课两空
-        // 套餐购买场景：只调 enrollBundleCourses（统一 sourceChannel=BUNDLE）
+        // 套餐购买场景：统一发放套餐内全部课程的访问权（统一 sourceChannel=BUNDLE）
         if (order.getBundleId() != null) {
             enrollBundleCourses(order.getUserId(), order.getBundleId());
         } else {
@@ -337,25 +346,6 @@ public class OrderServiceImpl implements OrderService {
                 throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION, "订单当前状态不可退款");
             }
 
-            // C-28 修复：使用 @Version 乐观锁替代手动 CAS
-            order.setStatus("REFUNDED");
-            order.setUpdatedAt(LocalDateTime.now());
-            int affected = orderRepository.updateById(order);
-            if (affected == 0) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更");
-            }
-
-            // 记录退款 Payment
-            String refundTxnId = "RFND" + UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase();
-            Payment refundPayment = new Payment();
-            refundPayment.setOrderId(orderId);
-            refundPayment.setTransactionId(refundTxnId);
-            refundPayment.setPaymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : "REFUND");
-            refundPayment.setAmount(order.getAmount());
-            refundPayment.setStatus("REFUNDED");
-            refundPayment.setCreatedAt(LocalDateTime.now());
-            paymentRepository.insert(refundPayment);
-
             // P1C-016: 退款前检查课程学习进度，进度 > 10% 不可退款
             if (order.getCourseId() != null) {
                 LambdaQueryWrapper<Enrollment> progressWrapper = new LambdaQueryWrapper<>();
@@ -399,6 +389,24 @@ public class OrderServiceImpl implements OrderService {
             if (order.getBundleId() != null && order.getUserId() != null) {
                 unenrollBundleCourses(order.getUserId(), order.getBundleId());
             }
+
+            // 只有在访问权限和选课记录成功回收后，才真正落退款状态与退款流水
+            order.setStatus("REFUNDED");
+            order.setUpdatedAt(LocalDateTime.now());
+            int affected = orderRepository.updateById(order);
+            if (affected == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "订单状态已变更");
+            }
+
+            String refundTxnId = "RFND" + UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase();
+            Payment refundPayment = new Payment();
+            refundPayment.setOrderId(orderId);
+            refundPayment.setTransactionId(refundTxnId);
+            refundPayment.setPaymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : "REFUND");
+            refundPayment.setAmount(order.getAmount());
+            refundPayment.setStatus("REFUNDED");
+            refundPayment.setCreatedAt(LocalDateTime.now());
+            paymentRepository.insert(refundPayment);
 
             log.info("退款成功: orderId={}, refundTxnId={}, amount={}", orderId, refundTxnId, order.getAmount());
             return toVO(orderRepository.selectById(orderId));
@@ -528,7 +536,7 @@ public class OrderServiceImpl implements OrderService {
         }
         if (!"PENDING".equals(order.getStatus())) return;
 
-        // 先选课再标记支付——套餐购买场景：仅调 enrollBundleCourses（统一 sourceChannel=BUNDLE）
+        // 先选课再标记支付——套餐购买场景：统一发放套餐内全部课程的访问权（统一 sourceChannel=BUNDLE）
         if (order.getBundleId() != null) {
             enrollBundleCourses(order.getUserId(), order.getBundleId());
         } else {
@@ -574,8 +582,7 @@ public class OrderServiceImpl implements OrderService {
     private void enrollBundleCourses(Long userId, Long bundleId) {
         // 先查必修课是否存在，避免对"已软删/空套餐"误增 student_count
         LambdaQueryWrapper<CourseBundleItem> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CourseBundleItem::getBundleId, bundleId)
-                .eq(CourseBundleItem::getIsRequired, true);
+        wrapper.eq(CourseBundleItem::getBundleId, bundleId);
         List<CourseBundleItem> items = bundleItemRepository.selectList(wrapper);
         if (items.isEmpty()) {
             // 套餐在订单创建后被删除或清空 → 不入账 student_count，调用方需回滚订单
@@ -624,7 +631,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * 取消套餐下所有 bundle_id 关联的必修选课记录（用于退款/取消场景）。
+     * 取消套餐下所有 bundle_id 关联的选课记录（用于退款/取消场景）。
      * 直接根据 enrollments.bundle_id 查询，不依赖 course_bundle_items 的可用性，
      * 避免"课程已退选/课程被删/套餐被删"导致退不了款。
      * 只在确实取消了选课时才 decrement student_count（防止重复退款导致负数）。
@@ -637,13 +644,8 @@ public class OrderServiceImpl implements OrderService {
         List<Enrollment> enrollments = enrollmentRepository.selectList(enrollWrapper);
         int cancelledCount = 0;
         for (Enrollment enrollment : enrollments) {
-            try {
-                enrollmentService.cancelEnrollment(enrollment.getId(), userId);
-                cancelledCount++;
-            } catch (Exception e) {
-                log.warn("Bundle enrollment cancel failed: userId={}, enrollId={}, reason={}",
-                        userId, enrollment.getId(), e.getMessage());
-            }
+            enrollmentService.cancelEnrollment(enrollment.getId(), userId);
+            cancelledCount++;
         }
         // 只有确实取消了选课时才回退学生计数器
         if (cancelledCount > 0) {
@@ -657,8 +659,7 @@ public class OrderServiceImpl implements OrderService {
     @SuppressWarnings("unused")
     private void unenrollBundleCoursesViaItems(Long userId, Long bundleId) {
         LambdaQueryWrapper<CourseBundleItem> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CourseBundleItem::getBundleId, bundleId)
-                .eq(CourseBundleItem::getIsRequired, true);
+        wrapper.eq(CourseBundleItem::getBundleId, bundleId);
         List<CourseBundleItem> items = bundleItemRepository.selectList(wrapper);
         for (CourseBundleItem item : items) {
             try {
@@ -691,7 +692,12 @@ public class OrderServiceImpl implements OrderService {
         vo.setPaymentMethod(order.getPaymentMethod());
         vo.setPaidAt(order.getPaidAt());
         vo.setCreatedAt(order.getCreatedAt());
-        if (order.getCourseId() != null) {
+        if (order.getBundleId() != null) {
+            CourseBundle bundle = bundleRepository.selectById(order.getBundleId());
+            if (bundle != null) {
+                vo.setCourseTitle(bundle.getTitle());
+            }
+        } else if (order.getCourseId() != null) {
             Course course = courseRepository.selectById(order.getCourseId());
             if (course != null) vo.setCourseTitle(course.getTitle());
         }
@@ -733,7 +739,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private OrderVO toVO(Order order, Map<Long, String> courseTitleMap) {
+    private OrderVO toVO(Order order, Map<Long, String> courseTitleMap, Map<Long, String> bundleTitleMap) {
         OrderVO vo = new OrderVO();
         vo.setId(order.getId());
         vo.setOrderNo(order.getOrderNo());
@@ -746,7 +752,9 @@ public class OrderServiceImpl implements OrderService {
         vo.setPaymentMethod(order.getPaymentMethod());
         vo.setPaidAt(order.getPaidAt());
         vo.setCreatedAt(order.getCreatedAt());
-        if (order.getCourseId() != null && courseTitleMap != null) {
+        if (order.getBundleId() != null && bundleTitleMap != null) {
+            vo.setCourseTitle(bundleTitleMap.get(order.getBundleId()));
+        } else if (order.getCourseId() != null && courseTitleMap != null) {
             vo.setCourseTitle(courseTitleMap.get(order.getCourseId()));
         }
         return vo;

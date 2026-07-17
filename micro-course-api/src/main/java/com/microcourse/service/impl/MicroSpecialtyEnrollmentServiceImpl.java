@@ -102,6 +102,14 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         this.self = self;
     }
 
+    private void assertStudentOperator(Long userId) {
+        User user = userRepository.selectById(userId);
+        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        if (user.getRole() != UserRole.STUDENT || !SecurityUtil.hasRole(UserRole.STUDENT.name())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅学生可报名微专业");
+        }
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MicroSpecialtyEnrollmentVO apply(Long msId) {
@@ -125,6 +133,7 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         }
 
         Long userId = SecurityUtil.getCurrentUserId();
+        assertStudentOperator(userId);
 
         // 检查是否已有有效报名
         Long existing = enrollmentRepository.selectCount(
@@ -418,33 +427,32 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
     public int classImport(Long msId, Long classId) {
         MicroSpecialty ms = msRepository.selectForUpdate(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
-
-        // P2-7: 班级导入检查微专业容量上限，maxStudents <= 0 视为不限
-        if (ms.getMaxStudents() != null && ms.getMaxStudents() > 0
-                && ms.getStudentCount() != null && ms.getStudentCount() >= ms.getMaxStudents()) {
-            throw new BusinessException(ErrorCode.MS_MAX_STUDENTS_REACHED, "微专业已满员，无法导入班级");
-        }
-
         if (!"RECRUITING".equals(ms.getStatus())) {
             throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅招生中状态可班级导入");
         }
-
-        // 查班级学生
+        long currentCount = enrollmentRepository.selectCount(new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
+                .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
+        Integer remainingSlots = null;
+        if (ms.getMaxStudents() != null && ms.getMaxStudents() > 0) {
+            remainingSlots = (int) (ms.getMaxStudents() - currentCount);
+            if (remainingSlots <= 0) throw new BusinessException(ErrorCode.MS_MAX_STUDENTS_REACHED, "微专业已满员，无法导入班级");
+        }
         List<User> students = userRepository.selectList(
                 new LambdaQueryWrapper<User>()
                         .eq(User::getClassId, classId)
                         .eq(User::getRole, UserRole.STUDENT));
         if (students.isEmpty()) return 0;
-
-        // 预查已存在学生
         List<MicroSpecialtyEnrollment> existingList = enrollmentRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
                         .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
                         .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
         Set<Long> existingUserIds = existingList.stream()
                 .map(MicroSpecialtyEnrollment::getUserId).collect(Collectors.toSet());
-
-        // G2: 加载微专业的所有课程（必修 + 选修），用于自动 enroll
+        long newStudentCount = students.stream().filter(student -> !existingUserIds.contains(student.getId())).count();
+        if (remainingSlots != null && newStudentCount > remainingSlots) {
+            throw new BusinessException(ErrorCode.MS_MAX_STUDENTS_REACHED, "剩余名额不足，剩余 " + remainingSlots + " 个，待导入 " + newStudentCount + " 人");
+        }
         List<MicroSpecialtyCourse> msCourses = msCourseRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyCourse>()
                         .eq(MicroSpecialtyCourse::getMicroSpecialtyId, msId));
@@ -455,7 +463,6 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
         int totalPendingCount = 0;
         int studentsWithPending = 0;
         List<MicroSpecialtyEnrollment> batch = new ArrayList<>(BATCH_SIZE);
-        // 收集每个新生的 (userId, pendingCoursesJson)，待主 enrollment 写入后回写
         Map<Long, List<PendingCourseJsonUtil.PendingCourseItem>> pendingByUser = new HashMap<>();
 
         for (User student : students) {
@@ -476,8 +483,6 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
             en.setCreatedAt(LocalDateTime.now());
             en.setUpdatedAt(LocalDateTime.now());
             en.setVersion(0);
-
-            // G2: 逐门课程前置检查（自动 enroll）
             List<PendingCourseJsonUtil.PendingCourseItem> pending = new ArrayList<>();
             for (Long courseId : courseIds) {
                 try {
@@ -487,7 +492,6 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
                     req.setSourceChannel("MICRO_SPECIALTY");
                     enrollmentService.enroll(req);
                 } catch (BusinessException e) {
-                    // 不可自动 enroll，记录到 pendingCourses（不抛，不阻断主流程）
                     Course course = courseRepository.selectById(courseId);
                     String courseName = (course != null) ? course.getTitle() : ("课程#" + courseId);
                     pending.add(new PendingCourseJsonUtil.PendingCourseItem(courseId, courseName, e.getMessage()));
@@ -606,7 +610,8 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
 
         // IDOR 校验：仅本人或 ADMIN 可退出
         Long userId = SecurityUtil.getCurrentUserId();
-        if (!en.getUserId().equals(userId) && !SecurityUtil.isAdmin()) {
+        boolean isAdmin = SecurityUtil.isAdmin();
+        if (!en.getUserId().equals(userId) && !isAdmin) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "仅本人可操作退出");
         }
 
@@ -646,8 +651,7 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
         notificationService.notifyAsync(en.getUserId(), NotificationType.MS_ENROLLMENT_DROPPED,
                 "已退出微专业", "您已退出微专业《" + ms.getTitle() + "》", en.getMicroSpecialtyId());
 
-        // 级联删除课程级 enrollment
-        if (cascade) {
+        if (cascade || isAdmin) {
             List<MicroSpecialtyCourse> msCourses = msCourseRepository.selectList(
                     new LambdaQueryWrapper<MicroSpecialtyCourse>()
                             .eq(MicroSpecialtyCourse::getMicroSpecialtyId, en.getMicroSpecialtyId()));
@@ -656,15 +660,14 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
                         new LambdaQueryWrapper<Enrollment>()
                                 .eq(Enrollment::getCourseId, mc.getCourseId())
                                 .eq(Enrollment::getUserId, en.getUserId())
-                                .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
+                                .in(Enrollment::getSourceChannel, "MICRO_SPECIALTY", "MICRO_SPECIALTY_AUTO")
+                                .in(Enrollment::getEnrollmentStatus,
+                                        EnrollmentStatus.APPROVED.getValue(),
+                                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                                        EnrollmentStatus.WAITLIST.getValue(),
+                                        EnrollmentStatus.SUSPENDED.getValue()));
                 if (courseEn != null) {
-                    courseEnrollmentRepository.update(null,
-                            new LambdaUpdateWrapper<Enrollment>()
-                                    .eq(Enrollment::getId, courseEn.getId())
-                                    .eq(Enrollment::getVersion, courseEn.getVersion())
-                                    .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
-                                    .set(Enrollment::getUpdatedAt, LocalDateTime.now())
-                                    .setSql("version = version + 1"));
+                    enrollmentService.cancelEnrollment(courseEn.getId(), userId);
                 }
             }
         }
@@ -676,9 +679,10 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
         MicroSpecialtyEnrollment en = enrollmentRepository.selectById(id);
         if (en == null) throw new BusinessException(ErrorCode.MS_ENROLLMENT_NOT_FOUND);
 
-        // IDOR 校验：仅本人可操作
         Long userId = SecurityUtil.getCurrentUserId();
-        if (!en.getUserId().equals(userId) && !SecurityUtil.isAdmin()) {
+        assertStudentOperator(userId);
+        // IDOR 校验：仅本人可操作
+        if (!en.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "仅本人可重新申请");
         }
 
@@ -742,8 +746,9 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
         MicroSpecialtyEnrollment en = enrollmentRepository.selectById(enrollmentId);
         if (en == null) throw new BusinessException(ErrorCode.MS_ENROLLMENT_NOT_FOUND);
 
-        // Fix 4: 权限校验——仅负责人或管理员/教务处可颁发证书
-        if (!SecurityUtil.isAdminOrAcademic()) {
+        // 有认证用户时执行人工发证权限校验；无认证上下文时允许内部任务链路自动发证
+        if (org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication() != null
+                && !SecurityUtil.isAdminOrAcademic()) {
             msService.requireLeadOf(en.getMicroSpecialtyId());
         }
 

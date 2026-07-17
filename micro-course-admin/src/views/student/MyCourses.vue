@@ -479,7 +479,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUrlPagination } from '@/composables/useUrlPagination';
-import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -487,7 +486,6 @@ import {
   CircleCheck,
   Star,
   Folder,
-  VideoPlay,
   User,
   Clock,
   Warning
@@ -495,11 +493,12 @@ import {
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments, cancelEnrollment } from '../../api/enrollment'
 import { getMyOrders } from '../../api/order'
-import { getCompletion, getLearningProgress, batchGetLearningProgress } from '../../api/learning-progress'
+import { getCompletion, batchGetLearningProgress } from '../../api/learning-progress'
 import { getChapters } from '../../api/chapter'
 import { getMyFavorites } from '../../api/favorite'
 import { getCourseById } from '../../api/course'
 import { getDefaultCover } from '../../utils/coverHelper'
+import { filterActiveLearningEnrollments, filterCourseCollectionEnrollments, isActiveLearningEnrollment } from '../../utils/enrollmentFilters'
 
 // 客户体验修复 v1.7.0: 课程 coverUrl 通常为 null,用类别感知的 SVG 兜底,
 // 避免"千课一面"的全灰占位。effectiveCover 返回真实 URL 或生成的 data URI
@@ -560,7 +559,7 @@ let completionMap = {}
 const progressColor = 'var(--role-primary)'
 
 const inProgressCourses = computed(() =>
-  (enrollments.value || []).filter(e => !e.completed)
+  filterActiveLearningEnrollments(enrollments.value || [])
 )
 
 const completedCourses = computed(() =>
@@ -651,14 +650,14 @@ const fetchEnrollments = async () => {
   try {
     // P0-5: 不再传 userId——后端从 JWT 中获取
     const res = await getMyEnrollments()
-    const list = res.data || []
+    const list = filterCourseCollectionEnrollments(res.data || [])
 
     // P1-5: 使用 Promise.allSettled 替代 Promise.all，防止单个失败导致全部中断
     const completionData = await getCompletion().catch(() => ({}))
     completionMap = completionData?.data || {}
 
     // R8 P0-3: 批量获取学习进度（替代 per-course N+1）
-    const inProgress = list.filter(e => !e.completed)
+    const inProgress = list.filter(isActiveLearningEnrollment)
     const newProgressMap = {}
     if (inProgress.length > 0) {
       const courseIds = inProgress.map(e => e.courseId)

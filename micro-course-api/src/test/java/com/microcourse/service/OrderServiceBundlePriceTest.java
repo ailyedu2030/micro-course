@@ -5,6 +5,7 @@ import com.microcourse.entity.CourseBundle;
 import com.microcourse.entity.Order;
 import com.microcourse.service.impl.OrderServiceImpl;
 import com.microcourse.util.SecurityUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,12 +16,18 @@ import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -37,6 +44,7 @@ class OrderServiceBundlePriceTest {
     @Mock private com.microcourse.repository.CourseBundleRepository bundleRepository;
     @Mock private com.microcourse.repository.CourseBundleItemRepository bundleItemRepository;
     @Mock private com.microcourse.repository.OrderRepository orderRepository;
+    @Mock private com.microcourse.repository.PaymentRepository paymentRepository;
     @Mock private com.microcourse.repository.EnrollmentRepository enrollmentRepository;
     @Mock private com.microcourse.service.EnrollmentService enrollmentService;
     @Mock private com.microcourse.service.CourseService courseService;
@@ -142,6 +150,65 @@ class OrderServiceBundlePriceTest {
                         "免费套餐订单金额应为 0");
                 assertEquals("PAID", captor.getValue().getStatus(),
                         "免费套餐应直接 PAID 状态（免费购买）");
+            }
+        }
+
+        @Test
+        @DisplayName("免费套餐：购买后应为必修与选修都创建 enrollment")
+        void freeBundle_EnrollsRequiredAndElectiveCourses() {
+            Course course = new Course();
+            course.setId(100L);
+            course.setStatus(2);
+            course.setPricingStatus("APPROVED");
+            when(courseRepository.selectById(100L)).thenReturn(course);
+
+            CourseBundle bundle = new CourseBundle();
+            bundle.setId(50L);
+            bundle.setStatus(1);
+            bundle.setPrice(BigDecimal.ZERO);
+            bundle.setIsFree(true);
+            when(bundleRepository.selectById(50L)).thenReturn(bundle);
+            when(bundleItemRepository.selectCount(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(1L);
+
+            com.microcourse.entity.CourseBundleItem requiredItem = new com.microcourse.entity.CourseBundleItem();
+            requiredItem.setId(1L);
+            requiredItem.setBundleId(50L);
+            requiredItem.setCourseId(100L);
+            requiredItem.setIsRequired(true);
+
+            com.microcourse.entity.CourseBundleItem electiveItem = new com.microcourse.entity.CourseBundleItem();
+            electiveItem.setId(2L);
+            electiveItem.setBundleId(50L);
+            electiveItem.setCourseId(101L);
+            electiveItem.setIsRequired(false);
+
+            when(bundleItemRepository.selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class)))
+                    .thenReturn(Arrays.asList(requiredItem, electiveItem));
+            when(enrollmentService.enroll(any(com.microcourse.dto.EnrollmentCreateRequest.class)))
+                    .thenReturn(new com.microcourse.dto.EnrollmentVO());
+            when(enrollmentService.getMyEnrollments(anyLong(), any())).thenReturn(Collections.emptyList());
+            when(orderRepository.selectOne(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(null);
+
+            try (MockedStatic<SecurityUtil> su = mockStatic(SecurityUtil.class)) {
+                su.when(SecurityUtil::getCurrentUserId).thenReturn(1L);
+
+                orderService.createOrder(1L, 100L, 50L);
+
+                org.mockito.ArgumentCaptor<com.microcourse.dto.EnrollmentCreateRequest> enrollCaptor =
+                        org.mockito.ArgumentCaptor.forClass(com.microcourse.dto.EnrollmentCreateRequest.class);
+                org.mockito.Mockito.verify(enrollmentService, org.mockito.Mockito.times(2))
+                        .enroll(enrollCaptor.capture());
+
+                assertEquals(
+                        java.util.Set.of(100L, 101L),
+                        enrollCaptor.getAllValues().stream()
+                                .map(com.microcourse.dto.EnrollmentCreateRequest::getCourseId)
+                                .collect(java.util.stream.Collectors.toSet()),
+                        "套餐购买后，必修和选修都应获得访问权限");
+                org.junit.jupiter.api.Assertions.assertTrue(
+                        enrollCaptor.getAllValues().stream()
+                                .allMatch(req -> "BUNDLE".equals(req.getSourceChannel())),
+                        "套餐课程 enrollment 的 sourceChannel 应统一为 BUNDLE");
             }
         }
 
@@ -262,6 +329,150 @@ class OrderServiceBundlePriceTest {
                         com.microcourse.exception.BusinessException.class,
                         () -> orderService.createOrder(1L, 100L, 50L));
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("订单展示口径")
+    class OrderDisplayTitle {
+
+        @Test
+        @DisplayName("套餐订单列表应返回套餐标题而不是入口课程标题")
+        void bundleOrder_UsesBundleTitleInOrderList() {
+            Order order = new Order();
+            order.setId(1L);
+            order.setOrderNo("ORD-1");
+            order.setUserId(1L);
+            order.setCourseId(100L);
+            order.setBundleId(50L);
+            order.setAmount(new BigDecimal("199.00"));
+            order.setStatus("PAID");
+
+            Page<Order> page = new Page<>(1, 20);
+            page.setRecords(List.of(order));
+            page.setTotal(1);
+
+            Course course = new Course();
+            course.setId(100L);
+            course.setTitle("入口课程");
+
+            CourseBundle bundle = new CourseBundle();
+            bundle.setId(50L);
+            bundle.setTitle("Java 全栈套餐");
+
+            when(orderRepository.selectPage(any(Page.class), any(com.baomidou.mybatisplus.core.conditions.Wrapper.class)))
+                    .thenReturn(page);
+            when(courseRepository.selectBatchIds(any())).thenReturn(List.of(course));
+            when(bundleRepository.selectBatchIds(any())).thenReturn(List.of(bundle));
+
+            var result = orderService.getMyOrders(1L, 0, 20, null, null);
+
+            assertEquals(1, result.getItems().size());
+            assertEquals("Java 全栈套餐", result.getItems().get(0).getCourseTitle(),
+                    "套餐订单在列表中应展示套餐标题");
+            verify(bundleRepository).selectBatchIds(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("套餐退款一致性")
+    class BundleRefundConsistency {
+
+        @Test
+        @DisplayName("套餐退选失败时，不得先把订单标记为已退款")
+        void bundleRefund_FailsWhenAnyEnrollmentCancelFails() {
+            Order order = new Order();
+            order.setId(1L);
+            order.setUserId(1L);
+            order.setBundleId(50L);
+            order.setStatus("PAID");
+            order.setAmount(new BigDecimal("199.00"));
+
+            com.microcourse.entity.Enrollment e1 = new com.microcourse.entity.Enrollment();
+            e1.setId(11L);
+            e1.setUserId(1L);
+            e1.setBundleId(50L);
+            e1.setCourseId(100L);
+            e1.setEnrollmentStatus("APPROVED");
+            e1.setProgress(0.0);
+
+            com.microcourse.entity.Enrollment e2 = new com.microcourse.entity.Enrollment();
+            e2.setId(12L);
+            e2.setUserId(1L);
+            e2.setBundleId(50L);
+            e2.setCourseId(101L);
+            e2.setEnrollmentStatus("APPROVED");
+            e2.setProgress(0.0);
+
+            when(orderRepository.selectById(1L)).thenReturn(order);
+            when(enrollmentRepository.selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class)))
+                    .thenReturn(List.of(e1, e2), List.of(e1, e2));
+            org.mockito.Mockito.doNothing().when(enrollmentService).cancelEnrollment(11L, 1L);
+            org.mockito.Mockito.doThrow(new com.microcourse.exception.BusinessException(
+                    com.microcourse.exception.ErrorCode.BAD_REQUEST_PARAM, "第二门课程退选失败"))
+                    .when(enrollmentService).cancelEnrollment(12L, 1L);
+
+            try (MockedStatic<SecurityUtil> su = mockStatic(SecurityUtil.class)) {
+                su.when(() -> SecurityUtil.isOwnerOrAdmin(1L)).thenReturn(true);
+
+                assertThrows(com.microcourse.exception.BusinessException.class,
+                        () -> orderService.refund(1L));
+            }
+
+            verify(orderRepository, never()).updateById(any(Order.class));
+            verify(paymentRepository, never()).insert(any(com.microcourse.entity.Payment.class));
+            verify(bundleRepository, never()).atomicDecrementStudentCount(anyLong());
+        }
+
+        @Test
+        @DisplayName("套餐退款必须先回收访问权，再写退款状态和流水")
+        void bundleRefund_RevokesAccessBeforeMarkingRefunded() {
+            Order order = new Order();
+            order.setId(1L);
+            order.setUserId(1L);
+            order.setBundleId(50L);
+            order.setStatus("PAID");
+            order.setAmount(new BigDecimal("199.00"));
+            order.setPaymentMethod("MOCK");
+
+            CourseBundle bundle = new CourseBundle();
+            bundle.setId(50L);
+            bundle.setTitle("Java 全栈套餐");
+
+            com.microcourse.entity.Enrollment e1 = new com.microcourse.entity.Enrollment();
+            e1.setId(11L);
+            e1.setUserId(1L);
+            e1.setBundleId(50L);
+            e1.setCourseId(100L);
+            e1.setEnrollmentStatus("APPROVED");
+            e1.setProgress(0.0);
+
+            com.microcourse.entity.Enrollment e2 = new com.microcourse.entity.Enrollment();
+            e2.setId(12L);
+            e2.setUserId(1L);
+            e2.setBundleId(50L);
+            e2.setCourseId(101L);
+            e2.setEnrollmentStatus("APPROVED");
+            e2.setProgress(0.0);
+
+            when(orderRepository.selectById(1L)).thenReturn(order, order);
+            when(enrollmentRepository.selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class)))
+                    .thenReturn(List.of(e1, e2), List.of(e1, e2));
+            when(orderRepository.updateById(any(Order.class))).thenReturn(1);
+            when(bundleRepository.selectById(50L)).thenReturn(bundle);
+
+            try (MockedStatic<SecurityUtil> su = mockStatic(SecurityUtil.class)) {
+                su.when(() -> SecurityUtil.isOwnerOrAdmin(1L)).thenReturn(true);
+
+                orderService.refund(1L);
+            }
+
+            org.mockito.InOrder inOrder = inOrder(enrollmentService, orderRepository, paymentRepository, bundleRepository);
+            inOrder.verify(enrollmentService).cancelEnrollment(11L, 1L);
+            inOrder.verify(enrollmentService).cancelEnrollment(12L, 1L);
+            inOrder.verify(bundleRepository).atomicDecrementStudentCount(50L);
+            inOrder.verify(orderRepository).updateById(any(Order.class));
+            inOrder.verify(paymentRepository).insert(any(com.microcourse.entity.Payment.class));
         }
     }
 }

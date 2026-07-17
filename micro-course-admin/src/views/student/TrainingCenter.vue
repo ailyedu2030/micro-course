@@ -61,6 +61,7 @@ import { ElMessage } from 'element-plus'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getChapters } from '@/api/chapter'
 import { getExercises } from '@/api/exercise'
+import { filterActiveLearningEnrollments } from '@/utils/enrollmentFilters'
 
 const router = useRouter()
 const loading = ref(true)
@@ -83,7 +84,7 @@ async function fetchData() {
   try {
     // Step 1: 获取我的课程列表（1 请求）
     const { data } = await getMyEnrollments({ completed: false })
-    const items = data?.items || data || []
+    const items = filterActiveLearningEnrollments(data?.items || data || [])
 
     if (items.length === 0) {
       enrollments.value = []

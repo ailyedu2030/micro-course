@@ -43,7 +43,7 @@
       sub-title="该微专业可能已被下架或删除"
     >
       <template #extra>
-        <el-button type="primary" @click="$router.push('/student/courses')">返回课程广场</el-button>
+        <el-button type="primary" @click="$router.push('/micro-specialties')">返回微专业广场</el-button>
       </template>
     </el-result>
 
@@ -53,7 +53,7 @@
       <el-page-header @back="$router.back()" class="ms-page-header">
         <template #content>
           <span class="bc-path">
-            <span class="bc-link" @click="$router.push('/student/courses')">课程广场</span>
+            <span class="bc-link" @click="$router.push('/micro-specialties')">微专业广场</span>
             <span class="bc-sep">/</span>
             <span class="bc-current">{{ ms.title }}</span>
           </span>
@@ -108,24 +108,7 @@
       <el-card shadow="never" class="ms-tabs-card">
         <el-tabs v-model="activeTab" class="ms-tabs">
           <el-tab-pane label="培养方案" name="courses">
-            <!-- Loading -->
-            <div v-if="coursesLoading" class="ms-tab-loading">
-              <el-skeleton :count="3" animated />
-            </div>
-            <!-- Error -->
-            <el-result
-              v-else-if="coursesError"
-              icon="error"
-              title="课程加载失败"
-              sub-title="请稍后重试"
-            >
-              <template #extra>
-                <el-button type="primary" @click="fetchCourses">重试</el-button>
-              </template>
-            </el-result>
-            <!-- Empty -->
-            <el-empty v-else-if="!courses.length" description="暂无课程安排" />
-            <!-- Course List (with requirements summary) -->
+            <el-empty v-if="!courses.length" description="暂无课程安排" />
             <template v-else>
               <!-- 不合格课程提示 -->
               <el-alert
@@ -172,7 +155,8 @@
                 :tabindex="courseClickable ? 0 : undefined"
                 :aria-disabled="!courseClickable"
                 @click="goCourse(item.courseId)"
-                @keydown.enter="courseClickable && goCourse(item.courseId)"
+                @keydown.enter.prevent="courseClickable && goCourse(item.courseId)"
+                @keydown.space.prevent="courseClickable && goCourse(item.courseId)"
               >
                 <span class="ms-course-order">{{ i + 1 }}</span>
                 <div class="ms-course-info">
@@ -182,13 +166,8 @@
                     <el-tag v-else type="info" size="small">选修</el-tag>
                   </span>
                   <span class="ms-course-meta">
-                    {{ item.teacherName || '—' }} · {{ item.creditHours || 0 }} 学分
+                    {{ item.teacherName || '—' }} · {{ item.credits || 0 }} 学分
                   </span>
-                </div>
-                <div class="ms-course-status">
-                  <el-tag v-if="item.enrollmentStatus === 'ENROLLED' || item.enrollmentStatus === 'APPROVED'" type="success" size="small">已修读</el-tag>
-                  <el-tag v-else-if="item.enrollmentStatus === 'COMPLETED'" type="success" size="small">已完成</el-tag>
-                  <el-tag v-else-if="item.enrollmentStatus === 'FAILED'" type="danger" size="small">未通过</el-tag>
                 </div>
                 <el-icon class="ms-go-icon"><ArrowRight /></el-icon>
               </div>
@@ -197,24 +176,7 @@
           </el-tab-pane>
 
           <el-tab-pane label="教师团队" name="teachers">
-            <!-- Loading -->
-            <div v-if="teachersLoading" class="ms-tab-loading">
-              <el-skeleton :count="3" animated />
-            </div>
-            <!-- Error -->
-            <el-result
-              v-else-if="teachersError"
-              icon="error"
-              title="教师信息加载失败"
-              sub-title="请稍后重试"
-            >
-              <template #extra>
-                <el-button type="primary" @click="fetchTeachers">重试</el-button>
-              </template>
-            </el-result>
-            <!-- Empty -->
-            <el-empty v-else-if="!teachers.length" description="暂无教师信息" />
-            <!-- Teacher List -->
+            <el-empty v-if="!teachers.length" description="暂无教师信息" />
             <div v-else class="ms-teacher-list">
               <div
                 v-for="t in teachers"
@@ -280,15 +242,29 @@
             <el-button v-if="!isLoggedIn" type="primary" size="large" @click="goLogin">
               请先登录
             </el-button>
+            <el-button
+              v-else-if="!isStudent"
+              size="large"
+              disabled
+            >
+              仅学生可报名
+            </el-button>
             <!-- FAILED / REJECTED → 重新申请 -->
             <el-button
-              v-else-if="['FAILED', 'REJECTED'].includes(enrollmentStatus)"
+              v-else-if="['FAILED', 'REJECTED'].includes(enrollmentStatus) && canReapply"
               type="primary"
               size="large"
               :loading="reapplyLoading"
               @click="handleReapply"
             >
               重新申请
+            </el-button>
+            <el-button
+              v-else-if="['FAILED', 'REJECTED'].includes(enrollmentStatus)"
+              size="large"
+              disabled
+            >
+              当前未开放重新申请
             </el-button>
             <!-- PENDING → 审核中 -->
             <el-button
@@ -326,13 +302,20 @@
             </el-button>
             <!-- 已报名但已退出 -->
             <el-button
-              v-else-if="enrollmentStatus === 'DROPPED'"
+              v-else-if="enrollmentStatus === 'DROPPED' && canReapply"
               type="primary"
               size="large"
               :loading="reapplyLoading"
               @click="handleReapply"
             >
               重新报名
+            </el-button>
+            <el-button
+              v-else-if="enrollmentStatus === 'DROPPED'"
+              size="large"
+              disabled
+            >
+              当前未开放重新报名
             </el-button>
             <!-- 未报名 -->
             <el-button
@@ -358,10 +341,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowRight, Notebook, User } from '@element-plus/icons-vue'
 import {
-  getMicroSpecialtyDetail,
-  getCourses,
-  getTeachers,
-  getStats
+  getMicroSpecialtyDetail
 } from '@/api/microSpecialty'
 import {
   applyEnrollment,
@@ -383,15 +363,9 @@ const activeTab = ref(route.query.tab || 'courses')
 const focusFailed = ref(route.query.focus === 'failed')
 const gotoFirst = ref(route.query.goto === 'first')
 
-// Courses tab
 const courses = ref([])
-const coursesLoading = ref(false)
-const coursesError = ref(false)
 
-// Teachers tab
 const teachers = ref([])
-const teachersLoading = ref(false)
-const teachersError = ref(false)
 
 // Enrollment
 const enrollmentId = ref(null)
@@ -400,11 +374,19 @@ const applyLoading = ref(false)
 const reapplyLoading = ref(false)
 
 const isLoggedIn = computed(() => !!userStore.token)
+const isStudent = computed(() => userStore.role === 'STUDENT')
+const isStaffViewer = computed(() => isLoggedIn.value && !isStudent.value)
 
 const canEnroll = computed(() => {
-  if (!ms.value || !isLoggedIn.value) return false
+  if (!ms.value || !isLoggedIn.value || !isStudent.value) return false
   if (enrollmentStatus.value) return false // 已有报名记录
   return ms.value.status === 'RECRUITING'
+})
+
+const canReapply = computed(() => {
+  if (!ms.value || !isLoggedIn.value || !isStudent.value) return false
+  const reapplyStatuses = ['FAILED', 'REJECTED', 'DROPPED']
+  return reapplyStatuses.includes(enrollmentStatus.value) && ms.value.status === 'RECRUITING'
 })
 
 const statusLabel = computed(() => {
@@ -444,58 +426,24 @@ const fetchDetail = async () => {
   try {
     const detailRes = await getMicroSpecialtyDetail(msId.value)
     ms.value = detailRes.data
-    if (isLoggedIn.value) {
-      getStats(msId.value).then(r => { stats.value = r.data }).catch(err => console.warn('[MS] stats load failed', err))
-    }
+    courses.value = detailRes.data?.courses || []
+    teachers.value = detailRes.data?.teachers || []
+    stats.value = detailRes.data?.stats || null
   } catch (e) {
     console.error('[MSDetail] 加载详情失败:', e)
+    ms.value = null
+    courses.value = []
+    teachers.value = []
+    stats.value = null
     error.value = true
   } finally {
     loading.value = false
   }
 }
 
-// 获取课程
-const fetchCourses = async () => {
-  coursesLoading.value = true
-  coursesError.value = false
-  try {
-    const { data } = await getCourses(msId.value)
-    courses.value = data || []
-    // Auto-navigate to first course if ?goto=first
-    if (gotoFirst.value && courses.value.length > 0) {
-      gotoFirst.value = false
-      const first = courses.value[0]
-      if (first && first.courseId) {
-        router.push(`/student/courses/${first.courseId}`)
-      }
-    }
-  } catch (e) {
-    console.error('[MSDetail] 加载课程失败:', e)
-    coursesError.value = true
-  } finally {
-    coursesLoading.value = false
-  }
-}
-
-// 获取教师
-const fetchTeachers = async () => {
-  teachersLoading.value = true
-  teachersError.value = false
-  try {
-    const { data } = await getTeachers(msId.value)
-    teachers.value = data || []
-  } catch (e) {
-    console.error('[MSDetail] 加载教师失败:', e)
-    teachersError.value = true
-  } finally {
-    teachersLoading.value = false
-  }
-}
-
 // 检查报名状态
 const checkEnrollment = async () => {
-  if (!isLoggedIn.value) return
+  if (!isLoggedIn.value || !isStudent.value) return
   try {
     const { data } = await getMyEnrollments()
     const enrollments = data?.items || data || []
@@ -513,6 +461,10 @@ const checkEnrollment = async () => {
 
 // 报名
 const handleApply = async () => {
+  if (!isStudent.value) {
+    ElMessage.warning('仅学生可报名微专业')
+    return
+  }
   try {
     await ElMessageBox.confirm(
       `确认报名微专业「${ms.value.title}」？`,
@@ -535,6 +487,14 @@ const handleApply = async () => {
 
 // 重新申请
 const handleReapply = async () => {
+  if (!isStudent.value) {
+    ElMessage.warning('仅学生可重新申请微专业')
+    return
+  }
+  if (!canReapply.value) {
+    ElMessage.warning('微专业当前未在招生中，暂不可重新申请')
+    return
+  }
   try {
     await ElMessageBox.confirm(
       '确认重新申请该微专业？',
@@ -559,11 +519,19 @@ const handleReapply = async () => {
 const requiredCount = computed(() => courses.value.filter(c => c.isRequired).length)
 const electiveCount = computed(() => courses.value.filter(c => !c.isRequired).length)
 
-// 课程是否可点击：取决于 enrollment 状态
+const resolveCourseDetailPath = (courseId) => {
+  if (!courseId) return null
+  if (isStudent.value) return `/student/courses/${courseId}`
+  if (userStore.role === 'TEACHER') return `/teacher/courses/${courseId}`
+  if (['ACADEMIC', 'ADMIN'].includes(userStore.role)) return `/courses/${courseId}`
+  return null
+}
+
+// 课程是否可点击：学生取决于报名状态，教职工可直接查看课程详情
 const courseClickable = computed(() => {
-  // 未登录或未报名 → 不可点击（提示先报名）
-  if (!isLoggedIn.value || !enrollmentStatus.value) return false
-  // 已报名/进行中/已结业 → 可点击
+  if (!isLoggedIn.value) return false
+  if (isStaffViewer.value) return true
+  if (!enrollmentStatus.value) return false
   const allowed = ['PENDING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CERTIFIED']
   return allowed.includes(enrollmentStatus.value)
 })
@@ -575,20 +543,30 @@ const goCourse = (courseId) => {
     goLogin()
     return
   }
+  const targetPath = resolveCourseDetailPath(courseId)
+  if (!targetPath) {
+    ElMessage.warning('当前角色暂无可用的课程详情入口')
+    return
+  }
+  if (isStaffViewer.value) {
+    router.push(targetPath)
+    return
+  }
   if (!enrollmentStatus.value) {
     ElMessage.warning('请先报名微专业再学习课程')
     return
   }
   if (!courseClickable.value) {
+    const reapplyTip = ms.value?.status === 'RECRUITING' ? '需重新申请' : '当前未开放重新申请'
     const tipMap = {
-      DROPPED: '你已退出该微专业，需重新申请',
-      REJECTED: '你的报名已被驳回，需重新申请',
-      FAILED: '该微专业未通过，需重新申请'
+      DROPPED: `你已退出该微专业，${reapplyTip}`,
+      REJECTED: `你的报名已被驳回，${reapplyTip}`,
+      FAILED: `该微专业未通过，${reapplyTip}`
     }
     ElMessage.warning(tipMap[enrollmentStatus.value] || '当前状态不可访问课程')
     return
   }
-  router.push(`/student/courses/${courseId}`)
+  router.push(targetPath)
 }
 
 const goLogin = () => {
@@ -598,11 +576,11 @@ const goLogin = () => {
 onMounted(async () => {
   await fetchDetail()
   if (ms.value) {
-    await Promise.all([
-      fetchCourses(),
-      fetchTeachers(),
-      checkEnrollment()
-    ])
+    await checkEnrollment()
+    if (gotoFirst.value && courses.value.length > 0) {
+      gotoFirst.value = false
+      goCourse(courses.value[0].courseId)
+    }
   }
 })
 </script>

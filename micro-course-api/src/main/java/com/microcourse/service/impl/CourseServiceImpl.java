@@ -319,7 +319,11 @@ public class CourseServiceImpl implements CourseService {
         long total = enrollmentRepository.selectCount(
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, courseId)
-                        .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
+                        .notIn(Enrollment::getEnrollmentStatus,
+                                EnrollmentStatus.CANCELLED.getValue(),
+                                EnrollmentStatus.WAITLIST.getValue(),
+                                EnrollmentStatus.DROPPED.getValue(),
+                                EnrollmentStatus.REJECTED.getValue()));
         long completed = enrollmentRepository.selectCount(
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, courseId)

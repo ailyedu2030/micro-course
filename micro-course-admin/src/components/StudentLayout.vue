@@ -154,7 +154,7 @@
 import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  Grid, VideoPlay, DataLine, Bell, User, Star, Setting, Reading,
+  Grid, DataLine, Bell, User, Star, Setting, Reading,
   Microphone, Search, ArrowDown, ArrowLeft, SwitchButton, ShoppingCart,
   Wallet, Menu
 } from '@element-plus/icons-vue'
@@ -217,6 +217,7 @@ const ICON_MAP = {
   User,
   DataLine,
   Reading,
+  Star,
   Wallet,
 }
 
@@ -237,6 +238,12 @@ const menuItems = router.getRoutes()
 function isActive(path) {
   if (path === '/student/courses') {
     return route.path === '/student/courses' || route.path.startsWith('/student/courses/') || route.path === '/student/redirect'
+  }
+  if (path === '/student/learning-stats') {
+    return route.path === '/student/learning-stats' || route.path === '/student/learning'
+  }
+  if (path === '/student/my-micro-specialties') {
+    return route.path === '/student/my-micro-specialties' || route.path.startsWith('/student/micro-specialties/')
   }
   return route.path === path || route.path.startsWith(path + '/')
 }
@@ -266,13 +273,15 @@ const avatarStyle = computed(() => ({
 const h5TitleMap = {
   '/student/courses': '课程广场',
   '/student/my-courses': '我的课程',
+  '/student/my-micro-specialties': '我的微专业',
+  '/student/micro-specialties': '微专业详情',
   '/student/notifications': '消息通知',
   '/student/profile': '个人中心',
   '/student/reviews': '我的评价',
   '/student/report': '我的周报',
   '/student/settings': '设置',
   '/student/learning': '学习',
-  '/student/learning-stats': '学习统计',
+  '/student/learning-stats': '学习',
   '/student/training': '训练中心',
   '/student/exams': '考试',
   '/student/achievements': '成就墙',
@@ -280,12 +289,10 @@ const h5TitleMap = {
 }
 const pageTitle = computed(() => {
   const found = Object.entries(h5TitleMap).find(([k]) => route.path.startsWith(k))
-  return found ? found[1] : (route.meta?.menuLabel || '微课平台')
+  return found ? found[1] : (route.meta?.title || route.meta?.menuLabel || '微课平台')
 })
 const showBackBtn = computed(() => {
-  // 只有在子页面（非 4 个主 Tab）才显示返回按钮
-  // 使用精确匹配，确保 /student/courses/123 等子页面能显示返回按钮
-  const mainPaths = ['/student/courses', '/student/my-courses', '/student/notifications', '/student/profile']
+  const mainPaths = menuItems.map(item => item.path)
   return !mainPaths.includes(route.path)
 })
 
@@ -696,6 +703,20 @@ onUnmounted(() => notificationStore.stopPolling())
 
   .tabbar {
     display: flex;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .header-nav {
+    display: none;
+  }
+
+  .header-search {
+    display: none;
+  }
+
+  .hamburger-btn {
+    display: inline-flex;
   }
 }
 

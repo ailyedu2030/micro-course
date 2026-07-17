@@ -251,6 +251,7 @@ import { Calendar, Timer, Edit, Aim, Key, ArrowRight } from '@element-plus/icons
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
 import { getMyCheckIns } from '../../api/checkin'
+import { filterCourseCollectionEnrollments } from '../../utils/enrollmentFilters'
 
 const userStore = useUserStore()
 
@@ -357,7 +358,7 @@ const getWeekRange = () => {
 const fetchEnrollments = async (userId) => {
   try {
     const res = await getMyEnrollments({ userId })
-    enrollments.value = res.data || []
+    enrollments.value = filterCourseCollectionEnrollments(res.data || [])
   } catch {
     ElMessage.error('获取学习数据失败')
   }

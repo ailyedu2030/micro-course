@@ -7,7 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.20.2] - 2026-07-08
+## [1.22.0] - 2026-07-18
+
+### Fixed (P1-C)
+
+#### 套餐购买与订单链路
+- **套餐购买仅发必修课访问权** — `OrderServiceImpl.enrollBundleCourses()` 改为发放套餐全部课程访问权，不再局限于必修课
+- **套餐订单列表展示错位** — `OrderServiceImpl.toVO()` 套餐订单返回套餐标题，`MyOrders.vue` 列名改为"商品"，套餐单跳转套餐详情
+- **套餐退款原子性** — `OrderServiceImpl.refund()` 先回收全部 enrollment，成功后写 REFUNDED 状态和退款流水；`unenrollBundleCourses()` 失败即时抛出不再吞异常
+- **支付流程回归** — `EnrollmentServiceImpl` PAYMENT 渠道校验恢复接受 `PENDING/PAID`（`eq("PAID")` → `in("PENDING", "PAID")`）
+
+#### 微专业选课与结业
+- **微专业详情页匿名崩溃** — 数据源收口为单一详情接口，消除冗余登录态子请求；修正课程字段读取（`creditHours` → `credits`）；删除后端不返回的伪状态展示；`goto=first` 路径修正为经过权限判断
+- **微专业列表 COMPLETED 状态模板缺失** — 补上"已结业"操作按钮
+- **APPLY/REAPPLY 角色收紧** — 控制器 + 服务层双重学生身份校验；班级导入容量保护
+
+#### 查询与统计口径
+- **3 个后端查询方法缺状态过滤** — `getCourseEnrollmentPage()` / `getCourseEnrollments()` / `getEnrollmentPage()` 默认排除 CANCELLED/WAITLIST/DROPPED/REJECTED
+- **`computeStats` 统计口径** — 与查询层对齐，排除非有效在学状态
+- **`TeacherServiceImpl.getStats()` 教师仪表盘统计** — 修复零状态过滤导致学员数膨胀、完成率稀释
+
+#### 前端学生端选课状态误判
+- **6 个学生页将非在学状态混入"进行中"** — 新增 `enrollmentFilters.js` 统一过滤助手，接入 MyCourses/LearningCenter/TrainingCenter/WeeklyReport/WrongQuestionsCard/BundleDetail
+- **智能表汉堡菜单不可见** — 补上 769px-1024px 断点样式
+- **收藏图标映射缺失** — ICON_MAP 补 Star
+- **H5 标题回退** — h5TitleMap 补微专业页面映射
+
+### Fixed (P1-I)
+- **死代码清理** — 未使用导入/变量/函数（MyOrders/BundleDetail/StudentLayout/MyCourses）共 7 处
+
+### Tests
+- **OrderServiceBundlePriceTest** — 新增 3 个测试覆盖：套餐全课程发放、套餐订单标题展示、退款原子性与失败回滚
+- **OrderPaymentFlowE2ETest** — 回归修复后 4 个支付流程测试锁定
 
 ### Fixed (生产 P0 热修复)
 - **UserList 页首次加载弹窗** — 部署流程只更新了后端 jar，前端容器 (admin-1) 残留旧代码（el-switch @change 自动触发）。已同步部署前端 dist

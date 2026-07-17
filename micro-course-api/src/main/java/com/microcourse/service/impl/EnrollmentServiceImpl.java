@@ -164,7 +164,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 /* 【防止再发】物理删除后 existingEnrollment=null 跳过幂等返回，从头创建新记录 */
                 LOG.info("退课后重新选课: userId={}, courseId={}, 物理删除旧 enrollmentId={}",
                     request.getUserId(), request.getCourseId(), existingEnrollment.getId());
-                enrollmentRepository.deleteById(existingEnrollment.getId()); // 物理删除
+                enrollmentRepository.physicalDeleteById(existingEnrollment.getId()); // 物理删除
                 existingEnrollment = null; // 跳过幂等返回，继续走完整 enroll 流程
             } else {
                 // 其他状态 (APPROVED/COMPLETED/WAITLIST/SUSPENDED) 幂等返回
@@ -177,7 +177,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (courseTitle == null) {
             courseTitle = "课程#" + request.getCourseId();
         }
-        // P0-06 修复：若 sourceChannel 为 PAYMENT，验证用户有该课程的 PAID 订单
+        // P0-06 修复：若 sourceChannel 为 PAYMENT，验证用户有该课程的已支付订单
         if ("PAYMENT".equals(request.getSourceChannel())) {
             Long paidCount = orderRepository.selectCount(new LambdaQueryWrapper<Order>()
                     .eq(Order::getUserId, request.getUserId())
