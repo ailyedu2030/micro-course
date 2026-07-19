@@ -1,0 +1,71 @@
+groups:
+  - name: micro-course-api.alerts
+    interval: 30s
+    rules:
+      # P0: 服务不可用
+      - alert: ApiDown
+        expr: up{job="micro-course-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          tier: backend
+        annotations:
+          summary: "微课 API 实例不可达 (2 分钟)"
+          description: "micro-course-api 已 down 超过 2 分钟, 立即排查."
+
+      # P1: p99 响应时间超过 200ms
+      - alert: ApiP99TooSlow
+        expr: histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job="micro-course-api"}[5m])) by (le, uri)) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          tier: backend
+        annotations:
+          summary: "API p99 > 200ms ({{ $labels.uri }})"
+          description: "{{ $labels.uri }} 接口 p99 响应时间 {{ $value }}s, 已超过 200ms 目标 5 分钟."
+
+      # P1: HTTP 5xx 错误率 > 0.1%
+      - alert: Api5xxRateHigh
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="micro-course-api", status=~"5.."}[5m]))
+          / sum(rate(http_server_requests_seconds_count{job="micro-course-api"}[5m])) > 0.001
+        for: 5m
+        labels:
+          severity: warning
+          tier: backend
+        annotations:
+          summary: "API 5xx 错误率 > 0.1%"
+          description: "5xx 错误率 {{ $value | humanizePercentage }}, 已超过 0.1% 目标."
+
+      # P1: DB 连接池耗尽
+      - alert: HikariPoolExhausted
+        expr: hikaricp_connections_active{job="micro-course-api"} >= hikaricp_connections_max{job="micro-course-api"} * 0.95
+        for: 1m
+        labels:
+          severity: warning
+          tier: backend
+        annotations:
+          summary: "HikariCP 连接池使用率 ≥ 95%"
+          description: "活动连接 {{ $value }} / 最大 {{ $labels.max }}."
+
+      # P2: PG 慢查询
+      - alert: PostgresSlowQueries
+        expr: pg_stat_activity_count{state="active"} > 50
+        for: 5m
+        labels:
+          severity: warning
+          tier: database
+        annotations:
+          summary: "PostgreSQL 活动连接 > 50"
+          description: "当前活动连接数 {{ $value }}, 可能存在慢查询."
+
+      # P2: Redis 内存
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          tier: cache
+        annotations:
+          summary: "Redis 内存使用率 > 80%"
+          description: "内存使用 {{ $value | humanizePercentage }}."

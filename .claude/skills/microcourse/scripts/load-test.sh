@@ -1,106 +1,143 @@
-#!/bin/bash
-# load-test.sh · 核心接口压测脚本 (第五轮用户要求)
-# 目标: GET /api/courses/{cid}/courseware/{sid} p99 < 200ms (spec §6.3 承诺)
+#!/usr/bin/env bash
+# 微课平台压测脚本 (W31 治理)
+#
+# 目标:
+#   - 单接口 p99 < 200ms
+#   - 10w 并发可行性评估 (单机可达 ~5k, 分布式需 5+ 节点)
+#   - 慢查询率 < 0.1%
+#
+# 工具: ab (Apache Bench) / wrk (任选)
+#
+# 用法:
+#   bash load-test.sh [endpoint-name]
+#   bash load-test.sh all
+#   bash load-test.sh courseware-tree
 
-set +e
+set -e
+
+API_BASE="${API_BASE:-http://localhost:8080}"
+CONCURRENCY="${CONCURRENCY:-200}"   # 单进程并发
+REQUESTS="${REQUESTS:-50000}"      # 总请求数
+TOOL="${TOOL:-ab}"                  # ab | wrk
+AUTH_TOKEN="${AUTH_TOKEN:-}"       # 可选: bearer token
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-cd "$PROJECT_ROOT"
+REPORT_DIR="${SCRIPT_DIR}/../../reports/load-test"
+mkdir -p "$REPORT_DIR"
 
-API_URL="http://localhost:8081"
-COURSEWARE_URL="/api/courses/1/courseware/99"
-TOKEN_URL_PREFIX="/api/courses/1/audio/abcdef1234567890abcdef1234567890"
-LOG_DIR="/tmp/loadtest"
-mkdir -p "$LOG_DIR"
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 
-echo "═══════════════════════════════════════════════════════════════"
-echo " 核心接口压测 · 启动时间: $(date '+%Y-%m-%d %H:%M:%S')"
-echo "═══════════════════════════════════════════════════════════════"
+# 颜色定义
+declare -A ENDPOINTS
+ENDPOINTS["health"]="/actuator/health|GET|"
+ENDPOINTS["courseware-tree"]="/api/courses/79/courseware/41|GET|"
+ENDPOINTS["course-detail"]="/api/courses/79|GET|"
+ENDPOINTS["audio-resolve"]="/api/courses/79/courseware/audio/dummy|GET|"
 
-# ──────────────────────────────────────────────────────────────
-# 1. 检查 API 健康
-# ──────────────────────────────────────────────────────────────
-echo ""
-echo "▍ 1. 检查 API 健康"
-HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/actuator/health" 2>/dev/null)
-if [ "$HEALTH" = "200" ]; then
-    echo "  ✅ API 健康 (HTTP $HEALTH)"
-else
-    echo "  ⚠️  本地 $API_URL 不可达 (HTTP $HEALTH), 改用 ssh + actuator"
-    API_HEALTH_REMOTE=$(ssh ubuntu@100.74.122.13 \
-        'docker exec micro-course-micro-course-api-1 wget -q -O - http://localhost:8080/actuator/health 2>/dev/null' 2>/dev/null)
-    if echo "$API_HEALTH_REMOTE" | grep -q '"UP"'; then
-        echo "  ✅ API 容器健康 (actuator)"
-    else
-        echo "  ❌ API 不健康, 跳过压测: $API_HEALTH_REMOTE"
-        exit 1
+# 工具检测
+if [ "$TOOL" = "wrk" ] && ! command -v wrk >/dev/null 2>&1; then
+    echo -e "${YELLOW}WARN${NC}: wrk 未安装, 改用 ab"
+    TOOL=ab
+fi
+
+run_ab() {
+    local name="$1"
+    local path="$2"
+    local method="$3"
+    local auth="$4"
+    local report_file="${REPORT_DIR}/${name}-$(date +%Y%m%d-%H%M%S).txt"
+
+    echo ""
+    echo "--- ${name} (${method} ${path}) ---"
+
+    local auth_args=()
+    if [ -n "$auth" ]; then
+        auth_args=(-H "Authorization: Bearer ${auth}")
     fi
-fi
 
-# ──────────────────────────────────────────────────────────────
-# 2. 单接口响应时间基线 (1 请求, 看延迟)
-# ──────────────────────────────────────────────────────────────
-echo ""
-echo "▍ 2. 单请求响应时间基线"
-echo "  - 测试 GET $COURSEWARE_URL"
-echo ""
-RESP_TIME=$(curl -s -o /dev/null -w '%{time_total}' "$API_URL$COURSEWARE_URL" 2>/dev/null)
-if [ -n "$RESP_TIME" ] && [ "$RESP_TIME" != "0.000000" ]; then
-    RESP_MS=$(echo "$RESP_TIME * 1000" | bc -l 2>/dev/null | cut -d. -f1)
-    echo "  ✅ 单次响应: ${RESP_MS} ms"
-    if [ "$RESP_MS" -lt 200 ] 2>/dev/null; then
-        echo "  ✅ 满足 spec §6.3 承诺 (p99 < 200ms)"
-    else
-        echo "  ⚠️  超过 200ms 目标 (但仅 1 次请求不构成 p99 评估)"
+    # ab 不支持自定义 method 头(PUT/DELETE), 用 GET 默认
+    if [ "$method" != "GET" ]; then
+        echo -e "${YELLOW}SKIP${NC}: ab 不支持 ${method}, 改用 curl 简单测试"
+        curl -s -o /dev/null -w "  status=%{http_code} time=%{time_total}s\n" \
+            -X "$method" "${API_BASE}${path}" "${auth_args[@]}"
+        return
     fi
+
+    ab -n "$REQUESTS" -c "$CONCURRENCY" -k \
+        "${auth_args[@]}" \
+        "${API_BASE}${path}" > "$report_file" 2>&1 || true
+
+    # 解析结果
+    local rps p99 fail
+    rps=$(grep "Requests per second" "$report_file" | awk '{print $4}')
+    p99=$(grep "99%" "$report_file" | awk '{print $2}')
+    fail=$(grep "Failed requests" "$report_file" | awk '{print $3}')
+
+    # p99 单位是 ms
+    local p99_ms="${p99}"
+    echo -e "  ${GREEN}QPS${NC}=${rps:-N/A} | ${GREEN}p99${NC}=${p99_ms:-N/A}ms | fail=${fail:-0}"
+    echo "  Report: $report_file"
+
+    # 判定
+    if [ -n "$p99_ms" ]; then
+        local exceed=$(python3 -c "print(int(float('$p99_ms') > 200))")
+        if [ "$exceed" = "1" ]; then
+            echo -e "  ${RED}FAIL${NC}: p99 ${p99_ms}ms > 200ms 目标"
+        fi
+    fi
+}
+
+run_wrk() {
+    local name="$1"
+    local path="$2"
+    local method="$3"
+    local auth="$4"
+    local report_file="${REPORT_DIR}/${name}-$(date +%Y%m%d-%H%M%S).txt"
+
+    echo ""
+    echo "--- ${name} (${method} ${path}) ---"
+
+    local auth_args=()
+    if [ -n "$auth" ]; then
+        auth_args=(-H "Authorization: Bearer ${auth}")
+    fi
+
+    wrk -t10 -c"$CONCURRENCY" -d30s --latency \
+        "${auth_args[@]}" \
+        "${API_BASE}${path}" > "$report_file" 2>&1 || true
+
+    cat "$report_file"
+}
+
+# 主流程
+echo "============================================================"
+echo "  微课平台压测 (W31 治理)"
+echo "============================================================"
+echo "API_BASE=${API_BASE}"
+echo "TOOL=${TOOL}"
+echo "CONCURRENCY=${CONCURRENCY}"
+echo "REQUESTS=${REQUESTS}"
+echo "Report Dir: ${REPORT_DIR}"
+
+if [ "$TOOL" = "wrk" ]; then
+    RUN_CMD=run_wrk
 else
-    echo "  ⚠️  本地 API 无响应, 改用 SSH 容器测试"
-    # 注: container 内网测, 通过 container hostname
-    # 这里改用 mock 数据分析 SQL 查询路径, 不实际打 HTTP
-    echo "  📊 改分析: 静态测 CoursewareQueryServiceImpl 的 SQL 路径"
-    echo "    - listBySection: 1 SQL"
-    echo "    - listActiveByPageIds (N pages): 1 SQL (批量, 取代 N 次)"
-    echo "    - listByPageIds (N audios): 1 SQL (批量)"
-    echo "    - 合计 PPT 树: 3 SQL (p99 100ms 内可达)"
-    echo "    - HTML 树: 3 SQL (listActiveBySection + listActiveByUnitIds + listByUnitIds)"
+    RUN_CMD=run_ab
 fi
 
-# ──────────────────────────────────────────────────────────────
-# 3. 静态 SQL 分析 (代替真实压测)
-# ──────────────────────────────────────────────────────────────
-echo ""
-echo "▍ 3. 静态 SQL 路径分析"
-echo "  - getCoursewareTree(courseId, sectionId):"
-echo "    PPT:  listBySection(1) + listActiveByPageIds(1) + listByPageIds(1) + flowMapper.listBySection(1) = 4 SQL"
-echo "    HTML: findBySection(1) + listActiveByUnitIds(1) + listByUnitIds(1) = 3 SQL"
-echo "  - 流式 GET audio:  findByToken(1) + page.selectById(1) = 2 SQL"
-echo ""
-echo "  【BUG #29 已记录】 流式 GET 2 SQL 可通过 Redis cache 优化为 1 SQL"
-
-# ──────────────────────────────────────────────────────────────
-# 4. 模拟压测 (用 ab 或 wrk 如果可用)
-# ──────────────────────────────────────────────────────────────
-echo ""
-echo "▍ 4. 模拟压测 (50 并发 × 100 请求)"
-if command -v ab &>/dev/null; then
-    echo "  使用 ab (Apache Bench)"
-    ab -n 100 -c 50 "$API_URL$COURSEWARE_URL" 2>&1 | grep -E "Requests per second|Time per request|Failed" | head -5
-elif command -v wrk &>/dev/null; then
-    echo "  使用 wrk"
-    wrk -t 4 -c 50 -d 10s "$API_URL$COURSEWARE_URL" 2>&1 | tail -10
+# 执行
+target="${1:-all}"
+if [ "$target" = "all" ]; then
+    for k in "${!ENDPOINTS[@]}"; do
+        IFS='|' read -r path method auth <<< "${ENDPOINTS[$k]}"
+        $RUN_CMD "$k" "$path" "$method" "$auth" "$AUTH_TOKEN"
+    done
 else
-    echo "  ⚠️  ab/wrk 未安装, 跳过并发压测"
-    echo "  💡 推荐: macOS 安装 wrk 'brew install wrk'"
+    IFS='|' read -r path method auth <<< "${ENDPOINTS[$target]}"
+    $RUN_CMD "$target" "$path" "$method" "$auth" "$AUTH_TOKEN"
 fi
 
-# ──────────────────────────────────────────────────────────────
-# 5. 总结
-# ──────────────────────────────────────────────────────────────
 echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo " 压测总结:"
-echo "   - 单 SQL 路径已优化 (BUG #9 修复: N+1 → 批量 2 query)"
-echo "   - 静态分析: getCoursewareTree ≤ 4 SQL, 流式 GET 2 SQL"
-echo "   - 长期: BUG #29 Redis cache + BUG #36 APM"
-echo "═══════════════════════════════════════════════════════════════"
+echo "============================================================"
+echo "  报告已保存到: ${REPORT_DIR}/"
+echo "============================================================"

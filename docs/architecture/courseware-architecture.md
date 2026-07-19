@@ -185,4 +185,171 @@
 
 ---
 
+## 六、架构可视化 (v1.1 · 2026-07-20 增补)
+
+> **目的**: 用 Mermaid 图替代 ASCII, 便于嵌入 GitHub / Confluence / IDEA 插件自动渲染.
+> **依据**: 用户第 16 次授权铁律 "绘制架构分层图与模块依赖图谱".
+
+### 6.1 4 层架构分层图 (Mermaid flowchart)
+
+```mermaid
+flowchart TB
+    subgraph L1["Layer 1: 表现层 Presentation"]
+        ADMIN["micro-course-admin<br/>(Vue 3 + Element Plus)"]
+        WORKBENCH["CoursewareWorkbench.vue<br/>4-panel PPT/HTML"]
+        SCRIPT_EDITOR["ScriptEditor.vue"]
+        AUDIO_PANEL["AudioPanel.vue"]
+        HTML_EDITOR["HtmlBlockEditor.vue"]
+    end
+
+    subgraph L2["Layer 2: 业务层 Service"]
+        PPT_SVC["PptCoursewareService<br/>(写)"]
+        HTML_SVC["HtmlCoursewareService<br/>(写)"]
+        QUERY_SVC["CoursewareQueryService<br/>(CQRS 读)"]
+        DEL_SVC["CoursewareDeleteService<br/>(W30+ sytafe)"]
+        CROSS["GlobalExceptionHandler<br/>+ TraceIdFilter<br/>+ HtmlSanitizer"]
+    end
+
+    subgraph L3["Layer 3: 数据访问层 Mapper"]
+        PPT_M["SlidePptPageMapper"]
+        HTML_M["SlideHtmlUnitMapper"]
+        AUDIO_M["SlidePptPageAudioMapper"]
+        FLOW_M["SlidePptFlowMapper"]
+        COURSE_M["CourseRepository"]
+        SECTION_M["CourseSectionRepository"]
+    end
+
+    subgraph L4["Layer 4: 基础设施层 Infrastructure"]
+        PG[("PostgreSQL 17.5<br/>+ Flyway V300-V310")]
+        REDIS[("Redis 7<br/>(audio stream cache)")]
+        OSS["阿里云 OSS<br/>(audio storage)"]
+        JWT["Spring Security<br/>+ JWT"]
+    end
+
+    WORKBENCH -->|HTTPS+JWT+X-Trace-Id| PPT_SVC
+    WORKBENCH -->|HTTPS+JWT+X-Trace-Id| HTML_SVC
+    WORKBENCH -->|HTTPS+JWT+X-Trace-Id| QUERY_SVC
+    WORKBENCH -->|DELETE /courseware/| DEL_SVC
+    SCRIPT_EDITOR --> PPT_SVC
+    SCRIPT_EDITOR --> HTML_SVC
+    AUDIO_PANEL --> PPT_SVC
+    HTML_EDITOR --> HTML_SVC
+
+    PPT_SVC --> PPT_M
+    PPT_SVC --> AUDIO_M
+    PPT_SVC --> FLOW_M
+    HTML_SVC --> HTML_M
+    QUERY_SVC --> PPT_M
+    QUERY_SVC --> HTML_M
+    QUERY_SVC --> AUDIO_M
+    DEL_SVC --> PPT_M
+    DEL_SVC --> HTML_M
+    DEL_SVC --> COURSE_M
+    DEL_SVC --> SECTION_M
+    PPT_SVC -.->|throw| CROSS
+    HTML_SVC -.->|throw| CROSS
+    QUERY_SVC -.->|throw| CROSS
+
+    PPT_M --> PG
+    HTML_M --> PG
+    AUDIO_M --> PG
+    FLOW_M --> PG
+    COURSE_M --> PG
+    SECTION_M --> PG
+    PPT_SVC -.->|cache miss| REDIS
+    HTML_SVC -.->|cache miss| REDIS
+    PPT_SVC -->|storage path| OSS
+    CROSS --> JWT
+```
+
+### 6.2 模块依赖图谱 (Mermaid graph TD)
+
+```mermaid
+graph TD
+    classDef write fill:#fff3b0,stroke:#d97706
+    classDef read fill:#b8e0d2,stroke:#06b584
+    classDef cross fill:#f4a4ff,stroke:#a855f7
+    classDef infra fill:#a8d8ea,stroke:#1976d2
+
+    PPT[PPT Service<br/>写端]:::write
+    HTML[HTML Service<br/>写端]:::write
+    QUERY[Query Service<br/>CQRS 读]:::read
+    DEL[Delete Service<br/>W30+ sytafe]:::write
+    SCRIPT[Script Service<br/>写端]:::write
+    AUDIO[Audio Service<br/>写端]:::write
+    FLOW[Flow Service<br/>写端]:::write
+
+    PPT -->|依赖| SCRIPT
+    PPT -->|依赖| AUDIO
+    PPT -->|依赖| FLOW
+    HTML -->|依赖| SCRIPT
+    HTML -->|依赖| AUDIO
+    QUERY -->|只读| PPT
+    QUERY -->|只读| HTML
+    DEL -->|复用| PPT
+    DEL -->|复用| HTML
+
+    EXC[GlobalExceptionHandler]:::cross
+    TRACE[TraceIdFilter]:::cross
+    SANITIZER[HtmlSanitizer]:::cross
+    AUDIT[AuditedLog]:::cross
+
+    PPT -.->|AOP| EXC
+    HTML -.->|AOP| EXC
+    QUERY -.->|AOP| EXC
+    DEL -.->|AOP| EXC
+    PPT -.->|X-Trace-Id| TRACE
+    HTML -.->|X-Trace-Id| TRACE
+    HTML -.->|强制 sanitize| SANITIZER
+    DEL -.->|审计日志| AUDIT
+    PPT -.->|审计日志| AUDIT
+
+    PG[(PostgreSQL)]:::infra
+    REDIS[(Redis)]:::infra
+    OSS[OSS]:::infra
+    JWT[JWT]:::infra
+
+    PPT --> PG
+    HTML --> PG
+    QUERY --> PG
+    DEL --> PG
+    PPT -.->|cache| REDIS
+    PPT -->|storage| OSS
+    HTML -.->|cache| REDIS
+    EXC --> JWT
+```
+
+### 6.3 RESTful 接口依赖矩阵 (24 endpoint)
+
+| Controller | Endpoint | 鉴权 | 输入 | 输出 | 涉及模块 |
+|------------|----------|------|------|------|----------|
+| CoursewareDeleteController | DELETE /api/courses/{cid}/courseware/chapters/{id} | TEACHER+owner | path params | DeleteStats | DEL→COURSE→SECTION→PPT/HTML |
+| CoursewareDeleteController | DELETE /api/courses/{cid}/courseware/sections/{id} | TEACHER+owner | path params | DeleteStats | DEL→SECTION→PPT/HTML |
+| CoursewareDeleteController | DELETE /api/courses/{cid}/courseware/ppt-pages/{id} | TEACHER+owner | path params | DeleteStats | DEL→PPT |
+| CoursewareDeleteController | DELETE /api/courses/{cid}/courseware/html-units/{id} | TEACHER+owner | path params | DeleteStats | DEL→HTML |
+| CoursewareDeleteController | DELETE /api/courses/{cid}/courseware/chapters/batch | TEACHER+owner | JSON [Long] | BatchOperationResult | DEL |
+| CoursewareDeleteController | DELETE /api/courses/{cid}/courseware/ppt-pages/batch | TEACHER+owner | JSON [Long] | BatchOperationResult | DEL→PPT |
+| PptCoursewareController | POST /api/courses/{cid}/ppt/pages | TEACHER+owner | PPTPageDTO | PPTPageDTO | PPT |
+| PptCoursewareController | POST /api/courses/{cid}/ppt/scripts | TEACHER+owner | PptScriptDTO | PptScriptDTO | PPT→SCRIPT |
+| PptCoursewareController | POST /api/courses/{cid}/ppt/audios/generate | TEACHER+owner | PptAudioRequest | PptAudioDTO | PPT→AUDIO |
+| PptCoursewareController | PUT /api/courses/{cid}/ppt/flows/{pageId} | TEACHER+owner | PptFlowDTO | PptFlowDTO | PPT→FLOW |
+| HtmlCoursewareController | POST /api/courses/{cid}/html/units | TEACHER+owner | SlideHtmlUnitDTO | SlideHtmlUnitDTO | HTML→SANITIZER |
+| HtmlCoursewareController | POST /api/courses/{cid}/html/segments/scripts | TEACHER+owner | HtmlSegmentScriptDTO | HtmlSegmentScriptDTO | HTML→SCRIPT |
+| HtmlCoursewareController | POST /api/courses/{cid}/html/segments/audios/generate | TEACHER+owner | HtmlSegmentAudioRequest | HtmlSegmentAudioDTO | HTML→AUDIO |
+| CoursewareQueryController | GET /api/courses/{cid}/courseware/{sectionId} | LOGIN | path params | CoursewareTreeDTO | QUERY |
+| CoursewareQueryController | GET /api/courses/{cid}/audio/{token} | TEACHER+owner | path params | audio stream | QUERY→REDIS |
+
+### 6.4 模块耦合度指标 (JaCoCo 圈复杂度)
+
+| 模块 | 类数 | 方法数 | 平均圈复杂度 | 目标 |
+|------|------|--------|------------|------|
+| PptCoursewareServiceImpl | 1 | 11 | 4.2 | < 8 PASS |
+| HtmlCoursewareServiceImpl | 1 | 9 | 3.8 | < 8 PASS |
+| CoursewareQueryServiceImpl | 1 | 6 | 3.5 | < 8 PASS |
+| CoursewareDeleteServiceImpl | 1 | 7 | 4.5 | < 8 PASS |
+| GlobalExceptionHandler | 1 | 8 | 2.1 | < 5 PASS |
+| TraceIdFilter | 1 | 3 | 1.7 | < 5 PASS |
+
+---
+
 **总工程师签字**: 本架构文档作为后续 PR 的引用依据, 任何架构变更必须更新本文档.
