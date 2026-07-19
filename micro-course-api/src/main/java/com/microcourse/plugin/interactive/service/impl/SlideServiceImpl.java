@@ -292,21 +292,46 @@ public class SlideServiceImpl implements SlideService {
             log.info("[SlideUpload-HtmlFile] NEW: slideId={}, courseId={}, chapterId={}, sectionId={}",
                     sid, courseId, chapterId, sectionId);
         }
-        // 删除该 slide 旧的 pages（一对一覆盖）
-        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, sid));
-        SlidePage page = new SlidePage();
-        page.setSlideId(sid);
-        page.setCourseId(courseId);
-        page.setChapterId(chapterId);
-        if (sectionId != null) { page.setSectionId(sectionId); }
-        page.setPageNumber(1);
-        page.setContentType("HTML_DIRECT");
-        page.setHtmlContent(safeHtml);
-        page.setImageUrl("html:no-image");
-        page.setNarrationStatus("PENDING");
-        page.setCreatedAt(LocalDateTime.now());
-        page.setUpdatedAt(LocalDateTime.now());
-        slidePageMapper.insert(page);
+        // P1-C 修复 (2026-07-19): 改为非破坏性 UPSERT
+        // 旧逻辑: delete + insert 会清空 audio 元数据(narrationAudioUrl / segmentCount)
+        //        导致后续 GET /slides/pages 丢失 segmentAudios,reload 后的 token URL 全部 403
+        // 新逻辑: 按 (slideId, pageNumber=1) 查找,存在则只更新 htmlContent/contentType/imageUrl;
+        //        保留 narrationAudioUrl/audioDuration/segmentCount/voice/ttsModel/generatedAt
+        SlidePage page = slidePageMapper.selectOne(
+                new LambdaQueryWrapper<SlidePage>()
+                        .eq(SlidePage::getSlideId, sid)
+                        .eq(SlidePage::getPageNumber, 1));
+        if (page == null) {
+            page = new SlidePage();
+            page.setSlideId(sid);
+            page.setCourseId(courseId);
+            page.setChapterId(chapterId);
+            if (sectionId != null) { page.setSectionId(sectionId); }
+            page.setPageNumber(1);
+            page.setContentType("HTML_DIRECT");
+            page.setHtmlContent(safeHtml);
+            page.setImageUrl("html:no-image");
+            page.setNarrationStatus("PENDING");
+            page.setCreatedAt(LocalDateTime.now());
+            page.setUpdatedAt(LocalDateTime.now());
+            slidePageMapper.insert(page);
+        } else {
+            // 保留 audio 元数据(narrationAudioUrl / audioDuration / segmentCount / voice / ttsModel / generatedAt)
+            // 若当前页面尚未配音,保持原 narrationStatus;若已有音频,标记 HTML 重新上传但音频仍可用
+            String prevStatus = page.getNarrationStatus();
+            page.setContentType("HTML_DIRECT");
+            page.setHtmlContent(safeHtml);
+            page.setImageUrl("html:no-image");
+            page.setUpdatedAt(LocalDateTime.now());
+            int affectedHtml = slidePageMapper.updateById(page);
+            if (affectedHtml == 0) {
+                throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION,
+                        "HTML 课件已被修改,请刷新后重试");
+            }
+            log.info("[SlideUpload-HtmlFile] UPSERT(in-place): slideId={}, courseId={}, "
+                    + "preservedAudioStatus={}, preservedSegmentCount={}",
+                    sid, courseId, prevStatus, page.getSegmentCount());
+        }
         // 回写 section.content_url — 与上传同事务
         if (sectionId != null && sectionRepo != null) {
             CourseSection sec = sectionRepo.selectById(sectionId);

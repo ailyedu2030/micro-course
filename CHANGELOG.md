@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.22.1] - 2026-07-19
+
+### Fixed (P1-C)
+
+#### HTML 课件 + 音频元数据重载链路
+- **`uploadHtmlFile` 改为非破坏性 UPSERT** — 旧逻辑 `delete + insert` 会清空 `slide_pages` 表的 audio 元数据 (`narration_audio_url` / `segment_count` / `voice` / `tts_model` / `generated_at`),导致 opencode 端 Step 4 (audio batch) 与 Step 8 (HTML) 时序冲突后,15 段音频 token 全部失效. 新逻辑按 `(slideId, pageNumber=1)` 查找,存在则只更新 `htmlContent`/`contentType`/`imageUrl`,保留全部 audio 字段. ([SlideServiceImpl.java:295-334](file:///Users/jackie/微课平台/micro-course-api/src/main/java/com/microcourse/plugin/interactive/service/impl/SlideServiceImpl.java#L295-L334))
+- **`validateAudioToken` 增加 sectionId 级 fallback** — 旧逻辑严格按 `pageNumber` 查 SlidePage,但单页 HTML_DIRECT 场景 SlidePage 表只有 pageNumber=1 一条记录,导致 pageNumber=2..15 的 token URL 全部 403. 新逻辑先精确匹配,失败后 fallback 到按 `sectionId` 查该 section 下任一含 token 的 page. ([TtsServiceImpl.java:796-829](file:///Users/jackie/微课平台/micro-course-api/src/main/java/com/microcourse/plugin/interactive/service/impl/TtsServiceImpl.java#L796-L829))
+
+### Added
+
+- **`TtsServiceTokenValidationTest`** — 7 个用例覆盖 token 校验所有路径 (null token / null sectionId / 精确匹配 / sectionId fallback / 无匹配 / token 不一致 / 多 page section),防止后续修改破坏 fallback 行为
+
+### Tests
+- 单元测试: 20/20 PASS (`Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`)
+- precheck.sh: 22/22 PASS
+- local-dev-deploy.sh: 15/15 PASS
+
+### References
+- 事故复盘: [docs/incidents/2026-07-19-audio-html-reload-conflict.md](file:///Users/jackie/微课平台/docs/incidents/2026-07-19-audio-html-reload-conflict.md)
+- Trae R5 重测脚本: `_r5_verify_fix_20260719.py` (在 opencode 端工程目录)
+
+---
+
 ## [1.22.0] - 2026-07-18
 
 ### Fixed (P1-C)
