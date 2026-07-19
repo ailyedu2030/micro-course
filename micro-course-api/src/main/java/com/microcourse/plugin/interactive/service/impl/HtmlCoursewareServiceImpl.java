@@ -47,16 +47,13 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
     private final SlideHtmlUnitMapper unitMapper;
     private final SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private final SlideHtmlSegmentAudioMapper segmentAudioMapper;
-    private final HtmlSanitizer htmlSanitizer;
 
     public HtmlCoursewareServiceImpl(SlideHtmlUnitMapper unitMapper,
                                       SlideHtmlSegmentScriptMapper segmentScriptMapper,
-                                      SlideHtmlSegmentAudioMapper segmentAudioMapper,
-                                      HtmlSanitizer htmlSanitizer) {
+                                      SlideHtmlSegmentAudioMapper segmentAudioMapper) {
         this.unitMapper = unitMapper;
         this.segmentScriptMapper = segmentScriptMapper;
         this.segmentAudioMapper = segmentAudioMapper;
-        this.htmlSanitizer = htmlSanitizer;
     }
 
     // ====== Unit CRUD ======
@@ -81,7 +78,7 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "htmlContent is required");
         }
         // 7-19 P0 防御: HtmlSanitizer 必须 100% 调用
-        String sanitized = htmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
+        String sanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
         SlideHtmlUnit entity = new SlideHtmlUnit();
         BeanUtils.copyProperties(dto, entity);
         entity.setHtmlSanitized(sanitized);
@@ -123,7 +120,7 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         // 7-19 P0 防御: 即便 update, 也要 sanitize 新的 htmlContent
         String newSanitized = entity.getHtmlSanitized();
         if (dto.getHtmlContent() != null && !dto.getHtmlContent().equals(entity.getHtmlContent())) {
-            newSanitized = htmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
+            newSanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
         }
         BeanUtils.copyProperties(dto, entity, "id", "createdAt", "sectionId", "fileUuid");
         entity.setHtmlSanitized(newSanitized);
