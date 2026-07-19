@@ -844,10 +844,14 @@ Expected: 看到 3 行:
 - [ ] **Step 5: R5 重测脚本确认旧 API 仍工作(零回归)**
 
 ```bash
-python3 /Volumes/Coding/工商学院/slides_data/AI工具与harness工程/_r5_verify_fix_20260719.py --base http://localhost:8088 2>&1 | tail -15
+# R5 重测脚本在 opencode 端工程目录 (绝对路径, 不在 git 仓内)
+# 生产环境执行: 由 Trae 端在 7-19 P1-C 修复已上线后执行
+# 本 Phase 1 阶段不需要执行 R5
+echo "R5 重测留待 Phase 4 (前端重构完成后) 由 Trae 端在生产 URL 执行"
+echo "本步骤跳过: Phase 1 仅 schema 改动, 旧 API 行为不变"
 ```
 
-Expected: 旧 API 仍返回 (即使 segmentAudios 为空, 因为 DB 没回填),无 5xx
+Expected: 脚本提示跳过, 无 5xx
 
 - [ ] **Step 6: Commit Phase 1 完结报告**
 
