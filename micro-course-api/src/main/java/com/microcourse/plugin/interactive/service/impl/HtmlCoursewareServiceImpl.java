@@ -80,11 +80,11 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         // 7-19 P0 防御: HtmlSanitizer 必须 100% 调用
         String sanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
         SlideHtmlUnit entity = new SlideHtmlUnit();
-        BeanUtils.copyProperties(dto, entity);
+        // 【BUG #15 修复】 排除 id/createdAt/fileUuid, 避免前端伪造 fileUuid
+        BeanUtils.copyProperties(dto, entity, "id", "createdAt", "fileUuid");
         entity.setHtmlSanitized(sanitized);
-        if (entity.getFileUuid() == null) {
-            entity.setFileUuid(UUID.randomUUID().toString().replace("-", ""));
-        }
+        // 后端强制生成 fileUuid (不允许前端指定)
+        entity.setFileUuid(UUID.randomUUID().toString().replace("-", ""));
         if (entity.getHasInteractions() == null) entity.setHasInteractions(false);
         LocalDateTime now = LocalDateTime.now();
         entity.setCreatedAt(now);

@@ -113,7 +113,7 @@ public class PptCoursewareController {
     @GetMapping("/audios/{audioId}")
     public R<PptAudioDTO> getAudio(@PathVariable Long courseId,
                                     @PathVariable Long audioId) {
-        return R.ok(pptService.getAudio(audioId));
+        return R.ok(pptService.getAudio(courseId, audioId));
     }
 
     // ====== Flows ======

@@ -98,7 +98,15 @@
             <HtmlBlockEditor :course-id="courseId" :section-id="sectionId" />
           </el-tab-pane>
           <el-tab-pane name="segment" label="分段脚本">
-            <div v-for="(seg, idx) in tree.htmlUnit.detectedSegments ? Array.from({ length: tree.htmlUnit.detectedSegments }, (_, i) => ({ idx: i + 1 })) : []" :key="idx" class="cw-segment-block">
+            <!--
+              【BUG #20 修复】 默认显示 5 个 segment 编辑入口 (与 detectedSegments 取较大值).
+              若 detectedSegments=0 (新建 unit),仍允许教师编辑默认 5 段.
+              若 detectedSegments=10,显示 10 段.
+            -->
+            <div v-for="(seg, idx) in Array.from(
+              { length: Math.max(tree.htmlUnit.detectedSegments || 0, 5) },
+              (_, i) => ({ idx: i + 1 })
+            )" :key="idx" class="cw-segment-block">
               <h5 class="cw-segment-title">第 {{ seg.idx }} 段</h5>
               <ScriptEditor
                 :course-id="courseId"

@@ -30,7 +30,12 @@ public interface PptCoursewareService {
     // === 音频 1:N 音色版本 ===
     Long generateAudio(Long scriptId, String voice, String model, String ttsParams);
     List<PptAudioDTO> listAudios(Long scriptId);
-    PptAudioDTO getAudio(Long audioId);
+
+    /**
+     * 【BUG #17 修复 P0 IDOR】 按 courseId + audioId 查询, 校验 audio 归属 course.
+     * 防止攻击者用合法 courseId 路径 + 任意 audioId 绕过 course 边界.
+     */
+    PptAudioDTO getAudio(Long courseId, Long audioId);
 
     // === 页间跳转逻辑 ===
     Long createFlow(PptFlowDTO dto);

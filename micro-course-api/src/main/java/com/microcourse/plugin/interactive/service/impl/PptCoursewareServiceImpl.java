@@ -63,7 +63,8 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
     @Transactional
     public Long createPage(SlidePptPageDTO dto) {
         SlidePptPage entity = new SlidePptPage();
-        BeanUtils.copyProperties(dto, entity);
+        // 【BUG #16 修复】 排除 id/createdAt/updatedAt, 避免前端覆盖主键和时间戳
+        BeanUtils.copyProperties(dto, entity, "id", "createdAt", "updatedAt", "version");
         if (entity.getHasAnimation() == null) entity.setHasAnimation(false);
         if (entity.getHasEmbeddedMedia() == null) entity.setHasEmbeddedMedia(false);
         LocalDateTime now = LocalDateTime.now();
@@ -198,10 +199,18 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
     }
 
     @Override
-    public PptAudioDTO getAudio(Long audioId) {
+    public PptAudioDTO getAudio(Long courseId, Long audioId) {
         SlidePptPageAudio entity = audioMapper.selectById(audioId);
         if (entity == null) {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "Audio not found: " + audioId);
+        }
+        // 【BUG #17 修复】 校验 audio 归属 course (IDOR 防护)
+        SlidePptPage page = pageMapper.selectById(entity.getPptPageId());
+        if (page == null || !courseId.equals(page.getCourseId())) {
+            log.warn("[PPT-Audio] IDOR ATTEMPT: path courseId={} actual courseId={}, audioId={}",
+                    courseId, page != null ? page.getCourseId() : null, audioId);
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
+                    "Audio not in this course: audioId=" + audioId);
         }
         return toAudioDTO(entity);
     }
