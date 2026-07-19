@@ -1,27 +1,90 @@
 version: 2
+
+# 2026-07-18 改进：dependabot 改为 batch 模式
+# 旧配置: open-pull-requests-limit: 5 → 允许 5 个 PR 同时开
+# 改后: open-pull-requests-limit: 1 + groups 同类依赖合并为 1 个 PR
+# 效果: 每周只开 1-2 个汇总 PR，release load 减少 80%
 updates:
   - package-ecosystem: maven
     directory: /micro-course-api
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    labels: dependencies
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 1
+    labels: dependencies, java
+    groups:
+      # 同一框架/库的多个版本合并为一个 PR
+      spring-boot:
+        patterns:
+          - "org.springframework.boot*"
+          - "org.springframework*"
+      database:
+        patterns:
+          - "com.baomidou*"
+          - "org.postgresql*"
+          - "org.mybatis*"
+      utilities:
+        patterns:
+          - "org.apache*"
+          - "org.jsoup*"
+          - "com.google*"
+      security:
+        applies-to: version-updates
+        patterns:
+          - "*"
+
   - package-ecosystem: npm
     directory: /micro-course-admin
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    labels: dependencies
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 1
+    labels: dependencies, frontend
     versioning-strategy: increase-if-necessary
+    groups:
+      vue-ecosystem:
+        patterns:
+          - "vue*"
+          - "@vue*"
+          - "element-plus"
+          - "echarts"
+          - "vue-echarts"
+          - "vue-router"
+          - "pinia"
+          - "axios"
+      build-tools:
+        patterns:
+          - "vite*"
+          - "@vitejs*"
+          - "eslint*"
+          - "@playwright*"
+      utilities:
+        patterns:
+          - "*"
+
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 3
-    labels: dependencies
+      day: tuesday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 1
+    labels: dependencies, docker
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 3
+      day: tuesday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 1
     labels: github-actions
+
+# 关联: docs/COLLABORATION_PLAN_2026-07-18.md
+# 事故复盘: docs/incidents/2026-07-17-PR30-merge-violation.md (流程纪律)
