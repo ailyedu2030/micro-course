@@ -64,7 +64,7 @@ REQUIRED_ENDPOINTS=(
     "get:/api/courses/{courseId}/courseware/{sectionId}"
     "get:/api/courses/{courseId}/courseware/audio/{token}"
     "post:/api/courses/{courseId}/html/sections/{sectionId}/unit"
-    "post:/api/courses/{courseId}/ppt/pages/{pageId}"
+    "post:/api/courses/{courseId}/ppt/sections/{sectionId}/pages"
     "delete:/api/courses/{courseId}/ppt/pages/{pageId}"
 )
 

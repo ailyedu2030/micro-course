@@ -24,7 +24,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import java.nio.file.NoSuchFileException;
 
-@RestControllerAdvice
+@org.springframework.stereotype.Component("microcourseGlobalExceptionHandler")
+@RestControllerAdvice(basePackages = "com.microcourse.controller")
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);

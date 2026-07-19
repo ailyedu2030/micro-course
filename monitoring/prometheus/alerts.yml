@@ -59,9 +59,9 @@ groups:
           summary: "PostgreSQL 活动连接 > 50"
           description: "当前活动连接数 {{ $value }}, 可能存在慢查询."
 
-      # P2: Redis 内存
+      # P2: Redis 内存 (只在配置了 maxmemory 时触发)
       - alert: RedisMemoryHigh
-        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8 and redis_memory_max_bytes > 0
         for: 5m
         labels:
           severity: warning
