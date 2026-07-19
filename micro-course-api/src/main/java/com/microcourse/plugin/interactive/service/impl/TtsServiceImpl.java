@@ -796,13 +796,36 @@ public class TtsServiceImpl implements TtsService {
     public boolean validateAudioToken(Long courseId, Integer pageNumber, Long sectionId, String token) {
         if (token == null || token.isBlank()) return false;
         if (sectionId == null) return false;
+        // P1-C 修复 (2026-07-19): sectionId 级 token 校验
+        // 旧逻辑: 严格按 pageNumber 查 SlidePage,但单页 HTML_DIRECT 场景只有 page=1 一条记录
+        //        导致 pageNumber=2..15 的 token URL 全部 403
+        // 新逻辑: 先按 (courseId, sectionId, pageNumber) 精确匹配;若不存在,则 fallback 到
+        //        按 (courseId, sectionId) 查任一含 token 的 page(单页 HTML_DIRECT 场景)
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
                 .eq(SlidePage::getCourseId, courseId)
                 .eq(SlidePage::getSectionId, sectionId)
                 .eq(SlidePage::getPageNumber, pageNumber);
         SlidePage page = slidePageMapper.selectOne(qw);
-        if (page == null || page.getNarrationAudioUrl() == null) return false;
-        return page.getNarrationAudioUrl().contains("token=" + token);
+        if (page != null && page.getNarrationAudioUrl() != null
+                && page.getNarrationAudioUrl().contains("token=" + token)) {
+            return true;
+        }
+        // Fallback: sectionId 级校验(单页 HTML_DIRECT 场景)
+        List<SlidePage> sectionPages = slidePageMapper.selectList(
+                new LambdaQueryWrapper<SlidePage>()
+                        .eq(SlidePage::getCourseId, courseId)
+                        .eq(SlidePage::getSectionId, sectionId));
+        for (SlidePage p : sectionPages) {
+            if (p.getNarrationAudioUrl() != null
+                    && p.getNarrationAudioUrl().contains("token=" + token)) {
+                log.debug("[TTS] validateAudioToken sectionId-level fallback hit: "
+                        + "courseId={}, sectionId={}, pageNumber={}, token={}",
+                        courseId, sectionId, pageNumber,
+                        token.length() > 8 ? token.substring(0, 8) + "..." : token);
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

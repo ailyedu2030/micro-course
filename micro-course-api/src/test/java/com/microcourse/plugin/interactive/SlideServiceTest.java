@@ -313,7 +313,7 @@ class SlideServiceTest {
         }
 
         @Test
-        @DisplayName("HTML UPSERT — 同一 chapterId 重复上传，复用 slide_id 并删旧页")
+        @DisplayName("HTML UPSERT — 同一 chapterId 重复上传,复用 slide_id 且保留 audio 元数据")
         void uploadHtmlFile_Upsert() {
             setupAdminContext();
             try {
@@ -343,7 +343,23 @@ class SlideServiceTest {
                 existing.setStatus(2);
                 when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
                 when(courseSlideMapper.updateById(any(CourseSlide.class))).thenReturn(1);
-                when(slidePageMapper.delete(any(LambdaQueryWrapper.class))).thenReturn(3);
+
+                // 模拟 page=1 已存在(且含 audio 元数据)
+                SlidePage existingPage = new SlidePage();
+                existingPage.setId(100L);
+                existingPage.setSlideId(43L);
+                existingPage.setCourseId(1L);
+                existingPage.setSectionId(10L);
+                existingPage.setPageNumber(1);
+                existingPage.setContentType("HTML_DIRECT");
+                existingPage.setHtmlContent("<p>Old HTML</p>");
+                existingPage.setNarrationAudioUrl("/api/courses/1/slides/pages/1/audio?sectionId=10&v=2&token=abc123");
+                existingPage.setAudioDuration(120);
+                existingPage.setSegmentCount(15);
+                existingPage.setNarrationStatus("AUDIO_READY");
+                // 注意: 第一次 selectOne 找 CourseSlide, 第二次找 SlidePage
+                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existingPage);
+                when(slidePageMapper.updateById(any(SlidePage.class))).thenReturn(1);
 
                 MockMultipartFile newFile = new MockMultipartFile(
                         "file", "new.html", "text/html", "<p>New content</p>".getBytes());
@@ -351,10 +367,22 @@ class SlideServiceTest {
                 SlideUploadResponse resp = slideService.uploadHtmlFile(1L, newFile, 10L, 10L);
 
                 assertEquals(43L, resp.getSlideId().longValue());
-                verify(slidePageMapper).delete(any(LambdaQueryWrapper.class));
+                // P1-C 修复验证: 不应 delete 旧 page,不应 insert 新 page
+                verify(slidePageMapper, never()).delete(any(LambdaQueryWrapper.class));
+                verify(slidePageMapper, never()).insert(any(SlidePage.class));
                 verify(courseSlideMapper, never()).insert(any(CourseSlide.class));
                 verify(courseSlideMapper).updateById(any(CourseSlide.class));
-                verify(slidePageMapper).insert(any(SlidePage.class));
+                verify(slidePageMapper).updateById(any(SlidePage.class));
+                // audio 元数据应保留: 在 updateById 的参数上验证
+                org.mockito.ArgumentCaptor<SlidePage> pageCaptor =
+                        org.mockito.ArgumentCaptor.forClass(SlidePage.class);
+                verify(slidePageMapper).updateById(pageCaptor.capture());
+                SlidePage updated = pageCaptor.getValue();
+                assertEquals("<p>New content</p>", updated.getHtmlContent());
+                assertEquals("/api/courses/1/slides/pages/1/audio?sectionId=10&v=2&token=abc123",
+                        updated.getNarrationAudioUrl());
+                assertEquals(15, updated.getSegmentCount().intValue());
+                assertEquals("AUDIO_READY", updated.getNarrationStatus());
             } finally {
                 SecurityContextHolder.clearContext();
             }
