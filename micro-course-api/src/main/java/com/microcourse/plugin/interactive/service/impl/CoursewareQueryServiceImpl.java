@@ -119,11 +119,15 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                                                 List<SlidePptPage> pptPages,
                                                 SlideHtmlUnit htmlUnit) {
         if (!pptPages.isEmpty()) {
-            if (!courseId.equals(pptPages.get(0).getCourseId())) {
-                log.warn("[CoursewareTree] courseId mismatch: path={} actual={}, sectionId={}",
-                        courseId, pptPages.get(0).getCourseId(), sectionId);
-                throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
-                        "section 不属于该 course: courseId=" + courseId + " sectionId=" + sectionId);
+            // 【BUG #21 修复】 校验所有 page 必须属于同一 course, 防数据污染
+            for (SlidePptPage p : pptPages) {
+                if (!courseId.equals(p.getCourseId())) {
+                    log.warn("[CoursewareTree] courseId mismatch on page: path={} actual={}, pageId={}",
+                            courseId, p.getCourseId(), p.getId());
+                    throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
+                            "section 内 page 跨 course 污染: courseId=" + courseId
+                                    + " sectionId=" + sectionId + " pageId=" + p.getId());
+                }
             }
         } else if (htmlUnit != null && !courseId.equals(htmlUnit.getCourseId())) {
             log.warn("[CoursewareTree] courseId mismatch (HTML): path={} actual={}, sectionId={}",
@@ -224,11 +228,19 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         // 7-19 P1-C 兼容: 先查 PPT audio, 再查 HTML segment audio
         SlidePptPageAudio pptAudio = pageAudioMapper.findByToken(token);
         if (pptAudio != null) {
-            return toStreamInfo(pptAudio, "PPT", pptAudio.getPptPageId());
+            AudioStreamInfo info = toStreamInfo(pptAudio, "PPT", pptAudio.getPptPageId());
+            // 【BUG #23 修复】 查 page 获取真实 courseId, 用于 BUG #22 IDOR 校验
+            SlidePptPage page = pageMapper.selectById(pptAudio.getPptPageId());
+            info.setCourseId(page != null ? page.getCourseId() : null);
+            return info;
         }
         SlideHtmlSegmentAudio htmlAudio = segmentAudioMapper.findByToken(token);
         if (htmlAudio != null) {
-            return toStreamInfo(htmlAudio, "HTML", htmlAudio.getHtmlUnitId());
+            AudioStreamInfo info = toStreamInfo(htmlAudio, "HTML", htmlAudio.getHtmlUnitId());
+            // 【BUG #23 修复】 查 unit 获取真实 courseId, 用于 BUG #22 IDOR 校验
+            SlideHtmlUnit unit = unitMapper.selectById(htmlAudio.getHtmlUnitId());
+            info.setCourseId(unit != null ? unit.getCourseId() : null);
+            return info;
         }
         log.warn("[Audio-Stream] token not found (masked): token.length={}", token.length());
         throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,

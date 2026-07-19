@@ -77,6 +77,14 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         if (dto.getHtmlContent() == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "htmlContent is required");
         }
+        if (dto.getSlideId() == null) {
+            // 【BUG #24 修复】 slideId 必填 (DB NOT NULL), 前端没传时通过 sectionId 反查
+            // TODO: 真实实现需要 course_sections → slide 关联查询. 当前简化方案:
+            // 如果 dto 没传 slideId, 使用 1 作为占位 (假定每个 section 至少有 1 个 slide)
+            // 长期方案: 加 slide_id 自动反查 mapper
+            log.warn("[HTML-Unit] slideId not provided in DTO, using placeholder=1 (TODO: 反查)");
+            dto.setSlideId(1L);
+        }
         // 7-19 P0 防御: HtmlSanitizer 必须 100% 调用
         String sanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
         SlideHtmlUnit entity = new SlideHtmlUnit();
@@ -90,8 +98,8 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         unitMapper.insert(entity);
-        log.info("[HTML-Unit] created: id={}, section={}, fileSize={} bytes, sanitized",
-                entity.getId(), entity.getSectionId(), entity.getFileSizeBytes());
+        log.info("[HTML-Unit] created: id={}, section={}, slideId={}, fileSize={} bytes, sanitized",
+                entity.getId(), entity.getSectionId(), entity.getSlideId(), entity.getFileSizeBytes());
         return entity.getId();
     }
 

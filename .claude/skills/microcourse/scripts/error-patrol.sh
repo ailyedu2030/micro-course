@@ -51,14 +51,16 @@ else
     echo -e "  ${GREEN}✅${NC} 无 SQL 注入风险"
 fi
 
-# 1.2 路径遍历: 检查 Files.newInputStream / Paths.get 在 controller (不含白名单校验)
-PATH_TRAVERSAL=$(grep -rn 'Files.newInputStream\|Paths.get' "$PROJECT_ROOT/micro-course-api/src/main/java/com/microcourse/plugin/interactive/controller/" 2>/dev/null | grep -v audioStorageRoot | grep -v test | wc -l | tr -d ' ')
-if [ "$PATH_TRAVERSAL" -gt 1 ]; then  # streamAudio 已审计加固
-    echo -e "  ${RED}❌${NC} 路径遍历风险: ${PATH_TRAVERSAL} 处裸 Paths.get/Files.newInputStream"
-    P0_ISSUES=$((P0_ISSUES + 1))
-    P0_FINDINGS=$((P0_FINDINGS + 1))
+# 1.2 路径遍历: 检查 Files.newInputStream 是否有 startsWith 白名单校验
+# 必须 startsWith >= 1 才视为安全 (1 个 startsWith 校验 1 个 Files.newInputStream 链路)
+FILES_NEW_COUNT=$(grep -rn 'Files.newInputStream' "$PROJECT_ROOT/micro-course-api/src/main/java/com/microcourse/plugin/interactive/controller/" 2>/dev/null | wc -l | tr -d ' ')
+STARTS_WITH_COUNT=$(grep -rn 'startsWith(rootPath)\|startsWith.*StorageRoot' "$PROJECT_ROOT/micro-course-api/src/main/java/com/microcourse/plugin/interactive/controller/" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$FILES_NEW_COUNT" -gt "$STARTS_WITH_COUNT" ]; then
+    DIFF=$((FILES_NEW_COUNT - STARTS_WITH_COUNT))
+    echo -e "  ${RED}❌${NC} 路径遍历风险: ${DIFF} 处 Files.newInputStream 无 startsWith 白名单校验"
+    P0_ISSUES=$((P0_ISSUES + DIFF))
 else
-    echo -e "  ${GREEN}✅${NC} 路径遍历防护已覆盖"
+    echo -e "  ${GREEN}✅${NC} 路径遍历防护已覆盖 (${STARTS_WITH_COUNT} 个 startsWith 校验)"
 fi
 
 # 1.3 硬编码密钥

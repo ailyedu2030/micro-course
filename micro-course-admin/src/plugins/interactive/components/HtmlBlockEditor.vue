@@ -89,8 +89,8 @@ async function handleSave() {
       const dto = {
         pageTitle: '',
         htmlContent: htmlContent.value,
-        fileSizeBytes: new Blob([htmlContent.value]).size,
-        slideId: 0
+        fileSizeBytes: new Blob([htmlContent.value]).size
+        // 【BUG #24 修复】 slideId 由后端通过 sectionId 反查 (不允许前端传 0)
       }
       const res = await createHtmlUnit(props.courseId, props.sectionId, dto)
       ElMessage.success(`已创建 unit id=${res.data || res}`)

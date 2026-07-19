@@ -38,6 +38,18 @@ import java.nio.file.Paths;
 @RequestMapping("/api/courses/{courseId}/courseware")
 public class CoursewareQueryController {
 
+    private static final Logger log = LoggerFactory.getLogger(CoursewareQueryController.class);
+
+    /**
+     * 【审计修复 BUG #6 / BUG #25】 音频文件存储根目录白名单.
+     * <p>
+     * 防止路径遍历 (Path Traversal) 攻击: 即使 storage_path 被篡改为 /etc/passwd,
+     * normalized 路径必须以此白名单前缀开头才允许读取.
+     * </p>
+     */
+    @Value("${mc.audio.storage-root:${java.io.tmpdir}/microcourse-audio}")
+    private String audioStorageRoot;
+
     private final CoursewareQueryService queryService;
 
     @Autowired
@@ -65,6 +77,13 @@ public class CoursewareQueryController {
                              @PathVariable String token,
                              HttpServletResponse response) throws IOException {
         AudioStreamInfo info = queryService.resolveAudioToken(token);
+        // 【BUG #22 修复 P0 IDOR】 校验 audio 归属 course (同 BUG #17)
+        if (info.getCourseId() != null && !courseId.equals(info.getCourseId())) {
+            log.warn("[Audio-Stream] IDOR ATTEMPT: path courseId={} actual={}, token.length={}",
+                    courseId, info.getCourseId(), token.length());
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
         if (!"READY".equals(info.getStatus())) {
             response.setStatus(HttpServletResponse.SC_ACCEPTED);  // 202
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -76,7 +95,22 @@ public class CoursewareQueryController {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
-        Path filePath = Paths.get(info.getStoragePath());
+        Path filePath;
+        try {
+            filePath = Paths.get(info.getStoragePath()).toAbsolutePath().normalize();
+        } catch (Exception e) {
+            log.warn("[Audio-Stream] invalid storage path: {}", info.getStoragePath());
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
+        // 【BUG #25 修复 P1 路径遍历】 实际加固 (之前 commit message 写了修复但代码未生效)
+        Path rootPath = Paths.get(audioStorageRoot).toAbsolutePath().normalize();
+        if (!filePath.startsWith(rootPath)) {
+            log.warn("[Audio-Stream] PATH TRAVERSAL ATTEMPT BLOCKED: path={} root={}",
+                    filePath, rootPath);
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
         if (!Files.exists(filePath)) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
