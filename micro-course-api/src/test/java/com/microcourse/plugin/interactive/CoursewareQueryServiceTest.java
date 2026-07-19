@@ -88,7 +88,7 @@ class CoursewareQueryServiceTest {
         when(pageAudioMapper.listByScript(101L)).thenReturn(Collections.emptyList());
 
         // When
-        CoursewareTreeDTO tree = service.getCoursewareTree(99L);
+        CoursewareTreeDTO tree = service.getCoursewareTree(42L, 99L);
 
         // Then
         assertEquals("PPT", tree.getType());
@@ -109,7 +109,7 @@ class CoursewareQueryServiceTest {
         when(pageMapper.listBySection(99L)).thenReturn(Collections.emptyList());
         when(unitMapper.findBySection(99L)).thenReturn(null);
 
-        CoursewareTreeDTO tree = service.getCoursewareTree(99L);
+        CoursewareTreeDTO tree = service.getCoursewareTree(42L, 99L);
 
         assertEquals("EMPTY", tree.getType());
         assertEquals(99L, tree.getSectionId());

@@ -136,6 +136,13 @@ async function handleSave() {
     ElMessage.warning('讲述稿不能为空')
     return
   }
+  // 【BUG #2 修复】从用户 store 获取真实 createdBy (审计追踪)
+  const userStore = useUserStore()
+  const createdBy = userStore.userInfo?.id || userStore.userId || 0
+  if (!createdBy) {
+    ElMessage.warning('用户未登录,无法保存')
+    return
+  }
   saving.value = true
   try {
     let res
@@ -144,7 +151,7 @@ async function handleSave() {
         scriptText: scriptText.value,
         voice: currentScript.value?.voice || 'female-young',
         ttsModel: currentScript.value?.ttsModel || 'MiniMax-speech-01',
-        createdBy: 0
+        createdBy
       })
     } else {
       res = await saveHtmlSegmentScript(props.courseId, props.unitId, props.segmentIndex, {
@@ -152,7 +159,7 @@ async function handleSave() {
         voice: currentScript.value?.voice || 'female-young',
         ttsModel: currentScript.value?.ttsModel || 'MiniMax-speech-01',
         segmentMarker: currentScript.value?.segmentMarker || null,
-        createdBy: 0
+        createdBy
       })
     }
     ElMessage.success('新版本已保存')

@@ -6,12 +6,15 @@ import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,7 +52,7 @@ public class CoursewareQueryController {
     @GetMapping("/{sectionId}")
     public R<CoursewareTreeDTO> getCoursewareTree(@PathVariable Long courseId,
                                                    @PathVariable Long sectionId) {
-        return R.ok(queryService.getCoursewareTree(sectionId));
+        return R.ok(queryService.getCoursewareTree(courseId, sectionId));
     }
 
     /**

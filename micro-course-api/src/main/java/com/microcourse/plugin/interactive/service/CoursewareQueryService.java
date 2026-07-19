@@ -16,10 +16,16 @@ public interface CoursewareQueryService {
 
     /**
      * 取一个 section 的完整课件树.
-     * @param sectionId 课时 ID
+     *
+     * 【审计修复 BUG #4】 必须传入 courseId 用于校验 sectionId 归属于该 course,
+     * 防止同 sectionId 跨 course 误读数据 (虽然概率极低, 但 REST 安全原则要求
+     * 路径变量与资源 ID 双重验证).
+     *
+     * @param courseId  课程 ID (来自 path)
+     * @param sectionId 课时 ID (来自 path)
      * @return CoursewareTreeDTO (type = PPT / HTML / EMPTY)
      */
-    CoursewareTreeDTO getCoursewareTree(Long sectionId);
+    CoursewareTreeDTO getCoursewareTree(Long courseId, Long sectionId);
 
     /**
      * 按 audio_token 流式 GET (7-19 P1-C 兼容).

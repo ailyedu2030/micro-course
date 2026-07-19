@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -58,6 +59,13 @@ public class SlidePptPage {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * 【BUG #7 修复】乐观锁版本号, MyBatis-Plus 自动 +1.
+     * 第二次写入相同 entity 时 version 不匹配, updateById 返回 0.
+     */
+    @Version
+    private Integer version;
+
     public SlidePptPage() {}
 
     public Long getId() { return id; }
@@ -96,4 +104,6 @@ public class SlidePptPage {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
 }

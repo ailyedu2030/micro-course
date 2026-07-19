@@ -81,21 +81,58 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     }
 
     @Override
-    public CoursewareTreeDTO getCoursewareTree(Long sectionId) {
+    public CoursewareTreeDTO getCoursewareTree(Long courseId, Long sectionId) {
+        // 【审计修复 BUG #4】 校验 sectionId 归属于 courseId (防止跨 course 误读)
+        validateSectionBelongsToCourse(courseId, sectionId);
+
         // 1. 先判断是 PPT 还是 HTML
         List<SlidePptPage> pptPages = pageMapper.listBySection(sectionId);
         SlideHtmlUnit htmlUnit = unitMapper.findBySection(sectionId);
 
         if (!pptPages.isEmpty()) {
-            return buildPptTree(sectionId, pptPages);
+            return buildPptTree(courseId, sectionId, pptPages);
         } else if (htmlUnit != null) {
-            return buildHtmlTree(sectionId, htmlUnit);
+            return buildHtmlTree(courseId, sectionId, htmlUnit);
         } else {
-            return emptyTree(sectionId);
+            return emptyTree(courseId, sectionId);
         }
     }
 
-    private CoursewareTreeDTO buildPptTree(Long sectionId, List<SlidePptPage> pages) {
+    /**
+     * 校验 sectionId 归属于 courseId.
+     * <p>
+     * 7-19 P0 防御: 即使 course_sections.id 是 PK, 仍需校验外键归属,
+     * 防止 URL 篡改 (如 /api/courses/1/... 但实际访问 course=2 的资源).
+     * </p>
+     */
+    private void validateSectionBelongsToCourse(Long courseId, Long sectionId) {
+        if (courseId == null || sectionId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "courseId 和 sectionId 必填");
+        }
+        // 通过查 PPT page 列表的第一条获取真实 courseId (DB schema 是 source of truth)
+        // 不再单独查 course_sections 表 (避免 N+1)
+        // 这里用 PPT page 列表或 HTML unit 列表作为代理校验
+        List<SlidePptPage> pptPages = pageMapper.listBySection(sectionId);
+        if (!pptPages.isEmpty()) {
+            if (!courseId.equals(pptPages.get(0).getCourseId())) {
+                log.warn("[CoursewareTree] courseId mismatch: path={} actual={}, sectionId={}",
+                        courseId, pptPages.get(0).getCourseId(), sectionId);
+                throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "section 不属于该 course: courseId=" + courseId + " sectionId=" + sectionId);
+            }
+        } else {
+            SlideHtmlUnit htmlUnit = unitMapper.findBySection(sectionId);
+            if (htmlUnit != null && !courseId.equals(htmlUnit.getCourseId())) {
+                log.warn("[CoursewareTree] courseId mismatch (HTML): path={} actual={}, sectionId={}",
+                        courseId, htmlUnit.getCourseId(), sectionId);
+                throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "section 不属于该 course: courseId=" + courseId + " sectionId=" + sectionId);
+            }
+        }
+    }
+
+    private CoursewareTreeDTO buildPptTree(Long courseId, Long sectionId, List<SlidePptPage> pages) {
         CoursewareTreeDTO tree = new CoursewareTreeDTO();
         tree.setType("PPT");
         tree.setSectionId(sectionId);
@@ -146,7 +183,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         return tree;
     }
 
-    private CoursewareTreeDTO buildHtmlTree(Long sectionId, SlideHtmlUnit unit) {
+    private CoursewareTreeDTO buildHtmlTree(Long courseId, Long sectionId, SlideHtmlUnit unit) {
         CoursewareTreeDTO tree = new CoursewareTreeDTO();
         tree.setType("HTML");
         tree.setSectionId(sectionId);
@@ -169,7 +206,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         return tree;
     }
 
-    private CoursewareTreeDTO emptyTree(Long sectionId) {
+    private CoursewareTreeDTO emptyTree(Long courseId, Long sectionId) {
         CoursewareTreeDTO tree = new CoursewareTreeDTO();
         tree.setType("EMPTY");
         tree.setSectionId(sectionId);

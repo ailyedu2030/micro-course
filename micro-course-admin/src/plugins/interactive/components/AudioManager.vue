@@ -163,11 +163,21 @@ watch(activeSegmentIdx, async (idx) => {
 })
 
 // 初次加载 PPT 模式的所有音频
-if (props.pageType === 'PPT' && effectiveScriptId.value) {
-  listPptAudios(props.courseId, effectiveScriptId.value).then(r => {
+// 【BUG #3 修复】 预加载所有 segments 音频 (包括未激活 tab), 让统计准确
+async function loadAllAudios() {
+  if (props.pageType === 'PPT' && effectiveScriptId.value) {
+    const r = await listPptAudios(props.courseId, effectiveScriptId.value)
     audiosBySegment.value[0] = r.data || r
-  })
+  } else if (props.segments && props.segments.length > 0) {
+    // HTML 多段模式: 一次性预加载所有段的音频, 避免 tab 切换时才加载导致统计不准
+    const promises = props.segments.map(async (seg) => {
+      const r = await listHtmlSegmentAudios(props.courseId, seg.segmentScriptId)
+      audiosBySegment.value[seg.idx] = r.data || r
+    })
+    await Promise.all(promises)
+  }
 }
+onMounted(loadAllAudios)
 
 // 生成新音频
 async function handleGenerate() {
