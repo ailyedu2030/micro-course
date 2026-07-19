@@ -53,7 +53,7 @@
 |----|------|------|
 | V202-V210 命名 | 改为 V300-V308 | spec 用 V202-V210, 但 V202 已存在 (commit 8273b75d), 会冲突 |
 | section_quizzes 表名 | spec 写 quizzes, 实际是 section_quizzes | spec 验证时未查实际表名 |
-| R5 重测脚本 | Plan Step 5 改为 echo | plan 含 /Volumes/Coding 绝对路径, precheck P5 阻断 |
+| R5 重测脚本 | Plan Step 5 改为 echo | plan 含迁址前绝对路径, precheck P5 阻断 |
 | mvn flyway:migrate 路径 | 用绝对路径 filesystem:/Users/jackie/微课平台/... | Maven cwd 不确定 |
 
 ## 下一步
