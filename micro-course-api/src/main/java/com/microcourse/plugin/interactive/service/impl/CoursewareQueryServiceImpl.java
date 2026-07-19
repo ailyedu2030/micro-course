@@ -2,6 +2,7 @@ package com.microcourse.plugin.interactive.service.impl;
 
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.cache.AudioStreamCache;
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
 import com.microcourse.plugin.interactive.dto.HtmlSegmentAudioDTO;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -64,6 +66,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     private final SlideHtmlUnitMapper unitMapper;
     private final SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private final SlideHtmlSegmentAudioMapper segmentAudioMapper;
+    private final com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache;
 
     public CoursewareQueryServiceImpl(SlidePptPageMapper pageMapper,
                                        SlidePptPageScriptMapper pageScriptMapper,
@@ -71,7 +74,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                                        SlidePptFlowMapper flowMapper,
                                        SlideHtmlUnitMapper unitMapper,
                                        SlideHtmlSegmentScriptMapper segmentScriptMapper,
-                                       SlideHtmlSegmentAudioMapper segmentAudioMapper) {
+                                       SlideHtmlSegmentAudioMapper segmentAudioMapper,
+                                       com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache) {
         this.pageMapper = pageMapper;
         this.pageScriptMapper = pageScriptMapper;
         this.pageAudioMapper = pageAudioMapper;
@@ -79,6 +83,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         this.unitMapper = unitMapper;
         this.segmentScriptMapper = segmentScriptMapper;
         this.segmentAudioMapper = segmentAudioMapper;
+        this.audioStreamCache = audioStreamCache;
     }
 
     @Override
@@ -225,6 +230,13 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
 
     @Override
     public AudioStreamInfo resolveAudioToken(String token) {
+        // 【BUG #29 修复 P1 性能】 先查 Redis 缓存 (TTL 5 min)
+        Optional<AudioStreamInfo> cached = audioStreamCache.get(token);
+        if (cached.isPresent()) {
+            log.debug("[Audio-Stream] cache hit: token.length={}", token.length());
+            return cached.get();
+        }
+
         // 7-19 P1-C 兼容: 先查 PPT audio, 再查 HTML segment audio
         SlidePptPageAudio pptAudio = pageAudioMapper.findByToken(token);
         if (pptAudio != null) {
@@ -232,6 +244,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
             // 【BUG #23 修复】 查 page 获取真实 courseId, 用于 BUG #22 IDOR 校验
             SlidePptPage page = pageMapper.selectById(pptAudio.getPptPageId());
             info.setCourseId(page != null ? page.getCourseId() : null);
+            // 【BUG #29 修复】 写回 Redis 缓存 (best-effort)
+            audioStreamCache.put(token, info);
             return info;
         }
         SlideHtmlSegmentAudio htmlAudio = segmentAudioMapper.findByToken(token);
@@ -240,6 +254,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
             // 【BUG #23 修复】 查 unit 获取真实 courseId, 用于 BUG #22 IDOR 校验
             SlideHtmlUnit unit = unitMapper.selectById(htmlAudio.getHtmlUnitId());
             info.setCourseId(unit != null ? unit.getCourseId() : null);
+            // 【BUG #29 修复】 写回 Redis 缓存
+            audioStreamCache.put(token, info);
             return info;
         }
         log.warn("[Audio-Stream] token not found (masked): token.length={}", token.length());

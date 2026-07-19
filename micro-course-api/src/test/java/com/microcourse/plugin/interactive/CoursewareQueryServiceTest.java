@@ -63,7 +63,8 @@ class CoursewareQueryServiceTest {
         segmentScriptMapper = mock(SlideHtmlSegmentScriptMapper.class);
         segmentAudioMapper = mock(SlideHtmlSegmentAudioMapper.class);
         service = new CoursewareQueryServiceImpl(pageMapper, pageScriptMapper,
-                pageAudioMapper, flowMapper, unitMapper, segmentScriptMapper, segmentAudioMapper);
+                pageAudioMapper, flowMapper, unitMapper, segmentScriptMapper, segmentAudioMapper,
+                mock(com.microcourse.plugin.interactive.cache.AudioStreamCache.class));
     }
 
     @Test
