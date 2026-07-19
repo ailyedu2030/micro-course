@@ -104,8 +104,7 @@ assert "Flow3 课件树 code" "$TREE_CODE" "200"
 echo ""
 echo "--- Flow 4: 删除 PPT page ---"
 # 1.1 节下 PPT page id
-PPT_PAGE_ID=$(psql -U postgres -d micro_course -tA -c "SELECT id FROM slide_ppt_pages WHERE course_id=79 AND slide_id=999 LIMIT 1;" 2>/dev/null || echo "")
-[ -z "$PPT_PAGE_ID" ] && PPT_PAGE_ID=4  # fallback
+PPT_PAGE_ID=$(psql -U postgres -d micro_course -tA -c "SELECT id FROM slide_ppt_pages WHERE course_id=79 AND slide_id=999 LIMIT 1;" 2>/dev/null)
 echo "  目标 PPT page: $PPT_PAGE_ID"
 DELETE_RESP=$(curl -s -m 10 -X DELETE "${API_BASE}/api/courses/79/courseware/ppt-pages/${PPT_PAGE_ID}" \
     -H "Authorization: Bearer $TOKEN")
