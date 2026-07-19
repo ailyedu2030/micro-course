@@ -130,6 +130,10 @@ logging:
     com.microcourse: ${LOG_LEVEL:info}
     com.baomidou.mybatisplus: ${LOG_LEVEL:info}
     org.flywaydb: info
+  # 【BUG #31 部分实现】 日志含 traceId (从 MDC 读)
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{traceId:-}] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{traceId:-}] %-5level %logger{36} - %msg%n"
 
 # Phase 11: 互动课程插件
 plugin:
