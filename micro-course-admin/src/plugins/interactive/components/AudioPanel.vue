@@ -59,6 +59,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Loading, VideoPlay, VideoPause } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -95,8 +96,15 @@ function togglePlay(audio) {
   const url = props.audioUrlFactory(audio)
   audioEl.value = new Audio(url)
   audioEl.value.play().catch(err => {
+    // 【BUG #11 修复】 用户可见错误提示 (不只 console.warn)
     console.warn('[AudioPanel] play failed', err)
+    ElMessage.error('试听失败: ' + (err?.message || '音频加载失败,请检查网络或重试'))
+    playingId.value = null
   })
+  audioEl.value.onerror = () => {
+    ElMessage.error('音频文件损坏或不存在 (token: ' + audio.audioToken?.substring(0, 8) + '...)')
+    playingId.value = null
+  }
   playingId.value = audio.id
   audioEl.value.onended = () => { playingId.value = null }
 }

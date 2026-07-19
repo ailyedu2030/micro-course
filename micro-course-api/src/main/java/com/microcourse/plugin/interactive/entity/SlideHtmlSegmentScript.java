@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 
 import java.time.LocalDateTime;
 
@@ -50,6 +51,9 @@ public class SlideHtmlSegmentScript {
     @TableField("created_by")
     private Long createdBy;
 
+    @Version
+    private Integer version;
+
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
@@ -83,4 +87,6 @@ public class SlideHtmlSegmentScript {
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
 }

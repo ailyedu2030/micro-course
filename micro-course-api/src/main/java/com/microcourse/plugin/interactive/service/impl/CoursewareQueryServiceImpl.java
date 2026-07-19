@@ -34,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -82,12 +83,18 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
 
     @Override
     public CoursewareTreeDTO getCoursewareTree(Long courseId, Long sectionId) {
-        // 【审计修复 BUG #4】 校验 sectionId 归属于 courseId (防止跨 course 误读)
-        validateSectionBelongsToCourse(courseId, sectionId);
+        if (courseId == null || sectionId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "courseId 和 sectionId 必填");
+        }
 
-        // 1. 先判断是 PPT 还是 HTML
+        // 1. 一次性查 PPT pages (验证 + 数据复用, 避免 N+1)
         List<SlidePptPage> pptPages = pageMapper.listBySection(sectionId);
         SlideHtmlUnit htmlUnit = unitMapper.findBySection(sectionId);
+
+        // 【审计修复 BUG #4 + #8】 复用已查询的 pptPages 校验 section 归属,
+        // 消除 BUG #8 的重复 SQL (N+1 → 1 query)
+        validateSectionBelongsToCourse(courseId, sectionId, pptPages, htmlUnit);
 
         if (!pptPages.isEmpty()) {
             return buildPptTree(courseId, sectionId, pptPages);
@@ -99,21 +106,18 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     }
 
     /**
-     * 校验 sectionId 归属于 courseId.
+     * 校验 sectionId 归属于 courseId (复用已查询的 pptPages/htmlUnit, 无额外 SQL).
      * <p>
      * 7-19 P0 防御: 即使 course_sections.id 是 PK, 仍需校验外键归属,
      * 防止 URL 篡改 (如 /api/courses/1/... 但实际访问 course=2 的资源).
      * </p>
+     * <p>
+     * 【BUG #8 修复】 接受已查询的 pptPages/htmlUnit 作参数, 避免重复 listBySection.
+     * </p>
      */
-    private void validateSectionBelongsToCourse(Long courseId, Long sectionId) {
-        if (courseId == null || sectionId == null) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                    "courseId 和 sectionId 必填");
-        }
-        // 通过查 PPT page 列表的第一条获取真实 courseId (DB schema 是 source of truth)
-        // 不再单独查 course_sections 表 (避免 N+1)
-        // 这里用 PPT page 列表或 HTML unit 列表作为代理校验
-        List<SlidePptPage> pptPages = pageMapper.listBySection(sectionId);
+    private void validateSectionBelongsToCourse(Long courseId, Long sectionId,
+                                                List<SlidePptPage> pptPages,
+                                                SlideHtmlUnit htmlUnit) {
         if (!pptPages.isEmpty()) {
             if (!courseId.equals(pptPages.get(0).getCourseId())) {
                 log.warn("[CoursewareTree] courseId mismatch: path={} actual={}, sectionId={}",
@@ -121,15 +125,13 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                 throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
                         "section 不属于该 course: courseId=" + courseId + " sectionId=" + sectionId);
             }
-        } else {
-            SlideHtmlUnit htmlUnit = unitMapper.findBySection(sectionId);
-            if (htmlUnit != null && !courseId.equals(htmlUnit.getCourseId())) {
-                log.warn("[CoursewareTree] courseId mismatch (HTML): path={} actual={}, sectionId={}",
-                        courseId, htmlUnit.getCourseId(), sectionId);
-                throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
-                        "section 不属于该 course: courseId=" + courseId + " sectionId=" + sectionId);
-            }
+        } else if (htmlUnit != null && !courseId.equals(htmlUnit.getCourseId())) {
+            log.warn("[CoursewareTree] courseId mismatch (HTML): path={} actual={}, sectionId={}",
+                    courseId, htmlUnit.getCourseId(), sectionId);
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
+                    "section 不属于该 course: courseId=" + courseId + " sectionId=" + sectionId);
         }
+        // 两者都为空 → emptyTree, 跳过校验 (无数据无法判断归属, 容忍)
     }
 
     private CoursewareTreeDTO buildPptTree(Long courseId, Long sectionId, List<SlidePptPage> pages) {
