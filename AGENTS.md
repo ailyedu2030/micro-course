@@ -176,6 +176,8 @@ CI 5/5 自动运行
 | **发布决策 / 放行** | `docs/发布管理.md` | 发布门禁表、决策 6 步流程、总工程师放行纪律 7 条 |
 | **ssh/curl/playwright 操作前** | `.claude/skills/production-safety/SKILL.md`（自动加载） | 生产环境保护铁律 |
 | **开发新功能前** | `docs/开发规划/phase5-10-spec.md` | 定位当前 Phase 任务清单 |
+| **🆕 用户体验治理（每次涉及前台代码 / 反馈 / 事故响应 / 月度报告）** | `docs/governance/ux-governance/README.md` | 第 7 套治理机制：量化标准 / 周复盘 / 反馈 SLA / 无障碍 / 应急 / 健康度 / 研究 SOP |
+| **🆕 上线前 a11y 验收** | `docs/governance/ux-governance/templates/a11y-acceptance-checklist.md` | PR 必填清单：axe / WCAG / Tab / 老年场景 |
 
 ---
 
