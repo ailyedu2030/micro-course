@@ -42,8 +42,26 @@
 | 操作 | 临时 `enforce_admins=false` → squash merge → 恢复 `enforce_admins=true` |
 | 耗时 | < 1 分钟 |
 
----
+### 第 4 次 · PR #44 · 2026-07-21 20:33
 
+| 项目 | 详情 |
+|------|------|
+| PR | #44 (docs: 更新路径 C 周度汇总 + CI workflow 修复) |
+| 变更等级 | P1-I (内部文档 + CI 修复) |
+| 阻塞原因 | CI workflow 在 main 分支有 bug（lewagon action 不存在、amtool entrypoint 错误），修复在 PR 分支但 CI 从 main 读取 → 鸡生蛋问题 |
+| owner 态度 | 授权执行 |
+| 操作 | 临时 `enforce_admins=false` → `--admin` squash merge → 恢复 `enforce_admins=true` |
+| 耗时 | < 2 分钟 |
+
+---
+## 端到端验证状态
+
+- [x] GitHub App `microcourse-pr-bot` 已安装到仓库
+- [x] auto-approve workflow 已部署到 main（修复版：原生 gh api 轮询）
+- [x] CI monitoring-lint 已修复（amtool `--entrypoint /bin/amtool`）
+- [ ] 端到端验证：创建测试 PR → CI 全部通过 → Bot 自动 approve → merge
+
+---
 ## 根因分析
 
 **直接原因**：GitHub 分支保护 `required_approving_review_count: 1` + `enforce_admins: true` + 0 活跃 reviewer + GitHub 禁止 self-approve → 所有 PR 阻塞。
