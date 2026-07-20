@@ -583,11 +583,9 @@ function onResize() {
 onMounted(() => window.addEventListener('resize', onResize))
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
-  // P1-I: 清理 RAF 动画
-  if (rafId) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
+  // P2-04: 清理全部 RAF 动画（解决 3 个动画共享全局 rafId 互相覆盖导致前一个无法 cancel 的问题）
+  activeAnimations.forEach(id => cancelAnimationFrame(id))
+  activeAnimations.length = 0
 })
 
 // ---------------------------------------------------------------------------
@@ -604,8 +602,8 @@ const currentDate = computed(() => {
 // ---------------------------------------------------------------------------
 const loading = ref(true)
 const chartLoading = ref(true)
-/** P1-I: RAF ID，用于组件卸载时清理动画 */
-let rafId = null
+/** P2-04: RAF ID，用于组件卸载时清理动画 */
+const activeAnimations = []
 const checkInLoading = ref(false)
 const checkedInToday = ref(false)
 const statsError = ref(false)
@@ -630,6 +628,8 @@ const animatedDays = ref(0)
 function animateNumber(target, setter, duration = 1200) {
   const start = performance.now()
   const from = 0
+  let id = null
+  // P2-04: 闭包局部变量持有本动画 rafId，每个动画独立；onUnmounted 遍历 activeAnimations 统一 cancel
   function step(now) {
     const elapsed = now - start
     const progress = Math.min(elapsed / duration, 1)
@@ -637,10 +637,11 @@ function animateNumber(target, setter, duration = 1200) {
     const eased = 1 - Math.pow(1 - progress, 3)
     setter(Math.round(from + (target - from) * eased))
     if (progress < 1) {
-      rafId = requestAnimationFrame(step)
+      id = requestAnimationFrame(step)
     }
   }
-  rafId = requestAnimationFrame(step)
+  id = requestAnimationFrame(step)
+  activeAnimations.push(id)
 }
 
 // ---------------------------------------------------------------------------

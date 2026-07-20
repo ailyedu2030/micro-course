@@ -135,7 +135,7 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/classes/**").authenticated()
                         .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers("/api/users/**").authenticated()
-                        // P2-1: Swagger 文档路径（生产禁用见 application-prod.yml springdoc.api-docs.enabled=false）
+                        // P2-06: Swagger 文档路径（生产禁用见 application-prod.yml springdoc.api-docs.enabled=false）
                         // 【course-domain-drift-fix】springdoc-openapi 2.3.0 使用 /v3/api-docs 和 /swagger-ui.html
                         .requestMatchers("/v3/api-docs/**", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**").permitAll()
                         // P0-1: HLS 流式端点 — hls.js 通过 xhrSetup 携带 JWT，需认证
