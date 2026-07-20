@@ -12,7 +12,7 @@
  *   const { playbackRate, changeSpeed, SpeedDropdown } = usePlaybackSpeed(videoRef)
  *   // template 中使用 <SpeedDropdown /> 替代手写 el-dropdown 代码块
  */
-import { ref, shallowRef } from 'vue'
+import { ref } from 'vue'
 
 /** 倍速选项配置 */
 export const SPEED_OPTIONS = [
