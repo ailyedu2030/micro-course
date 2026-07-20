@@ -1,0 +1,45 @@
+name: Auto Approve
+
+# 由 GitHub App (microcourse-pr-bot) 代为 approve owner 自提的 PR
+# 解决 GitHub 平台硬限制：PR 作者无法 approve 自己的 PR
+#
+# 触发: owner (ailyedu2030) 创建/更新 PR 时
+# 流程: CI 全部通过 → Bot 自动 approve → owner 可正常 merge
+#
+# 对应 AGENTS.md Step 5.1 路径 B (分级自审)
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    # 仅处理 owner (ailyedu2030) 自提的 PR
+    if: github.event.pull_request.user.login == 'ailyedu2030'
+    steps:
+      - name: Generate Bot Token
+        id: bot-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Wait for CI to pass
+        uses: lewagon/wait-on-check-action@v1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-regexp: '^(backend|frontend|e2e|docker|monitoring-lint)$'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 15
+          allowed-conclusions: success,skipped
+
+      - name: Approve PR
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+        run: |
+          gh pr review ${{ github.event.pull_request.number }} --approve \
+            --body "✅ CI 通过 — Bot 自动 approve（AGENTS.md 路径 B：owner 自提 PR 分级自审）"
