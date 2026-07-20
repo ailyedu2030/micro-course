@@ -13,7 +13,9 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
 
-permissions: {}
+permissions:
+  checks: read       # 查询 CI 状态
+  pull-requests: read # 读取 PR metadata
 
 jobs:
   auto-approve:
@@ -29,13 +31,51 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
 
       - name: Wait for CI to pass
-        uses: lewagon/wait-on-check-action@v1
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-regexp: '^(backend|frontend|e2e|docker|monitoring-lint)$'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 15
-          allowed-conclusions: success,skipped
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          EXPECTED_CHECKS="backend frontend e2e docker monitoring-lint"
+          MAX_WAIT=600  # 10 minute timeout
+          INTERVAL=15
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            ALL_READY=true
+            for check in $EXPECTED_CHECKS; do
+              CONCLUSION=$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" \
+                --jq ".check_runs[] | select(.name == \"$check\") | .conclusion" 2>/dev/null || echo "null")
+              STATUS=$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" \
+                --jq ".check_runs[] | select(.name == \"$check\") | .status" 2>/dev/null || echo "null")
+
+              if [ "$CONCLUSION" = "null" ] || [ "$CONCLUSION" = "" ]; then
+                echo "[${ELAPSED}s] $check: not started"
+                ALL_READY=false
+              elif [ "$CONCLUSION" = "failure" ] || [ "$CONCLUSION" = "timed_out" ] || [ "$CONCLUSION" = "cancelled" ]; then
+                echo "::error::$check failed with conclusion=$CONCLUSION — aborting auto-approve"
+                exit 1
+              elif [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "skipped" ] || [ "$CONCLUSION" = "neutral" ]; then
+                echo "[${ELAPSED}s] $check: $CONCLUSION ✓"
+              else
+                echo "[${ELAPSED}s] $check: $STATUS (waiting...)"
+                ALL_READY=false
+              fi
+            done
+
+            if $ALL_READY; then
+              echo "==> All CI checks passed after ${ELAPSED}s"
+              break
+            fi
+
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "::error::CI checks did not pass within ${MAX_WAIT}s timeout"
+            exit 1
+          fi
 
       - name: Approve PR
         env:
