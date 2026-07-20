@@ -113,6 +113,7 @@
               :prefix-icon="Lock"
               show-password
               clearable
+              maxlength="32"
             />
           </el-form-item>
         </el-form>
@@ -221,8 +222,10 @@ const handleLogin = async () => {
         router.push(home)
       }
     } catch (e) {
-      // 拦截器已处理 401/500，这里兜底网络错误
-      if (!e.response) {
+      // 拦截器已处理 401/500/423，这里兜底 + 差异化展示
+      if (e.response?.status === 423) {
+        ElMessage.warning('登录失败次数过多，账号已锁定，请 15 分钟后再试')
+      } else if (!e.response) {
         ElMessage.error('网络连接失败，请检查后重试')
       }
     } finally {

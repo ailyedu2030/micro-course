@@ -771,7 +771,7 @@ const formComplete = computed(() => {
     form.value.microSpecialtyName &&
     form.value.leadName &&
     form.value.contactPhone &&
-    /^\+?[1-9]\d{4,14}$/.test(form.value.contactPhone) &&
+    /^1[3-9]\d{9}$/.test(form.value.contactPhone) &&
     form.value.applyDate &&
     courses.value.length > 0 &&
     courses.value.every(c => c.courseName?.trim()) &&

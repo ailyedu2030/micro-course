@@ -33,6 +33,9 @@ public interface CourseAdminService {
     /** P2-11: 批量审核通过 */
     BatchOperationResult batchApprove(java.util.List<Long> ids);
 
+    /** P1C-S17: 带版本号校验的批量审核通过 */
+    BatchOperationResult batchApprove(java.util.List<Long> ids, java.util.Map<Long, Long> idVersionMap);
+
     /** P2-11: 批量审核驳回 */
     BatchOperationResult batchReject(java.util.List<Long> ids, String reason);
 }

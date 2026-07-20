@@ -205,7 +205,8 @@ public class CourseController {
     @AuditedLog("批量课程审核通过")
         @Operation(summary = "批量审核通过 (ADMIN/ACADEMIC)")
     public R<BatchOperationResult> batchApprove(@Valid @RequestBody BatchApproveRequest req) {
-        return R.ok(courseAdminService.batchApprove(req.getIds()));
+        // P1C-S17: 传入版本号映射，后端逐条校验乐观锁版本
+        return R.ok(courseAdminService.batchApprove(req.getIds(), req.getIdVersionMap()));
     }
 
     /**

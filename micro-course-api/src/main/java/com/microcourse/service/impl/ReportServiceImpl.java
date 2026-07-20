@@ -169,6 +169,12 @@ public class ReportServiceImpl implements ReportService {
             // P1C: 通知被举报人——举报已驳回，内容保留
             notifyReportedUser(report, "举报已驳回",
                     "您被举报的内容经审核未发现违规，内容已保留");
+            // P1C-S08: 通知举报人——举报已驳回
+            if (report.getReporterId() != null) {
+                notificationService.notifyAsync(report.getReporterId(), NotificationType.REPORT_DISMISSED,
+                        "举报处理结果", "您提交的举报经审核未发现违规，已驳回",
+                        report.getReportedItemId());
+            }
 
         } else if ("REMOVE".equals(action)) {
             // 通过并删除: 标记已处理, 删除被举报内容
@@ -178,6 +184,12 @@ public class ReportServiceImpl implements ReportService {
             // P1C: 通知被举报人——内容因举报已被删除
             notifyReportedUser(report, "内容已被删除",
                     "您的内容因违反平台规则已被删除");
+            // P1C-S08: 通知举报人——举报已处理
+            if (report.getReporterId() != null) {
+                notificationService.notifyAsync(report.getReporterId(), NotificationType.REPORT_RESOLVED,
+                        "举报处理结果", "您提交的举报已处理，相关内容已被删除",
+                        report.getReportedItemId());
+            }
 
         } else {
             throw new BusinessException(ErrorCode.REPORT_INVALID_ACTION);

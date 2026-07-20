@@ -374,13 +374,13 @@ async function fetchData() {
   const params = {
     page: page.value - 1,
     size: size.value,
-    userId: searchForm.userId ? Number(searchForm.userId) : undefined,
+    userId: searchForm.userId ? (() => { const n = Number(searchForm.userId); return Number.isNaN(n) ? undefined : n })() : undefined,
     username: searchForm.username || undefined,
     module: searchForm.module || undefined,
     action: searchForm.action || undefined,
     startTime: searchForm.startTime || undefined,
     endTime: searchForm.endTime || undefined,
-    targetId: searchForm.targetId ? Number(searchForm.targetId) : undefined
+    targetId: searchForm.targetId ? (() => { const n = Number(searchForm.targetId); return Number.isNaN(n) ? undefined : n })() : undefined
   }
   const cacheKey = `OperationLogs:${JSON.stringify(params)}`
   const cached = swrCache.get(cacheKey)

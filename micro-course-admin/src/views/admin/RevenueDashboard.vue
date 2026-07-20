@@ -113,7 +113,7 @@ async function fetchData() {
     }
   } catch (e) {
     console.warn('[RevenueDashboard] fetch failed', e)
-    ElMessage.error('营收数据加载失败')
+    ElMessage.warning('营收数据加载失败，请稍后重试')
     data.value = {}
   } finally {
     loading.value = false

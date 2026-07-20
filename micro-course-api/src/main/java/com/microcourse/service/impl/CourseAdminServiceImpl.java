@@ -630,6 +630,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     }
 
     @Override
+    public BatchOperationResult batchApprove(List<Long> ids, java.util.Map<Long, Long> idVersionMap) {
+        return auditService.batchApprove(ids, idVersionMap);
+    }
+
+    @Override
     public BatchOperationResult batchReject(List<Long> ids, String reason) {
         return auditService.batchReject(ids, reason);
     }

@@ -61,7 +61,7 @@
 
     <!-- 驳回原因 Dialog -->
     <el-dialog v-model="rejectVisible" title="驳回原因" width="480px">
-      <el-input v-model="rejectReason" type="textarea" :rows="3" placeholder="请填写驳回原因" />
+      <el-input v-model="rejectReason" type="textarea" :rows="3" placeholder="请填写驳回原因" maxlength="500" show-word-limit />
       <template #footer>
         <el-button @click="rejectVisible = false">取消</el-button>
         <el-button type="danger" :loading="actingId !== null" @click="confirmReject">确认驳回</el-button>

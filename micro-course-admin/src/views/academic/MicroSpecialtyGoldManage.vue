@@ -7,7 +7,7 @@
     <el-page-header @back="$router.back()" content="金标管理" class="mg-bottom-16" />
 
     <el-alert
-      :title="`金标位已用 ${goldCount} / 2（上限 2）`"
+      :title="`金标位已用 ${goldCount} / 2（上限 2）${goldCountEstimated ? '（估算）' : ''}`"
       :type="goldCount >= 2 ? 'warning' : 'info'"
       show-icon
       :closable="false"
@@ -79,14 +79,17 @@ const total = ref(0)
 const error = ref(false)
 
 const goldCount = ref(0)
+const goldCountEstimated = ref(false)
 // AC09 修复: 从 totalGoldCount 字段获取全系统金标计数（非当前页）
 // Fallback 到客户端过滤（后端新字段就绪前兼容）
 const updateGoldCount = (data) => {
   if (data && typeof data.totalGoldCount === 'number') {
     goldCount.value = data.totalGoldCount
+    goldCountEstimated.value = false
   } else {
-    // 兼容旧后端：从当前页数据计算
+    // 兼容旧后端：从当前页数据计算（仅当前页计数，不准确）
     goldCount.value = items.value.filter(i => i.isGoldFeatured).length
+    goldCountEstimated.value = true
   }
 }
 
