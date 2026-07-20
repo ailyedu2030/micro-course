@@ -76,6 +76,36 @@ Phase 开发工作流:
 | Step 5 | **创建 PR**（分支命名 + Conventional Commit + Sign-off + Code Review） | 至少 1 人 Approved，禁止 self-approve |
 | Step 6 | 合并与发布（squash merge + CHANGELOG + Feature Flag） | 禁止 merge commit，Breaking Change 必须标注 |
 
+### Step 5.1 · Owner 自提 PR 的处理流程（强约束）
+
+> **触发条件**: PR 作者 = 仓库 owner（`ailyedu2030`）时，必须按本流程图执行。
+> **事故教训**: 2026-07-17 PR #30 走"临时降保护 → self-merge" 路径，违反纪律 5，详见 `docs/incidents/2026-07-17-PR30-merge-violation.md`。
+
+```
+Owner 自提 PR
+    │
+    ├─ 路径 A（推荐）: 联系任意有 write access 的同事网页 Approve
+    │   └─ 1 名同事 Approve → gh pr merge --squash
+    │
+    ├─ 路径 B（次推荐）: Owner 关 PR → 同事用同事账号重开 PR + cherry-pick commits
+    │   └─ 同事 PR 自动获得 Approve 资格 → 走正常流程
+    │
+    └─ 路径 C（最后手段，需用户明确接受合规风险）: 临时降保护 → merge → 恢复
+        ├─ 前置: 用户明确说"单人开发 / solo / 就我自己"
+        ├─ 前置: 必须先在 docs/incidents/YYYY-MM-DD-<title>.md 写事故复盘
+        ├─ 执行: gh api PUT .../protection (enforce_admins=false, required_count=0)
+        ├─ 执行: gh pr merge --squash
+        └─ 强制: gh api PUT .../protection (enforce_admins=true, required_count=1)
+                 （5 分钟内必须恢复，否则视为流程违规）
+```
+
+**AI 强制行为**:
+- ❌ **AI 不能主动推荐路径 C** —— 必须先解释路径 A/B 的合规性
+- ❌ **AI 不能跳过事故复盘就建议降保护** —— 必须先写复盘再操作
+- ❌ **AI 不能在同一周内推荐 2 次路径 C** —— 需要升级到 PR owner 人工处理
+- ✅ **AI 必须把 PR 状态、CI 状态、reviewer 状态透明展示给用户**
+- ✅ **AI 在 PR #N+1 必须主动提示「上次的复盘是否落地了？」**
+
 ---
 
 ## 缺陷分级标准
