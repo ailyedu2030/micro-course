@@ -126,10 +126,8 @@ jobs:
 
       - name: Validate Prometheus alert rules
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/monitoring/prometheus/alerts.yml:/tmp/alerts.yml:ro \
-            prom/promtool \
-            check rules /tmp/alerts.yml
+          curl -sSL https://github.com/prometheus/prometheus/releases/download/v2.54.1/prometheus-2.54.1.linux-amd64.tar.gz | tar xz --strip-components=1 prometheus-2.54.1.linux-amd64/promtool
+          ./promtool check rules monitoring/prometheus/alerts.yml
 
       - name: Validate AlertManager config
         run: |

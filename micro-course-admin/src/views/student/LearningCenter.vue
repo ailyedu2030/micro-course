@@ -628,7 +628,7 @@ const animatedDays = ref(0)
 function animateNumber(target, setter, duration = 1200) {
   const start = performance.now()
   const from = 0
-  let id = null
+  let id
   // P2-04: 闭包局部变量持有本动画 rafId，每个动画独立；onUnmounted 遍历 activeAnimations 统一 cancel
   function step(now) {
     const elapsed = now - start

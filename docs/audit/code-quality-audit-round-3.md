@@ -30,8 +30,9 @@
 | P1-C-08 | MicroSpecialtyEnrollmentController.java:53 | `@RequestBody` 添加 `@Valid` | ✅ |
 | P2-04 | LearningCenter.vue:583-644 | 全局 `rafId` 互相覆盖 → 闭包局部 `id` + `activeAnimations[]` 数组统一清理 | ✅ |
 | P2-06 | OpenApiConfig.java:25 | 加 `@Profile({"dev","test","local"})` 限定非生产环境创建 Bean | ✅ |
+| P2-02 | VideoPlayer.vue:73,110,325 | 倍速选择器重复 3 处 → 抽取 `usePlaybackSpeed.js` composable + `SPEED_OPTIONS` 常量，`v-for` 遍历 | ✅ |
 
-共修复 **10 项实际缺陷** + **6 项误报澄清** + **2 项 P2 改进**。
+共修复 **10 项实际缺陷** + **6 项误报澄清** + **3 项 P2 改进**。
 
 ---
 
