@@ -49,7 +49,7 @@
 - **DELETE 鉴权**: 100% (4/4 endpoint 需 owner 校验)
 
 ### W32-4: 慢查询 0% ✅
-- **V3_1_1 migration** 5 个复合索引:
+- **V311 migration** 5 个复合索引:
   - `idx_courses_teacher_status_deleted` (教师课程列表热路径)
   - `idx_courses_published_recent` (推荐课程, partial index)
   - `idx_users_role_status_deleted` (后台用户管理)

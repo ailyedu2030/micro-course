@@ -1,4 +1,4 @@
--- V3.1.1: 索引优化 (W32 治理 - 慢查询 < 0.1% 目标)
+-- V311: 索引优化 (W32 治理 - 慢查询 < 0.1% 目标)
 --
 -- 【背景】 W31 慢查询分析发现:
 --   1. courses 表 seq_scan 占比 1.06% (idx_scan=1, seq_scan=93)
@@ -60,5 +60,5 @@ BEGIN
         'idx_cc_course_sort_active',
         'idx_cs_chapter_sort_active'
     );
-    RAISE NOTICE 'V3.1.1 索引优化完成, 新增 % 个索引', new_idx_count;
+    RAISE NOTICE 'V311 索引优化完成, 新增 % 个索引', new_idx_count;
 END $$;

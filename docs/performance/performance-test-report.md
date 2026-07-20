@@ -201,7 +201,7 @@
 - 慢查询率: **0%** (W32 加 5 复合索引)
 - 最慢查询: 12ms (`SELECT * FROM slide_ppt_pages WHERE slide_id=?`)
 
-### 7.2 关键索引 (W32 V3.1.1)
+### 7.2 关键索引 (W32 V311)
 ```sql
 CREATE INDEX idx_courses_teacher_status_deleted ON courses(teacher_id, status, deleted_at);
 CREATE INDEX idx_courses_published_recent ON courses(published_at DESC) WHERE deleted_at IS NULL;
