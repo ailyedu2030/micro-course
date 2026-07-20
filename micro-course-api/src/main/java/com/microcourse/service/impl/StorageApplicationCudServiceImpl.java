@@ -3,7 +3,10 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.storage.*;
 import com.microcourse.entity.MicroSpecialtyProposal;
+import com.microcourse.entity.User;
 import com.microcourse.entity.proposal.*;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
 import com.microcourse.service.StorageApplicationCudService;
 import org.apache.ibatis.session.ExecutorType;
@@ -41,6 +44,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
     private final ProposalSignatureRepository signatureRepository;
     private final ProposalSharedUnitRepository sharedUnitRepository;
     private final ChapterTeacherAssignmentRepository assignmentRepository;
+    private final UserRepository userRepository;
     private final SqlSessionFactory sqlSessionFactory;
 
     public StorageApplicationCudServiceImpl(
@@ -51,6 +55,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             ProposalSignatureRepository signatureRepository,
             ProposalSharedUnitRepository sharedUnitRepository,
             ChapterTeacherAssignmentRepository assignmentRepository,
+            UserRepository userRepository,
             SqlSessionFactory sqlSessionFactory) {
         this.courseRepository = courseRepository;
         this.chapterRepository = chapterRepository;
@@ -59,6 +64,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
         this.signatureRepository = signatureRepository;
         this.sharedUnitRepository = sharedUnitRepository;
         this.assignmentRepository = assignmentRepository;
+        this.userRepository = userRepository;
         this.sqlSessionFactory = sqlSessionFactory;
     }
 
@@ -301,13 +307,29 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                                 continue;
                             }
 
+                            // V202 P0-2 修复: 当 teacherId 非 null 时,必须真实存在且 role='TEACHER'
+                            // 防止前端传 memberIndex+1 占位污染数据
+                            Long validTeacherId = null;
+                            if (assignItem.getTeacherId() != null) {
+                                User teacher = userRepository.selectById(assignItem.getTeacherId());
+                                if (teacher == null) {
+                                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                                            "chapterAssignments.teacherId=" + assignItem.getTeacherId() + " 不存在");
+                                }
+                                if (!"TEACHER".equals(teacher.getRole())) {
+                                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                                            "chapterAssignments.teacherId=" + assignItem.getTeacherId() + " 不是教师角色");
+                                }
+                                validTeacherId = assignItem.getTeacherId();
+                            }
+
                             Long newChapterId = mappedCh.getId();
                             Long newCourseId = mappedCh.getCourseId();
                             ChapterTeacherAssignment entity = new ChapterTeacherAssignment();
                             entity.setProposalId(proposalId);
                             entity.setCourseId(newCourseId);
                             entity.setChapterId(newChapterId);
-                            entity.setTeacherId(assignItem.getTeacherId());
+                            entity.setTeacherId(validTeacherId);
                             entity.setSource("TBD");
                             entity.setAcceptStatus("PENDING");
                             batchRepo.insert(entity);

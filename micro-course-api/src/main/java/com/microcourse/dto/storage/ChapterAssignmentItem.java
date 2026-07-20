@@ -18,8 +18,13 @@ public class ChapterAssignmentItem {
     @Min(value = 1, message = "章节ID不能为0")
     private Long chapterId;
 
-    @NotNull(message = "教师ID不能为空")
-    @Min(value = 1, message = "教师ID不能为0")
+    /**
+     * 教师 ID
+     * <p>V202 修复: 允许 null，表示"尚未绑定真实教师"（提案阶段占位条目）。
+     * P0-2 修复: 当 teacherId 非 null 时，必须真实存在于 users 表且 role='TEACHER'，
+     * 否则 StorageApplicationCudServiceImpl 抛 BAD_REQUEST_PARAM。
+     */
+    @Min(value = 1, message = "教师ID必须大于0")
     private Long teacherId;
 
     /** 章节标题 (加载时填充, 便于展示) */
