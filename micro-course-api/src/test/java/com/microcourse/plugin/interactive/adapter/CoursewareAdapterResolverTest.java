@@ -30,7 +30,7 @@ class CoursewareAdapterResolverTest {
         HtmlCoursewareAdapter htmlAdapter = new HtmlCoursewareAdapter(htmlService, queryService);
         LegacyCoursewareAdapter legacyAdapter = new LegacyCoursewareAdapter(slideService,
             mock(com.microcourse.plugin.interactive.mapper.SlidePageMapper.class),
-            null);  // resolver not needed for resolve tests
+            queryService);
         resolver = new CoursewareAdapterResolver(pptAdapter, htmlAdapter, legacyAdapter, queryService);
     }
 

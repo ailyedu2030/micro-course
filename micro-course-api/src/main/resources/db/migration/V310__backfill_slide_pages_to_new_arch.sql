@@ -92,7 +92,7 @@ SELECT
     s.section_id,
     COALESCE(s.slide_id, 1),
     gen_random_uuid()::text,
-    s.html_content,
+    COALESCE(s.html_content, ''),
     REGEXP_REPLACE(
         REGEXP_REPLACE(
             COALESCE(s.html_content, ''),

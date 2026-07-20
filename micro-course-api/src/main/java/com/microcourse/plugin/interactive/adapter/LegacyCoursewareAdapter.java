@@ -5,6 +5,7 @@ import com.microcourse.plugin.interactive.dto.SegmentAudioVO;
 import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
+import com.microcourse.plugin.interactive.service.CoursewareQueryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,15 +27,15 @@ public class LegacyCoursewareAdapter implements CoursewareAdapter {
 
     private final SlideService slideService;
     private final SlidePageMapper slidePageMapper;
-    private final CoursewareAdapterResolver resolver;
+    private final CoursewareQueryService queryService;
 
     @Autowired
     public LegacyCoursewareAdapter(SlideService slideService,
                                     SlidePageMapper slidePageMapper,
-                                    CoursewareAdapterResolver resolver) {
+                                    CoursewareQueryService queryService) {
         this.slideService = slideService;
         this.slidePageMapper = slidePageMapper;
-        this.resolver = resolver;
+        this.queryService = queryService;
     }
 
     @Override
@@ -115,7 +116,7 @@ public class LegacyCoursewareAdapter implements CoursewareAdapter {
 
     @Override
     public AudioStreamInfo resolveAudioToken(String token) {
-        return resolver.delegateResolveAudioToken(token);
+        return queryService.resolveAudioToken(token);
     }
 
     @Override
