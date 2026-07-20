@@ -9,8 +9,27 @@
       </el-breadcrumb>
     </div>
 
+    <!-- W36 新版灰度开关 (spec 9.3) -->
+    <div class="v2-toggle-bar">
+      <el-switch
+        v-model="coursewareV2"
+        active-text="新版课件 (四面板)"
+        inactive-text="旧版"
+        @change="setCoursewareV2"
+      />
+      <span class="v2-hint">默认旧版; 开启新版可体验 PPT/HTML 双类型 + 四面板 + 状态聚合视图</span>
+    </div>
+
+    <!-- 新版工作台 (W36 入口) -->
+    <CoursewareWorkbench
+      v-if="coursewareV2 && sectionId"
+      :course-id="courseId"
+      :chapter-id="chapterId"
+      :section-id="sectionId"
+    />
+
     <!-- Page Header -->
-    <header class="manage-header">
+    <header class="manage-header" v-if="!coursewareV2">
       <div class="header-info">
         <h1 class="page-title">幻灯片管理</h1>
         <div v-if="courseTitle || chapterTitle" class="context-tags">
@@ -294,8 +313,12 @@ import { useUserStore } from '@/store/user'
 import { UploadFilled, MagicStick, Headset, View, Close, WarningFilled, Refresh, Delete, Download, MoreFilled, Select, Edit } from '@element-plus/icons-vue'
 import { uploadSlide, getSlides, getSlidePages, getSlidePage, generateNarration, updateNarration, generateAllNarrations, generateAudio, generateAllAudio, deleteSlide, deleteSlidePage, reorderSlidePages, downloadOriginalSlide } from '@/plugins/interactive/api/slide'
 import SlidePreview from '@/plugins/interactive/components/SlidePreview.vue'
+import CoursewareWorkbench from '@/plugins/interactive/components/CoursewareWorkbench.vue'
+import { useFeatureFlag } from '@/plugins/interactive/composables/useFeatureFlag'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import Sortable from 'sortablejs'
+
+const { coursewareV2, setCoursewareV2 } = useFeatureFlag()
 
 const route = useRoute()
 const userStore = useUserStore()

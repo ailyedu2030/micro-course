@@ -1,10 +1,16 @@
 package com.microcourse.plugin.interactive.dto;
 
+import com.microcourse.plugin.interactive.dto.HtmlSegmentAudioDTO;
+import com.microcourse.plugin.interactive.dto.PptAudioDTO;
+
 public class SegmentAudioVO {
 
     private Integer pageNumber;
     private String url;
     private Integer duration;
+    private String status;
+    private String voiceUsed;
+    private Long scriptId;
 
     public SegmentAudioVO() {}
 
@@ -14,27 +20,41 @@ public class SegmentAudioVO {
         this.duration = duration;
     }
 
-    public Integer getPageNumber() {
-        return pageNumber;
+    public static SegmentAudioVO fromPpt(PptAudioDTO d) {
+        SegmentAudioVO vo = new SegmentAudioVO();
+        vo.setUrl(d.getAudioUrl());
+        vo.setDuration(d.getAudioDurationMs());
+        vo.setStatus(d.getStatus());
+        vo.setVoiceUsed(d.getVoiceUsed());
+        vo.setScriptId(d.getScriptId());
+        return vo;
     }
 
-    public void setPageNumber(Integer pageNumber) {
-        this.pageNumber = pageNumber;
+    public static SegmentAudioVO fromHtml(HtmlSegmentAudioDTO d) {
+        SegmentAudioVO vo = new SegmentAudioVO();
+        vo.setUrl(d.getAudioUrl());
+        vo.setDuration(d.getAudioDurationMs());
+        vo.setStatus(d.getStatus());
+        vo.setVoiceUsed(d.getVoiceUsed());
+        vo.setScriptId(d.getSegmentScriptId());
+        return vo;
     }
 
-    public String getUrl() {
-        return url;
-    }
+    public Integer getPageNumber() { return pageNumber; }
+    public void setPageNumber(Integer pageNumber) { this.pageNumber = pageNumber; }
 
-    public void setUrl(String url) {
-        this.url = url;
-    }
+    public String getUrl() { return url; }
+    public void setUrl(String url) { this.url = url; }
 
-    public Integer getDuration() {
-        return duration;
-    }
+    public Integer getDuration() { return duration; }
+    public void setDuration(Integer duration) { this.duration = duration; }
 
-    public void setDuration(Integer duration) {
-        this.duration = duration;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public String getVoiceUsed() { return voiceUsed; }
+    public void setVoiceUsed(String voiceUsed) { this.voiceUsed = voiceUsed; }
+
+    public Long getScriptId() { return scriptId; }
+    public void setScriptId(Long scriptId) { this.scriptId = scriptId; }
 }
