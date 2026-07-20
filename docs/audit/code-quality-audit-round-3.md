@@ -28,8 +28,10 @@
 | P1-C-05 | ExerciseTake.vue:969 | `throw e` → `ElMessage.error()` + 区分 cancel/close | ✅ |
 | P1-C-07 | HermesWebhookController.java:401,764 | `e.getMessage()` 移除，改为通用错误消息 | ✅ |
 | P1-C-08 | MicroSpecialtyEnrollmentController.java:53 | `@RequestBody` 添加 `@Valid` | ✅ |
+| P2-04 | LearningCenter.vue:583-644 | 全局 `rafId` 互相覆盖 → 闭包局部 `id` + `activeAnimations[]` 数组统一清理 | ✅ |
+| P2-06 | OpenApiConfig.java:25 | 加 `@Profile({"dev","test","local"})` 限定非生产环境创建 Bean | ✅ |
 
-共修复 **10 项实际缺陷** + **6 项误报澄清**。
+共修复 **10 项实际缺陷** + **6 项误报澄清** + **2 项 P2 改进**。
 
 ---
 
