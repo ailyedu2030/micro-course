@@ -1,0 +1,129 @@
+global:
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alerts@micro-course.com'
+  smtp_auth_username: 'alerts@micro-course.com'
+  smtp_auth_password: '<SECRET_FROM_VAULT>'
+  smtp_require_tls: true
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+route:
+  group_by: ['alertname', 'severity', 'priority']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default-receiver'
+  routes:
+    - match:
+        priority: P0
+      receiver: 'p0-oncall'
+      group_wait: 10s
+      repeat_interval: 30m
+      continue: false
+
+    - match:
+        priority: P1
+      receiver: 'p1-oncall'
+      group_wait: 1m
+      repeat_interval: 4h
+      continue: false
+
+    - match:
+        priority: P2
+      receiver: 'p2-summary'
+      group_wait: 5m
+      repeat_interval: 24h
+      continue: false
+
+    - match:
+        priority: P3
+      receiver: 'p3-weekly'
+      group_wait: 30m
+      repeat_interval: 168h
+      continue: false
+
+receivers:
+  - name: 'default-receiver'
+    slack_configs:
+      - channel: '#monitoring'
+        send_resolved: true
+        title: '微课平台告警'
+        text: '{{ .CommonAnnotations.summary }}'
+        api_url: 'https://hooks.slack.com/services/<SLACK_WEBHOOK>'
+
+  - name: 'p0-oncall'
+    slack_configs:
+      - channel: '#incident'
+        send_resolved: true
+        title: '🚨 [P0] 严重告警'
+        text: |
+          {{ range .Alerts }}{{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Priority: {{ .Labels.priority }}
+          {{ end }}
+        api_url: 'https://hooks.slack.com/services/<SLACK_INCIDENT_WEBHOOK>'
+
+    email_configs:
+      - to: 'total-engineer@micro-course.com'
+        send_resolved: true
+        headers:
+          Subject: '🚨 [P0] 微课平台严重告警'
+        html: |
+          <h2>严重告警 - 立即响应</h2>
+          {{ range .Alerts }}
+          <p><strong>{{ .Labels.alertname }}</strong> ({{ .Labels.priority }})</p>
+          <p>{{ .Annotations.description }}</p>
+          <p><a href="http://prometheus:9090/alerts">查看 Prometheus</a></p>
+          {{ end }}
+
+    pagerduty_configs:
+      - service_key: '<PAGERDUTY_SERVICE_KEY>'
+        send_resolved: true
+        description: '{{ .CommonAnnotations.summary }}'
+
+  - name: 'p1-oncall'
+    slack_configs:
+      - channel: '#alerts'
+        send_resolved: true
+        title: '⚠️ [P1] 警告'
+        api_url: 'https://hooks.slack.com/services/<SLACK_ALERTS_WEBHOOK>'
+    email_configs:
+      - to: 'oncall@micro-course.com'
+        send_resolved: true
+        headers:
+          Subject: '[P1] 微课平台警告'
+
+  - name: 'p2-summary'
+    slack_configs:
+      - channel: '#monitoring'
+        title: '📊 [P2] 每日告警汇总'
+        api_url: 'https://hooks.slack.com/services/<SLACK_WEBHOOK>'
+    email_configs:
+      - to: 'dev-team@micro-course.com'
+        headers:
+          Subject: '[P2] 每日告警汇总'
+        send_resolved: false
+
+  - name: 'p3-weekly'
+    email_configs:
+      - to: 'tech-lead@micro-course.com'
+        headers:
+          Subject: '[P3] 周度告警报告'
+        send_resolved: false
+    webhook_configs:
+      - url: 'http://hooks.micro-course.com/webhook/alert'
+        send_resolved: true
+
+inhibit_rules:
+  - source_match:
+      alertname: 'ApiDown'
+    target_match:
+      severity: 'warning'
+    equal: ['job']
+
+  - source_match:
+      alertname: 'HikariPoolExhausted'
+    target_match:
+      alertname: 'PostgresActiveConnectionsHigh'
+    equal: ['job']

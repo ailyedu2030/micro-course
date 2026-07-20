@@ -9,6 +9,7 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 /**
  * OpenAPI 3.0 自动生成配置
@@ -21,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
  *
  * <p>本配置启用 JWT Bearer 认证, 课程管理域 85 端点通过 Controller @Operation/@Parameter 注解自动生成。</p>
  */
+@Profile({"dev", "test", "local"})
 @Configuration
 public class OpenApiConfig {
 

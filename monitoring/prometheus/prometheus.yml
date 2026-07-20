@@ -3,6 +3,14 @@ global:
   evaluation_interval: 15s
   scrape_timeout: 10s
 
+# W35 治理: AlertManager 集成 (告警转发)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+      timeout: 10s
+      path_prefix: /
+
 rule_files:
   - "/etc/prometheus/alerts.yml"
 
