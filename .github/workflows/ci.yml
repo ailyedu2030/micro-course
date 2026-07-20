@@ -128,8 +128,9 @@ jobs:
         run: |
           docker run --rm \
             -v ${{ github.workspace }}/monitoring/prometheus/alerts.yml:/tmp/alerts.yml:ro \
-            prom/prometheus:v2.54.0 \
-            promtool check rules /tmp/alerts.yml
+            --entrypoint /bin/promtool \
+            prom/prometheus:v2.55.0 \
+            check rules /tmp/alerts.yml
 
       - name: Validate AlertManager config
         run: |
