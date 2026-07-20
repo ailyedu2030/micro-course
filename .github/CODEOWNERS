@@ -1,11 +1,44 @@
-# Default owner for all files
-*       @ailyedu2030
+# Code Owners · W31 治理 (双人审核机制)
+#
+# 规则:
+#   1. 任何 PR 修改匹配此文件的行, 必须有指定 owner 的 review/approval
+#   2. 总工程师 (项目唯一全权负责人) 是所有文件的 fallback owner
+#   3. 至少 2 个 owner (总工程师 + 1 模块 owner) approve 才能 merge
+#   4. 自我 approve 禁止 (即使总工程师也无法 approve 自己的 PR)
 
-# Backend
-/micro-course-api/ @ailyedu2030
+# 默认: 总工程师拥有所有文件
+* @total-engineer
 
-# Frontend
-/micro-course-admin/ @ailyedu2030
+# 课件核心模块 (Courseware)
+micro-course-api/src/main/java/com/microcourse/plugin/interactive/** @total-engineer @courseware-architect
+micro-course-api/src/main/java/com/microcourse/service/CoursewareDeleteService.java @total-engineer @courseware-architect
+micro-course-api/src/main/java/com/microcourse/service/impl/CoursewareDeleteServiceImpl.java @total-engineer @courseware-architect
+micro-course-api/src/main/java/com/microcourse/controller/CoursewareDeleteController.java @total-engineer @courseware-architect
+micro-course-api/src/test/java/com/microcourse/service/CoursewareDeleteServiceTest.java @total-engineer @courseware-architect
 
-# CI/CD
-/.github/workflows/ @ailyedu2030
+# 数据库 schema (高风险)
+micro-course-api/src/main/resources/db/migration/ @total-engineer @dba
+
+# 安全/鉴权/IDOR
+micro-course-api/src/main/java/com/microcourse/security/** @total-engineer @security-officer
+micro-course-api/src/main/java/com/microcourse/util/SecurityUtil.java @total-engineer @security-officer
+micro-course-api/src/main/java/com/microcourse/exception/ @total-engineer @security-officer
+
+# 前端核心组件
+micro-course-admin/src/components/CoursewareWorkbench.vue @total-engineer @frontend-lead
+micro-course-admin/src/components/HtmlBlockEditor.vue @total-engineer @frontend-lead @security-officer
+
+# 监控/性能
+monitoring/ @total-engineer @sre
+docs/performance/ @total-engineer @sre
+
+# 生产配置 (禁止单人修改)
+docker-compose.yml @total-engineer @sre
+micro-course-api/src/main/resources/application.yml @total-engineer @sre
+
+# 文档
+docs/architecture/ @total-engineer @courseware-architect
+docs/governance/ @total-engineer
+docs/weekly/ @total-engineer
+docs/superpowers/ @total-engineer
+docs/cx/ @total-engineer @frontend-lead

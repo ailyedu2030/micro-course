@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 279 | Vue 视图数: 60 | Controller 数: 71 | API 文件数: 45
+> 实体数: 279 | Vue 视图数: 60 | Controller 数: 72 | API 文件数: 45
 
 ---
 
@@ -842,6 +842,8 @@
 | CourseStudent | /api/courses | 2 | - |
 
 | CourseVideo | /api/courses/{courseId}/videos | 7 | - |
+
+| CoursewareDelete | /api/courses/{courseId}/courseware | 6 | - |
 
 | Dashboard | /api/dashboard | 4 | - |
 

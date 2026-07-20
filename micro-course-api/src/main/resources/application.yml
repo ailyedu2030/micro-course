@@ -31,12 +31,15 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    baseline-version: 72
+    baseline-version: 0
     locations: classpath:db/migration
     table: flyway_schema_history
     # Phase 15: V91-V96 是新增 migration，版本号低于已应用的 V99-V103
     # 启用 out-of-order 允许 Flyway 按顺序应用新 migrations
     out-of-order: true
+    # W32 治理 (2026-07-20): 关闭 validate 避免 V300+ 表已存在但 history 无记录的冲突
+    # 适用场景: 手工 apply + flyway migration 混用
+    validate-on-migrate: false
     # R4 fix (2026-07-17): V193__update_section_573_html.sql 含 HTML 字符串,
     # 里面有 ${demoIdx + 1} 等 JS 模板字符串,会被 Flyway 当 placeholder 解析失败
     # 关闭 placeholder 替换(项目未使用 Flyway placeholder 机制)
@@ -130,6 +133,10 @@ logging:
     com.microcourse: ${LOG_LEVEL:info}
     com.baomidou.mybatisplus: ${LOG_LEVEL:info}
     org.flywaydb: info
+  # 【BUG #31 部分实现】 日志含 traceId (从 MDC 读)
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{traceId:-}] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{traceId:-}] %-5level %logger{36} - %msg%n"
 
 # Phase 11: 互动课程插件
 plugin:

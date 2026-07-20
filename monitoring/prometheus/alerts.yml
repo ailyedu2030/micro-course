@@ -1,0 +1,221 @@
+groups:
+  - name: micro-course-api.alerts
+    interval: 30s
+    rules:
+      # ═══════════════════════════════════════════════════════════════
+      # P0 严重告警 (1h 响应 4h 修复)
+      # ═══════════════════════════════════════════════════════════════
+
+      # P0-1: 服务不可用
+      - alert: ApiDown
+        expr: up{job="micro-course-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          tier: backend
+          priority: P0
+        annotations:
+          summary: "[P0] 微课 API 实例不可达 (2 分钟)"
+          description: "micro-course-api 已 down 超过 2 分钟, 立即排查. traceId: 查看 logs."
+
+      # P0-2: API 5xx 错误率 > 1%
+      - alert: Api5xxRateCritical
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="micro-course-api", status=~"5.."}[5m]))
+          / sum(rate(http_server_requests_seconds_count{job="micro-course-api"}[5m])) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          tier: backend
+          priority: P0
+        annotations:
+          summary: "[P0] API 5xx 错误率 > 1% ({{ $labels.uri }})"
+          description: "5xx 错误率 {{ $value | humanizePercentage }} 超过 1% P0 阈值."
+
+      # P0-3: JVM OOM
+      - alert: JvmOutOfMemory
+        expr: sum by (job) (jvm_memory_used_bytes{job="micro-course-api", area="heap"}) > sum by (job) (jvm_memory_max_bytes{job="micro-course-api", area="heap"}) * 0.98
+        for: 1m
+        labels:
+          severity: critical
+          tier: backend
+          priority: P0
+        annotations:
+          summary: "[P0] JVM 堆内存使用 > 98%"
+          description: "堆内存 {{ $value | humanize }} 已接近最大值, 即将 OOM."
+
+      # P0-4: HikariCP 池耗尽
+      - alert: HikariPoolExhausted
+        expr: hikaricp_connections_active{job="micro-course-api"} >= hikaricp_connections_max{job="micro-course-api"}
+        for: 30s
+        labels:
+          severity: critical
+          tier: backend
+          priority: P0
+        annotations:
+          summary: "[P0] HikariCP 连接池 100% 耗尽"
+          description: "活动连接数 {{ $value }} 已达最大值, 业务请求将阻塞."
+
+      # P0-5: Redis 不可用
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: cache
+          priority: P0
+        annotations:
+          summary: "[P0] Redis 不可达"
+          description: "Redis 实例 down, 鉴权/token 黑名单/缓存均不可用."
+
+      # P0-6: 线程死锁
+      - alert: ThreadDeadlock
+        expr: jvm_threads_deadlocked{job="micro-course-api"} > 0
+        for: 30s
+        labels:
+          severity: critical
+          tier: backend
+          priority: P0
+        annotations:
+          summary: "[P0] JVM 检测到 {{ $value }} 个线程死锁"
+          description: "立即 dump thread + 排查死锁链路."
+
+      # ═══════════════════════════════════════════════════════════════
+      # P1 警告 (2h 响应 24h 修复)
+      # ═══════════════════════════════════════════════════════════════
+
+      # P1-1: p99 响应时间 > 200ms
+      - alert: ApiP99TooSlow
+        expr: histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job="micro-course-api"}[5m])) by (le, uri)) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          tier: backend
+          priority: P1
+        annotations:
+          summary: "[P1] API p99 > 200ms ({{ $labels.uri }})"
+          description: "{{ $labels.uri }} 接口 p99 响应时间 {{ $value }}s, 已超过 200ms 目标 5 分钟."
+
+      # P1-2: 5xx 错误率 > 0.1%
+      - alert: Api5xxRateHigh
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="micro-course-api", status=~"5.."}[5m]))
+          / sum(rate(http_server_requests_seconds_count{job="micro-course-api"}[5m])) > 0.001
+        for: 5m
+        labels:
+          severity: warning
+          tier: backend
+          priority: P1
+        annotations:
+          summary: "[P1] API 5xx 错误率 > 0.1%"
+          description: "5xx 错误率 {{ $value | humanizePercentage }} 超过 0.1% 目标."
+
+      # P1-3: HikariCP 池使用率 > 80%
+      - alert: HikariPoolHighUsage
+        expr: hikaricp_connections_active{job="micro-course-api"} >= hikaricp_connections_max{job="micro-course-api"} * 0.8
+        for: 5m
+        labels:
+          severity: warning
+          tier: backend
+          priority: P1
+        annotations:
+          summary: "[P1] HikariCP 连接池使用率 ≥ 80%"
+          description: "活动连接 {{ $value }} / 最大 {{ $labels.max }}."
+
+      # P1-4: PG 活动连接 > 50
+      - alert: PostgresActiveConnectionsHigh
+        expr: pg_stat_activity_count{state="active"} > 50
+        for: 5m
+        labels:
+          severity: warning
+          tier: database
+          priority: P1
+        annotations:
+          summary: "[P1] PostgreSQL 活动连接 > 50"
+          description: "当前活动连接数 {{ $value }}, 可能存在慢查询."
+
+      # P1-5: 4xx 错误率异常飙升 (非 401)
+      - alert: Api4xxRateHigh
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="micro-course-api", status=~"4(0[2-9]|[1-5])"}[5m]))
+          / sum(rate(http_server_requests_seconds_count{job="micro-course-api"}[5m])) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          tier: backend
+          priority: P1
+        annotations:
+          summary: "[P1] API 4xx (非 401) 错误率 > 10%"
+          description: "4xx 错误率 {{ $value | humanizePercentage }} (排除 401), 可能 IDOR 防御误伤."
+
+      # P1-6: 鉴权失败率 > 10% (token 黑名单异常)
+      - alert: AuthFailureRateHigh
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="micro-course-api", status="401"}[5m]))
+          / sum(rate(http_server_requests_seconds_count{job="micro-course-api"}[5m])) > 0.10
+        for: 10m
+        labels:
+          severity: warning
+          tier: backend
+          priority: P1
+        annotations:
+          summary: "[P1] 401 鉴权失败率 > 10% (持续 10min)"
+          description: "鉴权失败率 {{ $value | humanizePercentage }}, 可能 token 黑名单异常."
+
+      # ═══════════════════════════════════════════════════════════════
+      # P2 一般警告 (7 天内修复)
+      # ═══════════════════════════════════════════════════════════════
+
+      # P2-1: Redis 内存使用率 > 80%
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8 and redis_memory_max_bytes > 0
+        for: 5m
+        labels:
+          severity: warning
+          tier: cache
+          priority: P2
+        annotations:
+          summary: "[P2] Redis 内存使用率 > 80%"
+          description: "内存使用 {{ $value | humanizePercentage }}."
+
+      # P2-2: p95 响应时间 > 100ms
+      - alert: ApiP95Elevated
+        expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job="micro-course-api"}[10m])) by (le, uri)) > 0.1
+        for: 10m
+        labels:
+          severity: info
+          tier: backend
+          priority: P2
+        annotations:
+          summary: "[P2] API p95 > 100ms ({{ $labels.uri }})"
+          description: "{{ $labels.uri }} p95 {{ $value }}s, 长期偏高需要优化."
+
+      # P2-3: 4xx 错误率 > 1%
+      - alert: Api4xxRateElevated
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="micro-course-api", status=~"4.."}[5m]))
+          / sum(rate(http_server_requests_seconds_count{job="micro-course-api"}[5m])) > 0.01
+        for: 10m
+        labels:
+          severity: info
+          tier: backend
+          priority: P2
+        annotations:
+          summary: "[P2] API 4xx 错误率 > 1%"
+          description: "4xx 错误率 {{ $value | humanizePercentage }} 长期偏高."
+
+      # ═══════════════════════════════════════════════════════════════
+      # P3 信息告警 (30 天内优化)
+      # ═══════════════════════════════════════════════════════════════
+
+      # P3-1: GC 暂停时间 > 1s
+      - alert: GcPauseTooLong
+        expr: rate(jvm_gc_pause_seconds_sum{job="micro-course-api"}[5m]) > 1
+        for: 30m
+        labels:
+          severity: info
+          tier: backend
+          priority: P3
+        annotations:
+          summary: "[P3] JVM GC 暂停 > 1s (平均 5min)"
+          description: "平均 GC 暂停 {{ $value }}s, 长期需要调优堆/GC 参数."

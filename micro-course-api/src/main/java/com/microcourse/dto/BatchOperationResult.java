@@ -17,6 +17,27 @@ public class BatchOperationResult {
         this.successIds = new ArrayList<>();
     }
 
+    /**
+     * 全字段构造 (CoursewareDeleteService 2026-07-20 新增).
+     * @param total      总请求数
+     * @param success    成功数
+     * @param successIds 成功 ID 列表
+     * @param failures   失败原因列表
+     */
+    public BatchOperationResult(int total, int success, List<Long> successIds, List<String> failures) {
+        this.successCount = success;
+        this.failCount = failures == null ? 0 : failures.size();
+        this.successIds = successIds == null ? new ArrayList<>() : new ArrayList<>(successIds);
+        this.failures = new ArrayList<>();
+        if (failures != null) {
+            // 把字符串 reason 包装成 BatchItemResult (id=null)
+            for (int i = 0; i < failures.size(); i++) {
+                this.failures.add(new BatchItemResult(null, failures.get(i)));
+            }
+        }
+        // total 不存储到字段 (success+fail 即为 total), 仅供日志用
+    }
+
     public void addSuccess(Long id) {
         this.successCount++;
         this.successIds.add(id);
