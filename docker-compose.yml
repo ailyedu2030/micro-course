@@ -3,6 +3,16 @@ name: micro-course
 services:
   postgres:
     image: postgres:17-alpine
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+      - "-c"
+      - "pg_stat_statements.max=10000"
+      - "-c"
+      - "pg_stat_statements.track=top"
+      - "-c"
+      - "pg_stat_statements.save=on"
     environment:
       POSTGRES_DB: micro_course
       POSTGRES_USER: ${DB_USERNAME}

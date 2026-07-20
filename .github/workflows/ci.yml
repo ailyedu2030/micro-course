@@ -117,3 +117,23 @@ jobs:
 
       - name: Build Docker
         run: docker compose build
+
+  # W35 治理: Prometheus 告警规则 + AlertManager 配置语法验证
+  monitoring-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Prometheus alert rules
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/monitoring/prometheus/alerts.yml:/tmp/alerts.yml:ro \
+            prom/prometheus:v2.54.0 \
+            promtool check rules /tmp/alerts.yml
+
+      - name: Validate AlertManager config
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/monitoring/alertmanager/alertmanager.yml:/tmp/alertmanager.yml:ro \
+            prom/alertmanager:v0.27.0 \
+            amtool check-config /tmp/alertmanager.yml
