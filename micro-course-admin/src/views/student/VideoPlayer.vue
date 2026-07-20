@@ -70,12 +70,8 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item :command="0.5" :class="{ active: playbackRate === 0.5 }">0.5x</el-dropdown-item>
-                <el-dropdown-item :command="0.75" :class="{ active: playbackRate === 0.75 }">0.75x</el-dropdown-item>
-                <el-dropdown-item :command="1" :class="{ active: playbackRate === 1 }">1x</el-dropdown-item>
-                <el-dropdown-item :command="1.25" :class="{ active: playbackRate === 1.25 }">1.25x</el-dropdown-item>
-                <el-dropdown-item :command="1.5" :class="{ active: playbackRate === 1.5 }">1.5x</el-dropdown-item>
-                <el-dropdown-item :command="2" :class="{ active: playbackRate === 2 }">2x</el-dropdown-item>
+                <!-- P2-02: 使用统一 SPEED_OPTIONS，替换 3 处硬编码 -->
+                <el-dropdown-item v-for="opt in SPEED_OPTIONS" :key="opt.value" :command="opt.value" :class="{ active: playbackRate === opt.value }">{{ opt.label }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -111,12 +107,7 @@
             <span class="speed-btn">{{ playbackRate }}x</span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item :command="0.5" :class="{ active: playbackRate === 0.5 }">0.5x</el-dropdown-item>
-                <el-dropdown-item :command="0.75" :class="{ active: playbackRate === 0.75 }">0.75x</el-dropdown-item>
-                <el-dropdown-item :command="1" :class="{ active: playbackRate === 1 }">1x</el-dropdown-item>
-                <el-dropdown-item :command="1.25" :class="{ active: playbackRate === 1.25 }">1.25x</el-dropdown-item>
-                <el-dropdown-item :command="1.5" :class="{ active: playbackRate === 1.5 }">1.5x</el-dropdown-item>
-                <el-dropdown-item :command="2" :class="{ active: playbackRate === 2 }">2x</el-dropdown-item>
+                <el-dropdown-item v-for="opt in SPEED_OPTIONS" :key="opt.value" :command="opt.value" :class="{ active: playbackRate === opt.value }">{{ opt.label }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -331,12 +322,7 @@
                     </button>
                     <template #dropdown>
                       <el-dropdown-menu>
-                        <el-dropdown-item :command="0.5" :class="{ active: playbackRate === 0.5 }">0.5x</el-dropdown-item>
-                        <el-dropdown-item :command="0.75" :class="{ active: playbackRate === 0.75 }">0.75x</el-dropdown-item>
-                        <el-dropdown-item :command="1" :class="{ active: playbackRate === 1 }">1x</el-dropdown-item>
-                        <el-dropdown-item :command="1.25" :class="{ active: playbackRate === 1.25 }">1.25x</el-dropdown-item>
-                        <el-dropdown-item :command="1.5" :class="{ active: playbackRate === 1.5 }">1.5x</el-dropdown-item>
-                        <el-dropdown-item :command="2" :class="{ active: playbackRate === 2 }">2x</el-dropdown-item>
+                        <el-dropdown-item v-for="opt in SPEED_OPTIONS" :key="opt.value" :command="opt.value" :class="{ active: playbackRate === opt.value }">{{ opt.label }}</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -587,6 +573,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Hls from 'hls.js'
 import { getVideoById } from '@/api/video'
+// P2-02: 统一倍速选项配置，替换 3 处硬编码
+import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { getToken } from '@/utils/auth'
 import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
