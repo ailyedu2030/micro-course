@@ -10,7 +10,6 @@
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| v1.22.1 | 2026-07-19 | **P1-C 修复**: `uploadHtmlFile` 改为非破坏性 UPSERT (保留 audio 元数据) + `validateAudioToken` 增加 sectionId 级 fallback. 解决 27 节单页 HTML_DIRECT 课件 audio token 全部 403 + segmentAudios 丢失问题. **无 DB schema 变更,仅应用层回滚即可**. (commit `ba46d027`) |
 | v1.22.0 | 2026-07-17 | 全链路审计修复：套餐购买/退款/展示 + 5 处后端状态过滤 + 6 处前端状态过滤（**无 DB schema 变更**，仅应用层回滚即可） |
 | v1.21.1 | 2026-07-09 | 每教师独立 API Key（Hermes webhook 改造） |
 | v1.21.0 | 2026-07-09 | Docker 部署适配（Hermes 共享 API Key） |

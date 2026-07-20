@@ -36,6 +36,10 @@ public class SectionServiceImpl implements SectionService {
 
     @Override
     public PageResult<SectionDTO> listByChapter(Long chapterId, int page, int size) {
+        // P0-3 修复: 读取路径 ownership 校验,防止教师 A 越权枚举教师 B 课程结构
+        CourseChapter chapter = chapterRepo.selectById(chapterId);
+        if (chapter == null) throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
+        assertOwner(chapter.getCourseId());
         List<CourseSection> sections = sectionRepo.selectList(
             new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
                 .eq(CourseSection::getChapterId, chapterId)
@@ -51,7 +55,10 @@ public class SectionServiceImpl implements SectionService {
 
     @Override
     public SectionDTO getById(Long id) {
-        return toDTO(findOrThrow(id));
+        // P0-3 修复: 读取路径 ownership 校验,防止教师 A 越权读教师 B 课程细节
+        CourseSection section = findOrThrow(id);
+        assertOwner(section.getCourseId());
+        return toDTO(section);
     }
 
     @Override
