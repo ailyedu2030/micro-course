@@ -76,35 +76,37 @@ Phase 开发工作流:
 | Step 5 | **创建 PR**（分支命名 + Conventional Commit + Sign-off + Code Review） | 至少 1 人 Approved，禁止 self-approve |
 | Step 6 | 合并与发布（squash merge + CHANGELOG + Feature Flag） | 禁止 merge commit，Breaking Change 必须标注 |
 
-### Step 5.1 · Owner 自提 PR 的处理流程（强约束）
+### Step 5.1 · Owner 自提 PR 的处理流程
 
-> **触发条件**: PR 作者 = 仓库 owner（`ailyedu2030`）时，必须按本流程图执行。
-> **事故教训**: 2026-07-17 PR #30 走"临时降保护 → self-merge" 路径，违反纪律 5，详见 `docs/incidents/2026-07-17-PR30-merge-violation.md`。
+> **触发条件**: PR 作者 = 仓库 owner（`ailyedu2030`）时，使用 GitHub App `microcourse-pr-bot` 自动审批。
+> **2026-07-21 更新**: auto-approve workflow 已部署至 main。Bot 在 CI 5/5 通过后自动 approve，留下审计轨迹。
+> **分支保护**: `required_approving_review_count: 0`（Bot 的 approve 不计入 GitHub 计数），`required_status_checks: [backend, frontend, e2e, docker, monitoring-lint]`
 
 ```
 Owner 自提 PR
     │
-    ├─ 路径 A（推荐）: 联系任意有 write access 的同事网页 Approve
-    │   └─ 1 名同事 Approve → gh pr merge --squash
+    ├─ CI 5/5 全部通过
+    │   │
+    │   ├─ auto-approve workflow: microcourse-pr-bot 自动 --approve（审计轨迹）
+    │   │
+    │   └─ gh pr merge --squash（无需路径 C，直接合并）
     │
-    ├─ 路径 B（次推荐）: Owner 关 PR → 同事用同事账号重开 PR + cherry-pick commits
-    │   └─ 同事 PR 自动获得 Approve 资格 → 走正常流程
-    │
-    └─ 路径 C（最后手段，需用户明确接受合规风险）: 临时降保护 → merge → 恢复
-        ├─ 前置: 用户明确说"单人开发 / solo / 就我自己"
-        ├─ 前置: 必须先在 docs/incidents/YYYY-MM-DD-<title>.md 写事故复盘
-        ├─ 执行: gh api PUT .../protection (enforce_admins=false, required_count=0)
-        ├─ 执行: gh pr merge --squash
-        └─ 强制: gh api PUT .../protection (enforce_admins=true, required_count=1)
-                 （5 分钟内必须恢复，否则视为流程违规）
+    └─ CI 失败
+        └─ 修复后重新 push → 重新触发 CI + auto-approve
 ```
 
 **AI 强制行为**:
-- ❌ **AI 不能主动推荐路径 C** —— 必须先解释路径 A/B 的合规性
-- ❌ **AI 不能跳过事故复盘就建议降保护** —— 必须先写复盘再操作
-- ❌ **AI 不能在同一周内推荐 2 次路径 C** —— 需要升级到 PR owner 人工处理
-- ✅ **AI 必须把 PR 状态、CI 状态、reviewer 状态透明展示给用户**
-- ✅ **AI 在 PR #N+1 必须主动提示「上次的复盘是否落地了？」**
+- ✅ **AI 必须在 PR 创建后等待 CI 5/5 通过**
+- ✅ **AI 必须在 CI 通过后验证 Bot 已 approve，然后执行 squash merge**
+- ✅ **AI 必须把 PR 状态、CI 状态、Bot 审批状态透明展示给用户**
+- ❌ **AI 禁止在 CI 未通过时合并 PR**
+- ❌ **AI 禁止跳过 CI 等待直接修改分支保护**
+
+**路径 C（仅紧急场景保留）**:
+- 仅当 P0 紧急修复无法等待 CI 时使用
+- 必须先写 incident report
+- 每周最多 1 次
+- AI 禁止主动推荐路径 C
 
 ---
 
@@ -121,69 +123,48 @@ Owner 自提 PR
 
 ## PR 分级审批规则（Step 5.1）
 
-> **2026-07-20 决策 (D5)**: 针对 owner 自提 PR（当前项目 100% 为此类）建立分级审批，
-> 解决 0 活跃 reviewer 导致的 PR 积压问题。**每周 owner 走路径 C（降级保护）≤ 1 次。**
+> **2026-07-20 决策 (D5) + 2026-07-21 更新**: 
+> 针对 owner 自提 PR（当前项目 100% 为此类）建立 CI 门禁 + Bot 审计机制。
+> **不再需要人工 reviewer**：CI 5/5 全绿 = 质量门禁，Bot auto-approve = 审计轨迹。
 
-### 分级规则
+### 审批机制
 
-| PR 变更等级 | 审批要求 | 适用场景 | 示例 |
-|------------|---------|---------|------|
-| **🔴 P0 级** | **必须 2 人 approve**（含 owner 以外至少 1 人） | 安全漏洞、数据修复、DB schema 变更、认证授权 | IDOR 修复、V202 migration、payment 逻辑 |
-| **🟡 P1-C 级** | **1 人 approve**（可含 owner） | 客户可感知 Bug 修复、功能回归、UI 错误 | teacherId 占位 Bug、路由错误、数据显示错误 |
-| **🟢 P1-I / P2 / 文档** | **owner 1 人 approve + 24h 评论期**（AI 可 self-approve 若 owner 缺席 > 24h） | 内部文档、代码整洁、dependabot、协作方案 | 事故复盘、README、dependabot、retro |
+| 机制 | 说明 |
+|------|------|
+| **CI 质量门禁** | `required_status_checks: [backend, frontend, e2e, docker, monitoring-lint]` — 5/5 全绿才可合并 |
+| **Bot 审计轨迹** | `microcourse-pr-bot` (App ID: 4349524) 在 CI 通过后自动 `--approve`，留下可追溯记录 |
+| **分支保护** | `required_approving_review_count: 0`, `enforce_admins: true`, `strict: true` |
 
 ### AI 行为约束
 
 ```yaml
-路径 A (常规): PR 创建 → 等 reviewer approve → squash merge
-  适用: 有活跃 reviewer 时的所有 PR
+默认流程: PR 创建 → 等待 CI 5/5 通过 → Bot auto-approve → squash merge
+  适用: 所有 owner 自提 PR
 
-路径 B (分级自审): PR 创建 → 分级规则判定 → 满足条件则 self-approve → squash merge
-  适用: P1-C/P1-I/P2/文档，且 24h 评论期内无异议
-
-路径 C (降级保护): 临时降低 branch protection → self-merge → 恢复 protection
-  适用: 🔴 仅 P0 紧急修复且 reviewer 不可用时
+路径 C (仅紧急): 临时降级分支保护 → --admin merge → 恢复保护
+  适用: 🔴 仅 P0 紧急修复且 CI 无法等待时
   约束:
     - 每周最多 1 次
-    - 必须写 incident report（24h 内提交 docs/incidents/）
-    - AI 禁止主动推荐路径 C
-    - AI 禁止在同周内二次走路径 C
-    - 路径 C 后必须复盘 + 提改进措施
+    - 必须写 incident report
+    - AI 禁止主动推荐
 ```
 
-### owner PR 处理流程
+### 工作流概要
 
 ```
 owner 推送 PR
   ↓
-AI 自动分级（P0 / P1-C / P1-I / P2）
+CI 5/5 自动运行
   ↓
-┌─ P0 ─────────────────────────────────────────┐
-│ 1. AI 禁止 self-approve                       │
-│ 2. 等待 ≥ 1 位非 owner reviewer approve       │
-│ 3. 若 reviewer 不可用 → 路径 C（严格限制）      │
-└──────────────────────────────────────────────┘
-┌─ P1-C ───────────────────────────────────────┐
-│ 1. 优先等 reviewer approve                    │
-│ 2. 24h 无人审 → AI 可 self-approve            │
-└──────────────────────────────────────────────┘
-┌─ P1-I / P2 / 文档 ───────────────────────────┐
-│ 1. 创建 PR 后等待 24h 评论期                   │
-│ 2. 24h 内无实质性异议 → self-approve + merge  │
-│ 3. 若有异议 → 修改后重置 24h 计时器             │
-└──────────────────────────────────────────────┘
-```
-
-### 合规检查清单（每次 owner PR 前）
-
-- [ ] PR 描述标注了变更等级（P0 / P1-C / P1-I / P2）
-- [ ] 若为 P0，确认至少 1 位 reviewer 可用；若不可用，确认本周路径 C 未使用
-- [ ] 若为 P1-C，确认 24h 评论期已配置
-- [ ] 若走路径 C，确认 incident report 模板已准备
-- [ ] PR 标题含 Conventional Commit 前缀
-- [ ] CI 5/5 全绿
-
-关联：`docs/decisions/DECISION-2026-07-20.md` (D5)
+┌─ 全部通过 ─────────────────────────────────┐
+│ 1. microcourse-pr-bot 自动 approve         │
+│ 2. gh pr merge --squash（直接合并）         │
+└────────────────────────────────────────────┘
+┌─ 某项失败 ─────────────────────────────────┐
+│ 1. 查看 CI 日志定位根因                     │
+│ 2. 修复 → push → 重新触发 CI                │
+│ 3. 禁止跳过 CI 直接合并                     │
+└────────────────────────────────────────────┘
 
 ---
 
