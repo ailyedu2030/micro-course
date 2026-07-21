@@ -53,11 +53,12 @@
 | 角色 | 是否需 | 签字 |
 |------|--------|------|
 | **产品值班** | 涉及 UI / 用户感知 | ☐ @product |
-| **UX 值班** | **强制** | ☐ @ux |
+| **UX 值班** | **强制** (UX 攻坚 1 号动员令 § 1) | ☐ @ux |
 | **前端值班** | 涉及 Vue / 前端代码 | ☐ @fe |
 | **后端值班** | 涉及 Java / SQL | ☐ @be |
 | **测试值班** | 涉及核心流程 | ☐ @qa |
 | **运维值班** | 涉及发布 / 监控 | ☐ @ops |
+| **R6 团队任意角色** (UX 攻坚 1 号动员令 § 三) | 涉及 a11y / 原型 / 视觉 / 可用性 | ☐ @r6 |
 
 ---
 
@@ -98,10 +99,28 @@
 ## 七、关联治理文档
 
 - `docs/governance/ux-governance/EXECUTIVE-PRINCIPLE.md` — UX 至上铁律宪法
+- `docs/governance/ux-governance/L0-MANIFESTO.md` — UX 攻坚 1 号动员令
 - `docs/governance/ux-governance/templates/a11y-acceptance-checklist.md` — 完整 a11y 模板 (本文件简化版)
-- `docs/governance/ux-governance/01-metrics-standard.md` — 5 维量化阈值
+- `docs/governance/ux-governance/01-metrics-standard.md` — 5 维量化阈值 + 10 项核心度量
+- `docs/governance/ux-governance/02-weekly-review-ritual.md` § 7 — 一票否决清单 (L0 UX)
 - `docs/governance/ux-governance/03-feedback-sla.md` — 反馈 SLA + 工单分级
+- `docs/governance/ux-governance/rostering.md` § R6 — UX 攻坚 1 号动员令 6 角色团队
 
 ---
 
-**Auto-merge 由 Bot 决策, 需所有勾选 + CI 7/7 PASS 才能 merge.**
+## 八、6 触点评审门禁 (UX 攻坚 1 号动员令 § 4)
+
+> 本 PR 修改涵盖哪些触点, 对应 reviewer 必须签字 (按需).
+
+| 触点 | 触发条件 | 必须 reviewer | 说明 |
+|------|---------|--------------|------|
+| **1. 原型评审** | 涉及新流程 / 信息架构 | 交互设计师 (@ix) | [L0-MANIFESTO.md § 二 #4](./docs/governance/ux-governance/L0-MANIFESTO.md) |
+| **2. 视觉感知测试** | 涉及新视觉 / 品牌 / 主题 | 视觉设计师 (@visual) | 老年字号 ≥18px / 对比度 ≥4.5:1 |
+| **3. 开发可用性** | 涉及 Vue / 交互代码 | 前端开发 (@fe) | a11y + 性能 (依 [a11y checklist](./docs/governance/ux-governance/templates/a11y-acceptance-checklist.md)) |
+| **4. 灰度测试** | 涉及新功能 / 用户流程变更 | 可用性测试专家 (@ua) + 客服值班 (@cs) | 任务完成率 ≥95% |
+| **5. 上线放行** | 涉及发布 / 灰度开关 | 项目总负责人 (@lead) + UX 值班 (@ux) | [02 § 7 一票否决清单 7 项](./docs/governance/ux-governance/02-weekly-review-ritual.md) |
+| **6. 反馈收集** | 任意 UX-感知 PR | 客服值班 (@cs) | 须将相关功能加入 [feedback-pool.md](./docs/governance/ux-governance/feedback-pool.md) 工单跟踪 |
+
+---
+
+**Auto-merge 由 Bot 决策, 需所有勾选 + CI 7/7 PASS + UX 一票否决未触发才能 merge.**
