@@ -49,6 +49,25 @@ import java.util.List;
 @Service
 public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
 
+    /**
+     * P1 plan Task 8: 双向同步架构 · Hermes → 本地方向 · 防回环 invariant.
+     *
+     * **绝对禁止**本类的任何方法调用 {@link com.microcourse.event.DomainEventPublisher#publish} 或 publishRaw.
+     *
+     * 架构定位:
+     *   - 本地 → Hermes 方向 (出站): 由 {@link com.microcourse.service.impl.CourseAdminServiceImpl#publishCourseEvent}
+     *     + {@link com.microcourse.service.impl.CourseChapterServiceImpl#publishChapterEvent} 触发.
+     *   - Hermes → 本地方向 (入站): 本类, 严禁触发本地 publish, 否则会形成 Hermes → 本地 → Hermes 无限回环.
+     *
+     * 任何 PR 修改本类时必须:
+     *   1. 不引入 DomainEventPublisher 依赖
+     *   2. 不在 method body 调用 publisher.publish / publishRaw
+     *   3. 不在 method body 写入 V313 domain_event_outbox
+     *
+     * 防御检测: HermesEchoGuard @PostConstruct 期检测 (本期未实现, 留 PR 后续加固).
+     */
+    static final String ECHO_GUARD_REMARK = "HermesCourseSyncServiceImpl methods MUST NEVER trigger local→Hermes publish";
+
     private static final Logger log = LoggerFactory.getLogger(HermesCourseSyncServiceImpl.class);
 
     private final HermesCourseMappingRepository mappingRepository;

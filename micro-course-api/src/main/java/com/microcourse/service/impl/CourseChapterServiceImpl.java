@@ -31,8 +31,16 @@ import com.microcourse.repository.QuestionChapterRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseChapterService;
 import com.microcourse.util.SecurityUtil;
+import com.microcourse.event.DomainEvent;
+import com.microcourse.event.DomainEventPublisher;
+import com.microcourse.event.dto.ChapterEventPayload;
+import com.microcourse.repository.HermesCourseMappingRepository;
+import com.microcourse.entity.HermesCourseMapping;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,11 +48,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 public class CourseChapterServiceImpl implements CourseChapterService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CourseChapterServiceImpl.class);
 
     private final CourseChapterRepository chapterRepository;
     private final CourseRepository courseRepository;
@@ -57,6 +68,8 @@ public class CourseChapterServiceImpl implements CourseChapterService {
     private final ExerciseChapterRepository exerciseChapterRepository;
     private final CourseSectionRepository courseSectionRepository;
     private final SqlSessionFactory sqlSessionFactory;
+    private final DomainEventPublisher domainEventPublisher;
+    private final HermesCourseMappingRepository hermesCourseMappingRepository;
 
     public CourseChapterServiceImpl(CourseChapterRepository chapterRepository,
                                      CourseRepository courseRepository,
@@ -68,7 +81,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
                                      QuestionChapterRepository questionChapterRepository,
                                      ExerciseChapterRepository exerciseChapterRepository,
                                      CourseSectionRepository courseSectionRepository,
-                                     SqlSessionFactory sqlSessionFactory) {
+                                     SqlSessionFactory sqlSessionFactory,
+                                     DomainEventPublisher domainEventPublisher,
+                                     HermesCourseMappingRepository hermesCourseMappingRepository) {
         this.chapterRepository = chapterRepository;
         this.courseRepository = courseRepository;
         this.videoRepository = videoRepository;
@@ -80,6 +95,52 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         this.exerciseChapterRepository = exerciseChapterRepository;
         this.courseSectionRepository = courseSectionRepository;
         this.sqlSessionFactory = sqlSessionFactory;
+        this.domainEventPublisher = domainEventPublisher;
+        this.hermesCourseMappingRepository = hermesCourseMappingRepository;
+    }
+
+    /**
+     * P1 plan Task 7: 章节架构变动 → Hermes outbox 事件.
+     * 仅 course 已与 hermes 映射才 publish, 否则跳过.
+     * 调用方必须处于事务内.
+     */
+    private void publishChapterEvent(CourseChapter chapter, String eventType) {
+        if (chapter == null || chapter.getId() == null || chapter.getCourseId() == null) {
+            return;
+        }
+        try {
+            HermesCourseMapping mapping = hermesCourseMappingRepository.selectOne(
+                    new LambdaQueryWrapper<HermesCourseMapping>()
+                            .eq(HermesCourseMapping::getCourseId, chapter.getCourseId()));
+            if (mapping == null || mapping.getHermesCourseId() == null || mapping.getHermesCourseId().isBlank()) {
+                LOG.info("[P1-sync] skip CHAPTER.{}, no hermes mapping, chapterId={}", eventType, chapter.getId());
+                return;
+            }
+            String hermesCourseId = mapping.getHermesCourseId();
+
+            ChapterEventPayload payload = new ChapterEventPayload()
+                    .setId(chapter.getId())
+                    .setTitle(chapter.getTitle())
+                    .setSortOrder(chapter.getSortOrder());
+
+            DomainEvent ev = new DomainEvent()
+                    .setEventId(UUID.randomUUID().toString())
+                    .setTraceId(UUID.randomUUID().toString())
+                    .setAggregateType("CHAPTER")
+                    .setAggregateId(chapter.getId())
+                    .setEventType(eventType)
+                    .setAction("HTTP_POST")
+                    .setEndpoint("/api/hermes/webhook/courses/" + hermesCourseId + "/chapters")
+                    .setHermesCourseId(hermesCourseId)
+                    .setPayload(payload);
+
+            domainEventPublisher.publishRaw(ev.getEventId(), "CHAPTER", chapter.getId(), eventType, ev.toJsonPayload());
+            LOG.info("[P1-sync] CHAPTER.{} enqueued, chapterId={}, hermesCourseId={}, eventId={}",
+                    eventType, chapter.getId(), hermesCourseId, ev.getEventId());
+        } catch (Exception e) {
+            LOG.warn("[P1-sync] CHAPTER.{} publish failed, chapterId={}, err={}",
+                    eventType, chapter != null ? chapter.getId() : null, e.getMessage());
+        }
     }
 
     @Override
@@ -184,6 +245,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
 
         chapterRepository.insert(chapter);
         ChapterVO vo = convertToVO(chapter);
+        publishChapterEvent(chapter, "CREATED");
         return vo;
     }
 
@@ -221,6 +283,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
             new LambdaQueryWrapper<com.microcourse.entity.Video>()
                 .eq(com.microcourse.entity.Video::getChapterId, id));
         vo.setVideoCount(vc == null ? 0 : vc.intValue());
+        publishChapterEvent(chapter, "UPDATED");
         return vo;
     }
 
@@ -250,6 +313,7 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         exerciseChapterRepository.delete(new LambdaQueryWrapper<ExerciseChapter>()
                 .eq(ExerciseChapter::getChapterId, id));
         chapterRepository.deleteById(id);
+        publishChapterEvent(chapter, "DELETED");
     }
 
     @Override
