@@ -123,3 +123,9 @@ backups/
 micro-course-api/src/main/resources/fonts/
 .production-gate
 data/
+
+# Python (Locust 压测脚本运行时缓存，W37 起)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
