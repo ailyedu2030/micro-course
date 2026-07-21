@@ -22,6 +22,17 @@
 
 并以 [04 无障碍基线](./04-accessibility-baseline.md) 横向贯穿 1-7 所有动作。
 
+## ⛳ 宪法层 (L0 · UX 至上铁律)
+
+2026-07-21 启动即生效的本体系**只令层 (4 条不可妥协)** 与**用户 5 条要求落地执行框架**:
+
+- [EXECUTIVE-PRINCIPLE.md](./EXECUTIVE-PRINCIPLE.md) — UX 至上铁律宪法 (4 只令 + 5 点落地 + 与既有治理集成)
+- 已嵌入 AGENTS.md (L0 段高于 P0, 仅次于监管不可抗力)
+- 已嵌入 [.github/PULL_REQUEST_TEMPLATE.md](../../../.github/PULL_REQUEST_TEMPLATE.md) (UX 评审 owner 强制 + 12 项 a11y checklist)
+- 已嵌入 [rostering.md](./rostering.md) R1-R5 资源保障条款
+
+> **总负责人签发**: UX 铁律在所有治理冲突中默认胜出. 任何"为赶工违反 UX 决策"按 P0-above 处理.
+
 ---
 
 ## 关键角色与职责
