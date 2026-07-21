@@ -17,6 +17,19 @@ public interface HermesCourseSyncService {
     HermesSyncResult upsertCourse(HermesWebhookRequest request, Long callerTeacherId);
 
     /**
+     * P1 plan Task 9 + Task 8: Hermes 通用事件入口的 service 入口.
+     * 由 {@link com.microcourse.controller.HermesEventController} 在 V314 dedup 之后调用.
+     *
+     * 与 {@link #upsertCourse(HermesWebhookRequest, Long)} 区别:
+     *   - callerTeacherId 通过 hermes_course_mapping (由 hermesCourseId 反查) 自动获取
+     *   - eventId 用于本方法内部审计 (controller 端已先做 dedup)
+     *   - 流程: 反查 mapping → 取 teacherId → 调原 upsertCourse 业务
+     *
+     * 防回环 invariant: 本方法**不**调 DomainEventPublisher (依 P1 plan Task 8 ECHO_GUARD).
+     */
+    HermesSyncResult upsertCourseFromHermes(HermesWebhookRequest request, String eventId);
+
+    /**
      * 查询某位教师的所有已同步课程。
      */
     List<HermesCourseListVO> listCoursesByTeacher(Long teacherId);
