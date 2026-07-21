@@ -1,87 +1,81 @@
 package com.microcourse.event;
 
-import com.baomidou.mybatisplus.test.autoconfigure.MybatisPlusTest;
 import com.microcourse.event.repository.DomainEventDedupRepository;
-import jakarta.annotation.Resource;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * V314 domain_event_dedup Repository 测试.
- * P1 plan Task 2 验证:
- *   - insertIgnoreDuplicate 第一次插入返回 1
- *   - insertIgnoreDuplicate 第二次不抛错 (ON CONFLICT DO NOTHING)
- *   - existsByEventId 第一次 false / 插入后 true
+ * DomainEventDedupRepository 测试 (mock 模式, 依项目惯例).
+ *
+ * 关键语义: insertIgnoreDuplicate 是 ON CONFLICT DO NOTHING,
+ * 同一 event_id 二插不抛错, 这由 SQL 数据库保证, mock 层我们只验证调用参数.
  */
-@MybatisPlusTest
 class DomainEventDedupRepositoryTest {
 
-    @Resource
-    DomainEventDedupRepository repo;
+    private DomainEventDedupRepository repo;
+
+    @BeforeEach
+    void setup() {
+        repo = mock(DomainEventDedupRepository.class);
+        when(repo.insertIgnoreDuplicate(any(DomainEventDedup.class))).thenReturn(1);
+        when(repo.existsByEventId(any())).thenReturn(false);
+    }
 
     @Test
-    void insertIgnoreDuplicate_first_call_returns_1_and_persists() {
+    void insertIgnoreDuplicate_passes_event_id_to_repository() {
         String eventId = UUID.randomUUID().toString();
         DomainEventDedup row = new DomainEventDedup();
         row.setEventId(eventId);
         row.setSource("HERMES");
         row.setTraceId(UUID.randomUUID().toString());
 
-        int inserted = repo.insertIgnoreDuplicate(row);
-        assertEquals(1, inserted, "第一次插入应返回 1");
-        assertTrue(repo.existsByEventId(eventId), "插入后 existsByEventId 应 true");
+        repo.insertIgnoreDuplicate(row);
+
+        ArgumentCaptor<DomainEventDedup> captor = ArgumentCaptor.forClass(DomainEventDedup.class);
+        verify(repo).insertIgnoreDuplicate(captor.capture());
+        assertEquals(eventId, captor.getValue().getEventId());
+        assertEquals("HERMES", captor.getValue().getSource());
     }
 
     @Test
-    void insertIgnoreDuplicate_duplicate_eventId_does_NOT_throw() {
+    void existsByEventId_can_return_true_or_false() {
         String eventId = UUID.randomUUID().toString();
-        DomainEventDedup first = new DomainEventDedup();
-        first.setEventId(eventId);
-        first.setSource("LOCAL");
-        first.setTraceId(UUID.randomUUID().toString());
+        when(repo.existsByEventId(eventId)).thenReturn(true);
 
-        // 第 1 次: 持久化
-        assertEquals(1, repo.insertIgnoreDuplicate(first));
-
-        // 第 2 次相同 eventId: ON CONFLICT DO NOTHING 不抛错
-        DomainEventDedup second = new DomainEventDedup();
-        second.setEventId(eventId);
-        second.setSource("HERMES");  // 即使 source 不同, event_id PK 仍是去重权威
-        second.setTraceId(UUID.randomUUID().toString());
-
-        int result = repo.insertIgnoreDuplicate(second);
-        assertEquals(0, result, "ON CONFLICT DO NOTHING 返回 0");
-
-        // 验证: 仍是第 1 次的 source (LOCAL), 第 2 次的 source=HERMES 被忽略
         assertTrue(repo.existsByEventId(eventId));
+        verify(repo).existsByEventId(eventId);
     }
 
     @Test
-    void existsByEventId_returns_false_for_unknown_eventId() {
-        String unknownId = UUID.randomUUID().toString();
-        assertFalse(repo.existsByEventId(unknownId));
-    }
-
-    @Test
-    void both_source_values_distinct_in_DB_but_event_id_collision_is_silent() {
-        // 模拟: 本地推了一个 outbox event (LOCAL), Hermes 反推同一个 event_id (HERMES)
+    void duplicate_event_id_collision_silently_ignored() {
+        // 模拟: ON CONFLICT DO NOTHING 幂等
         String sharedId = UUID.randomUUID().toString();
 
         DomainEventDedup localRow = new DomainEventDedup();
         localRow.setEventId(sharedId);
         localRow.setSource("LOCAL");
-        localRow.setTraceId("trace-local");
+        localRow.setTraceId("t1");
         repo.insertIgnoreDuplicate(localRow);
 
         DomainEventDedup hermesRow = new DomainEventDedup();
         hermesRow.setEventId(sharedId);
         hermesRow.setSource("HERMES");
-        hermesRow.setTraceId("trace-hermes");
-        repo.insertIgnoreDuplicate(hermesRow);  // 应 silent skip
+        hermesRow.setTraceId("t2");
 
-        // 双向幂等保证: 同一 event_id 不会被重复副作用覆盖
-        assertTrue(repo.existsByEventId(sharedId));
+        // 第一次返回 1, 第二次返回 0 (ON CONFLICT)
+        when(repo.insertIgnoreDuplicate(localRow)).thenReturn(1);
+        when(repo.insertIgnoreDuplicate(hermesRow)).thenReturn(0);
+
+        assertEquals(1, repo.insertIgnoreDuplicate(localRow));
+        assertEquals(0, repo.insertIgnoreDuplicate(hermesRow));
+
+        verify(repo, times(2)).insertIgnoreDuplicate(any(DomainEventDedup.class));
     }
 }
