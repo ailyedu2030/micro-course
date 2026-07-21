@@ -125,6 +125,39 @@ public class HermesCourseSyncServiceImpl implements HermesCourseSyncService {
         return result;
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public HermesSyncResult upsertCourseFromHermes(HermesWebhookRequest request, String eventId) {
+        String hermesCourseId = request.getHermesCourseId();
+        log.info("[HermesSync-upsertCourseFromHermes] eventId={}, hermesCourseId={}", eventId, hermesCourseId);
+
+        // 1. 反查 hermes_course_mapping 拿本地 course + 确认归属
+        LambdaQueryWrapper<HermesCourseMapping> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(HermesCourseMapping::getHermesCourseId, hermesCourseId);
+        HermesCourseMapping mapping = mappingRepository.selectOne(wrapper);
+
+        if (mapping == null) {
+            log.warn("[HermesSync-upsertCourseFromHermes] no mapping for hermesCourseId={}, eventId={}",
+                    hermesCourseId, eventId);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "Hermes 课程未与本地建立映射: hermesCourseId=" + hermesCourseId);
+        }
+
+        Course existingCourse = courseRepository.selectById(mapping.getCourseId());
+        if (existingCourse == null) {
+            log.warn("[HermesSync-upsertCourseFromHermes] courseId={} 不存在 (mapping={}), eventId={}",
+                    mapping.getCourseId(), hermesCourseId, eventId);
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND,
+                    "本地课程不存在, mapping 已失效: courseId=" + mapping.getCourseId());
+        }
+
+        // 2. 用本地 course 的 teacherId 作 caller teacher (防回环, 因为是 HERMES → LOCAL)
+        Long callerTeacherId = existingCourse.getTeacherId();
+
+        // 3. 委托给原 upsertCourse (与 API Key 路径同业务, 仅 caller 来源不同)
+        return upsertCourse(request, callerTeacherId);
+    }
+
     private void evictCourseCache(Long courseId) {
         String cacheKey = CourseCacheConstants.COURSE_CACHE_PREFIX + courseId;
         redisUtil.delete(cacheKey);
