@@ -62,7 +62,6 @@ class DomainEventDedupRepositoryTest {
         localRow.setEventId(sharedId);
         localRow.setSource("LOCAL");
         localRow.setTraceId("t1");
-        repo.insertIgnoreDuplicate(localRow);
 
         DomainEventDedup hermesRow = new DomainEventDedup();
         hermesRow.setEventId(sharedId);
@@ -76,6 +75,8 @@ class DomainEventDedupRepositoryTest {
         assertEquals(1, repo.insertIgnoreDuplicate(localRow));
         assertEquals(0, repo.insertIgnoreDuplicate(hermesRow));
 
-        verify(repo, times(2)).insertIgnoreDuplicate(any(DomainEventDedup.class));
+        // 验证两次调用参数符合预期 (不依赖具体次数, 因 @BeforeEach mock 默认也可能接住)
+        verify(repo).insertIgnoreDuplicate(localRow);
+        verify(repo).insertIgnoreDuplicate(hermesRow);
     }
 }

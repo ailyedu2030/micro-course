@@ -40,6 +40,12 @@ import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.dto.BatchOperationResult;
+import com.microcourse.event.DomainEvent;
+import com.microcourse.event.DomainEventPublisher;
+import com.microcourse.event.dto.CourseEventPayload;
+import com.microcourse.repository.HermesCourseMappingRepository;
+import com.microcourse.entity.HermesCourseMapping;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CourseAuditService;
 import com.microcourse.service.CourseStateMachine;
@@ -87,6 +93,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final CourseAuditService auditService;
     private final CourseStateMachine courseStateMachine;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final DomainEventPublisher domainEventPublisher;
+    private final HermesCourseMappingRepository hermesCourseMappingRepository;
 
     @Value("${upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -109,7 +117,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   SlidePageMapper slidePageMapper,
                                   CourseAuditService auditService,
                                   CourseStateMachine courseStateMachine,
-                                  com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+                                  com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+                                  DomainEventPublisher domainEventPublisher,
+                                  HermesCourseMappingRepository hermesCourseMappingRepository) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -127,6 +137,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
         this.auditService = auditService;
+        this.domainEventPublisher = domainEventPublisher;
+        this.hermesCourseMappingRepository = hermesCourseMappingRepository;
         this.courseStateMachine = courseStateMachine;
         this.objectMapper = objectMapper;
     }
@@ -144,6 +156,57 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                 .eq(com.microcourse.entity.PluginGrant::getGranteeId, teacherId);
         if (pluginGrantRepository.selectCount(q) == 0) {
             throw new BusinessException(ErrorCode.PLUGIN_NO_GRANT);
+        }
+    }
+
+    /**
+     * P1 plan Task 6: 本地课程架构变动 → Hermes outbox 事件.
+     * 仅课程已与 hermes 映射 (存在 hermes_course_mapping 行) 才 publish, 否则跳过 (避免污染 hermes 端).
+     * 调用方必须处于事务内 (依赖 DomainEventPublisher 的 invariant).
+     */
+    private void publishCourseEvent(Course course, String eventType) {
+        if (course == null || course.getId() == null) {
+            return;
+        }
+        try {
+            HermesCourseMapping mapping = hermesCourseMappingRepository.selectOne(
+                    new LambdaQueryWrapper<HermesCourseMapping>()
+                            .eq(HermesCourseMapping::getCourseId, course.getId()));
+            if (mapping == null || mapping.getHermesCourseId() == null || mapping.getHermesCourseId().isBlank()) {
+                LOG.info("[P1-sync] skip COURSE.{}, no hermes mapping yet, courseId={}", eventType, course.getId());
+                return;
+            }
+            String hermesCourseId = mapping.getHermesCourseId();
+
+            CourseEventPayload payload = new CourseEventPayload()
+                    .setId(course.getId())
+                    .setTitle(course.getTitle())
+                    .setSubtitle(course.getSubtitle())
+                    .setSummary(course.getSummary())
+                    .setPrice(course.getPrice())
+                    .setStatus(course.getStatus())
+                    .setUpdatedAt(course.getUpdatedAt() != null ? course.getUpdatedAt() : LocalDateTime.now());
+
+            DomainEvent ev = new DomainEvent()
+                    .setEventId(UUID.randomUUID().toString())
+                    .setTraceId(UUID.randomUUID().toString())
+                    .setAggregateType("COURSE")
+                    .setAggregateId(course.getId())
+                    .setEventType(eventType)
+                    .setAction("HTTP_POST")
+                    .setEndpoint("/api/hermes/webhook/courses/" + hermesCourseId)
+                    .setHermesCourseId(hermesCourseId)
+                    .setPayload(payload);
+
+            String payloadJson = ev.toJsonPayload();
+            // publisher.publish 已强制事务内 (与业务同事务); 失败风险已被 outbox retry 兜底
+            domainEventPublisher.publishRaw(ev.getEventId(), "COURSE", course.getId(), eventType, payloadJson);
+            LOG.info("[P1-sync] COURSE.{} enqueued, courseId={}, hermesCourseId={}, eventId={}",
+                    eventType, course.getId(), hermesCourseId, ev.getEventId());
+        } catch (Exception e) {
+            // publish 失败不应回滚业务事务 (Hermes 重试由 outbox + retry policy 兜底)
+            LOG.warn("[P1-sync] COURSE.{} publish failed, courseId={}, err={}",
+                    eventType, course != null ? course.getId() : null, e.getMessage());
         }
     }
 
@@ -193,6 +256,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
 
         courseRepository.insert(course);
         LOG.info("课程创建成功, id={}, title={}, operator={}", course.getId(), course.getTitle());
+        publishCourseEvent(course, "CREATED");
         return convertToVO(course);
     }
 
@@ -250,6 +314,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
 
         courseRepository.updateById(course);
         LOG.info("课程更新成功, id={}, operator={}", id);
+        publishCourseEvent(course, "UPDATED");
         return convertToVO(course);
     }
 
@@ -352,6 +417,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         }
 
         LOG.info("课程已关闭（含级联清理）, id={}", id);
+        // 触发 Hermes 同步事件 (Course 实体在 DAO 已逻辑删除, payload 用 course 当时字段的快照)
+        publishCourseEvent(course, "DELETED");
     }
 
     @Override

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * ChapterEventPayload. P1 spec §四.4.1 + §六.6.1.
- * 手写 getter/setter.
+ * 手写 getter/setter + 链式 fluent API.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ChapterEventPayload {
@@ -13,11 +13,9 @@ public class ChapterEventPayload {
     private Integer sortOrder;
 
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
+    public ChapterEventPayload setId(Long id) { this.id = id; return this; }
     public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-
+    public ChapterEventPayload setTitle(String title) { this.title = title; return this; }
     public Integer getSortOrder() { return sortOrder; }
-    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public ChapterEventPayload setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; return this; }
 }
