@@ -27,9 +27,13 @@
 2026-07-21 启动即生效的本体系**只令层 (4 条不可妥协)** 与**用户 5 条要求落地执行框架**:
 
 - [EXECUTIVE-PRINCIPLE.md](./EXECUTIVE-PRINCIPLE.md) — UX 至上铁律宪法 (4 只令 + 5 点落地 + 与既有治理集成)
+- [L0-MANIFESTO.md](./L0-MANIFESTO.md) — UX 攻坚 1 号动员令 (宣告 + R6 6 角色团队 + 6 触点管理 + 启动资源)
 - 已嵌入 AGENTS.md (L0 段高于 P0, 仅次于监管不可抗力)
-- 已嵌入 [.github/PULL_REQUEST_TEMPLATE.md](../../../.github/PULL_REQUEST_TEMPLATE.md) (UX 评审 owner 强制 + 12 项 a11y checklist)
-- 已嵌入 [rostering.md](./rostering.md) R1-R5 资源保障条款
+- 已嵌入 [.github/PULL_REQUEST_TEMPLATE.md](../../../.github/PULL_REQUEST_TEMPLATE.md) (UX 评审 owner 强制 + 12 项 a11y checklist + 6 触点评审门禁)
+- 已嵌入 [rostering.md](./rostering.md) R1-R5+ 资源保障 + R5++ 跨部门仲裁 + R5+++ 启动资金
+- 已嵌入 [02-weekly-review-ritual.md § 7 一票否决清单](./02-weekly-review-ritual.md)
+- 已嵌入 [07-research-lab-sop.md § 10 多维度 4 法研究](./07-research-lab-sop.md)
+- 已嵌入 [01-metrics-standard.md § 7 10 项核心度量 + 阈值红线](./01-metrics-standard.md)
 
 > **总负责人签发**: UX 铁律在所有治理冲突中默认胜出. 任何"为赶工违反 UX 决策"按 P0-above 处理.
 
