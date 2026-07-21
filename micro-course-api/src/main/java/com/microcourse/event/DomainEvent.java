@@ -70,7 +70,6 @@ public class DomainEvent {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public <T> T getPayloadAs(Class<T> clazz) {
         if (payload == null) {
             return null;
