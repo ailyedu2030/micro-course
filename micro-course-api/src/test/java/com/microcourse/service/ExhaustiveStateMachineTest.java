@@ -42,7 +42,11 @@ public class ExhaustiveStateMachineTest extends BaseIntegrationTest {
 
     private record ReportEntry(int legalOk, int legalTotal, int illegalOk, int illegalTotal,
                                int terminalOk, int terminalTotal, List<String> failures) {
-        boolean allPassed() { return failures.isEmpty(); }
+        // 字段全部由聚合报告构造器注入, 当前 test 不消费 ReportEntry.allPassed()
+        // (原始目的是聚合 print 报告, 改用 JUnit 标准失败信息更轻量).
+        // 保留 record 字段供未来聚合报告重构时使用, 但 allPassed() 是 dead code, 暂保留以最小改动.
+        // 改为注释以抑制 IDE 警告 (Field 4: never used locally):
+        // allPassed() is intentionally not declared here; tests rely on assertEquals/assertFalse directly.
     }
 
     // ==================== 注入 ====================
@@ -454,12 +458,11 @@ public class ExhaustiveStateMachineTest extends BaseIntegrationTest {
         // 管理员合法修改
         String adminToken = tokenFor("admin", "admin123");
         Long testUserId = insertUser(0, null);
-        MvcResult r2 = mockMvc.perform(put("/api/users/" + testUserId + "/status")
+        mockMvc.perform(put("/api/users/" + testUserId + "/status")
                         .header("Authorization", adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\": 1}"))
-                .andExpect(status().isOk())
-                .andReturn();
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -467,22 +470,16 @@ public class ExhaustiveStateMachineTest extends BaseIntegrationTest {
     @DisplayName("HTTP: 选课 API 验证")
     void testEnrollmentHttp() throws Exception {
         String studentToken = tokenFor("student", "student123");
-        String adminToken = tokenFor("admin", "admin123");
 
         // 选课（课程 1 是免费已发布课程）
-        MvcResult enrollResult = mockMvc.perform(post("/api/enrollments")
+        mockMvc.perform(post("/api/enrollments")
                         .header("Authorization", studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"courseId\":1}"))
                 .andReturn();
-        String resp = enrollResult.getResponse().getContentAsString();
         // 如果已选过课可能返回冲突，忽略
 
-        // 学生尝试自己改状态为 COMPLETED → 403
-        MvcResult r = mockMvc.perform(get("/api/enrollments")
-                        .header("Authorization", studentToken))
-                .andReturn();
-        // 尝试非法操作
+        // 尝试非法操作：学生修改课程完成状态 → 403
         mockMvc.perform(put("/api/enrollments/99999")
                         .header("Authorization", studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -516,8 +513,6 @@ public class ExhaustiveStateMachineTest extends BaseIntegrationTest {
     @Order(23)
     @DisplayName("HTTP: 订单 API 非法转换验证")
     void testOrderHttp() throws Exception {
-        String studentToken = tokenFor("student", "student123");
-
         // 创建订单
         Long orderId = insertOrder("PENDING");
 

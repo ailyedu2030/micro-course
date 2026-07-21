@@ -1,6 +1,5 @@
 package com.microcourse.controller;
 
-import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import jakarta.validation.Valid;
 import com.microcourse.dto.microSpecialty.ClassImportRequest;

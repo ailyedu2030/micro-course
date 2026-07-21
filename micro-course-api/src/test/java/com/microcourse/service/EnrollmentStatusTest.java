@@ -42,6 +42,7 @@ class EnrollmentStatusTest {
 
     @Test
     @DisplayName("契约枚举不含 ENROLLED；LEGACY 常量保留为 ENROLLED")
+    @SuppressWarnings("deprecation")
     void contractEnumExcludesEnrolled() {
         assertEquals("ENROLLED", EnrollmentStatus.LEGACY_ENROLLED_VALUE);
         for (EnrollmentStatus s : EnrollmentStatus.values()) {

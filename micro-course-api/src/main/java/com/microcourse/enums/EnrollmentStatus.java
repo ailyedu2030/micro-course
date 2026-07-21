@@ -13,9 +13,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
  * 注：V148 migration 已完成存量 ENROLLED → APPROVED 迁移。
  * 新建选课记录写入 APPROVED（{@code EnrollmentStatus.APPROVED.getValue()}）。
  *
- * @since Phase 2
- * @see docs/状态机设计.md §8.2
- */
+ * @since Phase 2 */
 public enum EnrollmentStatus {
 
     /** 待审核（状态机初始状态）。 */

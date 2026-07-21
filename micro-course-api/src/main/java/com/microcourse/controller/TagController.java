@@ -7,10 +7,8 @@ import com.microcourse.dto.TagUpdateRequest;
 import com.microcourse.dto.TagVO;
 import com.microcourse.exception.BusinessException;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.exception.ErrorCode;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.service.TagService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -20,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/tags")

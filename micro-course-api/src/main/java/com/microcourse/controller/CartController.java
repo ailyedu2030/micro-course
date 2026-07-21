@@ -4,7 +4,6 @@ import com.microcourse.dto.CartAddRequest;
 import com.microcourse.dto.CartUpdateRequest;
 import com.microcourse.dto.R;
 import com.microcourse.entity.CartItem;
-import com.microcourse.exception.BusinessException;
 import com.microcourse.service.CartService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;

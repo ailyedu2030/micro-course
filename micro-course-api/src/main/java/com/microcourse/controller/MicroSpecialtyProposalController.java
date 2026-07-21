@@ -7,7 +7,6 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.dto.RejectProposalRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyProposalRequest;
-import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
 import com.microcourse.service.MicroSpecialtyProposalService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
@@ -15,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 
 /**
  * 微专业申报 Controller。

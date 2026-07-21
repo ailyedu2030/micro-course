@@ -15,12 +15,9 @@ import org.springframework.web.bind.annotation.*;
 public class CourseStudentController {
 
     private final CourseStudentService courseStudentService;
-    private final EnrollmentService enrollmentService;
 
-    public CourseStudentController(CourseStudentService courseStudentService,
-                                   EnrollmentService enrollmentService) {
+    public CourseStudentController(CourseStudentService courseStudentService) {
         this.courseStudentService = courseStudentService;
-        this.enrollmentService = enrollmentService;
     }
 
     @PostMapping("/{courseId}/students/{userId}")
