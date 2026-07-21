@@ -4,7 +4,6 @@ import com.microcourse.dto.*;
 import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.service.CourseChapterService;
-import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.SectionService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
@@ -33,17 +32,15 @@ public class AliasController {
 
     private final CourseChapterService chapterService;
     private final SlideService slideService;
-    private final CourseQueryService courseQueryService;
     private final SectionService sectionService;
 
     @Value("${plugin.interactive.html-content.whitelist-teachers:}")
     private java.util.List<Long> htmlWhitelist;
 
     public AliasController(CourseChapterService chapterService, SlideService slideService,
-                           CourseQueryService courseQueryService, SectionService sectionService) {
+                           SectionService sectionService) {
         this.chapterService = chapterService;
         this.slideService = slideService;
-        this.courseQueryService = courseQueryService;
         this.sectionService = sectionService;
     }
 

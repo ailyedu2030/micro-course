@@ -23,7 +23,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 /**
  * Phase 15: 微专业申请表 Controller。

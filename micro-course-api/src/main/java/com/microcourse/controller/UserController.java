@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
-import com.microcourse.dto.UserApiKeyResponse;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
 import com.microcourse.dto.UserStatusRequest;
@@ -13,12 +12,10 @@ import com.microcourse.dto.UserUpdateRequest;
 import com.microcourse.dto.UserVO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.TeacherStatusRequest;
-import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.UserService;
-import com.microcourse.util.SecurityUtil;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;

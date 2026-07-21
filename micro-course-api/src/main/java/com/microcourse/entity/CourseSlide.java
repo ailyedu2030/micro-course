@@ -10,9 +10,7 @@ import java.time.LocalDateTime;
 /**
  * CourseSlide — 课程课件（PPT/PDF 转图片）。
  * R8 P1-I #7: 补全 V49 创建的 course_slides 表对应 Entity。
- *
- * @see docs/数据字典.md §2.17
- */
+ * */
 @TableName("course_slides")
 public class CourseSlide {
 

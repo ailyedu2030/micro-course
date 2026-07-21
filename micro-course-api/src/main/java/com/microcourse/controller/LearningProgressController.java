@@ -144,15 +144,6 @@ public class LearningProgressController {
         throw new BusinessException(ErrorCode.TOKEN_INVALID, "无法获取用户ID");
     }
 
-    private boolean hasRole(String role) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return false;
-        for (GrantedAuthority granted : auth.getAuthorities()) {
-            if (granted.getAuthority().equals("ROLE_" + role)) return true;
-        }
-        return false;
-    }
-
     private Long extractUserId(Authentication authentication) {
         Object principal = authentication.getPrincipal();
         if (principal instanceof Long) return (Long) principal;
