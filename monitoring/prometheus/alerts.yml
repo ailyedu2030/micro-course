@@ -195,72 +195,64 @@ groups:
 
   # ═══════════════════════════════════════════════
   # P1 plan Task 14: 域事件 outbox 监控 (双向同步健康度)
+  # 通过 microcourse_api 进程内 Spring Boot Actuator 暴露的
+  # 自定义 Counter / Gauge (见 com.microcourse.event.OutboxMetrics),
+  # 用 PromQL 表达式 (不用 SQL — Prometheus 不支持 SQL).
   # ═══════════════════════════════════════════════
 
   - name: domain-event-outbox
     rules:
       - alert: DomainEventOutboxPendingTooLong
-        expr: |
-          SELECT COUNT(*) FROM domain_event_outbox
-          WHERE status = 'PENDING' AND occurred_at < NOW() - INTERVAL '5 minutes'
+        expr: microcourse_outbox_pending_total > 0
         for: 5m
         labels:
           severity: warning
           priority: P1
           tier: integration
         annotations:
-          summary: "{{ $value }} 个事件卡在 PENDING > 5 分钟"
-          description: "本地 → Hermes 推送可能不健康 (Hermes 不可达 / API Key 错 / 网络分区)。"
-          runbook: "检查 outbox worker 日志 / 验证 hermes.base-url + api-key / 测试连接"
+          summary: "outbox PENDING 事件 > 0 持续 5 分钟"
+          description: "本地 → Hermes 推送可能不健康 (Hermes 不可达 / API Key 错 / 网络分区)。runbook: 检查 outbox worker 日志 / 验证 hermes.base-url + api-key."
 
       - alert: DomainEventOutboxRetryStuck
-        expr: |
-          SELECT COUNT(*) FROM domain_event_outbox
-          WHERE status = 'PENDING' AND attempt_count >= 3
+        expr: microcourse_outbox_retry_total > 0
         for: 10m
         labels:
           severity: warning
           priority: P1
           tier: integration
         annotations:
-          summary: "{{ $value }} 个事件重试 ≥3 次仍未送达"
+          summary: "outbox 重试事件 > 0 持续 10 分钟"
           description: "长期重试事件可能因 Hermes 端 schema 变更或鉴权失败. 检查死信表."
 
       - alert: DomainEventDeadLetterNonEmpty
-        expr: |
-          SELECT COUNT(*) FROM domain_event_dead_letter
-          WHERE acknowledged_at IS NULL
+        expr: microcourse_dead_letter_unacked > 0
         for: 5m
         labels:
           severity: warning
           priority: P1
           tier: integration
         annotations:
-          summary: "死信表有 {{ $value }} 个未 ack 事件"
-          description: "人工 ack 前需先排查 last_error. runbook: select * from domain_event_dead_letter where acknowledged_at is null order by failed_at desc limit 10;"
+          summary: "死信表未 ack 事件 > 0 持续 5 分钟"
+          description: "人工 ack 前需先排查 last_error. runbook: SELECT event_id, last_error, failed_at FROM domain_event_dead_letter WHERE acknowledged_at IS NULL ORDER BY failed_at DESC LIMIT 10;"
 
       - alert: DomainEventDeadLetterHigh
-        expr: |
-          SELECT COUNT(*) FROM domain_event_dead_letter
-          WHERE acknowledged_at IS NULL
+        expr: microcourse_dead_letter_unacked > 100
         for: 30m
         labels:
           severity: critical
           priority: P0
           tier: integration
         annotations:
-          summary: "死信表未 ack 事件 > 100 (30min 持续)"
+          summary: "死信表未 ack 事件 > 100 持续 30 分钟"
           description: "P1 治理事件, 触发 P0-above 升级. 可能影响 P1 UX 铁律 (Spec §4.2 双向同步)."
 
       - alert: DomainEventDedupHitHigh
-        expr: |
-          SELECT COUNT(*) FROM domain_event_dedup
-          WHERE source = 'HERMES' AND processed_at > NOW() - INTERVAL '15 minutes'
+        expr: microcourse_dedup_hermes_total > 0
         for: 30m
         labels:
           severity: info
           priority: P2
           tier: integration
         annotations:
-          summary: "Hermes 反推 dedup 命中 = {{ $value }} (15min)"
+          summary: "Hermes 反推 dedup 命中 (15min)"
           description: "信息级, 用于观察 Hermes 反推幂等性, 验证双向同步去重生效"
