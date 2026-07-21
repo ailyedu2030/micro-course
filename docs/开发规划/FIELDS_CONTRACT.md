@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2610
+- 后端实体字段总数: 2613
 
 - 前端引用字段总数: 434
 
@@ -1026,7 +1026,7 @@
 
 | ChapterOfflineSession | 12 | 0 |
 
-| ChapterSortRequest | 2 | 0 |
+| ChapterSortRequest | 3 | 0 |
 
 | ChapterUpdateRequest | 8 | 0 |
 
@@ -1314,7 +1314,7 @@
 
 | OrderCreateRequest | 2 | 0 |
 
-| OrderVO | 12 | 0 |
+| OrderVO | 14 | 0 |
 
 | PageResult | 5 | 0 |
 

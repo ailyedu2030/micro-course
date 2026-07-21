@@ -1,0 +1,17 @@
+# 目录占位 · 每周 UX 复盘会议纪要
+
+> 此目录用于存放每周 UX 复盘会议纪要 (按 [02 每周体验复盘会议机制](../02-weekly-review-ritual.md))。
+
+## 命名规范
+- `YYYY-MM-DD-weekly-ux-review.md` (例如 `2026-07-28-weekly-ux-review.md`)
+- 修改 `docs/governance/ux-governance/rostering.md` 时同步更新本目录
+- 28 天以上未开会的周期，触发 P1 治理警告
+
+## 首次会议
+- **预期时间**: 2026-07-28 (周一 16:00-17:00)
+- **议程**: 见模板 `templates/weekly-review-minutes.md`
+- **必查**: W37 PR #50/#51 已上线的功能首批用户反馈
+- **必做**: 录入首批用户反馈到 `feedback-pool.md`
+- **签发**: 项目总负责人主持
+
+详见 [02 每周体验复盘会议机制](../02-weekly-review-ritual.md) § 1.1 数据快照 / § 1.2 案例深读 / § 1.3 行动决策。
