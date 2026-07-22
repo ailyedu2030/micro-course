@@ -42,8 +42,6 @@ class MicroSpecialtyInviteFlowTest extends BaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         String teamJson = teamResult.getResponse().getContentAsString();
-        Object currentCount = JsonPath.read(teamJson, "$.data.length()");
-
         // 邀请教师（需要 TEACHER 角色）
         MvcResult inviteResult = mockMvc.perform(post("/api/micro-specialties/{id}/teachers", msId.longValue())
                 .header("Authorization", "Bearer " + teacherToken)

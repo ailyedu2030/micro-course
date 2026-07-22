@@ -251,7 +251,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, chapter.getCourseId())
                         .eq(Enrollment::getUserId, userId)
-                        .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue(), EnrollmentStatus.COMPLETED.getValue()));
+                        .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue())));
         if (enrollmentCount == 0) {
             throw new BusinessException(ErrorCode.NOT_ENROLLED);
         }
@@ -373,7 +373,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
                 totalCount = Math.toIntExact(enrollmentRepository.selectCount(
                         new LambdaQueryWrapper<Enrollment>()
                                 .eq(Enrollment::getCourseId, courseId)
-                                .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue(), EnrollmentStatus.COMPLETED.getValue())));
+                                .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue()))));
                 redisUtil.set(cacheKey, totalCount, ATTENDANCE_CACHE_TTL, java.util.concurrent.TimeUnit.SECONDS);
             }
         }
@@ -478,9 +478,7 @@ public class OfflineSessionServiceImpl implements OfflineSessionService {
                         .eq(Enrollment::getCourseId, chapter.getCourseId())
                         .eq(Enrollment::getUserId, studentId)
                         .in(Enrollment::getEnrollmentStatus,
-                                EnrollmentStatus.LEGACY_ENROLLED_VALUE,
-                                EnrollmentStatus.APPROVED.getValue(),
-                                EnrollmentStatus.COMPLETED.getValue()));
+                                EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue())));
         if (enrollmentCount == 0) {
             throw new BusinessException(ErrorCode.NOT_ENROLLED, "该学生未选课，无法签到");
         }

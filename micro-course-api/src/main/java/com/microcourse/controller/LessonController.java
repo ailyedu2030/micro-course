@@ -19,36 +19,42 @@ public class LessonController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @Deprecated
     public R<Void> create() {
         throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @Deprecated
     public R<Void> update() {
         throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @Deprecated
     public R<Void> delete() {
         throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @PutMapping("/sort")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @Deprecated
     public R<Void> sort() {
         throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @GetMapping("/chapter/{chapterId}")
     @PreAuthorize("isAuthenticated()")
+    @Deprecated
     public R<Void> getByChapter() {
         throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
+    @Deprecated
     public R<Void> getById() {
         throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "lessons 表已废弃，请使用 Section API");
     }

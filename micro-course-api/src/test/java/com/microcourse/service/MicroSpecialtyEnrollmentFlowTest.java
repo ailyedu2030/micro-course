@@ -18,13 +18,11 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class MicroSpecialtyEnrollmentFlowTest extends BaseIntegrationTest {
 
-    private String adminToken;
     private String teacherToken;
     private String studentToken;
 
     @BeforeEach
     void setUp() throws Exception {
-        adminToken = bearerAdmin().replace("Bearer ", "");
         teacherToken = loginAs("p0_teacher", "student123");
         studentToken = loginAs("student", "student123");
     }

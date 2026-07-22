@@ -160,7 +160,7 @@ public class DashboardServiceImpl implements DashboardService {
         try {
             LambdaQueryWrapper<Enrollment> enrollmentWrapper = new LambdaQueryWrapper<>();
             enrollmentWrapper.in(Enrollment::getEnrollmentStatus,
-                    EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue());
+                    EnrollmentStatus.legacyAndActiveEnrolledValues());
             totalStudents = enrollmentRepository.selectCount(enrollmentWrapper);
             vo.setTotalStudents(totalStudents);
         } catch (Exception e) {

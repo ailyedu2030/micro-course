@@ -227,7 +227,8 @@ class MicroSpecialtyInviteServiceTest {
     void scanExpired_success() {
         MicroSpecialtyTeacher expired = invitedRecord(1L, 1L, 5L, "LEAD");
         expired.setInviteExpiresAt(LocalDateTime.now().minusDays(1));
-        when(teacherRepository.selectList(any())).thenReturn(List.of(expired), Collections.emptyList());
+        java.util.List<MicroSpecialtyTeacher> emptyTeachers = java.util.Collections.emptyList();
+        when(teacherRepository.selectList(any())).thenReturn(List.of(expired), emptyTeachers);
         when(teacherRepository.update(any(), any())).thenReturn(1);
         MicroSpecialty ms = msWithStatus("RECRUITING");
         ms.setLeadTeacherId(1L);

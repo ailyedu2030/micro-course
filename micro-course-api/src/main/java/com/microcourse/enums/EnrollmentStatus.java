@@ -44,6 +44,38 @@ public enum EnrollmentStatus {
     @Deprecated
     public static final String LEGACY_ENROLLED_VALUE = "ENROLLED";
 
+    /**
+     * 历史兼容：枚举迁移 V148 已完成, 但部分 SQL 查询 / 外部数据源仍可能传入 "ENROLLED"。
+     * 返回当前"在读"状态值集合(当前 APPROVED + 历史 ENROLLED), 供 query 兼容。
+     *
+     * <p>注意: 写入应使用 {@link #APPROVED}, 本方法只读用。
+     * 当存量数据完全迁移完毕, 移除 {@link #LEGACY_ENROLLED_VALUE} 即可, 业务侧无感。</p>
+     */
+    private static final java.util.Set<String> LEGACY_ACTIVE_VALUES =
+            java.util.Set.of(LEGACY_ENROLLED_VALUE, APPROVED.getValue());
+
+    @SuppressWarnings("deprecation")
+    public static java.util.Set<String> legacyAndActiveEnrolledValues() {
+        return LEGACY_ACTIVE_VALUES;
+    }
+
+    /**
+     * 历史兼容 + 额外状态值。用于更宽的 in 查询 (如"在读或已完成"的查询条件)。
+     *
+     * @param extras 额外状态值, 传 {@code null} 元素会被跳过
+     * @return 包含历史 ENROLLED、当前 APPROVED, 以及 extras 中所有非 null 值
+     */
+    @SuppressWarnings("deprecation")
+    public static java.util.Set<String> legacyActiveWith(String... extras) {
+        java.util.Set<String> set = new java.util.HashSet<>(LEGACY_ACTIVE_VALUES);
+        if (extras != null) {
+            for (String e : extras) {
+                if (e != null) set.add(e);
+            }
+        }
+        return set;
+    }
+
     @EnumValue   // MyBatis-Plus 持久化用（实体字段切换为本枚举类型时生效）
     @JsonValue   // Jackson 序列化用（实体字段切换为本枚举类型时生效）
     private final String value;

@@ -36,7 +36,12 @@ class AudioStreamCacheTest {
     void setUp() {
         cache = new AudioStreamCache();
         redis = mock(StringRedisTemplate.class);
-        ops = mock(ValueOperations.class);
+        // raw ValueOperations.class because Mockito mock() 强类型需要 class literal,
+        // 但 StringRedisTemplate.opsForValue() 返回 ValueOperations<String,String>;
+        // 这里用 raw mock + SuppressWarnings 是项目惯例 (其他测试也这么做).
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> typedOps = mock(ValueOperations.class);
+        ops = typedOps;
         objectMapper = new ObjectMapper();
         when(redis.opsForValue()).thenReturn(ops);
 

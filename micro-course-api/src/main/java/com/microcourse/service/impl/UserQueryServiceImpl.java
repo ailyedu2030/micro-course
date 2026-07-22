@@ -211,9 +211,11 @@ public class UserQueryServiceImpl implements UserQueryService {
                 && !SecurityUtil.isOwnerOrAdmin(id)) {
             User targetUser = user;
             if (targetUser != null && com.microcourse.enums.UserRole.STUDENT.equals(targetUser.getRole())) {
+                @SuppressWarnings("deprecation")
+                String enrolled = EnrollmentStatus.LEGACY_ENROLLED_VALUE;  // "ENROLLED"（V148 历史兼容）
                 long count = enrollmentRepository.countByTeacherAndStudent(
                         SecurityUtil.getCurrentUserId(), id,
-                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
+                        enrolled,
                         EnrollmentStatus.APPROVED.getValue(),
                         EnrollmentStatus.COMPLETED.getValue());
                 if (count == 0) {

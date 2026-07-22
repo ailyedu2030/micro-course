@@ -85,9 +85,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
             enrollWrapper.eq(Enrollment::getUserId, userId)
                     .eq(Enrollment::getCourseId, courseId)
                     .in(Enrollment::getEnrollmentStatus,
-                            EnrollmentStatus.APPROVED.getValue(),
-                            EnrollmentStatus.LEGACY_ENROLLED_VALUE,
-                            EnrollmentStatus.COMPLETED.getValue());
+                            EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue()));
             Enrollment enrollment = enrollmentRepository.selectOne(enrollWrapper);
             if (enrollment == null) {
                 throw new BusinessException(ErrorCode.ENROLLMENT_NOT_FOUND, "未选课或选课状态不允许评价");

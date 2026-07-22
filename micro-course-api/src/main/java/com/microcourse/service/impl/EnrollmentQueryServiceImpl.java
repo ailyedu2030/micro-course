@@ -130,8 +130,8 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
         }
         if (query.getStatus() != null && !query.getStatus().isBlank()) {
             // P1-C: ENROLLED 和 APPROVED 语义等价，查询时同时匹配兼容存量与未来迁移
-            if (EnrollmentStatus.LEGACY_ENROLLED_VALUE.equals(query.getStatus()) || EnrollmentStatus.APPROVED.getValue().equals(query.getStatus())) {
-                wrapper.in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue());
+            if (EnrollmentStatus.legacyAndActiveEnrolledValues().contains(query.getStatus())) {
+                wrapper.in(Enrollment::getEnrollmentStatus, EnrollmentStatus.legacyAndActiveEnrolledValues());
             } else {
                 wrapper.eq(Enrollment::getEnrollmentStatus, query.getStatus());
             }
@@ -192,7 +192,7 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, Math.max(1, Math.min(limit, 100)));
         LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Enrollment::getCourseId, courseId)
-                .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.LEGACY_ENROLLED_VALUE, EnrollmentStatus.APPROVED.getValue())
+                .in(Enrollment::getEnrollmentStatus, EnrollmentStatus.legacyAndActiveEnrolledValues())
                 .orderByDesc(Enrollment::getProgress);
         IPage<Enrollment> paged =
                 enrollmentRepository.selectPage(page, wrapper);

@@ -678,7 +678,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     public void assertStudentInTeachersCourses(Long teacherId, Long studentId) {
         long count = enrollmentRepository.countByTeacherAndStudent(teacherId, studentId,
-                EnrollmentStatus.APPROVED.getValue(),
+                EnrollmentStatus.LEGACY_ENROLLED_VALUE,   // "ENROLLED"（V148 历史兼容） — 修正: 原误传 APPROVED 导致存量数据漏查
                 EnrollmentStatus.APPROVED.getValue(),
                 EnrollmentStatus.COMPLETED.getValue());
         if (count == 0) {

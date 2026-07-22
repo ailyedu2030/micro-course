@@ -751,13 +751,6 @@ public class VideoServiceImpl implements VideoService {
         return videoRepository.selectOne(wrapper);
     }
 
-    /**
-     * Phase 11 重构目标：extract 公共字段复制，消除两个重载方法中的重复代码
-     */
-    private VideoVO populateBasicFields(Video video) {
-        return com.microcourse.util.VideoConverter.populateBasicFields(video);
-    }
-
     private VideoVO convertToVO(Video video, Map<Long, Course> courseMap,
                                 Map<Long, CourseChapter> chapterMap) {
         return com.microcourse.util.VideoConverter.convertToVO(video, courseMap, chapterMap);
