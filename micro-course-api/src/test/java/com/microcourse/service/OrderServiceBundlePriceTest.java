@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
  * 修复：bundleId != null 时，必须使用 bundle.price；bundleId == null 时，使用 courseService.getMyPricing(courseId)。
  * 此外需补充大量套餐/课程校验逻辑，本测试聚焦于价格计算分支。</p>
  */
+@SuppressWarnings("unchecked")
 @DisplayName("课程套餐购买价格计算")
 class OrderServiceBundlePriceTest {
 
