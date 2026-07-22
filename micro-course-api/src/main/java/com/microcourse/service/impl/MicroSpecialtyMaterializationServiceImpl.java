@@ -7,7 +7,6 @@ import com.microcourse.enums.CourseStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
-import com.microcourse.service.CourseService;
 import com.microcourse.service.MicroSpecialtyMaterializationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +27,7 @@ public class MicroSpecialtyMaterializationServiceImpl implements MicroSpecialtyM
     private final ChapterTeacherAssignmentRepository assignmentRepo;
     private final MicroSpecialtyCourseChapterRepository msCcRepo;
     private final MicroSpecialtyRepository msRepo;
-    private final MicroSpecialtyTeacherRepository msTeacherRepo;
     private final CourseRepository courseRepo;
-    private final CourseService courseService;
 
     public MicroSpecialtyMaterializationServiceImpl(
             MicroSpecialtyProposalRepository proposalRepo,
@@ -39,18 +36,14 @@ public class MicroSpecialtyMaterializationServiceImpl implements MicroSpecialtyM
             ChapterTeacherAssignmentRepository assignmentRepo,
             MicroSpecialtyCourseChapterRepository msCcRepo,
             MicroSpecialtyRepository msRepo,
-            MicroSpecialtyTeacherRepository msTeacherRepo,
-            CourseRepository courseRepo,
-            CourseService courseService) {
+            CourseRepository courseRepo) {
         this.proposalRepo = proposalRepo;
         this.proposalCourseRepo = proposalCourseRepo;
         this.proposalChapterRepo = proposalChapterRepo;
         this.assignmentRepo = assignmentRepo;
         this.msCcRepo = msCcRepo;
         this.msRepo = msRepo;
-        this.msTeacherRepo = msTeacherRepo;
         this.courseRepo = courseRepo;
-        this.courseService = courseService;
     }
 
     @Override

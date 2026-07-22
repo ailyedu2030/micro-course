@@ -6,8 +6,6 @@ import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyProposal;
 import com.microcourse.entity.MicroSpecialtyTeacher;
 import com.microcourse.enums.NotificationType;
-import com.microcourse.exception.BusinessException;
-import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
 import com.microcourse.service.impl.MicroSpecialtyProposalServiceImpl;
 import com.microcourse.util.SecurityUtil;

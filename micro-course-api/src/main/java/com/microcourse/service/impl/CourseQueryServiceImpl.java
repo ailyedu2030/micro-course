@@ -20,7 +20,6 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.CourseSectionRepository;
-import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.util.CourseCacheConstants;
@@ -51,7 +50,6 @@ public class CourseQueryServiceImpl implements CourseQueryService {
     private final CourseChapterRepository chapterRepository;
     private final CourseSectionRepository sectionRepository;
     private final CourseReviewRepository reviewRepository;
-    private final EnrollmentRepository enrollmentRepository;
     private final RedisUtil redisUtil;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
@@ -61,7 +59,6 @@ public class CourseQueryServiceImpl implements CourseQueryService {
                                   CourseChapterRepository chapterRepository,
                                   CourseSectionRepository sectionRepository,
                                   CourseReviewRepository reviewRepository,
-                                  EnrollmentRepository enrollmentRepository,
                                   RedisUtil redisUtil,
                                   com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.courseRepository = courseRepository;
@@ -70,7 +67,6 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         this.chapterRepository = chapterRepository;
         this.sectionRepository = sectionRepository;
         this.reviewRepository = reviewRepository;
-        this.enrollmentRepository = enrollmentRepository;
         this.redisUtil = redisUtil;
         this.objectMapper = objectMapper;
     }

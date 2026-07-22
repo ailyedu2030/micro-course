@@ -19,7 +19,6 @@ import com.microcourse.entity.ExerciseRecord;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.Notification;
 import com.microcourse.entity.Order;
-import com.microcourse.entity.Question;
 import com.microcourse.entity.User;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.CourseRepository;
@@ -31,10 +30,8 @@ import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.NotificationRepository;
 import com.microcourse.repository.OrderRepository;
-import com.microcourse.repository.QuestionRepository;
 import com.microcourse.repository.TeacherRatingRepository;
 import com.microcourse.repository.UserRepository;
-import com.microcourse.service.EnrollmentService;
 import com.microcourse.service.TeacherService;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.exception.BusinessException;
@@ -59,12 +56,10 @@ public class TeacherServiceImpl implements TeacherService {
     private final DiscussionPostRepository discussionPostRepository;
     private final DiscussionCommentRepository discussionCommentRepository;
     private final ExerciseRepository exerciseRepository;
-    private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
     private final TeacherRatingRepository teacherRatingRepository;
     private final OrderRepository orderRepository;
     private final com.microcourse.service.PlatformShareRateResolver rateResolver;
-    private final EnrollmentService enrollmentService;
 
     public TeacherServiceImpl(
             CourseRepository courseRepository,
@@ -75,12 +70,10 @@ public class TeacherServiceImpl implements TeacherService {
             DiscussionPostRepository discussionPostRepository,
             DiscussionCommentRepository discussionCommentRepository,
             ExerciseRepository exerciseRepository,
-            QuestionRepository questionRepository,
             UserRepository userRepository,
             TeacherRatingRepository teacherRatingRepository,
             OrderRepository orderRepository,
-            com.microcourse.service.PlatformShareRateResolver rateResolver,
-            EnrollmentService enrollmentService) {
+            com.microcourse.service.PlatformShareRateResolver rateResolver) {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.exerciseRecordRepository = exerciseRecordRepository;
@@ -89,12 +82,10 @@ public class TeacherServiceImpl implements TeacherService {
         this.discussionPostRepository = discussionPostRepository;
         this.discussionCommentRepository = discussionCommentRepository;
         this.exerciseRepository = exerciseRepository;
-        this.questionRepository = questionRepository;
         this.userRepository = userRepository;
         this.teacherRatingRepository = teacherRatingRepository;
         this.orderRepository = orderRepository;
         this.rateResolver = rateResolver;
-        this.enrollmentService = enrollmentService;
     }
 
     @Override

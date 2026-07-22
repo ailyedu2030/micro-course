@@ -3,7 +3,6 @@ package com.microcourse.service;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.storage.*;
 import org.springframework.web.multipart.MultipartFile;
-import java.util.List;
 
 /**
  * Phase 15: 微专业申请表 Storage Application Service 接口

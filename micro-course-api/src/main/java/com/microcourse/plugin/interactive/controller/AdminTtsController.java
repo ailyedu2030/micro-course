@@ -109,7 +109,6 @@ public class AdminTtsController {
         final String batchTaskId;
         final int totalSections;
         final int estimatedSeconds;
-        volatile String status = "running";
         volatile long completedAt = 0;
         final List<BatchTtsResponse.BatchTtsSectionTask> sections;
 
@@ -132,7 +131,6 @@ public class AdminTtsController {
         }
 
         synchronized void markCompleted() {
-            this.status = "completed";
             this.completedAt = System.currentTimeMillis();
         }
 

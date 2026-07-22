@@ -17,7 +17,6 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DepartmentRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseRecordRepository;
-import com.microcourse.repository.TeachingClassRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AcademicStatsService;
 import com.microcourse.service.NotificationService;
@@ -25,8 +24,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -39,12 +36,13 @@ import java.util.stream.Collectors;
 @Service
 public class AcademicStatsServiceImpl implements AcademicStatsService {
 
+    private static final double COMPLETION_CRITICAL_THRESHOLD = 15.0;
+
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final DepartmentRepository departmentRepository;
     private final ExerciseRecordRepository exerciseRecordRepository;
-    private final TeachingClassRepository teachingClassRepository;
     private final NotificationService notificationService;
 
     public AcademicStatsServiceImpl(CourseRepository courseRepository,
@@ -52,14 +50,12 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
                                     EnrollmentRepository enrollmentRepository,
                                     DepartmentRepository departmentRepository,
                                     ExerciseRecordRepository exerciseRecordRepository,
-                                    TeachingClassRepository teachingClassRepository,
                                     NotificationService notificationService) {
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.departmentRepository = departmentRepository;
         this.exerciseRecordRepository = exerciseRecordRepository;
-        this.teachingClassRepository = teachingClassRepository;
         this.notificationService = notificationService;
     }
 
@@ -202,8 +198,6 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
 
     /** P1I-061 修复：完成率预警阈值提取为可配置常量，与前端保持一致 */
     private static final double COMPLETION_WARNING_THRESHOLD = 30.0;   // 完成率低于此值为 warning
-    private static final double COMPLETION_CRITICAL_THRESHOLD = 15.0;  // 完成率低于此值为 critical
-
     @Override
     @Transactional(readOnly = true)
     public List<CompletionWarningVO> getCompletionWarnings() {
@@ -222,7 +216,8 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
             Object compRate = row.get("completion_rate");
             double rate = compRate != null ? ((Number) compRate).doubleValue() : 0.0;
             vo.setCompletionRate(rate);
-            // 完成率 < COMPLETION_CRITICAL_THRESHOLD 为 critical，其余为 warning
+            // 完成率 < COMPLETION_CRITICAL_THRESHOLD 为 critical；
+            // 已进入预警列表但未触达 critical 的记录，统一标记为 warning。
             vo.setStatus(rate < COMPLETION_CRITICAL_THRESHOLD ? "critical" : "warning");
             result.add(vo);
         }
@@ -244,7 +239,10 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
             }
             if (!warningItems.isEmpty()) {
                 if (content.length() > 0) content.append("\n");
-                content.append("【提醒】").append(warningItems.size()).append("门课程完成率低于30%：");
+                content.append("【提醒】").append(warningItems.size())
+                        .append("门课程完成率低于")
+                        .append((int) COMPLETION_WARNING_THRESHOLD)
+                        .append("%：");
                 for (CompletionWarningVO w : warningItems) {
                     content.append("《").append(w.getCourseTitle()).append("》").append(String.format("%.1f%%", w.getCompletionRate())).append("；");
                 }

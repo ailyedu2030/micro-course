@@ -11,7 +11,6 @@ import com.microcourse.dto.PageResult;
 import com.microcourse.entity.Classes;
 import com.microcourse.entity.Major;
 import com.microcourse.entity.User;
-import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ClassesRepository;

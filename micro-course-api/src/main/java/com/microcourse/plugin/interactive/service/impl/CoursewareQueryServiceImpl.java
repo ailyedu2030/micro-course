@@ -2,11 +2,8 @@ package com.microcourse.plugin.interactive.service.impl;
 
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.plugin.interactive.cache.AudioStreamCache;
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
-import com.microcourse.plugin.interactive.dto.HtmlSegmentAudioDTO;
-import com.microcourse.plugin.interactive.dto.HtmlSegmentScriptDTO;
 import com.microcourse.plugin.interactive.dto.PptAudioDTO;
 import com.microcourse.plugin.interactive.dto.PptFlowDTO;
 import com.microcourse.plugin.interactive.dto.PptScriptDTO;
@@ -35,7 +32,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 

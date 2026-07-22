@@ -1,13 +1,11 @@
 package com.microcourse.service;
 
-import com.jayway.jsonpath.JsonPath;
 import com.microcourse.BaseIntegrationTest;
 import com.microcourse.dto.UserStatusRequest;
 // PayRequest not used - using String paymentMethod directly
 import com.microcourse.enums.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.service.*;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;

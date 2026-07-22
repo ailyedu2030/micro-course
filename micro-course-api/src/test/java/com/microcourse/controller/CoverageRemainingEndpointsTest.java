@@ -142,10 +142,6 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
         return "Bearer " + loginAs("student", P0_PASSWORD);
     }
 
-    private void loginRefreshCache() {
-        clearAdminToken();
-    }
-
     // ========================================================================
     //  1. 认证模块 AuthController
     // ========================================================================

@@ -15,7 +15,6 @@ import com.microcourse.entity.Department;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.Major;
 import com.microcourse.entity.User;
-import com.microcourse.enums.UserRole;
 import com.microcourse.enums.UserStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;

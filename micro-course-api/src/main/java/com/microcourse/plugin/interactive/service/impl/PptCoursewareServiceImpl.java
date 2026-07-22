@@ -1,6 +1,5 @@
 package com.microcourse.plugin.interactive.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.PptAudioDTO;

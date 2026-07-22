@@ -225,7 +225,7 @@ public class JwtUtil {
             Object body = Jwts.parser()
                     .build()
                     .parse(token)
-                    .getBody();
+                    .getPayload();
             if (body instanceof io.jsonwebtoken.Claims claims) {
                 return claims.get("jti", String.class);
             }

@@ -1,6 +1,5 @@
 package com.microcourse.plugin.interactive.service.impl;
 
-import com.microcourse.dto.R;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseSection;
 import com.microcourse.exception.BusinessException;

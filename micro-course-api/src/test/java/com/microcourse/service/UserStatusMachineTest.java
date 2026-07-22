@@ -5,7 +5,6 @@ import com.microcourse.dto.UserStatusRequest;
 import com.microcourse.enums.UserStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;

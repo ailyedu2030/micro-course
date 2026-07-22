@@ -4,7 +4,6 @@ import com.microcourse.BaseIntegrationTest;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
@@ -12,7 +11,6 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * P0 finding CON-001 回归测试:Enrollment 幂等性 — 同 userId+courseId 二次选课

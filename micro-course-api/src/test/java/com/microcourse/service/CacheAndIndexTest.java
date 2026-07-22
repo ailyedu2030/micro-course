@@ -4,7 +4,6 @@ import com.microcourse.BaseIntegrationTest;
 
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
-import com.microcourse.service.CourseService;
 import com.microcourse.util.RedisUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;

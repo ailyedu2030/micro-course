@@ -22,9 +22,6 @@ import com.microcourse.service.MicroSpecialtyProposalService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
 
-import java.util.*;
-import java.util.stream.*;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposalService {

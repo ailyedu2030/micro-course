@@ -2,7 +2,6 @@ package com.microcourse.controller;
 
 import com.microcourse.BaseIntegrationTest;
 
-import com.jayway.jsonpath.JsonPath;
 import com.microcourse.enums.UserRole;
 import com.microcourse.util.JwtUtil;
 import org.junit.jupiter.api.AfterEach;

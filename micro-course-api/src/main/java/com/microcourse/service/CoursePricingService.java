@@ -4,8 +4,6 @@ import com.microcourse.dto.PricingForAdopterVO;
 import com.microcourse.dto.CoursePricingInfoVO;
 import com.microcourse.dto.CoursePricingRequest;
 
-import java.util.Map;
-
 public interface CoursePricingService {
 
     void updatePricing(Long courseId, CoursePricingRequest request);

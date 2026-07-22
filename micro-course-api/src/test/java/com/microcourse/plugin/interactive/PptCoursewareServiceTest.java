@@ -2,8 +2,6 @@ package com.microcourse.plugin.interactive;
 
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.plugin.interactive.dto.PptAudioDTO;
-import com.microcourse.plugin.interactive.dto.PptScriptDTO;
 import com.microcourse.plugin.interactive.dto.SlidePptPageDTO;
 import com.microcourse.plugin.interactive.entity.SlidePptPage;
 import com.microcourse.plugin.interactive.entity.SlidePptPageAudio;
@@ -18,8 +16,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;

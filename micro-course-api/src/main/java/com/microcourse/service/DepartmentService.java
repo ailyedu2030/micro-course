@@ -1,6 +1,5 @@
 package com.microcourse.service;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.microcourse.dto.DepartmentCreateRequest;
 import com.microcourse.dto.DepartmentStatsVO;
 import com.microcourse.dto.DepartmentUpdateRequest;

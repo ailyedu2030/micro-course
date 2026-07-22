@@ -14,8 +14,6 @@ import com.microcourse.exception.BusinessException;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.exception.ErrorCode;
-
-import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.service.LearningProgressService;
 import com.microcourse.service.VideoAccessService;
 import com.microcourse.service.VideoService;

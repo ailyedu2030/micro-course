@@ -1,7 +1,5 @@
 package com.microcourse.dto;
 
-import java.util.List;
-
 public class ClassScheduleDTO {
 
     private Integer dayOfWeek;

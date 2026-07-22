@@ -412,7 +412,6 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         DiscussionPost post = postRepository.selectById(id);
         checkPostStatus(post);
         // 检查是否是作者、管理员、教务处或本课程教师
-        User user = userRepository.selectById(userId);
         boolean isAuthor = post.getUserId().equals(userId);
         boolean isManager = SecurityUtil.isAdmin()
                 || SecurityUtil.hasRole("ACADEMIC")
@@ -692,11 +691,6 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
             }
         }
         return false;
-    }
-
-    private List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> comments,
-                                                        java.util.Map<Long, User> userMap) {
-        return buildCommentTree(comments, userMap, null);
     }
 
     private List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> comments,

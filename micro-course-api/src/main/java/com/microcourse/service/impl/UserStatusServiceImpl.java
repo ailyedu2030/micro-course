@@ -1,6 +1,5 @@
 package com.microcourse.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.TeacherStatusRequest;
 import com.microcourse.dto.UserStatusRequest;
@@ -19,7 +18,6 @@ import com.microcourse.util.SecurityUtil;
 
 import com.microcourse.service.OperationLogService;
 import com.microcourse.service.UserStatusService;
-import com.microcourse.service.UserStatusStateMachine;
 import com.microcourse.util.IpUtil;
 import com.microcourse.util.RedisUtil;
 import org.slf4j.Logger;
@@ -39,18 +37,15 @@ public class UserStatusServiceImpl implements UserStatusService {
     private final RedisUtil redisUtil;
     private final OperationLogService operationLogService;
     private final EnrollmentRepository enrollmentRepository;
-    private final UserStatusStateMachine userStatusStateMachine;
 
     public UserStatusServiceImpl(UserRepository userRepository,
                                   RedisUtil redisUtil,
                                   OperationLogService operationLogService,
-                                  EnrollmentRepository enrollmentRepository,
-                                  UserStatusStateMachine userStatusStateMachine) {
+                                  EnrollmentRepository enrollmentRepository) {
         this.userRepository = userRepository;
         this.redisUtil = redisUtil;
         this.operationLogService = operationLogService;
         this.enrollmentRepository = enrollmentRepository;
-        this.userStatusStateMachine = userStatusStateMachine;
     }
 
     @Override

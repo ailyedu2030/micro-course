@@ -1,7 +1,6 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseCategory;
 import com.microcourse.entity.CourseChapter;

@@ -9,6 +9,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.dto.TtsStatusResponse;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
@@ -26,11 +27,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -45,21 +46,13 @@ import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
@@ -104,15 +97,11 @@ public class TtsServiceImpl implements TtsService {
     @Value("${plugin.interactive.tts.timeout-seconds:600}")
     private int ttsTimeoutSeconds;
 
-    private static final String MMX_CMD = "mmx";
-
     /** J8-01: 启动时检测 mmx CLI 是否可用 */
     private volatile boolean mmxAvailable = false;
-    private volatile String mmxCheckMessage = "未检测";
 
     /** Qwen3-TTS 本地服务是否可用 */
     private volatile boolean ttsLocalAvailable = false;
-    private volatile String ttsLocalCheckMessage = "未检测";
 
     private final ConcurrentHashMap<String, TtsTaskState> taskStates = new ConcurrentHashMap<>();
 
@@ -161,24 +150,18 @@ public class TtsServiceImpl implements TtsService {
             HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() == 200 && resp.body().contains("\"status\":\"ok\"")) {
                 ttsLocalAvailable = true;
-                ttsLocalCheckMessage = "可用 (" + ttsLocalUrl + ")";
                 log.info("[TTS] Qwen3-TTS 本地服务检测通过，TTS 正常可用");
                 return;
-            } else {
-                ttsLocalCheckMessage = "本地服务响应异常: " + resp.statusCode();
             }
         } catch (Exception e) {
-            ttsLocalCheckMessage = "本地服务不可用: " + e.getMessage();
             log.warn("[TTS] Qwen3-TTS 本地服务不可用: {}，尝试降级到 mmx", e.getMessage());
         }
 
         // 2. 降级到 MiniMax API（HTTP 直连）
         if (minimaxApiKey != null && !minimaxApiKey.isBlank()) {
             mmxAvailable = true;
-            mmxCheckMessage = "MiniMax API 已配置";
             log.info("[TTS] MiniMax API key 已配置，TTS 将通过 HTTP API 调用");
         } else {
-            mmxCheckMessage = "MiniMax API key 未配置";
             log.warn("[TTS] MiniMax API key 未配置，TTS 将降级为纯文本模式");
         }
     }
@@ -304,7 +287,8 @@ public class TtsServiceImpl implements TtsService {
         }
 
         // 解析返回的 JSON 获取音频时长
-        Map<String, Object> result = objectMapper.readValue(resp.body(), Map.class);
+        Map<String, Object> result = objectMapper.readValue(
+                resp.body(), new TypeReference<Map<String, Object>>() {});
         Object durationObj = result.get("duration");
         int duration = durationObj instanceof Number ? ((Number) durationObj).intValue() : 0;
 
@@ -563,7 +547,6 @@ public class TtsServiceImpl implements TtsService {
                     resultSegments.add(seg);
 
                     final int fsegDuration = segDuration;
-                    final long fsegSize = segSize;
                     final String fsegUrl = segUrl;
                     final String fsegText = segText;
                     final int fsegCount = segments.length;
@@ -571,7 +554,6 @@ public class TtsServiceImpl implements TtsService {
                     final String fmodel = model != null ? model : ttsModel;
                     final LocalDateTime fnow = LocalDateTime.now();
                     final String ftaskId = taskId;
-                    final List<TtsStatusResponse.AudioSegment> fResultSegs = resultSegments;
 
                     transactionTemplate.execute(tx -> {
                         page.setNarrationScript(fsegText);

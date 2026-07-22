@@ -10,8 +10,6 @@ public class ChapterVO {
     private String title;
     private String description;
     private Integer sortOrder;
-    @Deprecated
-    private String chapterType;
     /** 从 course_sections.section_type 推导的章节类型（取第一个课时的类型） */
     private String sectionType;
     private Integer sectionCount;

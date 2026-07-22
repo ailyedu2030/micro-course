@@ -5,7 +5,6 @@ import com.microcourse.dto.UserStatusRequest;
 import com.microcourse.enums.UserRole;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.security.UserStatusCheckFilter;
-import com.microcourse.service.UserService;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;

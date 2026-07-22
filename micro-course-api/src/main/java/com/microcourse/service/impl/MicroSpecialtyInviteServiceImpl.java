@@ -24,8 +24,6 @@ import com.microcourse.service.MicroSpecialtyInviteService;
 import com.microcourse.service.MicroSpecialtyService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,8 +33,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteService {
-
-    private static final Logger log = LoggerFactory.getLogger(MicroSpecialtyInviteServiceImpl.class);
     private static final int BATCH_SIZE = 50;
 
     private final MicroSpecialtyTeacherRepository teacherRepository;

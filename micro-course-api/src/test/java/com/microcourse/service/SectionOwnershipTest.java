@@ -1,12 +1,9 @@
 package com.microcourse.service;
 
-import com.microcourse.dto.PageResult;
 import com.microcourse.dto.SectionDTO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.CourseSection;
-import com.microcourse.entity.User;
-import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.repository.CourseChapterRepository;
@@ -22,7 +19,6 @@ import org.mockito.Mockito;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 
 /**

@@ -4,7 +4,6 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
-import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
 import com.microcourse.plugin.interactive.entity.SlidePptPage;
 import com.microcourse.plugin.interactive.entity.SlidePptPageAudio;
 import com.microcourse.plugin.interactive.entity.SlidePptPageScript;
@@ -25,7 +24,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 

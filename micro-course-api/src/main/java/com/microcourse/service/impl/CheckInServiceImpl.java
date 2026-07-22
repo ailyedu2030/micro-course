@@ -3,8 +3,6 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.CheckInVO;
 import com.microcourse.entity.CheckIn;
-import com.microcourse.exception.BusinessException;
-import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CheckInRepository;
 import com.microcourse.service.BadgeService;
 import com.microcourse.service.CheckInService;
