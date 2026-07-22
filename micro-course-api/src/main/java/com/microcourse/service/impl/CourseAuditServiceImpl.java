@@ -4,13 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.entity.Course;
-import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.CourseReviewLog;
 import com.microcourse.entity.Enrollment;
-import com.microcourse.entity.Exercise;
 import com.microcourse.entity.PluginGrant;
 import com.microcourse.entity.User;
-import com.microcourse.entity.Video;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
@@ -18,13 +15,10 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
-import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseReviewLogRepository;
 import com.microcourse.repository.EnrollmentRepository;
-import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.PluginGrantRepository;
-import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.CourseAuditService;
 import com.microcourse.service.CourseStateMachine;
 import com.microcourse.service.CourseStateMachine.TransitionContext;
@@ -44,33 +38,24 @@ public class CourseAuditServiceImpl implements CourseAuditService {
     private static final Logger LOG = LoggerFactory.getLogger(CourseAuditServiceImpl.class);
 
     private final CourseRepository courseRepository;
-    private final CourseChapterRepository chapterRepository;
     private final CourseReviewLogRepository reviewLogRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final PluginGrantRepository pluginGrantRepository;
-    private final VideoRepository videoRepository;
-    private final ExerciseRepository exerciseRepository;
     private final CourseSlideMapper courseSlideMapper;
     private final CourseStateMachine courseStateMachine;
     private final NotificationService notificationService;
 
     public CourseAuditServiceImpl(CourseRepository courseRepository,
-                                  CourseChapterRepository chapterRepository,
                                   CourseReviewLogRepository reviewLogRepository,
                                   EnrollmentRepository enrollmentRepository,
                                   PluginGrantRepository pluginGrantRepository,
-                                  VideoRepository videoRepository,
-                                  ExerciseRepository exerciseRepository,
                                   CourseSlideMapper courseSlideMapper,
                                   CourseStateMachine courseStateMachine,
                                   NotificationService notificationService) {
         this.courseRepository = courseRepository;
-        this.chapterRepository = chapterRepository;
         this.reviewLogRepository = reviewLogRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.pluginGrantRepository = pluginGrantRepository;
-        this.videoRepository = videoRepository;
-        this.exerciseRepository = exerciseRepository;
         this.courseSlideMapper = courseSlideMapper;
         this.courseStateMachine = courseStateMachine;
         this.notificationService = notificationService;

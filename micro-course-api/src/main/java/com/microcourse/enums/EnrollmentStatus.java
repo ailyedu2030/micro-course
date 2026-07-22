@@ -54,7 +54,6 @@ public enum EnrollmentStatus {
     private static final java.util.Set<String> LEGACY_ACTIVE_VALUES =
             java.util.Set.of(LEGACY_ENROLLED_VALUE, APPROVED.getValue());
 
-    @SuppressWarnings("deprecation")
     public static java.util.Set<String> legacyAndActiveEnrolledValues() {
         return LEGACY_ACTIVE_VALUES;
     }
@@ -65,7 +64,6 @@ public enum EnrollmentStatus {
      * @param extras 额外状态值, 传 {@code null} 元素会被跳过
      * @return 包含历史 ENROLLED、当前 APPROVED, 以及 extras 中所有非 null 值
      */
-    @SuppressWarnings("deprecation")
     public static java.util.Set<String> legacyActiveWith(String... extras) {
         java.util.Set<String> set = new java.util.HashSet<>(LEGACY_ACTIVE_VALUES);
         if (extras != null) {

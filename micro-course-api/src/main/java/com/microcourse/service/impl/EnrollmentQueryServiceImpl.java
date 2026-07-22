@@ -14,7 +14,6 @@ import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.Major;
 import com.microcourse.entity.User;
-import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
