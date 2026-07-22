@@ -36,7 +36,6 @@ import com.microcourse.event.DomainEventPublisher;
 import com.microcourse.event.dto.ChapterEventPayload;
 import com.microcourse.repository.HermesCourseMappingRepository;
 import com.microcourse.entity.HermesCourseMapping;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.slf4j.Logger;
@@ -49,7 +48,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service

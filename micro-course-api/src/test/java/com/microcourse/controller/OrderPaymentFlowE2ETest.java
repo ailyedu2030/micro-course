@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -376,8 +375,6 @@ class OrderPaymentFlowE2ETest extends BaseIntegrationTest {
         Long studentId = insertUser("STUDENT");
         Long courseId = insertPaidCourse(categoryId, teacherId);
         Ctx ctx = new Ctx();
-        ctx.categoryId = categoryId;
-        ctx.teacherId = teacherId;
         ctx.studentId = studentId;
         ctx.courseId = courseId;
         ctx.studentToken = bearerFor(studentId, "stu-" + studentId, UserRole.STUDENT);
@@ -456,8 +453,6 @@ class OrderPaymentFlowE2ETest extends BaseIntegrationTest {
 
     /** 单测场景上下文：一组互相隔离的 fixture 标识与 token。 */
     private static final class Ctx {
-        Long categoryId;
-        Long teacherId;
         Long studentId;
         Long courseId;
         String studentToken;

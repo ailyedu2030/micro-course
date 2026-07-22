@@ -1,7 +1,5 @@
 package com.microcourse.dto;
 
-import java.time.LocalDateTime;
-
 public class TeacherStatsVO {
 
     private Integer courseCount;

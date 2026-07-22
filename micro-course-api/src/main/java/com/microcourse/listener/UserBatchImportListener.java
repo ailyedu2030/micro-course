@@ -19,7 +19,6 @@ public class UserBatchImportListener implements ReadListener<UserBatchImportDTO>
     private final List<UserBatchImportDTO> rows = new ArrayList<>();
     private final List<ImportErrorItem> errors = new ArrayList<>();
 
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
     /** 密码复杂度: 至少 8 位，含字母和数字 */
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,}$");
     private static final String PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";

@@ -45,7 +45,6 @@ import com.microcourse.event.DomainEventPublisher;
 import com.microcourse.event.dto.CourseEventPayload;
 import com.microcourse.repository.HermesCourseMappingRepository;
 import com.microcourse.entity.HermesCourseMapping;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.service.CourseAdminService;
 import com.microcourse.service.CourseAuditService;
 import com.microcourse.service.CourseStateMachine;

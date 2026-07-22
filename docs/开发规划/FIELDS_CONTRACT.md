@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 279 | Vue 视图数: 60 | Controller 数: 72 | API 文件数: 45
+> 实体数: 279 | Vue 视图数: 60 | Controller 数: 73 | API 文件数: 45
 
 ---
 
@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2613
+- 后端实体字段总数: 2612
 
 - 前端引用字段总数: 434
 
@@ -869,6 +869,8 @@
 
 | Grade | /api/grades | 10 | - |
 
+| HermesEvent | /api/hermes/webhook/events | 1 | - |
+
 | HermesWebhook | /api/hermes/webhook | 16 | - |
 
 | InteractiveCourseware | /api/courses/{courseId}/interactive | 4 | - |
@@ -1030,7 +1032,7 @@
 
 | ChapterUpdateRequest | 8 | 0 |
 
-| ChapterVO | 20 | 0 |
+| ChapterVO | 19 | 0 |
 
 | CheckIn | 7 | 0 |
 

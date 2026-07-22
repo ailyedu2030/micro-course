@@ -50,13 +50,11 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 @Service
@@ -407,12 +405,10 @@ public class SlideServiceImpl implements SlideService {
                 XSLFSlide slide = slides.get(i);
                 html.append("  <div class=\"slide page-").append(i + 1).append("\">\n");
                 // 提取标题（第一个有字体的形状作为标题）
-                boolean hasTitle = false;
                 for (XSLFTextShape shape : slide.getPlaceholders()) {
                     String text = extractShapeText(shape);
                     if (!text.isEmpty()) {
                         html.append("    <h2>").append(escapeHtml(text)).append("</h2>\n");
-                        hasTitle = true;
                         break;
                     }
                 }
@@ -663,8 +659,7 @@ public class SlideServiceImpl implements SlideService {
         if ("HTML_DIRECT".equals(p.getContentType()) && segCount != null && segCount > 1
                 && p.getNarrationAudioUrl() != null && !p.getNarrationAudioUrl().isBlank()) {
             int count = segCount;
-            String token = extractTokenFromUrl(p.getNarrationAudioUrl());
-            if (token != null) {
+            if (extractTokenFromUrl(p.getNarrationAudioUrl()) != null) {
                 java.util.ArrayList<SegmentAudioVO> segList = new java.util.ArrayList<>(count);
                 for (int i = 1; i <= count; i++) {
                     SegmentAudioVO s = new SegmentAudioVO();
@@ -703,7 +698,6 @@ public class SlideServiceImpl implements SlideService {
         if (htmlContent == null || !htmlContent.contains("AUDIO_SEG_")) {
             return htmlContent;
         }
-        String token = extractTokenFromUrl(p.getNarrationAudioUrl());
         Integer segCount = p.getSegmentCount();
         if (segCount == null || segCount <= 0) segCount = 15;
         String baseUrl = p.getNarrationAudioUrl();
@@ -769,8 +763,8 @@ public class SlideServiceImpl implements SlideService {
 
     private boolean validateZipBomb(byte[] bytes) {
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(bytes))) {
-            ZipEntry e; int c = 0; long t = 0; byte[] buf = new byte[8192];
-            while ((e = zis.getNextEntry()) != null) {
+            int c = 0; long t = 0; byte[] buf = new byte[8192];
+            while (zis.getNextEntry() != null) {
                 if (++c > 1000) return false;
                 int r; while ((r = zis.read(buf)) != -1) { t += r; if (t > 500L * 1024 * 1024) return false; }
             }
@@ -968,19 +962,4 @@ public class SlideServiceImpl implements SlideService {
         }
     }
 
-    private void backupSlideFiles(Long courseId) {
-        Path dir = Paths.get(storagePath, String.valueOf(courseId));
-        if (!Files.exists(dir)) return;
-        try {
-            String ts = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            Path bk = dir.resolve("backup").resolve(ts);
-            Files.createDirectories(bk);
-            Files.walk(dir).filter(Files::isRegularFile).filter(p -> !p.startsWith(dir.resolve("backup"))).forEach(p -> {
-                try {
-                    Path t = bk.resolve(dir.relativize(p)); Files.createDirectories(t.getParent());
-                    Files.copy(p, t, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                } catch (IOException e) { log.warn("[Slide] 备份失败: {}", p, e); }
-            });
-        } catch (IOException e) { log.warn("[Slide] 创建备份目录失败 courseId={}", courseId, e); }
-    }
 }

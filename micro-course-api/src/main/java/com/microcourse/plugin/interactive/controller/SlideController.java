@@ -38,7 +38,6 @@ public class SlideController {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final com.microcourse.plugin.interactive.mapper.CourseSlideMapper courseSlideMapper;
-    private final com.microcourse.plugin.interactive.mapper.SlidePageMapper slidePageMapper;
 
     /**
      * HTML 课件白名单：V177 灰度发布。
@@ -51,13 +50,11 @@ public class SlideController {
     public SlideController(SlideService slideService,
                            CourseRepository courseRepository,
                            EnrollmentRepository enrollmentRepository,
-                           com.microcourse.plugin.interactive.mapper.CourseSlideMapper courseSlideMapper,
-                           com.microcourse.plugin.interactive.mapper.SlidePageMapper slidePageMapper) {
+                           com.microcourse.plugin.interactive.mapper.CourseSlideMapper courseSlideMapper) {
         this.slideService = slideService;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.courseSlideMapper = courseSlideMapper;
-        this.slidePageMapper = slidePageMapper;
     }
 
     @PostMapping("/upload")

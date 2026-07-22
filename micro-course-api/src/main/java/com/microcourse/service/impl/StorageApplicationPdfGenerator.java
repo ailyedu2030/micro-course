@@ -13,7 +13,6 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.List;
 
 @Component
 public class StorageApplicationPdfGenerator {

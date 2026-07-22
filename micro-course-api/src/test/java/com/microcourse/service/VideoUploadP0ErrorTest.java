@@ -4,17 +4,10 @@ import com.microcourse.BaseIntegrationTest;
 import com.microcourse.entity.Video;
 import com.microcourse.repository.VideoRepository;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.slf4j.LoggerFactory;
 import org.springframework.test.context.jdbc.Sql;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**

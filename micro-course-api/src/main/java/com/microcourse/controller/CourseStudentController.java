@@ -3,7 +3,6 @@ package com.microcourse.controller;
 import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.R;
 import com.microcourse.service.CourseStudentService;
-import com.microcourse.service.EnrollmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;

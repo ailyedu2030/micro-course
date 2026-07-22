@@ -1,7 +1,5 @@
 package com.microcourse.service;
 
-import com.microcourse.dto.VideoVO;
-
 /**
  * 视频转码服务
  *

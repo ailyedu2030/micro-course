@@ -1,7 +1,5 @@
 package com.microcourse.dto;
 
-import java.time.LocalDateTime;
-
 /**
  * P0-2: 学员详情弹窗 VO
  * 包含 users + classes + majors 关联字段

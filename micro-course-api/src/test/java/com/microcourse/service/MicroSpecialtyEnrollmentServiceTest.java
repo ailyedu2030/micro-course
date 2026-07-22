@@ -60,7 +60,7 @@ class MicroSpecialtyEnrollmentServiceTest {
     void setUp() {
         service = new MicroSpecialtyEnrollmentServiceImpl(
                 enrollmentRepository, msRepository, msCourseRepository,
-                msTeacherRepository, courseEnrollmentRepository, courseRepository,
+                courseEnrollmentRepository, courseRepository,
                 userRepository, classesRepository, notificationService, enrollmentService,
                 msService, certificateService, queryService, progressService, null);
         MicroSpecialtyEnrollmentVO mockVO = new MicroSpecialtyEnrollmentVO();

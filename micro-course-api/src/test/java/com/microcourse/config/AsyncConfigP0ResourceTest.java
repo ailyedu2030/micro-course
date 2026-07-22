@@ -1,7 +1,6 @@
 package com.microcourse.config;
 
 import com.microcourse.BaseIntegrationTest;
-import com.microcourse.config.AsyncConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Qualifier;

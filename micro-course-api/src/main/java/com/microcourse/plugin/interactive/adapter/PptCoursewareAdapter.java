@@ -2,10 +2,8 @@ package com.microcourse.plugin.interactive.adapter;
 
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.PptAudioDTO;
-import com.microcourse.plugin.interactive.dto.PptScriptDTO;
 import com.microcourse.plugin.interactive.dto.SegmentAudioVO;
 import com.microcourse.plugin.interactive.dto.SlidePptPageDTO;
-import com.microcourse.plugin.interactive.entity.SlidePptPage;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
 import com.microcourse.plugin.interactive.service.PptCoursewareService;
 import org.springframework.beans.factory.annotation.Autowired;

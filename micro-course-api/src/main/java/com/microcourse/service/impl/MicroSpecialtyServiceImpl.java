@@ -39,8 +39,6 @@ import com.microcourse.service.MicroSpecialtyQueryService;
 import com.microcourse.service.MicroSpecialtyService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.util.SecurityUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,8 +48,6 @@ import java.util.Map;
 
 @Service
 public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
-
-    private static final Logger log = LoggerFactory.getLogger(MicroSpecialtyServiceImpl.class);
 
     // ====== 微专业状态常量 ======
     private static final String MS_STATUS_DRAFT = "DRAFT";

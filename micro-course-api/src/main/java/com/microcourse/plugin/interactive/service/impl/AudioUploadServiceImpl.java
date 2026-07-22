@@ -225,8 +225,8 @@ public class AudioUploadServiceImpl implements AudioUploadService {
         String mergedUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId="
                 + sectionId + "&v=2&merged=true&token=" + audioToken;
 
-        log.info("[AudioUpload] batch uploaded: courseId={}, sectionId={}, segments={}, totalSize={}",
-                courseId, sectionId, files.size(), totalSize);
+        log.info("[AudioUpload] batch uploaded: courseId={}, sectionId={}, segments={}, totalSize={}, totalDuration={}",
+                courseId, sectionId, files.size(), finalTotalSize, finalTotalDuration);
 
         return AudioUploadResponse.merged(mergedUrl, (long) totalDuration, totalSize,
                 "mp3", DEFAULT_SAMPLE_RATE, files.size());

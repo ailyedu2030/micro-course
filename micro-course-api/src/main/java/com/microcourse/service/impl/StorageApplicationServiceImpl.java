@@ -63,7 +63,6 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
 
     private final MicroSpecialtyProposalRepository proposalRepository;
     private final ProposalCourseRepository courseRepository;
-    private final ProposalChapterRepository chapterRepository;
     private final ProposalLeadCourseRepository leadCourseRepository;
     private final ProposalTeamMemberRepository teamMemberRepository;
     private final ProposalSignatureRepository signatureRepository;
@@ -79,7 +78,6 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     public StorageApplicationServiceImpl(
             MicroSpecialtyProposalRepository proposalRepository,
             ProposalCourseRepository courseRepository,
-            ProposalChapterRepository chapterRepository,
             ProposalLeadCourseRepository leadCourseRepository,
             ProposalTeamMemberRepository teamMemberRepository,
             ProposalSignatureRepository signatureRepository,
@@ -93,7 +91,6 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             com.microcourse.service.MicroSpecialtyProposalService msProposalService) {
         this.proposalRepository = proposalRepository;
         this.courseRepository = courseRepository;
-        this.chapterRepository = chapterRepository;
         this.leadCourseRepository = leadCourseRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.signatureRepository = signatureRepository;
@@ -122,12 +119,12 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         proposal.setUpdatedAt(LocalDateTime.now());
         // 自动填充所属学院
         try {
-            com.microcourse.entity.User user = userRepository.selectById(userId);
+            User user = userRepository.selectById(userId);
             if (user != null && user.getDepartmentId() != null) {
                 proposal.setOfferDepartmentId(user.getDepartmentId());
             } else {
                 // 用户无学院时，兜底取第一个可用学院
-                List<com.microcourse.entity.Department> depts = departmentRepository.selectList(null);
+                List<Department> depts = departmentRepository.selectList(null);
                 if (depts != null && !depts.isEmpty()) {
                     proposal.setOfferDepartmentId(depts.get(0).getId());
                     log.warn("initDraft: userId={} 无学院，兜底使用 departmentId={}", userId, depts.get(0).getId());

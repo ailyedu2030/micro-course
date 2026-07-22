@@ -22,7 +22,7 @@ public class User {
     private String realName;
     // R8 修复：updateStrategy=IGNORED 让空字符串/null 也能写入数据库，
     // 解决批量导入空 email 触发 uk_users_email 部分唯一约束的问题
-    @TableField(value = "email", updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.IGNORED)
+    @TableField(value = "email", updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private String email;
     private String phone;
     private String gender;
@@ -87,7 +87,7 @@ public class User {
      * 用于 Hermes / 第三方系统调用 webhook 时认证教师身份。
      * 明文存储（性能考虑；DB 仅微课平台内部访问）。
      */
-    @TableField(value = "api_key", updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.IGNORED)
+    @TableField(value = "api_key", updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private String apiKey;
 
     public User() {}

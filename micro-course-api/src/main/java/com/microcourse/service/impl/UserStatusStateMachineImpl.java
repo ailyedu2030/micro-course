@@ -7,7 +7,6 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.UserStatusStateMachine;
-import com.microcourse.service.UserStatusStateMachine.TransitionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;

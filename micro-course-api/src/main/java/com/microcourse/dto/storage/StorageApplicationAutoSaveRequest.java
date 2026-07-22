@@ -1,6 +1,5 @@
 package com.microcourse.dto.storage;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**

@@ -5,6 +5,7 @@ import com.microcourse.dto.storage.*;
 import com.microcourse.entity.MicroSpecialtyProposal;
 import com.microcourse.entity.User;
 import com.microcourse.entity.proposal.*;
+import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
@@ -38,7 +39,6 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
     private static final Logger log = LoggerFactory.getLogger(StorageApplicationCudServiceImpl.class);
 
     private final ProposalCourseRepository courseRepository;
-    private final ProposalChapterRepository chapterRepository;
     private final ProposalLeadCourseRepository leadCourseRepository;
     private final ProposalTeamMemberRepository teamMemberRepository;
     private final ProposalSignatureRepository signatureRepository;
@@ -49,7 +49,6 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
 
     public StorageApplicationCudServiceImpl(
             ProposalCourseRepository courseRepository,
-            ProposalChapterRepository chapterRepository,
             ProposalLeadCourseRepository leadCourseRepository,
             ProposalTeamMemberRepository teamMemberRepository,
             ProposalSignatureRepository signatureRepository,
@@ -58,7 +57,6 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             UserRepository userRepository,
             SqlSessionFactory sqlSessionFactory) {
         this.courseRepository = courseRepository;
-        this.chapterRepository = chapterRepository;
         this.leadCourseRepository = leadCourseRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.signatureRepository = signatureRepository;
@@ -93,7 +91,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             } catch (Exception e) {
                 String redactedDate = request.getApplyDate().length() > 20
                         ? request.getApplyDate().substring(0, 10) + "..." : request.getApplyDate();
-                log.warn("applyDate parse failed: (redacted)", e);
+                log.warn("applyDate parse failed: {}", redactedDate, e);
             }
         }
         if (request.getType() != null) {
@@ -130,7 +128,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             } catch (Exception e) {
                 String redactedDate = request.getStartDate().length() > 20
                         ? request.getStartDate().substring(0, 10) + "..." : request.getStartDate();
-                log.warn("startDate parse failed: (redacted)", e);
+                log.warn("startDate parse failed: {}", redactedDate, e);
             }
         }
         if (request.getDuration() != null) {
@@ -316,7 +314,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
                                             "chapterAssignments.teacherId=" + assignItem.getTeacherId() + " 不存在");
                                 }
-                                if (!"TEACHER".equals(teacher.getRole())) {
+                                if (teacher.getRole() != UserRole.TEACHER) {
                                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
                                             "chapterAssignments.teacherId=" + assignItem.getTeacherId() + " 不是教师角色");
                                 }

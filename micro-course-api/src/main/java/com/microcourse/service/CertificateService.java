@@ -1,7 +1,6 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.CertificateVO;
-import com.microcourse.dto.PageResult;
 
 import java.util.List;
 

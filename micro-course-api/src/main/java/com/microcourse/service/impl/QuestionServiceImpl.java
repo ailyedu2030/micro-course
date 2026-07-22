@@ -1,7 +1,5 @@
 package com.microcourse.service.impl;
 
-import com.alibaba.excel.EasyExcel;
-import cn.hutool.poi.excel.ExcelReader;
 import cn.hutool.poi.excel.ExcelUtil;
 import cn.hutool.poi.excel.ExcelWriter;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -20,7 +18,6 @@ import com.microcourse.entity.QuestionChapter;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.util.XssSanitizer;
 import com.microcourse.repository.CourseRepository;
@@ -56,7 +53,6 @@ public class QuestionServiceImpl implements QuestionService {
     private final QuestionRepository questionRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
-    private final CourseCategoryRepository categoryRepository;
     private final QuestionChapterRepository questionChapterRepository;
     private final CourseChapterRepository courseChapterRepository;
 
@@ -66,14 +62,12 @@ public class QuestionServiceImpl implements QuestionService {
     public QuestionServiceImpl(QuestionRepository questionRepository,
                               CourseRepository courseRepository,
                               UserRepository userRepository,
-                              CourseCategoryRepository categoryRepository,
                               QuestionChapterRepository questionChapterRepository,
                               CourseChapterRepository courseChapterRepository,
                               @Lazy QuestionServiceImpl self) {
         this.questionRepository = questionRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
-        this.categoryRepository = categoryRepository;
         this.questionChapterRepository = questionChapterRepository;
         this.courseChapterRepository = courseChapterRepository;
         this.self = self;
@@ -459,7 +453,7 @@ public class QuestionServiceImpl implements QuestionService {
             } catch (Exception e) {
                 failedCount += chunk.size();
                 log.error("[Question] 批量入库失败 range=[{}-{}), 原因={}", i, end, e.getMessage(), e);
-                for (Question q : chunk) {
+                for (int j = 0; j < chunk.size(); j++) {
                     errors.add(new BatchImportResultVO.ImportErrorItem(
                             0, "", "入库失败: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName())));
                 }

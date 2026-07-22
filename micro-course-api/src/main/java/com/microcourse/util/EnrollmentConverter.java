@@ -1,6 +1,5 @@
 package com.microcourse.util;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.entity.Classes;
 import com.microcourse.entity.Course;

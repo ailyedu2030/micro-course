@@ -46,7 +46,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class ExerciseRecordServiceImpl implements ExerciseRecordService {
@@ -433,8 +432,6 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         GradingResult result = new GradingResult();
         result.questionId = question.getId();
         result.questionType = question.getQuestionType();
-        result.userAnswer = userAnswer;
-        result.fullScore = fullScore;
 
         if (userAnswer == null) {
             result.score = 0;
@@ -528,63 +525,6 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         result.isCorrect = isCorrect;
         result.score = isCorrect ? fullScore : 0;
         return result;
-    }
-
-    private boolean compareMultipleAnswers(String userAnswer, String correctAnswer) {
-        try {
-            List<String> userList = parseAnswerList(userAnswer);
-            List<String> correctList = parseAnswerList(correctAnswer);
-
-            List<String> sortedUser = new ArrayList<>(userList);
-            List<String> sortedCorrect = new ArrayList<>(correctList);
-            Collections.sort(sortedUser);
-            Collections.sort(sortedCorrect);
-
-            return sortedUser.equals(sortedCorrect);
-        } catch (Exception e) {
-            log.warn("[ExerciseRecord] 多选题答案比对异常 userAnswer={} correctAnswer={}", userAnswer, correctAnswer, e);
-            return false;
-        }
-    }
-
-    private List<String> parseAnswerList(String answer) {
-        if (answer == null) return Collections.emptyList();
-        String trimmed = answer.trim();
-        if (trimmed.startsWith("[")) {
-            // JSON array format: ["A","B","C"]
-            try {
-                return objectMapper.readValue(trimmed, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {});
-            } catch (JsonProcessingException e) {
-                // ERR-006 修复:不再静默吞掉,记录日志便于排查数据异常
-                log.warn("[ExerciseRecord] 答案 JSON 解析失败,降级为空列表 answer={}", answer, e);
-                return Collections.emptyList();
-            }
-        }
-        // Comma-separated format: A,B,C
-        return Arrays.stream(trimmed.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(java.util.stream.Collectors.toList());
-    }
-
-    private void upsertWrongQuestion(Long userId, Long questionId, Long courseId) {
-        // 使用原子 SQL 更新 wrongCount,避免并发读-改-写丢失
-        LambdaUpdateWrapper<WrongQuestion> incWrapper = new LambdaUpdateWrapper<>();
-        incWrapper.eq(WrongQuestion::getUserId, userId)
-                .eq(WrongQuestion::getQuestionId, questionId)
-                .setSql("wrong_count = COALESCE(wrong_count, 0) + 1")
-                .setSql("last_wrong_at = NOW()");
-        int affected = wrongQuestionRepository.update(null, incWrapper);
-        if (affected == 0) {
-            WrongQuestion wrongQuestion = new WrongQuestion();
-            wrongQuestion.setUserId(userId);
-            wrongQuestion.setQuestionId(questionId);
-            wrongQuestion.setCourseId(courseId);
-            wrongQuestion.setWrongCount(1);
-            wrongQuestion.setLastWrongAt(LocalDateTime.now());
-            wrongQuestion.setCreatedAt(LocalDateTime.now());
-            wrongQuestionRepository.insert(wrongQuestion);
-        }
     }
 
     @Override
@@ -778,8 +718,6 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     private static class GradingResult {
         Long questionId;
         String questionType;
-        String userAnswer;
-        Integer fullScore;
         Integer score;
         Boolean isCorrect;
         boolean needsManualGrading = false;

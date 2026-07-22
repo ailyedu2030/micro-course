@@ -7,15 +7,11 @@ import com.microcourse.dto.DailyActivityVO;
 import com.microcourse.dto.AdminRevenueVO;
 import com.microcourse.dto.DashboardOverviewVO;
 import com.microcourse.dto.UserTrendVO;
-import com.microcourse.entity.Certificate;
 import com.microcourse.entity.Course;
-import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.Order;
 import com.microcourse.entity.Enrollment;
-import com.microcourse.entity.Exercise;
 import com.microcourse.entity.LearningProgress;
 import com.microcourse.entity.User;
-import com.microcourse.entity.Video;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.repository.CertificateRepository;
@@ -41,7 +37,6 @@ import java.lang.management.RuntimeMXBean;
 import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -406,8 +401,8 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         try {
             com.sun.management.OperatingSystemMXBean osBean =
                     (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-            long totalPhysical = osBean.getTotalPhysicalMemorySize();
-            long freePhysical = osBean.getFreePhysicalMemorySize();
+            long totalPhysical = osBean.getTotalMemorySize();
+            long freePhysical = osBean.getFreeMemorySize();
             long usedPhysical = totalPhysical - freePhysical;
             double usedPercent = totalPhysical > 0 ? (usedPhysical * 100.0) / totalPhysical : 0;
             health.put("systemMemory", usedPercent > 90 ? "WARN" : "OK");
@@ -532,8 +527,6 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             List<Course> courses = courseRepository.selectBatchIds(courseIds);
             Map<Long, Long> courseTeacherMap = courses.stream()
                     .collect(Collectors.toMap(Course::getId, Course::getTeacherId));
-            Map<Long, String> courseTitleMap = courses.stream()
-                    .collect(Collectors.toMap(Course::getId, Course::getTitle));
 
             for (Map.Entry<Long, List<Order>> entry : ordersByCourse.entrySet()) {
                 Long cId = entry.getKey();

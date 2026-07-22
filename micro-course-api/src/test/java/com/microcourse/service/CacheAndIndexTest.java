@@ -2,9 +2,9 @@ package com.microcourse.service;
 
 import com.microcourse.BaseIntegrationTest;
 
+import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
-import com.microcourse.service.CourseService;
 import com.microcourse.util.RedisUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -112,6 +112,17 @@ class CacheAndIndexTest extends BaseIntegrationTest {
         return insertCourse(cat, teacher, 0); // 0 = DRAFT
     }
 
+    private Long reserveNextCourseId() {
+        Long nextId = jdbc.queryForObject(
+                "SELECT nextval(pg_get_serial_sequence('courses', 'id'))",
+                Long.class);
+        jdbc.queryForObject(
+                "SELECT setval(pg_get_serial_sequence('courses', 'id'), ?, false)",
+                Long.class,
+                nextId);
+        return nextId;
+    }
+
     private void loginAsAdminContext() {
         var auth = new UsernamePasswordAuthenticationToken(
                 1L, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
@@ -135,6 +146,36 @@ class CacheAndIndexTest extends BaseIntegrationTest {
         assertNotNull(cached, "getById 后缓存应存在");
         assertInstanceOf(CourseVO.class, cached, "缓存值应可还原为 CourseVO");
         assertEquals(courseId, ((CourseVO) cached).getId());
+    }
+
+    // --------- 1.5 · 创建驱逐同 id 遗留缓存 ---------
+    @Test
+    @DisplayName("1.5·create 后驱逐同 ID 遗留详情缓存")
+    void courseCreateShouldEvictStaleDetailCache() {
+        Long categoryId = insertCategory();
+        Long teacherId = insertTeacher();
+        Long nextCourseId = reserveNextCourseId();
+        String key = COURSE_CACHE_PREFIX + nextCourseId;
+
+        CourseVO stale = new CourseVO();
+        stale.setId(nextCourseId);
+        stale.setHid("stale-hid");
+        redisUtil.set(key, stale, 60, TimeUnit.SECONDS);
+        assertNotNull(redisUtil.get(key), "前置条件：遗留缓存应存在");
+
+        loginAsAdminContext();
+        CourseCreateRequest req = new CourseCreateRequest();
+        req.setTitle("cache-create-" + System.nanoTime());
+        req.setCategoryId(categoryId);
+        req.setTeacherId(teacherId);
+        req.setHid("fresh-hid");
+
+        CourseVO created = courseService.create(req);
+        createdCourseIds.add(created.getId());
+
+        assertEquals(nextCourseId, created.getId(), "测试应命中预留的课程 ID");
+        assertEquals("fresh-hid", created.getHid(), "创建响应应返回最新 hid");
+        assertNull(redisUtil.get(key), "create 后应清掉同 ID 遗留缓存");
     }
 
     // --------- 2 · 更新清除缓存（一致性 硬约束#1）---------

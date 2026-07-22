@@ -43,7 +43,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -119,7 +118,10 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CourseVO create(CourseCreateRequest request) {
-        return adminService.create(request);
+        CourseVO vo = adminService.create(request);
+        // Create 也要驱逐详情/统计缓存，避免旧缓存命中新建课程 ID。
+        evictCourseCacheAfterCommit(vo != null ? vo.getId() : null);
+        return vo;
     }
 
     @Override

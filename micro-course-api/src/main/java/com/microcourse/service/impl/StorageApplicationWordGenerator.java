@@ -5,16 +5,12 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
 import com.microcourse.dto.storage.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 
 @Component
 public class StorageApplicationWordGenerator {
-
-    private static final Logger log = LoggerFactory.getLogger(StorageApplicationWordGenerator.class);
 
     public byte[] generate(StorageApplicationVO data) {
         try (XWPFDocument doc = new XWPFDocument()) {

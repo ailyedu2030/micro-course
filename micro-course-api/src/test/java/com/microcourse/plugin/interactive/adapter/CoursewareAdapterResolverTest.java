@@ -6,7 +6,6 @@ import com.microcourse.plugin.interactive.service.PptCoursewareService;
 import com.microcourse.plugin.interactive.service.SlideService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;

@@ -1,7 +1,5 @@
 package com.microcourse.dto;
 
-import com.microcourse.enums.CourseStatus;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;

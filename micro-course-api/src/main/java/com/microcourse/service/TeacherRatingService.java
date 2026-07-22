@@ -1,7 +1,6 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.TeacherRatingVO;
-import com.microcourse.entity.TeacherRating;
 
 import java.util.List;
 

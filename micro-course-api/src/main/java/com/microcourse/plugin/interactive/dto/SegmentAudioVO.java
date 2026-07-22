@@ -1,8 +1,5 @@
 package com.microcourse.plugin.interactive.dto;
 
-import com.microcourse.plugin.interactive.dto.HtmlSegmentAudioDTO;
-import com.microcourse.plugin.interactive.dto.PptAudioDTO;
-
 public class SegmentAudioVO {
 
     private Integer pageNumber;

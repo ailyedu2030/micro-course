@@ -25,7 +25,6 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyCourseRepository;
 import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
-import com.microcourse.repository.MicroSpecialtyTeacherRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CertificateService;
 import com.microcourse.service.EnrollmentService;
@@ -57,7 +56,6 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     private final MicroSpecialtyEnrollmentRepository enrollmentRepository;
     private final MicroSpecialtyRepository msRepository;
     private final MicroSpecialtyCourseRepository msCourseRepository;
-    private final MicroSpecialtyTeacherRepository msTeacherRepository;
     private final EnrollmentRepository courseEnrollmentRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
@@ -73,7 +71,6 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
     public MicroSpecialtyEnrollmentServiceImpl(MicroSpecialtyEnrollmentRepository enrollmentRepository,
                                                MicroSpecialtyRepository msRepository,
                                                MicroSpecialtyCourseRepository msCourseRepository,
-                                               MicroSpecialtyTeacherRepository msTeacherRepository,
                                                EnrollmentRepository courseEnrollmentRepository,
                                                CourseRepository courseRepository,
                                                UserRepository userRepository,
@@ -88,7 +85,6 @@ public class MicroSpecialtyEnrollmentServiceImpl implements MicroSpecialtyEnroll
         this.enrollmentRepository = enrollmentRepository;
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
-        this.msTeacherRepository = msTeacherRepository;
         this.courseEnrollmentRepository = courseEnrollmentRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
@@ -399,12 +395,10 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
         MicroSpecialtyClassImportResultVO result = new MicroSpecialtyClassImportResultVO();
         List<ClassImportItemVO> successList = new ArrayList<>();
         List<ClassImportItemVO> failedList = new ArrayList<>();
-        int totalCount = 0;
 
         for (Long classId : classIds) {
             try {
                 int imported = self.classImport(microSpecialtyId, classId);
-                totalCount += imported;
                 Classes cls = classesRepository.selectById(classId);
                 successList.add(new ClassImportItemVO(classId, cls != null ? cls.getName() : "未知班级", imported, null));
             } catch (Exception e) {

@@ -6,7 +6,6 @@ import com.microcourse.dto.TeachingClassVO;
 import com.microcourse.enums.TeachingClassStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.service.TeachingClassService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
