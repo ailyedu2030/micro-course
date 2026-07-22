@@ -29,8 +29,6 @@ import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("unchecked")
 class CourseBundleServiceTest {
 
     @Mock private CourseBundleRepository bundleRepository;

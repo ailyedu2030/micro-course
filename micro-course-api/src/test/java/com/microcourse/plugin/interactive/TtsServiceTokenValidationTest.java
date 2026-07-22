@@ -27,6 +27,7 @@ import static org.mockito.Mockito.*;
  * 旧逻辑严格按 pageNumber 查 → pageNumber=2..15 全部 403。
  * 新逻辑增加 sectionId 级 fallback。
  */
+@SuppressWarnings("unchecked")
 class TtsServiceTokenValidationTest {
 
     private SlidePageMapper slidePageMapper;

@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("unchecked")
 class SlideServiceTest {
 
     private CourseSlideMapper courseSlideMapper;

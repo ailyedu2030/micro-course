@@ -7,10 +7,8 @@ import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.CourseSection;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
-import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
 import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
 import com.microcourse.plugin.interactive.entity.SlidePptPage;
-import com.microcourse.plugin.interactive.entity.SlidePptPageScript;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
@@ -25,7 +23,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 
@@ -36,7 +33,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -54,6 +50,7 @@ import static org.mockito.Mockito.*;
  *   <li>空列表 / 超限 / 跨 course 防御</li>
  * </ul>
  */
+@SuppressWarnings("unchecked")
 class CoursewareDeleteServiceTest {
 
     private CourseRepository courseRepository;
@@ -362,10 +359,9 @@ class CoursewareDeleteServiceTest {
         void deleteChaptersBatch_partialSuccess() {
             Course course = makeCourse(SYTAFE_COURSE_ID, SYTAFE_ID);
             CourseChapter ch1 = makeChapter(SYTAFE_CHAPTER_ID, SYTAFE_COURSE_ID);
-            CourseChapter ch2 = makeChapter(205L, SYTAFE_COURSE_ID);
             when(courseRepository.selectById(SYTAFE_COURSE_ID)).thenReturn(course);
 
-            // ch1 正常, ch2 不存在
+            // ch1 (SYTAFE_CHAPTER_ID) 正常, chapter id=205 不存在
             when(chapterRepository.selectById(SYTAFE_CHAPTER_ID)).thenReturn(ch1);
             when(chapterRepository.selectById(205L)).thenReturn(null);
             when(sectionRepository.selectList(any(Wrapper.class))).thenReturn(Collections.emptyList());
