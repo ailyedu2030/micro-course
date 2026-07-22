@@ -85,6 +85,8 @@ log/
 *~
 .nova/
 .cursor/
+.agents/
+.codex/
 
 # 项目特定
 # 保留 micro-course-api/src/main/resources/application.yml 但忽略 local
