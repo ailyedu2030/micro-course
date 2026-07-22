@@ -168,7 +168,6 @@ class MicroSpecialtyProgressAggregatorTest {
         when(msRepository.selectById(1L)).thenReturn(ms);
 
         when(enrollmentRepository.selectCount(any())).thenAnswer(invocation -> {
-            @SuppressWarnings("unchecked")
             com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MicroSpecialtyEnrollment> wrapper = invocation.getArgument(0);
             String sqlSegment = wrapper.getSqlSegment();
             Map<String, Object> params = wrapper.getParamNameValuePairs();

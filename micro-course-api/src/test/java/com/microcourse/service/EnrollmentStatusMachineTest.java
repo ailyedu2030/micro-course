@@ -46,8 +46,6 @@ class EnrollmentStatusMachineTest extends BaseIntegrationTest {
     @Autowired
     private EnrollmentService enrollmentService;
     @Autowired
-    private EnrollmentRepository enrollmentRepository;
-    @Autowired
     private EnrollmentHistoryRepository enrollmentHistoryRepository;
 
     @BeforeEach

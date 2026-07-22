@@ -171,10 +171,14 @@ public class MicroSpecialtyQualityScoreServiceImpl implements MicroSpecialtyQual
 
         Map<Long, Long> inProgressOrCompletedMap = batchCountToMap(
                 allCourseIds.isEmpty() ? Collections.emptyList() : new ArrayList<>(allCourseIds),
-                ids -> enrollmentRepository.countInProgressOrCompletedByCourseIds(ids,
-                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
-                        EnrollmentStatus.APPROVED.getValue(),
-                        EnrollmentStatus.COMPLETED.getValue()));
+                ids -> {
+                    @SuppressWarnings("deprecation")
+                    String enrolled = EnrollmentStatus.LEGACY_ENROLLED_VALUE;  // "ENROLLED"（V148 历史兼容）
+                    return enrollmentRepository.countInProgressOrCompletedByCourseIds(
+                            ids, enrolled,
+                            EnrollmentStatus.APPROVED.getValue(),
+                            EnrollmentStatus.COMPLETED.getValue());
+                });
 
         // 4. 批量拉平均评分
         Map<Long, BigDecimal> ratingMap = new HashMap<>();

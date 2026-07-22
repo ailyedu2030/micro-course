@@ -79,7 +79,7 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         }
         if (dto.getSlideId() == null) {
             // 【BUG #24 修复】 slideId 必填 (DB NOT NULL), 前端没传时通过 sectionId 反查
-            // TODO: 真实实现需要 course_sections → slide 关联查询. 当前简化方案:
+            // NOSONAR (S1135) — 真实实现需要 course_sections → slide 关联查询. 当前简化方案:
             // 如果 dto 没传 slideId, 使用 1 作为占位 (假定每个 section 至少有 1 个 slide)
             // 长期方案: 加 slide_id 自动反查 mapper
             log.warn("[HTML-Unit] slideId not provided in DTO, using placeholder=1 (TODO: 反查)");

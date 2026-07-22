@@ -602,12 +602,6 @@ class MicroSpecialtyEnrollmentServiceTest {
         return en;
     }
 
-    private static MicroSpecialtyEnrollment inProgressEnrollment(Long id) {
-        MicroSpecialtyEnrollment en = pendingEnrollment(id);
-        en.setStatus("IN_PROGRESS");
-        return en;
-    }
-
     private static MicroSpecialtyCourse requiredCourse(Long courseId, Long msId) {
         MicroSpecialtyCourse mc = new MicroSpecialtyCourse();
         mc.setId(courseId);
@@ -647,10 +641,4 @@ class MicroSpecialtyEnrollmentServiceTest {
         return enrollment;
     }
 
-    private static Course course(Long id, String title) {
-        Course c = new Course();
-        c.setId(id);
-        c.setTitle(title);
-        return c;
-    }
 }

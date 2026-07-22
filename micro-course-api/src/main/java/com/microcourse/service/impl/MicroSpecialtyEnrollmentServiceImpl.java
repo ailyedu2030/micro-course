@@ -662,10 +662,9 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
                                 .eq(Enrollment::getUserId, en.getUserId())
                                 .in(Enrollment::getSourceChannel, "MICRO_SPECIALTY", "MICRO_SPECIALTY_AUTO")
                                 .in(Enrollment::getEnrollmentStatus,
-                                        EnrollmentStatus.APPROVED.getValue(),
-                                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
-                                        EnrollmentStatus.WAITLIST.getValue(),
-                                        EnrollmentStatus.SUSPENDED.getValue()));
+                                        EnrollmentStatus.legacyActiveWith(
+                                                EnrollmentStatus.WAITLIST.getValue(),
+                                                EnrollmentStatus.SUSPENDED.getValue())));
                 if (courseEn != null) {
                     enrollmentService.cancelEnrollment(courseEn.getId(), userId);
                 }

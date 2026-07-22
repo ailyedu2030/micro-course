@@ -406,7 +406,8 @@ class OrderServiceBundlePriceTest {
 
             when(orderRepository.selectById(1L)).thenReturn(order);
             when(enrollmentRepository.selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class)))
-                    .thenReturn(List.of(e1, e2), List.of(e1, e2));
+                    .thenReturn(java.util.List.<com.microcourse.entity.Enrollment>of(e1, e2),
+                            java.util.List.<com.microcourse.entity.Enrollment>of(e1, e2));
             org.mockito.Mockito.doNothing().when(enrollmentService).cancelEnrollment(11L, 1L);
             org.mockito.Mockito.doThrow(new com.microcourse.exception.BusinessException(
                     com.microcourse.exception.ErrorCode.BAD_REQUEST_PARAM, "第二门课程退选失败"))
@@ -457,7 +458,8 @@ class OrderServiceBundlePriceTest {
 
             when(orderRepository.selectById(1L)).thenReturn(order, order);
             when(enrollmentRepository.selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class)))
-                    .thenReturn(List.of(e1, e2), List.of(e1, e2));
+                    .thenReturn(java.util.List.<com.microcourse.entity.Enrollment>of(e1, e2),
+                            java.util.List.<com.microcourse.entity.Enrollment>of(e1, e2));
             when(orderRepository.updateById(any(Order.class))).thenReturn(1);
             when(bundleRepository.selectById(50L)).thenReturn(bundle);
 

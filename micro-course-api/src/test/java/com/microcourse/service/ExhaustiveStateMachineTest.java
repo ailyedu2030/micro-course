@@ -51,13 +51,7 @@ public class ExhaustiveStateMachineTest extends BaseIntegrationTest {
 
     // ==================== 注入 ====================
     @Autowired private JdbcTemplate jdbcTemplate;
-    @Autowired private UserService userService;
-    @Autowired private TeachingClassService teachingClassService;
     @Autowired private UserStatusService userStatusService;
-    @Autowired private OrderService orderService;
-    @Autowired private MicroSpecialtyAdminService microSpecialtyAdminService;
-    @Autowired private MicroSpecialtyFeaturedService featuredService;
-    @Autowired private MicroSpecialtyInviteService inviteService;
 
     private String uniq() { return Long.toString(System.nanoTime()) + "-" + SEQ.incrementAndGet(); }
 

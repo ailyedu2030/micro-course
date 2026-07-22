@@ -133,7 +133,6 @@ public class MicroSpecialtyProposalServiceImpl implements MicroSpecialtyProposal
             List<com.microcourse.entity.User> users = userRepository.selectBatchIds(userIds);
             if (users != null) for (com.microcourse.entity.User u : users) userMap.put(u.getId(), u.getRealName());
         }
-        @SuppressWarnings({"unchecked", "rawtypes"})
         java.util.List<java.util.Map<String, Object>> records = new java.util.ArrayList<>();
         for (MicroSpecialtyProposal p : ipage.getRecords()) {
             java.util.Map<String, Object> map = new java.util.HashMap<>();

@@ -90,7 +90,6 @@ class MicroSpecialtyProgressServiceTest {
 
         List<Integer> versionConditions = new ArrayList<>();
         when(enrollmentRepository.update(any(), any())).thenAnswer(invocation -> {
-            @SuppressWarnings("unchecked")
             LambdaUpdateWrapper<MicroSpecialtyEnrollment> wrapper = invocation.getArgument(1);
             String sqlSegment = wrapper.getSqlSegment();
             Map<String, Object> params = wrapper.getParamNameValuePairs();
@@ -138,7 +137,6 @@ class MicroSpecialtyProgressServiceTest {
         List<String> sqlSets = new ArrayList<>();
         List<Map<String, Object>> paramsList = new ArrayList<>();
         when(enrollmentRepository.update(any(), any())).thenAnswer(invocation -> {
-            @SuppressWarnings("unchecked")
             LambdaUpdateWrapper<MicroSpecialtyEnrollment> wrapper = invocation.getArgument(1);
             sqlSets.add(wrapper.getSqlSet());
             paramsList.add(Map.copyOf(wrapper.getParamNameValuePairs()));
@@ -210,11 +208,4 @@ class MicroSpecialtyProgressServiceTest {
         return enrollment;
     }
 
-    private static BigDecimal firstBigDecimal(Map<String, Object> params) {
-        return params.values().stream()
-                .filter(BigDecimal.class::isInstance)
-                .map(BigDecimal.class::cast)
-                .findFirst()
-                .orElseThrow();
-    }
 }

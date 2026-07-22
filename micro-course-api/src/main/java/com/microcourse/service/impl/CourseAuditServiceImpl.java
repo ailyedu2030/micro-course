@@ -156,8 +156,7 @@ public class CourseAuditServiceImpl implements CourseAuditService {
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, id)
                         .in(Enrollment::getEnrollmentStatus,
-                                EnrollmentStatus.APPROVED.getValue(),
-                                EnrollmentStatus.LEGACY_ENROLLED_VALUE));
+                                EnrollmentStatus.legacyAndActiveEnrolledValues()));
         for (Enrollment enrollment : activeEnrollments) {
             notificationService.notifyAsync(enrollment.getUserId(),
                     NotificationType.COURSE_PUBLISHED,
@@ -195,8 +194,7 @@ public class CourseAuditServiceImpl implements CourseAuditService {
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, id)
                         .in(Enrollment::getEnrollmentStatus,
-                                EnrollmentStatus.APPROVED.getValue(),
-                                EnrollmentStatus.LEGACY_ENROLLED_VALUE));
+                                EnrollmentStatus.legacyAndActiveEnrolledValues()));
         for (Enrollment enrollment : activeEnrollments) {
             notificationService.notifyAsync(enrollment.getUserId(),
                     NotificationType.COURSE_UNPUBLISHED,

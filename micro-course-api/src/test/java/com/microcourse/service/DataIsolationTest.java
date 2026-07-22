@@ -54,9 +54,6 @@ class DataIsolationTest extends BaseIntegrationTest {
     private static final String RAW_PHONE = "13812345678";
     /** 动态生成唯一 email，避免跨测试数据污染 */
     private String uniqueEmail;
-    private static final String MASKED_PHONE = "138****5678";
-    private static final String MASKED_EMAIL = "i***@example.com";
-
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired
@@ -158,7 +155,6 @@ class DataIsolationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("[隔离] 选课排行对非本人不暴露真实 userId（置 null）")
-    @SuppressWarnings("unchecked")
     void rankingShouldNotExposeUserId() throws Exception {
         Long courseId = insertIsolatedCourse(4); // PUBLISHED
         try {

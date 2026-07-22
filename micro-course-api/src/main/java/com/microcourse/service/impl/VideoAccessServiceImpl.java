@@ -112,9 +112,7 @@ public class VideoAccessServiceImpl implements VideoAccessService {
                         .eq("user_id", userId)
                         .eq("course_id", courseId)
                         .in("enrollment_status",
-                                EnrollmentStatus.LEGACY_ENROLLED_VALUE,   // "ENROLLED"（Phase A-2 历史兼容）
-                                EnrollmentStatus.APPROVED.getValue(),     // "APPROVED"
-                                EnrollmentStatus.COMPLETED.getValue())    // "COMPLETED"（允许复习）
+                                EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue()))  // 历史兼容 + 允许复习
         );
         return count != null && count > 0;
     }

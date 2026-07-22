@@ -71,9 +71,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
                     .eq(Enrollment::getUserId, userId)
                     .eq(Enrollment::getCourseId, courseId)
                     .in(Enrollment::getEnrollmentStatus,
-                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
-                        EnrollmentStatus.APPROVED.getValue(),
-                        EnrollmentStatus.COMPLETED.getValue()));
+                        EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue())));
             if (enrollmentCount == 0) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再查看学习进度");
             }
@@ -210,9 +208,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
                     .eq(Enrollment::getUserId, currentUserId)
                     .eq(Enrollment::getCourseId, courseId)
                     .in(Enrollment::getEnrollmentStatus,
-                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
-                        EnrollmentStatus.APPROVED.getValue(),
-                        EnrollmentStatus.COMPLETED.getValue()));
+                        EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue())));
             if (enrollmentCount == 0) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再更新学习进度");
             }
@@ -287,9 +283,7 @@ public class LearningProgressServiceImpl implements LearningProgressService {
                     .eq(Enrollment::getUserId, userId)
                     .eq(Enrollment::getCourseId, request.getCourseId())
                     .in(Enrollment::getEnrollmentStatus,
-                        EnrollmentStatus.LEGACY_ENROLLED_VALUE,
-                        EnrollmentStatus.APPROVED.getValue(),
-                        EnrollmentStatus.COMPLETED.getValue()));
+                        EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue())));
             if (enrollmentCount == 0) {
                 throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再记录学习进度");
             }

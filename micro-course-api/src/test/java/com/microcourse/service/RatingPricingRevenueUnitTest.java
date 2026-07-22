@@ -61,9 +61,6 @@ class RatingPricingRevenueUnitTest {
 
     private TeacherRatingServiceImpl ratingService;
     private PlatformShareRateResolver rateResolver;
-    private CourseServiceImpl courseService;
-    private TeacherServiceImpl teacherService;
-
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -82,7 +79,6 @@ class RatingPricingRevenueUnitTest {
     @Test
     @DisplayName("[1] 评级公式: 满分教师(评分 5.0 + 完成率 100% + 300 学员 + 10 课程) → 应≥80 铂金")
     void testRatingFormula_PerfectTeacher_ReachesPlatinum() {
-        TeacherRatingRepository.TeacherRatingStatRow row = makeRow(1L, 10, 300, 100.0, 5.0);
         when(ratingRepository.selectOne(any())).thenReturn(null);
         when(ratingRepository.upsertRating(anyLong(), any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(Integer.valueOf(1));
 

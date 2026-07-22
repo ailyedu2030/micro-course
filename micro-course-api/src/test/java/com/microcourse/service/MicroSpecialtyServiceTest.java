@@ -390,20 +390,6 @@ class MicroSpecialtyServiceTest {
 
     // ==================== helpers ====================
 
-    private static MicroSpecialty msWithStatus(String status) {
-        MicroSpecialty ms = new MicroSpecialty();
-        ms.setId(1L);
-        ms.setTitle("测试微专业");
-        ms.setCode("MS-001");
-        ms.setStatus(status);
-        ms.setVersion(0);
-        ms.setLeadTeacherId(1L);
-        ms.setCreatorId(1L);
-        ms.setCreatedAt(LocalDateTime.now());
-        ms.setUpdatedAt(LocalDateTime.now());
-        return ms;
-    }
-
     private static MicroSpecialtyCreateRequest createBasicRequest() {
         MicroSpecialtyCreateRequest req = new MicroSpecialtyCreateRequest();
         req.setCode("MS-001");
@@ -415,28 +401,4 @@ class MicroSpecialtyServiceTest {
         return req;
     }
 
-    private static User academicUser(Long id) {
-        User u = new User();
-        u.setId(id);
-        u.setRole(UserRole.ACADEMIC);
-        return u;
-    }
-
-    private static User user(Long id) {
-        User u = new User();
-        u.setId(id);
-        u.setRealName("用户" + id);
-        return u;
-    }
-
-    private static MicroSpecialtyTeacher teacherRecord(Long msId, Long teacherId, String role, String inviteStatus) {
-        MicroSpecialtyTeacher t = new MicroSpecialtyTeacher();
-        t.setId(teacherId);
-        t.setMicroSpecialtyId(msId);
-        t.setTeacherId(teacherId);
-        t.setRole(role);
-        t.setInviteStatus(inviteStatus);
-        t.setVersion(0);
-        return t;
-    }
 }
