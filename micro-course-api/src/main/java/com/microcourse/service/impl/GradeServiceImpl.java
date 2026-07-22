@@ -661,10 +661,6 @@ public class GradeServiceImpl implements GradeService {
         }
     }
 
-    private String toStringVal(Object o) {
-        return o == null ? null : o.toString();
-    }
-
     /**
      * 批量转换 — 预加载关联实体，避免 N+1
      */

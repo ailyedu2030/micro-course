@@ -5,9 +5,7 @@ import com.microcourse.dto.microSpecialty.MicroSpecialtyLeadTransferRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
 import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyTeacher;
-import com.microcourse.entity.User;
 import com.microcourse.enums.NotificationType;
-import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.ChapterTeacherAssignmentRepository;
@@ -32,10 +30,6 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;

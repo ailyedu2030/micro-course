@@ -23,8 +23,6 @@ import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.UserQueryService;
 import com.microcourse.util.SecurityUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,8 +36,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class UserQueryServiceImpl implements UserQueryService {
-
-    private static final Logger log = LoggerFactory.getLogger(UserQueryServiceImpl.class);
 
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
@@ -183,6 +179,7 @@ public class UserQueryServiceImpl implements UserQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    @SuppressWarnings("deprecation")
     public UserVO getUserById(Long id) {
         User user = userRepository.selectById(id);
         if (user == null || user.getDeletedAt() != null) {
@@ -211,7 +208,6 @@ public class UserQueryServiceImpl implements UserQueryService {
                 && !SecurityUtil.isOwnerOrAdmin(id)) {
             User targetUser = user;
             if (targetUser != null && com.microcourse.enums.UserRole.STUDENT.equals(targetUser.getRole())) {
-                @SuppressWarnings("deprecation")
                 String enrolled = EnrollmentStatus.LEGACY_ENROLLED_VALUE;  // "ENROLLED"（V148 历史兼容）
                 long count = enrollmentRepository.countByTeacherAndStudent(
                         SecurityUtil.getCurrentUserId(), id,

@@ -7,12 +7,10 @@ import com.microcourse.dto.EnrollmentUpdateRequest;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.StudentDetailVO;
-import com.microcourse.entity.Classes;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CoursePrerequisite;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.EnrollmentHistory;
-import com.microcourse.entity.Major;
 import com.microcourse.entity.Order;
 import com.microcourse.entity.User;
 import com.microcourse.enums.CourseStatus;
@@ -39,9 +37,7 @@ import com.microcourse.service.OrderService;
 import com.microcourse.enums.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -68,7 +64,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final EnrollmentStatsService statsService;
     private final EnrollmentQueryService queryService;
     private final com.microcourse.metrics.EnrollmentMetrics metrics;
-    private final org.springframework.transaction.support.TransactionTemplate txTemplate;
     // P1-I-6 回滚:waitlistPromotionService 字段已删除
     public EnrollmentServiceImpl(com.microcourse.repository.CoursePrerequisiteRepository coursePrerequisiteRepository,
                                   EnrollmentRepository enrollmentRepository,
@@ -85,8 +80,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                                    EnrollmentQueryService queryService,
                                    CourseService courseService,
                                     NotificationService notificationService,
-                                    com.microcourse.metrics.EnrollmentMetrics metrics,
-                                    org.springframework.transaction.PlatformTransactionManager txManager) {
+                                    com.microcourse.metrics.EnrollmentMetrics metrics) {
         this.coursePrerequisiteRepository = coursePrerequisiteRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentHistoryRepository = enrollmentHistoryRepository;
@@ -103,7 +97,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         this.courseService = courseService;
         this.notificationService = notificationService;
         this.metrics = metrics;
-        this.txTemplate = new org.springframework.transaction.support.TransactionTemplate(txManager);
         // P1-I-6 回滚:waitlistPromotionService 字段已删除
     }
     @Override
@@ -676,6 +669,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         }
     }
     @Override
+    @SuppressWarnings("deprecation")
     public void assertStudentInTeachersCourses(Long teacherId, Long studentId) {
         long count = enrollmentRepository.countByTeacherAndStudent(teacherId, studentId,
                 EnrollmentStatus.LEGACY_ENROLLED_VALUE,   // "ENROLLED"（V148 历史兼容） — 修正: 原误传 APPROVED 导致存量数据漏查

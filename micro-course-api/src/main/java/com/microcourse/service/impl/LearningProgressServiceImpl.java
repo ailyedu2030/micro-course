@@ -519,43 +519,6 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         return w;
     }
 
-    private LearningProgressVO convertToVO(LearningProgress progress) {
-        LearningProgressVO vo = new LearningProgressVO();
-        vo.setId(progress.getId());
-        vo.setUserId(progress.getUserId());
-        vo.setCourseId(progress.getCourseId());
-        vo.setChapterId(progress.getChapterId());
-        vo.setSectionId(progress.getSectionId());
-        vo.setVideoProgress(progress.getVideoProgress());
-        vo.setVideoPosition(progress.getVideoPosition());
-        vo.setExerciseCompleted(progress.getExerciseCompleted());
-        vo.setExercisePassed(progress.getExercisePassed());
-        vo.setTotalWatchTime(progress.getTotalWatchTime());
-        vo.setDeviceId(progress.getDeviceId());
-        vo.setPlatform(progress.getPlatform());
-        vo.setPlaybackSpeed(progress.getPlaybackSpeed());
-        vo.setConfidence(progress.getConfidence());
-        vo.setOfflineAttended(progress.getOfflineAttended());
-        vo.setCompleted(progress.getCompleted());
-        vo.setLastWatchAt(progress.getLastWatchAt());
-        vo.setCreatedAt(progress.getCreatedAt());
-        vo.setUpdatedAt(progress.getUpdatedAt());
-
-        if (progress.getCourseId() != null) {
-            Course course = courseRepository.selectById(progress.getCourseId());
-            if (course != null) {
-                vo.setCourseTitle(course.getTitle());
-            }
-        }
-        if (progress.getChapterId() != null) {
-            CourseChapter chapter = courseChapterRepository.selectById(progress.getChapterId());
-            if (chapter != null) {
-                vo.setChapterTitle(chapter.getTitle());
-            }
-        }
-        return vo;
-    }
-
     private LearningProgressVO convertToVO(LearningProgress progress, Map<Long, Course> courseMap,
                                              Map<Long, CourseChapter> chapterMap) {
         LearningProgressVO vo = new LearningProgressVO();

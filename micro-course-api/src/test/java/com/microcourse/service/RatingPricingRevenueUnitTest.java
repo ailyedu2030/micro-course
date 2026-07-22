@@ -1,36 +1,20 @@
 package com.microcourse.service;
 
-import com.microcourse.dto.CoursePricingInfoVO;
-import com.microcourse.dto.TeacherRatingVO;
-import com.microcourse.entity.Course;
-import com.microcourse.entity.Department;
-import com.microcourse.entity.Order;
-import com.microcourse.entity.TeacherRating;
-import com.microcourse.entity.User;
-import org.springframework.transaction.support.TransactionTemplate;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.TeacherRatingRepository;
 import com.microcourse.repository.TeacherTierLogRepository;
 import com.microcourse.repository.UserRepository;
-import com.microcourse.service.impl.CourseServiceImpl;
 import com.microcourse.service.impl.TeacherRatingServiceImpl;
-import com.microcourse.service.impl.TeacherServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -142,19 +126,6 @@ class RatingPricingRevenueUnitTest {
     }
 
     // ====== 工具方法 ======
-
-    private TeacherRatingRepository.TeacherRatingStatRow makeRow(
-            Long teacherId, int courseCount, int studentCount,
-            double completionRate, double avgRating) {
-        TeacherRatingRepository.TeacherRatingStatRow row =
-                org.mockito.Mockito.mock(TeacherRatingRepository.TeacherRatingStatRow.class);
-        when(row.getTeacherId()).thenReturn(teacherId);
-        when(row.getCourseCount()).thenReturn(courseCount);
-        when(row.getStudentCount()).thenReturn(studentCount);
-        when(row.getCompletionRate()).thenReturn(completionRate);
-        when(row.getAvgRating()).thenReturn(avgRating);
-        return row;
-    }
 
     private BigDecimal calcScore(double avgRating, double completionRate, int studentCount, int courseCount) {
         // 与 TeacherRatingServiceImpl.calculateAndSave 中的公式一致

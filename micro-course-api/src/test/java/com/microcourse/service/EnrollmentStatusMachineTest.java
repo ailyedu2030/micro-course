@@ -12,8 +12,6 @@ import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.EnrollmentHistoryRepository;
-import com.microcourse.repository.EnrollmentRepository;
-import com.microcourse.service.EnrollmentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

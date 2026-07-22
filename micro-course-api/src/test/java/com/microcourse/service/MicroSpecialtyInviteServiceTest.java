@@ -224,11 +224,12 @@ class MicroSpecialtyInviteServiceTest {
 
     @Test
     @DisplayName("scanExpired: 7天过期 + LEAD 告警")
+    @SuppressWarnings({"unchecked", "varargs"})
     void scanExpired_success() {
         MicroSpecialtyTeacher expired = invitedRecord(1L, 1L, 5L, "LEAD");
         expired.setInviteExpiresAt(LocalDateTime.now().minusDays(1));
-        java.util.List<MicroSpecialtyTeacher> emptyTeachers = java.util.Collections.emptyList();
-        when(teacherRepository.selectList(any())).thenReturn(List.of(expired), emptyTeachers);
+        java.util.List<MicroSpecialtyTeacher> emptyTeachers = Collections.<MicroSpecialtyTeacher>emptyList();
+        when(teacherRepository.selectList(any())).thenReturn(List.of(expired), (java.util.List<MicroSpecialtyTeacher>) emptyTeachers);
         when(teacherRepository.update(any(), any())).thenReturn(1);
         MicroSpecialty ms = msWithStatus("RECRUITING");
         ms.setLeadTeacherId(1L);
