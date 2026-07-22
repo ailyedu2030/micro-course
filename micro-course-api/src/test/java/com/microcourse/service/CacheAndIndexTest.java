@@ -116,8 +116,9 @@ class CacheAndIndexTest extends BaseIntegrationTest {
         Long nextId = jdbc.queryForObject(
                 "SELECT nextval(pg_get_serial_sequence('courses', 'id'))",
                 Long.class);
-        jdbc.update(
+        jdbc.queryForObject(
                 "SELECT setval(pg_get_serial_sequence('courses', 'id'), ?, false)",
+                Long.class,
                 nextId);
         return nextId;
     }
