@@ -15,7 +15,7 @@ public final class MybatisPlusTestHelper {
 
     private MybatisPlusTestHelper() {}
 
-    /** 初始化 TableInfoHelper 注册所有微专业相关实体 */
+    /** 初始化纯 Mockito 测试里常用的实体 TableInfo */
     public static void initTableInfo() {
         if (initialized) return;
         initialized = true;
@@ -31,6 +31,7 @@ public final class MybatisPlusTestHelper {
         TableInfoHelper.initTableInfo(assistant, MicroSpecialtyFeaturedAudit.class);
         TableInfoHelper.initTableInfo(assistant, Enrollment.class);
         TableInfoHelper.initTableInfo(assistant, User.class);
+        TableInfoHelper.initTableInfo(assistant, Video.class);
         TableInfoHelper.initTableInfo(assistant, MicroSpecialty.class);
     }
 }
